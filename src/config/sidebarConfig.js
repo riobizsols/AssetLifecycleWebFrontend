@@ -89,12 +89,6 @@ export const sidebarItems = [
                 icon: Tags,
                 roles: ["super_admin"],
             },
-            // {
-            //     label: "Manage Departments Assets",
-            //     path: "/master-data/departments-asset",
-            //     icon: Tags,
-            //     roles: ["super_admin"],
-            // },
             {
                 label: "Branches",
                 path: "/master-data/branches",
