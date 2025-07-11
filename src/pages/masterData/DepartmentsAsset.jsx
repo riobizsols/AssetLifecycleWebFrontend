@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import API from "../../lib/axios";
-import { Trash2 } from "lucide-react";
+import { Maximize, Minimize, Trash2 } from "lucide-react";
 
 const DepartmentsAsset = () => {
   const [departments, setDepartments] = useState([]);
@@ -12,6 +12,17 @@ const DepartmentsAsset = () => {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  const toggleMaximize = () => setIsMaximized((prev) => !prev);
+
+  useEffect(() => {
+    document.body.style.overflow = isMaximized ? "hidden" : "auto";
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isMaximized]);
 
   // Fetch all departments
   const fetchDepartments = async () => {
@@ -111,7 +122,6 @@ const DepartmentsAsset = () => {
           >
             <option value="">
               {selectedDeptId ? "Select Asset Type" : "Select Department First"}
-
             </option>
             {assetTypes.map((at) => (
               <option key={at.asset_type_id} value={at.asset_type_id}>
@@ -129,39 +139,57 @@ const DepartmentsAsset = () => {
         </div>
       </div>
       {/* Admin List Table */}
-      <div className="bg-white rounded shadow">
-        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          Department–Asset Mappings
-        </div>
-        <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-          <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-            <div>Mapping ID</div>
-            <div>Department</div>
-            <div>Asset Type</div>
-            <div className="text-center">Actions</div>
+      <div
+        className={`bg-white rounded shadow transition-all duration-300 ${
+          isMaximized ? "fixed inset-0 z-50 p-6 m-6 overflow-auto" : ""
+        }`}
+      >
+        <div className="bg-white rounded shadow">
+          <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
+            Department–Asset Mappings
+            <button onClick={toggleMaximize}>
+              {isMaximized ? (
+                <Minimize className="text-[#0E2F4B]" size={18} />
+              ) : (
+                <Maximize className="text-[#0E2F4B]" size={18} />
+              )}
+            </button>
           </div>
-          {deptAssets.map((item, i) => (
-            <div
-              key={item.id}
-              className={`grid grid-cols-4 px-4 py-2 items-center border-b ${
-                i % 2 === 0 ? "bg-white" : "bg-gray-100"
-              } text-gray-800`}
-            >
-              <div>{item.id}</div>
-              <div>{item.dept_name}</div>
-              <div>{item.asset_name}</div>
-              <div className="flex justify-center">
-                <button
-                  onClick={() => {
-                    setDeleteId(item.id);
-                    setShowDeleteModal(true);
-                  }}
-                >
-                  <Trash2 className="text-yellow-500" size={18} />
-                </button>
-              </div>
+          <div className="bg-[#0E2F4B] text-white text-sm">
+            <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+              <div>Mapping ID</div>
+              <div>Department</div>
+              <div>Asset Type</div>
+              <div className="text-center">Actions</div>
             </div>
-          ))}
+
+            <div
+              className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}
+            >
+              {deptAssets.map((item, i) => (
+                <div
+                  key={item.id}
+                  className={`grid grid-cols-4 px-4 py-2 items-center border-b ${
+                    i % 2 === 0 ? "bg-white" : "bg-gray-100"
+                  } text-gray-800`}
+                >
+                  <div>{item.id}</div>
+                  <div>{item.dept_name}</div>
+                  <div>{item.asset_name}</div>
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => {
+                        setDeleteId(item.id);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <Trash2 className="text-yellow-500" size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       {/* Delete Modal */}
@@ -203,5 +231,3 @@ const DepartmentsAsset = () => {
 };
 
 export default DepartmentsAsset;
-
-

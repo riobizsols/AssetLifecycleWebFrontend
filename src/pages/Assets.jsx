@@ -71,6 +71,7 @@ const Assets = () => {
         onAdd={() => console.log("Add")}
         onDelete={() => console.log("Delete")}
         onDownload={() => console.log("Download")}
+        data={data}
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);

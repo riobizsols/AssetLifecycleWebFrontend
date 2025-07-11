@@ -101,7 +101,7 @@ const Branches = () => {
         onFilterChange={handleFilterChange}
         onDeleteSelected={handleDeleteSelected}
         onSort={handleSort}
-        
+        data={data}
         sortConfig={sortConfig}
         onAdd={() => navigate("/master-data/add-branch")}
         onDownload={() => console.log("Download Branch")}
@@ -127,7 +127,6 @@ const Branches = () => {
               })
             );
           }
-          
 
           // ✅ Apply date range
           if (dateRange.from && dateRange.to) {

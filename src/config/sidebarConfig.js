@@ -83,6 +83,12 @@ export const sidebarItems = [
                 icon: Tags,
                 roles: ["super_admin"],
             },
+            // {
+            //     label: "Manage Departments Assets",
+            //     path: "/master-data/departments-asset",
+            //     icon: Tags,
+            //     roles: ["super_admin"],
+            // },
             {
                 label: "Manage Departments Admin",
                 path: "/master-data/departments-admin",
@@ -124,8 +130,7 @@ export const sidebarItems = [
                 path: "/master-data/audit-logs",
                 icon: ClipboardList,
                 roles: ["super_admin"],
-              },
+            },
         ],
     },
 ];
-  

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ChevronDown,
   Download,
@@ -6,19 +6,20 @@ import {
   Plus,
   Trash2,
   Minus,
+  ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const ContentBox = ({
   title,
-  filters = [],
-  onFilterChange,
+  filters = [], // This represents the available columns for filtering/display
+  onFilterChange, // This function is called to apply filters to the parent data
   onSort,
   sortConfig,
   selectedRows = [],
   setSelectedRows = () => {},
   onDeleteSelected,
-  data = [],
+  data = [], // The actual data to be displayed and filtered
   children,
 }) => {
   const navigate = useNavigate();
@@ -26,32 +27,72 @@ const ContentBox = ({
   const [openDropdown, setOpenDropdown] = useState(null);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState([]);
-  const [searchKeyword, setSearchKeyword] = useState("");
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
+  const [columnFilters, setColumnFilters] = useState([]);
+  const [showColumnsDropdown, setShowColumnsDropdown] = useState(false);
 
-  const availableFilterTypes = ["sortAsc", "sortDesc", "date", "search"];
+  // Effect to apply initial filter if 'search by column' is active on mount
+  useEffect(() => {
+    // If 'search' is already an active filter, ensure columnFilters is initialized with at least one filter
+    const searchFilterActive = activeFilters.some((f) => f.type === "search");
+    if (searchFilterActive && columnFilters.length === 0) {
+      setColumnFilters([{ column: "", value: "" }]);
+    }
+  }, [activeFilters]); // Run when activeFilters change
+
+  const handleColumnChange = (index, column) => {
+    const updated = [...columnFilters];
+    updated[index].column = column;
+    updated[index].value = ""; // Reset value when column changes
+    setColumnFilters(updated);
+
+    const validFilters = updated.filter((f) => f.column && f.value);
+    onFilterChange("columnFilters", validFilters);
+  };
+
+  const handleValueChange = (index, value) => {
+    const updated = [...columnFilters];
+    updated[index].value = value;
+    setColumnFilters(updated);
+
+    const validFilters = updated.filter((f) => f.column && f.value);
+    onFilterChange("columnFilters", validFilters); // Pass valid filters to parent
+  };
+
+  const addColumnFilter = () => {
+    setColumnFilters([...columnFilters, { column: "", value: "" }]);
+  };
+
+  const removeColumnFilter = (index) => {
+    const updated = columnFilters.filter((_, i) => i !== index);
+    setColumnFilters(updated);
+    // If all column filters are removed, also remove the 'search' type from activeFilters
+    if (
+      updated.length === 0 &&
+      activeFilters.some((f) => f.type === "search")
+    ) {
+      setActiveFilters((prev) => prev.filter((f) => f.type !== "search"));
+    }
+    const validFilters = updated.filter((f) => f.column && f.value);
+    onFilterChange("columnFilters", validFilters); // Update parent's filter state
+  };
+
+  const availableFilterTypes = ["date", "search"];
   const selectedTypes = activeFilters.map((f) => f.type);
-
-  const nextAvailableFilters = availableFilterTypes.filter((type) => {
-    if (type === "sortAsc" && selectedTypes.includes("sortDesc")) return false;
-    if (type === "sortDesc" && selectedTypes.includes("sortAsc")) return false;
-    return !selectedTypes.includes(type);
-  });
+  const nextAvailableFilters = availableFilterTypes.filter(
+    (type) => !selectedTypes.includes(type)
+  );
 
   const handleAddFilter = (type) => {
     const labelMap = {
-      sortAsc: "Sort Ascending",
-      sortDesc: "Sort Descending",
       date: "Purchase Date",
-      search: "Search by Name",
+      search: "Search by Column",
     };
     const newFilter = { type, label: labelMap[type] };
-
-    if (!selectedTypes.includes(type)) {
-      setActiveFilters([...activeFilters, newFilter]);
-
-      if (type === "sortAsc") onSort("text", "asc");
-      if (type === "sortDesc") onSort("text", "desc");
+    setActiveFilters([...activeFilters, newFilter]);
+    // If 'search by column' is added, initialize with one empty column filter
+    if (type === "search" && columnFilters.length === 0) {
+      setColumnFilters([{ column: "", value: "" }]);
     }
   };
 
@@ -61,12 +102,16 @@ const ContentBox = ({
     updated.splice(index, 1);
     setActiveFilters(updated);
 
-    if (removed.type === "sortAsc" || removed.type === "sortDesc") {
-      onSort(null, null);
+    if (removed.type === "search") {
+      setColumnFilters([]); // Clear all column filters
+      onFilterChange("columnFilters", []); // Notify parent to clear column filters
     }
 
-    if (removed.type === "search") setSearchKeyword("");
-    if (removed.type === "date") setDateRange({ from: "", to: "" });
+    if (removed.type === "date") {
+      setDateRange({ from: "", to: "" });
+      onFilterChange("fromDate", "");
+      onFilterChange("toDate", "");
+    }
   };
 
   const [visibleColumns, setVisibleColumns] = useState(
@@ -89,7 +134,7 @@ const ContentBox = ({
 
   const toggleAll = (e) => {
     if (e.target.checked) {
-      const allIds = data.map((item) => item.user_id); // assumes user_id is the key
+      const allIds = data.map((item) => item.user_id); // Assuming 'user_id' is the unique identifier
       setSelectedRows(allIds);
     } else {
       setSelectedRows([]);
@@ -98,17 +143,13 @@ const ContentBox = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border mt-4">
-      {/* Title */}
       {title && (
         <div className="bg-[#0E2F4B] text-white px-4 py-2 border-b-4 border-[#FFC107]">
           <h2 className="text-base font-semibold">{title}</h2>
         </div>
       )}
 
-      {/* Top Control Bar */}
-      <div className="flex flex-col gap-2 p-2 bg-gray-100 border-b">
-
-        {/* Filter Controls */}
+      <div className="flex flex-wrap items-start justify-between gap-2 p-2 bg-gray-100 border-b">
         <div className="flex flex-wrap items-center gap-2">
           <button
             className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
@@ -118,7 +159,10 @@ const ContentBox = ({
           </button>
 
           {activeFilters.map((filter, idx) => (
-            <div key={idx} className="flex items-center border px-2 py-1 rounded bg-gray-50">
+            <div
+              key={idx}
+              className="flex items-center border px-2 py-1 rounded bg-gray-50"
+            >
               <button
                 onClick={() => handleRemoveFilter(idx)}
                 className="bg-[#0E2F4B] text-[#FFC107] px-1 h-full"
@@ -126,52 +170,104 @@ const ContentBox = ({
                 <Minus size={14} />
               </button>
 
-              <div className="mx-2">
-                {filter.type === "search" ? (
-                  <input
-                    type="text"
-                    value={searchKeyword}
-                    onChange={(e) => {
-                      setSearchKeyword(e.target.value);
-                      onFilterChange("text", e.target.value);
-                    }}
-                    className="border px-2 py-1 text-sm"
-                    placeholder="Search..."
-                  />
-                ) : filter.type === "date" ? (
-                  <div className="flex items-center gap-2">
-                    <span>{filter.label}</span>
-                    <input
-                      type="date"
-                      className="border px-1"
-                      onChange={(e) => {
-                        const updated = { ...dateRange, from: e.target.value };
-                        setDateRange(updated);
-                        onFilterChange("fromDate", updated.from);
-                      }}
-                    />
-                    <span>to</span>
-                    <input
-                      type="date"
-                      className="border px-1"
-                      onChange={(e) => {
-                        const updated = { ...dateRange, to: e.target.value };
-                        setDateRange(updated);
-                        onFilterChange("toDate", updated.to);
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <span>{filter.label}</span>
-                )}
-              </div>
+              {filter.type === "search" && (
+                <div className="flex flex-wrap items-center gap-2 ml-2">
+                  {columnFilters.map((cf, index) => {
+                    // Get options for the column dropdown
+                    const columnOptions = filters.map((f) => (
+                      <option key={f.name} value={f.name}>
+                        {f.label}
+                      </option>
+                    ));
 
-              <button
-                className="bg-[#0E2F4B] text-[#FFC107] px-1 h-full ml-2"
-                onClick={() => setFilterMenuOpen(true)}
-              >
-                <Plus size={14} />
-              </button>
+                    // Get unique values for the value dropdown based on selected column
+                    const valueOptions = cf.column
+                      ? [...new Set(data.map((item) => item[cf.column]))]
+                      : [];
+
+                    return (
+                      <div key={index} className="flex items-center gap-2">
+                        {/* Minus button for individual column filter */}
+                        {columnFilters.length > 1 && (
+                          <button
+                            onClick={() => removeColumnFilter(index)}
+                            className="bg-gray-300 text-gray-700 px-1 rounded-full"
+                            title="Remove this column filter"
+                          >
+                            <Minus size={12} />
+                          </button>
+                        )}
+                        <select
+                          className="border text-sm px-2 py-1"
+                          value={cf.column}
+                          onChange={(e) =>
+                            handleColumnChange(index, e.target.value)
+                          }
+                        >
+                          <option value="">Select column</option>
+                          {columnOptions}
+                        </select>
+
+                        {/* Value dropdown, visible only if a column is selected */}
+                        {cf.column && (
+                          <select
+                            className="border text-sm px-2 py-1"
+                            value={cf.value}
+                            onChange={(e) =>
+                              handleValueChange(index, e.target.value)
+                            }
+                          >
+                            <option value="">Select value</option>
+                            {valueOptions.map((val, i) => (
+                              <option key={i} value={val}>
+                                {val}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+
+                        {/* Plus button, visible only for the last column filter */}
+                        {index === columnFilters.length - 1 && (
+                          <button
+                            onClick={addColumnFilter}
+                            className="text-[#FFC107] bg-[#0E2F4B] px-1"
+                            title="Add another column filter"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {filter.type === "date" && (
+                <div className="flex items-center gap-2 ml-2">
+                  <span>{filter.label}</span>
+                  <input
+                    type="date"
+                    className="border px-1"
+                    value={dateRange.from} // Controlled component
+                    onChange={(e) => {
+                      const updated = { ...dateRange, from: e.target.value };
+                      setDateRange(updated);
+                      onFilterChange("fromDate", updated.from);
+                    }}
+                  />
+                  <span>to</span>
+                  <input
+                    type="date"
+                    className="border px-1"
+                    value={dateRange.to} // Controlled component
+                    onChange={(e) => {
+                      const updated = { ...dateRange, to: e.target.value };
+                      setDateRange(updated);
+                      onFilterChange("toDate", updated.to);
+                    }}
+                  />
+                </div>
+              )}
             </div>
           ))}
 
@@ -188,9 +284,7 @@ const ContentBox = ({
                       setFilterMenuOpen(false);
                     }}
                   >
-                    {type === "search" && "Search by Name"}
-                    {type === "sortAsc" && "Sort Ascending"}
-                    {type === "sortDesc" && "Sort Descending"}
+                    {type === "search" && "Search by Column"}
                     {type === "date" && "Purchase Date"}
                   </div>
                 ))}
@@ -199,7 +293,6 @@ const ContentBox = ({
           )}
         </div>
 
-        {/* Action Buttons */}
         <div className="flex gap-2 justify-end">
           <button
             onClick={() => navigate("add")}
@@ -238,7 +331,10 @@ const ContentBox = ({
                   sortConfig.direction === "desc";
 
                 return (
-                  <th key={index} className="px-4 py-3 relative text-left group">
+                  <th
+                    key={index}
+                    className="px-4 py-3 relative text-left group"
+                  >
                     <div
                       className="flex items-center justify-between gap-2 cursor-pointer"
                       onClick={() =>
@@ -256,8 +352,12 @@ const ContentBox = ({
                         )}
                         {filter.label}
                       </span>
-                      {isSortedAsc && <span className="text-yellow-400 text-xs">↑</span>}
-                      {isSortedDesc && <span className="text-yellow-400 text-xs">↓</span>}
+                      {isSortedAsc && (
+                        <span className="text-yellow-400 text-xs">↑</span>
+                      )}
+                      {isSortedDesc && (
+                        <span className="text-yellow-400 text-xs">↓</span>
+                      )}
                       {!isSortedAsc && !isSortedDesc && (
                         <ChevronDown
                           size={16}
@@ -268,9 +368,11 @@ const ContentBox = ({
 
                     {openDropdown === index && (
                       <div className="z-50 absolute top-full left-0 mt-1 bg-white text-black shadow-lg border border-gray-300 w-48 text-sm">
-                        <div className="px-3 py-2 font-semibold border-b">Sort</div>
+                        <div className="px-3 py-2 font-semibold border-b">
+                          Sort
+                        </div>
                         <div
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
                             onSort(filter.name, "asc");
                             setOpenDropdown(null);
@@ -279,7 +381,7 @@ const ContentBox = ({
                           Sort Ascending
                         </div>
                         <div
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
                             onSort(filter.name, "desc");
                             setOpenDropdown(null);
@@ -288,7 +390,7 @@ const ContentBox = ({
                           Sort Descending
                         </div>
                         <div
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
                             onSort(null, null);
                             setOpenDropdown(null);
@@ -296,22 +398,42 @@ const ContentBox = ({
                         >
                           Undo Sorting
                         </div>
-
-                        <div className="px-3 py-2 font-semibold border-t">Columns</div>
-                        {visibleColumns.map((col, i) => (
-                          <label
-                            key={i}
-                            className="flex items-center px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        <div className="relative">
+                          <button
+                            className="flex items-center justify-between w-full px-3 py-2 font-semibold border-t hover:bg-gray-100 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent closing the main dropdown
+                              setShowColumnsDropdown(!showColumnsDropdown);
+                            }}
                           >
-                            <input
-                              type="checkbox"
-                              checked={col.visible}
-                              onChange={() => toggleColumn(col.name)}
-                              className="mr-2"
-                            />
-                            {col.label}
-                          </label>
-                        ))}
+                            <span>Columns</span>
+                            <ChevronRight size={16} />
+                          </button>
+                          {showColumnsDropdown && (
+                            <div className="absolute left-full top-0 mt-0 ml-1 bg-white shadow-lg border border-gray-300 w-48 z-50">
+                              {visibleColumns.map((col, i) => (
+                                <label
+                                  key={i}
+                                  className="flex items-center px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={col.visible}
+                                    onChange={(e) => {
+                                      toggleColumn(col.name);
+                                      // Optional: Keep dropdown open after checking/unchecking
+                                    }}
+                                    className="mr-2"
+                                  />
+                                  {col.label}
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold">
+                          Add Filter
+                        </div>
                       </div>
                     )}
                   </th>
@@ -320,7 +442,6 @@ const ContentBox = ({
               <th className="px-4 py-3 text-center">Actions</th>
             </tr>
           </thead>
-
           <tbody>
             {typeof children === "function"
               ? children({ visibleColumns })
@@ -333,4 +454,3 @@ const ContentBox = ({
 };
 
 export default ContentBox;
-  

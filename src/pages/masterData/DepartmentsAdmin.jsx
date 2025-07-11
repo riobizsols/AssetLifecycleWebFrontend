@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import API from "../../lib/axios";
-import { Trash2 } from "lucide-react";
+import { Maximize, Minimize, Trash2 } from "lucide-react";
 
 const DepartmentsAdmin = () => {
   const [departments, setDepartments] = useState([]);
@@ -10,6 +10,10 @@ const DepartmentsAdmin = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+
+   const [isMaximized, setIsMaximized] = useState(false);
+  
+    const toggleMaximize = () => setIsMaximized((prev) => !prev);
 
   // Fetch departments
   const fetchDepartments = async () => {
@@ -140,34 +144,52 @@ const DepartmentsAdmin = () => {
         </div>
       </div>
       {/* Admin List Table */}
-      <div className="bg-white rounded shadow">
-        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          Admin List
-        </div>
-        <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-          <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-            <div>User ID</div>
-            <div>Admin Name</div>
-            <div>Department Name</div>
-            <div className="text-center">Actions</div>
+      <div
+        className={`bg-white rounded shadow transition-all duration-300 ${
+          isMaximized ? "fixed inset-0 z-50 p-6 m-6 overflow-auto" : ""
+        }`}
+      >
+        <div className="bg-white rounded shadow">
+          <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
+            Admin List
+            <button onClick={toggleMaximize}>
+              {isMaximized ? (
+                <Minimize className="text-[#0E2F4B]" size={18} />
+              ) : (
+                <Maximize className="text-[#0E2F4B]" size={18} />
+              )}
+            </button>
           </div>
-          {adminList.map((admin, i) => (
-            <div
-              key={`${admin.dept_id}-${admin.user_id}`}
-              className={`grid grid-cols-4 px-4 py-2 items-center border-b ${
-                i % 2 === 0 ? "bg-white" : "bg-gray-100"
-              } text-gray-800`}
-            >
-              <div>{admin.user_id}</div>
-              <div>{admin.full_name}</div>
-              <div>{admin.dept_name}</div>
-              <div className="flex justify-center">
-                <button onClick={() => handleDelete(admin)}>
-                  <Trash2 className="text-yellow-500" size={18} />
-                </button>
-              </div>
+          <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
+            <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+              <div>User ID</div>
+              <div>Admin Name</div>
+              <div>Department Name</div>
+              <div className="text-center">Actions</div>
             </div>
-          ))}
+
+            <div
+              className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}
+            >
+              {adminList.map((admin, i) => (
+                <div
+                  key={`${admin.dept_id}-${admin.user_id}`}
+                  className={`grid grid-cols-4 px-4 py-2 items-center border-b ${
+                    i % 2 === 0 ? "bg-white" : "bg-gray-100"
+                  } text-gray-800`}
+                >
+                  <div>{admin.user_id}</div>
+                  <div>{admin.full_name}</div>
+                  <div>{admin.dept_name}</div>
+                  <div className="flex justify-center">
+                    <button onClick={() => handleDelete(admin)}>
+                      <Trash2 className="text-yellow-500" size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       {/* Delete Modal */}

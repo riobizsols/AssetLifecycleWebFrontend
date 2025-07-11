@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
-// import API from "../api"; // Adjust path based on your structure
 
 const Departments = () => {
   const [departments, setDepartments] = useState([]);
@@ -11,6 +10,15 @@ const Departments = () => {
   const [editName, setEditName] = useState("");
   const [nextDeptId, setNextDeptId] = useState("");
   const [newDeptName, setNewDeptName] = useState("");
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  const toggleMaximize = () => setIsMaximized((prev) => !prev);
+  useEffect(() => {
+    document.body.style.overflow = isMaximized ? "hidden" : "auto";
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isMaximized]);
 
   const fetchDepartments = async () => {
     try {
@@ -25,9 +33,7 @@ const Departments = () => {
   const fetchNextDeptId = async () => {
     const res = await API.get("/ids/next-dept-id");
     setNextDeptId(res.data.nextDeptId);
-    
   };
-  
 
   useEffect(() => {
     fetchDepartments();
@@ -118,35 +124,56 @@ const Departments = () => {
         </div>
 
         {/* Department List */}
-        <div className="bg-white rounded shadow">
-          <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-            Department List
-          </div>
-          <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-            <div className="grid grid-cols-3 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-              <div>Department Id</div>
-              <div>Department Name</div>
-              <div className="text-center">Actions</div>
+        <div
+          className={`bg-white rounded shadow transition-all duration-300 ${
+            isMaximized ? "fixed inset-0 z-50 p-6 m-6 overflow-auto" : ""
+          }`}
+        >
+          <div className="bg-white rounded shadow">
+            <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
+              Department List
+              <button onClick={toggleMaximize}>
+                {isMaximized ? (
+                  <Minimize className="text-[#0E2F4B]" size={18} />
+                ) : (
+                  <Maximize className="text-[#0E2F4B]" size={18} />
+                )}
+              </button>
             </div>
-            {departments.map((dept, i) => (
-              <div
-                key={dept.dept_id}
-                className={`grid grid-cols-3 px-4 py-2 items-center border-b ${
-                  i % 2 === 0 ? "bg-white" : "bg-gray-100"
-                } text-gray-800`}
-              >
-                <div>{dept.dept_id}</div>
-                <div>{dept.text}</div>
-                <div className="flex justify-center gap-4">
-                  <button onClick={() => handleEdit(dept)}>
-                    <Pencil className="text-[#0E2F4B]" size={18} />
-                  </button>
-                  <button onClick={() => handleDelete(dept)}>
-                    <Trash2 className="text-yellow-500" size={18} />
-                  </button>
-                </div>
+
+            <div className="bg-[#0E2F4B] text-white text-sm">
+              <div className="grid grid-cols-3 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+                <div>Department Id</div>
+                <div>Department Name</div>
+                <div className="text-center">Actions</div>
               </div>
-            ))}
+
+              <div
+                className={`${
+                  isMaximized ? "max-h-[60vh] overflow-y-auto" : ""
+                }`}
+              >
+                {departments.map((dept, i) => (
+                  <div
+                    key={dept.dept_id}
+                    className={`grid grid-cols-3 px-4 py-2 items-center border-b ${
+                      i % 2 === 0 ? "bg-white" : "bg-gray-100"
+                    } text-gray-800`}
+                  >
+                    <div>{dept.dept_id}</div>
+                    <div>{dept.text}</div>
+                    <div className="flex justify-center gap-4">
+                      <button onClick={() => handleEdit(dept)}>
+                        <Pencil className="text-[#0E2F4B]" size={18} />
+                      </button>
+                      <button onClick={() => handleDelete(dept)}>
+                        <Trash2 className="text-yellow-500" size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
