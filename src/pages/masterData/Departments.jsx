@@ -20,8 +20,8 @@ const Departments = () => {
     };
   }, [isMaximized]);
 
-  const fetchDepartments = async () => {
-    try {
+    const fetchDepartments = async () => {
+      try {
       const res = await API.get("/departments");
       setDepartments(Array.isArray(res.data) ? res.data : []);
     } catch (err) {

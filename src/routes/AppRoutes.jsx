@@ -12,6 +12,7 @@ import Branches from "../pages/masterData/Branches";
 import AddBranch from "../components/AddBranch";
 import DepartmentsAdmin from "../pages/masterData/DepartmentsAdmin";
 import DepartmentsAsset from "../pages/masterData/DepartmentsAsset";
+import Organization from "../pages/masterData/Organization";
 
 export default function AppRoutes() {
   return (
@@ -77,6 +78,16 @@ export default function AppRoutes() {
             <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
               <MainLayout>
                 <DepartmentsAsset />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/organizations"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+              <MainLayout>
+                <Organization />
               </MainLayout>
             </ProtectedRoute>
           }

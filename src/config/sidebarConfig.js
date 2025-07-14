@@ -72,6 +72,12 @@ export const sidebarItems = [
         roles: ["super_admin"],
         children: [
             {
+                label: "Organizations",
+                path: "/master-data/organizations",
+                icon: Building2,
+                roles: ["super_admin"],
+            },
+            {
                 label: "Asset Type",
                 path: "/master-data/asset-types",
                 icon: Building2,
