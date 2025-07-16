@@ -13,6 +13,9 @@ import AddBranch from "../components/AddBranch";
 import DepartmentsAdmin from "../pages/masterData/DepartmentsAdmin";
 import DepartmentsAsset from "../pages/masterData/DepartmentsAsset";
 import Organization from "../pages/masterData/Organization";
+import Vendors from "../pages/masterData/Vendors";
+import AddEntityForm from "../components/AddEntityForm";
+import ProdServ from "../pages/masterData/ProdServ";
 
 export default function AppRoutes() {
   return (
@@ -37,6 +40,16 @@ export default function AppRoutes() {
             <ProtectedRoute allowedRoles={["super_admin", "employee"]}>
               <MainLayout>
                 <Assets />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/prod-serv"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "employee"]}>
+              <MainLayout>
+                <ProdServ />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -92,6 +105,23 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        
+
+
+      <Route
+          path="/master-data/vendors"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+              <MainLayout>
+                <Outlet />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Vendors />} />
+
+          <Route path="add" element={<AddEntityForm />} />
+        </Route>
 
         {/* nesting routing  branches and add department  */}
 

@@ -89,15 +89,15 @@ export const sidebarItems = [
                 icon: Tags,
                 roles: ["super_admin"],
             },
-            // {
-            //     label: "Manage Departments Assets",
-            //     path: "/master-data/departments-asset",
-            //     icon: Tags,
-            //     roles: ["super_admin"],
-            // },
             {
                 label: "Manage Departments Admin",
                 path: "/master-data/departments-admin",
+                icon: Tags,
+                roles: ["super_admin"],
+            },
+            {
+                label: "Manage Departments Assets Type",
+                path: "/master-data/departments-asset",
                 icon: Tags,
                 roles: ["super_admin"],
             },
@@ -113,6 +113,12 @@ export const sidebarItems = [
                 icon: Truck,
                 roles: ["super_admin"],
             },
+            // {
+            //     label: "Producsts/Services",
+            //     path: "/master-data/prod-serv",
+            //     icon: Truck,
+            //     roles: ["super_admin"],
+            // },
             {
                 label: "Roles",
                 path: "/master-data/roles",

@@ -4,8 +4,9 @@ import CustomTable from "../../components/CustomTable";
 import { filterData } from "../../utils/filterData";
 import { useNavigate } from "react-router-dom";
 import API from "../../lib/axios";
+import AddEntityForm from '../../components/AddBranch';
 
-const Branches = () => {
+const Vendors = () => {
   const navigate = useNavigate();
 
   const [data, setData] = useState([]);
@@ -18,15 +19,25 @@ const Branches = () => {
     direction: null,
   });
   const [selectedRows, setSelectedRows] = useState([]);
+  // Remove all showAddVendor, loading, and AddEntityForm/modal logic
+  // Only keep the vendor list and ContentBox
 
   const [columns] = useState([
-    { label: "Branch ID", name: "id", visible: true },
+    { label: "Vendor ID", name: "id", visible: true },
+    { label: "Vendor Name", name: "text", visible: true },
+    { label: "Company", name: "text", visible: true },
+    { label: "GST Number", name: "gst_number", visible: true },
+    { label: "CIN Number", name: "cin_number", visible: true },
+    { label: "Company Email", name: "email", visible: true },
+    { label: "Company Number", name: "company_number", visible: true },
+    { label: "Address 1", name: "address_1", visible: false },
+    { label: "Address 2", name: "address_2", visible: false },
+    { label: "City", name: "city", visible: false },
+    { label: "State", name: "state", visible: false },
+    { label: "Pincode", name: "pincode", visible: false },
     { label: "Ext ID", name: "ext_id", visible: true },
     { label: "Organization ID", name: "org_id", visible: true },
     { label: "Is Active", name: "int_status", visible: true },
-    { label: "Branch Name", name: "text", visible: true },
-    { label: "City", name: "city", visible: true },
-    { label: "Branch Code", name: "branch_code", visible: true },
     { label: "Created By", name: "created_by", visible: false },
     { label: "Created On", name: "created_on", visible: false },
     { label: "Changed By", name: "changed_by", visible: false },
@@ -87,6 +98,9 @@ const Branches = () => {
     }
   };
 
+  // Remove all handleAddVendor, loading, and AddEntityForm/modal logic
+  // Only keep the vendor list and ContentBox
+
   const filters = columns.map((col) => ({
     label: col.label,
     name: col.name,
@@ -103,7 +117,7 @@ const Branches = () => {
         onSort={handleSort}
         data={data}
         sortConfig={sortConfig}
-        onAdd={() => navigate("/master-data/add-branch")}
+        onAdd={() => setShowAddVendor(true)}
         onDownload={() => console.log("Download Branch")}
       >
         {({ visibleColumns, columnWidth }) => {
@@ -174,8 +188,11 @@ const Branches = () => {
           );
         }}
       </ContentBox>
+      {/* Add Branch Modal or Inline */}
+      {/* Remove all showAddVendor, loading, and AddEntityForm/modal logic */}
+      {/* Only keep the vendor list and ContentBox */}
     </div>
   );
 };
 
-export default Branches;
+export default Vendors;

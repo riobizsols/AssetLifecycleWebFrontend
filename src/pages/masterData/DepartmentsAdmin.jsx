@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import API from "../../lib/axios";
-import { Maximize, Minimize, Trash2 } from "lucide-react";
+import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const DepartmentsAdmin = () => {
   const [departments, setDepartments] = useState([]);
@@ -14,6 +15,10 @@ const DepartmentsAdmin = () => {
    const [isMaximized, setIsMaximized] = useState(false);
   
     const toggleMaximize = () => setIsMaximized((prev) => !prev);
+
+  const [searchUser, setSearchUser] = useState("");
+  const dropdownUserRef = React.useRef(null);
+  const navigate = useNavigate();
 
   // Fetch departments
   const fetchDepartments = async () => {
@@ -119,21 +124,58 @@ const DepartmentsAdmin = () => {
           Add Admin
         </div>
         <div className="p-4 flex gap-4 items-center">
-          <select
-            className="border text-black px-3 py-2 text-sm w-64 bg-white focus:outline-none"
-            value={selectedUser || ""}
-            onChange={(e) => setSelectedUser(e.target.value)}
-            disabled={!selectedDept}
-          >
-            <option value="">
-              {selectedDept ? "Select User" : "Select Department First"}
-            </option>
-            {usersToAdd.map((user) => (
-              <option key={user.user_id} value={user.user_id}>
-                {user.full_name}
-              </option>
-            ))}
-          </select>
+          {/* Custom Searchable Dropdown for Users */}
+          <div className="relative w-64">
+            <button
+              className="border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed flex justify-between items-center"
+              onClick={() => {
+                if (selectedDept) dropdownUserRef.current.classList.toggle("hidden");
+              }}
+              disabled={!selectedDept}
+              type="button"
+            >
+              {selectedUser
+                ? usersToAdd.find((u) => u.user_id === selectedUser)?.full_name || "Select User"
+                : selectedDept
+                ? "Select User"
+                : "Select Department First"}
+              <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
+            </button>
+            {/* Dropdown List */}
+            <div
+              ref={dropdownUserRef}
+              className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10 hidden"
+              style={{ minWidth: "100%" }}
+            >
+              {/* Sticky Search Input */}
+              <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
+                <input
+                  type="text"
+                  className="w-full border px-2 py-1 rounded text-sm"
+                  placeholder="Search Users..."
+                  value={searchUser}
+                  onChange={e => setSearchUser(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              {/* Filtered Users */}
+              {usersToAdd
+                .filter(u => u.full_name.toLowerCase().includes(searchUser.toLowerCase()))
+                .map((user) => (
+                  <div
+                    key={user.user_id}
+                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedUser === user.user_id ? "bg-gray-200" : ""}`}
+                    onClick={() => {
+                      setSelectedUser(user.user_id);
+                      dropdownUserRef.current.classList.add("hidden");
+                      setSearchUser("");
+                    }}
+                  >
+                    {user.full_name}
+                  </div>
+                ))}
+            </div>
+          </div>
           <button
             className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
             onClick={handleAddAdmin}
