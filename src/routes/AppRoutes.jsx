@@ -16,6 +16,7 @@ import Organization from "../pages/masterData/Organization";
 import Vendors from "../pages/masterData/Vendors";
 import AddEntityForm from "../components/AddEntityForm";
 import ProdServ from "../pages/masterData/ProdServ";
+import AddAssetForm from "../components/AddAssetForm";
 
 export default function AppRoutes() {
   return (
@@ -34,16 +35,23 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/assets"
+
+          <Route
+            path="/assets"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "employee"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
               <MainLayout>
-                <Assets />
+                <Outlet />
               </MainLayout>
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<Assets />} />
+
+          <Route path="add" element={<AddAssetForm />} />
+        </Route>
+
+        
         <Route
           path="/master-data/prod-serv"
           element={

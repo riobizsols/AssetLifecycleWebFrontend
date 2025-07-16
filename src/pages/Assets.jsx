@@ -15,14 +15,23 @@ const Assets = () => {
       name: "maintenance_schedule",
       visible: true,
     },
-    { label: "Vendor Id", name: "vendor_id", visible: true },
-    { label: "Purchase Cost", name: "purchase_cost", visible: true },
-    { label: "Expiry Date", name: "expiry_date", visible: true },
-    { label: "Warranty Period", name: "warranty_period", visible: true },
+    { label: "Asset Id", name: "asset_id", visible: true },
+    { label: "Ext Id", name: "ext_id", visible: false },
+    { label: "Org Id", name: "org_id", visible: false },
+    { label: "Asset Name", name: "text", visible: true },
+    { label: "Serial Number", name: "serial_number", visible: true },
+    { label: "Asset Type Id", name: "asset_type_id", visible: true },
+    { label: "Status", name: "status", visible: true },
+    { label: "Maintenance Schedule", name: "warranty_period", visible: true },
+    { label: "Description", name: "description", visible: true },
+    { label: "Purchase Vendor Id", name: "vendor_id", visible: true },
+    { label: "Brand", name: "brand", visible: true },
+    { label: "Model", name: "model", visible: true },
+    { label: "Product Vendor Id", name: "product_vendor_id", visible: true },
+    { label: "Service Vendor Id", name: "service_vendor_id", visible: true },
     { label: "Branch Code", name: "branch_code", visible: false },
-    { label: "Description", name: "description", visible: false },
-    { label: "Asset ID", name: "asset_id", visible: false },
-    { label: "Additional Column", name: "additional_column", visible: false },
+    { label: "Purchase Cost", name: "purchase_cost", visible: false },
+    { label: "Expiry Date", name: "expiry_date", visible: false },
   ]);
 
   // 👇 Real API fetch — or replace with mockData for local test
@@ -65,7 +74,7 @@ const Assets = () => {
   return (
     <div className="p-4">
       <ContentBox
-        title="Assets"
+        // title="Assets"
         filters={filters}
         onFilterChange={handleFilterChange}
         onAdd={() => console.log("Add")}
