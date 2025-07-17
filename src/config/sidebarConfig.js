@@ -113,12 +113,12 @@ export const sidebarItems = [
                 icon: Truck,
                 roles: ["super_admin"],
             },
-            // {
-            //     label: "Producsts/Services",
-            //     path: "/master-data/prod-serv",
-            //     icon: Truck,
-            //     roles: ["super_admin"],
-            // },
+            {
+                label: "Producsts/Services",
+                path: "/master-data/prod-serv",
+                icon: Truck,
+                roles: ["super_admin"],
+            },
             {
                 label: "Roles",
                 path: "/master-data/roles",

@@ -23,15 +23,17 @@ const Vendors = () => {
   // Only keep the vendor list and ContentBox
 
   const [columns] = useState([
-    { label: "Vendor ID", name: "id", visible: true },
-    { label: "Vendor Name", name: "text", visible: true },
-    { label: "Company", name: "text", visible: true },
+    { label: "Vendor ID", name: "vendor_id", visible: true },
+    { label: "Vendor Name", name: "vendor_name", visible: true },
+    { label: "Company", name: "company_name", visible: true },
     { label: "GST Number", name: "gst_number", visible: true },
     { label: "CIN Number", name: "cin_number", visible: true },
-    { label: "Company Email", name: "email", visible: true },
-    { label: "Company Number", name: "company_number", visible: true },
-    { label: "Address 1", name: "address_1", visible: false },
-    { label: "Address 2", name: "address_2", visible: false },
+    { label: "Company Email", name: "company_email", visible: true },
+    { label: "Contact Person", name: "contact_person_name", visible: true },
+    { label: "Contact Email", name: "contact_person_email", visible: true },
+    { label: "Contact Number", name: "contact_person_number", visible: true },
+    { label: "Address Line 1", name: "address_line1", visible: false },
+    { label: "Address Line 2", name: "address_line2", visible: false },
     { label: "City", name: "city", visible: false },
     { label: "State", name: "state", visible: false },
     { label: "Pincode", name: "pincode", visible: false },
@@ -43,19 +45,21 @@ const Vendors = () => {
     { label: "Changed By", name: "changed_by", visible: false },
     { label: "Changed On", name: "changed_on", visible: false },
   ]);
+  
 
   useEffect(() => {
-    const fetchBranches = async () => {
+    const fetchVendors = async () => {
       try {
-        const response = await API.get("/branches");
+        const response = await API.get("/get-vendors"); // This hits your vendorController
         setData(response.data);
       } catch (error) {
-        console.error("Error fetching branches:", error);
+        console.error("Error fetching vendors:", error);
       }
     };
-
-    fetchBranches();
+  
+    fetchVendors();
   }, []);
+  
 
   const handleSort = (columnName, direction) => {
     setSortConfig({ column: columnName, direction });
@@ -74,6 +78,12 @@ const Vendors = () => {
     }
   };
 
+
+  const formattedData = data.map(item => ({
+    ...item,
+    int_status: item.int_status === 1 ? "Active" : "Inactive"
+  }));
+  
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) return;
 
@@ -183,7 +193,7 @@ const Vendors = () => {
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
               onEdit={(row) => console.log("Edit branch:", row)}
-              rowKey="id"
+              rowKey="vendor_id"
             />
           );
         }}

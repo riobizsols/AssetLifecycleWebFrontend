@@ -4,6 +4,8 @@ import axios from 'axios';
 import API from '../lib/axios';
 import toast from 'react-hot-toast';
 import { MdKeyboardArrowRight, MdKeyboardArrowDown } from 'react-icons/md';
+import { useAuthStore } from '../store/useAuthStore';
+import { useNavigate } from 'react-router-dom';
 
 const initialForm = {
   assetType: '',
@@ -14,17 +16,13 @@ const initialForm = {
   warrantyPeriod: '',
   purchaseDate: '',
   purchaseCost: '',
-  currentStatus: '',
   properties: {},
-  brand1: '',
-  brand2: '',
-  brand3: '',
-  vendorId: '',
   purchaseBy: '',
   vendorBrand: '',
   vendorModel: '',
   purchaseSupply: '',
   serviceSupply: '',
+  vendorId: '',
 };
 
 const statusOptions = [
@@ -34,44 +32,20 @@ const statusOptions = [
   { value: 'Disposed', label: 'Disposed' },
 ];
 
-const maintenanceOptions = [
-  { value: '', label: 'Select' },
-  { value: 'Monthly', label: 'Monthly' },
-  { value: 'Quarterly', label: 'Quarterly' },
-  { value: 'Yearly', label: 'Yearly' },
-];
-
-const brandOptions = [
-  { value: '', label: 'Select' },
-  { value: 'Brand A', label: 'Brand A' },
-  { value: 'Brand B', label: 'Brand B' },
-  { value: 'Brand C', label: 'Brand C' },
-];
-
-// Dummy API data for dropdowns
-const dummyPurchaseBy = [
-  { value: '', label: 'Select' },
-  { value: 'Employee', label: 'Employee' },
-  { value: 'Department', label: 'Department' },
-];
-const dummyVendorBrands = [
-  { value: '', label: 'Select' },
-  { value: 'Brand X', label: 'Brand X' },
-  { value: 'Brand Y', label: 'Brand Y' },
-];
-const dummyVendorModels = [
-  { value: '', label: 'Select' },
-  { value: 'Model 1', label: 'Model 1' },
-  { value: 'Model 2', label: 'Model 2' },
-];
+// Remove all dummy data arrays and fallback logic for vendors, brands, models, users, and maintenance schedules
+// Only keep the real API fetch logic for these dropdowns
 
 const AddAssetForm = ({ userRole }) => {
+  const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [assetTypes, setAssetTypes] = useState([]);
   const [propertiesMap, setPropertiesMap] = useState({});
+  const [dynamicProperties, setDynamicProperties] = useState([]);
+  const [assetTypePropsMap, setAssetTypePropsMap] = useState({});
+  const [maintenanceSchedules, setMaintenanceSchedules] = useState([]);
   const [collapsedSections, setCollapsedSections] = useState({
-    asset: true,
+    asset: false, // Asset Details expanded by default
     purchase: true,
     vendor: true,
     other: true,
@@ -86,18 +60,12 @@ const AddAssetForm = ({ userRole }) => {
   const [assetTypeDropdownOpen, setAssetTypeDropdownOpen] = useState(false);
 
   useEffect(() => {
+    console.log('Component mounted, fetching asset types...');
     fetchAssetTypes();
-    // Simulate API fetch for vendor dropdowns
-    setPurchaseByOptions(dummyPurchaseBy);
-    setVendorBrandOptions(dummyVendorBrands);
-    setVendorModelOptions(dummyVendorModels);
-    // Fetch purchase supply and service supply from API (placeholder endpoints)
-    axios.get('/api/purchase-suppliers').then(res => {
-      setPurchaseSupplyOptions(Array.isArray(res.data) ? res.data : []);
-    }).catch(() => setPurchaseSupplyOptions([]));
-    axios.get('/api/service-suppliers').then(res => {
-      setServiceSupplyOptions(Array.isArray(res.data) ? res.data : []);
-    }).catch(() => setServiceSupplyOptions([]));
+    fetchMaintenanceSchedules();
+    fetchUsers();
+    fetchProdServs();
+    fetchVendors();
   }, []);
 
   useEffect(() => {
@@ -122,17 +90,184 @@ const AddAssetForm = ({ userRole }) => {
 
   const fetchAssetTypes = async () => {
     try {
+      console.log('Fetching asset types from API...');
+      // Check if user is authenticated
+      const token = useAuthStore.getState().token;
+      console.log('Auth token:', token ? 'Present' : 'Missing');
+      
       const res = await API.get('/dept-assets/asset-types');
+      console.log('Asset types response:', res.data);
+      console.log('Asset types array:', Array.isArray(res.data) ? res.data : []);
       setAssetTypes(Array.isArray(res.data) ? res.data : []);
-      // If you need to fetch properties for each asset type, you can do so here as before
     } catch (err) {
+      console.error('Error fetching asset types:', err);
+      console.error('Error details:', err.response?.data);
       setAssetTypes([]);
+    }
+  };
+
+  const fetchMaintenanceSchedules = async () => {
+    try {
+      console.log('Fetching maintenance schedules from API...');
+      const res = await API.get('/maintenance-schedules');
+      console.log('Maintenance schedules response:', res.data);
+      
+      if (res.data && Array.isArray(res.data)) {
+        // Transform API data to dropdown format
+        const schedules = [
+          { value: '', label: 'Select' },
+          ...res.data.map(schedule => ({
+            value: schedule.id || schedule.maint_sched_id,
+            label: schedule.text || schedule.name
+          }))
+        ];
+        setMaintenanceSchedules(schedules);
+      }
+    } catch (err) {
+      console.error('Error fetching maintenance schedules:', err);
+      console.log('Using dummy maintenance schedules as fallback');
+      // Keep using dummy data if API fails
+      setMaintenanceSchedules([]);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      console.log('Fetching users from API...');
+      const res = await API.get('/users/get-users');
+      console.log('Users response:', res.data);
+      
+      if (res.data && Array.isArray(res.data)) {
+        // Transform API data to dropdown format
+        const users = [
+          { value: '', label: 'Select' },
+          ...res.data.map(user => ({
+            value: user.user_id,
+            label: user.full_name
+          }))
+        ];
+        setPurchaseByOptions(users);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      console.log('Using dummy users as fallback');
+      // Keep using dummy data if API fails
+      setPurchaseByOptions([]);
+    }
+  };
+
+  const fetchProdServs = async () => {
+    try {
+      console.log('Fetching product/services from API...');
+      const res = await API.get('/prodserv');
+      console.log('Product/services response:', res.data);
+      
+      if (res.data && Array.isArray(res.data)) {
+        // Extract unique brands
+        const uniqueBrands = [...new Set(res.data.map(item => item.brand).filter(Boolean))];
+        const brandOptions = [
+          { value: '', label: 'Select' },
+          ...uniqueBrands.map(brand => ({
+            value: brand,
+            label: brand
+          }))
+        ];
+        setVendorBrandOptions(brandOptions);
+        
+        // Extract unique models
+        const uniqueModels = [...new Set(res.data.map(item => item.model).filter(Boolean))];
+        const modelOptions = [
+          { value: '', label: 'Select' },
+          ...uniqueModels.map(model => ({
+            value: model,
+            label: model
+          }))
+        ];
+        setVendorModelOptions(modelOptions);
+      }
+    } catch (err) {
+      console.error('Error fetching product/services:', err);
+      console.log('Using dummy brands and models as fallback');
+      // Keep using dummy data if API fails
+      setVendorBrandOptions([]);
+      setVendorModelOptions([]);
+    }
+  };
+
+  const fetchVendors = async () => {
+    try {
+      console.log('Fetching vendors from API...');
+      const res = await API.get('/get-vendors');
+      console.log('Vendors response:', res.data);
+      
+      if (res.data && Array.isArray(res.data)) {
+        // Transform API data to dropdown format - only show active vendors
+        const vendors = [
+          { value: '', label: 'Select' },
+          ...res.data
+            .filter(vendor => vendor.int_status === 1) // Only active vendors
+            .map(vendor => ({
+              value: vendor.vendor_id,
+              label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
+            }))
+        ];
+        setPurchaseSupplyOptions(vendors);
+        setServiceSupplyOptions(vendors);
+      }
+    } catch (err) {
+      console.error('Error fetching vendors:', err);
+      console.log('Using dummy vendors as fallback');
+      // Keep using dummy data if API fails
+      setPurchaseSupplyOptions([]);
+      setServiceSupplyOptions([]);
+    }
+  };
+
+  const fetchDynamicProperties = async (assetTypeId) => {
+    if (!assetTypeId) {
+      setDynamicProperties([]);
+      setAssetTypePropsMap({});
+      return;
+    }
+    
+    try {
+      console.log(`Fetching properties for asset type: ${assetTypeId}`);
+      const res = await API.get(`/properties/asset-types/${assetTypeId}/properties-with-values`);
+      console.log('Properties response:', res.data);
+      
+      if (res.data && res.data.data) {
+        setDynamicProperties(res.data.data);
+        
+        // Create mapping from prop_id to asset_type_prop_id
+        const propsMap = {};
+        res.data.data.forEach(property => {
+          propsMap[property.prop_id] = property.asset_type_prop_id;
+        });
+        setAssetTypePropsMap(propsMap);
+      } else {
+        setDynamicProperties([]);
+        setAssetTypePropsMap({});
+      }
+    } catch (err) {
+      console.error('Error fetching dynamic properties:', err);
+      setDynamicProperties([]);
+      setAssetTypePropsMap({});
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      // If purchaseSupply is changed, also update vendorId
+      if (name === 'purchaseSupply') {
+        return { ...prev, [name]: value, vendorId: value };
+      }
+      // If serviceSupply is changed, just update it
+      if (name === 'serviceSupply') {
+        return { ...prev, [name]: value };
+      }
+      return { ...prev, [name]: value };
+    });
   };
 
   const handlePropChange = (propName, value) => {
@@ -147,11 +282,59 @@ const AddAssetForm = ({ userRole }) => {
     }
     setIsSubmitting(true);
     try {
-      await axios.post('/api/assets', form);
-      toast.success('Asset created');
+      // Get user info from auth store
+      const user = useAuthStore.getState().user;
+      
+      // Generate UUID for ext_id
+      const ext_id = crypto.randomUUID();
+      
+      // Get asset type text for the 'text' field
+      const selectedAssetType = assetTypes.find(at => at.asset_type_id === form.assetType);
+      const assetTypeText = selectedAssetType ? selectedAssetType.text : '';
+      
+      // Prepare the asset data according to backend requirements
+      const assetData = {
+        asset_type_id: form.assetType,
+        ext_id: ext_id,
+        asset_id: '', // Will be auto-generated by backend
+        text: assetTypeText, // Asset type name like "Laptop", "Router", etc.
+        serial_number: form.serialNumber,
+        description: form.description,
+        branch_id: null, // null as specified
+        vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
+        prod_serve_id: form.serviceSupply || null, // Set from Service Vendor dropdown
+        maintsch_id: null, // Always set to null
+        purchased_cost: form.purchaseCost,
+        
+        purchased_on: form.purchaseDate,
+        purchased_by: form.purchaseBy || null,
+        expiry_date: form.expiryDate || null,
+        current_status: 'Active', // Default status
+        warranty_period: form.warrantyPeriod || null,
+        parent_id: null, // null as specified
+        group_id: null, // null as specified
+        org_id: user.org_id, // From user's auth store
+        properties: {}
+      };
+      
+      // Map prop_id to asset_type_prop_id for backend
+      if (form.properties) {
+        Object.keys(form.properties).forEach(propId => {
+          const assetTypePropId = assetTypePropsMap[propId];
+          if (assetTypePropId && form.properties[propId]) {
+            assetData.properties[assetTypePropId] = form.properties[propId];
+          }
+        });
+      }
+      
+      console.log('Submitting asset data:', assetData);
+      await API.post('/assets', assetData);
+      toast.success('Asset created successfully');
       setForm(initialForm);
+      setDynamicProperties([]);
     } catch (err) {
-      toast.error('Error creating asset');
+      console.error('Error creating asset:', err);
+      toast.error(err.response?.data?.message || 'Error creating asset');
     }
     setIsSubmitting(false);
   };
@@ -219,6 +402,8 @@ const AddAssetForm = ({ userRole }) => {
                               setForm((prev) => ({ ...prev, assetType: at.asset_type_id }));
                               setAssetTypeDropdownOpen(false);
                               setSearchAssetType("");
+                              // Fetch dynamic properties for the selected asset type
+                              fetchDynamicProperties(at.asset_type_id);
                             }}
                           >
                             {at.text}
@@ -233,17 +418,9 @@ const AddAssetForm = ({ userRole }) => {
                 <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Current Status</label>
-                <select name="currentStatus" onChange={handleChange} value={form.currentStatus} className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown">
-                  {statusOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
                 <label className="block text-sm mb-1 font-medium">Maintenance Schedule</label>
                 <select name="maintenanceSchedule" onChange={handleChange} value={form.maintenanceSchedule} className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown">
-                  {maintenanceOptions.map((opt) => (
+                  {maintenanceSchedules.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
@@ -298,10 +475,18 @@ const AddAssetForm = ({ userRole }) => {
           </button>
           {!collapsedSections.vendor && (
             <div className="grid grid-cols-6 gap-6 mb-4">
-              <div>
-                <label className="block text-sm mb-1 font-medium">Vendor ID</label>
-                <input name="vendorId" placeholder="" onChange={handleChange} value={form.vendorId} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
-              </div>
+            <div>
+  <label className="block text-sm mb-1 font-medium">Vendor Id</label>
+  <input
+    name="vendorId"
+    placeholder="Enter Vendor ID"
+    onChange={handleChange}
+    value={form.vendorId}
+    className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9"
+    readOnly
+  />
+</div>
+
               <div>
                 <label className="block text-sm mb-1 font-medium">Purchase By</label>
                 <select name="purchaseBy" value={form.purchaseBy} onChange={handleChange} className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown">
@@ -327,7 +512,7 @@ const AddAssetForm = ({ userRole }) => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Purchase Supply</label>
+                <label className="block text-sm mb-1 font-medium">Purchase Vendor</label>
                 <select name="purchaseSupply" value={form.purchaseSupply} onChange={handleChange} className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown">
                   {purchaseSupplyOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -335,7 +520,7 @@ const AddAssetForm = ({ userRole }) => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Service Supply</label>
+                <label className="block text-sm mb-1 font-medium">Service Vendor</label>
                 <select name="serviceSupply" value={form.serviceSupply} onChange={handleChange} className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown">
                   {serviceSupplyOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -345,45 +530,52 @@ const AddAssetForm = ({ userRole }) => {
             </div>
           )}
         </div>
-        {/* Other Details */}
+
+        {/* Asset Properties */}
         {form.assetType && (
           <div className="mb-6">
             <div className="border-b flex gap-8 mb-4">
-              <button type="button" className="text-base font-semibold border-b-2 border-[#0E2F4B] text-[#0E2F4B] px-4 py-2 bg-transparent">Other Details</button>
+              <button type="button" className="text-base font-semibold border-b-2 border-[#0E2F4B] text-[#0E2F4B] px-4 py-2 bg-transparent">
+                Asset Properties
+              </button>
             </div>
-            <div className="grid grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm mb-1 font-medium">Brand</label>
-                <select name="brand1" value={form.brand1} onChange={handleChange} className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown">
-                  {brandOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+            {dynamicProperties.length > 0 ? (
+              <div className="grid grid-cols-3 gap-6">
+                {dynamicProperties.map((property) => (
+                  <div key={property.prop_id}>
+                    <label className="block text-sm mb-1 font-medium">{property.property}</label>
+                    <select 
+                      name={`property_${property.prop_id}`}
+                      value={form.properties[property.prop_id] || ''}
+                      onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown"
+                    >
+                      <option value="">Select {property.property}</option>
+                      {property.values && property.values.length > 0 ? (
+                        property.values.map((value) => (
+                          <option key={value.aplv_id} value={value.value}>
+                            {value.value}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="">No values available</option>
+                      )}
+                    </select>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="block text-sm mb-1 font-medium">Brand</label>
-                <select name="brand2" value={form.brand2} onChange={handleChange} className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown">
-                  {brandOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+            ) : (
+              <div className="text-gray-500 text-sm py-4">
+                No specific properties configured for this asset type. You can add properties in the database.
               </div>
-              <div>
-                <label className="block text-sm mb-1 font-medium">Brand</label>
-                <select name="brand3" value={form.brand3} onChange={handleChange} className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown">
-                  {brandOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            )}
           </div>
         )}
         {/* Buttons */}
         <div className="flex justify-end gap-3 pb-4">
           <button
             type="button"
-            onClick={() => setForm(initialForm)}
+            onClick={() => navigate('/assets')}
             className="bg-gray-300 text-gray-700 px-8 py-2 rounded text-base font-medium hover:bg-gray-400 transition"
             disabled={isSubmitting}
           >
