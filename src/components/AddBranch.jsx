@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-// import API from "../../lib/axios"; 
-import API from "../lib/axios"
+import { toast } from "react-hot-toast";
+import API from "../lib/axios";
 
 const AddBranch = () => {
   const navigate = useNavigate();
@@ -21,17 +21,32 @@ const AddBranch = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate form fields
+    if (!form.text.trim()) {
+      toast.error("Branch name is required");
+      return;
+    }
+    if (!form.branch_code.trim()) {
+      toast.error("Branch code is required");
+      return;
+    }
+    if (!form.city.trim()) {
+      toast.error("City is required");
+      return;
+    }
+
     try {
       setLoading(true);
-
       const response = await API.post("/branches", form);
-      console.log("Branch created:", response.data);
 
-      alert("Branch created successfully!");
+      toast.success("Branch created successfully!");
       navigate("/master-data/branches");
     } catch (error) {
       console.error("Error creating branch:", error);
-      alert("Failed to create branch. Please try again.");
+      const errorMessage = error.response?.data?.message || 
+                         error.response?.data?.error || 
+                         "Failed to create branch";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

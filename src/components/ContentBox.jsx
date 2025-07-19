@@ -9,17 +9,20 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import DeleteConfirmModal from "./DeleteConfirmModal";
+import { toast } from "react-hot-toast";
 
 const ContentBox = ({
   title,
   filters = [], // This represents the available columns for filtering/display
   onFilterChange, // This function is called to apply filters to the parent data
   onSort,
-  sortConfig,
+  sortConfig = { sorts: [] }, // Add default value
   selectedRows = [],
   setSelectedRows = () => {},
-  onDeleteSelected,
+  onDeleteSelected = () => {},
   data = [], // The actual data to be displayed and filtered
+  onDownload,
   children,
 }) => {
   const navigate = useNavigate();
@@ -30,6 +33,7 @@ const ContentBox = ({
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [columnFilters, setColumnFilters] = useState([]);
   const [showColumnsDropdown, setShowColumnsDropdown] = useState(false);
+  const [showDeleeteModal, setShowDeleteModal] = useState(false);
 
   // Effect to apply initial filter if 'search by column' is active on mount
   useEffect(() => {
@@ -134,7 +138,7 @@ const ContentBox = ({
 
   const toggleAll = (e) => {
     if (e.target.checked) {
-      const allIds = data.map((item) => item.user_id); // Assuming 'user_id' is the unique identifier
+      const allIds = data.map((item) => item.branch_id || item.user_id || item.id); // Support different ID fields
       setSelectedRows(allIds);
     } else {
       setSelectedRows([]);
@@ -302,18 +306,26 @@ const ContentBox = ({
           </button>
 
           <button
-            onClick={onDeleteSelected}
+            onClick={() => {
+              if (selectedRows.length === 0) {
+                toast.error("Please select items to delete");
+                return;
+              }
+              setShowDeleteModal(true);
+            }}
             className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
           >
             <Trash2 size={16} />
           </button>
 
+          {onDownload && (
           <button
-            // onClick={onDownload}
+              onClick={onDownload}
             className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
           >
             <Download size={16} />
           </button>
+          )}
         </div>
       </div>
 
@@ -323,86 +335,108 @@ const ContentBox = ({
           <thead>
             <tr className="bg-[#0E2F4B] text-white text-sm font-medium border-b-4 border-[#FFC107]">
               {visibleFilters.map((filter, index) => {
-                const isSortedAsc =
-                  sortConfig?.column === filter.name &&
-                  sortConfig.direction === "asc";
-                const isSortedDesc =
-                  sortConfig?.column === filter.name &&
-                  sortConfig.direction === "desc";
+                // Safely access sortConfig
+                const sortInfo = sortConfig?.sorts?.find(s => s.column === filter.name);
+                const isSorted = !!sortInfo;
 
                 return (
                   <th
                     key={index}
                     className="px-4 py-3 relative text-left group"
                   >
-                    <div
-                      className="flex items-center justify-between gap-2 cursor-pointer"
-                      onClick={() =>
-                        setOpenDropdown(openDropdown === index ? null : index)
-                      }
-                    >
-                      <span className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span 
+                        className="flex items-center gap-2 cursor-pointer flex-grow"
+                        onClick={() => onSort(filter.name)}
+                      >
                         {index === 0 && (
                           <input
                             type="checkbox"
                             className="accent-yellow-400"
                             checked={isAllSelected}
                             onChange={toggleAll}
+                            onClick={(e) => e.stopPropagation()}
                           />
                         )}
                         {filter.label}
+                        
+                        {/* Sort Indicator */}
+                        {sortInfo && (
+                          <div className="flex items-center ml-2">
+                            <span className="text-[#FFC107] text-xs font-bold mr-1">
+                              {sortInfo.order}
+                            </span>
+                            <span className="text-[#FFC107]">
+                              {sortInfo.direction === 'asc' ? '↑' : '↓'}
+                            </span>
+                          </div>
+                        )}
                       </span>
-                      {isSortedAsc && (
-                        <span className="text-yellow-400 text-xs">↑</span>
-                      )}
-                      {isSortedDesc && (
-                        <span className="text-yellow-400 text-xs">↓</span>
-                      )}
-                      {!isSortedAsc && !isSortedDesc && (
+                      
+                      {/* Dropdown Trigger */}
+                      <div 
+                        className="flex items-center cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdown(openDropdown === index ? null : index);
+                        }}
+                      >
                         <ChevronDown
                           size={16}
-                          className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                          className={`text-white ${!openDropdown ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} transition-opacity duration-150`}
                         />
-                      )}
+                      </div>
                     </div>
 
                     {openDropdown === index && (
-                      <div className="z-50 absolute top-full left-0 mt-1 bg-white text-black shadow-lg border border-gray-300 w-48 text-sm">
+                      <div 
+                        className="z-50 absolute top-full left-0 mt-1 bg-white text-black shadow-lg border border-gray-300 w-48 text-sm"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="px-3 py-2 font-semibold border-b">
                           Sort
                         </div>
                         <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
-                            onSort(filter.name, "asc");
+                            onSort(filter.name);
+                            if (!sortInfo || sortInfo.direction === 'desc') {
+                              onSort(filter.name); // Set to ascending
+                            }
                             setOpenDropdown(null);
                           }}
                         >
-                          Sort Ascending
+                          Sort Ascending {sortInfo?.direction === 'asc' && '✓'}
                         </div>
                         <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
-                            onSort(filter.name, "desc");
+                            onSort(filter.name);
+                            if (!sortInfo || sortInfo.direction === 'asc') {
+                              onSort(filter.name); // Set to descending
+                            }
                             setOpenDropdown(null);
                           }}
                         >
-                          Sort Descending
+                          Sort Descending {sortInfo?.direction === 'desc' && '✓'}
                         </div>
+                        {sortInfo && (
                         <div
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold border-t"
                           onClick={() => {
-                            onSort(null, null);
+                              onSort(filter.name);
+                              onSort(filter.name); // Remove sort
                             setOpenDropdown(null);
                           }}
                         >
-                          Undo Sorting
+                            Remove Sort
                         </div>
-                        <div className="relative">
+                        )}
+                        <div className="relative border-t">
                           <button
-                            className="flex items-center justify-between w-full px-3 py-2 font-semibold border-t hover:bg-gray-100 cursor-pointer"
+                            className="flex items-center justify-between w-full px-3 py-2 font-semibold hover:bg-gray-100 cursor-pointer"
                             onClick={(e) => {
-                              e.stopPropagation(); // Prevent closing the main dropdown
+                              e.stopPropagation();
                               setShowColumnsDropdown(!showColumnsDropdown);
                             }}
                           >
@@ -410,7 +444,10 @@ const ContentBox = ({
                             <ChevronRight size={16} />
                           </button>
                           {showColumnsDropdown && (
-                            <div className="absolute left-full top-0 mt-0 ml-1 bg-white shadow-lg border border-gray-300 w-48 z-50">
+                            <div 
+                              className="absolute left-full top-0 mt-0 ml-1 bg-white shadow-lg border border-gray-300 w-48 z-50"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {visibleColumns.map((col, i) => (
                                 <label
                                   key={i}
@@ -421,7 +458,6 @@ const ContentBox = ({
                                     checked={col.visible}
                                     onChange={(e) => {
                                       toggleColumn(col.name);
-                                      // Optional: Keep dropdown open after checking/unchecking
                                     }}
                                     className="mr-2"
                                   />
@@ -449,6 +485,19 @@ const ContentBox = ({
           </tbody>
         </table>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        show={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={async () => {
+          const success = await onDeleteSelected();
+          if (success) {
+            setShowDeleteModal(false);
+          }
+        }}
+        message={`Are you sure you want to delete ${selectedRows.length} selected item(s)?`}
+      />
     </div>
   );
 };

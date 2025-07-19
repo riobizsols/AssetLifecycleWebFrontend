@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import API from "../../lib/axios";
 import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 const DepartmentsAsset = () => {
   const [departments, setDepartments] = useState([]);
@@ -63,16 +64,26 @@ const DepartmentsAsset = () => {
 
   // Add mapping
   const handleAdd = async () => {
-    if (!selectedDeptId || !selectedAssetTypeId) return;
+    if (!selectedDeptId || !selectedAssetTypeId) {
+      toast.error("Please select both department and asset type");
+      return;
+    }
+    
     try {
+      const selectedDeptName = departments.find(d => d.dept_id === selectedDeptId)?.text;
+      const selectedAssetTypeName = assetTypes.find(at => at.asset_type_id === selectedAssetTypeId)?.text;
+      
       await API.post("/dept-assets", {
         dept_id: selectedDeptId,
         asset_type_id: selectedAssetTypeId,
       });
       setSelectedAssetTypeId("");
       fetchDeptAssets();
+      toast.success(`"${selectedAssetTypeName}" added to "${selectedDeptName}" department`);
     } catch (err) {
       console.error("Failed to add asset", err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
+      toast.error(`Failed to add asset: ${errorMessage}`);
     }
   };
 
@@ -92,11 +103,14 @@ const DepartmentsAsset = () => {
   // Delete entry
   const handleDelete = async () => {
     try {
-      await API.delete("/dept-assets", { data: { id: deleteId } });
+      await API.delete("/dept-assets", { data: { dept_asset_type_id: deleteId } });
       setShowDeleteModal(false);
       fetchDeptAssets();
+      toast.success("Asset mapping removed successfully");
     } catch (err) {
       console.error("Failed to delete", err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
+      toast.error(`Failed to remove asset mapping: ${errorMessage}`);
     }
   };
 
@@ -221,7 +235,7 @@ const DepartmentsAsset = () => {
           </div>
           <div className="bg-[#0E2F4B] text-white text-sm">
             <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-              <div>Mapping ID</div>
+              <div>ID</div>
               <div>Department</div>
               <div>Asset Type</div>
               <div className="text-center">Actions</div>
@@ -232,18 +246,18 @@ const DepartmentsAsset = () => {
             >
               {deptAssets.map((item, i) => (
                 <div
-                  key={item.id}
+                  key={item.dept_asset_type_id}
                   className={`grid grid-cols-4 px-4 py-2 items-center border-b ${
                     i % 2 === 0 ? "bg-white" : "bg-gray-100"
                   } text-gray-800`}
                 >
-                  <div>{item.id}</div>
+                <div>{item.dept_asset_type_id}</div>
                   <div>{item.dept_name}</div>
                   <div>{item.asset_name}</div>
                   <div className="flex justify-center">
                     <button
                       onClick={() => {
-                        setDeleteId(item.id);
+                        setDeleteId(item.dept_asset_type_id);
                         setShowDeleteModal(true);
                       }}
                     >

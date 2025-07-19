@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
+import { toast } from "react-hot-toast";
 
 const Departments = () => {
   const [departments, setDepartments] = useState([]);
@@ -31,8 +32,17 @@ const Departments = () => {
   };
 
   const fetchNextDeptId = async () => {
-    const res = await API.get("/ids/next-dept-id");
-    setNextDeptId(res.data.nextDeptId);
+    try {
+      console.log("Fetching next department ID...");
+      const res = await API.get("/ids/next-dept-id");
+      console.log("API response:", res.data);
+      setNextDeptId(res.data.nextDeptId);
+    } catch (err) {
+      console.error("Error fetching next department ID:", err);
+      console.error("Error details:", err.response?.data);
+      // Set a fallback value if API fails
+      setNextDeptId("DPT001");
+    }
   };
 
   useEffect(() => {
@@ -41,14 +51,20 @@ const Departments = () => {
   }, []);
 
   const handleCreate = async () => {
-    if (!newDeptName.trim()) return;
+    if (!newDeptName.trim()) {
+      toast.error("Department name is required");
+      return;
+    }
     try {
-      await API.post("/departments", { text: newDeptName });
+      await API.post("/departments", { text: newDeptName.trim() });
       setNewDeptName("");
       fetchDepartments();
       fetchNextDeptId();
+      toast.success(`Department "${newDeptName}" created successfully`);
     } catch (err) {
       console.error("Error creating department:", err);
+      const errorMessage = err.response?.data?.message || err.message || "An error occurred";
+      toast.error(`Failed to create department: ${errorMessage}`);
     }
   };
 
@@ -69,8 +85,28 @@ const Departments = () => {
       setShowDeleteModal(false);
       fetchDepartments();
       fetchNextDeptId();
+      toast.success(`Department "${selectedDept.text}" deleted successfully`);
     } catch (err) {
       console.error("Error deleting department:", err);
+      
+      // Handle specific foreign key constraint errors
+      if (err.response?.data?.error === "Cannot delete department") {
+        const hint = err.response?.data?.hint || "";
+        toast.error(
+          `${err.response?.data?.message || "Cannot delete department"}. ${hint}`,
+          {
+            duration: 6000,
+            style: {
+              borderRadius: '8px',
+              background: '#7F1D1D',
+              color: '#fff',
+            },
+          }
+        );
+      } else {
+        const errorMessage = err.response?.data?.message || err.message || "An error occurred";
+        toast.error(`Failed to delete department: ${errorMessage}`);
+      }
     }
   };
 
@@ -81,15 +117,22 @@ const Departments = () => {
   };
 
   const confirmUpdate = async () => {
+    if (!editName.trim()) {
+      toast.error("Department name is required");
+      return;
+    }
     try {
       await API.put("/departments", {
         dept_id: selectedDept.dept_id,
-        text: editName,
+        text: editName.trim(),
       });
       setShowEditModal(false);
       fetchDepartments();
+      toast.success(`Department "${editName}" updated successfully`);
     } catch (err) {
       console.error("Error updating department:", err);
+      const errorMessage = err.response?.data?.message || err.message || "An error occurred";
+      toast.error(`Failed to update department: ${errorMessage}`);
     }
   };
 
@@ -101,21 +144,27 @@ const Departments = () => {
           <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
             Add / Modify Departments
           </div>
-          <div className="p-4 flex gap-4">
-            <input
-              className="border px-3 py-2 rounded w-64 text-sm"
-              placeholder="Department ID"
-              value={nextDeptId}
-              disabled
-            />
-            <input
-              className="border px-3 py-2 rounded w-64 text-sm"
-              placeholder="Department Name"
-              value={newDeptName}
-              onChange={(e) => setNewDeptName(e.target.value)}
-            />
+          <div className="p-4 flex gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department ID</label>
+              <input
+                className="border px-3 py-2 rounded w-64 text-sm bg-gray-50 text-gray-700 font-medium"
+                placeholder="Department ID"
+                value={nextDeptId || "Loading..."}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department Name</label>
+              <input
+                className="border px-3 py-2 rounded w-64 text-sm"
+                placeholder="Department Name"
+                value={newDeptName}
+                onChange={(e) => setNewDeptName(e.target.value)}
+              />
+            </div>
             <button
-              className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm"
+              className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm h-10"
               onClick={handleCreate}
             >
               Add

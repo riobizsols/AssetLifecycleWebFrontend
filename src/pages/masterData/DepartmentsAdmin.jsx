@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import API from "../../lib/axios";
 import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
 const DepartmentsAdmin = () => {
   const [departments, setDepartments] = useState([]);
@@ -27,41 +28,56 @@ const DepartmentsAdmin = () => {
       setDepartments(res.data);
     } catch (err) {
       console.error("Failed to fetch departments", err);
+      toast.error("Failed to fetch departments");
     }
   };
 
   // Fetch all admins
   const fetchAllAdmins = async () => {
     try {
-      const res = await API.get("/admin/dept-admins"); // NOTE: update backend to support this
+      const res = await API.get("/admin/dept-admins");
       setAdminList(res.data);
     } catch (err) {
       console.error("Failed to fetch all admins", err);
+      toast.error("Failed to fetch admin list");
     }
   };
 
-  // Fetch users to add as admin (only when department is selected)
-  const fetchUsersToAdd = async (dept_id) => {
-    if (!dept_id) return;
+  // Fetch all users to add as admin (no department condition)
+  const fetchUsersToAdd = async () => {
     try {
-      const res = await API.get(`/admin/dept-users/${dept_id}`);
+      console.log("Fetching all users...");
+      const res = await API.get("/users/get-users");
+      console.log("Users fetched:", res.data);
       setUsersToAdd(res.data);
     } catch (err) {
       console.error("Failed to fetch users to add", err);
+      toast.error("Failed to fetch users list");
     }
   };
 
   const handleAddAdmin = async () => {
-    if (!selectedUser || !selectedDept) return;
+    if (!selectedUser || !selectedDept) {
+      toast.error("Please select both department and user");
+      return;
+    }
+    
     try {
+      const selectedUserName = usersToAdd.find(u => u.user_id === selectedUser)?.full_name;
+      const selectedDeptName = departments.find(d => d.dept_id === selectedDept)?.text;
+      
       await API.post("/admin/dept-admins", {
         dept_id: selectedDept,
         user_id: selectedUser,
       });
+      
       fetchAllAdmins();
       setSelectedUser(null);
+      toast.success(`"${selectedUserName}" added as admin for "${selectedDeptName}" department`);
     } catch (err) {
       console.error("Failed to add admin", err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
+      toast.error(`Failed to add admin: ${errorMessage}`);
     }
   };
 
@@ -80,21 +96,19 @@ const DepartmentsAdmin = () => {
       });
       fetchAllAdmins();
       setShowDeleteModal(false);
+      toast.success(`"${userToDelete.full_name}" removed as admin from "${userToDelete.dept_name}" department`);
     } catch (err) {
       console.error("Failed to delete admin", err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
+      toast.error(`Failed to remove admin: ${errorMessage}`);
     }
   };
 
   useEffect(() => {
     fetchDepartments();
     fetchAllAdmins();
+    fetchUsersToAdd(); // Fetch all users on component mount
   }, []);
-
-  useEffect(() => {
-    if (selectedDept) {
-      fetchUsersToAdd(selectedDept);
-    }
-  }, [selectedDept]);
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -127,24 +141,21 @@ const DepartmentsAdmin = () => {
           {/* Custom Searchable Dropdown for Users */}
           <div className="relative w-64">
             <button
-              className="border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed flex justify-between items-center"
+              className="border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center"
               onClick={() => {
-                if (selectedDept) dropdownUserRef.current.classList.toggle("hidden");
+                dropdownUserRef.current.classList.toggle("hidden");
               }}
-              disabled={!selectedDept}
               type="button"
             >
               {selectedUser
                 ? usersToAdd.find((u) => u.user_id === selectedUser)?.full_name || "Select User"
-                : selectedDept
-                ? "Select User"
-                : "Select Department First"}
+                : "Select User"}
               <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
             </button>
             {/* Dropdown List */}
             <div
               ref={dropdownUserRef}
-              className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10 hidden"
+              className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-64 overflow-y-auto z-10 hidden"
               style={{ minWidth: "100%" }}
             >
               {/* Sticky Search Input */}
@@ -160,7 +171,10 @@ const DepartmentsAdmin = () => {
               </div>
               {/* Filtered Users */}
               {usersToAdd
-                .filter(u => u.full_name.toLowerCase().includes(searchUser.toLowerCase()))
+                .filter(u => 
+                  u.full_name.toLowerCase().includes(searchUser.toLowerCase()) ||
+                  u.user_id.toLowerCase().includes(searchUser.toLowerCase())
+                )
                 .map((user) => (
                   <div
                     key={user.user_id}
@@ -171,9 +185,26 @@ const DepartmentsAdmin = () => {
                       setSearchUser("");
                     }}
                   >
-                    {user.full_name}
+                    <div className="font-medium">{user.full_name}</div>
+                    <div className="text-xs text-gray-500">ID: {user.user_id}</div>
                   </div>
                 ))}
+              {/* Sticky Create New User Option */}
+              <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-4 py-2">
+                <button
+                  className="w-full text-left text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-2"
+                  onClick={() => {
+                    dropdownUserRef.current.classList.add("hidden");
+                    setSearchUser("");
+                    navigate("/master-data/users");
+                  }}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Create New User
+                </button>
+              </div>
             </div>
           </div>
           <button

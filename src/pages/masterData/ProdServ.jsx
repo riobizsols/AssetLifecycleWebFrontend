@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, Eye, ChevronDown, Maximize, Minimize } from 'lucide-react';
 import API from '../../lib/axios';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+
+// Debug log to confirm component loaded
+console.log('DeleteConfirmModal imported:', DeleteConfirmModal);
 
 // Add this style block for smaller placeholder text
 const placeholderStyle = `
@@ -20,30 +26,20 @@ const tableRow = 'text-sm text-gray-800';
 const tableAltRow = 'bg-gray-100';
 const borderBottom = 'border-b-2 border-[#FFC107]';
 
-const initialProducts = [
-  { assetType: 'Laptop', brand: 'Lenovo', model: 'L 410', description: 'Lenovo' },
-  { assetType: 'Laptop', brand: 'Lenovo', model: 'L 512', description: 'Lenovo' },
-  { assetType: 'Monitor', brand: 'BenQ', model: 'B 365', description: 'BenQ' },
-  { assetType: 'Mouse', brand: 'Lenovo', model: 'L 190', description: 'Lenovo' },
-];
-const initialServices = [
-  { assetType: 'Laptop', description: 'Lenovo' },
-  { assetType: 'Laptop', description: 'Lenovo' },
-  { assetType: 'Monitor', description: 'BenQ' },
-  { assetType: 'Mouse', description: 'Lenovo' },
-];
-
 export default function ProdServ() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('product');
-  const [productForm, setProductForm] = useState({ assetType: '', brand: '', model: '' });
+  const [productForm, setProductForm] = useState({ assetType: '', brand: '', model: '', description: '' });
   const [serviceForm, setServiceForm] = useState({ assetType: '', description: '' });
-  const [products, setProducts] = useState(initialProducts);
-  const [services, setServices] = useState(initialServices);
+  const [products, setProducts] = useState([]);
+  const [services, setServices] = useState([]);
   const [productFilter, setProductFilter] = useState('');
   const [serviceFilter, setServiceFilter] = useState('');
 
   // Asset types for dropdown
   const [assetTypes, setAssetTypes] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [models, setModels] = useState([]);
   const [searchAssetType, setSearchAssetType] = useState('');
   const dropdownRef = useRef(null);
   // Add separate search and dropdown state for each dropdown
@@ -59,6 +55,11 @@ export default function ProdServ() {
   // Add maximize state for each table
   const [isProductTableMaximized, setIsProductTableMaximized] = useState(false);
   const [isServiceTableMaximized, setIsServiceTableMaximized] = useState(false);
+  
+  // Delete confirmation modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchAssetTypes = async () => {
@@ -72,82 +73,155 @@ export default function ProdServ() {
     fetchAssetTypes();
   }, []);
 
-  // Add useEffect for fetching products and services
+  // Fetch products and services from /prodserv and filter by ps_type
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchProdServ = async () => {
       try {
-        // Placeholder API endpoint for fetching products
-        const res = await API.get('/products');
-        setProducts(res.data);
+        const res = await API.get('/prodserv');
+        const all = Array.isArray(res.data) ? res.data : [];
+        setProducts(all.filter(p => p.ps_type === 'product'));
+        setServices(all.filter(p => p.ps_type === 'service'));
       } catch (err) {
         setProducts([]);
-      }
-    };
-    const fetchServices = async () => {
-      try {
-        // Placeholder API endpoint for fetching services
-        const res = await API.get('/services');
-        setServices(res.data);
-      } catch (err) {
         setServices([]);
       }
     };
-    fetchProducts();
-    fetchServices();
+    fetchProdServ();
   }, []);
 
-  // Update handleProductAdd to use API
+  // Remove brands/models state and related useEffects
+
+  // Add product using /prodserv
   const handleProductAdd = async () => {
     if (!productForm.assetType || !productForm.brand || !productForm.model) return;
     try {
-      // Placeholder API endpoint for creating a product
-      const res = await API.post('/products', {
-        asset_type_id: productForm.assetType,
+      await API.post('/prodserv', {
+        assetType: productForm.assetType,
         brand: productForm.brand,
         model: productForm.model,
+        description: null,
+        ps_type: 'product'
       });
-      setProducts(prev => [...prev, res.data]);
-      setProductForm({ assetType: '', brand: '', model: '' });
+      setProductForm({ assetType: '', brand: '', model: '', description: '' });
+      // Refresh products
+      const res = await API.get('/prodserv');
+      const all = Array.isArray(res.data) ? res.data : [];
+      setProducts(all.filter(p => p.ps_type === 'product'));
     } catch (err) {
       // Optionally handle error
     }
   };
 
-  // Update handleServiceAdd to use API
+  // Add service using /prodserv
   const handleServiceAdd = async () => {
     if (!serviceForm.assetType || !serviceForm.description) return;
     try {
-      // Placeholder API endpoint for creating a service
-      const res = await API.post('/services', {
-        asset_type_id: serviceForm.assetType,
+      await API.post('/prodserv', {
+        assetType: serviceForm.assetType,
         description: serviceForm.description,
+        ps_type: 'service'
       });
-      setServices(prev => [...prev, res.data]);
       setServiceForm({ assetType: '', description: '' });
+      // Refresh services
+      const res = await API.get('/prodserv');
+      const all = Array.isArray(res.data) ? res.data : [];
+      setServices(all.filter(p => p.ps_type === 'service'));
     } catch (err) {
       // Optionally handle error
     }
   };
 
-  // Add delete handlers for products and services
-  const handleDeleteProduct = async (product) => {
+  // Open delete confirmation modal
+  const openDeleteModal = (item, type) => {
+    setItemToDelete({ ...item, type });
+    setShowDeleteModal(true);
+  };
+
+  // State for dependency modal
+  const [showDependencyModal, setShowDependencyModal] = useState(false);
+  const [dependencies, setDependencies] = useState(null);
+  const [deleteOption, setDeleteOption] = useState('');
+
+  // Check if item has vendor associations
+  const checkVendorAssociations = async (itemId) => {
     try {
-      // Placeholder API endpoint for deleting a product
-      await API.delete(`/products/${product.id}`);
-      setProducts(prev => prev.filter(p => p.id !== product.id));
+      const response = await API.get(`/vendor-prod-services/check/${itemId}`);
+      return response.data;
     } catch (err) {
-      // Optionally handle error
+      console.error('Error checking vendor associations:', err);
+      return { hasAssociations: true, vendors: [] };
     }
   };
 
-  const handleDeleteService = async (service) => {
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete) return;
+    
+    setIsDeleting(true);
     try {
-      // Placeholder API endpoint for deleting a service
-      await API.delete(`/services/${service.id}`);
-      setServices(prev => prev.filter(s => s.id !== service.id));
+      const itemId = itemToDelete.prod_serv_id || itemToDelete.id;
+      
+      if (!itemId) {
+        throw new Error('No valid ID found for deletion');
+      }
+
+      // Check for vendor associations first
+      const associations = await checkVendorAssociations(itemId);
+      
+      if (associations.hasAssociations) {
+        // Show dependency modal instead of error
+        setDependencies(associations);
+        setShowDependencyModal(true);
+        setShowDeleteModal(false);
+        return;
+      }
+
+      // Proceed with deletion if no associations
+      await API.delete(`/prodserv/${itemId}`);
+      
+      // Update local state based on type
+      if (itemToDelete.type === 'product') {
+        setProducts(prev => prev.filter(p => (p.prod_serv_id || p.id) !== itemId));
+        toast.success('Product deleted successfully');
+      } else {
+        setServices(prev => prev.filter(s => (s.prod_serv_id || s.id) !== itemId));
+        toast.success('Service deleted successfully');
+      }
+
+      // Refresh the data after deletion
+      const refreshResponse = await API.get('/prodserv');
+      const all = Array.isArray(refreshResponse.data) ? refreshResponse.data : [];
+      setProducts(all.filter(p => p.ps_type === 'product'));
+      setServices(all.filter(p => p.ps_type === 'service'));
+
     } catch (err) {
-      // Optionally handle error
+      console.error('Error deleting item:', err);
+      let errorMessage = 'Failed to delete item';
+      
+      // Handle specific error cases
+      if (err.response?.data?.code === '23503') {
+        // Foreign key constraint error
+        errorMessage = `This ${itemToDelete.type} cannot be deleted because it is being used by other records.`;
+      } else if (err.response?.status === 404) {
+        errorMessage = `${itemToDelete.type === 'product' ? 'Product' : 'Service'} not found.`;
+      } else if (err.response?.status === 403) {
+        errorMessage = 'You do not have permission to delete this item.';
+      } else {
+        errorMessage = err.response?.data?.message || err.response?.data?.error || errorMessage;
+      }
+      
+      toast.error(errorMessage, { duration: 4000 });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setItemToDelete(null);
     }
+  };
+
+  // Handle delete modal close
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
   };
 
   return (
@@ -179,7 +253,7 @@ export default function ProdServ() {
             {tab === 'product' ? (
               <>
                 {/* Product Form */}
-                <div className="flex items-center gap-4 mb-6">
+                <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
                     <label className="text-xs mb-1">Asset Type</label>
                     {/* Product Form Asset Type Dropdown */}
@@ -228,26 +302,28 @@ export default function ProdServ() {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col">
+                  <div className="flex flex-col min-w-[140px]">
                     <label className="text-xs mb-1">Brand</label>
-                    <input
-                      className="border rounded px-2 py-1 min-w-[140px]"
-                      value={productForm.brand}
-                      onChange={e => setProductForm(f => ({ ...f, brand: e.target.value }))}
-                      placeholder="Enter Brand"
+                    {/* Product Form Brand Dropdown */}
+                    <input 
+                      className="border rounded px-2 py-1 w-full" 
+                      value={productForm.brand} 
+                      onChange={e => setProductForm(f => ({ ...f, brand: e.target.value }))} 
+                      placeholder="Enter Brand" 
                     />
                   </div>
-                  <div className="flex flex-col">
+                  <div className="flex flex-col min-w-[140px]">
                     <label className="text-xs mb-1">Model</label>
-                    <input
-                      className="border rounded px-2 py-1 min-w-[140px]"
-                      value={productForm.model}
-                      onChange={e => setProductForm(f => ({ ...f, model: e.target.value }))}
-                      placeholder="Enter Model"
+                    {/* Product Form Model Dropdown */}
+                    <input 
+                      className="border rounded px-2 py-1 w-full" 
+                      value={productForm.model} 
+                      onChange={e => setProductForm(f => ({ ...f, model: e.target.value }))} 
+                      placeholder="Enter Model" 
                     />
                   </div>
                   <button
-                    className="ml-2 bg-[#003366] text-white px-6 py-2 rounded mt-5"
+                    className="bg-[#003366] text-white px-6 rounded h-[34px] flex items-center justify-center min-w-[80px]"
                     onClick={handleProductAdd}
                     type="button"
                   >
@@ -318,32 +394,37 @@ export default function ProdServ() {
                       </div>
                     </div>
                     <div className="bg-[#0E2F4B] text-white text-sm">
-                      <div className="grid grid-cols-5 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+                      <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
                         <div>Asset Type</div>
                         <div>Brand</div>
                         <div>Model</div>
-                        <div>Description</div>
                         <div className="text-center">Actions</div>
                       </div>
                       <div>
                         {products
-                          .filter(p => !productFilter || p.assetType === productFilter)
+                          .filter(p => !productFilter || [p.assetType, p.asset_type_id].includes(productFilter))
                           .map((p, i) => (
                             <div
                               key={i}
-                              className={`grid grid-cols-5 px-4 py-2 items-center border-b ${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} text-gray-800`}
+                              className={`grid grid-cols-4 px-4 py-2 items-center border-b ${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} text-gray-800`}
                             >
-                              <div>{p.assetType}</div>
-                              <div>{p.brand}</div>
-                              <div>{p.model}</div>
-                              <div>{p.description}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (p.assetType || p.asset_type_id))?.text || p.assetType || p.asset_type_id}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.brand}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.model}</div>
                               <div className="flex justify-center gap-2">
-                                <span className="cursor-pointer" title="View">
-                                  <Eye className="text-[#0E2F4B]" size={18} />
-                                </span>
-                                <span className="cursor-pointer" title="Delete" onClick={() => handleDeleteProduct(p)}>
+                                <button 
+                                  className="cursor-pointer p-1 hover:bg-gray-100 rounded-full" 
+                                  title="Delete" 
+                                  onClick={() => {
+                                    console.log("Delete product clicked", p);
+                                    console.log("Current modal state before:", showDeleteModal);
+                                    openDeleteModal(p, 'product');
+                                    console.log("Current modal state after:", showDeleteModal);
+                                    console.log("Current itemToDelete:", itemToDelete);
+                                  }}
+                                >
                                   <Trash2 className="text-yellow-500" size={18} />
-                                </span>
+                                </button>
                               </div>
                             </div>
                           ))}
@@ -355,7 +436,7 @@ export default function ProdServ() {
             ) : (
               <>
                 {/* Service Form */}
-                <div className="flex items-center gap-4 mb-6">
+                <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
                     <label className="text-xs mb-1">Asset Type</label>
                     {/* Service Form Asset Type Dropdown */}
@@ -404,17 +485,17 @@ export default function ProdServ() {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col">
+                  <div className="flex flex-col min-w-[140px]">
                     <label className="text-xs mb-1">Description</label>
                     <input
-                      className="border rounded px-2 py-1 min-w-[140px]"
+                      className="border rounded px-2 py-1 w-full"
                       value={serviceForm.description}
                       onChange={e => setServiceForm(f => ({ ...f, description: e.target.value }))}
                       placeholder="Enter Description"
                     />
                   </div>
                   <button
-                    className="ml-2 bg-[#003366] text-white px-6 py-2 rounded mt-5"
+                    className="bg-[#003366] text-white px-6 rounded h-[34px] flex items-center justify-center min-w-[80px]"
                     onClick={handleServiceAdd}
                     type="button"
                   >
@@ -492,21 +573,25 @@ export default function ProdServ() {
                       </div>
                       <div>
                         {services
-                          .filter(s => !serviceFilter || s.assetType === serviceFilter)
+                          .filter(s => !serviceFilter || [s.assetType, s.asset_type_id].includes(serviceFilter))
                           .map((s, i) => (
                             <div
                               key={i}
                               className={`grid grid-cols-3 px-4 py-2 items-center border-b ${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} text-gray-800`}
                             >
-                              <div>{s.assetType}</div>
-                              <div>{s.description}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (s.assetType || s.asset_type_id))?.text || s.assetType || s.asset_type_id}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{s.description}</div>
                               <div className="flex justify-center gap-2">
-                                <span className="cursor-pointer" title="View">
-                                  <Eye className="text-[#0E2F4B]" size={18} />
-                                </span>
-                                <span className="cursor-pointer" title="Delete" onClick={() => handleDeleteService(s)}>
+                                <button 
+                                  className="cursor-pointer p-1 hover:bg-gray-100 rounded-full" 
+                                  title="Delete" 
+                                  onClick={() => {
+                                    console.log("Delete service clicked", s);
+                                    openDeleteModal(s, 'service');
+                                  }}
+                                >
                                   <Trash2 className="text-yellow-500" size={18} />
-                                </span>
+                                </button>
                               </div>
                             </div>
                           ))}
@@ -516,14 +601,114 @@ export default function ProdServ() {
                 </div>
               </>
             )}
-            {/* Footer Buttons */}
-            <div className="flex justify-end gap-2 pb-8">
-              <button className="bg-gray-300 text-gray-700 px-6 py-2 rounded" type="button">Cancel</button>
-              <button className="bg-[#003366] text-white px-6 py-2 rounded" type="button">Save</button>
-            </div>
+
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal 
+        show={showDeleteModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        message={
+          itemToDelete?.type === 'product'
+            ? `Are you sure you want to delete product: ${itemToDelete?.brand} ${itemToDelete?.model}?`
+            : `Are you sure you want to delete service: ${itemToDelete?.description}?`
+        }
+      />
+
+      {/* Dependencies Modal */}
+      {showDependencyModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-white w-[600px] rounded shadow-lg">
+            {/* Header */}
+            <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
+              <span>Cannot Delete - Dependencies Found</span>
+              <button
+                onClick={() => {
+                  setShowDependencyModal(false);
+                  setDependencies(null);
+                  setDeleteOption('');
+                }}
+                className="text-yellow-400 text-xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="h-[3px] bg-[#ffc107]" />
+
+            {/* Body */}
+            <div className="px-6 py-4">
+              <div className="mb-4">
+                <p className="text-red-600 font-medium mb-2">
+                  This {itemToDelete?.type} cannot be deleted because it is being used by:
+                </p>
+                <ul className="list-disc pl-5 text-gray-700">
+                  {dependencies?.vendors.map((vendor, index) => (
+                    <li key={index}>{vendor.vendor_name}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                <p className="text-sm text-yellow-700">
+                  <span className="font-bold">Options:</span>
+                  <br />
+                  1. Remove this {itemToDelete?.type} from all vendors first and then delete
+                  <br />
+                  2. View the vendors using this {itemToDelete?.type} and manage their assignments
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      console.log('Navigating to vendors page...');
+                      setShowDependencyModal(false);
+                      
+                      // Navigate first
+                      await navigate('/master-data/vendors');
+                      
+                      // Show toast after navigation
+                      toast(`Please remove the ${itemToDelete?.type} from the listed vendors first`, {
+                        duration: 5000,
+                        icon: 'ℹ️'
+                      });
+                      
+                      console.log('Navigation completed');
+                    } catch (error) {
+                      console.error('Navigation error:', error);
+                      toast.error('Failed to navigate to vendors page. Please try again.');
+                    }
+                  }}
+                  className="w-full text-left px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded flex items-center gap-2"
+                >
+                  <span>➡️ Go to Vendor Management</span>
+                  <span className="text-sm text-blue-600">(to remove associations)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 bg-gray-50 rounded-b">
+              <button
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
+                onClick={() => {
+                  setShowDependencyModal(false);
+                  setDependencies(null);
+                  setDeleteOption('');
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

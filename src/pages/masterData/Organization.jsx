@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
+import { toast } from "react-hot-toast";
 
 const Organization = () => {
   const [orgs, setOrgs] = useState([]);
@@ -45,27 +46,45 @@ const Organization = () => {
 
   // Add or update organization
   const handleCreateOrUpdate = async () => {
+    // Validation
+    if (!formName.trim()) {
+      toast.error("Organization name is required");
+      return;
+    }
+    if (!formCode.trim()) {
+      toast.error("Organization code is required");
+      return;
+    }
+    if (!formCity.trim()) {
+      toast.error("Organization city is required");
+      return;
+    }
+
     try {
       if (selectedOrg) {
         // Update
         await API.put("/orgs", {
           org_id: selectedOrg.org_id, // org_id is a string like 'ORG001'
-          org_code: formCode,
-          org_name: formName,
-          org_city: formCity,
+          org_code: formCode.trim(),
+          org_name: formName.trim(),
+          org_city: formCity.trim(),
         });
+        toast.success(`Organization "${formName}" updated successfully`);
       } else {
         // Add
         await API.post("/orgs", {
-          org_code: formCode,
-          org_name: formName,
-          org_city: formCity,
+          org_code: formCode.trim(),
+          org_name: formName.trim(),
+          org_city: formCity.trim(),
         });
+        toast.success(`Organization "${formName}" created successfully`);
       }
       resetForm();
       fetchOrgs();
     } catch (err) {
       console.error("Error:", err);
+      const errorMessage = err.response?.data?.message || err.message || "An error occurred";
+      toast.error(`Failed to ${selectedOrg ? 'update' : 'create'} organization: ${errorMessage}`);
     }
   };
 
@@ -73,9 +92,9 @@ const Organization = () => {
   const handleEdit = (org) => {
     setSelectedOrg(org);
     setShowEditModal(true);
-    setFormName("");
-    setFormCode("");
-    setFormCity("");
+    setFormName(org.org_name || org.name || org.text || "");
+    setFormCode(org.org_code || org.code || "");
+    setFormCity(org.org_city || org.city || "");
   };
 
   // Delete handler
@@ -92,8 +111,28 @@ const Organization = () => {
       setShowDeleteModal(false);
       resetForm();
       fetchOrgs();
+      toast.success(`Organization "${selectedOrg.org_name || selectedOrg.name || selectedOrg.text}" deleted successfully`);
     } catch (err) {
       console.error("Delete error:", err);
+      
+      // Handle specific foreign key constraint errors
+      if (err.response?.data?.error === "Cannot delete organization") {
+        const hint = err.response?.data?.hint || "";
+        toast.error(
+          `${err.response?.data?.message || "Cannot delete organization"}. ${hint}`,
+          {
+            duration: 6000,
+            style: {
+              borderRadius: '8px',
+              background: '#7F1D1D',
+              color: '#fff',
+            },
+          }
+        );
+      } else {
+        const errorMessage = err.response?.data?.message || err.message || "An error occurred";
+        toast.error(`Failed to delete organization: ${errorMessage}`);
+      }
     }
   };
 
@@ -198,7 +237,10 @@ const Organization = () => {
               <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
                 <span>Update Organization</span>
                 <button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => {
+                    setShowEditModal(false);
+                    resetForm();
+                  }}
                   className="text-yellow-400 text-xl font-bold"
                 >
                   ×
@@ -241,7 +283,10 @@ const Organization = () => {
                 <div className="flex justify-end gap-4 mt-6">
                   <button
                     className="bg-gray-300 px-4 py-1 rounded"
-                    onClick={() => setShowEditModal(false)}
+                    onClick={() => {
+                      setShowEditModal(false);
+                      resetForm();
+                    }}
                   >
                     Close
                   </button>
@@ -250,6 +295,7 @@ const Organization = () => {
                     onClick={() => {
                       handleCreateOrUpdate();
                       setShowEditModal(false);
+                      resetForm();
                     }}
                   >
                     Update

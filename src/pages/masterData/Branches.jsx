@@ -1,26 +1,30 @@
 import { useEffect, useState } from "react";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
+import EditBranchModal from "../../components/EditBranchModal";
 import { filterData } from "../../utils/filterData";
+import { exportToExcel } from "../../utils/exportToExcel";
 import { useNavigate } from "react-router-dom";
 import API from "../../lib/axios";
+import { toast } from "react-hot-toast";
 
 const Branches = () => {
   const navigate = useNavigate();
-
   const [data, setData] = useState([]);
-  const [filterValues, setFilterValues] = useState({});
-  const [searchKeyword, setSearchKeyword] = useState(""); // ✅ New
-  const [dateRange, setDateRange] = useState({ from: "", to: "" }); // ✅ New
-
-  const [sortConfig, setSortConfig] = useState({
-    column: null,
-    direction: null,
+  const [filterValues, setFilterValues] = useState({
+    columnFilters: [],
+    fromDate: "",
+    toDate: ""
   });
   const [selectedRows, setSelectedRows] = useState([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingBranch, setEditingBranch] = useState(null);
+  const [sortConfig, setSortConfig] = useState({
+    sorts: []
+  });
 
   const [columns] = useState([
-    { label: "Branch ID", name: "id", visible: true },
+    { label: "Branch ID", name: "branch_id", visible: true },
     { label: "Ext ID", name: "ext_id", visible: true },
     { label: "Organization ID", name: "org_id", visible: true },
     { label: "Is Active", name: "int_status", visible: true },
@@ -37,60 +41,166 @@ const Branches = () => {
     const fetchBranches = async () => {
       try {
         const response = await API.get("/branches");
-        setData(response.data);
+        const formattedData = response.data.map(item => ({
+          ...item,
+          int_status: item.int_status === 1 ? 'Active' : 'Inactive',
+          created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
+          changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : ''
+        }));
+        setData(formattedData);
       } catch (error) {
         console.error("Error fetching branches:", error);
+        toast.error("Failed to fetch branches");
       }
     };
 
     fetchBranches();
   }, []);
 
-  const handleSort = (columnName, direction) => {
-    setSortConfig({ column: columnName, direction });
+  const handleSort = (column) => {
+    setSortConfig(prevConfig => {
+      const { sorts } = prevConfig;
+      const existingSort = sorts.find(s => s.column === column);
+      
+      if (!existingSort) {
+        // First click - add ascending sort
+        return {
+          sorts: [...sorts, { column, direction: 'asc', order: sorts.length + 1 }]
+        };
+      } else if (existingSort.direction === 'asc') {
+        // Second click - change to descending
+        return {
+          sorts: sorts.map(s => 
+            s.column === column 
+              ? { ...s, direction: 'desc' }
+              : s
+          )
+        };
+      } else {
+        // Third click - remove sort
+        return {
+          sorts: sorts.filter(s => s.column !== column).map((s, idx) => ({
+            ...s,
+            order: idx + 1
+          }))
+        };
+      }
+    });
   };
 
-  const handleFilterChange = (name, value) => {
-    if (name === "text") {
-      setSearchKeyword(value); // ✅ Handle text search
-    } else if (name === "fromDate" || name === "toDate") {
-      setDateRange((prev) => ({
-        ...prev,
-        [name === "fromDate" ? "from" : "to"]: value,
-      }));
-    } else {
-      setFilterValues((prev) => ({ ...prev, [name]: value }));
+  const sortData = (data) => {
+    if (!sortConfig.sorts.length) return data;
+
+    return [...data].sort((a, b) => {
+      for (const { column, direction } of sortConfig.sorts) {
+        const aValue = a[column];
+        const bValue = b[column];
+
+        if (aValue == null) return 1;
+        if (bValue == null) return -1;
+
+        if (!isNaN(aValue) && !isNaN(bValue)) {
+          const diff = direction === 'asc' ? aValue - bValue : bValue - aValue;
+          if (diff !== 0) return diff;
+        } else {
+          const diff = direction === 'asc' 
+            ? String(aValue).localeCompare(String(bValue))
+            : String(bValue).localeCompare(String(aValue));
+          if (diff !== 0) return diff;
+        }
+      }
+      return 0;
+    });
+  };
+
+  const handleFilterChange = (filterType, value) => {
+    setFilterValues(prev => {
+      if (filterType === 'columnFilters') {
+        return {
+          ...prev,
+          columnFilters: value
+        };
+      } else if (filterType === 'fromDate' || filterType === 'toDate') {
+        return {
+          ...prev,
+          [filterType]: value
+        };
+      } else {
+        return {
+          ...prev,
+          [filterType]: value
+        };
+      }
+    });
+  };
+
+  const handleEdit = (branch) => {
+    setEditingBranch(branch);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateBranch = async (formData) => {
+    try {
+      const response = await API.put(`/branches/${editingBranch.branch_id}`, formData);
+      
+      // Update the data state with the updated branch
+      setData(prev => prev.map(branch => 
+        branch.branch_id === editingBranch.branch_id 
+          ? { ...branch, ...response.data.data }
+          : branch
+      ));
+      
+      setShowEditModal(false);
+      setEditingBranch(null);
+      toast.success("Branch updated successfully");
+    } catch (error) {
+      console.error("Error updating branch:", error);
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || "Failed to update branch";
+      toast.error(errorMessage);
     }
   };
 
   const handleDeleteSelected = async () => {
-    if (selectedRows.length === 0) return;
-
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete the selected branches?"
-    );
-    if (!confirmDelete) return;
-
     try {
       await API.delete("/branches", {
         data: { ids: selectedRows },
       });
 
+      // Update the data state to remove deleted branches
       setData((prev) =>
-        prev.filter((branch) => !selectedRows.includes(branch.id))
+        prev.filter((branch) => !selectedRows.includes(branch.branch_id))
       );
       setSelectedRows([]);
-      alert("Branches deleted successfully.");
+      toast.success(`${selectedRows.length} branch(es) deleted successfully`);
     } catch (error) {
       console.error("Error deleting branches:", error);
-      alert("Failed to delete branches. Please try again.");
+      const errorMessage = error.response?.data?.error || "Failed to delete branches";
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleDownload = () => {
+    try {
+      const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
+      const sortedData = sortData(filteredData);
+      const success = exportToExcel(sortedData, columns, "Branches_List");
+      if (success) {
+        toast('Branches exported successfully', { icon: '✅' });
+      } else {
+        throw new Error('Export failed');
+      }
+    } catch (error) {
+      toast('Failed to export branches', { icon: '❌' });
     }
   };
 
   const filters = columns.map((col) => ({
     label: col.label,
     name: col.name,
-    options: [],
+    options: col.name === 'int_status' ? [
+      { label: "Active", value: "Active" },
+      { label: "Inactive", value: "Inactive" }
+    ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
 
@@ -99,78 +209,40 @@ const Branches = () => {
       <ContentBox
         filters={filters}
         onFilterChange={handleFilterChange}
-        onDeleteSelected={handleDeleteSelected}
         onSort={handleSort}
-        data={data}
         sortConfig={sortConfig}
         onAdd={() => navigate("/master-data/add-branch")}
-        onDownload={() => console.log("Download Branch")}
+        onDeleteSelected={handleDeleteSelected}
+        onDownload={handleDownload}
+        data={data}
+        selectedRows={selectedRows}
+        setSelectedRows={setSelectedRows}
       >
-        {({ visibleColumns, columnWidth }) => {
-          let filteredData = data;
-
-          if (searchKeyword) {
-            const keyword = searchKeyword.toLowerCase();
-
-            const searchableFields = columns
-              .map((col) => col.name)
-              .filter(
-                (field) =>
-                  typeof data?.[0]?.[field] === "string" ||
-                  typeof data?.[0]?.[field] === "number"
-              );
-
-            filteredData = filteredData.filter((item) =>
-              searchableFields.some((field) => {
-                const value = item[field];
-                return value?.toString().toLowerCase().includes(keyword);
-              })
-            );
-          }
-
-          // ✅ Apply date range
-          if (dateRange.from && dateRange.to) {
-            const fromDate = new Date(dateRange.from);
-            const toDate = new Date(dateRange.to);
-
-            filteredData = filteredData.filter((item) => {
-              const itemDate = new Date(item.created_on); // Ensure field exists
-              return itemDate >= fromDate && itemDate <= toDate;
-            });
-          }
-
-          // ✅ Apply sorting
-          if (sortConfig.column && sortConfig.direction) {
-            filteredData = [...filteredData].sort((a, b) => {
-              const valA = a[sortConfig.column];
-              const valB = b[sortConfig.column];
-
-              if (valA == null) return 1;
-              if (valB == null) return -1;
-
-              if (!isNaN(valA) && !isNaN(valB)) {
-                return sortConfig.direction === "asc"
-                  ? valA - valB
-                  : valB - valA;
-              }
-
-              return sortConfig.direction === "asc"
-                ? valA.toString().localeCompare(valB.toString())
-                : valB.toString().localeCompare(valA.toString());
-            });
-          }
+        {({ visibleColumns }) => {
+          const filteredData = filterData(data, filterValues, visibleColumns);
+          const sortedData = sortData(filteredData);
 
           return (
-            <CustomTable
-              columns={visibleColumns}
-              visibleColumns={visibleColumns}
-              data={filteredData}
-              columnWidth={columnWidth}
-              selectedRows={selectedRows}
-              setSelectedRows={setSelectedRows}
-              onEdit={(row) => console.log("Edit branch:", row)}
-              rowKey="id"
-            />
+            <>
+              <CustomTable
+                columns={visibleColumns}
+                visibleColumns={visibleColumns}
+                data={sortedData}
+                selectedRows={selectedRows}
+                setSelectedRows={setSelectedRows}
+                onEdit={handleEdit}
+                rowKey="branch_id"
+              />
+              <EditBranchModal
+                show={showEditModal}
+                onClose={() => {
+                  setShowEditModal(false);
+                  setEditingBranch(null);
+                }}
+                onConfirm={handleUpdateBranch}
+                branch={editingBranch}
+              />
+            </>
           );
         }}
       </ContentBox>

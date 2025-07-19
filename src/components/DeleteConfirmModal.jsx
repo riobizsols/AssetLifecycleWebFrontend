@@ -1,4 +1,4 @@
-const DeleteConfirmModal = ({ show, onClose, onConfirm, departmentName }) => {
+const DeleteConfirmModal = ({ show, onClose, onConfirm, message = "Do you want to delete this item?" }) => {
   if (!show) return null;
 
   return (
@@ -20,7 +20,7 @@ const DeleteConfirmModal = ({ show, onClose, onConfirm, departmentName }) => {
 
         {/* Body */}
         <div className="px-6 py-6 text-center text-gray-800 text-sm">
-          Do you want to delete department <strong>“{departmentName}”</strong> ?
+          {message}
         </div>
 
         {/* Footer */}
@@ -42,4 +42,5 @@ const DeleteConfirmModal = ({ show, onClose, onConfirm, departmentName }) => {
     </div>
   );
 };
+
 export default DeleteConfirmModal;
