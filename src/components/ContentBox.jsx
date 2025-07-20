@@ -33,7 +33,7 @@ const ContentBox = ({
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
   const [columnFilters, setColumnFilters] = useState([]);
   const [showColumnsDropdown, setShowColumnsDropdown] = useState(false);
-  const [showDeleeteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Effect to apply initial filter if 'search by column' is active on mount
   useEffect(() => {
