@@ -17,6 +17,7 @@ const DepartmentsAsset = () => {
   const [deleteId, setDeleteId] = useState(null);
 
   const [isMaximized, setIsMaximized] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showCreateAssetType, setShowCreateAssetType] = useState(false);
   const [newAssetTypeName, setNewAssetTypeName] = useState("");
   const dropdownRef = useRef(null);
@@ -64,6 +65,7 @@ const DepartmentsAsset = () => {
 
   // Add mapping
   const handleAdd = async () => {
+    setSubmitAttempted(true);
     if (!selectedDeptId || !selectedAssetTypeId) {
       toast.error("Please select both department and asset type");
       return;
@@ -114,6 +116,9 @@ const DepartmentsAsset = () => {
     }
   };
 
+  // Helper for invalid field
+  const isFieldInvalid = (val) => submitAttempted && !val;
+
   useEffect(() => {
     fetchDepartments();
     fetchAssetTypes();
@@ -128,18 +133,23 @@ const DepartmentsAsset = () => {
           Department Selection
         </div>
         <div className="p-4 flex gap-4 items-center">
-          <select
-            className="border px-3 py-2 text-sm w-64 bg-white text-black focus:outline-none"
-            value={selectedDeptId}
-            onChange={(e) => setSelectedDeptId(e.target.value)}
-          >
-            <option value="">Select Department</option>
-            {departments.map((dept) => (
-              <option key={dept.dept_id} value={dept.dept_id}>
-                {dept.text}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col">
+            <label className="text-sm font-medium mb-1">
+              Department <span className="text-red-500">*</span>
+            </label>
+            <select
+              className={`border px-3 py-2 text-sm w-64 bg-white text-black focus:outline-none ${isFieldInvalid(selectedDeptId) ? 'border-red-500' : 'border-gray-300'}`}
+              value={selectedDeptId}
+              onChange={(e) => setSelectedDeptId(e.target.value)}
+            >
+              <option value="">Select Department</option>
+              {departments.map((dept) => (
+                <option key={dept.dept_id} value={dept.dept_id}>
+                  {dept.text}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
       {/* Add asset type Section */}
@@ -148,62 +158,67 @@ const DepartmentsAsset = () => {
           Add Asset
         </div>
         <div className="p-4 flex gap-4 items-center">
-          {/* Custom Dropdown */}
-          <div className="relative w-64">
-            <button
-              className="border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed flex justify-between items-center"
-              onClick={() => {
-                if (selectedDeptId) dropdownRef.current.classList.toggle("hidden");
-              }}
-              disabled={!selectedDeptId}
-              type="button"
-            >
-              {selectedAssetTypeId
-                ? assetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.text || "Select Asset Type"
-                : selectedDeptId
-                ? "Select Asset Type"
-                : "Select Department First"}
-              <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
-            </button>
-            {/* Dropdown List */}
-            <div
-              ref={dropdownRef}
-              className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10 hidden"
-              style={{ minWidth: "100%" }}
-            >
-              {/* Sticky Search Input */}
-              <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
-                <input
-                  type="text"
-                  className="w-full border px-2 py-1 rounded text-sm"
-                  placeholder="Search Asset Types..."
-                  value={searchAssetType}
-                  onChange={e => setSearchAssetType(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              {/* Filtered Asset Types */}
-              {assetTypes
-                .filter(at => at.text.toLowerCase().includes(searchAssetType.toLowerCase()))
-                .map((at) => (
-                  <div
-                    key={at.asset_type_id}
-                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedAssetTypeId === at.asset_type_id ? "bg-gray-200" : ""}`}
-                    onClick={() => {
-                      setSelectedAssetTypeId(at.asset_type_id);
-                      dropdownRef.current.classList.add("hidden");
-                      setSearchAssetType("");
-                    }}
-                  >
-                    {at.text}
-                  </div>
-                ))}
-              {/* Sticky Create New Option */}
-              <div className="sticky bottom-0 bg-white border-t px-4 py-2 cursor-pointer text-blue-600 font-semibold hover:bg-blue-50 text-sm" onClick={() => {
-                dropdownRef.current.classList.add("hidden");
-                navigate("/master-data/asset-types");
-              }}>
-                + Create New
+          <div className="flex flex-col w-64">
+            <label className="text-sm font-medium mb-1">
+              Asset Type <span className="text-red-500">*</span>
+            </label>
+            {/* Custom Dropdown */}
+            <div className="relative w-full">
+              <button
+                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed flex justify-between items-center ${isFieldInvalid(selectedAssetTypeId) ? 'border-red-500' : 'border-gray-300'}`}
+                onClick={() => {
+                  if (selectedDeptId) dropdownRef.current.classList.toggle("hidden");
+                }}
+                disabled={!selectedDeptId}
+                type="button"
+              >
+                {selectedAssetTypeId
+                  ? assetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.text || "Select Asset Type"
+                  : selectedDeptId
+                  ? "Select Asset Type"
+                  : "Select Department First"}
+                <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
+              </button>
+              {/* Dropdown List */}
+              <div
+                ref={dropdownRef}
+                className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10 hidden"
+                style={{ minWidth: "100%" }}
+              >
+                {/* Sticky Search Input */}
+                <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
+                  <input
+                    type="text"
+                    className="w-full border px-2 py-1 rounded text-sm"
+                    placeholder="Search Asset Types..."
+                    value={searchAssetType}
+                    onChange={e => setSearchAssetType(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {/* Filtered Asset Types */}
+                {assetTypes
+                  .filter(at => at.text.toLowerCase().includes(searchAssetType.toLowerCase()))
+                  .map((at) => (
+                    <div
+                      key={at.asset_type_id}
+                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedAssetTypeId === at.asset_type_id ? "bg-gray-200" : ""}`}
+                      onClick={() => {
+                        setSelectedAssetTypeId(at.asset_type_id);
+                        dropdownRef.current.classList.add("hidden");
+                        setSearchAssetType("");
+                      }}
+                    >
+                      {at.text}
+                    </div>
+                  ))}
+                {/* Sticky Create New Option */}
+                <div className="sticky bottom-0 bg-white border-t px-4 py-2 cursor-pointer text-blue-600 font-semibold hover:bg-blue-50 text-sm" onClick={() => {
+                  dropdownRef.current.classList.add("hidden");
+                  navigate("/master-data/asset-types");
+                }}>
+                  + Create New
+                </div>
               </div>
             </div>
           </div>

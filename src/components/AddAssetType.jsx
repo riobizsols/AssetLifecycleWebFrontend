@@ -12,10 +12,11 @@ const AddAssetType = () => {
   const [requireInspection, setRequireInspection] = useState(false);
   const [requireMaintenance, setRequireMaintenance] = useState(false);
   const [isActive, setIsActive] = useState(true);
-  const [parentChild, setParentChild] = useState("");
+  const [parentChild, setParentChild] = useState("parent"); // Default to parent
   const [parentAssetTypes, setParentAssetTypes] = useState([]);
   const [selectedParentType, setSelectedParentType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     // Reset parent selection when parentChild changes
@@ -29,21 +30,39 @@ const AddAssetType = () => {
 
   const fetchParentAssetTypes = async () => {
     try {
-      const res = await API.get('/dept-assets/asset-types');
+      const res = await API.get('/asset-types/parents');
       setParentAssetTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching parent asset types:', err);
+      toast.error('Failed to fetch parent asset types');
       setParentAssetTypes([]);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
     
     // Validate form
     if (!assetType.trim()) {
       toast(
         "Asset type name is required",
+        {
+          icon: '❌',
+          style: {
+            borderRadius: '8px',
+            background: '#7F1D1D',
+            color: '#fff',
+          },
+        }
+      );
+      return;
+    }
+
+    // Validate parent selection for child asset types
+    if (parentChild === "child" && !selectedParentType) {
+      toast(
+        "Please select a parent asset type",
         {
           icon: '❌',
           style: {
@@ -66,6 +85,8 @@ const AddAssetType = () => {
         group_required: groupRequired,
         inspection_required: requireInspection,
         maintenance_schedule: requireMaintenance ? 1 : 0,
+        is_child: parentChild === "child",
+        parent_asset_type_id: parentChild === "child" ? selectedParentType : null
       };
 
       // Make API call
@@ -113,10 +134,13 @@ const AddAssetType = () => {
     navigate('/master-data/asset-types');
   };
 
+  // Helper for invalid field
+  const isFieldInvalid = (val) => submitAttempted && !val.trim();
+
   return (
     <div className="max-w-6xl mx-auto bg-white rounded-xl shadow">
       <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
-        <h1 className="text-2xl font-semibold">Add Asset Type</h1>
+        {/* <h1 className="text-2xl font-semibold">Add Asset Type</h1> */}
       </div>
 
       <form onSubmit={handleSubmit} className="p-6">
@@ -124,14 +148,15 @@ const AddAssetType = () => {
         <div className="grid grid-cols-3 gap-6 mb-6">
           {/* Asset Type Input */}
           <div>
-            <label className="block text-sm font-medium mb-1">Asset Type</label>
+            <label className="block text-sm font-medium mb-1">
+              Asset Type <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
               value={assetType}
               onChange={(e) => setAssetType(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isFieldInvalid(assetType) ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="Enter asset type name"
-              required
             />
           </div>
 
@@ -218,44 +243,43 @@ const AddAssetType = () => {
           </label>
         </div>
 
-        {/* Parent/Child Dropdown (shown only when Group Required is checked) */}
-        {groupRequired && (
-          <div className="mt-6">
-            <div className="flex gap-6">
+        {/* Parent/Child Selection */}
+        <div className="mt-6">
+          <div className="flex gap-6">
+            <div className="max-w-xs">
+              <label className="block text-sm font-medium mb-1">Parent / Child</label>
+              <select
+                value={parentChild}
+                onChange={(e) => setParentChild(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="parent">Parent</option>
+                <option value="child">Child</option>
+              </select>
+            </div>
+
+            {/* Parent Asset Type Dropdown (shown only when Child is selected) */}
+            {parentChild === "child" && (
               <div className="max-w-xs">
-                <label className="block text-sm font-medium mb-1">Parent / Child</label>
+                <label className="block text-sm font-medium mb-1">
+                  Parent Asset Type <span className="text-red-500">*</span>
+                </label>
                 <select
-                  value={parentChild}
-                  onChange={(e) => setParentChild(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={selectedParentType}
+                  onChange={(e) => setSelectedParentType(e.target.value)}
+                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isFieldInvalid(selectedParentType) ? 'border-red-500' : 'border-gray-300'}`}
                 >
-                  <option value="">Select type</option>
-                  <option value="parent">Parent</option>
-                  <option value="child">Child</option>
+                  <option value="">Select parent asset type</option>
+                  {parentAssetTypes.map((type) => (
+                    <option key={type.asset_type_id} value={type.asset_type_id}>
+                      {type.text}
+                    </option>
+                  ))}
                 </select>
               </div>
-
-              {/* Parent Asset Type Dropdown (shown only when Child is selected) */}
-              {parentChild === "child" && (
-                <div className="max-w-xs">
-                  <label className="block text-sm font-medium mb-1">Parent Asset Type</label>
-                  <select
-                    value={selectedParentType}
-                    onChange={(e) => setSelectedParentType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select parent asset type</option>
-                    {parentAssetTypes.map((type) => (
-                      <option key={type.asset_type_id} value={type.asset_type_id}>
-                        {type.text}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 mt-20">

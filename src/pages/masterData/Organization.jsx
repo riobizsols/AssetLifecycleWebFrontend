@@ -11,6 +11,8 @@ const Organization = () => {
   const [formName, setFormName] = useState("");
   const [formCode, setFormCode] = useState("");
   const [formCity, setFormCity] = useState("");
+  // Add validation state
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
 
   const toggleMaximize = () => setIsMaximized((p) => !p);
@@ -42,10 +44,12 @@ const Organization = () => {
     setFormCode("");
     setFormCity("");
     setSelectedOrg(null);
+    setSubmitAttempted(false); // Reset submit attempt
   };
 
   // Add or update organization
   const handleCreateOrUpdate = async () => {
+    setSubmitAttempted(true);
     // Validation
     if (!formName.trim()) {
       toast.error("Organization name is required");
@@ -88,6 +92,9 @@ const Organization = () => {
     }
   };
 
+  // Helper for invalid field
+  const isFieldInvalid = (val) => submitAttempted && !val.trim();
+
   // Edit handler
   const handleEdit = (org) => {
     setSelectedOrg(org);
@@ -95,6 +102,7 @@ const Organization = () => {
     setFormName(org.org_name || org.name || org.text || "");
     setFormCode(org.org_code || org.code || "");
     setFormCity(org.org_city || org.city || "");
+    setSubmitAttempted(false); // Reset submit attempt for edit
   };
 
   // Delete handler
@@ -145,26 +153,41 @@ const Organization = () => {
             Add Organization
           </div>
           <div className="p-4 flex gap-4">
-            <input
-              className="border px-3 py-2 rounded w-64 text-sm"
-              placeholder="Organization Name"
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-            />
-            <input
-              className="border px-3 py-2 rounded w-64 text-sm"
-              placeholder="Organization Code"
-              value={formCode}
-              onChange={(e) => setFormCode(e.target.value)}
-            />
-            <input
-              className="border px-3 py-2 rounded w-64 text-sm"
-              placeholder="Organization City"
-              value={formCity}
-              onChange={(e) => setFormCity(e.target.value)}
-            />
+            <div className="flex flex-col">
+              <label className="text-sm font-medium mb-1">
+                Organization Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={`border px-3 py-2 rounded w-64 text-sm ${isFieldInvalid(formName) ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Organization Name"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium mb-1">
+                Organization Code <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={`border px-3 py-2 rounded w-64 text-sm ${isFieldInvalid(formCode) ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Organization Code"
+                value={formCode}
+                onChange={(e) => setFormCode(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium mb-1">
+                Organization City <span className="text-red-500">*</span>
+              </label>
+              <input
+                className={`border px-3 py-2 rounded w-64 text-sm ${isFieldInvalid(formCity) ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Organization City"
+                value={formCity}
+                onChange={(e) => setFormCity(e.target.value)}
+              />
+            </div>
             <button
-              className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm"
+              className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm self-end"
               onClick={() => {
                 handleCreateOrUpdate();
                 resetForm();
@@ -257,27 +280,33 @@ const Organization = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Organization Name</label>
+                  <label className="text-sm font-medium mb-1">
+                    Organization Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className="border px-3 py-2 rounded w-full mt-1"
+                    className={`border px-3 py-2 rounded w-full mt-1 ${isFieldInvalid(formName) ? 'border-red-500' : 'border-gray-300'}`}
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Organization Code</label>
+                  <label className="text-sm font-medium mb-1">
+                    Organization Code <span className="text-red-500">*</span>
+                  </label>
                   <input
                     value={formCode}
                     onChange={(e) => setFormCode(e.target.value)}
-                    className="border px-3 py-2 rounded w-full mt-1"
+                    className={`border px-3 py-2 rounded w-full mt-1 ${isFieldInvalid(formCode) ? 'border-red-500' : 'border-gray-300'}`}
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Organization City</label>
+                  <label className="text-sm font-medium mb-1">
+                    Organization City <span className="text-red-500">*</span>
+                  </label>
                   <input
                     value={formCity}
                     onChange={(e) => setFormCity(e.target.value)}
-                    className="border px-3 py-2 rounded w-full mt-1"
+                    className={`border px-3 py-2 rounded w-full mt-1 ${isFieldInvalid(formCity) ? 'border-red-500' : 'border-gray-300'}`}
                   />
                 </div>
                 <div className="flex justify-end gap-4 mt-6">

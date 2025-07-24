@@ -11,7 +11,6 @@ const initialForm = {
   assetType: '',
   serialNumber: '',
   description: '',
-  maintenanceSchedule: '',
   expiryDate: '',
   warrantyPeriod: '',
   purchaseDate: '',
@@ -23,6 +22,7 @@ const initialForm = {
   purchaseSupply: '',
   serviceSupply: '',
   vendorId: '',
+  parentAsset: '', // Add parent asset field
 };
 
 const statusOptions = [
@@ -39,11 +39,13 @@ const AddAssetForm = ({ userRole }) => {
   const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Add validation state
+  const [touched, setTouched] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [assetTypes, setAssetTypes] = useState([]);
   const [propertiesMap, setPropertiesMap] = useState({});
   const [dynamicProperties, setDynamicProperties] = useState([]);
   const [assetTypePropsMap, setAssetTypePropsMap] = useState({});
-  const [maintenanceSchedules, setMaintenanceSchedules] = useState([]);
   const [collapsedSections, setCollapsedSections] = useState({
     asset: false, // Asset Details expanded by default
     purchase: true,
@@ -58,6 +60,14 @@ const AddAssetForm = ({ userRole }) => {
   const [searchAssetType, setSearchAssetType] = useState("");
   const assetTypeDropdownRef = useRef(null);
   const [assetTypeDropdownOpen, setAssetTypeDropdownOpen] = useState(false);
+  const [canHaveChildren, setCanHaveChildren] = useState(false);
+  const [availableParentAssets, setAvailableParentAssets] = useState([]);
+  const [parentDropdownOpen, setParentDropdownOpen] = useState(false);
+  const parentDropdownRef = useRef(null);
+  const [parentAssets, setParentAssets] = useState([]);
+  const [parentAssetDropdownOpen, setParentAssetDropdownOpen] = useState(false);
+  const [searchParentAsset, setSearchParentAsset] = useState("");
+  const parentAssetDropdownRef = useRef(null);
 
   // Add state for search and dropdown visibility
   const [searchStates, setSearchStates] = useState({
@@ -85,7 +95,6 @@ const AddAssetForm = ({ userRole }) => {
   useEffect(() => {
     console.log('Component mounted, fetching asset types...');
     fetchAssetTypes();
-    fetchMaintenanceSchedules();
     fetchUsers();
     fetchProdServs();
     fetchVendors();
@@ -130,6 +139,36 @@ const AddAssetForm = ({ userRole }) => {
     };
   }, [dropdownStates]);
 
+  // Update effect to handle boolean values
+  useEffect(() => {
+    if (form.assetType) {
+      const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
+      console.log('Selected Asset Type:', selectedType);
+      console.log('Is Child:', selectedType?.is_child);
+      // Convert string 'false' to boolean false
+      const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+      if (isChild) {
+        fetchParentAssets(form.assetType);
+      } else {
+        setParentAssets([]);
+        setForm(prev => ({ ...prev, parentAsset: '' }));
+      }
+    }
+  }, [form.assetType]);
+
+  // Add function to fetch parent assets
+  const fetchParentAssets = async (assetTypeId) => {
+    try {
+      const res = await API.get(`/assets/potential-parents/${assetTypeId}`);
+      console.log('Parent assets response:', res.data);
+      setParentAssets(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Error fetching parent assets:', err);
+      toast.error('Failed to fetch parent assets');
+      setParentAssets([]);
+    }
+  };
+
   // Helper function to toggle dropdown
   const toggleDropdown = (name) => {
     setDropdownStates(prev => ({
@@ -158,44 +197,13 @@ const AddAssetForm = ({ userRole }) => {
 
   const fetchAssetTypes = async () => {
     try {
-      console.log('Fetching asset types from API...');
-      // Check if user is authenticated
-      const token = useAuthStore.getState().token;
-      console.log('Auth token:', token ? 'Present' : 'Missing');
-
+      console.log('Fetching asset types...');
       const res = await API.get('/dept-assets/asset-types');
-      console.log('Asset types response:', res.data);
-      console.log('Asset types array:', Array.isArray(res.data) ? res.data : []);
+      console.log('Asset types raw response:', res.data);
       setAssetTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching asset types:', err);
-      console.error('Error details:', err.response?.data);
       setAssetTypes([]);
-    }
-  };
-
-  const fetchMaintenanceSchedules = async () => {
-    try {
-      console.log('Fetching maintenance schedules from API...');
-      const res = await API.get('/maintenance-schedules');
-      console.log('Maintenance schedules response:', res.data);
-
-      if (res.data && Array.isArray(res.data)) {
-        // Transform API data to dropdown format
-        const schedules = [
-          { value: '', label: 'Select' },
-          ...res.data.map(schedule => ({
-            value: schedule.id || schedule.maint_sched_id,
-            label: schedule.text || schedule.name
-          }))
-        ];
-        setMaintenanceSchedules(schedules);
-      }
-    } catch (err) {
-      console.error('Error fetching maintenance schedules:', err);
-      console.log('Using dummy maintenance schedules as fallback');
-      // Keep using dummy data if API fails
-      setMaintenanceSchedules([]);
     }
   };
 
@@ -336,18 +344,39 @@ const AddAssetForm = ({ userRole }) => {
       }
       return { ...prev, [name]: value };
     });
+    setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
   const handlePropChange = (propName, value) => {
     setForm((prev) => ({ ...prev, properties: { ...prev.properties, [propName]: value } }));
+    setTouched((prev) => ({ ...prev, [propName]: true }));
+  };
+
+  const isFieldInvalid = (field) => {
+    if (!submitAttempted) return false;
+    if (field === 'parentAsset') {
+      const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
+      const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+      return isChild && !form.parentAsset;
+    }
+    return !form[field];
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
+    // Validate required fields
     if (!form.assetType || !form.serialNumber || !form.purchaseDate || !form.purchaseCost) {
       toast.error('Required fields missing');
       return;
     }
+    const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
+    const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+    if (isChild && !form.parentAsset) {
+      toast.error('Parent asset is required for this asset type');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Get user info from auth store
@@ -373,39 +402,28 @@ const AddAssetForm = ({ userRole }) => {
         prod_serve_id: form.serviceSupply || null, // Set from Service Vendor dropdown
         maintsch_id: null, // Always set to null
         purchased_cost: form.purchaseCost,
-
         purchased_on: form.purchaseDate,
         purchased_by: form.purchaseBy || null,
         expiry_date: form.expiryDate || null,
         current_status: 'Active', // Default status
         warranty_period: form.warrantyPeriod || null,
-        parent_id: null, // null as specified
-        group_id: null, // null as specified
+        parentAsset: form.parentAsset || null, // Add parentAsset field
         org_id: user.org_id, // From user's auth store
-        properties: {}
+        properties: form.properties || {}
       };
 
-      // Map prop_id to asset_type_prop_id for backend
-      if (form.properties) {
-        Object.keys(form.properties).forEach(propId => {
-          const assetTypePropId = assetTypePropsMap[propId];
-          if (assetTypePropId && form.properties[propId]) {
-            assetData.properties[assetTypePropId] = form.properties[propId];
-          }
-        });
-      }
-
       console.log('Submitting asset data:', assetData);
-      await API.post('/assets', assetData);
+      const response = await API.post('/assets', assetData);
       toast.success('Asset created successfully');
-      setForm(initialForm);
-      setDynamicProperties([]);
+      navigate('/assets');
     } catch (err) {
       console.error('Error creating asset:', err);
-      toast.error(err.response?.data?.message || 'Error creating asset');
+      const errorMessage = err.response?.data?.error || 'Failed to create asset';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
-  };
+};
 
   const toggleSection = (section) => {
     setCollapsedSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -416,7 +434,7 @@ const AddAssetForm = ({ userRole }) => {
     <div className="max-w-6xl mx-auto mt-8 bg-[#F5F8FA] rounded-xl shadow">
       {/* Header */}
       <div className="bg-[#0E2F4B] text-white py-4 px-8 rounded-t-xl border-b-4 border-[#FFC107] flex justify-center items-center">
-        <span className="text-2xl font-semibold text-center w-full">Add Asset</span>
+        {/* <span className="text-2xl font-semibold text-center w-full">Add Asset</span> */}
       </div>
       <form onSubmit={handleSubmit} className="px-8 pt-8 pb-4">
         {/* Asset Details */}
@@ -433,11 +451,13 @@ const AddAssetForm = ({ userRole }) => {
             <div className="grid grid-cols-4 gap-6 mb-4">
               {/* Asset Type Dropdown */}
               <div>
-                <label className="block text-sm mb-1 font-medium">Asset Type</label>
+                <label className="block text-sm mb-1 font-medium">
+                  Asset Type <span className="text-red-500">*</span>
+                </label>
                 <div className="relative w-full">
                   <button
                     type="button"
-                    className="border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9"
+                    className={`border px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${isFieldInvalid('assetType') ? 'border-red-500' : 'border-gray-300'}`}
                     onClick={() => setAssetTypeDropdownOpen((open) => !open)}
                   >
                     <span className="text-xs truncate">
@@ -473,6 +493,8 @@ const AddAssetForm = ({ userRole }) => {
                             key={at.asset_type_id}
                             className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${form.assetType === at.asset_type_id ? "bg-gray-200" : ""}`}
                             onClick={() => {
+                              console.log('Selected asset type:', at);
+                              console.log('Selected group_required:', at.group_required);
                               setForm((prev) => ({ ...prev, assetType: at.asset_type_id }));
                               setAssetTypeDropdownOpen(false);
                               setSearchAssetType("");
@@ -482,7 +504,10 @@ const AddAssetForm = ({ userRole }) => {
                           >
                             <div className="flex justify-between items-center">
                               <span>{at.text}</span>
-                              <span className="text-gray-500">{at.asset_type_id}</span>
+                              <span className="text-gray-500">
+                                {at.asset_type_id} 
+                                {at.is_child ? ' (Child)' : ' (Parent)'}
+                              </span>
                             </div>
                           </div>
                         ))}
@@ -499,17 +524,107 @@ const AddAssetForm = ({ userRole }) => {
                   )}
                 </div>
               </div>
+
+              {/* Show message if asset type can have children */}
+              {form.assetType && (() => {
+                const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
+                const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+                return isChild;
+              })() && (
+                <div className="col-span-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                    <p className="text-sm text-blue-800">
+                      Please select a parent asset for this child asset type.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Parent Asset Dropdown - Show only when child asset type is selected */}
+              {form.assetType && (() => {
+                const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
+                const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+                return isChild;
+              })() && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Parent Asset <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative w-full">
+                    <button
+                      type="button"
+                      className={`border px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${isFieldInvalid('parentAsset') ? 'border-red-500' : 'border-gray-300'}`}
+                      onClick={() => setParentAssetDropdownOpen((open) => !open)}
+                    >
+                      <span className="text-xs truncate">
+                        {form.parentAsset
+                          ? (() => {
+                              const parent = parentAssets.find((pa) => pa.asset_id === form.parentAsset);
+                              if (parent) {
+                                return `${parent.asset_name} (${parent.asset_type_name}) - ${parent.serial_number || 'No SN'}`;
+                              }
+                              return "Select Parent Asset";
+                            })()
+                          : "Select Parent Asset"}
+                      </span>
+                      <MdKeyboardArrowDown className="ml-2 w-4 h-4 text-gray-500" />
+                    </button>
+                    {parentAssetDropdownOpen && (
+                      <div
+                        ref={parentAssetDropdownRef}
+                        className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10"
+                        style={{ minWidth: "100%" }}
+                      >
+                        <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
+                          <input
+                            type="text"
+                            className="w-full border px-2 py-1 rounded text-xs"
+                            placeholder="Search parent asset..."
+                            value={searchParentAsset}
+                            onChange={e => setSearchParentAsset(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
+                        {parentAssets
+                          .filter(pa => 
+                            pa.asset_name?.toLowerCase().includes(searchParentAsset.toLowerCase()) ||
+                            pa.serial_number?.toLowerCase().includes(searchParentAsset.toLowerCase()) ||
+                            pa.asset_type_name?.toLowerCase().includes(searchParentAsset.toLowerCase())
+                          )
+                          .map((pa) => (
+                            <div
+                              key={pa.asset_id}
+                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${form.parentAsset === pa.asset_id ? "bg-gray-200" : ""}`}
+                              onClick={() => {
+                                setForm((prev) => ({ ...prev, parentAsset: pa.asset_id }));
+                                setParentAssetDropdownOpen(false);
+                                setSearchParentAsset("");
+                              }}
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium">{pa.asset_name}</span>
+                                <span className="text-gray-500 text-xs">
+                                  {pa.asset_type_name} - {pa.serial_number || 'No SN'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        {parentAssets.length === 0 && (
+                          <div className="px-4 py-2 text-xs text-gray-500">
+                            No parent assets available
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm mb-1 font-medium">Serial Number</label>
-                <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
-              </div>
-              <div>
-                <label className="block text-sm mb-1 font-medium">Maintenance Schedule</label>
-                <select name="maintenanceSchedule" onChange={handleChange} value={form.maintenanceSchedule} className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown">
-                  {maintenanceSchedules.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                <label className="block text-sm mb-1 font-medium">
+                  Serial Number <span className="text-red-500">*</span>
+                </label>
+                <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('serialNumber') ? 'border-red-500' : 'border-gray-300'}`} />
               </div>
               <div className="col-span-4">
                 <label className="block text-sm mb-1 font-medium">Description</label>
@@ -539,12 +654,16 @@ const AddAssetForm = ({ userRole }) => {
                 <input name="warrantyPeriod" placeholder="" onChange={handleChange} value={form.warrantyPeriod} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Purchase Date</label>
-                <input name="purchaseDate" type="date" onChange={handleChange} value={form.purchaseDate} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+                <label className="block text-sm mb-1 font-medium">
+                  Purchase Date <span className="text-red-500">*</span>
+                </label>
+                <input name="purchaseDate" type="date" onChange={handleChange} value={form.purchaseDate} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('purchaseDate') ? 'border-red-500' : 'border-gray-300'}`} />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Purchase Cost</label>
-                <input name="purchaseCost" type="number" onChange={handleChange} value={form.purchaseCost} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+                <label className="block text-sm mb-1 font-medium">
+                  Purchase Cost <span className="text-red-500">*</span>
+                </label>
+                <input name="purchaseCost" type="number" onChange={handleChange} value={form.purchaseCost} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('purchaseCost') ? 'border-red-500' : 'border-gray-300'}`} />
               </div>
             </div>
           )}

@@ -15,6 +15,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
   const [products, setProducts] = useState([]);
   const [form, setForm] = useState({ assetType: "", brand: "", model: "", description: "" });
   const [maximized, setMaximized] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -84,6 +85,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
 
   // In handleAdd, after updating products, also update sessionStorage
   const handleAdd = () => {
+    setSubmitAttempted(true);
     if (!form.assetType || !form.brand || !form.model) return;
 
     // Debug: log selected assetType and assetTypes
@@ -123,6 +125,9 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
     setProducts(newProducts);
     sessionStorage.setItem('products', JSON.stringify(newProducts));
   };
+
+  // Helper for invalid field
+  const isFieldInvalid = (val) => submitAttempted && !val;
 
   // Table card content
   const tableCard = (
@@ -245,7 +250,9 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
       {/* Add Product Row */}
       <div className="flex items-end gap-4 mb-8">
         <div>
-          <label className="block text-sm text-gray-700 mb-2">Asset Type</label>
+          <label className="block text-sm text-gray-700 mb-2">
+            Asset Type <span className="text-red-500">*</span>
+          </label>
           <SearchableDropdown
             options={assetTypes}
             value={form.assetType}
@@ -254,13 +261,15 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
             searchPlaceholder="Search Asset Types..."
             createNewText="Create New"
             createNewPath="/master-data/asset-types"
-            className="w-48"
+            className={`w-48 ${isFieldInvalid(form.assetType) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="asset_type_id"
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-700 mb-2">Brand</label>
+          <label className="block text-sm text-gray-700 mb-2">
+            Brand <span className="text-red-500">*</span>
+          </label>
           <SearchableDropdown
             options={brands.map(brand => ({ id: brand, text: brand }))}
             value={form.brand}
@@ -268,13 +277,15 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
             placeholder="Select Brand"
             searchPlaceholder="Search Brands..."
             disabled={!form.assetType}
-            className="w-48"
+            className={`w-48 ${isFieldInvalid(form.brand) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="id"
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-700 mb-2">Model</label>
+          <label className="block text-sm text-gray-700 mb-2">
+            Model <span className="text-red-500">*</span>
+          </label>
           <SearchableDropdown
             options={models.map(model => ({ id: model, text: model }))}
             value={form.model}
@@ -282,7 +293,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
             placeholder="Select Model"
             searchPlaceholder="Search Models..."
             disabled={!form.brand}
-            className="w-48"
+            className={`w-48 ${isFieldInvalid(form.model) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="id"
           />

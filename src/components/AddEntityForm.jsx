@@ -35,6 +35,7 @@ const AddEntityForm = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("Vendor Details");
   const [createdVendorId, setCreatedVendorId] = useState(""); // Store generated vendor_id
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -60,6 +61,7 @@ const AddEntityForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
     try {
       setLoading(true);
       const response = await API.post("/create-vendor", form); // Backend adds ext_id, created_on, org_id
@@ -79,11 +81,14 @@ const AddEntityForm = () => {
   if (form.product_supply) tabs.push("Product Details");
   if (form.service_supply) tabs.push("Service Details");
 
+  // Helper for invalid field
+  const isFieldInvalid = (val) => submitAttempted && !val.trim();
+
   return (
-    <div className="max-w-7xl mx-auto mt-4 bg-white shadow rounded">
+    <div className="max-w-7xl mx-auto mt-1 bg-white shadow rounded">
       {/* Card Header */}
       <div className="bg-[#0E2F4B] text-white py-3 px-6 rounded-t border-b-4 border-[#FFC107] flex justify-center items-center">
-        <span className="text-2xl font-semibold text-center w-full">Vendor Details</span>
+        {/* <span className="text-2xl font-semibold text-center w-full">Vendor Details</span> */}
       </div>
 
       <div className="px-8 pt-8">
@@ -110,13 +115,13 @@ const AddEntityForm = () => {
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-3 gap-6 mb-6">
               {/* <FormInput label="Vendor Id" name="vendor_id" value={createdVendorId} readOnly /> */}
-              <FormInput label="Vendor Name" name="vendor_name" value={form.vendor_name} onChange={handleInputChange} required />
-              <FormInput label="Company" name="company" value={form.company} onChange={handleInputChange} required />
-              <FormInput label="Email" name="email" value={form.email} onChange={handleInputChange} type="email" required />
+              <FormInput label="Vendor Name" name="vendor_name" value={form.vendor_name} onChange={handleInputChange} required isInvalid={isFieldInvalid(form.vendor_name)} />
+              <FormInput label="Company" name="company" value={form.company} onChange={handleInputChange} required isInvalid={isFieldInvalid(form.company)} />
+              <FormInput label="Email" name="email" value={form.email} onChange={handleInputChange} type="email" required isInvalid={isFieldInvalid(form.email)} />
             </div>
 
             <div className="grid grid-cols-3 gap-6 mb-6">
-              <FormInput label="Contact Number" name="contact_number" value={form.contact_number} onChange={handleInputChange} required />
+              <FormInput label="Contact Number" name="contact_number" value={form.contact_number} onChange={handleInputChange} required isInvalid={isFieldInvalid(form.contact_number)} />
               <FormInput label="GST Number" name="gst_number" value={form.gst_number} onChange={handleInputChange} />
               <FormInput label="CIN Number" name="cin_number" value={form.cin_number} onChange={handleInputChange} />
             </div>
@@ -169,9 +174,11 @@ const AddEntityForm = () => {
 };
 
 // Reusable input component
-const FormInput = ({ label, name, value, onChange, required = false, type = "text", readOnly = false }) => (
+const FormInput = ({ label, name, value, onChange, required = false, type = "text", readOnly = false, isInvalid = false }) => (
   <div>
-    <label className="block text-sm font-medium mb-1 text-gray-700">{label}</label>
+    <label className="block text-sm font-medium mb-1 text-gray-700">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
     <input
       type={type}
       name={name}
@@ -179,7 +186,7 @@ const FormInput = ({ label, name, value, onChange, required = false, type = "tex
       onChange={onChange}
       required={required}
       readOnly={readOnly}
-      className={`w-full px-3 py-2 border border-gray-300 rounded text-sm ${readOnly ? 'bg-gray-200 text-gray-700 cursor-not-allowed' : 'bg-white'} ${readOnly && name === 'vendor_id' ? 'focus:ring-0 focus:border-gray-300 hover:border-gray-300' : 'focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]'}`}
+      className={`w-full px-3 py-2 border rounded text-sm ${readOnly ? 'bg-gray-200 text-gray-700 cursor-not-allowed' : 'bg-white'} ${isInvalid ? 'border-red-500' : 'border-gray-300'} ${readOnly && name === 'vendor_id' ? 'focus:ring-0 focus:border-gray-300 hover:border-gray-300' : 'focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]'}`}
       placeholder={name === 'vendor_id' && !value ? 'Will be generated' : label}
       tabIndex={readOnly ? -1 : 0}
     />

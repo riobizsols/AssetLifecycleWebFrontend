@@ -12,6 +12,7 @@ const Departments = () => {
   const [nextDeptId, setNextDeptId] = useState("");
   const [newDeptName, setNewDeptName] = useState("");
   const [isMaximized, setIsMaximized] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
   useEffect(() => {
@@ -51,6 +52,7 @@ const Departments = () => {
   }, []);
 
   const handleCreate = async () => {
+    setSubmitAttempted(true);
     if (!newDeptName.trim()) {
       toast.error("Department name is required");
       return;
@@ -61,6 +63,7 @@ const Departments = () => {
       fetchDepartments();
       fetchNextDeptId();
       toast.success(`Department "${newDeptName}" created successfully`);
+      setSubmitAttempted(false);
     } catch (err) {
       console.error("Error creating department:", err);
       const errorMessage = err.response?.data?.message || err.message || "An error occurred";
@@ -114,9 +117,11 @@ const Departments = () => {
     setSelectedDept(dept);
     setEditName(dept.text);
     setShowEditModal(true);
+    setSubmitAttempted(false);
   };
 
   const confirmUpdate = async () => {
+    setSubmitAttempted(true);
     if (!editName.trim()) {
       toast.error("Department name is required");
       return;
@@ -129,12 +134,16 @@ const Departments = () => {
       setShowEditModal(false);
       fetchDepartments();
       toast.success(`Department "${editName}" updated successfully`);
+      setSubmitAttempted(false);
     } catch (err) {
       console.error("Error updating department:", err);
       const errorMessage = err.response?.data?.message || err.message || "An error occurred";
       toast.error(`Failed to update department: ${errorMessage}`);
     }
   };
+
+  // Helper for invalid field
+  const isFieldInvalid = (val) => submitAttempted && !val.trim();
 
   return (
     <div className="flex">
@@ -155,9 +164,11 @@ const Departments = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Department Name <span className="text-red-500">*</span>
+              </label>
               <input
-                className="border px-3 py-2 rounded w-64 text-sm"
+                className={`border px-3 py-2 rounded w-64 text-sm ${isFieldInvalid(newDeptName) ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="Department Name"
                 value={newDeptName}
                 onChange={(e) => setNewDeptName(e.target.value)}
@@ -285,11 +296,13 @@ const Departments = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Department Name</label>
+                  <label className="text-sm font-medium mb-1">
+                    Department Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="border px-3 py-2 rounded w-full mt-1"
+                    className={`border px-3 py-2 rounded w-full mt-1 ${isFieldInvalid(editName) ? 'border-red-500' : 'border-gray-300'}`}
                   />
                 </div>
                 <div className="flex justify-end gap-4 mt-6">

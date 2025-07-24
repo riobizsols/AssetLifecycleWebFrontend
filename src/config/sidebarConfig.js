@@ -32,10 +32,24 @@ export const sidebarItems = [
     },
     {
         label: "Manage Assign Assets",
-        path: "/assign-assets",
         icon: FileCog,
         roles: ["super_admin", "employee"],
+        children: [
+            {
+                label: "Dept Asset Assignment",
+                path: "/assign-department-assets",
+                icon: FileCog,
+                roles: ["super_admin"],
+            },
+            {
+                label: "Employee Asset Assignment",
+                path: "/assign-employee-assets",
+                icon: FileCog,
+                roles: ["super_admin", "employee"],
+            },
+        ]
     },
+
     {
         label: "Maintenance",
         path: "/maintenance",
@@ -51,6 +65,12 @@ export const sidebarItems = [
     {
         label: "Maintenance Approval",
         path: "/maintenance-approval",
+        icon: FileText,
+        roles: ["super_admin"],
+    },
+    {
+        label: "Maintenance Supervisor",
+        path: "/supervisor-approval",
         icon: FileText,
         roles: ["super_admin"],
     },

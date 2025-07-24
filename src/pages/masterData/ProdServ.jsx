@@ -35,6 +35,8 @@ export default function ProdServ() {
   const [services, setServices] = useState([]);
   const [productFilter, setProductFilter] = useState('');
   const [serviceFilter, setServiceFilter] = useState('');
+  const [productSubmitAttempted, setProductSubmitAttempted] = useState(false);
+  const [serviceSubmitAttempted, setServiceSubmitAttempted] = useState(false);
 
   // Asset types for dropdown
   const [assetTypes, setAssetTypes] = useState([]);
@@ -93,6 +95,7 @@ export default function ProdServ() {
 
   // Add product using /prodserv
   const handleProductAdd = async () => {
+    setProductSubmitAttempted(true);
     if (!productForm.assetType || !productForm.brand || !productForm.model) return;
     try {
       await API.post('/prodserv', {
@@ -103,6 +106,7 @@ export default function ProdServ() {
         ps_type: 'product'
       });
       setProductForm({ assetType: '', brand: '', model: '', description: '' });
+      setProductSubmitAttempted(false);
       // Refresh products
       const res = await API.get('/prodserv');
       const all = Array.isArray(res.data) ? res.data : [];
@@ -114,6 +118,7 @@ export default function ProdServ() {
 
   // Add service using /prodserv
   const handleServiceAdd = async () => {
+    setServiceSubmitAttempted(true);
     if (!serviceForm.assetType || !serviceForm.description) return;
     try {
       await API.post('/prodserv', {
@@ -122,6 +127,7 @@ export default function ProdServ() {
         ps_type: 'service'
       });
       setServiceForm({ assetType: '', description: '' });
+      setServiceSubmitAttempted(false);
       // Refresh services
       const res = await API.get('/prodserv');
       const all = Array.isArray(res.data) ? res.data : [];
@@ -224,13 +230,17 @@ export default function ProdServ() {
     setItemToDelete(null);
   };
 
+  // Helper for invalid field
+  const isProductFieldInvalid = (val) => productSubmitAttempted && !val;
+  const isServiceFieldInvalid = (val) => serviceSubmitAttempted && !val;
+
   return (
     <>
       <style>{placeholderStyle}</style>
       <div className='p-3'>
         <div className="max-w-7xl mx-auto bg-white rounded shadow-lg">
-          <div className="bg-[#003366] text-white text-base font-semibold py-3 px-6 rounded-t flex items-center justify-center border-b-4 border-[#FFC107]">
-            Product / Service
+          <div className="bg-[#0E2F4B] text-white text-base font-semibold py-3 px-6 rounded-t flex items-center justify-center border-b-4 border-[#FFC107]">
+            {/* Product / Service */}
           </div>
           <div className="px-6 pt-6">
             {/* Tabs */}
@@ -255,11 +265,13 @@ export default function ProdServ() {
                 {/* Product Form */}
                 <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
-                    <label className="text-xs mb-1">Asset Type</label>
+                    <label className="text-xs mb-1">
+                      Asset Type <span className="text-red-500">*</span>
+                    </label>
                     {/* Product Form Asset Type Dropdown */}
                     <div className="relative w-64">
                       <button
-                        className="border text-black px-3 py-2 text-xs w-full bg-white focus:outline-none flex justify-between items-center"
+                        className={`border text-black px-3 py-2 text-xs w-full bg-white focus:outline-none flex justify-between items-center ${isProductFieldInvalid(productForm.assetType) ? 'border-red-500' : 'border-gray-300'}`}
                         type="button"
                         onClick={() => setShowDropdownProduct((prev) => !prev)}
                       >
@@ -303,20 +315,24 @@ export default function ProdServ() {
                     </div>
                   </div>
                   <div className="flex flex-col min-w-[140px]">
-                    <label className="text-xs mb-1">Brand</label>
+                    <label className="text-xs mb-1">
+                      Brand <span className="text-red-500">*</span>
+                    </label>
                     {/* Product Form Brand Dropdown */}
                     <input 
-                      className="border rounded px-2 py-1 w-full" 
+                      className={`border rounded px-2 py-1 w-full ${isProductFieldInvalid(productForm.brand) ? 'border-red-500' : 'border-gray-300'}`}
                       value={productForm.brand} 
                       onChange={e => setProductForm(f => ({ ...f, brand: e.target.value }))} 
                       placeholder="Enter Brand" 
                     />
                   </div>
                   <div className="flex flex-col min-w-[140px]">
-                    <label className="text-xs mb-1">Model</label>
+                    <label className="text-xs mb-1">
+                      Model <span className="text-red-500">*</span>
+                    </label>
                     {/* Product Form Model Dropdown */}
                     <input 
-                      className="border rounded px-2 py-1 w-full" 
+                      className={`border rounded px-2 py-1 w-full ${isProductFieldInvalid(productForm.model) ? 'border-red-500' : 'border-gray-300'}`}
                       value={productForm.model} 
                       onChange={e => setProductForm(f => ({ ...f, model: e.target.value }))} 
                       placeholder="Enter Model" 
@@ -438,11 +454,13 @@ export default function ProdServ() {
                 {/* Service Form */}
                 <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
-                    <label className="text-xs mb-1">Asset Type</label>
+                    <label className="text-xs mb-1">
+                      Asset Type <span className="text-red-500">*</span>
+                    </label>
                     {/* Service Form Asset Type Dropdown */}
                     <div className="relative w-64">
                       <button
-                        className="border text-black px-3 py-2 text-xs w-full bg-white focus:outline-none flex justify-between items-center"
+                        className={`border text-black px-3 py-2 text-xs w-full bg-white focus:outline-none flex justify-between items-center ${isServiceFieldInvalid(serviceForm.assetType) ? 'border-red-500' : 'border-gray-300'}`}
                         type="button"
                         onClick={() => setShowDropdownService((prev) => !prev)}
                       >
@@ -486,9 +504,11 @@ export default function ProdServ() {
                     </div>
                   </div>
                   <div className="flex flex-col min-w-[140px]">
-                    <label className="text-xs mb-1">Description</label>
+                    <label className="text-xs mb-1">
+                      Description <span className="text-red-500">*</span>
+                    </label>
                     <input
-                      className="border rounded px-2 py-1 w-full"
+                      className={`border rounded px-2 py-1 w-full ${isServiceFieldInvalid(serviceForm.description) ? 'border-red-500' : 'border-gray-300'}`}
                       value={serviceForm.description}
                       onChange={e => setServiceForm(f => ({ ...f, description: e.target.value }))}
                       placeholder="Enter Description"

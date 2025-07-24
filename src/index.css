@@ -2,6 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Arrow shape for progress steps */
+@layer components {
+  .arrow-step {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding-left: 16px;
+    padding-right: 28px;
+    margin-right: 0;
+    flex: 1;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%);
+  }
+  
+  .arrow-step:first-child {
+    padding-left: 20px;
+    border-top-left-radius: 9999px;
+    border-bottom-left-radius: 9999px;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
+  }
+  
+  .arrow-step:last-child {
+    padding-right: 20px;
+    margin-right: 0;
+    border-top-right-radius: 9999px;
+    border-bottom-right-radius: 9999px;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 12px 50%);
+  }
+  
+  .arrow-step:first-child:last-child {
+    clip-path: none;
+    padding-right: 20px;
+    border-radius: 9999px;
+  }
+}
+
 ::-webkit-scrollbar {
     width: 6px;
 }

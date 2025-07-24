@@ -24,6 +24,8 @@ const ContentBox = ({
   data = [], // The actual data to be displayed and filtered
   onDownload,
   children,
+  showAddButton = true, // <-- Add this line
+  showActions = true, // <-- Add this line
 }) => {
   const navigate = useNavigate();
 
@@ -119,7 +121,10 @@ const ContentBox = ({
   };
 
   const [visibleColumns, setVisibleColumns] = useState(
-    filters.map((f, i) => ({ ...f, visible: i < 7 }))
+    filters.map((f, i) => ({
+      ...f,
+      visible: i < 7 || f.name === 'status', // Always show Status column
+    }))
   );
 
   const toggleColumn = (name) => {
@@ -298,12 +303,14 @@ const ContentBox = ({
         </div>
 
         <div className="flex gap-2 justify-end">
-          <button
-            onClick={() => navigate("add")}
-            className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
-          >
-            <Plus size={16} />
-          </button>
+          {showAddButton && (
+            <button
+              onClick={() => navigate("add")}
+              className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
+            >
+              <Plus size={16} />
+            </button>
+          )}
 
           <button
             onClick={() => {
@@ -475,12 +482,14 @@ const ContentBox = ({
                   </th>
                 );
               })}
-              <th className="px-4 py-3 text-center">Actions</th>
+              {showActions && (
+                <th className="px-4 py-3 text-center">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody>
             {typeof children === "function"
-              ? children({ visibleColumns })
+              ? children({ visibleColumns, showActions })
               : children}
           </tbody>
         </table>

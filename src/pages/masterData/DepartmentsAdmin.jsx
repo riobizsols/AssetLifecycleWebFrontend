@@ -14,6 +14,7 @@ const DepartmentsAdmin = () => {
   const [userToDelete, setUserToDelete] = useState(null);
 
    const [isMaximized, setIsMaximized] = useState(false);
+   const [submitAttempted, setSubmitAttempted] = useState(false);
   
     const toggleMaximize = () => setIsMaximized((prev) => !prev);
 
@@ -57,6 +58,7 @@ const DepartmentsAdmin = () => {
   };
 
   const handleAddAdmin = async () => {
+    setSubmitAttempted(true);
     if (!selectedUser || !selectedDept) {
       toast.error("Please select both department and user");
       return;
@@ -110,6 +112,9 @@ const DepartmentsAdmin = () => {
     fetchUsersToAdd(); // Fetch all users on component mount
   }, []);
 
+  // Helper for invalid field
+  const isFieldInvalid = (val) => submitAttempted && !val;
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       {/* Department Dropdown */}
@@ -118,18 +123,23 @@ const DepartmentsAdmin = () => {
           Department Selection
         </div>
         <div className="p-4 flex gap-4 items-center">
-          <select
-            className="border px-3 py-2 text-sm w-64 bg-white text-black focus:outline-none"
-            value={selectedDept || ""}
-            onChange={(e) => setSelectedDept(e.target.value)}
-          >
-            <option value="">Select Department</option>
-            {departments.map((dept) => (
-              <option key={dept.dept_id} value={dept.dept_id}>
-                {dept.text}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col">
+            <label className="text-sm font-medium mb-1">
+              Department <span className="text-red-500">*</span>
+            </label>
+            <select
+              className={`border px-3 py-2 text-sm w-64 bg-white text-black focus:outline-none ${isFieldInvalid(selectedDept) ? 'border-red-500' : 'border-gray-300'}`}
+              value={selectedDept || ""}
+              onChange={(e) => setSelectedDept(e.target.value)}
+            >
+              <option value="">Select Department</option>
+              {departments.map((dept) => (
+                <option key={dept.dept_id} value={dept.dept_id}>
+                  {dept.text}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
       {/* Add Admin Section */}
@@ -139,71 +149,76 @@ const DepartmentsAdmin = () => {
         </div>
         <div className="p-4 flex gap-4 items-center">
           {/* Custom Searchable Dropdown for Users */}
-          <div className="relative w-64">
-            <button
-              className="border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center"
-              onClick={() => {
-                dropdownUserRef.current.classList.toggle("hidden");
-              }}
-              type="button"
-            >
-              {selectedUser
-                ? usersToAdd.find((u) => u.user_id === selectedUser)?.full_name || "Select User"
-                : "Select User"}
-              <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
-            </button>
-            {/* Dropdown List */}
-            <div
-              ref={dropdownUserRef}
-              className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-64 overflow-y-auto z-10 hidden"
-              style={{ minWidth: "100%" }}
-            >
-              {/* Sticky Search Input */}
-              <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
-                <input
-                  type="text"
-                  className="w-full border px-2 py-1 rounded text-sm"
-                  placeholder="Search Users..."
-                  value={searchUser}
-                  onChange={e => setSearchUser(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              {/* Filtered Users */}
-              {usersToAdd
-                .filter(u => 
-                  u.full_name.toLowerCase().includes(searchUser.toLowerCase()) ||
-                  u.user_id.toLowerCase().includes(searchUser.toLowerCase())
-                )
-                .map((user) => (
-                  <div
-                    key={user.user_id}
-                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedUser === user.user_id ? "bg-gray-200" : ""}`}
+          <div className="flex flex-col w-64">
+            <label className="text-sm font-medium mb-1">
+              User <span className="text-red-500">*</span>
+            </label>
+            <div className="relative w-full">
+              <button
+                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedUser) ? 'border-red-500' : 'border-gray-300'}`}
+                onClick={() => {
+                  dropdownUserRef.current.classList.toggle("hidden");
+                }}
+                type="button"
+              >
+                {selectedUser
+                  ? usersToAdd.find((u) => u.user_id === selectedUser)?.full_name || "Select User"
+                  : "Select User"}
+                <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
+              </button>
+              {/* Dropdown List */}
+              <div
+                ref={dropdownUserRef}
+                className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-64 overflow-y-auto z-10 hidden"
+                style={{ minWidth: "100%" }}
+              >
+                {/* Sticky Search Input */}
+                <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
+                  <input
+                    type="text"
+                    className="w-full border px-2 py-1 rounded text-sm"
+                    placeholder="Search Users..."
+                    value={searchUser}
+                    onChange={e => setSearchUser(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {/* Filtered Users */}
+                {usersToAdd
+                  .filter(u => 
+                    u.full_name.toLowerCase().includes(searchUser.toLowerCase()) ||
+                    u.user_id.toLowerCase().includes(searchUser.toLowerCase())
+                  )
+                  .map((user) => (
+                    <div
+                      key={user.user_id}
+                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedUser === user.user_id ? "bg-gray-200" : ""}`}
+                      onClick={() => {
+                        setSelectedUser(user.user_id);
+                        dropdownUserRef.current.classList.add("hidden");
+                        setSearchUser("");
+                      }}
+                    >
+                      <div className="font-medium">{user.full_name}</div>
+                      <div className="text-xs text-gray-500">ID: {user.user_id}</div>
+                    </div>
+                  ))}
+                {/* Sticky Create New User Option */}
+                <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-4 py-2">
+                  <button
+                    className="w-full text-left text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-2"
                     onClick={() => {
-                      setSelectedUser(user.user_id);
                       dropdownUserRef.current.classList.add("hidden");
                       setSearchUser("");
+                      navigate("/master-data/users");
                     }}
                   >
-                    <div className="font-medium">{user.full_name}</div>
-                    <div className="text-xs text-gray-500">ID: {user.user_id}</div>
-                  </div>
-                ))}
-              {/* Sticky Create New User Option */}
-              <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-4 py-2">
-                <button
-                  className="w-full text-left text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-2"
-                  onClick={() => {
-                    dropdownUserRef.current.classList.add("hidden");
-                    setSearchUser("");
-                    navigate("/master-data/users");
-                  }}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Create New User
-                </button>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Create New User
+                  </button>
+                </div>
               </div>
             </div>
           </div>

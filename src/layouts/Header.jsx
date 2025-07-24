@@ -1,13 +1,31 @@
 import { useAuthStore } from "../store/useAuthStore";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 export default function Header() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Map paths to page titles
+  const pathTitleMap = {
+    "/supervisor-approval": "Maintenance Supervisor",
+    "/approval-detail": "Maintenance Approval",
+    "/dashboard": "Dashboard",
+    "/assets/add": "Add Asset",
+    "/master-data/asset-types/add" : "Add Asset Type",
+    "/master-data/branches/add" : "Add Branch",
+    "/master-data/vendors/add" : "Add Vendor",
+    "/master-data/prod-serv" : "Product / Service"
+    // Add more routes as needed
+  };
+  const pageTitle =
+    Object.entries(pathTitleMap).find(([path]) =>
+      location.pathname.startsWith(path)
+    )?.[1] || "";
 
   const handleLogout = () => {
     logout();
@@ -37,7 +55,11 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="flex items-center justify-end bg-white px-6 py-3 shadow-sm relative">
+    <header className="flex items-center justify-between bg-white px-6 py-3 shadow-sm relative">
+      {/* Page Title */}
+      <div className="text-2xl font-bold text-[#0E2F4B]">
+        {pageTitle}
+      </div>
       <div className="relative" ref={dropdownRef}>
         {/* Avatar Button */}
         <button

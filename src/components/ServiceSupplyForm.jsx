@@ -13,6 +13,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
   const [services, setServices] = useState([]);
   const [form, setForm] = useState({ assetType: "", description: "" });
   const [maximized, setMaximized] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [allServiceDescriptions, setAllServiceDescriptions] = useState([]);
 
   useEffect(() => {
@@ -66,6 +67,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
   // Table renders from services state only.
   // Keep dropdown API logic for asset types and for fetching all service descriptions.
   const handleAdd = () => {
+    setSubmitAttempted(true);
     // Validate required fields
     if (!form.assetType) {
       toast.error("Please select an asset type");
@@ -103,6 +105,9 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
       toast.error("Failed to add service");
     }
   };
+
+  // Helper for invalid field
+  const isFieldInvalid = (val) => submitAttempted && !val;
 
   // Table card content
   const tableCard = (
@@ -263,7 +268,9 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
       {/* Add Service Row (always visible) */}
       <div className="flex items-end gap-4 mb-8">
         <div>
-          <label className="block text-sm text-gray-700 mb-2">Asset Type</label>
+          <label className="block text-sm text-gray-700 mb-2">
+            Asset Type <span className="text-red-500">*</span>
+          </label>
           <SearchableDropdown
             options={assetTypes}
             value={form.assetType}
@@ -272,13 +279,15 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
             searchPlaceholder="Search Asset Types..."
             createNewText="Create New"
             createNewPath="/master-data/asset-types"
-            className="w-48"
+            className={`w-48 ${isFieldInvalid(form.assetType) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="asset_type_id"
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-700 mb-2">Description</label>
+          <label className="block text-sm text-gray-700 mb-2">
+            Description <span className="text-red-500">*</span>
+          </label>
           <SearchableDropdown
             options={filteredDescriptions.map(s => ({ id: s.description, text: s.description }))}
             value={form.description}
@@ -286,7 +295,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
             placeholder="Select Description"
             searchPlaceholder="Search Descriptions..."
             disabled={!form.assetType}
-            className="w-80"
+            className={`w-80 ${isFieldInvalid(form.description) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="id"
           />

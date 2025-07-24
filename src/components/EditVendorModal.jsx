@@ -18,6 +18,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
     pincode: '',
     int_status: 1
   });
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     if (vendor) {
@@ -50,6 +51,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitAttempted(true);
     
     // Validate required fields
     if (!formData.vendor_name || !formData.company_name || !formData.company_email) {
@@ -83,6 +85,9 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
     onConfirm(formData);
   };
 
+  // Helper for invalid field
+  const isFieldInvalid = (val) => submitAttempted && !val.trim();
+
   if (!show) return null;
 
   return (
@@ -109,42 +114,42 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Vendor Name *
+                  Vendor Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="vendor_name"
                   value={formData.vendor_name}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  className={`w-full px-3 py-2 border rounded text-sm ${isFieldInvalid(formData.vendor_name) ? 'border-red-500' : 'border-gray-300'}`}
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Name *
+                  Company Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="company_name"
                   value={formData.company_name}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  className={`w-full px-3 py-2 border rounded text-sm ${isFieldInvalid(formData.company_name) ? 'border-red-500' : 'border-gray-300'}`}
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Email *
+                  Company Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
                   name="company_email"
                   value={formData.company_email}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  className={`w-full px-3 py-2 border rounded text-sm ${isFieldInvalid(formData.company_email) ? 'border-red-500' : 'border-gray-300'}`}
                   required
                 />
               </div>

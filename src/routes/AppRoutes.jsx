@@ -19,6 +19,15 @@ import ProdServ from "../pages/masterData/ProdServ";
 import AddAssetForm from "../components/AddAssetForm";
 import AddAssetType from "../components/AddAssetType";
 import AssetType from "../pages/AssetType";
+import DepartmentWiseAssetAssignment from "../pages/DepartmentWiseAssetAssignment";
+import EmployeeWiseAssetAssignment from "../pages/EmployeeWiseAssetAssignment";
+import AssetSelection from "../components/assetAssignment/AssetSelection";
+import AssetsDetail from "../components/assetAssignment/AssetsDetail";
+import MaintenanceApproval from "../pages/MaintenanceApproval";
+import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
+import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
+import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
+// import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
 export default function AppRoutes() {
   return (
@@ -37,6 +46,89 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <NotificationsPanel />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assign-department-assets"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <DepartmentWiseAssetAssignment />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assign-employee-assets"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <EmployeeWiseAssetAssignment />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/asset-selection"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AssetSelection />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/asset-detail"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AssetsDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/maintenance-approval"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MaintenanceApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/approval-detail/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MaintenanceApprovalDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/supervisor-approval"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MaintenanceSupervisor />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        
 
           <Route
             path="/assets"

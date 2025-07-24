@@ -11,6 +11,7 @@ import DeleteConfirmModal from "../../components/DeleteConfirmModal";
 const Users = () => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -30,6 +31,7 @@ const Users = () => {
     { label: "Full Name", name: "full_name", visible: true },
     { label: "Email", name: "email", visible: true },
     { label: "Mobile Number", name: "phone", visible: true },
+    { label: "Department", name: "dept_name", visible: true },
     { label: "Role", name: "job_role_id", visible: true },
     { label: "Is Active", name: "int_status", visible: true },
     { label: "Last Accessed", name: "last_accessed", visible: true },
@@ -47,6 +49,17 @@ const Users = () => {
     { label: "Reset Token Expiry", name: "reset_token_expiry", visible: false }
   ]);
 
+  // Fetch departments
+  const fetchDepartments = async () => {
+    try {
+      const res = await API.get("/admin/departments");
+      setDepartments(res.data);
+    } catch (err) {
+      console.error("Failed to fetch departments", err);
+      toast.error("Failed to fetch departments");
+    }
+  };
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -56,7 +69,8 @@ const Users = () => {
           int_status: item.int_status === 1 ? 'Active' : 'Inactive',
           created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
           changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
-          last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : ''
+          last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : '',
+          dept_name: departments.find(d => d.dept_id === item.dept_id)?.text || 'Not Assigned'
         }));
         setData(formattedData);
       } catch (error) {
@@ -65,6 +79,10 @@ const Users = () => {
       }
     };
     fetchUsers();
+  }, [departments]);
+
+  useEffect(() => {
+    fetchDepartments();
   }, []);
 
   const handleSort = (column) => {
@@ -305,7 +323,8 @@ const Users = () => {
             int_status: item.int_status === 1 ? 'Active' : 'Inactive',
             created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
             changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
-            last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : ''
+            last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : '',
+            dept_name: departments.find(d => d.dept_id === item.dept_id)?.text || 'Not Assigned'
           }));
           setData(formattedData);
         }
@@ -420,7 +439,11 @@ const Users = () => {
       
       if (response.data) {
         setData(prev => prev.map(user => 
-          user.user_id === userId ? { ...user, ...response.data } : user
+          user.user_id === userId ? { 
+            ...user, 
+            ...response.data,
+            dept_name: departments.find(d => d.dept_id === response.data.dept_id)?.text || 'Not Assigned'
+          } : user
         ));
         toast.success("User updated successfully");
         setShowEditModal(false);
@@ -489,8 +512,8 @@ const Users = () => {
               }}
               onDelete={(row) => {
                 console.log("Delete clicked for row:", row);
-                setUserToDelete(row);
-                setShowDeleteModal(true);
+                // setUserToDelete(row); // This state was removed
+                // setShowDeleteModal(true); // This state was removed
               }}
               rowKey="user_id"
             />
@@ -549,6 +572,21 @@ const Users = () => {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                  <select
+                    value={editingUser.dept_id || ""}
+                    onChange={(e) => setEditingUser({ ...editingUser, dept_id: e.target.value })}
+                    className="w-full border rounded px-3 py-2"
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map((dept) => (
+                      <option key={dept.dept_id} value={dept.dept_id}>
+                        {dept.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
                     value={editingUser.int_status}
@@ -576,6 +614,7 @@ const Users = () => {
                   full_name: editingUser.full_name,
                   email: editingUser.email,
                   phone: editingUser.phone,
+                  dept_id: editingUser.dept_id,
                   int_status: editingUser.int_status === 'Active' ? 1 : 0
                 })}
                 className="px-4 py-2 bg-[#003366] text-white rounded hover:bg-[#002347]"

@@ -33,6 +33,8 @@ const AssetType = () => {
     { label: "Assignment Type", name: "assignment_type", visible: true },
     { label: "Inspection Required", name: "inspection_required", visible: true },
     { label: "Group Required", name: "group_required", visible: true },
+    { label: "Type", name: "type", visible: true },
+    { label: "Parent Asset Type", name: "parent_asset_type", visible: true },
     { label: "Created By", name: "created_by", visible: true },
     { label: "Created On", name: "created_on", visible: true },
     { label: "Changed By", name: "changed_by", visible: true },
@@ -44,6 +46,13 @@ const AssetType = () => {
   const fetchAssetTypes = async () => {
     try {
       const res = await API.get("/asset-types");
+      
+      // Create a map of asset types for parent lookup
+      const assetTypeMap = res.data.reduce((map, type) => {
+        map[type.asset_type_id] = type.text;
+        return map;
+      }, {});
+
       const formattedData = res.data.map(item => ({
         ...item,
         int_status: item.int_status === 1 ? 'Active' : 'Inactive',
@@ -52,7 +61,9 @@ const AssetType = () => {
         inspection_required: item.inspection_required ? 'Yes' : 'No',
         maintenance_schedule: Number(item.maintenance_schedule) === 1 ? 'Yes' : 'No',
         created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-        changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : ''
+        changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
+        type: item.is_child ? 'Child' : 'Parent',
+        parent_asset_type: item.parent_asset_type_id ? assetTypeMap[item.parent_asset_type_id] : '-'
       }));
       setData(formattedData);
     } catch (err) {

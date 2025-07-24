@@ -7,9 +7,9 @@ import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/UpdateAssetModal";
-import DeleteConfirmModal from "../components/DeleteConfirmModal";
+import StatusBadge from "../components/StatusBadge";
 
-const Assets = () => {
+const MaintenanceApprovalDetail = () => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [filterValues, setFilterValues] = useState({
@@ -26,24 +26,14 @@ const Assets = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [columns] = useState([
+    { label: "Asset Type", name: "asset_type_id", visible: true },
     { label: "Asset Id", name: "asset_id", visible: true },
-    { label: "Asset Type Id", name: "asset_type_id", visible: true },
-    { label: "Asset Name", name: "text", visible: true },
-    { label: "Serial Number", name: "serial_number", visible: true },
-    { label: "Description", name: "description", visible: true },
-    { label: "Current Status", name: "current_status", visible: true },
-    { label: "Purchase Cost", name: "purchased_cost", visible: true },
-    { label: "Purchase Date", name: "purchased_on", visible: true },
-    { label: "Purchase By", name: "purchased_by", visible: true },
-    { label: "Expiry Date", name: "expiry_date", visible: true },
-    { label: "Warranty Period", name: "warranty_period", visible: true },
-    { label: "Branch Id", name: "branch_id", visible: true },
-    { label: "Vendor Id", name: "vendor_id", visible: true },
-    { label: "Parent Id", name: "parent_asset_id", visible: true },
-    { label: "Group Id", name: "group_id", visible: true },
-    { label: "Maintenance Schedule Id", name: "maintsch_id", visible: false },
-    { label: "Product/Service Id", name: "prod_serve_id", visible: false },
-    { label: "Ext Id", name: "ext_id", visible: false },
+    { label: "Scheduled Date", name: "scheduled_date", visible: true },
+    { label: "Vendor", name: "vendor", visible: true },
+    { label: "Department", name: "department", visible: true },
+    { label: "Employee", name: "employee", visible: true },
+    { label: "Maintenance Type", name: "maintenance_type", visible: true },
+    { label: "Status", name: "status", visible: true },
   ]);
 
   useEffect(() => {
@@ -247,6 +237,10 @@ const Assets = () => {
     onChange: (value) => handleFilterChange(col.name, value),
   }));
 
+  const handleRowClick = (row) => {
+    navigate(`/approval-detail/${row.asset_id}`);
+  };
+
   return (
     <div className="p-4">
       <ContentBox
@@ -260,8 +254,10 @@ const Assets = () => {
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        showAddButton={false} // Hide Add button for this page
+        showActions={false} // Hide Actions column header for this page
       >
-        {({ visibleColumns }) => {
+        {({ visibleColumns, showActions }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
@@ -276,6 +272,23 @@ const Assets = () => {
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 rowKey="asset_id"
+                showActions={showActions} // Hide action column for this page
+                renderCell={(col, row, colIndex) =>
+                  col.name === "status"
+                    ? <StatusBadge status={row[col.name]} />
+                    : colIndex === 0
+                      ? <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(row["asset_id"])}
+                            onChange={() => setSelectedRows(prev => prev.includes(row["asset_id"]) ? prev.filter(id => id !== row["asset_id"]) : [...prev, row["asset_id"]])}
+                            className="accent-yellow-400"
+                          />
+                          {row[col.name]}
+                        </div>
+                      : row[col.name]
+                }
+                onRowClick={handleRowClick}
               />
               {updateModalOpen && (
                 <UpdateAssetModal
@@ -292,4 +305,4 @@ const Assets = () => {
   );
 };
 
-export default Assets;
+export default MaintenanceApprovalDetail;
