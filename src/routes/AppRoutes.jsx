@@ -87,7 +87,7 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="/asset-detail"
+          path="/asset-detail/:asset_id"
           element={
             <ProtectedRoute>
               <MainLayout>

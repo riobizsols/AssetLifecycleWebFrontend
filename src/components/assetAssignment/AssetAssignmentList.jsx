@@ -1,13 +1,16 @@
-import React, { useState } from "react";
-import { Maximize, Minimize, Trash2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Maximize, Minimize, Trash2, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import API from '../../lib/axios';
+import AssetAssignmentHistory from "./AssetAssignmentHistory";
 
 const AssetAssignmentList = ({
   title,
   entityType, // 'department' or 'employee'
   entities,
   selectedEntity,
+  selectedEntityIntId,
   onEntitySelect,
   onDelete,
   assignmentList,
@@ -22,6 +25,7 @@ const AssetAssignmentList = ({
   const [isMaximized, setIsMaximized] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
   const navigate = useNavigate();
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
@@ -32,17 +36,33 @@ const AssetAssignmentList = ({
   };
 
   const confirmDelete = async () => {
+    if (!itemToDelete) return;
     try {
-      await onDelete(itemToDelete);
+      // Build payload for unassignment
+      const payload = {
+        dept_id: itemToDelete.dept_id || selectedEntity,
+        asset_id: itemToDelete.asset_id,
+        org_id: itemToDelete.org_id,
+        action: 'C',
+        latest_assignment_flag: false
+      };
+      // Only include employee_int_id for employee assignments
+      if (entityType === 'employee' && itemToDelete.employee_int_id) {
+        payload.employee_int_id = itemToDelete.employee_int_id;
+      }
+      await API.put(`/asset-assignments/${itemToDelete.asset_assign_id}`, payload);
       fetchAssignments();
       setShowDeleteModal(false);
-      toast.success(`Asset unassigned successfully`);
+      toast.success('Asset unassigned successfully');
     } catch (err) {
-      console.error("Failed to delete assignment", err);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
+      console.error('Failed to unassign asset', err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'An error occurred';
       toast.error(`Failed to unassign asset: ${errorMessage}`);
     }
   };
+
+  // Find department ID for display in table rows
+  const departmentId = (typeof department === 'object' && department?.dept_id) ? department.dept_id : selectedEntity;
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -110,6 +130,7 @@ const AssetAssignmentList = ({
               onClick={() => navigate('/asset-selection', { 
                 state: { 
                   entityId: selectedEntity,
+                  entityIntId: selectedEntityIntId,
                   entityType: entityType,
                   departmentId: selectedDepartment
                 } 
@@ -133,47 +154,117 @@ const AssetAssignmentList = ({
       >
         <div className="bg-white rounded shadow">
           <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-            {title || 'Current Assets List'}
-            <button onClick={toggleMaximize}>
-              {isMaximized ? (
-                <Minimize className="text-[#0E2F4B]" size={18} />
+            <div className="flex items-center gap-3 w-full justify-between">
+              <span>{title || 'Current Assets List'}</span>
+              <div className="flex items-center gap-2">
+                {entityType === 'employee' && selectedEntity && (
+                  <button
+                    onClick={() => setShowHistory(true)}
+                    className="flex items-center gap-1 px-4 py-2 rounded-lg bg-white/30 backdrop-blur-md border border-white/40 shadow-sm text-[#0E2F4B] font-semibold hover:bg-white/50 transition"
+                    style={{ boxShadow: '0 4px 24px 0 rgba(30, 41, 59, 0.08)' }}
+                  >
+                    <History size={18} className="opacity-80" />
+                    <span className="text-sm">History</span>
+                  </button>
+                )}
+                <button onClick={toggleMaximize} className="ml-2">
+                  {isMaximized ? (
+                    <Minimize className="text-[#0E2F4B]" size={18} />
+                  ) : (
+                    <Maximize className="text-[#0E2F4B]" size={18} />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+          {entityType === 'department' ? (
+            <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
+              <div className="grid grid-cols-8 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+                <div>Asset ID</div>
+                <div>Department ID</div>
+                <div>Asset Type Name</div>
+                <div>Description</div>
+                <div>Action</div>
+                <div>Assignment Date</div>
+                <div>Assigned By</div>
+                <div className="text-center">Actions</div>
+              </div>
+              {assignmentList.length === 0 ? (
+                <div className="px-4 py-6 text-center text-gray-500 col-span-8 bg-white rounded-b">No assets assigned.</div>
               ) : (
-                <Maximize className="text-[#0E2F4B]" size={18} />
-              )}
-            </button>
-          </div>
-          <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-            <div className="grid grid-cols-6 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-              <div>Asset Type</div>
-              <div>Asset ID</div>
-              <div>Description</div>
-              <div>Assignment Date</div>
-              <div>Assigned By</div>
-              <div className="text-center">Actions</div>
-            </div>
-
-            <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}>
-              {assignmentList.map((item, i) => (
-                <div
-                  key={`${item.asset_id}`}
-                  className={`grid grid-cols-6 px-4 py-2 items-center border-b ${
-                    i % 2 === 0 ? "bg-white" : "bg-gray-100"
-                  } text-gray-800`}
-                >
-                  <div>{item.asset_type}</div>
-                  <div>{item.asset_id}</div>
-                  <div>{item.description}</div>
-                  <div>{item.assignment_date}</div>
-                  <div>{item.assigned_by}</div>
-                  <div className="flex justify-center">
-                    <button onClick={() => handleDelete(item)}>
-                      <Trash2 className="text-yellow-500" size={18} />
-                    </button>
-                  </div>
+                <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}> 
+                  {assignmentList.map((item, i) => (
+                    <div
+                      key={item.asset_assign_id || `${item.asset_id}_${i}`}
+                      className={`grid grid-cols-8 px-4 py-2 items-center border-b ${
+                        i % 2 === 0 ? "bg-white" : "bg-gray-100"
+                      } text-gray-800`}
+                    >
+                      <div>{item.asset_id}</div>
+                      <div>{departmentId || '-'}</div>
+                      <div>{item.asset_type_name || '-'}</div>
+                      <div>{item.description || '-'}</div>
+                      <div>{item.action || '-'}</div>
+                      <div>{item.action_on ? new Date(item.action_on).toLocaleString() : '-'}</div>
+                      <div>{item.action_by || '-'}</div>
+                      <div className="flex justify-center">
+                        <button
+                          className="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-3 rounded shadow"
+                          onClick={() => handleDelete(item)}
+                        >
+                          Unassign
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
+              <div className="grid grid-cols-8 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+                <div>Asset ID</div>
+                <div>Department ID</div>
+                <div>Org ID</div>
+                <div>Employee Int ID</div>
+                <div>Action</div>
+                <div>Assignment Date</div>
+                <div>Assigned By</div>
+                <div className="text-center">Actions</div>
+              </div>
+              {assignmentList.length === 0 && (
+                <div className="px-4 py-6 text-center text-gray-500 col-span-7 bg-white rounded-b">
+                  No assets assigned.
+                </div>
+              )}
+              <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}> 
+                {assignmentList.map((item, i) => (
+                  <div
+                    key={item.asset_assign_id || `${item.asset_id}_${i}`}
+                    className={`grid grid-cols-8 px-4 py-2 items-center border-b ${
+                      i % 2 === 0 ? "bg-white" : "bg-gray-100"
+                    } text-gray-800`}
+                  >
+                    <div>{item.asset_id}</div>
+                    <div>{item.dept_id}</div>
+                    <div>{item.org_id}</div>
+                    <div>{item.employee_int_id}</div>
+                    <div>{item.action}</div>
+                    <div>{item.action_on ? new Date(item.action_on).toLocaleString() : ''}</div>
+                    <div>{item.action_by}</div>
+                    <div className="flex justify-center">
+                      <button
+                        className="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-3 rounded shadow"
+                        onClick={() => handleDelete(item)}
+                      >
+                        Unassign
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -182,7 +273,7 @@ const AssetAssignmentList = ({
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white w-[500px] rounded shadow-lg">
             <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-              <span>Confirm Delete</span>
+              <span>Confirm Unassignment</span>
               <button
                 onClick={() => setShowDeleteModal(false)}
                 className="text-yellow-400 text-xl font-bold"
@@ -210,6 +301,9 @@ const AssetAssignmentList = ({
             </div>
           </div>
         </div>
+      )}
+      {showHistory && (
+        <AssetAssignmentHistory onClose={() => setShowHistory(false)} employeeIntId={selectedEntityIntId} />
       )}
     </div>
   );

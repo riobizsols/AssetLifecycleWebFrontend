@@ -7,6 +7,7 @@ const DepartmentWiseAssetAssignment = () => {
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState(null);
   const [assignmentList, setAssignmentList] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Fetch departments
   const fetchDepartments = async () => {
@@ -23,14 +24,22 @@ const DepartmentWiseAssetAssignment = () => {
     }
   };
 
-  // Fetch assignments
-  const fetchAssignments = async () => {
+  // Fetch assignments for selected department
+  const fetchAssignments = async (deptId) => {
+    if (!deptId) {
+      setAssignmentList([]);
+      return;
+    }
+    setLoading(true);
     try {
-      const res = await API.get("/admin/dept-assets");
-      setAssignmentList(res.data);
+      const res = await API.get(`/asset-assignments/department/${deptId}/assignments`);
+      setAssignmentList(res.data.assignedAssets || []);
     } catch (err) {
       console.error("Failed to fetch assignments", err);
       toast.error("Failed to fetch asset list");
+      setAssignmentList([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -50,8 +59,15 @@ const DepartmentWiseAssetAssignment = () => {
 
   useEffect(() => {
     fetchDepartments();
-    fetchAssignments();
   }, []);
+
+  useEffect(() => {
+    if (selectedDept) {
+      fetchAssignments(selectedDept);
+    } else {
+      setAssignmentList([]);
+    }
+  }, [selectedDept]);
 
   return (
     <AssetAssignmentList
@@ -62,7 +78,8 @@ const DepartmentWiseAssetAssignment = () => {
       onEntitySelect={setSelectedDept}
       onDelete={handleUnassign}
       assignmentList={assignmentList}
-      fetchAssignments={fetchAssignments}
+      fetchAssignments={() => fetchAssignments(selectedDept)}
+      loadingDeptAssignments={loading}
     />
   );
 };

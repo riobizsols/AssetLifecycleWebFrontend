@@ -8,7 +8,7 @@ import { toast } from "react-hot-toast";
 const AssetSelection = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { entityId, entityType, departmentId } = location.state || {};
+  const { entityId, entityIntId, entityType, departmentId } = location.state || {};
 
   const [assets, setAssets] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
@@ -21,6 +21,8 @@ const AssetSelection = () => {
   const [showScanner, setShowScanner] = useState(false);
   const scannerRef = useRef(null);
   const videoRef = useRef(null);
+  const [inactiveAssets, setInactiveAssets] = useState([]);
+  const [inactiveAssetsRaw, setInactiveAssetsRaw] = useState([]);
 
   useEffect(() => {
     // Initialize scanner when modal opens
@@ -86,25 +88,32 @@ const AssetSelection = () => {
   };
 
   useEffect(() => {
+    // Debug: print entityIntId on mount
+    console.log('entityIntId on mount:', entityIntId);
     if (!entityId || !entityType) {
       toast.error("Invalid navigation. Please select an entity first.");
       navigate(-1);
       return;
     }
 
-    fetchAvailableAssets();
     fetchAssetTypes();
   }, [entityId, entityType]);
 
   useEffect(() => {
     if (selectedAssetType) {
-      const filtered = assets.filter(asset => asset.asset_type_id === selectedAssetType);
-      setFilteredAssets(filtered);
+      fetchInactiveAssetsByType(selectedAssetType);
     } else {
-      setFilteredAssets(assets);
+      setInactiveAssets([]);
     }
     setSelectedAsset(null);
-  }, [selectedAssetType, assets]);
+  }, [selectedAssetType]);
+
+  // Handler for asset type selection (no persistence)
+  const handleAssetTypeChange = (e) => {
+    setSelectedAssetType(e.target.value);
+  };
+
+  // No persistence effect needed
 
   const fetchAssetTypes = async () => {
     try {
@@ -131,54 +140,90 @@ const AssetSelection = () => {
     }
   };
 
-  const handleAssignAsset = async () => {
-    const assetToAssign = activeTab === 'select' ? selectedAsset : scannedAssetId;
-    
-    if (!assetToAssign) {
-      toast.error("Please select an asset from the list");
-      return;
-    }
-
+  const fetchInactiveAssetsByType = async (assetTypeId) => {
     try {
-      const endpoint = entityType === 'department' 
-        ? '/admin/dept-assets'
-        : '/admin/employee-assets';
-
-      const payload = entityType === 'department'
-        ? {
-            dept_id: entityId,
-            asset_id: assetToAssign
-          }
-        : {
-            user_id: entityId,
-            asset_id: assetToAssign,
-            dept_id: departmentId
-          };
-
-      await API.post(endpoint, payload);
-      toast.success("Asset assigned successfully");
-      navigate(-1);
+      const res = await API.get(`/assets/type/${assetTypeId}/inactive`);
+      // If the response is an object with a 'data' array, use that
+      const assetsArr = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      setInactiveAssets(assetsArr);
+      setInactiveAssetsRaw(res.data); // for debugging if needed
+      console.log('Inactive assets for asset type', assetTypeId, ':', assetsArr);
     } catch (err) {
-      console.error("Failed to assign asset", err);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`Failed to assign asset: ${errorMessage}`);
+      console.error("Failed to fetch inactive assets", err);
+      toast.error("Failed to fetch inactive assets");
+      setInactiveAssets([]);
     }
   };
 
-  const handleScanSubmit = (e) => {
+  // Helper to generate a unique assignment ID
+  const generateUniqueId = () => `AA${Date.now()}`;
+
+  const handleAssignAsset = async (asset) => {
+    if (!asset) {
+      toast.error("Please select an asset from the list");
+      return;
+    }
+    if (entityType === 'employee') {
+      if (!entityIntId) {
+        toast.error("Employee internal ID missing");
+        return;
+      }
+      try {
+        const payload = {
+          asset_assign_id: generateUniqueId(),
+          asset_id: asset.asset_id,
+          org_id: asset.org_id,
+          dept_id: asset.dept_id || departmentId, // Only use departmentId for employee's department
+          employee_int_id: entityIntId,
+          latest_assignment_flag: true,
+          action: "A"
+        };
+        await API.post('/asset-assignments/employee', payload);
+        toast.success('Asset assigned to employee successfully');
+        navigate(-1);
+      } catch (err) {
+        console.error("Failed to assign asset to employee", err);
+        const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
+        toast.error(`Failed to assign asset: ${errorMessage}`);
+      }
+    } else if (entityType === 'department') {
+      if (!entityId && !departmentId) {
+        toast.error("Department ID missing");
+        return;
+      }
+      try {
+        const payload = {
+          asset_assign_id: generateUniqueId(),
+          asset_id: asset.asset_id,
+          org_id: asset.org_id,
+          dept_id: asset.dept_id || departmentId || entityId,
+          latest_assignment_flag: true,
+          action: "A"
+        };
+        await API.post('/asset-assignments', payload);
+        toast.success('Asset assigned to department successfully');
+        navigate(-1);
+      } catch (err) {
+        console.error("Failed to assign asset to department", err);
+        const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
+        toast.error(`Failed to assign asset: ${errorMessage}`);
+      }
+    }
+  };
+
+  const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
       toast.error("Please enter an asset ID");
       return;
     }
-
-    const assetExists = assets.some(asset => asset.asset_id === scannedAssetId);
-    if (!assetExists) {
+    // Find the asset in inactiveAssets by asset_id
+    const asset = inactiveAssets.find(a => a.asset_id === scannedAssetId);
+    if (!asset) {
       toast.error("Asset not found or not available for assignment");
       return;
     }
-
-    handleAssignAsset();
+    handleAssignAsset(asset);
   };
 
   return (
@@ -187,7 +232,7 @@ const AssetSelection = () => {
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
           Asset Selection
         </div>
-        <div className="border-b border-gray-200">
+        <div className="border-b border-gray-200"> 
           <nav className="-mb-px flex">
             <button
               onClick={() => setActiveTab('select')}
@@ -221,7 +266,7 @@ const AssetSelection = () => {
                 <select
                   className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
                   value={selectedAssetType || ""}
-                  onChange={(e) => setSelectedAssetType(e.target.value)}
+                  onChange={handleAssetTypeChange}
                 >
                   <option value="">All Asset Types</option>
                   {assetTypes.map((type) => (
@@ -302,30 +347,56 @@ const AssetSelection = () => {
               </button>
             </div>
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-                <div>Serial Number</div>
-                <div>Description</div>
-                <div className="text-center">Actions</div>
-              </div>
+              {/* Custom Table Headers for selected fields */}
+              {inactiveAssets.length > 0 && (
+                <div className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400`} style={{gridTemplateColumns: 'repeat(7, minmax(0, 1fr))'}}>
+                  <div>Asset Type ID</div>
+                  <div>Asset ID</div>
+                  <div>Asset Type Name</div>
+                  <div>Asset Name</div>
+                  <div>Vendor ID</div>
+                  <div>Product/Service ID</div>
+                  <div className="flex justify-center">Actions</div>
+                </div>
+              )}
 
-              <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}>
-                {filteredAssets.map((asset, i) => (
+              <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}> 
+                {inactiveAssets.map((asset, i) => (
                   <div
                     key={asset.asset_id}
-                    className={`grid grid-cols-4 px-4 py-2 items-center border-b ${
+                    className={`grid px-4 py-2 items-center border-b ${
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800 hover:bg-gray-200 ${
                       selectedAsset === asset.asset_id ? 'bg-blue-50' : ''
                     }`}
+                    style={{gridTemplateColumns: 'repeat(7, minmax(0, 1fr))'}}
                   >
-                    <div>{asset.serial_number}</div>
-                    <div>{asset.description}</div>
-                    <div className="text-center">
+                    <div>{asset.asset_type_id}</div>
+                    <div>
                       <button
-                        onClick={() => {
-                          setSelectedAsset(asset.asset_id);
-                          handleAssignAsset();
-                        }}
+                        className="text-blue-600 underline hover:text-blue-800"
+                        onClick={() => navigate(`/asset-detail/${asset.asset_id}`, {
+                          state: {
+                            employee_int_id: entityIntId,
+                            dept_id: asset.dept_id || departmentId,
+                            org_id: asset.org_id
+                          }
+                        })}
+                      >
+                        {asset.asset_id}
+                      </button>
+                    </div>
+                    <div>{asset.text}</div>
+                    <div title={asset.description}>
+                      {asset.description && asset.description.length > 15
+                        ? asset.description.slice(0, 15) + '...'
+                        : asset.description}
+                    </div>
+                    <div>{asset.vendor_id}</div>
+                    <div>{asset.prod_serve_id}</div>
+                    <div className="flex justify-center">
+                      <button
+                        onClick={() => handleAssignAsset(asset)}
                         className="bg-[#0E2F4B] text-white px-3 py-1 rounded text-sm hover:bg-[#1a4971] transition-colors"
                       >
                         Assign
@@ -333,6 +404,11 @@ const AssetSelection = () => {
                     </div>
                   </div>
                 ))}
+                {inactiveAssets.length === 0 && (
+                  <div className="px-4 py-6 text-center text-gray-500 col-span-4 bg-white rounded-b">
+                    No inactive assets found for this type.
+                  </div>
+                )}
               </div>
             </div>
           </div>
