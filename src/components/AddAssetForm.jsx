@@ -407,13 +407,13 @@ const AddAssetForm = ({ userRole }) => {
         expiry_date: form.expiryDate || null,
         current_status: 'Active', // Default status
         warranty_period: form.warrantyPeriod || null,
-        parentAsset: form.parentAsset || null, // Add parentAsset field
+        parent_asset_id: form.parentAsset || null, // Add parentAsset field
         org_id: user.org_id, // From user's auth store
         properties: form.properties || {}
       };
 
       console.log('Submitting asset data:', assetData);
-      const response = await API.post('/assets', assetData);
+      const response = await API.post('/assets/add', assetData);
       toast.success('Asset created successfully');
       navigate('/assets');
     } catch (err) {

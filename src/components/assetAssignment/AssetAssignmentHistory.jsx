@@ -2,14 +2,26 @@ import React, { useEffect, useState } from "react";
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
 
-const AssetAssignmentHistory = ({ onClose, employeeIntId }) => {
+const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employee' }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!employeeIntId) return;
+    if (!employeeIntId && !deptId) return;
     setLoading(true);
-    API.get(`/asset-assignments/employee-history/${employeeIntId}`)
+    
+    // Determine the endpoint based on type
+    let endpoint = '';
+    if (type === 'department' && deptId) {
+      endpoint = `/asset-assignments/dept/${deptId}`;
+    } else if (type === 'employee' && employeeIntId) {
+      endpoint = `/asset-assignments/employee-history/${employeeIntId}`;
+    } else {
+      setLoading(false);
+      return;
+    }
+
+    API.get(endpoint)
       .then(async res => {
         const historyArr = Array.isArray(res.data) ? res.data : [];
         // Fetch asset details for each asset_id in history
@@ -34,17 +46,21 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId }) => {
         setHistory(merged);
       })
       .catch(err => {
-        toast.error('Failed to fetch assignment history');
+        toast.error(`Failed to fetch ${type} assignment history`);
         setHistory([]);
       })
       .finally(() => setLoading(false));
-  }, [employeeIntId]);
+  }, [employeeIntId, deptId, type]);
+
+  const getTitle = () => {
+    return type === 'department' ? 'Department Asset Assignment History' : 'Asset Assignment History';
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div className="bg-white rounded-xl shadow-2xl p-0 max-w-6xl w-full relative border border-white/40">
         <div className="sticky top-0 z-20 bg-[#F5F8FA] border-b border-gray-200 rounded-t-xl flex items-center justify-between px-6 py-4 shadow-sm">
-          <span className="text-2xl font-bold text-[#0E2F4B]">Asset Assignment History</span>
+          <span className="text-2xl font-bold text-[#0E2F4B]">{getTitle()}</span>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-800 text-2xl font-bold bg-white/80 rounded-full px-3 py-1 shadow ml-4"
@@ -61,7 +77,7 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId }) => {
             ) : (
               history.map((item, idx) => (
                 <div
-                  key={item.asset_assign_id}
+                  key={item.asset_assign_id || idx}
                   className={`p-5 rounded-lg flex flex-col md:flex-row md:items-center md:justify-between gap-2 shadow-md transition border-2 ${
                     item.latest_assignment_flag
                       ? "border-green-500 bg-green-50"
@@ -77,7 +93,12 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId }) => {
                       <span className="text-xs text-gray-500">({item.asset_id})</span>
                     </div>
                     <div className="text-gray-700 text-sm mb-1">{item.description || '-'}</div>
-                    <div className="text-xs text-gray-500">{item.action === 'A' ? 'Assigned on:' : 'Unassigned on:'} {item.action_on ? new Date(item.action_on).toLocaleString() : ''}</div>
+                    <div className="text-xs text-gray-500">
+                      {item.action === 'A' ? 'Assigned on:' : 'Unassigned on:'} {item.action_on ? new Date(item.action_on).toLocaleString() : ''}
+                      {type === 'department' && item.employee_name && (
+                        <span className="ml-2">• Employee: {item.employee_name}</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex-shrink-0">
                     {item.latest_assignment_flag ? (
