@@ -26,26 +26,27 @@ const MaintenanceApprovalDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [columns] = useState([
-    { label: "Asset Type", name: "asset_type_id", visible: true },
-    { label: "Asset Id", name: "asset_id", visible: true },
+    { label: "Asset Type", name: "asset_type_name", visible: true },
+    { label: "Asset ID", name: "asset_id", visible: true },
+    { label: "Serial Number", name: "serial_number", visible: true },
     { label: "Scheduled Date", name: "scheduled_date", visible: true },
     { label: "Vendor", name: "vendor", visible: true },
     { label: "Department", name: "department", visible: true },
     { label: "Employee", name: "employee", visible: true },
     { label: "Maintenance Type", name: "maintenance_type", visible: true },
     { label: "Status", name: "status", visible: true },
+    { label: "Days Until Due", name: "days_until_due", visible: true },
   ]);
 
   useEffect(() => {
-    fetchAssets();
+    fetchMaintenanceApprovals();
   }, []);
 
-  const fetchAssets = async () => {
+  const fetchMaintenanceApprovals = async () => {
     try {
-      const res = await API.get("/assets");
-      // Format the data
-      const assetsArray = Array.isArray(res.data) ? res.data : res.data.rows || [];
-      const formattedData = assetsArray.map(item => {
+      const res = await API.get("/approval-detail/maintenance-approvals");
+      const maintenanceArray = Array.isArray(res.data) ? res.data : res.data.data || [];
+      const formattedData = maintenanceArray.map(item => {
         const formatDate = (dateString) => {
           if (!dateString) return '';
           try {
@@ -60,17 +61,21 @@ const MaintenanceApprovalDetail = () => {
 
         return {
           ...item,
-          purchased_on: formatDate(item.purchased_on),
-          expiry_date: formatDate(item.expiry_date),
-          created_on: formatDate(item.created_on),
-          changed_on: formatDate(item.changed_on),
-          purchased_cost: item.purchased_cost ? `₹${item.purchased_cost.toLocaleString()}` : ''
+          scheduled_date: formatDate(item.scheduled_date),
+          actual_date: formatDate(item.actual_date),
+          maintenance_created_on: formatDate(item.maintenance_created_on),
+          maintenance_changed_on: formatDate(item.maintenance_changed_on),
+          days_until_due: item.days_until_due ? `${item.days_until_due} days` : '-',
+          // Add urgency styling for days until due
+          urgency_class: item.days_until_due <= 2 ? 'text-red-600 font-semibold' : 
+                        item.days_until_due <= 5 ? 'text-orange-600 font-semibold' : 
+                        'text-gray-600'
         };
       });
       setData(formattedData);
     } catch (err) {
-      console.error("Failed to fetch assets", err);
-      toast.error("Failed to fetch assets");
+      console.error("Failed to fetch maintenance approvals", err);
+      toast.error("Failed to fetch maintenance approvals");
     }
   };
 
@@ -108,53 +113,36 @@ const MaintenanceApprovalDetail = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error("Please select assets to delete");
+      toast.error("Please select maintenance records to delete");
       return false;
     }
 
     try {
-      await API.post("/assets/delete", { asset_ids: selectedRows });
-      toast.success(`${selectedRows.length} asset(s) deleted successfully`);
+      await API.post("/maintenance-approval/delete", { wfamsh_ids: selectedRows });
+      toast.success(`${selectedRows.length} maintenance record(s) deleted successfully`);
       setSelectedRows([]);
-      fetchAssets();
+      fetchMaintenanceApprovals();
       return true;
     } catch (err) {
-      console.error("Failed to delete assets", err);
-      if (err.response?.data?.code === '23503') {
-        const assetId = err.response.data.assetId;
-        toast.error(
-          err.response.data.message || 
-          `Asset ${assetId} cannot be deleted because it is currently assigned. Please unassign it first.`,
-          { duration: 5000 }
-        );
-      } else {
-        toast.error(err.response?.data?.message || "Failed to delete assets");
-      }
+      console.error("Failed to delete maintenance records", err);
+      toast.error(err.response?.data?.message || "Failed to delete maintenance records");
       return false;
     }
   };
 
   const handleDelete = async (row) => {
     try {
-      await API.delete(`/assets/${row.asset_id}`);
-      toast.success("Asset deleted successfully");
-      fetchAssets();
+      await API.delete(`/maintenance-approval/${row.wfamsh_id}`);
+      toast.success("Maintenance record deleted successfully");
+      fetchMaintenanceApprovals();
     } catch (err) {
-      console.error("Failed to delete asset", err);
-      if (err.response?.data?.code === '23503') {
-        toast.error(
-          err.response.data.message || 
-          `Asset ${row.asset_id} cannot be deleted because it is currently assigned. Please unassign it first.`,
-          { duration: 5000 }
-        );
-      } else {
-        toast.error(err.response?.data?.message || "Failed to delete asset");
-      }
+      console.error("Failed to delete maintenance record", err);
+      toast.error(err.response?.data?.message || "Failed to delete maintenance record");
     }
   };
 
   const handleEdit = (row) => {
-    console.log("Edit asset:", row);
+    console.log("Edit maintenance record:", row);
     setSelectedAsset(row);
     setUpdateModalOpen(true);
   };
@@ -163,7 +151,7 @@ const MaintenanceApprovalDetail = () => {
     setUpdateModalOpen(false);
     setSelectedAsset(null);
     if (wasUpdated) {
-      fetchAssets(); // Refresh the list if update was successful
+      fetchMaintenanceApprovals(); // Refresh the list if update was successful
     }
   };
 
@@ -177,12 +165,12 @@ const MaintenanceApprovalDetail = () => {
       const success = exportToExcel(
         dataToExport,
         columns,
-        'Assets_List'
+        'Maintenance_Approvals_List'
       );
 
       if (success) {
         toast(
-          'Assets exported successfully',
+          'Maintenance approvals exported successfully',
           {
             icon: '✅',
             style: {
@@ -198,7 +186,7 @@ const MaintenanceApprovalDetail = () => {
     } catch (error) {
       console.error('Error exporting data:', error);
       toast(
-        'Failed to export assets',
+        'Failed to export maintenance approvals',
         {
           icon: '❌',
           style: {
@@ -229,10 +217,11 @@ const MaintenanceApprovalDetail = () => {
   const filters = columns.map((col) => ({
     label: col.label,
     name: col.name,
-    options: col.name === 'current_status' ? [
-      { label: "Active", value: "Active" },
-      { label: "Inactive", value: "Inactive" },
-      { label: "Disposed", value: "Disposed" }
+    options: col.name === 'status' ? [
+      { label: "Initiated", value: "IN" },
+      { label: "In Progress", value: "IP" },
+      { label: "Completed", value: "CO" },
+      { label: "Cancelled", value: "CA" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
@@ -248,7 +237,7 @@ const MaintenanceApprovalDetail = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={() => navigate("/assets/add")}
+        onAdd={() => navigate("/maintenance-approval/add")}
         onDeleteSelected={handleDeleteSelected}
         onDownload={handleDownload}
         data={data}
@@ -271,17 +260,19 @@ const MaintenanceApprovalDetail = () => {
                 setSelectedRows={setSelectedRows}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                rowKey="asset_id"
+                rowKey="wfamsh_id"
                 showActions={showActions} // Hide action column for this page
                 renderCell={(col, row, colIndex) =>
                   col.name === "status"
                     ? <StatusBadge status={row[col.name]} />
+                    : col.name === "days_until_due"
+                    ? <span className={row.urgency_class}>{row[col.name]}</span>
                     : colIndex === 0
                       ? <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
-                            checked={selectedRows.includes(row["asset_id"])}
-                            onChange={() => setSelectedRows(prev => prev.includes(row["asset_id"]) ? prev.filter(id => id !== row["asset_id"]) : [...prev, row["asset_id"]])}
+                            checked={selectedRows.includes(row["wfamsh_id"])}
+                            onChange={() => setSelectedRows(prev => prev.includes(row["wfamsh_id"]) ? prev.filter(id => id !== row["wfamsh_id"]) : [...prev, row["wfamsh_id"]])}
                             className="accent-yellow-400"
                           />
                           {row[col.name]}

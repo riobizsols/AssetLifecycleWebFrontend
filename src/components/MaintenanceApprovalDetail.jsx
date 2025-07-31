@@ -5,6 +5,7 @@ import { Clock, CheckCircle2 } from "lucide-react";
 import ChecklistModal from "./ChecklistModal";
 import { ClipboardCheck } from "lucide-react";
 import API from "../lib/axios";
+import { useAuthStore } from "../store/useAuthStore";
 
 const mockApiResponse = {
   steps: [
@@ -59,26 +60,35 @@ const getStepIcon = (status) => {
   }
 };
 
-const getStepColor = (status) => {
+const getStepColor = (status, title) => {
+  // Approval Initiated step is always blue
+  if (title === 'Approval Initiated') {
+    return 'bg-[#2196F3]'; // Blue for Approval Initiated
+  }
+  
   switch (status) {
     case 'completed':
-      return 'bg-[#8BC34A]';
-    case 'current':
-      return 'bg-[#2196F3]';
+      return 'bg-[#8BC34A]'; // Green for current action user (In Progress)
+    case 'approved':
+      return 'bg-[#2196F3]'; // Blue for approved (Approved)
+    case 'rejected':
+      return 'bg-red-500'; // Red for rejected (Rejected)
+    case 'pending':
+      return 'bg-gray-400'; // Gray for awaiting (Awaiting)
     default:
       return 'bg-gray-400';
   }
 };
 
 // Helper for rendering a read-only input
-const ReadOnlyInput = ({ label, value, type = "text" }) => (
+const ReadOnlyInput = ({ label, value, type = "text", className = "" }) => (
   <div>
     <label className="block text-sm font-medium mb-1 text-gray-700">{label}</label>
     <input
       type={type}
       value={value}
       readOnly
-      className="w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-100 text-gray-700 cursor-not-allowed focus:outline-none"
+      className={`w-full px-3 py-2 border border-gray-300 rounded text-sm bg-gray-100 text-gray-700 cursor-not-allowed focus:outline-none ${className}`}
     />
   </div>
 );
@@ -107,34 +117,14 @@ const historyDetails = {
   notes: "Routine check completed.",
 };
 
-const historyTable = [
-  {
-    date: "18/02/2025 10:15",
-    action: "Request Initiated",
-    actionType: "initiated",
-    user: "Billy Morganey",
-    notes: "Initial maintenance request created",
-  },
-  {
-    date: "18/02/2025 11:11",
-    action: "Approved",
-    actionType: "approved",
-    user: "Sarah Morgan",
-    notes: "First level approval completed",
-  },
-  {
-    date: "18/02/2025 11:15",
-    action: "Pending",
-    actionType: "pending",
-    user: "System",
-    notes: "Awaiting second level approval",
-  },
-];
+
 
 const getActionColor = (type) => {
   switch (type) {
     case "approved":
       return "text-green-600 font-medium";
+    case "rejected":
+      return "text-red-600 font-medium";
     case "pending":
       return "text-yellow-500 font-medium";
     case "initiated":
@@ -146,25 +136,89 @@ const getActionColor = (type) => {
 
 const MaintenanceApprovalDetail = () => {
   const { id } = useParams();
+  const { user } = useAuthStore();
+  
+  console.log("MaintenanceApprovalDetail component mounted");
+  console.log("Asset ID from URL params:", id);
+  console.log("User from auth store:", user);
   const [maintenance, setMaintenance] = useState(null);
   const [steps, setSteps] = useState([]);
-  const [currentUserId, setCurrentUserId] = useState(""); // Simulate auth user
+  const [currentUserId, setCurrentUserId] = useState(""); // Will be set from auth
   const [activeTab, setActiveTab] = useState("approval");
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
+  const [approveNote, setApproveNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+  const [approvalDetails, setApprovalDetails] = useState(null);
+  const [loadingApprovalDetails, setLoadingApprovalDetails] = useState(false);
+  const [assetDetails, setAssetDetails] = useState(null);
+  const [loadingAssetDetails, setLoadingAssetDetails] = useState(false);
+  const [workflowHistory, setWorkflowHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Simulate current user (replace with real auth)
+  // Set current user from auth store
   useEffect(() => {
-    setCurrentUserId("u2"); // Example: set from auth
-  }, []);
+    if (user && user.user_id) {
+      setCurrentUserId(user.user_id);
+    }
+  }, [user]);
+
+  // Fetch approval details from API
+  useEffect(() => {
+    const fetchApprovalDetails = async () => {
+      if (!id) {
+        console.log("No asset ID found in URL params");
+        return;
+      }
+      
+      setLoadingApprovalDetails(true);
+      try {
+        console.log("Fetching approval details for asset ID:", id);
+        console.log("Full API URL:", `/approval-detail/${id}`);
+        const response = await API.get(`/approval-detail/${id}`);
+        console.log("Approval details API response:", response.data);
+        
+        if (response.data.success) {
+          console.log('Full approval details response:', response.data.data);
+          console.log('All keys in response:', Object.keys(response.data.data));
+          console.log('Vendor details in response:', response.data.data?.vendorDetails);
+          console.log('Response data type:', typeof response.data.data);
+          setApprovalDetails(response.data.data);
+          // Set workflow steps from API data
+          setSteps(response.data.data.workflowSteps || []);
+        } else {
+          console.error("Failed to fetch approval details:", response.data.message);
+        }
+      } catch (error) {
+        console.error("Error fetching approval details:", error);
+        // Fallback to mock data if API fails
+        setApprovalDetails({
+          alertType: "Maintenance Alert",
+          alertDueOn: "20/02/2025",
+          actionBy: "John Doe",
+          cutoffDate: "19/02/2025",
+          proposal: "Replace part X",
+          vendor: "VendorX",
+          assetType: "Hardware",
+          assetId: id,
+          notes: null
+        });
+        // Fallback to mock steps
+        setSteps(mockApiResponse.steps);
+      } finally {
+        setLoadingApprovalDetails(false);
+      }
+    };
+
+    fetchApprovalDetails();
+  }, [id]);
 
   useEffect(() => {
     // Simulate API call to fetch maintenance by id
     setTimeout(() => {
       setMaintenance({ ...mockApiResponse, id });
-      setSteps(mockApiResponse.steps);
     }, 300);
     // TODO: Replace above with real API call using id
   }, [id]);
@@ -174,77 +228,174 @@ const MaintenanceApprovalDetail = () => {
   const isCurrentApprover = currentStep && currentStep.user.id === currentUserId;
   const isRejected = steps.some((step) => step.status === "rejected");
 
+  // Find the user with AP status (current action pending user)
+  const currentActionStep = steps.find((step) => {
+    console.log("Checking step:", step);
+    console.log("Step title:", step.title);
+    console.log("Step status:", step.status);
+    console.log("Step description:", step.description);
+    console.log("Is not System:", step.title !== 'System');
+    console.log("Is completed:", step.status === 'completed');
+    console.log("Has Action pending:", step.description.includes('Action pending by'));
+    
+    // Look for the step that should be the current action user
+    // It should be the one with 'completed' status and 'Action pending by' description
+    const isCurrentAction = step.title !== 'System' && 
+           step.status === 'completed' && 
+           step.description.includes('Action pending by');
+    
+    console.log("Is current action step:", isCurrentAction);
+    return isCurrentAction;
+  });
+  
+  // Check if current user is the one with AP status
+  const isCurrentActionUser = currentActionStep && (
+    currentActionStep.user.id === currentUserId || 
+    currentActionStep.user.name === user?.full_name
+  );
+  
+  // Debug logging
+  console.log("Current user ID:", currentUserId);
+  console.log("Current user from auth:", user);
+  console.log("All steps:", steps);
+  console.log("Steps details:", steps.map(step => ({
+    id: step.id,
+    title: step.title,
+    status: step.status,
+    description: step.description,
+    user: step.user
+  })));
+  console.log("Current action step:", currentActionStep);
+  console.log("Is current action user:", isCurrentActionUser);
+  console.log("Current action step user ID:", currentActionStep?.user.id);
+  console.log("Current action step user name:", currentActionStep?.user.name);
+  
+  // Additional debug: Check if any step has 'completed' status
+  const completedSteps = steps.filter(step => step.status === 'completed');
+  console.log("Steps with 'completed' status:", completedSteps);
+  
+  // Additional debug: Check if any step has 'Action pending by' in description
+  const actionPendingSteps = steps.filter(step => step.description.includes('Action pending by'));
+  console.log("Steps with 'Action pending by' in description:", actionPendingSteps);
+
   // Approve handler
   const handleApprove = async () => {
+    if (!approveNote.trim()) return;
     setIsSubmitting(true);
-    const now = new Date();
-    const dateStr = now.toLocaleDateString();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    // TODO: Call API to approve
-    // await API.post(`/maintenance/${id}/approve`, { userId: currentUserId });
-    // Simulate step update
-    setSteps((prev) => prev.map((step) =>
-      step.status === "current"
-        ? { ...step, status: "completed", date: dateStr, time: timeStr }
-        : step
-    ));
     try {
-      // Call API to update DB (replace endpoint as needed)
-      await API.post(`/api/maintenance/${id}/approve`, {
+      console.log("Approving maintenance for asset:", id, "by user:", currentUserId);
+      const response = await API.post(`/approval-detail/${id}/approve`, {
         userId: currentUserId,
-        date: dateStr,
-        time: timeStr,
+        note: approveNote
       });
+      
+      if (response.data.success) {
+        console.log("Maintenance approved successfully");
+        setShowApproveModal(false);
+        setApproveNote("");
+        // Refresh the page to show updated workflow
+        window.location.reload();
+      } else {
+        alert("Failed to approve. Please try again.");
+      }
     } catch (error) {
+      console.error("Error approving maintenance:", error);
       alert("Failed to approve. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   // Reject handler
   const handleReject = async () => {
     if (!rejectNote.trim()) return;
     setIsSubmitting(true);
-    // TODO: Call API to reject
-    // await API.post(`/maintenance/${id}/reject`, { userId: currentUserId, note: rejectNote });
-    // Simulate rejection
-    setSteps((prev) => prev.map((step) =>
-      step.status === "current"
-        ? { ...step, status: "rejected", note: rejectNote }
-        : step
-    ));
-    setShowRejectModal(false);
-    setRejectNote("");
-    setIsSubmitting(false);
+    try {
+      console.log("Rejecting maintenance for asset:", id, "by user:", currentUserId);
+      const response = await API.post(`/approval-detail/${id}/reject`, {
+        userId: currentUserId,
+        reason: rejectNote
+      });
+      
+      if (response.data.success) {
+        console.log("Maintenance rejected successfully");
+        setShowRejectModal(false);
+        setRejectNote("");
+        // Refresh the page to show updated workflow
+        window.location.reload();
+      } else {
+        alert("Failed to reject. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error rejecting maintenance:", error);
+      alert("Failed to reject. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Mock data - replace with actual data from API
-  const assetDetails = {
-    assetType: "Hardware",
-    assetId: "1234553",
-    scheduledDate: "21/02/2025",
-    vendorId: "V001",
-    maintenanceType: "scheduled",
-    department: "Hr",
-    employee: "AF101 - Alvin",
-    notes: "Slight crack on the bottom right",
-    dynamicProperties: [
-      { name: "Color", value: "Red" },
-      { name: "Weight", value: "10kg" },
-      { name: "Material", value: "Wood" },
-    ],
-  };
-  // Mock approval details
-  const approvalDetails = {
-    alertType: "Maintenance Alert",
-    alertDueOn: "20/02/2025",
-    actionBy: "John Doe",
-    cutoffDate: "19/02/2025",
-    proposal: "Replace part X",
-    vendor: "VendorX",
-    assetType: assetDetails.assetType,
-    assetId: assetDetails.assetId,
-    notes: assetDetails.notes,
+  // Fetch asset details when approval details are loaded
+  useEffect(() => {
+    const fetchAssetDetails = async () => {
+      if (!approvalDetails?.assetId) {
+        console.log("No asset ID available to fetch asset details");
+        return;
+      }
+      
+      setLoadingAssetDetails(true);
+      try {
+        console.log("Fetching asset details for asset ID:", approvalDetails.assetId);
+        const response = await API.get(`/assets/${approvalDetails.assetId}`);
+        console.log("Asset details API response:", response.data);
+        
+        if (response.data) {
+          setAssetDetails(response.data);
+        } else {
+          console.error("Failed to fetch asset details");
+        }
+      } catch (error) {
+        console.error("Error fetching asset details:", error);
+      } finally {
+        setLoadingAssetDetails(false);
+      }
+    };
+
+    fetchAssetDetails();
+  }, [approvalDetails?.assetId]);
+
+  // Fetch workflow history when approval details are loaded
+  useEffect(() => {
+    const fetchWorkflowHistory = async () => {
+      if (!approvalDetails?.assetId) {
+        console.log("No asset ID available to fetch workflow history");
+        return;
+      }
+      
+      setLoadingHistory(true);
+      try {
+        console.log("Fetching workflow history for asset ID:", approvalDetails.assetId);
+        const response = await API.get(`/approval-detail/history/${approvalDetails.assetId}`);
+        console.log("Workflow history API response:", response.data);
+        
+        if (response.data.success) {
+          setWorkflowHistory(response.data.data);
+        } else {
+          console.error("Failed to fetch workflow history:", response.data.message);
+        }
+      } catch (error) {
+        console.error("Error fetching workflow history:", error);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    fetchWorkflowHistory();
+  }, [approvalDetails?.assetId]);
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString();
   };
 
   return (
@@ -260,7 +411,7 @@ const MaintenanceApprovalDetail = () => {
             <div className="mb-8">
               <div className="flex items-center">
                 {steps.map((step, index) => (
-                  <div key={step.id} className={`arrow-step ${getStepColor(step.status)} text-white`}>
+                  <div key={step.id} className={`arrow-step ${getStepColor(step.status, step.title)} text-white`}>
                     <div className="flex items-center space-x-2">
                       {getStepIcon(step.status)}
                       <span className="font-medium text-sm">{step.title}</span>
@@ -274,7 +425,17 @@ const MaintenanceApprovalDetail = () => {
                 {steps.map((step, index) => (
                   <div key={step.id} className="flex-1 px-3">
                     <p className="text-sm text-gray-700">{step.description}</p>
-                    {step.date && (
+                    {step.notes && step.status === 'rejected' && (
+                      <p className="text-xs text-red-600 mt-1">
+                        <strong>Reason:</strong> {step.notes}
+                      </p>
+                    )}
+                    {step.notes && step.status === 'approved' && (
+                      <p className="text-xs text-green-600 mt-1">
+                        <strong>Note:</strong> {step.notes}
+                      </p>
+                    )}
+                    {step.date && (step.status === 'completed' || step.status === 'approved' || step.status === 'rejected') && (
                       <div className="flex items-center text-xs text-gray-500 mt-1">
                         <Clock className="w-3.5 h-3.5 mr-1" style={{ color: '#FFC107' }} />
                         <span>{step.date} • {step.time}</span>
@@ -310,152 +471,217 @@ const MaintenanceApprovalDetail = () => {
                 <>
                   {/* Approval Details Section */}
                   <div className="bg-white rounded shadow p-6 mb-8">
-                    <div className="grid grid-cols-5 gap-6 mb-6">
-                      <ReadOnlyInput label="Alert Type" value={approvalDetails.alertType || "-"} />
-                      <ReadOnlyInput label="Alert Due On" value={approvalDetails.alertDueOn || "-"} />
-                      <ReadOnlyInput label="Action By" value={approvalDetails.actionBy || "-"} />
-                      <ReadOnlyInput label="Cut-off Date" value={approvalDetails.cutoffDate || "-"} />
-                      <ReadOnlyInput label="Proposal" value={approvalDetails.proposal || "-"} />
-                      <ReadOnlyInput label="Vendor" value={approvalDetails.vendor || "-"} />
-                      <ReadOnlyInput label="Asset Type" value={approvalDetails.assetType || "-"} />
-                      <ReadOnlyInput label="Asset ID" value={approvalDetails.assetId || "-"} />
-                      <ReadOnlyInput label="Notes" value={approvalDetails.notes || "-"} />
-                      <div className="flex flex-col justify-end">
-                        <label className="block text-sm font-medium mb-1 text-gray-700">Checklist</label>
-                        <button
-                          onClick={() => setShowChecklist(true)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition"
-                          title="View and complete the asset maintenance checklist"
-                          type="button"
-                        >
-                          <ClipboardCheck className="w-5 h-5" />
-                          View Checklist
-                        </button>
+                    {loadingApprovalDetails ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B]"></div>
+                        <span className="ml-2 text-gray-600">Loading approval details...</span>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="grid grid-cols-5 gap-6 mb-6">
+                        <ReadOnlyInput 
+                          label="Alert Type" 
+                          value={approvalDetails?.maintenanceType || "-"} 
+                        />
+                        <ReadOnlyInput 
+                          label="Alert Due On" 
+                          value={formatDate(approvalDetails?.dueDate) || "-"} 
+                        />
+                        <ReadOnlyInput 
+                          label="Action By" 
+                          value={approvalDetails?.actionBy || "-"} 
+                        />
+                        <ReadOnlyInput 
+                          label="Cut-off Date" 
+                          value={formatDate(approvalDetails?.cutoffDate) || "-"} 
+                          className={`${
+                            approvalDetails?.daysUntilCutoff !== undefined && approvalDetails.daysUntilCutoff <= 2 
+                              ? 'border-red-500 bg-red-50 text-red-700' 
+                              : ''
+                          }`}
+                        />
+                        <ReadOnlyInput 
+                          label="Vendor" 
+                          value={approvalDetails?.vendorName || "-"} 
+                        />
+                        <ReadOnlyInput 
+                          label="Asset Type" 
+                          value={approvalDetails?.assetTypeName || "-"} 
+                        />
+                        <ReadOnlyInput 
+                          label="Asset ID" 
+                          value={approvalDetails?.assetId || "-"} 
+                        />
+                        <ReadOnlyInput 
+                          label="Notes" 
+                          value={approvalDetails?.notes || "-"} 
+                        />
+                        <div className="flex flex-col justify-end">
+                          <label className="block text-sm font-medium mb-1 text-gray-700">Checklist</label>
+                          <button
+                            onClick={() => setShowChecklist(true)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition"
+                            title="View and complete the asset maintenance checklist"
+                            type="button"
+                          >
+                            <ClipboardCheck className="w-5 h-5" />
+                            View Checklist
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <ChecklistModal
-                    assetType={approvalDetails.assetType}
+                    assetType={approvalDetails?.assetTypeName || "Asset"}
                     open={showChecklist}
                     onClose={() => setShowChecklist(false)}
+                    checklist={approvalDetails?.checklist || []}
                   />
                 </>
               )}
               {activeTab === 'vendor' && (
                 <div className="bg-white rounded shadow p-6">
-                  <div className="grid grid-cols-5 gap-6 mb-6">
-                    <ReadOnlyInput label="Vendor Name" value={vendorDetails.vendorName || "-"} />
-                    <ReadOnlyInput label="Company" value={vendorDetails.company || "-"} />
-                    <ReadOnlyInput label="Email" value={vendorDetails.email || "-"} />
-                    <ReadOnlyInput label="Contact Number" value={vendorDetails.contact || "-"} />
-                    <ReadOnlyInput label="GST Number" value={vendorDetails.gst_number || "-"} />
-                  </div>
-                  <div className="grid grid-cols-5 gap-6 mb-6">
-                    <ReadOnlyInput label="CIN Number" value={vendorDetails.cin_number || "-"} />
-                    <ReadOnlyInput label="Address Line 1" value={vendorDetails.address || "-"} />
-                    <ReadOnlyInput label="City" value={vendorDetails.city || "-"} />
-                    <ReadOnlyInput label="State" value={vendorDetails.state || "-"} />
-                    <ReadOnlyInput label="Pincode" value={vendorDetails.pincode || "-"} />
-                  </div>
-                  <div className="grid grid-cols-5 gap-6 mb-6">
-                    <ReadOnlyInput label="Contact Person Name" value={vendorDetails.contact_person_name || "-"} />
-                    <ReadOnlyInput label="Contact Person Email" value={vendorDetails.contact_person_email || "-"} />
-                  </div>
-                  <div className="flex gap-8 mt-4">
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" checked={!!vendorDetails.product_supply} readOnly className="accent-[#0E2F4B] w-5 h-5" />
-                      <span className="text-gray-700">Product Supply</span>
+                  {loadingApprovalDetails ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B]"></div>
+                      <span className="ml-2 text-gray-600">Loading vendor details...</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" checked={!!vendorDetails.service_supply} readOnly className="accent-[#0E2F4B] w-5 h-5" />
-                      <span className="text-gray-700">Service Supply</span>
+                  ) : approvalDetails?.vendorDetails ? (
+                    <>
+                      <div className="grid grid-cols-5 gap-6 mb-6">
+                        <ReadOnlyInput label="Vendor Name" value={approvalDetails.vendorDetails.vendor_name || "-"} />
+                        <ReadOnlyInput label="Company" value={approvalDetails.vendorDetails.company_name || "-"} />
+                        <ReadOnlyInput label="Email" value={approvalDetails.vendorDetails.company_email || "-"} />
+                        <ReadOnlyInput label="Contact Number" value={approvalDetails.vendorDetails.contact_person_number || "-"} />
+                        <ReadOnlyInput label="GST Number" value={approvalDetails.vendorDetails.gst_number || "-"} />
+                      </div>
+                      <div className="grid grid-cols-5 gap-6 mb-6">
+                        <ReadOnlyInput label="CIN Number" value={approvalDetails.vendorDetails.cin_number || "-"} />
+                        <ReadOnlyInput label="Address Line 1" value={approvalDetails.vendorDetails.address_line1 || "-"} />
+                        <ReadOnlyInput label="City" value={approvalDetails.vendorDetails.city || "-"} />
+                        <ReadOnlyInput label="State" value={approvalDetails.vendorDetails.state || "-"} />
+                        <ReadOnlyInput label="Pincode" value={approvalDetails.vendorDetails.pincode || "-"} />
+                      </div>
+                      <div className="grid grid-cols-5 gap-6 mb-6">
+                        <ReadOnlyInput label="Contact Person Name" value={approvalDetails.vendorDetails.contact_person_name || "-"} />
+                        <ReadOnlyInput label="Contact Person Email" value={approvalDetails.vendorDetails.contact_person_email || "-"} />
+                      </div>
+
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      No vendor details available
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
               {activeTab === 'asset' && (
                 <div className="bg-white rounded shadow p-6">
-                  <div className="grid grid-cols-5 gap-6 mb-6">
-                    <ReadOnlyInput label="Asset Type" value={assetDetails.assetType || "-"} />
-                    <ReadOnlyInput label="Serial Number" value={assetDetails.serialNumber || "-"} />
-                    <ReadOnlyInput label="Maintenance Schedule" value={assetDetails.maintenanceSchedule || "-"} />
-                    <ReadOnlyInput label="Expiry Date" value={assetDetails.expiryDate || "-"} />
-                    <ReadOnlyInput label="Warranty Period" value={assetDetails.warrantyPeriod || "-"} />
-                  </div>
-                  <div className="grid grid-cols-5 gap-6 mb-6">
-                    <ReadOnlyInput label="Purchase Date" value={assetDetails.purchaseDate || "-"} />
-                    <ReadOnlyInput label="Purchase Cost" value={assetDetails.purchaseCost || "-"} />
-                    <ReadOnlyInput label="Purchase By" value={assetDetails.purchaseBy || "-"} />
-                    <ReadOnlyInput label="Vendor Brand" value={assetDetails.vendorBrand || "-"} />
-                    <ReadOnlyInput label="Vendor Model" value={assetDetails.vendorModel || "-"} />
-                  </div>
-                  <div className="grid grid-cols-5 gap-6 mb-6">
-                    <ReadOnlyInput label="Product Supply" value={assetDetails.productSupply ? "Yes" : "No"} />
-                    <ReadOnlyInput label="Service Supply" value={assetDetails.serviceSupply ? "Yes" : "No"} />
-                    <ReadOnlyInput label="Vendor ID" value={assetDetails.vendorId || "-"} />
-                    <ReadOnlyInput label="Parent Asset" value={assetDetails.parentAsset || "-"} />
-                    <ReadOnlyInput label="Status" value={assetDetails.status || "-"} />
-                  </div>
-                  <div className="mb-6">
-                    <label className="block text-sm mb-1 font-medium">Description</label>
-                    <textarea
-                      value={assetDetails.description || "-"}
-                      readOnly
-                      className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-sm"
-                      rows={3}
-                    />
-                  </div>
-                  {/* Dynamic Properties Section */}
-                  <div className="mb-6">
-                    <label className="block text-sm mb-1 font-medium">Other Details</label>
-                    {assetDetails.dynamicProperties && assetDetails.dynamicProperties.length > 0 ? (
-                      <div className="grid grid-cols-5 gap-6">
-                        {assetDetails.dynamicProperties.map((prop) => (
-                          <div key={prop.name}>
-                            <label className="block text-sm mb-1 font-medium">{prop.name}</label>
-                            <input
-                              value={prop.value}
-                              readOnly
-                              className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-sm"
-                            />
-                          </div>
-                        ))}
+                  {loadingAssetDetails ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B] mx-auto"></div>
+                      <p className="text-gray-500 mt-2">Loading asset details...</p>
+                    </div>
+                  ) : assetDetails ? (
+                    <>
+                      <div className="grid grid-cols-5 gap-6 mb-6">
+                        <ReadOnlyInput label="Asset Type" value={assetDetails.asset_type_id || "-"} />
+                        <ReadOnlyInput label="Serial Number" value={assetDetails.serial_number || "-"} />
+                        <ReadOnlyInput label="Asset ID" value={assetDetails.asset_id || "-"} />
+                        <ReadOnlyInput label="Expiry Date" value={formatDate(assetDetails.expiry_date) || "-"} />
+                        <ReadOnlyInput label="Warranty Period" value={assetDetails.warranty_period || "-"} />
                       </div>
-                    ) : (
-                      <div className="text-gray-500 text-sm italic">No dynamic properties for this asset.</div>
-                    )}
-                  </div>
+                      <div className="grid grid-cols-5 gap-6 mb-6">
+                        <ReadOnlyInput label="Purchase Date" value={formatDate(assetDetails.purchased_on) || "-"} />
+                        <ReadOnlyInput label="Purchase Cost" value={assetDetails.purchased_cost || "-"} />
+                        <ReadOnlyInput label="Purchase By" value={assetDetails.purchased_by || "-"} />
+                        <ReadOnlyInput label="Purchase Vendor" value={assetDetails.purchase_vendor_id || "-"} />
+                        <ReadOnlyInput label="Service Vendor" value={assetDetails.service_vendor_id || "-"} />
+                      </div>
+                      <div className="grid grid-cols-3 gap-6 mb-6">
+                        <ReadOnlyInput label="Product/Service ID" value={assetDetails.prod_serve_id || "-"} />
+                        <ReadOnlyInput label="Parent Asset" value={assetDetails.parent_asset_id || "-"} />
+                        <ReadOnlyInput label="Status" value={assetDetails.current_status || "-"} />
+                      </div>
+                      <div className="mb-6">
+                        <label className="block text-sm mb-1 font-medium">Description</label>
+                        <textarea
+                          value={assetDetails.description || "-"}
+                          readOnly
+                          className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-sm"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="mb-6">
+                        <label className="block text-sm mb-1 font-medium">Additional Info</label>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium">Branch ID:</span> {assetDetails.branch_id || "-"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Group ID:</span> {assetDetails.group_id || "-"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Maintenance Schedule ID:</span> {assetDetails.maintsch_id || "-"}
+                          </div>
+                          <div>
+                            <span className="font-medium">Organization ID:</span> {assetDetails.org_id || "-"}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      No asset details available
+                    </div>
+                  )}
                 </div>
               )}
               {activeTab === 'history' && (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full border-separate border-spacing-y-2">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700">Date</th>
-                        <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700">Action</th>
-                        <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700">User</th>
-                        <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700">Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {historyTable.map((row, idx) => (
-                        <tr key={idx} className="bg-white border border-gray-200 rounded-md shadow-sm">
-                          <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.date}</td>
-                          <td className={`px-6 py-3 text-sm whitespace-nowrap ${getActionColor(row.actionType)}`}>{row.action}</td>
-                          <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.user}</td>
-                          <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.notes}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {loadingHistory ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B] mx-auto"></div>
+                      <p className="text-gray-500 mt-2">Loading workflow history...</p>
+                    </div>
+                  ) : workflowHistory.length > 0 ? (
+                    <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+                      <table className="min-w-full border-separate border-spacing-y-2">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Date</th>
+                            <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Action</th>
+                            <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">User</th>
+                            <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Job Role</th>
+                            <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Department</th>
+                            <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {workflowHistory.map((row, idx) => (
+                            <tr key={row.id || idx} className="bg-white border border-gray-200 rounded-md shadow-sm">
+                              <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.date}</td>
+                              <td className={`px-6 py-3 text-sm whitespace-nowrap ${getActionColor(row.actionType)}`}>{row.action}</td>
+                              <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.user}</td>
+                              <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.jobRole || "-"}</td>
+                              <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.department || "-"}</td>
+                              <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.notes || "-"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      No workflow history available
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-4 mt-8">
-              {isCurrentApprover && !isRejected && (
+              {isCurrentActionUser && (
                 <>
                   <button
                     onClick={() => setShowRejectModal(true)}
@@ -464,13 +690,21 @@ const MaintenanceApprovalDetail = () => {
                     Reject
                   </button>
                   <button
-                    onClick={handleApprove}
+                    onClick={() => setShowApproveModal(true)}
                     className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors"
                     disabled={isSubmitting}
                   >
                     Approve
                   </button>
                 </>
+              )}
+              {!isCurrentActionUser && (
+                <div className="text-gray-500 text-sm italic">
+                  {currentActionStep 
+                    ? `Waiting for action from ${currentActionStep.user.name}`
+                    : "No action required from you"
+                  }
+                </div>
               )}
             </div>
 
@@ -509,6 +743,48 @@ const MaintenanceApprovalDetail = () => {
                         disabled={!rejectNote.trim() || isSubmitting}
                       >
                         Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Approve Modal */}
+            {showApproveModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg shadow-xl w-[500px]">
+                  <div className="bg-[#0E2F4B] text-white px-6 py-4 rounded-t-lg border-b-4 border-[#FFC107]">
+                    <h3 className="text-lg font-semibold">Approve Maintenance Request</h3>
+                  </div>
+                  <div className="p-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Approval Note <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={approveNote}
+                      onChange={(e) => setApproveNote(e.target.value)}
+                      className={`w-full h-32 px-3 py-2 border rounded focus:outline-none ${
+                        !approveNote.trim() && isSubmitting ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="Please provide an approval note..."
+                    />
+                    {!approveNote.trim() && isSubmitting && (
+                      <div className="text-red-500 text-xs mt-1">Note is required to approve.</div>
+                    )}
+                    <div className="flex justify-end gap-3 mt-6">
+                      <button
+                        onClick={() => setShowApproveModal(false)}
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleApprove}
+                        className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors"
+                        disabled={!approveNote.trim() || isSubmitting}
+                      >
+                        Approve
                       </button>
                     </div>
                   </div>

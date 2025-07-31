@@ -1,21 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { CheckCircle, Loader2, X } from "lucide-react";
-import API from "../lib/axios";
+import React from "react";
+import { CheckCircle, X } from "lucide-react";
 
-export default function ChecklistModal({ assetType, open, onClose, maintenanceId }) {
-  const [checklist, setChecklist] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (open && maintenanceId) {
-      setLoading(true);
-      API.get(`/api/maintenance/${maintenanceId}/checklist`) // Use the correct endpoint
-        .then(res => setChecklist(res.data))
-        .catch(() => setChecklist([]))
-        .finally(() => setLoading(false));
-    }
-  }, [open, maintenanceId]);
-
+export default function ChecklistModal({ assetType, open, onClose, checklist = [] }) {
   if (!open) return null;
 
   return (
@@ -39,23 +25,17 @@ export default function ChecklistModal({ assetType, open, onClose, maintenanceId
 
         {/* Checklist */}
         <div className="px-6 pb-6 pt-2 max-h-80 overflow-y-auto">
-          {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <Loader2 className="animate-spin w-8 h-8 text-[#0E2F4B]" />
-            </div>
-          ) : (
-            <ul className="list-disc pl-6">
-              {checklist.length > 0 ? (
-                checklist.map((item, idx) => (
-                  <li key={item.id || idx} className="mb-1 text-gray-800">
-                    {item.text}
-                  </li>
-                ))
-              ) : (
-                <li className="text-gray-400 italic">No checklist items found.</li>
-              )}
-            </ul>
-          )}
+          <ul className="list-disc pl-6">
+            {checklist.length > 0 ? (
+              checklist.map((item, idx) => (
+                <li key={item.at_main_checklist_id || idx} className="mb-1 text-gray-800">
+                  {item.text}
+                </li>
+              ))
+            ) : (
+              <li className="text-gray-400 italic">No checklist items found.</li>
+            )}
+          </ul>
         </div>
 
         {/* Footer */}

@@ -14,6 +14,8 @@ import DashboardMetrics from "../components/dashboardModules/DashboardMetrics";
 import DepartmentChart from "../components/dashboardModules/DepartmentChart";
 import AssetTypeChart from "../components/dashboardModules/AssetTypeChart";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
+import MaintenanceScheduleStatus from "../components/dashboardModules/MaintenanceScheduleStatus";
+import MaintenanceExecutionLog from "../components/dashboardModules/MaintenanceExecutionLog";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -111,6 +113,12 @@ const Dashboard = () => {
               <NotificationsPanel />
             </CardContent>
           </Card>
+        </div>
+
+        {/* Maintenance Schedule Status - Added at the bottom */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MaintenanceScheduleStatus />
+          <MaintenanceExecutionLog />
         </div>
       </div>
     </div>
