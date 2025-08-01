@@ -133,7 +133,7 @@ export default function AppRoutes() {
           <Route
             path="/assets"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <Outlet />
               </MainLayout>

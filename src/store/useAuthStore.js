@@ -21,6 +21,7 @@ export const useAuthStore = create(
                     isAuthenticated: false,
                     user: null,
                     token: null,
+                    job_role_id: null,
                 }),
         }),
         {
