@@ -5,6 +5,7 @@ import ProductSupplyForm from "./ProductSupplyForm";
 import ServiceSupplyForm from "./ServiceSupplyForm";
 import { useAuthStore } from "../store/useAuthStore";
 import { v4 as uuidv4 } from "uuid";
+import { toast } from "react-hot-toast";
 
 const AddEntityForm = () => {
   const navigate = useNavigate();
@@ -67,11 +68,12 @@ const AddEntityForm = () => {
       const response = await API.post("/create-vendor", form); // Backend adds ext_id, created_on, org_id
       const vendorId = response.data?.data?.vendor_id;
       setCreatedVendorId(vendorId || "");
-      alert("Vendor created successfully!");
+      toast.success("Vendor created successfully!");
       // Optionally: navigate("/master-data/vendors");
     } catch (error) {
       console.error(error);
-      alert("Failed to create. Please try again.");
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || "Failed to create. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

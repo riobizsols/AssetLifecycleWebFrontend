@@ -339,8 +339,8 @@ const ContentBox = ({
       {/* Table */}
       <div className="max-h-[500px] min-h-[400px] overflow-y-auto">
         <table className="min-w-full border border-gray-200">
-          <thead>
-            <tr className="bg-[#0E2F4B] text-white text-sm font-medium border-b-4 border-[#FFC107]">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-[#0E2F4B] text-white text-sm font-medium border-b-4 border-[#F  FC107]">
               {visibleFilters.map((filter, index) => {
                 // Safely access sortConfig
                 const sortInfo = sortConfig?.sorts?.find(s => s.column === filter.name);

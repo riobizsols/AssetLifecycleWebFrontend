@@ -25,13 +25,13 @@ const Branches = () => {
 
   const [columns] = useState([
     { label: "Branch ID", name: "branch_id", visible: true },
-    { label: "Ext ID", name: "ext_id", visible: true },
     { label: "Organization ID", name: "org_id", visible: true },
     { label: "Is Active", name: "int_status", visible: true },
     { label: "Branch Name", name: "text", visible: true },
     { label: "City", name: "city", visible: true },
     { label: "Branch Code", name: "branch_code", visible: true },
     { label: "Created By", name: "created_by", visible: false },
+    { label: "Ext ID", name: "ext_id", visible: false },
     { label: "Created On", name: "created_on", visible: false },
     { label: "Changed By", name: "changed_by", visible: false },
     { label: "Changed On", name: "changed_on", visible: false },

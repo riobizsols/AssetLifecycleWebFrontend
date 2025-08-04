@@ -27,6 +27,8 @@ import MaintenanceApproval from "../pages/MaintenanceApproval";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
+import CronJobManagement from "../pages/CronJobManagement";
+import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
 export default function AppRoutes() {
@@ -128,6 +130,28 @@ export default function AppRoutes() {
           }
         />
 
+        <Route
+          path="/supervisor-approval-detail/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MaintSupervisorApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/cron-management"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CronJobManagement />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
         
 
           <Route
@@ -149,7 +173,7 @@ export default function AppRoutes() {
           <Route
             path="/master-data/asset-types"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -165,7 +189,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/prod-serv"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "employee"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "employee","JR001"]}>
               <MainLayout>
                 <ProdServ />
               </MainLayout>
@@ -176,7 +200,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/users"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
               <MainLayout>
                 <Users />
               </MainLayout>
@@ -186,7 +210,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/departments"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+            <ProtectedRoute allowedRoles={["system_admin", "admin", "JR001"]}>
               <MainLayout>
                 <Departments />
               </MainLayout>
@@ -196,7 +220,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/departments-admin"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
               <MainLayout>
                 <DepartmentsAdmin />
               </MainLayout>
@@ -206,7 +230,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/departments-asset"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
               <MainLayout>
                 <DepartmentsAsset />
               </MainLayout>
@@ -216,7 +240,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/organizations"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <Organization />
               </MainLayout>
@@ -229,7 +253,7 @@ export default function AppRoutes() {
       <Route
           path="/master-data/vendors"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -246,7 +270,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/branches"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
               <MainLayout>
                 <Outlet />
               </MainLayout>

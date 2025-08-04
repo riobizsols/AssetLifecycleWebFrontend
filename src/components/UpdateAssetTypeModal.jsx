@@ -13,6 +13,11 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
   const [parentAssetTypes, setParentAssetTypes] = useState([]);
   const [selectedParentType, setSelectedParentType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // New state variables for maintenance fields
+  const [maintenanceTypes, setMaintenanceTypes] = useState([]);
+  const [selectedMaintenanceType, setSelectedMaintenanceType] = useState("");
+  const [maintenanceLeadType, setMaintenanceLeadType] = useState("");
 
   useEffect(() => {
     if (assetData) {
@@ -20,10 +25,12 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       setAssignmentType(assetData.assignment_type || "user");
       setGroupRequired(assetData.group_required === "Yes");
       setRequireInspection(assetData.inspection_required === "Yes");
-      setRequireMaintenance(assetData.maintenance_schedule === "Yes");
+      setRequireMaintenance(assetData.maint_required === "Yes" || assetData.maint_required === 1);
       setIsActive(assetData.int_status === "Active");
       setParentChild(assetData.is_child ? "child" : "parent");
       setSelectedParentType(assetData.parent_asset_type_id || "");
+      setSelectedMaintenanceType(assetData.maint_type_id || "");
+      setMaintenanceLeadType(assetData.maint_lead_type || "");
     }
   }, [assetData]);
 
@@ -37,14 +44,15 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
     }
   }, [parentChild]);
 
+  // Fetch maintenance types when component mounts
+  useEffect(() => {
+    fetchMaintenanceTypes();
+  }, []);
+
   const fetchParentAssetTypes = async () => {
     try {
       const res = await API.get('/asset-types/parents');
-      // Filter out the current asset type from parent options to prevent circular reference
-      const filteredTypes = Array.isArray(res.data) 
-        ? res.data.filter(type => type.asset_type_id !== assetData.asset_type_id)
-        : [];
-      setParentAssetTypes(filteredTypes);
+      setParentAssetTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching parent asset types:', err);
       toast.error('Failed to fetch parent asset types');
@@ -52,9 +60,21 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
     }
   };
 
+  const fetchMaintenanceTypes = async () => {
+    try {
+      const res = await API.get('/maint-types');
+      setMaintenanceTypes(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Error fetching maintenance types:', err);
+      toast.error('Failed to fetch maintenance types');
+      setMaintenanceTypes([]);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validate form
     if (!assetType.trim()) {
       toast(
         "Asset type name is required",
@@ -86,6 +106,22 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       return;
     }
 
+    // Validate maintenance fields when maintenance is required
+    if (requireMaintenance && !selectedMaintenanceType) {
+      toast(
+        "Please select a maintenance type when maintenance is required",
+        {
+          icon: '❌',
+          style: {
+            borderRadius: '8px',
+            background: '#7F1D1D',
+            color: '#fff',
+          },
+        }
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -95,12 +131,15 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
-        maintenance_schedule: requireMaintenance ? 1 : 0,
+        maint_required: requireMaintenance ? 1 : 0,
         is_child: parentChild === "child",
-        parent_asset_type_id: parentChild === "child" ? selectedParentType : null
+        parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
+        maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
+        maint_lead_type: requireMaintenance ? maintenanceLeadType : null
       };
 
-      await API.put(`/asset-types/${assetData.asset_type_id}`, formData);
+      // Make API call
+      const response = await API.put(`/asset-types/${assetData.asset_type_id}`, formData);
 
       toast(
         `Asset type "${assetType}" updated successfully`,
@@ -113,7 +152,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
           },
         }
       );
-      onClose(true);
+      onClose();
+      // Refresh the parent component
+      window.location.reload();
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Failed to update asset type";
       const errorDetails = error.response?.data?.details || "";
@@ -144,24 +185,31 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
-          <h1 className="text-2xl font-semibold">Update Asset Type</h1>
+      <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">Update Asset Type</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit}>
           {/* First Row: Asset Type, Assignment Type, Status */}
           <div className="grid grid-cols-3 gap-6 mb-6">
             {/* Asset Type Input */}
             <div>
-              <label className="block text-sm font-medium mb-1">Asset Type</label>
+              <label className="block text-sm font-medium mb-1">
+                Asset Type <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 value={assetType}
                 onChange={(e) => setAssetType(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter asset type name"
-                required
               />
             </div>
 
@@ -248,6 +296,44 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
             </label>
           </div>
 
+          {/* Maintenance Fields - Conditional Rendering */}
+          {requireMaintenance && (
+            <div className="mt-6 grid grid-cols-2 gap-6">
+              {/* Maintenance Type Dropdown */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Select Maint Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedMaintenanceType}
+                  onChange={(e) => setSelectedMaintenanceType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select maintenance type</option>
+                  {maintenanceTypes.map((type) => (
+                    <option key={type.maint_type_id} value={type.maint_type_id}>
+                      {type.text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Maintenance Lead Type Input */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Maintenance Lead Type
+                </label>
+                <input
+                  type="text"
+                  value={maintenanceLeadType}
+                  onChange={(e) => setMaintenanceLeadType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter maintenance lead type"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Parent/Child Selection */}
           <div className="mt-6">
             <div className="flex gap-6">
@@ -266,12 +352,13 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
               {/* Parent Asset Type Dropdown (shown only when Child is selected) */}
               {parentChild === "child" && (
                 <div className="max-w-xs">
-                  <label className="block text-sm font-medium mb-1">Parent Asset Type</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Parent Asset Type <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={selectedParentType}
                     onChange={(e) => setSelectedParentType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required={parentChild === "child"}
+                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select parent asset type</option>
                     {parentAssetTypes.map((type) => (
@@ -286,10 +373,10 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 mt-20">
+          <div className="flex justify-end gap-3 mt-6">
             <button
               type="button"
-              onClick={() => onClose(false)}
+              onClick={onClose}
               className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               disabled={isSubmitting}
             >
@@ -300,7 +387,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
               className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Saving..." : "Save"}
+              {isSubmitting ? "Updating..." : "Update"}
             </button>
           </div>
         </form>

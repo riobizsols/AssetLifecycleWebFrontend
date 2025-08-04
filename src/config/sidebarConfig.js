@@ -14,7 +14,8 @@ import {
     Users,
     CalendarClock,
     ClipboardList,
-    GitBranchIcon
+    GitBranchIcon,
+    Clock
 } from "lucide-react";
 
 export const sidebarItems = [

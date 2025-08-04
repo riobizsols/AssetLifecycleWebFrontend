@@ -92,6 +92,9 @@ const AddAssetForm = ({ userRole }) => {
     serviceSupply: useRef(null)
   };
 
+  // Add state for serial number generation
+  const [isGeneratingSerial, setIsGeneratingSerial] = useState(false);
+
   useEffect(() => {
     console.log('Component mounted, fetching asset types...');
     fetchAssetTypes();
@@ -348,8 +351,44 @@ const AddAssetForm = ({ userRole }) => {
   };
 
   const handlePropChange = (propName, value) => {
-    setForm((prev) => ({ ...prev, properties: { ...prev.properties, [propName]: value } }));
+    setForm(prev => ({
+      ...prev,
+      properties: {
+        ...prev.properties,
+        [propName]: value
+      }
+    }));
     setTouched((prev) => ({ ...prev, [propName]: true }));
+  };
+
+  const generateSerialNumber = async () => {
+    if (!form.assetType) {
+      toast.error('Please select an asset type first');
+      return;
+    }
+
+    try {
+      setIsGeneratingSerial(true);
+      
+      const response = await API.post('/serial-numbers/generate-and-queue', {
+        assetTypeId: form.assetType,
+        orgId: useAuthStore.getState().user.org_id
+      });
+
+      if (response.data.success) {
+        const serialNumber = response.data.data.serialNumber;
+        setForm(prev => ({ ...prev, serialNumber }));
+        toast.success(`Serial number generated: ${serialNumber}`);
+      } else {
+        toast.error(response.data.message || 'Failed to generate serial number');
+      }
+    } catch (error) {
+      console.error('Error generating serial number:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to generate serial number';
+      toast.error(errorMessage);
+    } finally {
+      setIsGeneratingSerial(false);
+    }
   };
 
   const isFieldInvalid = (field) => {
@@ -364,6 +403,7 @@ const AddAssetForm = ({ userRole }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🚀 Starting asset submission...');
     setSubmitAttempted(true);
     // Validate required fields
     if (!form.assetType || !form.serialNumber || !form.purchaseDate || !form.purchaseCost) {
@@ -377,7 +417,13 @@ const AddAssetForm = ({ userRole }) => {
       return;
     }
 
+    if (isSubmitting) {
+      console.log('⚠️ Already submitting, preventing duplicate request');
+      return;
+    }
+
     setIsSubmitting(true);
+    console.log('📤 Submitting asset data...');
     try {
       // Get user info from auth store
       const user = useAuthStore.getState().user;
@@ -398,7 +444,8 @@ const AddAssetForm = ({ userRole }) => {
         serial_number: form.serialNumber,
         description: form.description,
         branch_id: null, // null as specified
-        vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
+        purchase_vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
+        service_vendor_id: form.serviceSupply || null, // Set from Service Vendor dropdown
         prod_serve_id: form.serviceSupply || null, // Set from Service Vendor dropdown
         maintsch_id: null, // Always set to null
         purchased_cost: form.purchaseCost,
@@ -412,18 +459,20 @@ const AddAssetForm = ({ userRole }) => {
         properties: form.properties || {}
       };
 
-      console.log('Submitting asset data:', assetData);
+      console.log('📦 Submitting asset data:', assetData);
       const response = await API.post('/assets/add', assetData);
+      console.log('✅ Asset created successfully:', response.data);
       toast.success('Asset created successfully');
       navigate('/assets');
     } catch (err) {
-      console.error('Error creating asset:', err);
+      console.error('❌ Error creating asset:', err);
       const errorMessage = err.response?.data?.error || 'Failed to create asset';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
+      console.log('🏁 Asset submission completed');
     }
-};
+  };
 
   const toggleSection = (section) => {
     setCollapsedSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -624,7 +673,20 @@ const AddAssetForm = ({ userRole }) => {
                 <label className="block text-sm mb-1 font-medium">
                   Serial Number <span className="text-red-500">*</span>
                 </label>
-                <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('serialNumber') ? 'border-red-500' : 'border-gray-300'}`} />
+                <div className="flex items-center">
+                  <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('serialNumber') ? 'border-red-500' : 'border-gray-300'}`} />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGeneratingSerial(true);
+                      generateSerialNumber();
+                    }}
+                    className="ml-2 px-3 bg-[#0E2F4B] text-white rounded text-sm h-9 transition"
+                    disabled={isGeneratingSerial}
+                  >
+                    {isGeneratingSerial ? 'Generating...' : 'Generate'}
+                  </button>
+                </div>
               </div>
               <div className="col-span-4">
                 <label className="block text-sm mb-1 font-medium">Description</label>

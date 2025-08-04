@@ -17,6 +17,11 @@ const AddAssetType = () => {
   const [selectedParentType, setSelectedParentType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  
+  // New state variables for maintenance fields
+  const [maintenanceTypes, setMaintenanceTypes] = useState([]);
+  const [selectedMaintenanceType, setSelectedMaintenanceType] = useState("");
+  const [maintenanceLeadType, setMaintenanceLeadType] = useState("");
 
   useEffect(() => {
     // Reset parent selection when parentChild changes
@@ -28,6 +33,11 @@ const AddAssetType = () => {
     }
   }, [parentChild]);
 
+  // Fetch maintenance types when component mounts
+  useEffect(() => {
+    fetchMaintenanceTypes();
+  }, []);
+
   const fetchParentAssetTypes = async () => {
     try {
       const res = await API.get('/asset-types/parents');
@@ -36,6 +46,17 @@ const AddAssetType = () => {
       console.error('Error fetching parent asset types:', err);
       toast.error('Failed to fetch parent asset types');
       setParentAssetTypes([]);
+    }
+  };
+
+  const fetchMaintenanceTypes = async () => {
+    try {
+      const res = await API.get('/maint-types');
+      setMaintenanceTypes(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Error fetching maintenance types:', err);
+      toast.error('Failed to fetch maintenance types');
+      setMaintenanceTypes([]);
     }
   };
 
@@ -75,6 +96,22 @@ const AddAssetType = () => {
       return;
     }
 
+    // Validate maintenance fields when maintenance is required
+    if (requireMaintenance && !selectedMaintenanceType) {
+      toast(
+        "Please select a maintenance type when maintenance is required",
+        {
+          icon: '❌',
+          style: {
+            borderRadius: '8px',
+            background: '#7F1D1D',
+            color: '#fff',
+          },
+        }
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -84,9 +121,11 @@ const AddAssetType = () => {
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
-        maintenance_schedule: requireMaintenance ? 1 : 0,
+        maint_required: requireMaintenance ? 1 : 0,
         is_child: parentChild === "child",
-        parent_asset_type_id: parentChild === "child" ? selectedParentType : null
+        parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
+        maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
+        maint_lead_type: requireMaintenance ? maintenanceLeadType : null
       };
 
       // Make API call
@@ -242,6 +281,44 @@ const AddAssetType = () => {
             <span>Require Maintenance</span>
           </label>
         </div>
+
+        {/* Maintenance Fields - Conditional Rendering */}
+        {requireMaintenance && (
+          <div className="mt-6 grid grid-cols-2 gap-6">
+            {/* Maintenance Type Dropdown */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Select Maint Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedMaintenanceType}
+                onChange={(e) => setSelectedMaintenanceType(e.target.value)}
+                className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${submitAttempted && requireMaintenance && !selectedMaintenanceType ? 'border-red-500' : 'border-gray-300'}`}
+              >
+                <option value="">Select maintenance type</option>
+                {maintenanceTypes.map((type) => (
+                  <option key={type.maint_type_id} value={type.maint_type_id}>
+                    {type.text}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Maintenance Lead Type Input */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Maintenance Lead Type
+              </label>
+              <input
+                type="text"
+                value={maintenanceLeadType}
+                onChange={(e) => setMaintenanceLeadType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter maintenance lead type"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Parent/Child Selection */}
         <div className="mt-6">

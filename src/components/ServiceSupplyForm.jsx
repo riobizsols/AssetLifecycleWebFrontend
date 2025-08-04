@@ -144,7 +144,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
                 <td className="px-6 py-2 text-center">
                   {/* Delete button could call backend if needed */}
                   <button 
-                    onClick={() => alert('Delete from backend not implemented')} 
+                    onClick={() => toast.info('Delete from backend not implemented')} 
                     className="text-yellow-500 hover:text-red-600 transition-colors"
                     title="Delete"
                   >
@@ -230,7 +230,6 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
       for (const prod_serv_id of prodServIds) {
         try {
           await API.post('/vendor-prod-services', {
-            ext_id: uuidv4(),
             prod_serv_id,
             vendor_id: vendorId,
             org_id: orgId

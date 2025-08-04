@@ -4,6 +4,7 @@ import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { v4 as uuidv4 } from "uuid";
 import SearchableDropdown from "./ui/SearchableDropdown";
+import { toast } from "react-hot-toast";
 
 const ProductSupplyForm = ({ vendorId, orgId }) => {
   // Debug logs
@@ -95,7 +96,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
     // Find the selected asset type object by asset_type_id
     const selectedAsset = assetTypes.find((t) => String(t.asset_type_id) === String(form.assetType));
     if (!selectedAsset) {
-      alert("Invalid asset type selected");
+      toast.error("Invalid asset type selected");
       return;
     }
 
@@ -114,7 +115,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
       sessionStorage.setItem('products', JSON.stringify(newProducts));
       setForm({ assetType: "", brand: "", model: "", description: "" });
     } catch (err) {
-      alert("Failed to add product supply: " + (err.response?.data?.error || err.message));
+      toast.error("Failed to add product supply: " + (err.response?.data?.error || err.message));
     }
   };
 
@@ -191,7 +192,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
     try {
       console.log('handleDone called', { vendorId, orgId, products });
       if (!vendorId || !orgId) {
-        alert("Vendor must be created first.");
+        toast.error("Vendor must be created first.");
         return;
       }
       let productsFromStorage;
@@ -199,12 +200,12 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
         productsFromStorage = JSON.parse(sessionStorage.getItem('products') || '[]');
       } catch (parseErr) {
         console.error('Error parsing products from sessionStorage:', parseErr);
-        alert('Error reading products from local storage.');
+        toast.error('Error reading products from local storage.');
         return;
       }
       if (!Array.isArray(productsFromStorage)) {
         console.error('productsFromStorage is not an array:', productsFromStorage);
-        alert('Internal error: products data is invalid.');
+        toast.error('Internal error: products data is invalid.');
         return;
       }
       let prodServIds = [];
@@ -217,31 +218,51 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
           if (match && match.prod_serv_id) prodServIds.push(match.prod_serv_id);
           else {
             console.warn('No matching prod_serv_id found for product:', p);
-            alert(`No matching product found in master list for: ${p.assetType}, ${p.brand}, ${p.model}`);
+            toast.error(`No matching product found in master list for: ${p.assetType}, ${p.brand}, ${p.model}`);
           }
         } catch (apiErr) {
           console.error('Error fetching /prodserv for product:', p, apiErr);
-          alert('Error looking up product in master list.');
+          toast.error('Error looking up product in master list.');
         }
       }
       prodServIds = [...new Set(prodServIds)];
+      
+      if (!prodServIds.length) {
+        toast.error("No valid products to link");
+        return;
+      }
+
+      // Link products to vendor
+      let successCount = 0;
       for (const prod_serv_id of prodServIds) {
         try {
           await API.post('/vendor-prod-services', {
-            ext_id: uuidv4(),
             prod_serv_id,
             vendor_id: vendorId,
             org_id: orgId
           });
+          successCount++;
         } catch (postErr) {
-          console.error('Error posting to /vendor-prod-services:', postErr);
-          alert('Error linking vendor to product.');
+          console.error('Error linking product:', postErr);
+          const errorMessage = postErr.response?.data?.message || postErr.response?.data?.error || "Error linking product";
+          toast.error(errorMessage);
         }
       }
-      alert('Vendor-Product links created successfully!');
+
+      // Show final status
+      if (successCount === prodServIds.length) {
+        toast.success('All products linked successfully');
+        // Clear form and storage
+        setProducts([]);
+        sessionStorage.removeItem('products');
+      } else if (successCount > 0) {
+        toast.success(`${successCount} out of ${prodServIds.length} products linked successfully`);
+      } else {
+        toast.error('Failed to link any products');
+      }
     } catch (err) {
       console.error('Unexpected error in handleDone:', err);
-      alert('Unexpected error occurred. See console for details.');
+      toast.error('An unexpected error occurred');
     }
   };
 
