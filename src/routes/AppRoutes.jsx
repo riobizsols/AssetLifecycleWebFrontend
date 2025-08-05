@@ -29,6 +29,13 @@ import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
 import CronJobManagement from "../pages/CronJobManagement";
 import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
+import DatabasePermissionDemo from "../pages/DatabasePermissionDemo";
+import ReportsView from "../pages/ReportsView";
+import AdminSettingsView from "../pages/AdminSettingsView";
+import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
+import AuditLogsView from "../pages/AuditLogsView";
+import MaintenanceView from "../pages/MaintenanceView";
+import InspectionView from "../pages/InspectionView";
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
 export default function AppRoutes() {
@@ -147,6 +154,83 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <CronJobManagement />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/database-permission-demo"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <DatabasePermissionDemo />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports-view"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ReportsView />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin-settings-view"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AdminSettingsView />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/maintenance-schedule-view"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MaintenanceScheduleView />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/audit-logs-view"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AuditLogsView />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/maintenance-view"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MaintenanceView />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inspection-view"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <InspectionView />
               </MainLayout>
             </ProtectedRoute>
           }

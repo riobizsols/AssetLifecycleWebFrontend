@@ -446,7 +446,7 @@ const AddAssetForm = ({ userRole }) => {
         branch_id: null, // null as specified
         purchase_vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
         service_vendor_id: form.serviceSupply || null, // Set from Service Vendor dropdown
-        prod_serve_id: form.serviceSupply || null, // Set from Service Vendor dropdown
+        prod_serv_id: form.serviceSupply || null, // Set from Service Vendor dropdown
         maintsch_id: null, // Always set to null
         purchased_cost: form.purchaseCost,
         purchased_on: form.purchaseDate,

@@ -393,7 +393,7 @@ const AssetSelection = () => {
                         : asset.description}
                     </div>
                     <div>{asset.vendor_id}</div>
-                    <div>{asset.prod_serve_id}</div>
+                    <div>{asset.prod_serv_id}</div>
                     <div className="flex justify-center">
                       <button
                         onClick={() => handleAssignAsset(asset)}

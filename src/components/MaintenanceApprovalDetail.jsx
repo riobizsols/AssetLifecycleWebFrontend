@@ -598,7 +598,7 @@ const MaintenanceApprovalDetail = () => {
                         <ReadOnlyInput label="Service Vendor" value={assetDetails.service_vendor_id || "-"} />
                       </div>
                       <div className="grid grid-cols-3 gap-6 mb-6">
-                        <ReadOnlyInput label="Product/Service ID" value={assetDetails.prod_serve_id || "-"} />
+                        <ReadOnlyInput label="Product/Service ID" value={assetDetails.prod_serv_id || "-"} />
                         <ReadOnlyInput label="Parent Asset" value={assetDetails.parent_asset_id || "-"} />
                         <ReadOnlyInput label="Status" value={assetDetails.current_status || "-"} />
                       </div>

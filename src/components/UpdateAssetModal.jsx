@@ -60,7 +60,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         vendorBrand: '',
         vendorModel: '',
         purchaseSupply: assetData.vendor_id || '',
-        serviceSupply: assetData.prod_serve_id || '',
+        serviceSupply: assetData.prod_serv_id || '',
         vendorId: assetData.vendor_id || ''
       });
     }
@@ -175,7 +175,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         serial_number: form.serialNumber,
         description: form.description,
         vendor_id: form.purchaseSupply || null,
-        prod_serve_id: form.serviceSupply || null,
+        prod_serv_id: form.serviceSupply || null,
         maintsch_id: null,
         purchased_cost: form.purchaseCost,
         purchased_on: form.purchaseDate,

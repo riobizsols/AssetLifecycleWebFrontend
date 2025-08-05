@@ -1,12 +1,12 @@
 // src/layouts/MainLayout.jsx
-import Sidebar from "../components/Sidebar";
+import DatabaseSidebar from "../components/DatabaseSidebar";
 import Header from "./Header";
 
 export default function MainLayout({ children }) {
   return (
     <div className="flex h-screen">
-      {/* Sidebar on the left */}
-      <Sidebar />
+      {/* Database-driven Sidebar on the left */}
+      <DatabaseSidebar />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">

@@ -42,7 +42,7 @@ const Assets = () => {
     { label: "Parent Id", name: "parent_asset_id", visible: true },
     { label: "Group Id", name: "group_id", visible: true },
     { label: "Maintenance Schedule Id", name: "maintsch_id", visible: false },
-    { label: "Product/Service Id", name: "prod_serve_id", visible: false },
+    { label: "Product/Service Id", name: "prod_serv_id", visible: false },
     { label: "Ext Id", name: "ext_id", visible: false },
   ]);
 
