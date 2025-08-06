@@ -36,6 +36,11 @@ import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
 import AuditLogsView from "../pages/AuditLogsView";
 import MaintenanceView from "../pages/MaintenanceView";
 import InspectionView from "../pages/InspectionView";
+import GroupAsset from "../pages/GroupAsset";
+import CreateGroupAsset from "../components/groupAsset/CreateGroupAsset";
+import EditGroupAsset from "../components/groupAsset/EditGroupAsset";
+import ViewGroupAsset from "../components/groupAsset/ViewGroupAsset";
+import ScrapSales from "../pages/ScrapSales";
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
 export default function AppRoutes() {
@@ -236,6 +241,47 @@ export default function AppRoutes() {
           }
         />
 
+        <Route
+          path="/group-asset"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <GroupAsset />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/group-asset/create"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CreateGroupAsset />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/group-asset/edit/:groupId"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <EditGroupAsset />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/group-asset/view/:groupId"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ViewGroupAsset />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
         
 
           <Route
@@ -365,6 +411,17 @@ export default function AppRoutes() {
 
           <Route path="add" element={<AddBranch />} />
         </Route>
+
+        <Route
+          path="/scrap-sales"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <ScrapSales />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Eye } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 
 const CustomTable = ({
@@ -8,6 +8,7 @@ const CustomTable = ({
   setSelectedRows,
   onEdit,
   onDelete,
+  onView,
   rowKey = "id",
   showActions = true,
   renderCell,
@@ -57,13 +58,30 @@ const CustomTable = ({
 
           {showActions && (
             <td className="border px-4 py-2 flex gap-2 justify-center">
-              <button 
-                onClick={() => onEdit(row)} 
-                className="text-blue-600 hover:text-blue-800"
-                title="Edit"
-              >
-                <Pencil size={16} />
-              </button>
+              {/* {onView && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView(row);
+                  }} 
+                  className="text-green-600 hover:text-green-800"
+                  title="View"
+                >
+                  <Eye size={16} />
+                </button>
+              )} */}
+              {onEdit && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(row);
+                  }} 
+                  className="text-blue-600 hover:text-blue-800"
+                  title="Edit"
+                >
+                  <Pencil size={16} />
+                </button>
+              )}
             </td>
           )}
         </tr>

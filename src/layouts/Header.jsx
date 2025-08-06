@@ -10,22 +10,27 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Map paths to page titles
+  // Map paths to page titles and subtitles
   const pathTitleMap = {
-    "/supervisor-approval": "Maintenance Supervisor",
-    "/approval-detail": "Maintenance Approval",
-    "/dashboard": "Dashboard",
-    "/assets/add": "Add Asset",
-    "/master-data/asset-types/add" : "Add Asset Type",
-    "/master-data/branches/add" : "Add Branch",
-    "/master-data/vendors/add" : "Add Vendor",
-    "/master-data/prod-serv" : "Product / Service"
+    "/supervisor-approval": { title: "Maintenance Supervisor", subtitle: "" },
+    "/approval-detail": { title: "Maintenance Approval", subtitle: "" },
+    "/dashboard": { title: "Dashboard", subtitle: "" },
+    "/assets/add": { title: "Add Asset", subtitle: "" },
+    "/master-data/asset-types/add": { title: "Add Asset Type", subtitle: "" },
+    "/master-data/branches/add": { title: "Add Branch", subtitle: "" },
+    "/master-data/vendors/add": { title: "Add Vendor", subtitle: "" },
+    "/master-data/prod-serv": { title: "Product / Service", subtitle: "" },
+    "/group-asset": { title: "Asset Groups", subtitle: "" },
+    "/group-asset/create": { title: "Asset Groups", subtitle: "Create a new asset group" },
+    "/group-asset/edit": { title: "Asset Groups", subtitle: "Edit asset group" },
+    "/group-asset/view": { title: "Asset Groups", subtitle: "View asset group" },
+    "/scrap-sales": { title: "Scrap Sales", subtitle: "Manage asset scrap sales and disposal records" }
     // Add more routes as needed
   };
-  const pageTitle =
+  const pageInfo =
     Object.entries(pathTitleMap).find(([path]) =>
       location.pathname.startsWith(path)
-    )?.[1] || "";
+    )?.[1] || { title: "", subtitle: "" };
 
   const handleLogout = () => {
     logout();
@@ -57,8 +62,15 @@ export default function Header() {
   return (
     <header className="flex items-center justify-between bg-white px-6 py-3 shadow-sm relative">
       {/* Page Title */}
-      <div className="text-2xl font-bold text-[#0E2F4B]">
-        {pageTitle}
+      <div className="flex flex-col">
+        <div className="text-2xl font-bold text-[#0E2F4B]">
+          {pageInfo.title}
+        </div>
+        {pageInfo.subtitle && (
+          <div className="text-sm text-gray-600">
+            {pageInfo.subtitle}
+          </div>
+        )}
       </div>
       <div className="relative" ref={dropdownRef}>
         {/* Avatar Button */}

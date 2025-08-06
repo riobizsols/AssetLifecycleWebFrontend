@@ -90,7 +90,10 @@ const DatabaseSidebar = () => {
     'ROLES': '/master-data/users',
     'USERS': '/master-data/users',
     'MAINTENANCESCHEDULE': '/maintenance-schedule-view', // Unique route
-    'AUDITLOGS': '/audit-logs-view' // Unique route
+    'AUDITLOGS': '/audit-logs-view', // Unique route
+    'GROUPASSET': '/group-asset', // Group Asset route
+    'CREATEGROUPASSET': '/group-asset/create', // Create Group Asset route
+    'SCRAPSALES': '/scrap-sales' // Scrap Sales route
   };
 
 
@@ -122,7 +125,9 @@ const DatabaseSidebar = () => {
       'ROLES': Shield,
       'USERS': Users,
       'MAINTENANCESCHEDULE': Calendar,
-      'AUDITLOGS': History
+      'AUDITLOGS': History,
+      'GROUPASSET': Package,
+      'SCRAPSALES': Package
     };
 
     const IconComponent = iconMap[appId] || Building;

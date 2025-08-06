@@ -26,6 +26,7 @@ const ContentBox = ({
   children,
   showAddButton = true, // <-- Add this line
   showActions = true, // <-- Add this line
+  onAdd, // Add onAdd prop
 }) => {
   const navigate = useNavigate();
 
@@ -305,7 +306,7 @@ const ContentBox = ({
         <div className="flex gap-2 justify-end">
           {showAddButton && (
             <button
-              onClick={() => navigate("add")}
+              onClick={onAdd || (() => navigate("add"))}
               className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
             >
               <Plus size={16} />
