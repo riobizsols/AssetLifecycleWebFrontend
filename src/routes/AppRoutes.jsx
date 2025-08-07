@@ -44,6 +44,13 @@ import ScrapSales from "../pages/ScrapSales";
 import CreateScrapSales from "../components/scrapSales/CreateScrapSales";
 import EditScrapSales from "../components/scrapSales/EditScrapSales";
 import ViewScrapSales from "../components/scrapSales/ViewScrapSales";
+import ScrapAssets from "../pages/ScrapAssets";
+
+import NearingExpiry from "../components/scrapAssets/NearingExpiry";
+import ExpiredAssets from "../components/scrapAssets/ExpiredAssets";
+import ExpiringByCategory from "../components/scrapAssets/ExpiringByCategory";
+import CategoryAssets from "../components/scrapAssets/CategoryAssets";
+import CreateScrapAsset from "../components/scrapAssets/CreateScrapAsset";
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
 export default function AppRoutes() {
@@ -451,6 +458,69 @@ export default function AppRoutes() {
             <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <ViewScrapSales />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Scrap Assets Routes */}
+        <Route
+          path="/scrap-assets"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <ScrapAssets />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/scrap-assets/nearing-expiry"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <NearingExpiry />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-assets/expired"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <ExpiredAssets />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-assets/by-category"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <ExpiringByCategory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-assets/by-category/:category"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <CategoryAssets />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-assets/create"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <CreateScrapAsset />
               </MainLayout>
             </ProtectedRoute>
           }

@@ -24,7 +24,14 @@ export default function Header() {
     "/group-asset/create": { title: "Asset Groups", subtitle: "Create a new asset group" },
     "/group-asset/edit": { title: "Asset Groups", subtitle: "Edit asset group" },
     "/group-asset/view": { title: "Asset Groups", subtitle: "View asset group" },
-    "/scrap-sales": { title: "Scrap Sales", subtitle: "Manage asset scrap sales and disposal records" }
+    "/scrap-sales": { title: "Scrap Sales", subtitle: "Manage asset scrap sales and disposal records" },
+    "/scrap-assets": { title: "Scrap Assets Dashboard", subtitle: "Overview of assets marked for disposal and scrapping" },
+
+    "/scrap-assets/nearing-expiry": { title: "Assets Nearing Expiry", subtitle: "Assets that will expire within the next 30 days" },
+    "/scrap-assets/expired": { title: "Expired Assets", subtitle: "Assets that have passed their expiry date" },
+    "/scrap-assets/by-category": { title: "Expiring Assets by Category", subtitle: "Assets expiring soon grouped by category" },
+    "/scrap-assets/by-category/:category": { title: "Category Assets", subtitle: "Assets filtered by specific category" },
+    "/scrap-assets/create": { title: "Add Scrap Asset", subtitle: "Manually scrap assets that are not necessarily nearing expiry" }
     // Add more routes as needed
   };
   const pageInfo =

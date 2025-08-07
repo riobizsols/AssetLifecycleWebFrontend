@@ -93,7 +93,8 @@ const DatabaseSidebar = () => {
     'AUDITLOGS': '/audit-logs-view', // Unique route
     'GROUPASSET': '/group-asset', // Group Asset route
     'CREATEGROUPASSET': '/group-asset/create', // Create Group Asset route
-    'SCRAPSALES': '/scrap-sales' // Scrap Sales route
+    'SCRAPSALES': '/scrap-sales', // Scrap Sales route
+    'SCRAPASSETS': '/scrap-assets' // Scrap Assets route
   };
 
 
@@ -127,7 +128,8 @@ const DatabaseSidebar = () => {
       'MAINTENANCESCHEDULE': Calendar,
       'AUDITLOGS': History,
       'GROUPASSET': Package,
-      'SCRAPSALES': Package
+      'SCRAPSALES': Package,
+      'SCRAPASSETS': Package
     };
 
     const IconComponent = iconMap[appId] || Building;
