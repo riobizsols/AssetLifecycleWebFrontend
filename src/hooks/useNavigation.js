@@ -8,13 +8,21 @@ export const useNavigation = () => {
     const [error, setError] = useState(null);
     const { user } = useAuthStore();
 
+    // Detect platform (Desktop or Mobile)
+    const detectPlatform = () => {
+        // Check if it's a mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        return isMobile ? 'M' : 'D'; // 'D' for Desktop, 'M' for Mobile
+    };
+
     // Fetch user's navigation data
     const fetchNavigation = async () => {
         try {
             setLoading(true);
             setError(null);
             
-            const response = await API.get('/navigation/user/navigation');
+            const platform = detectPlatform();
+            const response = await API.get(`/navigation/user/navigation?platform=${platform}`);
             
             if (response.data.success) {
                 setNavigation(response.data.data);

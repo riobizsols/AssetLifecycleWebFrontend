@@ -41,6 +41,9 @@ import CreateGroupAsset from "../components/groupAsset/CreateGroupAsset";
 import EditGroupAsset from "../components/groupAsset/EditGroupAsset";
 import ViewGroupAsset from "../components/groupAsset/ViewGroupAsset";
 import ScrapSales from "../pages/ScrapSales";
+import CreateScrapSales from "../components/scrapSales/CreateScrapSales";
+import EditScrapSales from "../components/scrapSales/EditScrapSales";
+import ViewScrapSales from "../components/scrapSales/ViewScrapSales";
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
 export default function AppRoutes() {
@@ -418,6 +421,36 @@ export default function AppRoutes() {
             <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <ScrapSales />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-sales/create"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <CreateScrapSales />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-sales/edit/:scrapId"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <EditScrapSales />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-sales/view/:scrapId"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <ViewScrapSales />
               </MainLayout>
             </ProtectedRoute>
           }

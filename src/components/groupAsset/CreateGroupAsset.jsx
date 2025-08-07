@@ -300,39 +300,42 @@ const CreateGroupAsset = () => {
             </div>
 
             {/* Action Buttons - Fixed width on desktop, hidden on mobile */}
-            <div className="hidden lg:flex flex-col justify-center items-center gap-4 flex-shrink-0 px-2">
-              <button
-                onClick={handleSelectAsset}
-                disabled={filteredAvailableAssets.length === 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Add selected asset"
-              >
-                <ArrowRight size={20} />
-              </button>
-              <button
-                onClick={handleSelectAll}
-                disabled={filteredAvailableAssets.length === 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Add all assets"
-              >
-                <ChevronRight size={20} />
-              </button>
-              <button
-                onClick={handleDeselectAsset}
-                disabled={filteredSelectedAssets.length === 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Remove selected asset"
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <button
-                onClick={handleDeselectAll}
-                disabled={filteredSelectedAssets.length === 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Remove all assets"
-              >
-                <ChevronLeft size={20} />
-              </button>
+            <div className="hidden lg:flex flex-col justify-center items-center gap-2 flex-shrink-0 px-2">
+              {/* Transfer buttons in order: right single, right all, left single, left all */}
+              <div className="flex flex-col gap-1">
+                <button
+                  onClick={() => handleSelectAsset(filteredAvailableAssets[0])}
+                  disabled={filteredAvailableAssets.length === 0}
+                  className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Add one asset"
+                >
+                  <span className="text-lg font-bold">→</span>
+                </button>
+                <button
+                  onClick={handleSelectAll}
+                  disabled={filteredAvailableAssets.length === 0}
+                  className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Add all assets"
+                >
+                  <span className="text-lg font-bold">{'>>'}</span>
+                </button>
+                <button
+                  onClick={() => handleDeselectAsset(filteredSelectedAssets[0])}
+                  disabled={filteredSelectedAssets.length === 0}
+                  className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Remove one asset"
+                >
+                  <span className="text-lg font-bold">←</span>
+                </button>
+                <button
+                  onClick={handleDeselectAll}
+                  disabled={filteredSelectedAssets.length === 0}
+                  className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Remove all assets"
+                >
+                  <span className="text-lg font-bold">{'<<'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Mobile Action Buttons - Visible only on mobile */}

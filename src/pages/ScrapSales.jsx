@@ -1,136 +1,237 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
-import { Plus, Search, Filter, Download, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
-import API from '../lib/axios';
+
 
 const ScrapSales = () => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(false);
   const [scrapSales, setScrapSales] = useState([]);
-  const [selectedRows, setSelectedRows] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterTerm, setFilterTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for demonstration - replace with actual API calls
+
+  // Mock data for scrap sales - replace with actual API calls
   const mockScrapSales = [
     {
-      scrap_id: 'SS001',
+      scrap_id: 'SCR001',
+      group_name: 'Old Electronics',
       asset_id: 'A001',
       asset_name: 'Dell XPS 13',
+      asset_type: 'Laptop',
       scrap_date: '2024-01-15',
       scrap_reason: 'End of Life',
       scrap_value: 500,
-      buyer_name: 'Tech Recyclers Inc.',
-      buyer_contact: '+1-555-0123',
-      status: 'COMPLETED',
-      created_by: 'admin',
-      created_on: '2024-01-10'
+      buyer_name: 'John Doe',
+      buyer_contact: 'john@example.com',
+      status: 'Completed',
+      created_by: 'Admin User',
+      created_date: '2024-01-15'
     },
     {
-      scrap_id: 'SS002',
+      scrap_id: 'SCR002',
+      group_name: 'Damaged Equipment',
       asset_id: 'A002',
       asset_name: 'HP Pavilion',
+      asset_type: 'Laptop',
       scrap_date: '2024-01-20',
-      scrap_reason: 'Damaged Beyond Repair',
+      scrap_reason: 'Damaged',
       scrap_value: 300,
-      buyer_name: 'Green Electronics',
-      buyer_contact: '+1-555-0456',
-      status: 'PENDING',
-      created_by: 'admin',
-      created_on: '2024-01-15'
+      buyer_name: 'Jane Smith',
+      buyer_contact: 'jane@example.com',
+      status: 'Pending',
+      created_by: 'Admin User',
+      created_date: '2024-01-20'
     },
     {
-      scrap_id: 'SS003',
+      scrap_id: 'SCR003',
+      group_name: 'Office Upgrade',
       asset_id: 'A003',
-      asset_name: 'Lenovo ThinkPad',
-      scrap_date: '2024-01-25',
-      scrap_reason: 'Obsolete Technology',
-      scrap_value: 400,
-      buyer_name: 'Eco Disposal Co.',
-      buyer_contact: '+1-555-0789',
-      status: 'IN_PROGRESS',
-      created_by: 'admin',
-      created_on: '2024-01-20'
+      asset_name: 'Samsung Monitor',
+      asset_type: 'Monitor',
+      scrap_date: '2024-02-01',
+      scrap_reason: 'Upgrade',
+      scrap_value: 200,
+      buyer_name: 'Mike Johnson',
+      buyer_contact: 'mike@example.com',
+      status: 'Completed',
+      created_by: 'Admin User',
+      created_date: '2024-02-01'
     }
   ];
 
   useEffect(() => {
-    // Simulate API call to fetch scrap sales data
-    setScrapSales(mockScrapSales);
+    // Simulate API call
+    setTimeout(() => {
+      setScrapSales(mockScrapSales);
+      setLoading(false);
+    }, 1000);
   }, []);
 
   const columns = [
-    { name: 'scrap_id', label: 'Scrap ID', visible: true },
-    { name: 'asset_id', label: 'Asset ID', visible: true },
-    { name: 'asset_name', label: 'Asset Name', visible: true },
-    { name: 'scrap_date', label: 'Scrap Date', visible: true },
-    { name: 'scrap_reason', label: 'Reason', visible: true },
-    { name: 'scrap_value', label: 'Value ($)', visible: true },
-    { name: 'buyer_name', label: 'Buyer', visible: true },
-    { name: 'buyer_contact', label: 'Contact', visible: true },
-    { name: 'status', label: 'Status', visible: true },
-    { name: 'created_by', label: 'Created By', visible: true },
-    { name: 'created_on', label: 'Created On', visible: true }
+    { key: 'scrap_id', name: 'scrap_id', label: 'Scrap ID', sortable: true, visible: true },
+    { key: 'group_name', name: 'group_name', label: 'Group Name', sortable: true, visible: true },
+    { key: 'asset_id', name: 'asset_id', label: 'Asset ID', sortable: true, visible: true },
+    { key: 'asset_name', name: 'asset_name', label: 'Asset Name', sortable: true, visible: true },
+    { key: 'asset_type', name: 'asset_type', label: 'Asset Type', sortable: true, visible: true },
+    { key: 'scrap_date', name: 'scrap_date', label: 'Scrap Date', sortable: true, visible: true },
+    { key: 'scrap_reason', name: 'scrap_reason', label: 'Scrap Reason', sortable: true, visible: true },
+    { key: 'scrap_value', name: 'scrap_value', label: 'Scrap Value', sortable: true, visible: true },
+    { key: 'buyer_name', name: 'buyer_name', label: 'Buyer Name', sortable: true, visible: true },
+    { key: 'status', name: 'status', label: 'Status', sortable: true, visible: true },
+    { key: 'created_by', name: 'created_by', label: 'Created By', sortable: true, visible: true },
+    { key: 'created_date', name: 'created_date', label: 'Created Date', sortable: true, visible: true }
   ];
 
-  const visibleColumns = columns.filter(col => col.visible);
-
-  const filteredData = scrapSales.filter(item => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      item.scrap_id?.toLowerCase().includes(searchLower) ||
-      item.asset_id?.toLowerCase().includes(searchLower) ||
-      item.asset_name?.toLowerCase().includes(searchLower) ||
-      item.buyer_name?.toLowerCase().includes(searchLower) ||
-      item.scrap_reason?.toLowerCase().includes(searchLower) ||
-      item.status?.toLowerCase().includes(searchLower)
-    );
-  });
-
   const handleAddScrapSale = () => {
-    toast.info('Add Scrap Sale functionality will be implemented');
-  };
-
-  const handleEdit = (row) => {
-    toast.info(`Edit scrap sale ${row.scrap_id} functionality will be implemented`);
-  };
-
-  const handleDelete = (row) => {
-    toast.info(`Delete scrap sale ${row.scrap_id} functionality will be implemented`);
+    navigate('/scrap-sales/create');
   };
 
   const handleView = (row) => {
-    toast.info(`View scrap sale ${row.scrap_id} functionality will be implemented`);
+    // Navigate to view page
+    navigate(`/scrap-sales/view/${row.scrap_id}`);
   };
 
-  const handleExport = () => {
-    toast.info('Export functionality will be implemented');
+  const handleEdit = (row) => {
+    // Transform the data to match the expected structure in EditScrapSales
+    const transformedData = {
+      scrap_id: row.scrap_id,
+      group_name: row.group_name,
+      selected_assets: [
+        {
+          asset_id: row.asset_id,
+          name: row.asset_name,
+          description: `${row.asset_type} - ${row.asset_name}`,
+          purchased_on: row.created_date,
+          asset_type_id: row.asset_type === 'Laptop' ? 'AT001' : 
+                        row.asset_type === 'Desktop' ? 'AT002' : 
+                        row.asset_type === 'Monitor' ? 'AT003' : 'AT001',
+          asset_type_name: row.asset_type,
+          serial_number: `SN${row.asset_id}`,
+          scrap_value: row.scrap_value
+        }
+      ],
+      total_scrap_value: row.scrap_value,
+      buyer_details: {
+        buyer_name: row.buyer_name,
+        buyer_email: row.buyer_contact,
+        buyer_contact: row.buyer_contact,
+        company_name: 'Company Name' // Default value since not in original data
+      },
+      status: row.status
+    };
+
+    // Navigate to edit page with scrap sale data
+    navigate(`/scrap-sales/edit/${row.scrap_id}`, { 
+      state: { 
+        scrapData: transformedData,
+        isEdit: true 
+      } 
+    });
   };
+
+  const handleDelete = (row) => {
+    // Implement delete functionality
+    console.log('Delete scrap sale:', row);
+    toast.info('Delete functionality to be implemented');
+  };
+
+
+
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [filterValues, setFilterValues] = useState({});
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (column) => {
+    setSortConfig(prev => ({
+      key: column,
+      direction: prev.key === column && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const sortData = (data) => {
+    if (!sortConfig.key) return data;
+    
+    return [...data].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const filterData = (data, filters, visibleColumns) => {
+    return data.filter(item => {
+      return Object.keys(filters).every(key => {
+        const filterValue = filters[key];
+        if (!filterValue || filterValue === '') return true;
+        
+        const itemValue = item[key];
+        if (itemValue === null || itemValue === undefined) return false;
+        
+        return itemValue.toString().toLowerCase().includes(filterValue.toString().toLowerCase());
+      });
+    });
+  };
+
+  const handleFilterChange = (filterType, value) => {
+    setFilterValues(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+  };
+
+  const filters = columns.map((col) => ({
+    label: col.label,
+    name: col.name,
+    options: col.name === 'status' ? [
+      { label: "Completed", value: "Completed" },
+      { label: "Pending", value: "Pending" },
+      { label: "Cancelled", value: "Cancelled" }
+    ] : [],
+    onChange: (value) => handleFilterChange(col.name, value),
+  }));
 
   return (
-    <div className="p-6">
+    <div className="p-4">
       <ContentBox
-        title="Scrap Sales"
-        subtitle="Manage asset scrap sales and disposal records"
-        showAddButton={true}
-        onAdd={handleAddScrapSale}
-        render={() => (
-          <CustomTable
-            columns={visibleColumns}
-            visibleColumns={visibleColumns}
-            data={filteredData}
-            selectedRows={selectedRows}
-            setSelectedRows={setSelectedRows}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onView={handleView}
-            rowKey="scrap_id"
-          />
-        )}
-      />
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onSort={handleSort}
+        sortConfig={sortConfig}
+                 onAdd={handleAddScrapSale}
+        onDeleteSelected={handleDelete}
+        data={scrapSales}
+        selectedRows={selectedRows}
+        setSelectedRows={setSelectedRows}
+      >
+        {({ visibleColumns }) => {
+          const filteredData = filterData(scrapSales, filterValues, visibleColumns);
+          const sortedData = sortData(filteredData);
+
+          return (
+            <CustomTable
+              columns={visibleColumns}
+              visibleColumns={visibleColumns}
+              data={sortedData}
+              selectedRows={selectedRows}
+              setSelectedRows={setSelectedRows}
+                             onView={handleView}
+               onEdit={handleEdit}
+               onDelete={handleDelete}
+              rowKey="scrap_id"
+            />
+          );
+        }}
+      </ContentBox>
+
+      
     </div>
   );
 };
