@@ -3,473 +3,339 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
-import { Plus, ArrowLeft, Save, X } from 'lucide-react';
+import { ArrowLeft, Plus, Save, X } from 'lucide-react';
 import ContentBox from '../ContentBox';
+import CustomTable from '../CustomTable';
 
 const CreateScrapAsset = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(false);
-  const [availableAssets, setAvailableAssets] = useState([]);
-  const [selectedAssets, setSelectedAssets] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [assetTypeFilter, setAssetTypeFilter] = useState('');
+  const [scrapAssets, setScrapAssets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [notes, setNotes] = useState('');
 
-  // Mock data for available assets
+  // Mock data for available assets to scrap
   const mockAvailableAssets = [
     {
-      asset_id: 'A001',
-      asset_name: 'Dell Latitude 5520',
-      asset_type: 'Laptop',
+      asset_name: 'Dell Laptop',
+      serial_number: 'SN12345',
       category: 'Computers',
-      department: 'IT Department',
-      assigned_to: 'John Doe',
-      purchase_date: '2022-01-15',
-      warranty_expiry: '2025-01-15',
-      current_value: 1200,
-      status: 'Active'
+      location: 'Head Office',
+      expiry_date: '2025-08-10',
+      status: 'Nearing Expiry',
+      action: 'Create Scrap'
     },
     {
-      asset_id: 'A002',
-      asset_name: 'HP EliteBook 840',
-      asset_type: 'Laptop',
+      asset_name: 'HP Printer',
+      serial_number: 'SN11223',
       category: 'Computers',
-      department: 'Engineering',
-      assigned_to: 'Jane Smith',
-      purchase_date: '2022-03-20',
-      warranty_expiry: '2025-03-20',
-      current_value: 1100,
-      status: 'Active'
+      location: 'Remote Site',
+      expiry_date: '2025-08-03',
+      status: 'Nearing Expiry',
+      action: 'Create Scrap'
     },
     {
-      asset_id: 'A003',
       asset_name: 'Office Desk',
-      asset_type: 'Furniture',
+      serial_number: 'SN67890',
       category: 'Furniture',
-      department: 'HR Department',
-      assigned_to: 'Mike Johnson',
-      purchase_date: '2021-06-10',
-      warranty_expiry: '2024-06-10',
-      current_value: 300,
-      status: 'Active'
+      location: 'Warehouse A',
+      expiry_date: '2025-08-14',
+      status: 'Nearing Expiry',
+      action: 'Create Scrap'
     },
     {
-      asset_id: 'A004',
       asset_name: 'Conference Chair',
-      asset_type: 'Furniture',
+      serial_number: 'SN7',
       category: 'Furniture',
-      department: 'Sales',
-      assigned_to: 'Lisa Chen',
-      purchase_date: '2021-08-15',
-      warranty_expiry: '2024-08-15',
-      current_value: 200,
-      status: 'Active'
+      location: 'Warehouse A',
+      expiry_date: '2025-08-14',
+      status: 'Nearing Expiry',
+      action: 'Create Scrap'
     },
     {
-      asset_id: 'A005',
       asset_name: 'Company Van',
-      asset_type: 'Vehicle',
+      serial_number: 'SN20',
       category: 'Vehicles',
-      department: 'Logistics',
-      assigned_to: 'Tom Brown',
-      purchase_date: '2020-12-01',
-      warranty_expiry: '2023-12-01',
-      current_value: 25000,
-      status: 'Active'
+      location: 'Logistics',
+      expiry_date: '2025-04-05',
+      status: 'Nearing Expiry',
+      action: 'Create Scrap'
+    },
+    {
+      asset_name: 'Industrial Drill',
+      serial_number: 'SN21',
+      category: 'Machinery',
+      location: 'Operations',
+      expiry_date: '2025-04-10',
+      status: 'Nearing Expiry',
+      action: 'Create Scrap'
     }
   ];
 
   useEffect(() => {
-    // Simulate API call to get available assets
+    // Simulate API call
     setTimeout(() => {
-      setAvailableAssets(mockAvailableAssets);
+      setScrapAssets(mockAvailableAssets);
+      setLoading(false);
     }, 1000);
   }, []);
 
-  const [formData, setFormData] = useState({
-    scrap_reason: '',
-    estimated_value: '',
-    disposal_method: 'Sale',
-    scrap_date: new Date().toISOString().split('T')[0],
-    buyer_name: '',
-    buyer_email: '',
-    buyer_phone: '',
-    buyer_company: ''
-  });
+  const columns = [
+    { key: 'asset_name', name: 'asset_name', label: 'ASSET NAME', sortable: true, visible: true },
+    { key: 'serial_number', name: 'serial_number', label: 'SERIAL NUMBER', sortable: true, visible: true },
+    { key: 'category', name: 'category', label: 'CATEGORY', sortable: true, visible: true },
+    { key: 'location', name: 'location', label: 'LOCATION', sortable: true, visible: true },
+    { key: 'expiry_date', name: 'expiry_date', label: 'EXPIRY DATE', sortable: true, visible: true },
+    { key: 'status', name: 'status', label: 'STATUS', sortable: true, visible: true },
+    { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true }
+  ];
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
+  const handleScrap = (row) => {
+    setSelectedAsset(row);
+    setShowModal(true);
+  };
+
+  const handleSubmitScrap = () => {
+    console.log('Submitting scrap asset:', selectedAsset, 'with notes:', notes);
+    toast.success(`Asset ${selectedAsset.asset_name} marked for scrapping${notes ? ` with notes: ${notes}` : ''}`);
+    setShowModal(false);
+    setSelectedAsset(null);
+    setNotes('');
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedAsset(null);
+    setNotes('');
+  };
+
+  // Custom table component for CreateScrapAsset with custom styling
+  const CustomCreateScrapAssetTable = ({ visibleColumns, data, selectedRows, setSelectedRows }) => {
+    const visible = visibleColumns.filter((col) => col.visible);
+
+    const toggleRow = (keyValue) => {
+      setSelectedRows((prev) =>
+        prev.includes(keyValue)
+          ? prev.filter((rowId) => rowId !== keyValue)
+          : [...prev, keyValue]
+      );
+    };
+
+    return (
+      <>
+        {data.map((row, rowIndex) => (
+          <tr
+            key={row.asset_name || rowIndex}
+            className="border-t hover:bg-gray-100"
+          >
+            {visible.map((col, colIndex) => (
+              <td key={colIndex} className="border text-xs px-4 py-2">
+                {colIndex === 0 ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.includes(row.asset_name)}
+                      onChange={() => toggleRow(row.asset_name)}
+                      className="accent-yellow-400"
+                    />
+                    {col.key === 'status' ? (
+                      <span className="px-2 py-1 bg-yellow-100 text-amber-800 text-xs font-medium rounded-full">
+                        {row[col.key]}
+                      </span>
+                    ) : col.key === 'action' ? (
+                      <button
+                        onClick={() => handleScrap(row)}
+                        className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                      >
+                        Create Scrap
+                      </button>
+                    ) : (
+                      row[col.key]
+                    )}
+                  </div>
+                ) : col.key === 'status' ? (
+                  <span className="px-2 py-1 bg-yellow-100 text-amber-800 text-xs font-medium rounded-full">
+                    {row[col.key]}
+                  </span>
+                ) : col.key === 'action' ? (
+                  <button
+                    onClick={() => handleScrap(row)}
+                    className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                  >
+                    Create Scrap
+                  </button>
+                ) : (
+                  row[col.key]
+                )}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </>
+    );
+  };
+
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [filterValues, setFilterValues] = useState({});
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (column) => {
+    setSortConfig(prev => ({
+      key: column,
+      direction: prev.key === column && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
 
-  const handleSelectAsset = (asset) => {
-    if (!selectedAssets.find(item => item.asset_id === asset.asset_id)) {
-      setSelectedAssets(prev => [...prev, asset]);
-    }
+  const sortData = (data) => {
+    if (!sortConfig.key) return data;
+
+    return [...data].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
   };
 
-  const handleDeselectAsset = (asset) => {
-    setSelectedAssets(prev => prev.filter(item => item.asset_id !== asset.asset_id));
+  const filterData = (data, filters, visibleColumns) => {
+    return data.filter(item => {
+      return visibleColumns.every(column => {
+        const filterValue = filters[column.key];
+        if (!filterValue) return true;
+
+        const itemValue = String(item[column.key] || '').toLowerCase();
+        return itemValue.includes(filterValue.toLowerCase());
+      });
+    });
   };
 
-  const handleSelectAll = () => {
-    const filteredAssets = availableAssets.filter(asset => 
-      asset.asset_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (assetTypeFilter === '' || asset.asset_type === assetTypeFilter)
-    );
-    setSelectedAssets(filteredAssets);
+  const handleFilterChange = (filterType, value) => {
+    setFilterValues(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
   };
 
-  const handleDeselectAll = () => {
-    setSelectedAssets([]);
-  };
-
-  const filteredAvailableAssets = availableAssets.filter(asset => 
-    asset.asset_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (assetTypeFilter === '' || asset.asset_type === assetTypeFilter) &&
-    !selectedAssets.find(selected => selected.asset_id === asset.asset_id)
-  );
-
-  const filteredSelectedAssets = selectedAssets.filter(asset => 
-    asset.asset_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (assetTypeFilter === '' || asset.asset_type === assetTypeFilter)
-  );
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (selectedAssets.length === 0) {
-      toast.error('Please select at least one asset to scrap');
-      return;
-    }
-
-    if (!formData.scrap_reason.trim()) {
-      toast.error('Please provide a scrap reason');
-      return;
-    }
-
-    setLoading(true);
-    
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast.success('Scrap assets created successfully!');
-      navigate('/scrap-assets');
-    } catch (error) {
-      toast.error('Failed to create scrap assets');
-      console.error('Error creating scrap assets:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const assetTypes = [...new Set(availableAssets.map(asset => asset.asset_type))];
+  const visibleColumns = columns.filter(col => col.visible);
+  const filteredData = filterData(scrapAssets, filterValues, visibleColumns);
+  const sortedData = sortData(filteredData);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ContentBox>
-        <div className="flex justify-between items-center mb-6">
-       
+      <div className="flex justify-between items-center mb-6 p-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/scrap-assets')}
+            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+            title="Back to Dashboard"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-full">
+              <Plus className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Create Scrap Asset</h1>
+              <p className="text-sm text-gray-600">Select assets to mark for scrapping</p>
+            </div>
+          </div>
         </div>
+      </div>
+      
+      <ContentBox
+        filters={columns}
+        onFilterChange={handleFilterChange}
+        onSort={handleSort}
+        sortConfig={sortConfig}
+        onDeleteSelected={() => {}}
+        data={scrapAssets}
+        selectedRows={selectedRows}
+        setSelectedRows={setSelectedRows}
+        onAdd={null}
+        showAddButton={false}
+        showActions={false}
+      >
+                {({ visibleColumns, showActions }) => {
+          const filteredData = filterData(scrapAssets, filterValues, visibleColumns);
+          const sortedData = sortData(filteredData);
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Asset Selection Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Select Assets to Scrap</h3>
-            
-            {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Search Assets</label>
-                <input
-                  type="text"
-                  placeholder="Search by asset name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Asset Type</label>
-                <select
-                  value={assetTypeFilter}
-                  onChange={(e) => setAssetTypeFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">All Types</option>
-                  {assetTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+          return (
+            <CustomCreateScrapAssetTable
+              visibleColumns={visibleColumns}
+              data={sortedData}
+              selectedRows={selectedRows}
+              setSelectedRows={setSelectedRows}
+            />
+          );
+                 }}
+       </ContentBox>
 
-            {/* Asset Selection Tables */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Available Assets */}
-              <div>
-                <h4 className="text-md font-medium text-gray-700 mb-3">Available Assets</h4>
-                <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
-                  <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredAvailableAssets.map((asset) => (
-                        <tr key={asset.asset_id} className="hover:bg-gray-50">
-                          <td className="px-3 py-2">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{asset.asset_name}</div>
-                              <div className="text-xs text-gray-500">{asset.asset_id}</div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-900">{asset.asset_type}</td>
-                          <td className="px-3 py-2 text-sm text-gray-900">${asset.current_value}</td>
-                          <td className="px-3 py-2">
-                            <button
-                              type="button"
-                              onClick={() => handleSelectAsset(asset)}
-                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                            >
-                              Add
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+       {/* Scrap Asset Modal */}
+       {showModal && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+             <div className="flex items-center justify-between p-6 border-b">
+               <h3 className="text-lg font-semibold text-gray-900">Create Scrap Asset</h3>
+               <button
+                 onClick={handleCloseModal}
+                 className="text-gray-400 hover:text-gray-600 transition-colors"
+               >
+                 <X size={20} />
+               </button>
+             </div>
+             
+             <div className="p-6">
+               <div className="mb-4">
+                 <p className="text-sm text-gray-600 mb-2">Asset: <span className="font-medium text-gray-900">{selectedAsset?.asset_name}</span></p>
+                 <p className="text-sm text-gray-600">Serial: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
+                 <p className="text-sm text-gray-600">Category: <span className="font-medium text-gray-900">{selectedAsset?.category}</span></p>
+               </div>
+               
+               <div className="mb-6">
+                 <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+                   Notes (Optional)
+                 </label>
+                 <textarea
+                   id="notes"
+                   value={notes}
+                   onChange={(e) => setNotes(e.target.value)}
+                   placeholder="Enter any additional notes about this scrap asset..."
+                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                   rows="3"
+                 />
+               </div>
+               
+               <div className="flex justify-end gap-3">
+                 <button
+                   onClick={handleCloseModal}
+                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   onClick={handleSubmitScrap}
+                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                 >
+                   Submit
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ };
 
-              {/* Transfer Controls */}
-              <div className="hidden lg:flex flex-col justify-center items-center gap-2">
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectAsset(filteredAvailableAssets[0])}
-                    disabled={filteredAvailableAssets.length === 0}
-                    className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Add one asset"
-                  >
-                    <span className="text-lg font-bold">→</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    disabled={filteredAvailableAssets.length === 0}
-                    className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Add all assets"
-                  >
-                    <span className="text-lg font-bold">{'>>'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeselectAsset(filteredSelectedAssets[0])}
-                    disabled={filteredSelectedAssets.length === 0}
-                    className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Remove one asset"
-                  >
-                    <span className="text-lg font-bold">←</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeselectAll}
-                    disabled={filteredSelectedAssets.length === 0}
-                    className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Remove all assets"
-                  >
-                    <span className="text-lg font-bold">{'<<'}</span>
-                  </button>
-                </div>
-              </div>
 
-              {/* Selected Assets */}
-              <div>
-                <h4 className="text-md font-medium text-gray-700 mb-3">Selected Assets ({selectedAssets.length})</h4>
-                <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
-                  <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredSelectedAssets.map((asset) => (
-                        <tr key={asset.asset_id} className="hover:bg-gray-50">
-                          <td className="px-3 py-2">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{asset.asset_name}</div>
-                              <div className="text-xs text-gray-500">{asset.asset_id}</div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-sm text-gray-900">{asset.asset_type}</td>
-                          <td className="px-3 py-2 text-sm text-gray-900">${asset.current_value}</td>
-                          <td className="px-3 py-2">
-                            <button
-                              type="button"
-                              onClick={() => handleDeselectAsset(asset)}
-                              className="text-red-600 hover:text-red-800 text-sm font-medium"
-                            >
-                              Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Scrap Details Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Scrap Details</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Scrap Reason *</label>
-                <textarea
-                  name="scrap_reason"
-                  value={formData.scrap_reason}
-                  onChange={handleInputChange}
-                  rows={3}
-                  placeholder="Enter the reason for scrapping these assets..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Estimated Value</label>
-                <input
-                  type="number"
-                  name="estimated_value"
-                  value={formData.estimated_value}
-                  onChange={handleInputChange}
-                  placeholder="Enter estimated scrap value..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Disposal Method</label>
-                <select
-                  name="disposal_method"
-                  value={formData.disposal_method}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Sale">Sale</option>
-                  <option value="Recycle">Recycle</option>
-                  <option value="Donation">Donation</option>
-                  <option value="Destruction">Destruction</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Scrap Date</label>
-                <input
-                  type="date"
-                  name="scrap_date"
-                  value={formData.scrap_date}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Buyer Details Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Buyer Details (Optional)</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Buyer Name</label>
-                <input
-                  type="text"
-                  name="buyer_name"
-                  value={formData.buyer_name}
-                  onChange={handleInputChange}
-                  placeholder="Enter buyer name..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Buyer Email</label>
-                <input
-                  type="email"
-                  name="buyer_email"
-                  value={formData.buyer_email}
-                  onChange={handleInputChange}
-                  placeholder="Enter buyer email..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Buyer Phone</label>
-                <input
-                  type="tel"
-                  name="buyer_phone"
-                  value={formData.buyer_phone}
-                  onChange={handleInputChange}
-                  placeholder="Enter buyer phone..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Buyer Company</label>
-                <input
-                  type="text"
-                  name="buyer_company"
-                  value={formData.buyer_company}
-                  onChange={handleInputChange}
-                  placeholder="Enter buyer company..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-4">
-            <button
-              type="button"
-              onClick={() => navigate('/scrap-assets')}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 flex items-center gap-2"
-            >
-              <X size={16} />
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || selectedAssets.length === 0}
-              className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <Save size={16} />
-              {loading ? 'Creating...' : 'Create Scrap Assets'}
-            </button>
-          </div>
-        </form>
-      </ContentBox>
-    </div>
-  );
-};
 
 export default CreateScrapAsset; 

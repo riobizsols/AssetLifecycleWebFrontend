@@ -13,13 +13,17 @@ const statusColors = {
   Active: "text-green-600 font-semibold",
   Inactive: "text-gray-600 font-semibold",
   Disposed: "text-red-600 font-semibold",
+  // Scrap asset statuses
+  "Nearing Expiry": "px-2 py-1 bg-yellow-100 text-amber-800 text-xs font-medium rounded-full",
+  "Expired": "px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full",
   // Add more statuses as needed
 };
 
 export default function StatusBadge({ status }) {
   const key = status?.toLowerCase();
+  const className = statusColors[status] || statusColors[key] || "text-gray-600";
   return (
-    <span className={statusColors[key] || "text-gray-600"}>
+    <span className={className}>
       {status}
     </span>
   );

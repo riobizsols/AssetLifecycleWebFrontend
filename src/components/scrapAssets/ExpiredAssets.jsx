@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
-import { Plus, ArrowLeft, XCircle } from 'lucide-react';
+import { Plus, ArrowLeft, XCircle, X } from 'lucide-react';
 import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 
@@ -12,88 +12,65 @@ const ExpiredAssets = () => {
   const { user } = useAuthStore();
   const [scrapAssets, setScrapAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [notes, setNotes] = useState('');
 
   // Mock data for expired assets
   const mockExpiredAssets = [
     {
-      scrap_asset_id: 'SA011',
-      asset_id: 'A011',
-      asset_name: 'Lenovo ThinkPad',
-      asset_type: 'Laptop',
-      department: 'Engineering',
-      assigned_to: 'Sam Wilson',
-      scrap_date: '2024-01-10',
-      scrap_reason: 'Hardware Failure',
-      estimated_value: 350,
-      disposal_method: 'Recycle',
+      asset_name: 'Honda Activa',
+      serial_number: 'SN77889',
+      category: 'Vehicles',
+      location: 'Warehouse B',
+      expiry_date: '2024-12-30',
       status: 'Expired',
-      days_overdue: 5,
-      created_by: 'Admin User',
-      created_date: '2024-01-05'
+      action: 'Scrap'
     },
     {
-      scrap_asset_id: 'SA012',
-      asset_id: 'A012',
-      asset_name: 'Canon Printer',
-      asset_type: 'Printer',
-      department: 'Administration',
-      assigned_to: 'Emma Davis',
-      scrap_date: '2024-01-15',
-      scrap_reason: 'End of Life',
-      estimated_value: 200,
-      disposal_method: 'Sale',
+      asset_name: 'CNC Machine',
+      serial_number: 'SN98765',
+      category: 'Machinery',
+      location: 'Warehouse B',
+      expiry_date: '2024-11-01',
       status: 'Expired',
-      days_overdue: 10,
-      created_by: 'Admin User',
-      created_date: '2024-01-05'
+      action: 'Scrap'
     },
     {
-      scrap_asset_id: 'SA013',
-      asset_id: 'A013',
-      asset_name: 'Office Desk',
-      asset_type: 'Furniture',
-      department: 'HR Department',
-      assigned_to: 'Chris Lee',
-      scrap_date: '2024-01-20',
-      scrap_reason: 'Worn Out',
-      estimated_value: 100,
-      disposal_method: 'Donation',
+      asset_name: 'Asset 8',
+      serial_number: 'SN8',
+      category: 'Vehicles',
+      location: 'Warehouse B',
+      expiry_date: '2024-12-30',
       status: 'Expired',
-      days_overdue: 15,
-      created_by: 'Admin User',
-      created_date: '2024-01-05'
+      action: 'Scrap'
     },
     {
-      scrap_asset_id: 'SA014',
-      asset_id: 'A014',
-      asset_name: 'iPad Pro',
-      asset_type: 'Tablet',
-      department: 'Sales',
-      assigned_to: 'Maria Garcia',
-      scrap_date: '2024-01-25',
-      scrap_reason: 'Technology Upgrade',
-      estimated_value: 450,
-      disposal_method: 'Sale',
+      asset_name: 'Asset 9',
+      serial_number: 'SN9',
+      category: 'Machinery',
+      location: 'Warehouse B',
+      expiry_date: '2024-11-01',
       status: 'Expired',
-      days_overdue: 20,
-      created_by: 'Admin User',
-      created_date: '2024-01-05'
+      action: 'Scrap'
     },
     {
-      scrap_asset_id: 'SA015',
-      asset_id: 'A015',
-      asset_name: 'Network Switch',
-      asset_type: 'Networking',
-      department: 'IT Department',
-      assigned_to: 'Kevin Zhang',
-      scrap_date: '2024-01-30',
-      scrap_reason: 'Performance Issues',
-      estimated_value: 300,
-      disposal_method: 'Recycle',
+      asset_name: 'Asset 13',
+      serial_number: 'SN13',
+      category: 'Vehicles',
+      location: 'Warehouse B',
+      expiry_date: '2024-12-30',
       status: 'Expired',
-      days_overdue: 25,
-      created_by: 'Admin User',
-      created_date: '2024-01-05'
+      action: 'Scrap'
+    },
+    {
+      asset_name: 'Asset 14',
+      serial_number: 'SN14',
+      category: 'Machinery',
+      location: 'Warehouse B',
+      expiry_date: '2024-11-01',
+      status: 'Expired',
+      action: 'Scrap'
     }
   ];
 
@@ -106,42 +83,98 @@ const ExpiredAssets = () => {
   }, []);
 
   const columns = [
-    { key: 'scrap_asset_id', name: 'scrap_asset_id', label: 'Scrap Asset ID', sortable: true, visible: true },
-    { key: 'asset_id', name: 'asset_id', label: 'Asset ID', sortable: true, visible: true },
-    { key: 'asset_name', name: 'asset_name', label: 'Asset Name', sortable: true, visible: true },
-    { key: 'asset_type', name: 'asset_type', label: 'Asset Type', sortable: true, visible: true },
-    { key: 'department', name: 'department', label: 'Department', sortable: true, visible: true },
-    { key: 'assigned_to', name: 'assigned_to', label: 'Assigned To', sortable: true, visible: true },
-    { key: 'scrap_date', name: 'scrap_date', label: 'Scrap Date', sortable: true, visible: true },
-    { key: 'days_overdue', name: 'days_overdue', label: 'Days Overdue', sortable: true, visible: true },
-    { key: 'scrap_reason', name: 'scrap_reason', label: 'Scrap Reason', sortable: true, visible: true },
-    { key: 'estimated_value', name: 'estimated_value', label: 'Estimated Value', sortable: true, visible: true },
-    { key: 'disposal_method', name: 'disposal_method', label: 'Disposal Method', sortable: true, visible: true },
-    { key: 'status', name: 'status', label: 'Status', sortable: true, visible: true },
-    { key: 'created_by', name: 'created_by', label: 'Created By', sortable: true, visible: true },
-    { key: 'created_date', name: 'created_date', label: 'Created Date', sortable: true, visible: true }
+    { key: 'asset_name', name: 'asset_name', label: 'ASSET NAME', sortable: true, visible: true },
+    { key: 'serial_number', name: 'serial_number', label: 'SERIAL NUMBER', sortable: true, visible: true },
+    { key: 'category', name: 'category', label: 'CATEGORY', sortable: true, visible: true },
+    { key: 'location', name: 'location', label: 'LOCATION', sortable: true, visible: true },
+    { key: 'expiry_date', name: 'expiry_date', label: 'EXPIRY DATE', sortable: true, visible: true },
+    { key: 'status', name: 'status', label: 'STATUS', sortable: true, visible: true },
+    { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true }
   ];
 
-  const handleAddScrapAsset = () => {
-    navigate('/scrap-assets/create');
+  const handleScrap = (row) => {
+    setSelectedAsset(row);
+    setShowModal(true);
   };
 
-  const handleView = (row) => {
-    navigate(`/scrap-assets/view/${row.scrap_asset_id}`);
+  const handleSubmitScrap = () => {
+    console.log('Submitting scrap asset:', selectedAsset, 'with notes:', notes);
+    toast.success(`Asset ${selectedAsset.asset_name} marked for scrapping${notes ? ` with notes: ${notes}` : ''}`);
+    setShowModal(false);
+    setSelectedAsset(null);
+    setNotes('');
   };
 
-  const handleEdit = (row) => {
-    navigate(`/scrap-assets/edit/${row.scrap_asset_id}`, {
-      state: {
-        scrapAssetData: row,
-        isEdit: true
-      }
-    });
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedAsset(null);
+    setNotes('');
   };
 
-  const handleDelete = (row) => {
-    console.log('Delete scrap asset:', row);
-    toast.info('Delete functionality to be implemented');
+  // Custom table component for ExpiredAssets with custom styling
+  const CustomExpiredAssetsTable = ({ visibleColumns, data, selectedRows, setSelectedRows }) => {
+    const visible = visibleColumns.filter((col) => col.visible);
+
+    const toggleRow = (keyValue) => {
+      setSelectedRows((prev) =>
+        prev.includes(keyValue)
+          ? prev.filter((rowId) => rowId !== keyValue)
+          : [...prev, keyValue]
+      );
+    };
+
+    return (
+      <>
+        {data.map((row, rowIndex) => (
+          <tr
+            key={row.asset_name || rowIndex}
+            className="border-t hover:bg-gray-100"
+          >
+            {visible.map((col, colIndex) => (
+              <td key={colIndex} className="border text-xs px-4 py-2">
+                {colIndex === 0 ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.includes(row.asset_name)}
+                      onChange={() => toggleRow(row.asset_name)}
+                      className="accent-yellow-400"
+                    />
+                    {col.key === 'status' ? (
+                      <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                        {row[col.key]}
+                      </span>
+                    ) : col.key === 'action' ? (
+                      <button
+                        onClick={() => handleScrap(row)}
+                        className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                      >
+                        Scrap
+                      </button>
+                    ) : (
+                      row[col.key]
+                    )}
+                  </div>
+                ) : col.key === 'status' ? (
+                  <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                    {row[col.key]}
+                  </span>
+                ) : col.key === 'action' ? (
+                  <button
+                    onClick={() => handleScrap(row)}
+                    className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                  >
+                    Scrap
+                  </button>
+                ) : (
+                  row[col.key]
+                )}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </>
+    );
   };
 
   const [selectedRows, setSelectedRows] = useState([]);
@@ -219,44 +252,86 @@ const ExpiredAssets = () => {
       </div>
       
       <ContentBox
-        filters={columns.map((col) => ({
-          label: col.label,
-          name: col.name,
-          options: col.name === 'status' ? [
-            { label: "Nearing Expiry", value: "Nearing Expiry" },
-            { label: "Expired", value: "Expired" },
-            { label: "Active", value: "Active" }
-          ] : [],
-          onChange: (value) => handleFilterChange(col.name, value),
-        }))}
+        filters={columns}
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onDeleteSelected={handleDelete}
+        onDeleteSelected={() => {}}
         data={scrapAssets}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
-        onAdd={handleAddScrapAsset}
+        onAdd={null}
+        showAddButton={false}
+        showActions={false}
       >
         {({ visibleColumns, showActions }) => {
           const filteredData = filterData(scrapAssets, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
           return (
-            <CustomTable
+            <CustomExpiredAssetsTable
               visibleColumns={visibleColumns}
               data={sortedData}
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              rowKey="scrap_asset_id"
-              showActions={showActions}
             />
           );
         }}
       </ContentBox>
+
+      {/* Scrap Asset Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Create Scrap Asset</h3>
+              <button
+                onClick={handleCloseModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">Asset: <span className="font-medium text-gray-900">{selectedAsset?.asset_name}</span></p>
+                <p className="text-sm text-gray-600">Serial: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
+                <p className="text-sm text-gray-600">Category: <span className="font-medium text-gray-900">{selectedAsset?.category}</span></p>
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Enter any additional notes about this scrap asset..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  rows="3"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitScrap}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

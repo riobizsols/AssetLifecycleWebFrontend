@@ -361,6 +361,8 @@ const AddAssetForm = ({ userRole }) => {
     setTouched((prev) => ({ ...prev, [propName]: true }));
   };
 
+
+
   const generateSerialNumber = async () => {
     if (!form.assetType) {
       toast.error('Please select an asset type first');
@@ -370,13 +372,15 @@ const AddAssetForm = ({ userRole }) => {
     try {
       setIsGeneratingSerial(true);
       
-      const response = await API.post('/serial-numbers/generate-and-queue', {
-        assetTypeId: form.assetType,
-        orgId: useAuthStore.getState().user.org_id
+      // Use the preview endpoint to get the next serial number without incrementing
+      const response = await API.get(`/serial-numbers/next/${form.assetType}`, {
+        params: {
+          orgId: useAuthStore.getState().user.org_id
+        }
       });
 
       if (response.data.success) {
-        const serialNumber = response.data.data.serialNumber;
+        const serialNumber = response.data.data.nextSerialNumber;
         setForm(prev => ({ ...prev, serialNumber }));
         toast.success(`Serial number generated: ${serialNumber}`);
       } else {
@@ -673,20 +677,20 @@ const AddAssetForm = ({ userRole }) => {
                 <label className="block text-sm mb-1 font-medium">
                   Serial Number <span className="text-red-500">*</span>
                 </label>
-                <div className="flex items-center">
-                  <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('serialNumber') ? 'border-red-500' : 'border-gray-300'}`} />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsGeneratingSerial(true);
-                      generateSerialNumber();
-                    }}
-                    className="ml-2 px-3 bg-[#0E2F4B] text-white rounded text-sm h-9 transition"
-                    disabled={isGeneratingSerial}
-                  >
-                    {isGeneratingSerial ? 'Generating...' : 'Generate'}
-                  </button>
-                </div>
+                              <div className="flex items-center">
+                <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('serialNumber') ? 'border-red-500' : 'border-gray-300'}`} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsGeneratingSerial(true);
+                    generateSerialNumber();
+                  }}
+                  className="ml-2 px-3 bg-[#0E2F4B] text-white rounded text-sm h-9 transition"
+                  disabled={isGeneratingSerial || !form.assetType}
+                >
+                  {isGeneratingSerial ? 'Generating...' : 'Generate'}
+                </button>
+              </div>
               </div>
               <div className="col-span-4">
                 <label className="block text-sm mb-1 font-medium">Description</label>
