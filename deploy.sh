@@ -41,7 +41,7 @@ if ! command -v node &> /dev/null; then
 fi
 
 print_status "Installing dependencies..."
-npm install
+npm install --legacy-peer-deps --force
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
