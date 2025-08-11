@@ -28,22 +28,25 @@ const MaintenanceSupervisor = () => {
   const [columns] = useState([
     { label: "ID", name: "ams_id", visible: true },
     { label: "Asset ID", name: "asset_id", visible: true },
-    { label: "Maintenance Type", name: "maintenance_type", visible: true },
-    { label: "Vendor", name: "vendor", visible: true },
-    { label: "Frequency", name: "at_main_freq", visible: true },
-    { label: "Notes", name: "notes", visible: true },
-    { label: "Schedule Start Date", name: "schedule_start_date", visible: true },
-    { label: "Schedule End Date", name: "schedule_end_date", visible: true },
+    { label: "Asset Type", name: "asset_type_name", visible: true },
+    { label: "Serial Number", name: "serial_number", visible: true },
+    { label: "Description", name: "asset_description", visible: true },
+    { label: "Maintenance Type", name: "maintenance_type_name", visible: true },
+    { label: "Vendor", name: "vendor_name", visible: true },
+    { label: "Schedule Date", name: "act_maint_st_date", visible: true },
     { label: "Status", name: "status", visible: true },
+    { label: "Days Until Due", name: "days_until_due", visible: true },
+    { label: "Created On", name: "created_on", visible: true },
+    { label: "Created By", name: "created_by", visible: true },
   ]);
 
   useEffect(() => {
-    fetchMaintenanceApprovals();
+    fetchMaintenanceSchedules();
   }, []);
 
-  const fetchMaintenanceApprovals = async () => {
+  const fetchMaintenanceSchedules = async () => {
     try {
-      const res = await API.get("/approval-detail/maintenance-approvals");
+      const res = await API.get("/maintenance-schedules/all");
       const maintenanceArray = Array.isArray(res.data) ? res.data : res.data.data || [];
       const formattedData = maintenanceArray.map(item => {
         const formatDate = (dateString) => {
@@ -60,21 +63,23 @@ const MaintenanceSupervisor = () => {
 
         return {
           ...item,
-          scheduled_date: formatDate(item.scheduled_date),
-          actual_date: formatDate(item.actual_date),
-          maintenance_created_on: formatDate(item.maintenance_created_on),
-          maintenance_changed_on: formatDate(item.maintenance_changed_on),
-          days_until_due: item.days_until_due ? `${item.days_until_due} days` : '-',
+          act_maint_st_date: formatDate(item.act_maint_st_date),
+          created_on: formatDate(item.created_on),
+          changed_on: formatDate(item.changed_on),
+          days_until_due: item.days_until_due > 0 ? `${item.days_until_due} days` : 
+                         item.days_until_due === 0 ? 'Due today' : 'Overdue',
           // Add urgency styling for days until due
           urgency_class: item.days_until_due <= 2 ? 'text-red-600 font-semibold' : 
                         item.days_until_due <= 5 ? 'text-orange-600 font-semibold' : 
+                        item.days_until_due === 0 ? 'text-red-800 font-bold' :
+                        item.days_until_due < 0 ? 'text-red-700 font-bold' :
                         'text-gray-600'
         };
       });
       setData(formattedData);
     } catch (err) {
-      console.error("Failed to fetch maintenance approvals", err);
-      toast.error("Failed to fetch maintenance approvals");
+      console.error("Failed to fetch maintenance schedules", err);
+      toast.error("Failed to fetch maintenance schedules");
     }
   };
 
@@ -117,11 +122,9 @@ const MaintenanceSupervisor = () => {
     }
 
     try {
-      await API.post("/maintenance-approval/delete", { wfamsh_ids: selectedRows });
-      toast.success(`${selectedRows.length} maintenance record(s) deleted successfully`);
-      setSelectedRows([]);
-      fetchMaintenanceApprovals();
-      return true;
+      // Note: This would need a corresponding backend endpoint to delete from tblAssetMaintSch
+      toast.error("Delete functionality not yet implemented for maintenance schedules");
+      return false;
     } catch (err) {
       console.error("Failed to delete maintenance records", err);
       toast.error(err.response?.data?.message || "Failed to delete maintenance records");
@@ -131,9 +134,8 @@ const MaintenanceSupervisor = () => {
 
   const handleDelete = async (row) => {
     try {
-      await API.delete(`/maintenance-approval/${row.wfamsh_id}`);
-      toast.success("Maintenance record deleted successfully");
-      fetchMaintenanceApprovals();
+      // Note: This would need a corresponding backend endpoint to delete from tblAssetMaintSch
+      toast.error("Delete functionality not yet implemented for maintenance schedules");
     } catch (err) {
       console.error("Failed to delete maintenance record", err);
       toast.error(err.response?.data?.message || "Failed to delete maintenance record");
@@ -150,7 +152,7 @@ const MaintenanceSupervisor = () => {
     setUpdateModalOpen(false);
     setSelectedAsset(null);
     if (wasUpdated) {
-      fetchMaintenanceApprovals(); // Refresh the list if update was successful
+      fetchMaintenanceSchedules(); // Refresh the list if update was successful
     }
   };
 
@@ -164,12 +166,12 @@ const MaintenanceSupervisor = () => {
       const success = exportToExcel(
         dataToExport,
         columns,
-        'Maintenance_Approvals_List'
+        'Maintenance_Schedules_List'
       );
 
       if (success) {
         toast(
-          'Maintenance approvals exported successfully',
+          'Maintenance schedules exported successfully',
           {
             icon: '✅',
             style: {
@@ -185,7 +187,7 @@ const MaintenanceSupervisor = () => {
     } catch (error) {
       console.error('Error exporting data:', error);
       toast(
-        'Failed to export maintenance approvals',
+        'Failed to export maintenance schedules',
         {
           icon: '❌',
           style: {
@@ -226,7 +228,7 @@ const MaintenanceSupervisor = () => {
   }));
 
   const handleRowClick = (row) => {
-    navigate(`/supervisor-approval-detail/${row.wfamsh_id}`);
+    navigate(`/supervisor-approval-detail/${row.ams_id}`);
   };
 
   return (
@@ -259,7 +261,7 @@ const MaintenanceSupervisor = () => {
                 setSelectedRows={setSelectedRows}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                rowKey="wfamsh_id"
+                rowKey="ams_id"
                 showActions={showActions} // Hide action column for this page
                 renderCell={(col, row, colIndex) =>
                   col.name === "status"
@@ -270,8 +272,8 @@ const MaintenanceSupervisor = () => {
                       ? <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
-                            checked={selectedRows.includes(row["wfamsh_id"])}
-                            onChange={() => setSelectedRows(prev => prev.includes(row["wfamsh_id"]) ? prev.filter(id => id !== row["wfamsh_id"]) : [...prev, row["wfamsh_id"]])}
+                            checked={selectedRows.includes(row["ams_id"])}
+                            onChange={() => setSelectedRows(prev => prev.includes(row["ams_id"]) ? prev.filter(id => id !== row["ams_id"]) : [...prev, row["ams_id"]])}
                             className="accent-yellow-400"
                           />
                           {row[col.name]}

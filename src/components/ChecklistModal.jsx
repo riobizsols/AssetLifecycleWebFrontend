@@ -27,9 +27,9 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
         <div className="px-6 pb-6 pt-2 max-h-80 overflow-y-auto">
           <ul className="list-disc pl-6">
             {checklist.length > 0 ? (
-              checklist.map((item, idx) => (
-                <li key={item.at_main_checklist_id || idx} className="mb-1 text-gray-800">
-                  {item.text}
+              checklist.map((checklistItem, idx) => (
+                <li key={checklistItem.id || idx} className="mb-1 text-gray-800">
+                  {checklistItem.item}
                 </li>
               ))
             ) : (
