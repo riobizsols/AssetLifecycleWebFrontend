@@ -22,46 +22,106 @@ const CreateGroupAsset = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [groupName, setGroupName] = useState('');
-  const [selectedAssetType, setSelectedAssetType] = useState('');
+  const [selectedAssetTypes, setSelectedAssetTypes] = useState([]); // Changed to array for multiple selection
   const [availableAssets, setAvailableAssets] = useState([]);
   const [selectedAssets, setSelectedAssets] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTerm, setFilterTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownSearchTerm, setDropdownSearchTerm] = useState('');
+  
+  // New state for API data
+  const [assetTypes, setAssetTypes] = useState([]);
+  const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
+  const [loadingAssets, setLoadingAssets] = useState(false);
 
-  // Mock data for demonstration - replace with actual API calls
-  const mockAssetTypes = [
-    { asset_type_id: 'AT001', asset_type_name: 'Laptop', asset_type_code: 'AT001' },
-    { asset_type_id: 'AT002', asset_type_name: 'Desktop', asset_type_code: 'AT002' },
-    { asset_type_id: 'AT003', asset_type_name: 'Monitor', asset_type_code: 'AT003' },
-    { asset_type_id: 'AT004', asset_type_name: 'Printer', asset_type_code: 'AT004' },
-    { asset_type_id: 'AT005', asset_type_name: 'Furniture', asset_type_code: 'AT005' },
-    { asset_type_id: 'AT006', asset_type_name: 'Vehicle', asset_type_code: 'AT006' }
-  ];
-
-  const mockAssets = [
-    { asset_id: 'A001', name: 'Dell XPS 13', description: 'Laptop - Dell XPS 13', purchased_on: '2023-01-15', asset_type_id: 'AT001', asset_type_name: 'Laptop' },
-    { asset_id: 'A002', name: 'HP Pavilion', description: 'Laptop - HP Pavilion', purchased_on: '2023-02-20', asset_type_id: 'AT001', asset_type_name: 'Laptop' },
-    { asset_id: 'A003', name: 'Lenovo ThinkPad', description: 'Laptop - Lenovo ThinkPad', purchased_on: '2023-03-10', asset_type_id: 'AT001', asset_type_name: 'Laptop' },
-    { asset_id: 'A004', name: 'Dell OptiPlex', description: 'Desktop - Dell OptiPlex', purchased_on: '2023-04-05', asset_type_id: 'AT002', asset_type_name: 'Desktop' },
-    { asset_id: 'A005', name: 'Samsung 24"', description: 'Monitor - Samsung 24 inch', purchased_on: '2023-01-10', asset_type_id: 'AT003', asset_type_name: 'Monitor' },
-    { asset_id: 'A006', name: 'LG 27"', description: 'Monitor - LG 27 inch', purchased_on: '2023-01-12', asset_type_id: 'AT003', asset_type_name: 'Monitor' },
-    { asset_id: 'A007', name: 'HP LaserJet', description: 'Printer - HP LaserJet', purchased_on: '2023-02-15', asset_type_id: 'AT004', asset_type_name: 'Printer' },
-    { asset_id: 'A008', name: 'Canon Printer', description: 'Printer - Canon', purchased_on: '2023-02-18', asset_type_id: 'AT004', asset_type_name: 'Printer' }
-  ];
-
-  useEffect(() => { 
-    // Simulate API call to fetch available assets
-    setAvailableAssets(mockAssets);
+  // Fetch asset types on component mount
+  useEffect(() => {
+    fetchAssetTypes();
   }, []);
+
+  // Fetch asset types from API
+  const fetchAssetTypes = async () => {
+    setLoadingAssetTypes(true);
+    try {
+      const response = await API.get('/asset-types/group-required');
+      if (response.data && response.data.success) {
+        setAssetTypes(response.data.data || []);
+      } else {
+        toast.error('Failed to fetch asset types');
+      }
+    } catch (error) {
+      console.error('Error fetching asset types:', error);
+      toast.error('Failed to fetch asset types');
+    } finally {
+      setLoadingAssetTypes(false);
+    }
+  };
+
+  // Fetch assets by asset type
+  const fetchAssetsByType = async (assetTypeId) => {
+    if (!assetTypeId) return;
+    
+    setLoadingAssets(true);
+    try {
+      const response = await API.get(`/assets/type/${assetTypeId}`);
+      if (response.data && response.data.success) {
+        // Add new assets to existing ones instead of replacing
+        setAvailableAssets(prev => {
+          const newAssets = response.data.data || [];
+          // Filter out assets that are already in the list to avoid duplicates
+          const existingAssetIds = prev.map(asset => asset.asset_id);
+          const uniqueNewAssets = newAssets.filter(asset => !existingAssetIds.includes(asset.asset_id));
+          return [...prev, ...uniqueNewAssets];
+        });
+      } else {
+        toast.error('Failed to fetch assets');
+      }
+    } catch (error) {
+      console.error('Error fetching assets:', error);
+      toast.error('Failed to fetch assets');
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+
+  // Fetch assets for all selected asset types
+  const fetchAssetsForAllTypes = async () => {
+    if (selectedAssetTypes.length === 0) {
+      setAvailableAssets([]);
+      return;
+    }
+    
+    setLoadingAssets(true);
+    try {
+      // Fetch assets for each selected asset type
+      const allAssets = [];
+      for (const assetTypeId of selectedAssetTypes) {
+        const response = await API.get(`/assets/type/${assetTypeId}`);
+        if (response.data && response.data.success) {
+          allAssets.push(...(response.data.data || []));
+        }
+      }
+      
+      // Remove duplicates based on asset_id
+      const uniqueAssets = allAssets.filter((asset, index, self) => 
+        index === self.findIndex(a => a.asset_id === asset.asset_id)
+      );
+      
+      setAvailableAssets(uniqueAssets);
+    } catch (error) {
+      console.error('Error fetching assets for all types:', error);
+      toast.error('Failed to fetch assets');
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
 
   const filteredAvailableAssets = availableAssets.filter(asset => {
     const matchesSearch = (asset.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                          (asset.description?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                          (asset.asset_id?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    const matchesFilter = selectedAssetType === '' || asset.asset_type_id === selectedAssetType;
-    return matchesSearch && matchesFilter;
+    return matchesSearch;
   });
 
   const filteredSelectedAssets = selectedAssets.filter(asset => {
@@ -71,9 +131,9 @@ const CreateGroupAsset = () => {
   });
 
   // Filter asset types for dropdown search
-  const filteredAssetTypes = mockAssetTypes.filter(type => 
-    type.asset_type_name.toLowerCase().includes(dropdownSearchTerm.toLowerCase()) ||
-    type.asset_type_code.toLowerCase().includes(dropdownSearchTerm.toLowerCase())
+  const filteredAssetTypes = assetTypes.filter(type => 
+    type.text?.toLowerCase().includes(dropdownSearchTerm.toLowerCase()) ||
+    type.asset_type_id?.toLowerCase().includes(dropdownSearchTerm.toLowerCase())
   );
 
   const handleSelectAsset = (asset) => {
@@ -101,11 +161,35 @@ const CreateGroupAsset = () => {
   };
 
   const handleAssetTypeSelect = (assetType) => {
-    setSelectedAssetType(assetType.asset_type_id);
-    setSelectedAssets([]);
-    setAvailableAssets(mockAssets);
+    // Check if asset type is already selected
+    if (selectedAssetTypes.includes(assetType.asset_type_id)) {
+      toast.error('This asset type is already selected');
+      return;
+    }
+    
+    // Add new asset type to selection
+    const newSelectedTypes = [...selectedAssetTypes, assetType.asset_type_id];
+    setSelectedAssetTypes(newSelectedTypes);
+    
+    // Keep existing selected assets (don't clear them)
+    // setSelectedAssets([]); // Removed this line
+    
     setIsDropdownOpen(false);
     setDropdownSearchTerm('');
+    
+    // Fetch assets for the newly selected asset type and add to existing ones
+    fetchAssetsByType(assetType.asset_type_id);
+  };
+
+  // Remove asset type from selection
+  const handleRemoveAssetType = (assetTypeId) => {
+    setSelectedAssetTypes(prev => prev.filter(id => id !== assetTypeId));
+    
+    // Remove assets that belong to the removed asset type
+    setAvailableAssets(prev => prev.filter(asset => asset.asset_type_id !== assetTypeId));
+    
+    // Remove selected assets that belong to the removed asset type
+    setSelectedAssets(prev => prev.filter(asset => asset.asset_type_id !== assetTypeId));
   };
 
   const handleSave = async () => {
@@ -114,8 +198,8 @@ const CreateGroupAsset = () => {
       return;
     }
 
-    if (selectedAssetType === '') {
-      toast.error('Please select an asset type');
+    if (selectedAssetTypes.length === 0) {
+      toast.error('Please select at least one asset type');
       return;
     }
 
@@ -126,20 +210,23 @@ const CreateGroupAsset = () => {
 
     setLoading(true);
     try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // Prepare data for API
       const groupData = {
-        group_name: groupName,
-        asset_type_id: selectedAssetType,
-        asset_type_name: mockAssetTypes.find(type => type.asset_type_id === selectedAssetType)?.asset_type_name,
-        selected_assets: selectedAssets,
-        created_by: user?.user_id || 'admin'
+        text: groupName.trim(),
+        asset_ids: selectedAssets.map(asset => asset.asset_id),
+        asset_type_ids: selectedAssetTypes // Include selected asset types
       };
 
-      console.log('Saving group:', groupData);
-      toast.success('Asset group created successfully!');
-      navigate('/group-asset');
+      // Call the API to create asset group
+      const response = await API.post('/asset-groups', groupData);
+      
+      // Check if the response indicates success (201 status or has asset_group data)
+      if (response.status === 201 || (response.data && response.data.asset_group)) {
+        toast.success('Asset group created successfully!');
+        navigate('/group-asset');
+      } else {
+        toast.error(response.data?.message || 'Failed to create asset group');
+      }
     } catch (error) {
       console.error('Error creating group:', error);
       toast.error('Failed to create asset group');
@@ -152,7 +239,41 @@ const CreateGroupAsset = () => {
     navigate('/group-asset');
   };
 
-  const selectedAssetTypeName = mockAssetTypes.find(type => type.asset_type_id === selectedAssetType);
+
+
+  // Get names of all selected asset types
+  const getSelectedAssetTypeNames = () => {
+    return selectedAssetTypes.map(typeId => {
+      const type = assetTypes.find(t => t.asset_type_id === typeId);
+      return type ? `${type.asset_type_id} - ${type.text}` : typeId;
+    });
+  };
+
+  // Get display text for dropdown button
+  const getDropdownDisplayText = () => {
+    if (selectedAssetTypes.length === 0) return 'Select Asset Type';
+    if (selectedAssetTypes.length === 1) {
+      const type = assetTypes.find(t => t.asset_type_id === selectedAssetTypes[0]);
+      return type ? `${type.asset_type_id} - ${type.text}` : selectedAssetTypes[0];
+    }
+    return `${selectedAssetTypes.length} Asset Types Selected`;
+  };
+
+  // Format date for user display
+  const formatDate = (dateString) => {
+    if (!dateString || dateString === 'NULL') return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (err) {
+      return 'N/A';
+    }
+  };
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -191,11 +312,35 @@ const CreateGroupAsset = () => {
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-left bg-white flex items-center justify-between"
                     >
-                      <span className={selectedAssetType ? 'text-gray-900' : 'text-gray-500'}>
-                        {selectedAssetTypeName ? `${selectedAssetTypeName.asset_type_code} - ${selectedAssetTypeName.asset_type_name}` : 'Select Asset Type'}
+                      <span className={selectedAssetTypes.length > 0 ? 'text-gray-900' : 'text-gray-500'}>
+                        {getDropdownDisplayText()}
                       </span>
                       <ChevronDown size={16} className="text-gray-400" />
                     </button>
+                    
+                    {/* Selected Asset Type Badges */}
+                    {selectedAssetTypes.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {getSelectedAssetTypeNames().map((typeName, index) => {
+                          const typeId = selectedAssetTypes[index];
+                          return (
+                            <div
+                              key={typeId}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                            >
+                              <span>{typeName}</span>
+                              <button
+                                onClick={() => handleRemoveAssetType(typeId)}
+                                className="ml-1 text-blue-600 hover:text-blue-800"
+                                title="Remove asset type"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     
                     {isDropdownOpen && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
@@ -216,21 +361,29 @@ const CreateGroupAsset = () => {
                         
                         {/* Dropdown Options */}
                         <div className="max-h-48 overflow-y-auto">
-                          {filteredAssetTypes.length > 0 ? (
-                            filteredAssetTypes.map((type) => (
-                              <button
-                                key={type.asset_type_id}
-                                onClick={() => handleAssetTypeSelect(type)}
-                                className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between"
-                              >
-                                <span className="text-sm text-gray-900">
-                                  {type.asset_type_code} - {type.asset_type_name}
-                                </span>
-                                {selectedAssetType === type.asset_type_id && (
-                                  <Check size={16} className="text-blue-600" />
-                                )}
-                              </button>
-                            ))
+                          {loadingAssetTypes ? (
+                            <div className="px-3 py-2 text-sm text-gray-500">Loading asset types...</div>
+                          ) : filteredAssetTypes.length > 0 ? (
+                            filteredAssetTypes.map((type) => {
+                              const isSelected = selectedAssetTypes.includes(type.asset_type_id);
+                              return (
+                                <button
+                                  key={type.asset_type_id}
+                                  onClick={() => handleAssetTypeSelect(type)}
+                                  disabled={isSelected}
+                                  className={`w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between ${
+                                    isSelected ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''
+                                  }`}
+                                >
+                                  <span className="text-sm text-gray-900">
+                                    {type.asset_type_id} - {type.text}
+                                  </span>
+                                  {isSelected && (
+                                    <Check size={16} className="text-blue-600" />
+                                  )}
+                                </button>
+                              );
+                            })
                           ) : (
                             <div className="px-3 py-2 text-sm text-gray-500">
                               No asset types found
@@ -263,38 +416,50 @@ const CreateGroupAsset = () => {
               {/* Table Container - Flexible height */}
               <div className="flex-1 overflow-hidden">
                 <div className="h-full overflow-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
-                      <tr>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Asset Id
-                        </th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Description
-                        </th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Purchased On
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredAvailableAssets.map((asset, index) => (
-                        <tr 
-                          key={asset.asset_id}
-                          className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                          onClick={() => handleSelectAsset(asset)}
-                        >
-                          <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_id}</td>
-                          <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.name}</td>
-                          <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.description}</td>
-                          <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.purchased_on}</td>
+                  {loadingAssets ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="text-gray-500">Loading assets...</div>
+                    </div>
+                  ) : availableAssets.length === 0 ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="text-gray-500">
+                        {selectedAssetTypes.length > 0 ? 'No assets found for selected asset types' : 'Please select an asset type to view assets'}
+                      </div>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
+                        <tr>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Asset Id
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Description
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Purchased On
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredAvailableAssets.map((asset, index) => (
+                          <tr 
+                            key={asset.asset_id}
+                            className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                            onClick={() => handleSelectAsset(asset)}
+                          >
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_id}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.name || asset.asset_name || asset.text || 'N/A'}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.description || asset.asset_description || 'N/A'}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{formatDate(asset.purchased_on || asset.purchase_date || asset.purchased_cost)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             </div>
@@ -397,19 +562,19 @@ const CreateGroupAsset = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredSelectedAssets.map((asset, index) => (
-                        <tr 
-                          key={asset.asset_id}
-                          className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                          onClick={() => handleDeselectAsset(asset)}
-                        >
-                          <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_id}</td>
-                          <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.name}</td>
-                          <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.description}</td>
-                          <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.purchased_on}</td>
-                        </tr>
-                      ))}
-                    </tbody>
+                        {filteredSelectedAssets.map((asset, index) => (
+                          <tr 
+                            key={asset.asset_id}
+                            className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                            onClick={() => handleDeselectAsset(asset)}
+                          >
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_id}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.name || asset.asset_name || asset.text || 'N/A'}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.description || asset.asset_description || 'N/A'}</td>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{formatDate(asset.purchased_on || asset.purchase_date || asset.purchased_cost)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
                   </table>
                 </div>
               </div>

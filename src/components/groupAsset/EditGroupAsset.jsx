@@ -1,125 +1,250 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import { toast } from 'react-hot-toast';
-import { 
-  ArrowRight, 
-  ArrowLeft, 
-  ChevronRight, 
-  ChevronLeft, 
-  Save, 
-  X,
-  Search,
-  Filter
-} from 'lucide-react';
 import API from '../../lib/axios';
+import { toast } from 'react-hot-toast';
+import { ChevronDown, Check, X, ArrowRight, ArrowLeft, Search } from 'lucide-react';
 
 const EditGroupAsset = () => {
   const navigate = useNavigate();
-  const { groupId } = useParams();
   const location = useLocation();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [groupName, setGroupName] = useState('');
-  const [selectedAssetType, setSelectedAssetType] = useState('');
+  const [selectedAssetTypes, setSelectedAssetTypes] = useState([]);
   const [availableAssets, setAvailableAssets] = useState([]);
   const [selectedAssets, setSelectedAssets] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTerm, setFilterTerm] = useState('');
-  const [isEdit, setIsEdit] = useState(false);
-  const [originalGroupData, setOriginalGroupData] = useState(null);
-
-  // Mock data for demonstration - replace with actual API calls
-  const mockAssetTypes = [
-    { asset_type_id: 'AT001', asset_type_name: 'Laptop', asset_type_code: 'AT001' },
-    { asset_type_id: 'AT002', asset_type_name: 'Desktop', asset_type_code: 'AT002' },
-    { asset_type_id: 'AT003', asset_type_name: 'Monitor', asset_type_code: 'AT003' },
-    { asset_type_id: 'AT004', asset_type_name: 'Printer', asset_type_code: 'AT004' },
-    { asset_type_id: 'AT005', asset_type_name: 'Furniture', asset_type_code: 'AT005' },
-    { asset_type_id: 'AT006', asset_type_name: 'Vehicle', asset_type_code: 'AT006' }
-  ];
-
-  const mockAssets = [
-    { asset_id: 'A001', name: 'Dell XPS 13', description: 'Laptop - Dell XPS 13', purchased_on: '2023-01-15', asset_type_id: 'AT001', asset_type_name: 'Laptop' },
-    { asset_id: 'A002', name: 'HP Pavilion', description: 'Laptop - HP Pavilion', purchased_on: '2023-02-20', asset_type_id: 'AT001', asset_type_name: 'Laptop' },
-    { asset_id: 'A003', name: 'Lenovo ThinkPad', description: 'Laptop - Lenovo ThinkPad', purchased_on: '2023-03-10', asset_type_id: 'AT001', asset_type_name: 'Laptop' },
-    { asset_id: 'A004', name: 'Dell OptiPlex', description: 'Desktop - Dell OptiPlex', purchased_on: '2023-04-05', asset_type_id: 'AT002', asset_type_name: 'Desktop' },
-    { asset_id: 'A005', name: 'Samsung 24"', description: 'Monitor - Samsung 24 inch', purchased_on: '2023-01-10', asset_type_id: 'AT003', asset_type_name: 'Monitor' },
-    { asset_id: 'A006', name: 'LG 27"', description: 'Monitor - LG 27 inch', purchased_on: '2023-01-12', asset_type_id: 'AT003', asset_type_name: 'Monitor' },
-    { asset_id: 'A007', name: 'HP LaserJet', description: 'Printer - HP LaserJet', purchased_on: '2023-02-15', asset_type_id: 'AT004', asset_type_name: 'Printer' },
-    { asset_id: 'A008', name: 'Canon Printer', description: 'Printer - Canon', purchased_on: '2023-02-18', asset_type_id: 'AT004', asset_type_name: 'Printer' }
-  ];
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownSearchTerm, setDropdownSearchTerm] = useState('');
+  
+  // API data states
+  const [assetTypes, setAssetTypes] = useState([]);
+  const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
+  const [loadingAssets, setLoadingAssets] = useState(false);
+  const [loadingGroupData, setLoadingGroupData] = useState(true);
+  
+  // Get group data from navigation state or fetch by ID
+  const groupId = location.pathname.split('/').pop();
+  const isEdit = location.state?.isEdit || false;
+  const groupData = location.state?.groupData;
 
   useEffect(() => {
-    // Check if we're in edit mode
-    if (location.state?.isEdit && location.state?.groupData) {
-      setIsEdit(true);
-      const groupData = location.state.groupData;
-      setOriginalGroupData(groupData);
-      setGroupName(groupData.group_name);
-      setSelectedAssetType(groupData.asset_type_id);
-      
-      // Mock: Load existing assets for this group
-      const existingAssets = mockAssets.filter(asset => 
-        asset.asset_type_id === groupData.asset_type_id
-      );
-      setSelectedAssets(existingAssets.slice(0, groupData.asset_count)); // Mock selected assets
-      setAvailableAssets(mockAssets.filter(asset => 
-        asset.asset_type_id === groupData.asset_type_id && 
-        !existingAssets.slice(0, groupData.asset_count).some(selected => selected.asset_id === asset.asset_id)
-      ));
+    if (isEdit && groupData) {
+      // Use data from navigation state
+      setGroupName(groupData.group_name || '');
+      // Note: We'll need to fetch the actual assets in this group
+      fetchGroupDetails(groupId);
     } else {
-      // Create mode - initialize with empty state
-      setAvailableAssets(mockAssets);
+      // Fetch group data by ID
+      fetchGroupDetails(groupId);
     }
-  }, [location.state]);
+    
+    // Fetch asset types for dropdown
+    fetchAssetTypes();
+  }, [groupId, isEdit, groupData]);
 
-  const filteredAvailableAssets = availableAssets.filter(asset => {
-    const matchesSearch = asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         asset.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         asset.asset_id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = selectedAssetType === '' || asset.asset_type_id === selectedAssetType;
-    return matchesSearch && matchesFilter;
-  });
+  // Fetch existing group details
+  const fetchGroupDetails = async (id) => {
+    try {
+      setLoadingGroupData(true);
+      const response = await API.get(`/asset-groups/${id}`);
+      
+      if (response.data && response.data.header) {
+        const group = response.data.header;
+        const assets = response.data.details || [];
+        
+        setGroupName(group.text || '');
+        
+        // Extract asset type IDs from the assets
+        const assetTypeIds = [...new Set(assets.map(asset => asset.asset_type_id))];
+        setSelectedAssetTypes(assetTypeIds);
+        
+        // Set selected assets
+        setSelectedAssets(assets.map(asset => ({
+          asset_id: asset.asset_id,
+          name: asset.asset_name || asset.text || 'N/A',
+          asset_type_id: asset.asset_type_id,
+          purchased_on: asset.purchased_on
+        })));
+        
+        // Fetch assets for all asset types
+        await fetchAssetsForAllTypes(assetTypeIds);
+      }
+    } catch (error) {
+      console.error('Error fetching group details:', error);
+      toast.error('Failed to fetch group details');
+    } finally {
+      setLoadingGroupData(false);
+    }
+  };
 
-  const filteredSelectedAssets = selectedAssets.filter(asset => {
-    return asset.name.toLowerCase().includes(filterTerm.toLowerCase()) ||
-           asset.description.toLowerCase().includes(filterTerm.toLowerCase()) ||
-           asset.asset_id.toLowerCase().includes(filterTerm.toLowerCase());
-  });
+  // Fetch asset types
+  const fetchAssetTypes = async () => {
+    setLoadingAssetTypes(true);
+    try {
+      const response = await API.get('/asset-types/group-required');
+      if (response.data && response.data.success) {
+        setAssetTypes(response.data.data || []);
+    } else {
+        toast.error('Failed to fetch asset types');
+      }
+    } catch (error) {
+      console.error('Error fetching asset types:', error);
+      toast.error('Failed to fetch asset types');
+    } finally {
+      setLoadingAssetTypes(false);
+    }
+  };
 
+  // Fetch assets by asset type
+  const fetchAssetsByType = async (assetTypeId) => {
+    if (!assetTypeId) return;
+    
+    setLoadingAssets(true);
+    try {
+      const response = await API.get(`/assets/type/${assetTypeId}`);
+      if (response.data && response.data.success) {
+        setAvailableAssets(prev => {
+          const newAssets = response.data.data || [];
+          const existingAssetIds = prev.map(asset => asset.asset_id);
+          const uniqueNewAssets = newAssets.filter(asset => !existingAssetIds.includes(asset.asset_id));
+          return [...prev, ...uniqueNewAssets];
+        });
+      } else {
+        toast.error('Failed to fetch assets');
+      }
+    } catch (error) {
+      console.error('Error fetching assets:', error);
+      toast.error('Failed to fetch assets');
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+
+  // Fetch assets for all selected asset types
+  const fetchAssetsForAllTypes = async (assetTypeIds) => {
+    if (assetTypeIds.length === 0) {
+      setAvailableAssets([]);
+      return;
+    }
+    
+    setLoadingAssets(true);
+    try {
+      const allAssets = [];
+      for (const assetTypeId of assetTypeIds) {
+        const response = await API.get(`/assets/type/${assetTypeId}`);
+        if (response.data && response.data.success) {
+          allAssets.push(...(response.data.data || []));
+        }
+      }
+      
+      const uniqueAssets = allAssets.filter((asset, index, self) => 
+        index === self.findIndex(a => a.asset_id === asset.asset_id)
+      );
+      
+      setAvailableAssets(uniqueAssets);
+    } catch (error) {
+      console.error('Error fetching assets for all types:', error);
+      toast.error('Failed to fetch assets');
+    } finally {
+      setLoadingAssets(false);
+    }
+  };
+
+  // Asset selection handlers
   const handleSelectAsset = (asset) => {
+    if (!selectedAssets.find(selected => selected.asset_id === asset.asset_id)) {
     setSelectedAssets(prev => [...prev, asset]);
-    setAvailableAssets(prev => prev.filter(a => a.asset_id !== asset.asset_id));
+    }
   };
 
   const handleDeselectAsset = (asset) => {
-    setAvailableAssets(prev => [...prev, asset]);
-    setSelectedAssets(prev => prev.filter(a => a.asset_id !== asset.asset_id));
+    setSelectedAssets(prev => prev.filter(selected => selected.asset_id !== asset.asset_id));
   };
 
   const handleSelectAll = () => {
-    setSelectedAssets(prev => [...prev, ...filteredAvailableAssets]);
-    setAvailableAssets(prev => prev.filter(asset => 
-      !filteredAvailableAssets.some(selected => selected.asset_id === asset.asset_id)
-    ));
+    setSelectedAssets(availableAssets);
   };
 
   const handleDeselectAll = () => {
-    setAvailableAssets(prev => [...prev, ...filteredSelectedAssets]);
-    setSelectedAssets(prev => prev.filter(asset => 
-      !filteredSelectedAssets.some(selected => selected.asset_id === asset.asset_id)
-    ));
+    setSelectedAssets([]);
   };
 
-  const handleSave = async () => {
+  // Asset type selection handlers
+  const handleAssetTypeSelect = (assetType) => {
+    if (selectedAssetTypes.includes(assetType.asset_type_id)) {
+      toast.error('This asset type is already selected');
+      return;
+    }
+    
+    const newSelectedTypes = [...selectedAssetTypes, assetType.asset_type_id];
+    setSelectedAssetTypes(newSelectedTypes);
+    
+    setIsDropdownOpen(false);
+    setDropdownSearchTerm('');
+    
+    fetchAssetsByType(assetType.asset_type_id);
+  };
+
+  const handleRemoveAssetType = (assetTypeId) => {
+    setSelectedAssetTypes(prev => prev.filter(id => id !== assetTypeId));
+    
+    setAvailableAssets(prev => prev.filter(asset => asset.asset_type_id !== assetTypeId));
+    
+    setSelectedAssets(prev => prev.filter(asset => asset.asset_type_id !== assetTypeId));
+  };
+
+  // Filter asset types for dropdown
+  const filteredAssetTypes = assetTypes.filter(type =>
+    type.text.toLowerCase().includes(dropdownSearchTerm.toLowerCase()) ||
+    type.asset_type_id.toLowerCase().includes(dropdownSearchTerm.toLowerCase())
+  );
+
+  // Get names of all selected asset types
+  const getSelectedAssetTypeNames = () => {
+    return selectedAssetTypes.map(typeId => {
+      const type = assetTypes.find(t => t.asset_type_id === typeId);
+      return type ? `${type.asset_type_id} - ${type.text}` : typeId;
+    });
+  };
+
+  // Get display text for dropdown button
+  const getDropdownDisplayText = () => {
+    if (selectedAssetTypes.length === 0) return 'Select Asset Type';
+    if (selectedAssetTypes.length === 1) {
+      const type = assetTypes.find(t => t.asset_type_id === selectedAssetTypes[0]);
+      return type ? `${type.asset_type_id} - ${type.text}` : selectedAssetTypes[0];
+    }
+    return `${selectedAssetTypes.length} Asset Types Selected`;
+  };
+
+  // Format date for user display
+  const formatDate = (dateString) => {
+    if (!dateString || dateString === 'NULL') return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (err) {
+      return 'N/A';
+    }
+  };
+
+  // Update asset group
+  const handleUpdate = async () => {
     if (!groupName.trim()) {
       toast.error('Please enter a group name');
       return;
     }
 
-    if (selectedAssetType === '') {
-      toast.error('Please select an asset type');
+    if (selectedAssetTypes.length === 0) {
+      toast.error('Please select at least one asset type');
       return;
     }
 
@@ -130,26 +255,22 @@ const EditGroupAsset = () => {
 
     setLoading(true);
     try {
-      const groupData = {
-        group_id: isEdit ? groupId : undefined,
-        group_name: groupName,
-        asset_type_id: selectedAssetType,
-        asset_type_name: mockAssetTypes.find(type => type.asset_type_id === selectedAssetType)?.asset_type_name,
-        assets: selectedAssets.map(asset => asset.asset_id),
-        created_by: user?.username || 'Admin User',
-        created_date: new Date().toISOString().split('T')[0]
+      const updateData = {
+        text: groupName.trim(),
+        asset_ids: selectedAssets.map(asset => asset.asset_id)
       };
 
-      console.log('Saving group asset:', groupData);
+      const response = await API.put(`/asset-groups/${groupId}`, updateData);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success(isEdit ? 'Group Asset updated successfully!' : 'Group Asset created successfully!');
+      if (response.data && response.data.message) {
+        toast.success('Asset group updated successfully!');
       navigate('/group-asset');
+      } else {
+        toast.error('Failed to update asset group');
+      }
     } catch (error) {
-      console.error('Error saving group asset:', error);
-      toast.error('Failed to save group asset');
+      console.error('Error updating group:', error);
+      toast.error('Failed to update asset group');
     } finally {
       setLoading(false);
     }
@@ -159,261 +280,420 @@ const EditGroupAsset = () => {
     navigate('/group-asset');
   };
 
+  if (loadingGroupData) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading group details...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Asset Groups</h1>
-              <p className="text-sm text-gray-600">
-                {isEdit ? 'Edit existing asset group' : 'Create a new asset group'}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleCancel}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={loading || !groupName.trim() || selectedAssets.length === 0}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <Save size={16} />
-                )}
-                {isEdit ? 'Update' : 'Save'}
-              </button>
-            </div>
-          </div>
+      <div className="bg-white border-b px-4 py-3 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleCancel}
+            className="p-2 hover:bg-gray-100 rounded-md"
+          >
+            <ArrowLeft size={20} className="text-gray-600" />
+          </button>
+          <h1 className="text-xl font-semibold text-gray-900">Edit Asset Group</h1>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={handleCancel}
+            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpdate}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Updating...' : 'Update Group'}
+          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Group Name Section */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700 min-w-[100px]">
-              Group Name:
-            </label>
-            <input
-              type="text"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              placeholder="Enter group name"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Available Assets */}
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Assets List</h2>
-              
-              {/* Asset Type Filter */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Asset Type
-                </label>
-                <select
-                  value={selectedAssetType}
-                  onChange={(e) => {
-                    setSelectedAssetType(e.target.value);
-                    // Clear selected assets when asset type changes
-                    setSelectedAssets([]);
-                    setAvailableAssets(mockAssets);
-                  }}
-                  disabled={isEdit} // Disable in edit mode
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                  <option value="">Select Asset Type</option>
-                  {mockAssetTypes.map(type => (
-                    <option key={type.asset_type_id} value={type.asset_type_id}>
-                      {type.asset_type_code} - {type.asset_type_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                <input
-                  type="text"
-                  placeholder="Search assets..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+      {/* Main Content - Flexible height */}
+      <div className="flex-1 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 h-full flex flex-col">
+          {/* Group Name Section - Fixed height */}
+          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <label className="text-sm font-medium text-gray-700 min-w-[80px] sm:min-w-[100px]">
+                Group Name:
+              </label>
+              <input
+                type="text"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                placeholder="Enter group name"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+              />
             </div>
+          </div>
 
-            <div className="overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Asset Id
+          {/* Main Content Area - Flexible height */}
+          <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 min-h-0">
+            {/* Available Assets - Flexible height */}
+            <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 min-h-0">
+              <div className="p-4 border-b flex-shrink-0">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Assets List</h2>
+                
+                {/* Asset Type Filter - Searchable Dropdown */}
+                <div className="mb-0">
+                 
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-left bg-white flex items-center justify-between"
+                    >
+                      <span className={selectedAssetTypes.length > 0 ? 'text-gray-900' : 'text-gray-500'}>
+                        {getDropdownDisplayText()}
+                      </span>
+                      <ChevronDown size={16} className="text-gray-400" />
+                    </button>
+                    
+                    {/* Selected Asset Type Badges */}
+                    {selectedAssetTypes.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {getSelectedAssetTypeNames().map((typeName, index) => {
+                          const typeId = selectedAssetTypes[index];
+                          return (
+                            <div
+                              key={typeId}
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                            >
+                              <span>{typeName}</span>
+                              <button
+                                onClick={() => handleRemoveAssetType(typeId)}
+                                className="ml-1 text-blue-600 hover:text-blue-800"
+                                title="Remove asset type"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    {isDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                        {/* Search */}
+                        <div className="p-3 border-b">
+                          <input
+                            type="text"
+                            placeholder="Search asset types..."
+                            value={dropdownSearchTerm}
+                            onChange={(e) => setDropdownSearchTerm(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        
+                        {/* Selected Asset Types Display */}
+                        {selectedAssetTypes.length > 0 && (
+                          <div className="p-3 border-b bg-gray-50">
+                            <div className="text-xs font-medium text-gray-700 mb-2">Selected Asset Types:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {getSelectedAssetTypeNames().map((typeName, index) => {
+                                const typeId = selectedAssetTypes[index];
+                                return (
+                                  <span
+                                    key={typeId}
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                                  >
+                                    {typeName}
+                                    <button
+                                      onClick={() => handleRemoveAssetType(typeId)}
+                                      className="ml-1 text-blue-600 hover:text-blue-800"
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Dropdown Options */}
+                        <div className="max-h-48 overflow-y-auto">
+                          {loadingAssetTypes ? (
+                            <div className="px-3 py-2 text-sm text-gray-500">Loading asset types...</div>
+                          ) : filteredAssetTypes.length > 0 ? (
+                            filteredAssetTypes.map((type) => {
+                              const isSelected = selectedAssetTypes.includes(type.asset_type_id);
+                              return (
+                                <button
+                                  key={type.asset_type_id}
+                                  onClick={() => handleAssetTypeSelect(type)}
+                                  disabled={isSelected}
+                                  className={`w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between ${
+                                    isSelected ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''
+                                  }`}
+                                >
+                                  <span className="text-sm text-gray-900">
+                                    {type.asset_type_id} - {type.text}
+                                  </span>
+                                  {isSelected && (
+                                    <Check size={16} className="text-blue-600" />
+                                  )}
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-gray-500">
+                              No asset types found
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Asset Search and Select All/None Buttons - Same line */}
+                <div className="mt-4 flex items-center justify-between gap-4">
+                  {/* Select All/None Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSelectAll}
+                      className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={handleDeselectAll}
+                      className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                  
+                  {/* Compact Search Bar */}
+                  <div className="relative w-64">
+                    {searchTerm ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Search assets..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className="p-1 text-gray-400 hover:text-gray-600"
+                          title="Clear search"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => document.getElementById('asset-search-input')?.focus()}
+                        className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-left bg-white flex items-center gap-2 text-gray-500 hover:text-gray-700"
+                      >
+                        <Search size={14} />
+                        <span className="text-xs">Search...</span>
+                      </button>
+                    )}
+                    <input
+                      id="asset-search-input"
+                      type="text"
+                      placeholder="Search assets..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className={`absolute inset-0 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white ${
+                        searchTerm ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                      }`}
+                      onFocus={() => setSearchTerm('')}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Assets Table */}
+              <div className="flex-1 overflow-auto">
+                {loadingAssets ? (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-500">Loading assets...</p>
+                    </div>
+                  </div>
+                ) : availableAssets.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                            Select
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                            Asset ID
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                       Name
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                            Asset Type
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Purchased On
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                            Purchase Date
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredAvailableAssets.map((asset) => (
-                    <tr 
-                      key={asset.asset_id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handleSelectAsset(asset)}
-                    >
-                      <td className="px-4 py-3 text-sm text-gray-900">{asset.asset_id}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{asset.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{asset.description}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{asset.purchased_on}</td>
+                        {availableAssets
+                          .filter(asset => 
+                            asset.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            asset.asset_id?.toLowerCase().includes(searchTerm.toLowerCase())
+                          )
+                          .map((asset) => {
+                            const isSelected = selectedAssets.some(selected => selected.asset_id === asset.asset_id);
+                            return (
+                              <tr key={asset.asset_id} className={isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                                <td className="px-3 py-3 whitespace-nowrap">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => isSelected ? handleDeselectAsset(asset) : handleSelectAsset(asset)}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                  />
+                                </td>
+                                <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  <span className="truncate block max-w-[60px]" title={asset.asset_id}>
+                                    {asset.asset_id}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3 text-sm text-gray-900">
+                                  <span className="truncate block max-w-[80px]" title={asset.name || asset.asset_name || asset.text || 'N/A'}>
+                                    {asset.name || asset.asset_name || asset.text || 'N/A'}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3 text-sm text-gray-500">
+                                  <div className="max-w-[100px] break-words">
+                                    {asset.asset_type_id}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                                  <span className="truncate block max-w-[70px]" title={formatDate(asset.purchased_on || asset.purchase_date)}>
+                                    {formatDate(asset.purchased_on || asset.purchase_date)}
+                                  </span>
+                                </td>
                     </tr>
-                  ))}
+                            );
+                          })}
                 </tbody>
               </table>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="text-center">
+                      <div className="text-gray-500">
+                        {selectedAssetTypes.length > 0 ? 'No assets found for selected asset types' : 'Please select an asset type to view assets'}
+                      </div>
             </div>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col justify-center items-center gap-2">
-            {/* Transfer buttons in order: right single, right all, left single, left all */}
-            <div className="flex flex-col gap-1">
-              <button
-                onClick={() => handleSelectAsset(filteredAvailableAssets[0])}
-                disabled={filteredAvailableAssets.length === 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Add one asset"
-              >
-                <span className="text-lg font-bold">→</span>
-              </button>
-              <button
-                onClick={handleSelectAll}
-                disabled={filteredAvailableAssets.length === 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Add all assets"
-              >
-                <span className="text-lg font-bold">{'>>'}</span>
-              </button>
-              <button
-                onClick={() => handleDeselectAsset(filteredSelectedAssets[0])}
-                disabled={filteredSelectedAssets.length === 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Remove one asset"
-              >
-                <span className="text-lg font-bold">←</span>
-              </button>
-              <button
-                onClick={handleDeselectAll}
-                disabled={filteredSelectedAssets.length === 0}
-                className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Remove all assets"
-              >
-                <span className="text-lg font-bold">{'<<'}</span>
-              </button>
+                )}
             </div>
           </div>
 
           {/* Selected Assets */}
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Selected Assets</h2>
-              
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                <input
-                  type="text"
-                  placeholder="Search selected assets..."
-                  value={filterTerm}
-                  onChange={(e) => setFilterTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Asset Id
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Purchased On
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredSelectedAssets.map((asset) => (
-                    <tr 
-                      key={asset.asset_id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handleDeselectAsset(asset)}
-                    >
-                      <td className="px-4 py-3 text-sm text-gray-900">{asset.asset_id}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{asset.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{asset.description}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{asset.purchased_on}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Summary */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm border p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-gray-600">
-                Total Assets Selected: <span className="font-semibold text-gray-900">{selectedAssets.length}</span>
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleCancel}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={loading || !groupName.trim() || selectedAssets.length === 0}
-                className="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  <Save size={16} />
+            <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 min-h-0">
+              <div className="p-4 border-b flex-shrink-0">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Selected Assets ({selectedAssets.length})
+                </h2>
+                {selectedAssets.length > 0 && (
+                  <button
+                    onClick={handleDeselectAll}
+                    className="text-sm text-red-600 hover:text-red-800 underline"
+                  >
+                    Clear All
+                  </button>
                 )}
-                {isEdit ? 'Update' : 'Save'}
-              </button>
+            </div>
+
+              <div className="flex-1 overflow-auto">
+                {selectedAssets.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                            Asset ID
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                            Name
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                            Asset Type
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                            Purchase Date
+                          </th>
+                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                            Action
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {selectedAssets.map((asset) => (
+                          <tr key={asset.asset_id} className="hover:bg-gray-50">
+                            <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                              <span className="truncate block max-w-[60px]" title={asset.asset_id}>
+                                {asset.asset_id}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-sm text-gray-900">
+                              <span className="truncate block max-w-[80px]" title={asset.name || asset.asset_name || asset.text || 'N/A'}>
+                                {asset.name || asset.asset_name || asset.text || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-sm text-gray-500">
+                              <div className="max-w-[100px] break-words">
+                                {asset.asset_type_id}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                              <span className="truncate block max-w-[70px]" title={formatDate(asset.purchased_on || asset.purchase_date)}>
+                                {formatDate(asset.purchased_on || asset.purchase_date)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                              <button
+                                onClick={() => handleDeselectAsset(asset)}
+                                className="text-red-600 hover:text-red-800"
+                                title="Remove from selection"
+                              >
+                                <X size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32">
+                    <div className="text-center text-gray-500">
+                      <ArrowLeft size={24} className="mx-auto mb-2 text-gray-400" />
+                      <p>Select assets from the left table</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -19,7 +19,6 @@ export default function MaintSupervisorApproval() {
   const [formData, setFormData] = useState({
     notes: "",
     status: "",
-    act_main_end_date: "",
     po_number: "",
     invoice: "",
     technician_name: "",
@@ -51,7 +50,6 @@ export default function MaintSupervisorApproval() {
         setFormData({
           notes: res.data.data.notes || "",
           status: res.data.data.status || "",
-          act_main_end_date: res.data.data.act_main_end_date ? res.data.data.act_main_end_date.split('T')[0] : "",
           po_number: res.data.data.po_number || "",
           invoice: res.data.data.invoice || "",
           technician_name: res.data.data.technician_name || "",
@@ -112,11 +110,6 @@ export default function MaintSupervisorApproval() {
       return;
     }
     
-    if (formData.status === "CO" && !formData.act_main_end_date) {
-      toast.error("End date is required when status is Completed");
-      return;
-    }
-    
     try {
       const updateData = {
         ...formData
@@ -152,17 +145,6 @@ export default function MaintSupervisorApproval() {
     );
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Not set';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Invalid date';
-      return date.toLocaleDateString();
-    } catch (err) {
-      return 'Invalid date';
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto min-h-[600px] overflow-y-auto p-8 bg-white md:rounded shadow-lg mt-155">
       {/* Header with Back Button */}
@@ -178,73 +160,59 @@ export default function MaintSupervisorApproval() {
 
       {/* Main Content */}
       <div className="space-y-6">
-        {/* Maintenance Information */}
-        <div className="bg-gray-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Maintenance Schedule Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Maintenance Schedule ID</label>
-              <p className="mt-1 text-sm text-gray-900">{maintenanceData.ams_id}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Asset ID</label>
-              <p className="mt-1 text-sm text-gray-900">{maintenanceData.asset_id}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Maintenance Type ID</label>
-              <p className="mt-1 text-sm text-gray-900">{maintenanceData.maint_type_id || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Vendor ID</label>
-              <p className="mt-1 text-sm text-gray-900">{maintenanceData.vendor_id || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Frequency ID</label>
-              <p className="mt-1 text-sm text-gray-900">{maintenanceData.at_main_freq_id || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Current Status</label>
-              <p className="mt-1 text-sm text-gray-900">{maintenanceData.status}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Scheduled Date</label>
-              <p className="mt-1 text-sm text-gray-900">{formatDate(maintenanceData.act_maint_st_date)}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Created On</label>
-              <p className="mt-1 text-sm text-gray-900">{formatDate(maintenanceData.created_on)}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Created By</label>
-              <p className="mt-1 text-sm text-gray-900">{maintenanceData.created_by || 'System'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Changed On</label>
-              <p className="mt-1 text-sm text-gray-900">{formatDate(maintenanceData.changed_on)}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Changed By</label>
-              <p className="mt-1 text-sm text-gray-900">{maintenanceData.changed_by || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Organization ID</label>
-              <p className="mt-1 text-sm text-gray-900">{maintenanceData.org_id}</p>
-            </div>
+        {/* Checklist Section - At the Top */}
+        <div className="p-6 rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">Maintenance Checklist</h2>
+            <button
+              type="button"
+              onClick={() => setShowChecklist(true)}
+              disabled={loadingChecklist || checklist.length === 0}
+              className="px-4 py-2 border border-blue-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title="View and complete the asset maintenance checklist"
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              {loadingChecklist ? "Loading..." : "View Checklist"}
+            </button>
           </div>
         </div>
 
-        {/* Update Form */}
+        {/* Update Form - Only Fields That Need to be Updated */}
         <div className="bg-gray-50 p-6 rounded-lg">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Update Maintenance Schedule</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Status *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  name="technician_name"
+                  value={formData.technician_name}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter technician name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  name="technician_phno"
+                  value={formData.technician_phno}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter technician phone"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
                   <option value="">Select status</option>
@@ -256,115 +224,55 @@ export default function MaintSupervisorApproval() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">End Date</label>
-                <input
-                  type="date"
-                  name="act_main_end_date"
-                  value={formData.act_main_end_date}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">PO Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>
                 <input
                   type="text"
                   name="po_number"
                   value={formData.po_number}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter PO number"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Invoice</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
                 <input
                   type="text"
                   name="invoice"
                   value={formData.invoice}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter invoice number"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Technician Name</label>
-                <input
-                  type="text"
-                  name="technician_name"
-                  value={formData.technician_name}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                  placeholder="Enter technician name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Technician Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
                   name="technician_email"
                   value={formData.technician_email}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter technician email"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Technician Phone</label>
-                <input
-                  type="tel"
-                  name="technician_phno"
-                  value={formData.technician_phno}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                  placeholder="Enter technician phone"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Notes</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleInputChange}
                 rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter any additional notes..."
               />
             </div>
 
-            {/* Checklist Section */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-semibold text-blue-800">Maintenance Checklist</h3>
-                <button
-                  type="button"
-                  onClick={() => setShowChecklist(true)}
-                  disabled={loadingChecklist || checklist.length === 0}
-                  className="px-3 py-2 border border-blue-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="View and complete the asset maintenance checklist"
-                >
-                  <ClipboardCheck className="w-4 h-4" />
-                  {loadingChecklist ? "Loading..." : "View Checklist"}
-                </button>
-              </div>
-              <p className="text-sm text-blue-700">
-                {loadingChecklist 
-                  ? "Loading maintenance checklist..." 
-                  : checklist.length > 0 
-                    ? `Found ${checklist.length} checklist items for ${maintenanceData?.asset_type_name || "this asset type"}.`
-                    : "No checklist items found for this asset type."
-                }
-              </p>
-            </div>
-
-            <div className="flex justify-end space-x-3">
+            <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
                 onClick={() => navigate("/supervisor-approval")}
@@ -374,9 +282,9 @@ export default function MaintSupervisorApproval() {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#0E2F4B] hover:bg-[#14395c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Update Maintenance Schedule
+                Submit
               </button>
             </div>
           </form>
