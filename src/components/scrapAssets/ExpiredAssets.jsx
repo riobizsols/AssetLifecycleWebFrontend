@@ -16,79 +16,45 @@ const ExpiredAssets = () => {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [notes, setNotes] = useState('');
 
-  // Mock data for expired assets
-  const mockExpiredAssets = [
-    {
-      asset_name: 'Honda Activa',
-      serial_number: 'SN77889',
-      category: 'Vehicles',
-      location: 'Warehouse B',
-      expiry_date: '2024-12-30',
-      status: 'Expired',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'CNC Machine',
-      serial_number: 'SN98765',
-      category: 'Machinery',
-      location: 'Warehouse B',
-      expiry_date: '2024-11-01',
-      status: 'Expired',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'Asset 8',
-      serial_number: 'SN8',
-      category: 'Vehicles',
-      location: 'Warehouse B',
-      expiry_date: '2024-12-30',
-      status: 'Expired',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'Asset 9',
-      serial_number: 'SN9',
-      category: 'Machinery',
-      location: 'Warehouse B',
-      expiry_date: '2024-11-01',
-      status: 'Expired',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'Asset 13',
-      serial_number: 'SN13',
-      category: 'Vehicles',
-      location: 'Warehouse B',
-      expiry_date: '2024-12-30',
-      status: 'Expired',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'Asset 14',
-      serial_number: 'SN14',
-      category: 'Machinery',
-      location: 'Warehouse B',
-      expiry_date: '2024-11-01',
-      status: 'Expired',
-      action: 'Scrap'
+  // Fetch expired assets from API
+  const fetchExpiredAssets = async () => {
+    try {
+      console.log('🔍 Fetching expired assets...');
+      setLoading(true);
+      const response = await API.get('/assets/expiry/expired');
+      console.log('📊 API Response:', response.data);
+      
+      if (response.data && response.data.assets) {
+        console.log('✅ Expired assets:', response.data.assets);
+        setScrapAssets(response.data.assets);
+      } else {
+        console.log('⚠️ No expired assets found or unexpected response format');
+        setScrapAssets([]);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching expired assets:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      toast.error('Failed to fetch expired assets');
+      setScrapAssets([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setScrapAssets(mockExpiredAssets);
-      setLoading(false);
-    }, 1000);
+    fetchExpiredAssets();
   }, []);
 
   const columns = [
-    { key: 'asset_name', name: 'asset_name', label: 'ASSET NAME', sortable: true, visible: true },
+    { key: 'text', name: 'text', label: 'ASSET NAME', sortable: true, visible: true },
     { key: 'serial_number', name: 'serial_number', label: 'SERIAL NUMBER', sortable: true, visible: true },
-    { key: 'category', name: 'category', label: 'CATEGORY', sortable: true, visible: true },
-    { key: 'location', name: 'location', label: 'LOCATION', sortable: true, visible: true },
+    { key: 'asset_type_id', name: 'asset_type_id', label: 'ASSET TYPE', sortable: true, visible: true },
+    { key: 'description', name: 'description', label: 'DESCRIPTION', sortable: true, visible: true },
     { key: 'expiry_date', name: 'expiry_date', label: 'EXPIRY DATE', sortable: true, visible: true },
-    { key: 'status', name: 'status', label: 'STATUS', sortable: true, visible: true },
+    { key: 'days_expired', name: 'days_expired', label: 'DAYS SINCE EXPIRY', sortable: true, visible: true },
     { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true }
   ];
 
@@ -99,7 +65,7 @@ const ExpiredAssets = () => {
 
   const handleSubmitScrap = () => {
     console.log('Submitting scrap asset:', selectedAsset, 'with notes:', notes);
-    toast.success(`Asset ${selectedAsset.asset_name} marked for scrapping${notes ? ` with notes: ${notes}` : ''}`);
+    toast.success(`Asset ${selectedAsset.text} marked for scrapping${notes ? ` with notes: ${notes}` : ''}`);
     setShowModal(false);
     setSelectedAsset(null);
     setNotes('');
@@ -123,11 +89,58 @@ const ExpiredAssets = () => {
       );
     };
 
+    // Helper function to format date
+    const formatDate = (dateString) => {
+      if (!dateString) return 'N/A';
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      } catch (error) {
+        return 'Invalid Date';
+      }
+    };
+
+    // Helper function to format days since expiry
+    const formatDaysSinceExpiry = (daysObject) => {
+      if (!daysObject || typeof daysObject !== 'object') {
+        return 'N/A';
+      }
+      const days = daysObject.days;
+      if (days === undefined || days === null) {
+        return 'N/A';
+      }
+      
+      // For expired assets, days will be positive (days since expiry)
+      const daysNumber = parseInt(days);
+      if (isNaN(daysNumber)) {
+        return 'N/A';
+      }
+      
+      // Convert to months and remaining days
+      const months = Math.floor(daysNumber / 30);
+      const remainingDays = daysNumber % 30;
+      
+      if (months === 0) {
+        // Less than a month
+        return `${remainingDays} day${remainingDays !== 1 ? 's' : ''} ago`;
+      } else if (remainingDays === 0) {
+        // Exactly whole months
+        return `${months} month${months !== 1 ? 's' : ''} ago`;
+      } else {
+        // Months and remaining days
+        return `${months} month${months !== 1 ? 's' : ''} ${remainingDays} day${remainingDays !== 1 ? 's' : ''} ago`;
+      }
+    };
+
     return (
       <>
         {data.map((row, rowIndex) => (
           <tr
-            key={row.asset_name || rowIndex}
+            key={row.asset_id || rowIndex}
             className="border-t hover:bg-gray-100"
           >
             {visible.map((col, colIndex) => (
@@ -136,13 +149,15 @@ const ExpiredAssets = () => {
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={selectedRows.includes(row.asset_name)}
-                      onChange={() => toggleRow(row.asset_name)}
+                      checked={selectedRows.includes(row.asset_id)}
+                      onChange={() => toggleRow(row.asset_id)}
                       className="accent-yellow-400"
                     />
-                    {col.key === 'status' ? (
+                    {col.key === 'expiry_date' ? (
+                      formatDate(row[col.key])
+                    ) : col.key === 'days_expired' ? (
                       <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
-                        {row[col.key]}
+                        {formatDaysSinceExpiry(row[col.key])}
                       </span>
                     ) : col.key === 'action' ? (
                       <button
@@ -152,12 +167,14 @@ const ExpiredAssets = () => {
                         Scrap
                       </button>
                     ) : (
-                      row[col.key]
+                      row[col.key] || 'N/A'
                     )}
                   </div>
-                ) : col.key === 'status' ? (
+                ) : col.key === 'expiry_date' ? (
+                  formatDate(row[col.key])
+                ) : col.key === 'days_expired' ? (
                   <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
-                    {row[col.key]}
+                    {formatDaysSinceExpiry(row[col.key])}
                   </span>
                 ) : col.key === 'action' ? (
                   <button
@@ -167,7 +184,7 @@ const ExpiredAssets = () => {
                     Scrap
                   </button>
                 ) : (
-                  row[col.key]
+                  row[col.key] || 'N/A'
                 )}
               </td>
             ))}
@@ -295,9 +312,9 @@ const ExpiredAssets = () => {
             
             <div className="p-6">
               <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Asset: <span className="font-medium text-gray-900">{selectedAsset?.asset_name}</span></p>
+                <p className="text-sm text-gray-600 mb-2">Asset: <span className="font-medium text-gray-900">{selectedAsset?.text}</span></p>
                 <p className="text-sm text-gray-600">Serial: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
-                <p className="text-sm text-gray-600">Category: <span className="font-medium text-gray-900">{selectedAsset?.category}</span></p>
+                <p className="text-sm text-gray-600">Asset Type: <span className="font-medium text-gray-900">{selectedAsset?.asset_type_id}</span></p>
               </div>
               
               <div className="mb-6">

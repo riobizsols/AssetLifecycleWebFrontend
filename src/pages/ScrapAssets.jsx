@@ -23,17 +23,17 @@ const ScrapAssets = () => {
     expired: 0
   });
 
-  // Mock data for the dashboard
+  // Mock data for the dashboard (keeping some for now)
   const mockStats = {
-    totalAssets: 1250,
-    nearingExpiry: 86,
-    expired: 31
+    totalAssets: 0, // Will be replaced with real data
+    nearingExpiry: 0, // Will be replaced with real data
+    expired: 0 // Will be replaced with real data
   };
 
-  const mockChartData = {
+  const [chartData, setChartData] = useState({
     expiryDistribution: [
-      { name: 'Active', value: 1133, color: '#10B981' },
-      { name: 'Nearing Expiry', value: 86, color: '#F59E0B' },
+      { name: 'Active', value: 0, color: '#10B981' },
+      { name: 'Nearing Expiry', value: 0, color: '#F59E0B' },
       { name: 'Expired', value: 31, color: '#EF4444' }
     ],
     expiringByCategory: [
@@ -42,14 +42,128 @@ const ScrapAssets = () => {
       { category: 'Vehicles', count: 1.0 },
       { category: 'Machinery', count: 1.0 }
     ]
+  });
+
+  // Fetch total assets count from API
+  const fetchTotalAssetsCount = async () => {
+    try {
+      console.log('🔍 Fetching total assets count...');
+      const response = await API.get('/assets/count');
+      console.log('📊 API Response:', response.data);
+      
+      if (response.data && response.data.success) {
+        console.log('✅ Total assets count:', response.data.count);
+        return response.data.count;
+      }
+      console.log('⚠️ API response format unexpected:', response.data);
+      return 0;
+    } catch (error) {
+      console.error('❌ Error fetching total assets count:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      return 0;
+    }
+  };
+
+  // Fetch nearing expiry count from API
+  const fetchNearingExpiryCount = async () => {
+    try {
+      console.log('🔍 Fetching nearing expiry count...');
+      const response = await API.get('/assets/expiry/expiring_soon?days=30');
+      console.log('📊 Nearing Expiry API Response:', response.data);
+      
+      if (response.data && response.data.count !== undefined) {
+        console.log('✅ Nearing expiry count:', response.data.count);
+        return response.data.count;
+      }
+      console.log('⚠️ Nearing expiry API response format unexpected:', response.data);
+      return 0;
+    } catch (error) {
+      console.error('❌ Error fetching nearing expiry count:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      return 0;
+    }
+  };
+
+  // Fetch expired assets count from API
+  const fetchExpiredCount = async () => {
+    try {
+      console.log('🔍 Fetching expired assets count...');
+      const response = await API.get('/assets/expiry/expired');
+      console.log('📊 Expired Assets API Response:', response.data);
+      
+      if (response.data && response.data.count !== undefined) {
+        console.log('✅ Expired assets count:', response.data.count);
+        return response.data.count;
+      }
+      console.log('⚠️ Expired assets API response format unexpected:', response.data);
+      return 0;
+    } catch (error) {
+      console.error('❌ Error fetching expired assets count:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      return 0;
+    }
   };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setStats(mockStats);
-      setLoading(false);
-    }, 1000);
+    const fetchData = async () => {
+      try {
+        console.log('🚀 Starting to fetch data...');
+        setLoading(true);
+        
+        // Fetch real total assets count
+        const totalAssetsCount = await fetchTotalAssetsCount();
+        console.log('📈 Fetched total assets count:', totalAssetsCount);
+        
+        // Fetch real nearing expiry count
+        const nearingExpiryCount = await fetchNearingExpiryCount();
+        console.log('📈 Fetched nearing expiry count:', nearingExpiryCount);
+        
+        // Fetch real expired assets count
+        const expiredCount = await fetchExpiredCount();
+        console.log('📈 Fetched expired assets count:', expiredCount);
+        
+        // Update stats with real data
+        const updatedStats = {
+          totalAssets: totalAssetsCount,
+          nearingExpiry: nearingExpiryCount,
+          expired: expiredCount
+        };
+        
+        console.log('📊 Updated stats:', updatedStats);
+        setStats(updatedStats);
+
+        // Update chart data with real counts
+        const updatedChartData = {
+          ...chartData,
+          expiryDistribution: [
+            { name: 'Active', value: Math.max(0, totalAssetsCount - nearingExpiryCount - expiredCount), color: '#10B981' },
+            { name: 'Nearing Expiry', value: nearingExpiryCount, color: '#F59E0B' },
+            { name: 'Expired', value: expiredCount, color: '#EF4444' }
+          ]
+        };
+        
+        console.log('📊 Updated chart data:', updatedChartData);
+        setChartData(updatedChartData);
+      } catch (error) {
+        console.error('❌ Error in fetchData:', error);
+        // Fallback to mock data if API fails
+        setStats(mockStats);
+      } finally {
+        setLoading(false);
+        console.log('✅ Data fetching completed');
+      }
+    };
+
+    fetchData();
   }, []);
 
   const handleCardClick = (type) => {
@@ -244,11 +358,11 @@ const ScrapAssets = () => {
              {/* Charts */}
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
          <DonutChart 
-           data={mockChartData.expiryDistribution} 
+           data={chartData.expiryDistribution} 
            title="Asset Expiry Distribution" 
          />
          <BarChart 
-           data={mockChartData.expiringByCategory} 
+           data={chartData.expiringByCategory} 
            title="Expiring Assets by Category" 
          />
        </div>

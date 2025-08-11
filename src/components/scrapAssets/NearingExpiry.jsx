@@ -16,79 +16,45 @@ const NearingExpiry = () => {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [notes, setNotes] = useState('');
 
-  // Mock data for assets nearing expiry
-  const mockNearingExpiryAssets = [
-    {
-      asset_name: 'Dell Laptop',
-      serial_number: 'SN12345',
-      category: 'Computers',
-      location: 'Head Office',
-      expiry_date: '2025-08-10',
-      status: 'Nearing Expiry',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'Office Chair',
-      serial_number: 'SN67890',
-      category: 'Furniture',
-      location: 'Warehouse A',
-      expiry_date: '2025-08-14',
-      status: 'Nearing Expiry',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'HP Printer',
-      serial_number: 'SN11223',
-      category: 'Computers',
-      location: 'Remote Site',
-      expiry_date: '2025-08-03',
-      status: 'Nearing Expiry',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'Asset 6',
-      serial_number: 'SN6',
-      category: 'Computers',
-      location: 'Head Office',
-      expiry_date: '2025-08-10',
-      status: 'Nearing Expiry',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'Asset 7',
-      serial_number: 'SN7',
-      category: 'Furniture',
-      location: 'Warehouse A',
-      expiry_date: '2025-08-14',
-      status: 'Nearing Expiry',
-      action: 'Scrap'
-    },
-    {
-      asset_name: 'Asset 10',
-      serial_number: 'SN10',
-      category: 'Computers',
-      location: 'Remote Site',
-      expiry_date: '2025-08-03',
-      status: 'Nearing Expiry',
-      action: 'Scrap'
+  // Fetch assets nearing expiry from API
+  const fetchNearingExpiryAssets = async () => {
+    try {
+      console.log('🔍 Fetching assets nearing expiry...');
+      setLoading(true);
+      const response = await API.get('/assets/expiry/expiring_soon?days=30');
+      console.log('📊 API Response:', response.data);
+      
+      if (response.data && response.data.assets) {
+        console.log('✅ Assets nearing expiry:', response.data.assets);
+        setScrapAssets(response.data.assets);
+      } else {
+        console.log('⚠️ No assets found or unexpected response format');
+        setScrapAssets([]);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching assets nearing expiry:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      toast.error('Failed to fetch assets nearing expiry');
+      setScrapAssets([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setScrapAssets(mockNearingExpiryAssets);
-      setLoading(false);
-    }, 1000);
+    fetchNearingExpiryAssets();
   }, []);
 
   const columns = [
-    { key: 'asset_name', name: 'asset_name', label: 'ASSET NAME', sortable: true, visible: true },
+    { key: 'text', name: 'text', label: 'ASSET NAME', sortable: true, visible: true },
     { key: 'serial_number', name: 'serial_number', label: 'SERIAL NUMBER', sortable: true, visible: true },
-    { key: 'category', name: 'category', label: 'CATEGORY', sortable: true, visible: true },
-    { key: 'location', name: 'location', label: 'LOCATION', sortable: true, visible: true },
+    { key: 'asset_type_id', name: 'asset_type_id', label: 'ASSET TYPE', sortable: true, visible: true },
+    { key: 'description', name: 'description', label: 'DESCRIPTION', sortable: true, visible: true },
     { key: 'expiry_date', name: 'expiry_date', label: 'EXPIRY DATE', sortable: true, visible: true },
-    { key: 'status', name: 'status', label: 'STATUS', sortable: true, visible: true },
+    { key: 'days_until_expiry', name: 'days_until_expiry', label: 'DAYS UNTIL EXPIRY', sortable: true, visible: true },
     { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true }
   ];
 
@@ -99,7 +65,7 @@ const NearingExpiry = () => {
 
   const handleSubmitScrap = () => {
     console.log('Submitting scrap asset:', selectedAsset, 'with notes:', notes);
-    toast.success(`Asset ${selectedAsset.asset_name} marked for scrapping${notes ? ` with notes: ${notes}` : ''}`);
+    toast.success(`Asset ${selectedAsset.text} marked for scrapping${notes ? ` with notes: ${notes}` : ''}`);
     setShowModal(false);
     setSelectedAsset(null);
     setNotes('');
@@ -123,11 +89,34 @@ const NearingExpiry = () => {
       );
     };
 
+    // Helper function to format date
+    const formatDate = (dateString) => {
+      if (!dateString) return 'N/A';
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      } catch (error) {
+        return 'Invalid Date';
+      }
+    };
+
+    // Helper function to format days until expiry
+    const formatDaysUntilExpiry = (daysObject) => {
+      if (!daysObject || typeof daysObject !== 'object') return 'N/A';
+      const days = daysObject.days;
+      if (days === undefined || days === null) return 'N/A';
+      return `${days} day${days !== 1 ? 's' : ''}`;
+    };
+
     return (
       <>
         {data.map((row, rowIndex) => (
           <tr
-            key={row.asset_name || rowIndex}
+            key={row.asset_id || rowIndex}
             className="border-t hover:bg-gray-100"
           >
             {visible.map((col, colIndex) => (
@@ -136,13 +125,15 @@ const NearingExpiry = () => {
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={selectedRows.includes(row.asset_name)}
-                      onChange={() => toggleRow(row.asset_name)}
+                      checked={selectedRows.includes(row.asset_id)}
+                      onChange={() => toggleRow(row.asset_id)}
                       className="accent-yellow-400"
                     />
-                    {col.key === 'status' ? (
+                    {col.key === 'expiry_date' ? (
+                      formatDate(row[col.key])
+                    ) : col.key === 'days_until_expiry' ? (
                       <span className="px-2 py-1 bg-yellow-100 text-amber-800 text-xs font-medium rounded-full">
-                        {row[col.key]}
+                        {formatDaysUntilExpiry(row[col.key])}
                       </span>
                     ) : col.key === 'action' ? (
                       <button
@@ -152,12 +143,14 @@ const NearingExpiry = () => {
                         Scrap
                       </button>
                     ) : (
-                      row[col.key]
+                      row[col.key] || 'N/A'
                     )}
                   </div>
-                ) : col.key === 'status' ? (
+                ) : col.key === 'expiry_date' ? (
+                  formatDate(row[col.key])
+                ) : col.key === 'days_until_expiry' ? (
                   <span className="px-2 py-1 bg-yellow-100 text-amber-800 text-xs font-medium rounded-full">
-                    {row[col.key]}
+                    {formatDaysUntilExpiry(row[col.key])}
                   </span>
                 ) : col.key === 'action' ? (
                   <button
@@ -167,7 +160,7 @@ const NearingExpiry = () => {
                     Scrap
                   </button>
                 ) : (
-                  row[col.key]
+                  row[col.key] || 'N/A'
                 )}
               </td>
             ))}
@@ -295,9 +288,9 @@ const NearingExpiry = () => {
             
             <div className="p-6">
               <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Asset: <span className="font-medium text-gray-900">{selectedAsset?.asset_name}</span></p>
+                <p className="text-sm text-gray-600 mb-2">Asset: <span className="font-medium text-gray-900">{selectedAsset?.text}</span></p>
                 <p className="text-sm text-gray-600">Serial: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
-                <p className="text-sm text-gray-600">Category: <span className="font-medium text-gray-900">{selectedAsset?.category}</span></p>
+                <p className="text-sm text-gray-600">Asset Type: <span className="font-medium text-gray-900">{selectedAsset?.asset_type_id}</span></p>
               </div>
               
               <div className="mb-6">
