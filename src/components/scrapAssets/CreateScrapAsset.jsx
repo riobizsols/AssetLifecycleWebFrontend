@@ -298,12 +298,64 @@ const CreateScrapAsset = () => {
     setShowModal(true);
   };
 
-  const handleSubmitScrap = () => {
-    console.log('Submitting scrap asset:', selectedAsset, 'with notes:', notes);
-    toast.success(`Asset ${selectedAsset.asset_name} marked for scrapping${notes ? ` with notes: ${notes}` : ''}`);
-    setShowModal(false);
-    setSelectedAsset(null);
-    setNotes('');
+  const handleSubmitScrap = async () => {
+    try {
+      console.log('Submitting scrap asset:', selectedAsset, 'with notes:', notes);
+      
+      // Validate that user has emp_int_id
+      if (!user?.emp_int_id) {
+        toast.error('User employee ID not found. Please contact administrator.');
+        return;
+      }
+      
+      // Prepare scrap asset data
+      const scrapData = {
+        asset_id: selectedAsset.asset_id,
+        scrapped_date: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
+        scrapped_by: user.emp_int_id.toString(), // Use emp_int_id from user
+        location: selectedAsset.location || null,
+        notes: notes || null,
+        org_id: user?.org_id || 1 // Default org_id if not available
+      };
+
+      console.log('📤 Sending scrap data to API:', scrapData);
+
+      // Call the scrap asset API
+      const response = await API.post('/scrap-assets', scrapData);
+      
+      if (response.data.success) {
+        toast.success(`Asset ${selectedAsset.asset_name} successfully marked for scrapping!`);
+        
+        // Remove the asset from the list since it's now scrapped
+        setScrapAssets(prev => prev.filter(asset => asset.asset_id !== selectedAsset.asset_id));
+        
+        // Close modal and reset state
+        setShowModal(false);
+        setSelectedAsset(null);
+        setNotes('');
+      } else {
+        toast.error('Failed to mark asset for scrapping');
+      }
+    } catch (error) {
+      console.error('❌ Error submitting scrap asset:', error);
+      
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 400) {
+          toast.error(`Validation error: ${error.response.data.error}`);
+        } else if (error.response.status === 401) {
+          toast.error('Unauthorized. Please log in again.');
+        } else if (error.response.status === 500) {
+          toast.error('Server error. Please try again later.');
+        } else {
+          toast.error(`Error: ${error.response.data.error || 'Failed to mark asset for scrapping'}`);
+        }
+      } else {
+        toast.error('Network error. Please check your connection.');
+      }
+    }
   };
 
   const handleCloseModal = () => {
@@ -335,15 +387,15 @@ const CreateScrapAsset = () => {
       if (aValue > bValue) {
         return sortConfig.direction === 'asc' ? 1 : -1;
       }
-      return 0;
-    });
-  };
+        return 0;
+      });
+    };
 
-  const filterData = (data, filters, visibleColumns) => {
-    return data.filter(item => {
-      // Handle column-specific filters
-      if (filters.columnFilters && filters.columnFilters.length > 0) {
-        const columnFilterMatch = filters.columnFilters.every(filter => {
+    const filterData = (data, filters, visibleColumns) => {
+      return data.filter(item => {
+        // Handle column-specific filters
+        if (filters.columnFilters && filters.columnFilters.length > 0) {
+          const columnFilterMatch = filters.columnFilters.every(filter => {
           if (!filter.column || !filter.value) return true;
           
           let itemValue = item[filter.column];
