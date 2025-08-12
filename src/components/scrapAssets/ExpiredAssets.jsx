@@ -78,7 +78,7 @@ const ExpiredAssets = () => {
   };
 
   // Custom table component for ExpiredAssets with custom styling
-  const CustomExpiredAssetsTable = ({ visibleColumns, data, selectedRows, setSelectedRows }) => {
+  const CustomExpiredAssetsTable = ({ visibleColumns, data, selectedRows, setSelectedRows, showActions }) => {
     const visible = visibleColumns.filter((col) => col.visible);
 
     const toggleRow = (keyValue) => {
@@ -147,12 +147,14 @@ const ExpiredAssets = () => {
               <td key={colIndex} className="border text-xs px-4 py-2">
                 {colIndex === 0 ? (
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedRows.includes(row.asset_id)}
-                      onChange={() => toggleRow(row.asset_id)}
-                      className="accent-yellow-400"
-                    />
+                    {showActions && (
+                      <input
+                        type="checkbox"
+                        checked={selectedRows.includes(row.asset_id)}
+                        onChange={() => toggleRow(row.asset_id)}
+                        className="accent-yellow-400"
+                      />
+                    )}
                     {col.key === 'expiry_date' ? (
                       formatDate(row[col.key])
                     ) : col.key === 'days_expired' ? (
@@ -224,13 +226,51 @@ const ExpiredAssets = () => {
 
   const filterData = (data, filters, visibleColumns) => {
     return data.filter(item => {
-      return visibleColumns.every(column => {
-        const filterValue = filters[column.key];
-        if (!filterValue) return true;
-
-        const itemValue = String(item[column.key] || '').toLowerCase();
-        return itemValue.includes(filterValue.toLowerCase());
-      });
+      // Handle column-specific filters
+      if (filters.columnFilters && filters.columnFilters.length > 0) {
+        const columnFilterMatch = filters.columnFilters.every(filter => {
+          if (!filter.column || !filter.value) {
+            return true;
+          }
+          
+          let itemValue = item[filter.column];
+          
+          // Handle object values (like days_until_expiry: {days: 5})
+          if (itemValue && typeof itemValue === 'object' && itemValue.days !== undefined) {
+            itemValue = `${itemValue.days} days`;
+          }
+          // Handle other object values by converting to string
+          else if (itemValue && typeof itemValue === 'object') {
+            itemValue = JSON.stringify(itemValue);
+          }
+          // Handle null/undefined values
+          else if (itemValue === null || itemValue === undefined) {
+            itemValue = 'N/A';
+          }
+          
+          const itemValueStr = String(itemValue).toLowerCase();
+          const filterValueStr = filter.value.toLowerCase();
+          
+          return itemValueStr.includes(filterValueStr);
+        });
+        
+        if (!columnFilterMatch) return false;
+      }
+      
+      // Handle date range filters
+      if (filters.fromDate && filters.fromDate !== '') {
+        const itemDate = new Date(item.expiry_date);
+        const fromDate = new Date(filters.fromDate);
+        if (itemDate < fromDate) return false;
+      }
+      
+      if (filters.toDate && filters.toDate !== '') {
+        const itemDate = new Date(item.expiry_date);
+        const toDate = new Date(filters.toDate);
+        if (itemDate > toDate) return false;
+      }
+      
+      return true;
     });
   };
 
@@ -285,14 +325,15 @@ const ExpiredAssets = () => {
           const filteredData = filterData(scrapAssets, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
-          return (
-            <CustomExpiredAssetsTable
-              visibleColumns={visibleColumns}
-              data={sortedData}
-              selectedRows={selectedRows}
-              setSelectedRows={setSelectedRows}
-            />
-          );
+                      return (
+              <CustomExpiredAssetsTable
+                visibleColumns={visibleColumns}
+                data={sortedData}
+                selectedRows={selectedRows}
+                setSelectedRows={setSelectedRows}
+                showActions={showActions}
+              />
+            );
         }}
       </ContentBox>
 

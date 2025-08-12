@@ -23,25 +23,13 @@ const ScrapAssets = () => {
     expired: 0
   });
 
-  // Mock data for the dashboard (keeping some for now)
-  const mockStats = {
-    totalAssets: 0, // Will be replaced with real data
-    nearingExpiry: 0, // Will be replaced with real data
-    expired: 0 // Will be replaced with real data
-  };
-
   const [chartData, setChartData] = useState({
     expiryDistribution: [
       { name: 'Active', value: 0, color: '#10B981' },
       { name: 'Nearing Expiry', value: 0, color: '#F59E0B' },
-      { name: 'Expired', value: 31, color: '#EF4444' }
+      { name: 'Expired', value: 0, color: '#EF4444' }
     ],
-    expiringByCategory: [
-      { category: 'Computers', count: 2.0 },
-      { category: 'Furniture', count: 1.0 },
-      { category: 'Vehicles', count: 1.0 },
-      { category: 'Machinery', count: 1.0 }
-    ]
+    expiringByCategory: []
   });
 
   // Fetch total assets count from API
@@ -63,6 +51,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
+      toast.error('Failed to fetch total assets count');
       return 0;
     }
   };
@@ -86,6 +75,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
+      toast.error('Failed to fetch nearing expiry count');
       return 0;
     }
   };
@@ -109,7 +99,36 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
+      toast.error('Failed to fetch expired assets count');
       return 0;
+    }
+  };
+
+  // Fetch assets expiring within 30 days by type from API
+  const fetchExpiringByCategory = async () => {
+    try {
+      console.log('🔍 Fetching assets expiring by category...');
+      const response = await API.get('/assets/expiring-30-days-by-type');
+      console.log('📊 Expiring by Category API Response:', response.data);
+      
+      if (response.data && response.data.asset_types) {
+        console.log('✅ Expiring by category data:', response.data.asset_types);
+        return response.data.asset_types.map(type => ({
+          category: type.asset_type_name,
+          count: parseInt(type.asset_count),
+          asset_type_id: type.asset_type_id
+        }));
+      }
+      console.log('⚠️ Expiring by category API response format unexpected:', response.data);
+      return [];
+    } catch (error) {
+      console.error('❌ Error fetching expiring by category:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      toast.error('Failed to fetch expiring assets data');
+      return [];
     }
   };
 
@@ -131,6 +150,10 @@ const ScrapAssets = () => {
         const expiredCount = await fetchExpiredCount();
         console.log('📈 Fetched expired assets count:', expiredCount);
         
+        // Fetch real expiring by category data
+        const expiringByCategoryData = await fetchExpiringByCategory();
+        console.log('📈 Fetched expiring by category data:', expiringByCategoryData);
+        
         // Update stats with real data
         const updatedStats = {
           totalAssets: totalAssetsCount,
@@ -143,20 +166,28 @@ const ScrapAssets = () => {
 
         // Update chart data with real counts
         const updatedChartData = {
-          ...chartData,
           expiryDistribution: [
             { name: 'Active', value: Math.max(0, totalAssetsCount - nearingExpiryCount - expiredCount), color: '#10B981' },
             { name: 'Nearing Expiry', value: nearingExpiryCount, color: '#F59E0B' },
             { name: 'Expired', value: expiredCount, color: '#EF4444' }
-          ]
+          ],
+          expiringByCategory: expiringByCategoryData
         };
         
         console.log('📊 Updated chart data:', updatedChartData);
         setChartData(updatedChartData);
       } catch (error) {
         console.error('❌ Error in fetchData:', error);
-        // Fallback to mock data if API fails
-        setStats(mockStats);
+        // Fallback to empty data if API fails
+        setStats({ totalAssets: 0, nearingExpiry: 0, expired: 0 });
+        setChartData({
+          expiryDistribution: [
+            { name: 'Active', value: 0, color: '#10B981' },
+            { name: 'Nearing Expiry', value: 0, color: '#F59E0B' },
+            { name: 'Expired', value: 0, color: '#EF4444' }
+          ],
+          expiringByCategory: []
+        });
       } finally {
         setLoading(false);
         console.log('✅ Data fetching completed');
@@ -203,7 +234,30 @@ const ScrapAssets = () => {
   );
 
   const DonutChart = ({ data, title }) => {
+    if (loading) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+          <div className="animate-pulse">
+            <div className="h-64 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      );
+    }
+    
     const total = data.reduce((sum, item) => sum + item.value, 0);
+    
+    if (total === 0) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+          <div className="text-center text-gray-500 py-8">
+            <BarChart3 className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+            <p>No asset data available</p>
+          </div>
+        </div>
+      );
+    }
     
     const renderCustomLabel = ({
       cx,
@@ -261,23 +315,77 @@ const ScrapAssets = () => {
   };
 
   const BarChart = ({ data, title }) => {
-    const maxValue = Math.max(...data.map(item => item.count));
+    if (loading) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+          <div className="animate-pulse">
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center">
+                  <div className="w-24 h-4 bg-gray-200 rounded"></div>
+                  <div className="flex-1 ml-4">
+                    <div className="h-6 bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="w-12 h-4 bg-gray-200 rounded"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    if (!data || data.length === 0) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+          <div className="text-center text-gray-500 py-8">
+            <AlertTriangle className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p>No assets expiring within 30 days</p>
+            <p className="text-sm text-gray-400 mt-1">All assets are up to date</p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Show only first 3 categories on dashboard
+    const displayData = data.slice(0, 3);
+    const maxValue = Math.max(...displayData.map(item => item.count));
     
     const handleCategoryClick = (category) => {
-      navigate(`/scrap-assets/by-category/${category.toLowerCase()}`);
+      console.log('🔍 Clicking on category:', category);
+      // Use the exact category name from the API response to avoid mismatches
+      const encodedCategory = encodeURIComponent(category.trim());
+      console.log('🔍 Encoded category:', encodedCategory);
+      navigate(`/scrap-assets/by-category/${encodedCategory}`);
+    };
+    
+    const handleViewAll = () => {
+      navigate('/scrap-assets/categories');
     };
     
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+          {data.length > 3 && (
+            <button
+              onClick={handleViewAll}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+            >
+              View All ({data.length})
+            </button>
+          )}
+        </div>
         <div className="space-y-4">
-          {data.map((item, index) => (
+          {displayData.map((item, index) => (
             <div 
               key={item.category} 
               className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
               onClick={() => handleCategoryClick(item.category)}
             >
-              <div className="w-24 text-sm text-gray-600">{item.category}</div>
+              <div className="w-24 text-sm text-gray-600 truncate">{item.category}</div>
               <div className="flex-1 ml-4">
                 <div className="relative bg-gray-200 rounded-full h-6">
                   <div
@@ -292,6 +400,26 @@ const ScrapAssets = () => {
             </div>
           ))}
         </div>
+        {data.length > 3 && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleViewAll}
+              className="w-full py-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors hover:bg-blue-50 rounded"
+            >
+              +{data.length - 3} more categories
+            </button>
+          </div>
+        )}
+        {data.length === 3 && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleViewAll}
+              className="w-full py-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors hover:bg-blue-50 rounded"
+            >
+              View All Categories
+            </button>
+          </div>
+        )}
         <div className="mt-4 text-center">
           <div className="flex items-center justify-center">
             <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>

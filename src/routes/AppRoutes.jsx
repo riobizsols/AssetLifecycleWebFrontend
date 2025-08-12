@@ -50,7 +50,9 @@ import NearingExpiry from "../components/scrapAssets/NearingExpiry";
 import ExpiredAssets from "../components/scrapAssets/ExpiredAssets";
 import ExpiringByCategory from "../components/scrapAssets/ExpiringByCategory";
 import CategoryAssets from "../components/scrapAssets/CategoryAssets";
+import CategoriesOverview from "../components/scrapAssets/CategoriesOverview";
 import CreateScrapAsset from "../components/scrapAssets/CreateScrapAsset";
+
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
 export default function AppRoutes() {
@@ -496,6 +498,16 @@ export default function AppRoutes() {
           }
         />
         <Route
+          path="/scrap-assets/categories"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <CategoriesOverview />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/scrap-assets/by-category"
           element={
             <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
@@ -525,6 +537,8 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
+
       </Routes>
     </BrowserRouter>
   );

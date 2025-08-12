@@ -13,6 +13,8 @@ const CustomTable = ({
   showActions = true,
   renderCell,
   onRowClick,
+  onRowAction,
+  actionLabel = "Action",
 }) => {
   const visible = visibleColumns.filter((col) => col.visible);
 
@@ -22,6 +24,47 @@ const CustomTable = ({
         ? prev.filter((rowId) => rowId !== keyValue)
         : [...prev, keyValue]
     );
+  };
+
+  const renderCellContent = (col, row) => {
+    // Handle status column
+    if (col.name === "status") {
+      return <StatusBadge status={row[col.name]} />;
+    }
+    
+    // Handle expiry_status column
+    if (col.name === "expiry_status") {
+      const expiryStatus = row.expiry_status;
+      if (expiryStatus && expiryStatus.text && expiryStatus.color) {
+        return (
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${expiryStatus.color}`}>
+            {expiryStatus.text}
+          </span>
+        );
+      }
+      return row[col.name];
+    }
+    
+    // Handle action column
+    if (col.name === "action") {
+      if (onRowAction) {
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRowAction(row);
+            }}
+            className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+          >
+            {actionLabel}
+          </button>
+        );
+      }
+      return row[col.name];
+    }
+    
+    // Handle other columns
+    return row[col.name];
   };
 
   return (
@@ -36,22 +79,18 @@ const CustomTable = ({
             <td key={colIndex} className="border text-xs px-4 py-2">
               {colIndex === 0 ? (
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedRows.includes(row[rowKey])}
-                    onChange={() => toggleRow(row[rowKey])}
-                    className="accent-yellow-400"
-                  />
-                  {col.name === "status" ? (
-                    <StatusBadge status={row[col.name]} />
-                  ) : (
-                    row[col.name]
+                  {showActions && (
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.includes(row[rowKey])}
+                      onChange={() => toggleRow(row[rowKey])}
+                      className="accent-yellow-400"
+                    />
                   )}
+                  {renderCellContent(col, row)}
                 </div>
-              ) : col.name === "status" ? (
-                <StatusBadge status={row[col.name]} />
               ) : (
-                row[col.name]
+                renderCellContent(col, row)
               )}
             </td>
           ))}

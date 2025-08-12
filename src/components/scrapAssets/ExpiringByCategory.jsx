@@ -3,168 +3,84 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
-import { Plus, ArrowLeft, BarChart3 } from 'lucide-react';
+import { Plus, ArrowLeft, BarChart3, AlertTriangle } from 'lucide-react';
 import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 
 const ExpiringByCategory = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const [scrapAssets, setScrapAssets] = useState([]);
+  const [assetTypes, setAssetTypes] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock data for assets expiring by category
-  const mockExpiringByCategoryAssets = [
-    {
-      scrap_asset_id: 'SA016',
-      asset_id: 'A016',
-      asset_name: 'Dell Latitude',
-      asset_type: 'Laptop',
-      category: 'Computers',
-      department: 'IT Department',
-      assigned_to: 'Alex Johnson',
-      scrap_date: '2024-03-15',
-      scrap_reason: 'Performance Issues',
-      estimated_value: 600,
-      disposal_method: 'Sale',
-      status: 'Expiring Soon',
-      days_remaining: 10,
-      created_by: 'Admin User',
-      created_date: '2024-02-28'
-    },
-    {
-      scrap_asset_id: 'SA017',
-      asset_id: 'A017',
-      asset_name: 'HP EliteBook',
-      asset_type: 'Laptop',
-      category: 'Computers',
-      department: 'Engineering',
-      assigned_to: 'Sarah Wilson',
-      scrap_date: '2024-03-20',
-      scrap_reason: 'Hardware Failure',
-      estimated_value: 450,
-      disposal_method: 'Recycle',
-      status: 'Expiring Soon',
-      days_remaining: 15,
-      created_by: 'Admin User',
-      created_date: '2024-02-28'
-    },
-    {
-      scrap_asset_id: 'SA018',
-      asset_id: 'A018',
-      asset_name: 'Office Desk',
-      asset_type: 'Furniture',
-      category: 'Furniture',
-      department: 'HR Department',
-      assigned_to: 'Mike Davis',
-      scrap_date: '2024-03-25',
-      scrap_reason: 'Worn Out',
-      estimated_value: 200,
-      disposal_method: 'Donation',
-      status: 'Expiring Soon',
-      days_remaining: 20,
-      created_by: 'Admin User',
-      created_date: '2024-02-28'
-    },
-    {
-      scrap_asset_id: 'SA019',
-      asset_id: 'A019',
-      asset_name: 'Conference Chair',
-      asset_type: 'Furniture',
-      category: 'Furniture',
-      department: 'Sales',
-      assigned_to: 'Lisa Chen',
-      scrap_date: '2024-03-30',
-      scrap_reason: 'Damaged',
-      estimated_value: 150,
-      disposal_method: 'Recycle',
-      status: 'Expiring Soon',
-      days_remaining: 25,
-      created_by: 'Admin User',
-      created_date: '2024-02-28'
-    },
-    {
-      scrap_asset_id: 'SA020',
-      asset_id: 'A020',
-      asset_name: 'Company Van',
-      asset_type: 'Vehicle',
-      category: 'Vehicles',
-      department: 'Logistics',
-      assigned_to: 'Tom Brown',
-      scrap_date: '2024-04-05',
-      scrap_reason: 'High Mileage',
-      estimated_value: 3000,
-      disposal_method: 'Sale',
-      status: 'Expiring Soon',
-      days_remaining: 30,
-      created_by: 'Admin User',
-      created_date: '2024-02-28'
-    },
-    {
-      scrap_asset_id: 'SA021',
-      asset_id: 'A021',
-      asset_name: 'Industrial Drill',
-      asset_type: 'Machinery',
-      category: 'Machinery',
-      department: 'Operations',
-      assigned_to: 'David Miller',
-      scrap_date: '2024-04-10',
-      scrap_reason: 'End of Life',
-      estimated_value: 800,
-      disposal_method: 'Sale',
-      status: 'Expiring Soon',
-      days_remaining: 35,
-      created_by: 'Admin User',
-      created_date: '2024-02-28'
+  // Fetch assets expiring within 30 days by type from API
+  const fetchExpiringByCategory = async () => {
+    try {
+      console.log('🔍 Fetching assets expiring by category...');
+      const response = await API.get('/assets/expiring-30-days-by-type');
+      console.log('📊 Expiring by Category API Response:', response.data);
+      
+      if (response.data && response.data.asset_types) {
+        console.log('✅ Expiring by category data:', response.data.asset_types);
+        return response.data.asset_types.map(type => ({
+          asset_type_id: type.asset_type_id,
+          asset_type_name: type.asset_type_name,
+          asset_count: parseInt(type.asset_count),
+          total_assets: type.assets ? type.assets.length : 0,
+          earliest_expiry: type.assets && type.assets.length > 0 ? 
+            type.assets[0].expiry_date : null,
+          latest_expiry: type.assets && type.assets.length > 0 ? 
+            type.assets[type.assets.length - 1].expiry_date : null
+        }));
+      }
+      console.log('⚠️ Expiring by category API response format unexpected:', response.data);
+      return [];
+    } catch (error) {
+      console.error('❌ Error fetching expiring by category:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      toast.error('Failed to fetch expiring assets data');
+      return [];
     }
-  ];
+  };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setScrapAssets(mockExpiringByCategoryAssets);
-      setLoading(false);
-    }, 1000);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchExpiringByCategory();
+        setAssetTypes(data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to fetch data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const columns = [
-    { key: 'scrap_asset_id', name: 'scrap_asset_id', label: 'Scrap Asset ID', sortable: true, visible: true },
-    { key: 'asset_id', name: 'asset_id', label: 'Asset ID', sortable: true, visible: true },
-    { key: 'asset_name', name: 'asset_name', label: 'Asset Name', sortable: true, visible: true },
-    { key: 'category', name: 'category', label: 'Category', sortable: true, visible: true },
-    { key: 'asset_type', name: 'asset_type', label: 'Asset Type', sortable: true, visible: true },
-    { key: 'department', name: 'department', label: 'Department', sortable: true, visible: true },
-    { key: 'assigned_to', name: 'assigned_to', label: 'Assigned To', sortable: true, visible: true },
-    { key: 'scrap_date', name: 'scrap_date', label: 'Scrap Date', sortable: true, visible: true },
-    { key: 'days_remaining', name: 'days_remaining', label: 'Days Remaining', sortable: true, visible: true },
-    { key: 'scrap_reason', name: 'scrap_reason', label: 'Scrap Reason', sortable: true, visible: true },
-    { key: 'estimated_value', name: 'estimated_value', label: 'Estimated Value', sortable: true, visible: true },
-    { key: 'disposal_method', name: 'disposal_method', label: 'Disposal Method', sortable: true, visible: true },
-    { key: 'status', name: 'status', label: 'Status', sortable: true, visible: true },
-    { key: 'created_by', name: 'created_by', label: 'Created By', sortable: true, visible: true },
-    { key: 'created_date', name: 'created_date', label: 'Created Date', sortable: true, visible: true }
+    { key: 'asset_type_name', name: 'asset_type_name', label: 'Asset Type', sortable: true, visible: true },
+    { key: 'asset_count', name: 'asset_count', label: 'Assets Expiring', sortable: true, visible: true },
+    { key: 'earliest_expiry', name: 'earliest_expiry', label: 'Earliest Expiry', sortable: true, visible: true },
+    { key: 'latest_expiry', name: 'latest_expiry', label: 'Latest Expiry', sortable: true, visible: true },
+    { key: 'action', name: 'action', label: 'Action', sortable: false, visible: true }
   ];
+
+  const handleViewAssets = (assetType) => {
+    navigate(`/scrap-assets/by-category/${assetType.asset_type_name.toLowerCase()}`);
+  };
+
+  const handleBackToCategories = () => {
+    navigate('/scrap-assets/categories');
+  };
 
   const handleAddScrapAsset = () => {
     navigate('/scrap-assets/create');
-  };
-
-  const handleView = (row) => {
-    navigate(`/scrap-assets/view/${row.scrap_asset_id}`);
-  };
-
-  const handleEdit = (row) => {
-    navigate(`/scrap-assets/edit/${row.scrap_asset_id}`, {
-      state: {
-        scrapAssetData: row,
-        isEdit: true
-      }
-    });
-  };
-
-  const handleDelete = (row) => {
-    console.log('Delete scrap asset:', row);
-    toast.info('Delete functionality to be implemented');
   };
 
   const [selectedRows, setSelectedRows] = useState([]);
@@ -215,8 +131,83 @@ const ExpiringByCategory = () => {
   };
 
   const visibleColumns = columns.filter(col => col.visible);
-  const filteredData = filterData(scrapAssets, filterValues, visibleColumns);
+  const filteredData = filterData(assetTypes, filterValues, visibleColumns);
   const sortedData = sortData(filteredData);
+
+  // Custom table component for ExpiringByCategory with custom styling
+  const CustomExpiringByCategoryTable = ({ visibleColumns, data, selectedRows, setSelectedRows }) => {
+    const visible = visibleColumns.filter((col) => col.visible);
+
+    const toggleRow = (keyValue) => {
+      setSelectedRows((prev) =>
+        prev.includes(keyValue)
+          ? prev.filter((rowId) => rowId !== keyValue)
+          : [...prev, keyValue]
+      );
+    };
+
+    const formatDate = (dateString) => {
+      if (!dateString) return 'N/A';
+      return new Date(dateString).toLocaleDateString();
+    };
+
+    return (
+      <>
+        {data.map((row, rowIndex) => (
+          <tr
+            key={row.asset_type_id || rowIndex}
+            className="border-t hover:bg-gray-100"
+          >
+            {visible.map((col, colIndex) => (
+              <td key={colIndex} className="border text-xs px-4 py-2">
+                {colIndex === 0 ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.includes(row.asset_type_id)}
+                      onChange={() => toggleRow(row.asset_type_id)}
+                      className="accent-yellow-400"
+                    />
+                    {row[col.key]}
+                  </div>
+                ) : col.key === 'asset_count' ? (
+                  <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
+                    {row[col.key]}
+                  </span>
+                ) : col.key === 'earliest_expiry' || col.key === 'latest_expiry' ? (
+                  formatDate(row[col.key])
+                ) : col.key === 'action' ? (
+                  <button
+                    onClick={() => handleViewAssets(row)}
+                    className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors flex items-center gap-1"
+                  >
+                    <AlertTriangle size={12} />
+                    View Assets
+                  </button>
+                ) : (
+                  row[col.key]
+                )}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -235,8 +226,8 @@ const ExpiringByCategory = () => {
                 <BarChart3 className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Expiring Assets by Category</h1>
-                <p className="text-sm text-gray-600">Assets expiring soon grouped by category</p>
+                <h1 className="text-2xl font-bold text-gray-900">Categories Overview</h1>
+                <p className="text-sm text-gray-600">Navigate to view all asset types with expiring assets</p>
               </div>
             </div>
           </div>
@@ -249,21 +240,29 @@ const ExpiringByCategory = () => {
           </button>
         </div>
 
-        <CustomTable
-          data={sortedData}
-          columns={columns}
-          loading={loading}
-          onView={handleView}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onSort={handleSort}
-          sortConfig={sortConfig}
-          onFilterChange={handleFilterChange}
-          filterValues={filterValues}
-          selectedRows={selectedRows}
-          setSelectedRows={setSelectedRows}
-          title="Expiring Assets by Category"
-        />
+        {assetTypes.length === 0 ? (
+          <div className="text-center text-gray-500 py-12">
+            <AlertTriangle className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Assets Expiring Soon</h3>
+            <p className="text-gray-600">There are no assets expiring within the next 30 days.</p>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="max-w-md mx-auto">
+              <BarChart3 className="w-16 h-16 mx-auto text-blue-500 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Categories Overview</h3>
+              <p className="text-gray-600 mb-6">
+                View all asset types with expiring assets and their details
+              </p>
+              <button
+                onClick={handleBackToCategories}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+              >
+                View All Categories
+              </button>
+            </div>
+          </div>
+        )}
       </ContentBox>
     </div>
   );

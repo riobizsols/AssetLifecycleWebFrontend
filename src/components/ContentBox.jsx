@@ -92,7 +92,7 @@ const ContentBox = ({
 
   const handleAddFilter = (type) => {
     const labelMap = {
-      date: "Purchase Date",
+      date: "Expiry Date",
       search: "Search by Column",
     };
     const newFilter = { type, label: labelMap[type] };
@@ -192,7 +192,23 @@ const ContentBox = ({
 
                     // Get unique values for the value dropdown based on selected column
                     const valueOptions = cf.column
-                      ? [...new Set(data.map((item) => item[cf.column]))]
+                      ? [...new Set(data.map((item) => {
+                          const value = item[cf.column];
+                          // Handle object values (like days_until_expiry: {days: 5})
+                          if (value && typeof value === 'object' && value.days !== undefined) {
+                            return `${value.days} days`;
+                          }
+                          // Handle other object values by converting to string
+                          if (value && typeof value === 'object') {
+                            return JSON.stringify(value);
+                          }
+                          // Handle null/undefined values
+                          if (value === null || value === undefined) {
+                            return 'N/A';
+                          }
+                          // Return string values as-is
+                          return String(value);
+                        }))]
                       : [];
 
                     return (
@@ -295,7 +311,7 @@ const ContentBox = ({
                     }}
                   >
                     {type === "search" && "Search by Column"}
-                    {type === "date" && "Purchase Date"}
+                    {type === "date" && "Expiry Date"}
                   </div>
                 ))}
               </div>
@@ -313,18 +329,20 @@ const ContentBox = ({
             </button>
           )}
 
-          <button
-            onClick={() => {
-              if (selectedRows.length === 0) {
-                toast.error("Please select items to delete");
-                return;
-              }
-              setShowDeleteModal(true);
-            }}
-            className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
-          >
-            <Trash2 size={16} />
-          </button>
+          {showActions && (
+            <button
+              onClick={() => {
+                if (selectedRows.length === 0) {
+                  toast.error("Please select items to delete");
+                  return;
+                }
+                setShowDeleteModal(true);
+              }}
+              className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B]"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
 
           {onDownload && (
           <button
@@ -357,7 +375,7 @@ const ContentBox = ({
                         className="flex items-center gap-2 cursor-pointer flex-grow"
                         onClick={() => onSort(filter.name)}
                       >
-                        {index === 0 && (
+                        {index === 0 && showActions && (
                           <input
                             type="checkbox"
                             className="accent-yellow-400"
@@ -497,17 +515,19 @@ const ContentBox = ({
       </div>
 
       {/* Delete Confirmation Modal */}
-      <DeleteConfirmModal
-        show={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={async () => {
-          const success = await onDeleteSelected();
-          if (success) {
-            setShowDeleteModal(false);
-          }
-        }}
-        message={`Are you sure you want to delete ${selectedRows.length} selected item(s)?`}
-      />
+      {showActions && (
+        <DeleteConfirmModal
+          show={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={async () => {
+            const success = await onDeleteSelected();
+            if (success) {
+              setShowDeleteModal(false);
+            }
+          }}
+          message={`Are you sure you want to delete ${selectedRows.length} selected item(s)?`}
+        />
+      )}
     </div>
   );
 };
