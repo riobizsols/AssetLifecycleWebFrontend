@@ -22,6 +22,9 @@ const AddAssetType = () => {
   const [maintenanceTypes, setMaintenanceTypes] = useState([]);
   const [selectedMaintenanceType, setSelectedMaintenanceType] = useState("");
   const [maintenanceLeadType, setMaintenanceLeadType] = useState("");
+  
+  // New state variable for depreciation type
+  const [depreciationType, setDepreciationType] = useState("ND");
 
   useEffect(() => {
     // Reset parent selection when parentChild changes
@@ -125,7 +128,8 @@ const AddAssetType = () => {
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
         maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
-        maint_lead_type: requireMaintenance ? maintenanceLeadType : null
+        maint_lead_type: requireMaintenance ? maintenanceLeadType : null,
+        depreciation_type: depreciationType
       };
 
       // Make API call
@@ -183,8 +187,8 @@ const AddAssetType = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="p-6">
-        {/* First Row: Asset Type, Assignment Type, Status */}
-        <div className="grid grid-cols-3 gap-6 mb-6">
+        {/* First Row: Asset Type, Assignment Type, Status, Depreciation Method */}
+        <div className="grid grid-cols-4 gap-6 mb-6">
           {/* Asset Type Input */}
           <div>
             <label className="block text-sm font-medium mb-1">
@@ -246,6 +250,21 @@ const AddAssetType = () => {
               </button>
               <span className={`text-sm ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>Active</span>
             </div>
+          </div>
+
+          {/* Depreciation Method Dropdown */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Depreciation Method</label>
+            <select
+              value={depreciationType}
+              onChange={(e) => setDepreciationType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ND">No Depreciation (ND)</option>
+              <option value="SL">Straight Line (SL)</option>
+              <option value="RB">Reducing Balance (RB)</option>
+              <option value="DD">Double Decline (DD)</option>
+            </select>
           </div>
         </div>
 

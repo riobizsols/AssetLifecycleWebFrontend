@@ -23,6 +23,9 @@ const initialForm = {
   serviceSupply: '',
   vendorId: '',
   parentAsset: '', // Add parent asset field
+  // Accounting fields that users need to enter
+  salvageValue: '',
+  usefulLifeYears: '5',
 };
 
 const statusOptions = [
@@ -50,6 +53,7 @@ const AddAssetForm = ({ userRole }) => {
     asset: false, // Asset Details expanded by default
     purchase: true,
     vendor: true,
+    accounting: true, // Add new state for accounting details
     other: true,
   });
   const [purchaseByOptions, setPurchaseByOptions] = useState([]);
@@ -94,6 +98,17 @@ const AddAssetForm = ({ userRole }) => {
 
   // Add state for serial number generation
   const [isGeneratingSerial, setIsGeneratingSerial] = useState(false);
+
+  // Add useEffect to log form state changes
+  useEffect(() => {
+    console.log('🔍 Form state changed:', form);
+  }, [form]);
+
+  // Add useEffect to log initial form state
+  useEffect(() => {
+    console.log('🔍 Initial form state:', initialForm);
+    console.log('🔍 Current form state:', form);
+  }, []);
 
   useEffect(() => {
     console.log('Component mounted, fetching asset types...');
@@ -142,31 +157,71 @@ const AddAssetForm = ({ userRole }) => {
     };
   }, [dropdownStates]);
 
+  // Add click outside handler for parent asset dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      console.log('🖱️ Click outside handler triggered');
+      console.log('🖱️ Target:', event.target);
+      console.log('🖱️ Parent dropdown ref:', parentAssetDropdownRef.current);
+      if (
+        parentAssetDropdownRef.current &&
+        !parentAssetDropdownRef.current.contains(event.target) &&
+        event.target.type !== "button"
+      ) {
+        console.log('🖱️ Closing parent asset dropdown');
+        setParentAssetDropdownOpen(false);
+      }
+    }
+    if (parentAssetDropdownOpen) {
+      console.log('🖱️ Adding click outside listener');
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      if (parentAssetDropdownOpen) {
+        console.log('🖱️ Removing click outside listener');
+        document.removeEventListener("mousedown", handleClickOutside);
+      }
+    };
+  }, [parentAssetDropdownOpen]);
+
   // Update effect to handle boolean values
   useEffect(() => {
     if (form.assetType) {
       const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
-      console.log('Selected Asset Type:', selectedType);
-      console.log('Is Child:', selectedType?.is_child);
-      // Convert string 'false' to boolean false
-      const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+      console.log('🎯 Selected Asset Type:', selectedType);
+      console.log('🔍 Is Child:', selectedType?.is_child);
+      console.log('🔍 Parent Asset Type ID:', selectedType?.parent_asset_type_id);
+      console.log('🔍 Asset Types available:', assetTypes.length);
+      
+      // Convert string 'false' to boolean false and check if it has a parent asset type
+      const isChild = (selectedType?.is_child === true || selectedType?.is_child === 'true') && !!selectedType?.parent_asset_type_id;
+      console.log('✅ Final isChild determination:', isChild);
+      
       if (isChild) {
+        console.log('🚀 Fetching parent assets for child asset type');
         fetchParentAssets(form.assetType);
       } else {
+        console.log('❌ Not a child asset type or missing parent_asset_type_id');
         setParentAssets([]);
         setForm(prev => ({ ...prev, parentAsset: '' }));
       }
+    } else {
+      console.log('❌ No asset type selected');
     }
   }, [form.assetType]);
 
   // Add function to fetch parent assets
   const fetchParentAssets = async (assetTypeId) => {
     try {
+      console.log('🔍 Fetching parent assets for asset type ID:', assetTypeId);
       const res = await API.get(`/assets/potential-parents/${assetTypeId}`);
-      console.log('Parent assets response:', res.data);
+      console.log('📦 Parent assets response:', res.data);
+      console.log('📊 Response data type:', typeof res.data);
+      console.log('📊 Response data length:', Array.isArray(res.data) ? res.data.length : 'Not an array');
       setParentAssets(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error('Error fetching parent assets:', err);
+      console.error('❌ Error fetching parent assets:', err);
+      console.error('❌ Error response:', err.response?.data);
       toast.error('Failed to fetch parent assets');
       setParentAssets([]);
     }
@@ -336,16 +391,19 @@ const AddAssetForm = ({ userRole }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    console.log('🔍 handleChange called:', { name, value });
     setForm((prev) => {
+      const newForm = { ...prev, [name]: value };
       // If purchaseSupply is changed, also update vendorId
       if (name === 'purchaseSupply') {
-        return { ...prev, [name]: value, vendorId: value };
+        newForm.vendorId = value;
       }
       // If serviceSupply is changed, just update it
       if (name === 'serviceSupply') {
-        return { ...prev, [name]: value };
+        newForm[name] = value;
       }
-      return { ...prev, [name]: value };
+      console.log('🔍 Form updated:', newForm);
+      return newForm;
     });
     setTouched((prev) => ({ ...prev, [name]: true }));
   };
@@ -372,7 +430,7 @@ const AddAssetForm = ({ userRole }) => {
     try {
       setIsGeneratingSerial(true);
       
-      // Use the preview endpoint to get the next serial number without incrementing
+      // Use the preview endpoint to get the next serial number (no DB increment)
       const response = await API.get(`/serial-numbers/next/${form.assetType}`, {
         params: {
           orgId: useAuthStore.getState().user.org_id
@@ -380,9 +438,10 @@ const AddAssetForm = ({ userRole }) => {
       });
 
       if (response.data.success) {
-        const serialNumber = response.data.data.nextSerialNumber;
+        const serialNumber = response.data.data.serialNumber;
         setForm(prev => ({ ...prev, serialNumber }));
-        toast.success(`Serial number generated: ${serialNumber}`);
+        toast.success(`Serial number preview: ${serialNumber}`);
+        console.log(`👀 Preview serial number: ${serialNumber} (Will be saved when asset is created)`);
       } else {
         toast.error(response.data.message || 'Failed to generate serial number');
       }
@@ -399,7 +458,7 @@ const AddAssetForm = ({ userRole }) => {
     if (!submitAttempted) return false;
     if (field === 'parentAsset') {
       const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
-      const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+      const isChild = (selectedType?.is_child === true || selectedType?.is_child === 'true') && !!selectedType?.parent_asset_type_id;
       return isChild && !form.parentAsset;
     }
     return !form[field];
@@ -415,7 +474,7 @@ const AddAssetForm = ({ userRole }) => {
       return;
     }
     const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
-    const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+    const isChild = (selectedType?.is_child === true || selectedType?.is_child === 'true') && !!selectedType?.parent_asset_type_id;
     if (isChild && !form.parentAsset) {
       toast.error('Parent asset is required for this asset type');
       return;
@@ -432,9 +491,6 @@ const AddAssetForm = ({ userRole }) => {
       // Get user info from auth store
       const user = useAuthStore.getState().user;
 
-      // Generate UUID for ext_id
-      const ext_id = crypto.randomUUID();
-
       // Get asset type text for the 'text' field
       const selectedAssetType = assetTypes.find(at => at.asset_type_id === form.assetType);
       const assetTypeText = selectedAssetType ? selectedAssetType.text : '';
@@ -442,7 +498,6 @@ const AddAssetForm = ({ userRole }) => {
       // Prepare the asset data according to backend requirements
       const assetData = {
         asset_type_id: form.assetType,
-        ext_id: ext_id,
         asset_id: '', // Will be auto-generated by backend
         text: assetTypeText, // Asset type name like "Laptop", "Router", etc.
         serial_number: form.serialNumber,
@@ -460,8 +515,28 @@ const AddAssetForm = ({ userRole }) => {
         warranty_period: form.warrantyPeriod || null,
         parent_asset_id: form.parentAsset || null, // Add parentAsset field
         org_id: user.org_id, // From user's auth store
-        properties: form.properties || {}
+        properties: form.properties || {},
+        // Depreciation fields with user-entered values and calculated defaults
+        salvage_value: parseFloat(form.salvageValue) || 0, // User enters this
+        useful_life_years: parseInt(form.usefulLifeYears) || 5, // User enters this
+        // depreciation_rate: calculated automatically in backend using Straight Line formula
+        current_book_value: parseFloat(form.purchaseCost) || 0, // Same as purchase cost initially
+        accumulated_depreciation: 0, // Default to 0
+        last_depreciation_calc_date: null, // Default to null
+        depreciation_start_date: form.purchaseDate || new Date() // Automatically set to purchase date
       };
+
+      // Debug: Log depreciation values being sent
+      console.log('🔍 Depreciation Debug - Form values:');
+      console.log('  salvageValue:', form.salvageValue);
+      console.log('  usefulLifeYears:', form.usefulLifeYears);
+      console.log('  purchaseCost:', form.purchaseCost);
+      console.log('  purchaseDate:', form.purchaseDate);
+      console.log('🔍 Depreciation Debug - Processed values:');
+      console.log('  salvage_value:', assetData.salvage_value);
+      console.log('  useful_life_years:', assetData.useful_life_years);
+      console.log('  current_book_value:', assetData.current_book_value);
+      console.log('  depreciation_start_date:', assetData.depreciation_start_date);
 
       console.log('📦 Submitting asset data:', assetData);
       const response = await API.post('/assets/add', assetData);
@@ -581,7 +656,7 @@ const AddAssetForm = ({ userRole }) => {
               {/* Show message if asset type can have children */}
               {form.assetType && (() => {
                 const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
-                const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+                const isChild = (selectedType?.is_child === true || selectedType?.is_child === 'true') && !!selectedType?.parent_asset_type_id;
                 return isChild;
               })() && (
                 <div className="col-span-4">
@@ -596,7 +671,12 @@ const AddAssetForm = ({ userRole }) => {
               {/* Parent Asset Dropdown - Show only when child asset type is selected */}
               {form.assetType && (() => {
                 const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
-                const isChild = selectedType?.is_child === true || selectedType?.is_child === 'true';
+                const isChild = (selectedType?.is_child === true || selectedType?.is_child === 'true') && !!selectedType?.parent_asset_type_id;
+                console.log('🎭 UI Render - Asset Type:', form.assetType);
+                console.log('🎭 UI Render - Selected Type:', selectedType);
+                console.log('🎭 UI Render - Is Child:', isChild);
+                console.log('🎭 UI Render - Parent Assets Count:', parentAssets.length);
+                console.log('🎭 UI Render - Parent Assets Data:', parentAssets);
                 return isChild;
               })() && (
                 <div>
@@ -607,7 +687,15 @@ const AddAssetForm = ({ userRole }) => {
                     <button
                       type="button"
                       className={`border px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${isFieldInvalid('parentAsset') ? 'border-red-500' : 'border-gray-300'}`}
-                      onClick={() => setParentAssetDropdownOpen((open) => !open)}
+                      onClick={() => {
+                        console.log('🖱️ Parent Asset Dropdown Clicked');
+                        console.log('🖱️ Current dropdown state:', parentAssetDropdownOpen);
+                        setParentAssetDropdownOpen((open) => {
+                          const newState = !open;
+                          console.log('🖱️ New dropdown state:', newState);
+                          return newState;
+                        });
+                      }}
                     >
                       <span className="text-xs truncate">
                         {form.parentAsset
@@ -628,6 +716,8 @@ const AddAssetForm = ({ userRole }) => {
                         className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10"
                         style={{ minWidth: "100%" }}
                       >
+                        {console.log('🎭 Rendering dropdown content - parentAssetDropdownOpen:', parentAssetDropdownOpen)}
+                        {console.log('🎭 Rendering dropdown content - parentAssets:', parentAssets)}
                         <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
                           <input
                             type="text"
@@ -699,7 +789,7 @@ const AddAssetForm = ({ userRole }) => {
             </div>
           )}
         </div>
-        {/* Purchase Details */}
+        {/* Purchase Details Section */}
         <div className="mb-6">
           <button type="button" onClick={() => toggleSection('purchase')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
             <span>Purchase Details</span>
@@ -716,24 +806,68 @@ const AddAssetForm = ({ userRole }) => {
                 <input name="expiryDate" type="date" onChange={handleChange} value={form.expiryDate} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Warrenty Period</label>
-                <input name="warrantyPeriod" placeholder="" onChange={handleChange} value={form.warrantyPeriod} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+                <label className="block text-sm mb-1 font-medium">Warranty Period</label>
+                <input name="warrantyPeriod" type="text" placeholder="e.g., 2 years" onChange={handleChange} value={form.warrantyPeriod} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">
-                  Purchase Date <span className="text-red-500">*</span>
-                </label>
-                <input name="purchaseDate" type="date" onChange={handleChange} value={form.purchaseDate} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('purchaseDate') ? 'border-red-500' : 'border-gray-300'}`} />
+                <label className="block text-sm mb-1 font-medium">Purchase Date</label>
+                <input name="purchaseDate" type="date" onChange={handleChange} value={form.purchaseDate} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">
-                  Purchase Cost <span className="text-red-500">*</span>
-                </label>
-                <input name="purchaseCost" type="number" onChange={handleChange} value={form.purchaseCost} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('purchaseCost') ? 'border-red-500' : 'border-gray-300'}`} />
+                <label className="block text-sm mb-1 font-medium">Purchase Cost</label>
+                <input name="purchaseCost" type="number" step="0.01" placeholder="0.00" onChange={handleChange} value={form.purchaseCost} className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${isFieldInvalid('purchaseCost') ? 'border-red-500' : 'border-gray-300'}`} />
               </div>
             </div>
           )}
         </div>
+
+        {/* Accounting Details Section */}
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Accounting Details</h3>
+            <button
+              type="button"
+              onClick={() => toggleSection('accounting')}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              {collapsedSections.accounting ? (
+                <MdKeyboardArrowRight className="w-5 h-5" />
+              ) : (
+                <MdKeyboardArrowDown className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+
+          {!collapsedSections.accounting && (
+            <div className="grid grid-cols-2 gap-6 mb-4">
+              <div>
+                <label className="block text-sm mb-1 font-medium">Salvage Value</label>
+                <input 
+                  name="salvageValue" 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="0.00" 
+                  onChange={handleChange} 
+                  value={form.salvageValue || ''} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 font-medium">Useful Life (Years)</label>
+                <input 
+                  name="usefulLifeYears" 
+                  type="number" 
+                  min="1" 
+                  placeholder="5" 
+                  onChange={handleChange} 
+                  value={form.usefulLifeYears || '5'} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Vendor Details */}
         <div className="mb-6">
           <button type="button" onClick={() => toggleSection('vendor')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">

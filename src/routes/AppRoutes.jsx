@@ -312,8 +312,8 @@ export default function AppRoutes() {
         </Route>
 
 
-          <Route
-            path="/master-data/asset-types"
+                  <Route
+          path="/master-data/asset-types"
           element={
             <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
               <MainLayout>

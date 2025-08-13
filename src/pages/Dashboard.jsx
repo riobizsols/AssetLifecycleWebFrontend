@@ -15,6 +15,7 @@ import DepartmentChart from "../components/dashboardModules/DepartmentChart";
 import AssetTypeChart from "../components/dashboardModules/AssetTypeChart";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import CronJobMonitor from "../components/dashboardModules/CronJobMonitor";
+import DashboardCronJobTrigger from "../components/DashboardCronJobTrigger";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -117,6 +118,11 @@ const Dashboard = () => {
         {/* Cron Job Monitor - Added for maintenance schedule generation */}
         <div className="grid grid-cols-1 gap-6">
           <CronJobMonitor />
+        </div>
+
+        {/* Depreciation Cron Job Trigger */}
+        <div className="grid grid-cols-1 gap-6">
+          <DashboardCronJobTrigger />
         </div>
       </div>
     </div>
