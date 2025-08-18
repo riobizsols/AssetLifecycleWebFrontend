@@ -93,12 +93,15 @@ const CreateGroupAsset = () => {
     }
     setLoadingAssets(true);
     try {
-      const response = await API.get(`/assets/type/${selectedAssetType}`);
-      if (response.data && response.data.success) {
-        setAvailableAssets(response.data.data || []);
-      } else {
-        toast.error('Failed to fetch assets');
-      }
+      const response = await API.get(`/group-assets/available/${selectedAssetType}`);
+      const list = Array.isArray(response.data?.assets)
+        ? response.data.assets
+        : Array.isArray(response.data?.data)
+          ? response.data.data
+          : Array.isArray(response.data)
+            ? response.data
+            : [];
+      setAvailableAssets(list);
     } catch (error) {
       console.error('Error fetching assets:', error);
       toast.error('Failed to fetch assets');

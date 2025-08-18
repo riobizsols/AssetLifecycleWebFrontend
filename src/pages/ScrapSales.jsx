@@ -14,77 +14,76 @@ const ScrapSales = () => {
   const [scrapSales, setScrapSales] = useState([]);
   const [loading, setLoading] = useState(true);
 
-
-  // Mock data for scrap sales - replace with actual API calls
-  const mockScrapSales = [
-    {
-      scrap_id: 'SCR001',
-      group_name: 'Old Electronics',
-      asset_id: 'A001',
-      asset_name: 'Dell XPS 13',
-      asset_type: 'Laptop',
-      scrap_date: '2024-01-15',
-      scrap_reason: 'End of Life',
-      scrap_value: 500,
-      buyer_name: 'John Doe',
-      buyer_contact: 'john@example.com',
-      status: 'Completed',
-      created_by: 'Admin User',
-      created_date: '2024-01-15'
-    },
-    {
-      scrap_id: 'SCR002',
-      group_name: 'Damaged Equipment',
-      asset_id: 'A002',
-      asset_name: 'HP Pavilion',
-      asset_type: 'Laptop',
-      scrap_date: '2024-01-20',
-      scrap_reason: 'Damaged',
-      scrap_value: 300,
-      buyer_name: 'Jane Smith',
-      buyer_contact: 'jane@example.com',
-      status: 'Pending',
-      created_by: 'Admin User',
-      created_date: '2024-01-20'
-    },
-    {
-      scrap_id: 'SCR003',
-      group_name: 'Office Upgrade',
-      asset_id: 'A003',
-      asset_name: 'Samsung Monitor',
-      asset_type: 'Monitor',
-      scrap_date: '2024-02-01',
-      scrap_reason: 'Upgrade',
-      scrap_value: 200,
-      buyer_name: 'Mike Johnson',
-      buyer_contact: 'mike@example.com',
-      status: 'Completed',
-      created_by: 'Admin User',
-      created_date: '2024-02-01'
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch (e) {
+      return '';
     }
-  ];
+  };
+
+
+  const fetchScrapSales = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get('/scrap-sales');
+      const list = Array.isArray(res.data?.scrap_sales)
+        ? res.data.scrap_sales
+        : Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data?.rows)
+            ? res.data.rows
+            : Array.isArray(res.data)
+              ? res.data
+              : [];
+
+      const normalized = list.map(item => ({
+        ssh_id: item.ssh_id || item.scrap_id || item.id || '',
+        text: item.text || item.group_name || item.name || '',
+        buyer_name: item.buyer_name || item.buyer_details?.buyer_name || '',
+        buyer_company: item.buyer_company || item.buyer_details?.company_name || '',
+        buyer_phone: item.buyer_phone || item.buyer_details?.buyer_contact || '',
+        sale_date: formatDate(item.sale_date || item.scrap_date || ''),
+        collection_date: formatDate(item.collection_date || ''),
+        invoice_no: item.invoice_no || '',
+        po_no: item.po_no || '',
+        total_assets: item.total_assets || '',
+        total_sale_value: Array.isArray(item.total_sale_value) ? (item.total_sale_value[0] ?? '') : (item.total_sale_value ?? ''),
+        created_by: item.created_by || '',
+        created_on: formatDate(item.created_on || item.created_date || '')
+      }));
+
+      setScrapSales(normalized);
+    } catch (error) {
+      console.error('Error fetching scrap sales:', error);
+      toast.error('Failed to load scrap sales');
+      setScrapSales([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setScrapSales(mockScrapSales);
-      setLoading(false);
-    }, 1000);
+    fetchScrapSales();
   }, []);
 
   const columns = [
-    { key: 'scrap_id', name: 'scrap_id', label: 'Scrap ID', sortable: true, visible: true },
-    { key: 'group_name', name: 'group_name', label: 'Group Name', sortable: true, visible: true },
-    { key: 'asset_id', name: 'asset_id', label: 'Asset ID', sortable: true, visible: true },
-    { key: 'asset_name', name: 'asset_name', label: 'Asset Name', sortable: true, visible: true },
-    { key: 'asset_type', name: 'asset_type', label: 'Asset Type', sortable: true, visible: true },
-    { key: 'scrap_date', name: 'scrap_date', label: 'Scrap Date', sortable: true, visible: true },
-    { key: 'scrap_reason', name: 'scrap_reason', label: 'Scrap Reason', sortable: true, visible: true },
-    { key: 'scrap_value', name: 'scrap_value', label: 'Scrap Value', sortable: true, visible: true },
+    { key: 'ssh_id', name: 'ssh_id', label: 'Sale ID', sortable: true, visible: true },
+    { key: 'text', name: 'text', label: 'Sale Title', sortable: true, visible: true },
     { key: 'buyer_name', name: 'buyer_name', label: 'Buyer Name', sortable: true, visible: true },
-    { key: 'status', name: 'status', label: 'Status', sortable: true, visible: true },
+    { key: 'buyer_company', name: 'buyer_company', label: 'Buyer Company', sortable: true, visible: true },
+    { key: 'buyer_phone', name: 'buyer_phone', label: 'Buyer Phone', sortable: true, visible: true },
+    { key: 'sale_date', name: 'sale_date', label: 'Sale Date', sortable: true, visible: true },
+    { key: 'collection_date', name: 'collection_date', label: 'Collection Date', sortable: true, visible: true },
+    { key: 'invoice_no', name: 'invoice_no', label: 'Invoice No', sortable: true, visible: true },
+    { key: 'po_no', name: 'po_no', label: 'PO No', sortable: true, visible: true },
+    { key: 'total_assets', name: 'total_assets', label: 'Total Assets', sortable: true, visible: true },
+    { key: 'total_sale_value', name: 'total_sale_value', label: 'Total Sale Value', sortable: true, visible: true },
     { key: 'created_by', name: 'created_by', label: 'Created By', sortable: true, visible: true },
-    { key: 'created_date', name: 'created_date', label: 'Created Date', sortable: true, visible: true }
+    { key: 'created_on', name: 'created_on', label: 'Created On', sortable: true, visible: true }
   ];
 
   const handleAddScrapSale = () => {
@@ -225,7 +224,7 @@ const ScrapSales = () => {
                              onView={handleView}
                onEdit={handleEdit}
                onDelete={handleDelete}
-              rowKey="scrap_id"
+              rowKey="ssh_id"
             />
           );
         }}

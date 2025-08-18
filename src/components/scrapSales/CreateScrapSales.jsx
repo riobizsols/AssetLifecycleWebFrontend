@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'react-hot-toast';
-import { 
-  ArrowRight, 
-  ArrowLeft, 
-  ChevronRight, 
-  ChevronLeft, 
-  Save, 
+import {
+  ArrowRight,
+  ArrowLeft,
+  ChevronRight,
+  ChevronLeft,
+  Save,
   X,
   Search,
   Filter,
@@ -28,7 +28,11 @@ const CreateScrapSales = () => {
   const [filterTerm, setFilterTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownSearchTerm, setDropdownSearchTerm] = useState('');
-  
+  // Asset types from API
+  const [assetTypes, setAssetTypes] = useState([]);
+  const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
+  const [error, setError] = useState(null);
+
   // Buyer details
   const [buyerDetails, setBuyerDetails] = useState({
     buyer_name: '',
@@ -36,56 +40,82 @@ const CreateScrapSales = () => {
     buyer_contact: '',
     company_name: ''
   });
-  
+
   // Scrap value management
   const [totalScrapValue, setTotalScrapValue] = useState('');
   const [individualValues, setIndividualValues] = useState({});
   const [groupName, setGroupName] = useState('');
 
-  // Mock data for demonstration - replace with actual API calls
-  const mockAssetTypes = [
-    { asset_type_id: 'AT001', asset_type_name: 'Laptop', asset_type_code: 'AT001' },
-    { asset_type_id: 'AT002', asset_type_name: 'Desktop', asset_type_code: 'AT002' },
-    { asset_type_id: 'AT003', asset_type_name: 'Monitor', asset_type_code: 'AT003' },
-    { asset_type_id: 'AT004', asset_type_name: 'Printer', asset_type_code: 'AT004' },
-    { asset_type_id: 'AT005', asset_type_name: 'Furniture', asset_type_code: 'AT005' },
-    { asset_type_id: 'AT006', asset_type_name: 'Vehicle', asset_type_code: 'AT006' }
-  ];
-
-  const mockAssets = [
-    { asset_id: 'A001', name: 'Dell XPS 13', description: 'Laptop - Dell XPS 13', purchased_on: '2023-01-15', asset_type_id: 'AT001', asset_type_name: 'Laptop', serial_number: 'SN12345' },
-    { asset_id: 'A002', name: 'HP Pavilion', description: 'Laptop - HP Pavilion', purchased_on: '2023-02-20', asset_type_id: 'AT001', asset_type_name: 'Laptop', serial_number: 'SN11223' },
-    { asset_id: 'A003', name: 'Lenovo ThinkPad', description: 'Laptop - Lenovo ThinkPad', purchased_on: '2023-03-10', asset_type_id: 'AT001', asset_type_name: 'Laptop', serial_number: 'SN67890' },
-    { asset_id: 'A004', name: 'Dell OptiPlex', description: 'Desktop - Dell OptiPlex', purchased_on: '2023-04-05', asset_type_id: 'AT002', asset_type_name: 'Desktop', serial_number: 'SN33445' },
-    { asset_id: 'A005', name: 'Samsung 24"', description: 'Monitor - Samsung 24 inch', purchased_on: '2023-01-10', asset_type_id: 'AT003', asset_type_name: 'Monitor', serial_number: 'SN54321' },
-    { asset_id: 'A006', name: 'LG 27"', description: 'Monitor - LG 27 inch', purchased_on: '2023-01-12', asset_type_id: 'AT003', asset_type_name: 'Monitor', serial_number: 'SN77889' },
-    { asset_id: 'A007', name: 'HP LaserJet', description: 'Printer - HP LaserJet', purchased_on: '2023-02-15', asset_type_id: 'AT004', asset_type_name: 'Printer', serial_number: 'SN98765' },
-    { asset_id: 'A008', name: 'Canon Printer', description: 'Printer - Canon', purchased_on: '2023-02-18', asset_type_id: 'AT004', asset_type_name: 'Printer', serial_number: 'SN44778' }
-  ];
-
-  useEffect(() => { 
-    // Simulate API call to fetch available assets
-    setAvailableAssets(mockAssets);
+  // Fetch asset types from API
+  useEffect(() => {
+    const fetchAssetTypes = async () => {
+      setLoadingAssetTypes(true);
+      try {
+        const res = await API.get('/asset-types');
+        const types = (res.data?.asset_types) || res.data?.rows || res.data || [];
+        setAssetTypes(Array.isArray(types) ? types : []);
+      } catch (error) {
+        console.error('Error fetching asset types:', error);
+        setAssetTypes([]);
+        toast.error('Failed to fetch asset types');
+      } finally {
+        setLoadingAssetTypes(false);
+      }
+    };
+    fetchAssetTypes();
   }, []);
 
-  const filteredAvailableAssets = availableAssets.filter(asset => {
-    const matchesSearch = (asset.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (asset.description?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (asset.asset_id?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    const matchesFilter = selectedAssetTypes.length === 0 || selectedAssetTypes.includes(asset.asset_type_id);
-    return matchesSearch && matchesFilter;
-  });
+
+  useEffect(() => {
+    const fetchAvailableAssets = async () => {
+      if (selectedAssetTypes.length === 0) {
+        setAvailableAssets([]);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const fetchPromises = selectedAssetTypes.map(typeId =>
+          API.get(`/scrap-assets-by-type/${typeId}`)
+        );
+        const responses = await Promise.all(fetchPromises);
+
+        // Correctly access the 'scrap_assets' array from each response
+        const newAssets = responses.flatMap(response => response.data.scrap_assets);
+
+        console.log('Fetched assets for selected types:', newAssets);
+
+        setAvailableAssets(newAssets);
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to fetch assets:', err);
+        setError('Failed to load assets. Please try again.');
+        setLoading(false);
+      }
+    };
+
+    fetchAvailableAssets();
+  }, [selectedAssetTypes]);
+
+  const filteredAvailableAssets = availableAssets.filter(asset =>
+    asset.asset_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    asset.asset_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (asset.asset_description && asset.asset_description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    asset.serial_number.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const filteredSelectedAssets = selectedAssets.filter(asset => {
     return (asset.name?.toLowerCase() || '').includes(filterTerm.toLowerCase()) ||
-           (asset.description?.toLowerCase() || '').includes(filterTerm.toLowerCase()) ||
-           (asset.asset_id?.toLowerCase() || '').includes(filterTerm.toLowerCase());
+      (asset.description?.toLowerCase() || '').includes(filterTerm.toLowerCase()) ||
+      (asset.asset_id?.toLowerCase() || '').includes(filterTerm.toLowerCase());
   });
 
   // Filter asset types for dropdown search
-  const filteredAssetTypes = mockAssetTypes.filter(type => 
-    type.asset_type_name.toLowerCase().includes(dropdownSearchTerm.toLowerCase()) ||
-    type.asset_type_code.toLowerCase().includes(dropdownSearchTerm.toLowerCase())
+  const filteredAssetTypes = assetTypes.filter(type =>
+    (type.text || '').toLowerCase().includes(dropdownSearchTerm.toLowerCase()) ||
+    (type.asset_type_id || '').toLowerCase().includes(dropdownSearchTerm.toLowerCase())
   );
 
   const handleSelectAsset = (asset) => {
@@ -111,7 +141,7 @@ const CreateScrapSales = () => {
 
   const handleSelectAll = () => {
     setSelectedAssets(prev => [...prev, ...filteredAvailableAssets]);
-    setAvailableAssets(prev => prev.filter(asset => 
+    setAvailableAssets(prev => prev.filter(asset =>
       !filteredAvailableAssets.some(selected => selected.asset_id === asset.asset_id)
     ));
     // Initialize individual values for all selected assets
@@ -124,7 +154,7 @@ const CreateScrapSales = () => {
 
   const handleDeselectAll = () => {
     setAvailableAssets(prev => [...prev, ...filteredSelectedAssets]);
-    setSelectedAssets(prev => prev.filter(asset => 
+    setSelectedAssets(prev => prev.filter(asset =>
       !filteredSelectedAssets.some(selected => selected.asset_id === asset.asset_id)
     ));
     // Remove individual values for all deselected assets
@@ -169,8 +199,8 @@ const CreateScrapSales = () => {
 
   const getSelectedAssetTypeNames = () => {
     return selectedAssetTypes.map(typeId => {
-      const type = mockAssetTypes.find(t => t.asset_type_id === typeId);
-      return type ? `${type.asset_type_code} - ${type.asset_type_name}` : typeId;
+      const type = assetTypes.find(t => t.asset_type_id === typeId);
+      return type ? `${type.asset_type_id} - ${type.text}` : typeId;
     });
   };
 
@@ -203,22 +233,22 @@ const CreateScrapSales = () => {
   const validateScrapValues = () => {
     const hasTotalValue = totalScrapValue && parseFloat(totalScrapValue) > 0;
     const hasIndividualValues = Object.values(individualValues).some(value => value && parseFloat(value) > 0);
-    
+
     if (!hasTotalValue && !hasIndividualValues) {
       toast.error('Please provide either total scrap value or individual asset values');
       return false;
     }
-    
+
     if (hasTotalValue && hasIndividualValues) {
       const total = parseFloat(totalScrapValue);
       const individualTotal = totalIndividualValues;
-      
+
       if (Math.abs(total - individualTotal) > 0.01) { // Allow for small floating point differences
         toast.error(`Total scrap value (${total}) does not match sum of individual values (${individualTotal})`);
         return false;
       }
     }
-    
+
     return true;
   };
 
@@ -241,23 +271,23 @@ const CreateScrapSales = () => {
     try {
       // Mock API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Generate scrap ID
       const scrapId = `SCR${Date.now()}`;
-      
-             const scrapSaleData = {
-         scrap_id: scrapId,
-         group_name: groupName,
-         selected_assets: selectedAssets.map(asset => ({
-           ...asset,
-           scrap_value: individualValues[asset.asset_id] || 0
-         })),
-         total_scrap_value: totalScrapValue || totalIndividualValues,
-         buyer_details: buyerDetails,
-         status: 'Pending',
-         created_by: user?.name || 'Admin User',
-         created_date: new Date().toISOString().split('T')[0]
-       };
+
+      const scrapSaleData = {
+        scrap_id: scrapId,
+        group_name: groupName,
+        selected_assets: selectedAssets.map(asset => ({
+          ...asset,
+          scrap_value: individualValues[asset.asset_id] || 0
+        })),
+        total_scrap_value: totalScrapValue || totalIndividualValues,
+        buyer_details: buyerDetails,
+        status: 'Pending',
+        created_by: user?.name || 'Admin User',
+        created_date: new Date().toISOString().split('T')[0]
+      };
 
       console.log('Creating scrap sale:', scrapSaleData);
       toast.success('Scrap sale created successfully!');
@@ -351,7 +381,7 @@ const CreateScrapSales = () => {
                         autoFocus
                       />
                     </div>
-                    
+
                     {/* Dropdown Options */}
                     <div className="max-h-48 overflow-y-auto">
                       {filteredAssetTypes.length > 0 ? (
@@ -365,7 +395,7 @@ const CreateScrapSales = () => {
                               className={`w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between ${isSelected ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
                             >
                               <span className="text-sm text-gray-900">
-                                {type.asset_type_code} - {type.asset_type_name}
+                                {type.asset_type_id} - {type.text}
                               </span>
                               {isSelected && (
                                 <Check size={16} className="text-blue-600" />
@@ -379,7 +409,7 @@ const CreateScrapSales = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);
@@ -401,7 +431,7 @@ const CreateScrapSales = () => {
         {/* Asset Selection Section */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Asset Selection</h2>
-          
+
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Available Assets */}
             <div className="flex-1">
@@ -422,6 +452,7 @@ const CreateScrapSales = () => {
               </div>
 
               {/* Available Assets Table */}
+
               <div className="border rounded-lg overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-gray-50">
@@ -441,19 +472,42 @@ const CreateScrapSales = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredAvailableAssets.map((asset, index) => (
-                      <tr 
-                        key={asset.asset_id}
-                        className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                        onClick={() => handleSelectAsset(asset)}
-                      >
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_id}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.name}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.description}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.serial_number}</td>
-                      </tr>
-                    ))}
-                  </tbody>
+  {loading ? (
+    <tr>
+      <td colSpan="4" className="text-center py-4 text-gray-500">
+        <div className="flex items-center justify-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+          Loading assets...
+        </div>
+      </td>
+    </tr>
+  ) : error ? (
+    <tr>
+      <td colSpan="4" className="text-center py-4 text-red-500">
+        {error}
+      </td>
+    </tr>
+  ) : filteredAvailableAssets.length > 0 ? (
+    filteredAvailableAssets.map((asset, index) => (
+      <tr 
+        key={asset.asd_id}
+        className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+        onClick={() => handleSelectAsset(asset)}
+      >
+        <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_id}</td>
+        <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_name}</td>
+        <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_description}</td>
+        <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.serial_number}</td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="4" className="text-center py-4 text-gray-500">
+        No assets found for the selected asset types.
+      </td>
+    </tr>
+  )}
+</tbody>
                 </table>
               </div>
 
@@ -556,7 +610,7 @@ const CreateScrapSales = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredSelectedAssets.map((asset, index) => (
-                      <tr 
+                      <tr
                         key={asset.asset_id}
                         className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                       >
@@ -604,48 +658,48 @@ const CreateScrapSales = () => {
           </div>
         </div>
 
-                 {/* Scrap Value Configuration */}
-         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-           <h2 className="text-lg font-semibold text-gray-900 mb-4">Scrap Value Configuration</h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div>
-               <label className="block text-sm font-medium text-gray-700 mb-2">Group Name</label>
-               <input
-                 type="text"
-                 placeholder="e.g. Old Electronics"
-                 value={groupName}
-                 onChange={(e) => setGroupName(e.target.value)}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-               />
-               <p className="text-xs text-gray-500 mt-1">
-                 Optional: Provide a name for this scrap sale group
-               </p>
-             </div>
-             <div>
-               <label className="block text-sm font-medium text-gray-700 mb-2">Total Scrap Value (₹)</label>
-               <input
-                 type="number"
-                 placeholder="Enter total scrap value"
-                 value={totalScrapValue}
-                 onChange={(e) => setTotalScrapValue(e.target.value)}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-               />
-               <p className="text-xs text-gray-500 mt-1">
-                 Leave empty if using individual values, or provide total to validate against individual values
-               </p>
-             </div>
-           </div>
-           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-             <div className="text-sm text-gray-600">
-               <p>Individual Values Total: ₹{totalIndividualValues.toFixed(2)}</p>
-               {totalScrapValue && (
-                 <p className={Math.abs(parseFloat(totalScrapValue) - totalIndividualValues) > 0.01 ? 'text-red-600' : 'text-green-600'}>
-                   Difference: ₹{(parseFloat(totalScrapValue) - totalIndividualValues).toFixed(2)}
-                 </p>
-               )}
-             </div>
-           </div>
-         </div>
+        {/* Scrap Value Configuration */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Scrap Value Configuration</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Group Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Old Electronics"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Optional: Provide a name for this scrap sale group
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Total Scrap Value (₹)</label>
+              <input
+                type="number"
+                placeholder="Enter total scrap value"
+                value={totalScrapValue}
+                onChange={(e) => setTotalScrapValue(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave empty if using individual values, or provide total to validate against individual values
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <div className="text-sm text-gray-600">
+              <p>Individual Values Total: ₹{totalIndividualValues.toFixed(2)}</p>
+              {totalScrapValue && (
+                <p className={Math.abs(parseFloat(totalScrapValue) - totalIndividualValues) > 0.01 ? 'text-red-600' : 'text-green-600'}>
+                  Difference: ₹{(parseFloat(totalScrapValue) - totalIndividualValues).toFixed(2)}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Buyer Information */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
