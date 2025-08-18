@@ -21,7 +21,7 @@ const CreateScrapSales = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
-  const [selectedAssetType, setSelectedAssetType] = useState('');
+  const [selectedAssetTypes, setSelectedAssetTypes] = useState([]); // Multi-select
   const [availableAssets, setAvailableAssets] = useState([]);
   const [selectedAssets, setSelectedAssets] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,7 +72,7 @@ const CreateScrapSales = () => {
     const matchesSearch = (asset.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                          (asset.description?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                          (asset.asset_id?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    const matchesFilter = selectedAssetType === '' || asset.asset_type_id === selectedAssetType;
+    const matchesFilter = selectedAssetTypes.length === 0 || selectedAssetTypes.includes(asset.asset_type_id);
     return matchesSearch && matchesFilter;
   });
 
@@ -138,12 +138,46 @@ const CreateScrapSales = () => {
   };
 
   const handleAssetTypeSelect = (assetType) => {
-    setSelectedAssetType(assetType.asset_type_id);
-    setSelectedAssets([]);
-    setAvailableAssets(mockAssets);
+    // Avoid duplicates
+    if (selectedAssetTypes.includes(assetType.asset_type_id)) {
+      toast.error('This asset type is already selected');
+      return;
+    }
+    setSelectedAssetTypes(prev => [...prev, assetType.asset_type_id]);
     setIsDropdownOpen(false);
     setDropdownSearchTerm('');
-    setIndividualValues({});
+  };
+
+  const handleRemoveAssetType = (assetTypeId) => {
+    setSelectedAssetTypes(prev => prev.filter(id => id !== assetTypeId));
+    // Remove selected assets of this type and return them to available
+    setAvailableAssets(prev => {
+      const removed = selectedAssets.filter(a => a.asset_type_id === assetTypeId);
+      return [...prev, ...removed];
+    });
+    setSelectedAssets(prev => prev.filter(a => a.asset_type_id !== assetTypeId));
+    // Clean individual values for removed assets
+    setIndividualValues(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(k => {
+        const asset = selectedAssets.find(a => a.asset_id === k);
+        if (asset && asset.asset_type_id === assetTypeId) delete next[k];
+      });
+      return next;
+    });
+  };
+
+  const getSelectedAssetTypeNames = () => {
+    return selectedAssetTypes.map(typeId => {
+      const type = mockAssetTypes.find(t => t.asset_type_id === typeId);
+      return type ? `${type.asset_type_code} - ${type.asset_type_name}` : typeId;
+    });
+  };
+
+  const getDropdownDisplayText = () => {
+    if (selectedAssetTypes.length === 0) return 'Select Asset Type';
+    if (selectedAssetTypes.length === 1) return getSelectedAssetTypeNames()[0];
+    return `${selectedAssetTypes.length} Asset Types Selected`;
   };
 
   const handleIndividualValueChange = (assetId, value) => {
@@ -240,7 +274,7 @@ const CreateScrapSales = () => {
     navigate('/scrap-sales');
   };
 
-  const selectedAssetTypeName = mockAssetTypes.find(type => type.asset_type_id === selectedAssetType);
+  // Multi-select display handled via helpers above
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -273,11 +307,35 @@ const CreateScrapSales = () => {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-left bg-white flex items-center justify-between"
               >
-                <span className={selectedAssetType ? 'text-gray-900' : 'text-gray-500'}>
-                  {selectedAssetTypeName ? `${selectedAssetTypeName.asset_type_code} - ${selectedAssetTypeName.asset_type_name}` : 'Select Asset Type'}
+                <span className={selectedAssetTypes.length > 0 ? 'text-gray-900' : 'text-gray-500'}>
+                  {getDropdownDisplayText()}
                 </span>
                 <ChevronDown size={16} className="text-gray-400" />
               </button>
+
+              {/* Selected Asset Type Badges */}
+              {selectedAssetTypes.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {getSelectedAssetTypeNames().map((typeName, index) => {
+                    const typeId = selectedAssetTypes[index];
+                    return (
+                      <div
+                        key={typeId}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                      >
+                        <span>{typeName}</span>
+                        <button
+                          onClick={() => handleRemoveAssetType(typeId)}
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                          title="Remove asset type"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {isDropdownOpen && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
@@ -297,20 +355,24 @@ const CreateScrapSales = () => {
                     {/* Dropdown Options */}
                     <div className="max-h-48 overflow-y-auto">
                       {filteredAssetTypes.length > 0 ? (
-                        filteredAssetTypes.map((type) => (
-                          <button
-                            key={type.asset_type_id}
-                            onClick={() => handleAssetTypeSelect(type)}
-                            className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between"
-                          >
-                            <span className="text-sm text-gray-900">
-                              {type.asset_type_code} - {type.asset_type_name}
-                            </span>
-                            {selectedAssetType === type.asset_type_id && (
-                              <Check size={16} className="text-blue-600" />
-                            )}
-                          </button>
-                        ))
+                        filteredAssetTypes.map((type) => {
+                          const isSelected = selectedAssetTypes.includes(type.asset_type_id);
+                          return (
+                            <button
+                              key={type.asset_type_id}
+                              onClick={() => handleAssetTypeSelect(type)}
+                              disabled={isSelected}
+                              className={`w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between ${isSelected ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''}`}
+                            >
+                              <span className="text-sm text-gray-900">
+                                {type.asset_type_code} - {type.asset_type_name}
+                              </span>
+                              {isSelected && (
+                                <Check size={16} className="text-blue-600" />
+                              )}
+                            </button>
+                          );
+                        })
                       ) : (
                         <div className="px-3 py-2 text-sm text-gray-500">
                           No asset types found

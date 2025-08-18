@@ -22,7 +22,7 @@ const CreateGroupAsset = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [groupName, setGroupName] = useState('');
-  const [selectedAssetTypes, setSelectedAssetTypes] = useState([]); // Changed to array for multiple selection
+  const [selectedAssetType, setSelectedAssetType] = useState('');
   const [availableAssets, setAvailableAssets] = useState([]);
   const [selectedAssets, setSelectedAssets] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -86,31 +86,21 @@ const CreateGroupAsset = () => {
   };
 
   // Fetch assets for all selected asset types
-  const fetchAssetsForAllTypes = async () => {
-    if (selectedAssetTypes.length === 0) {
+  const fetchAssetsForSelectedType = async () => {
+    if (!selectedAssetType) {
       setAvailableAssets([]);
       return;
     }
-    
     setLoadingAssets(true);
     try {
-      // Fetch assets for each selected asset type
-      const allAssets = [];
-      for (const assetTypeId of selectedAssetTypes) {
-        const response = await API.get(`/assets/type/${assetTypeId}`);
-        if (response.data && response.data.success) {
-          allAssets.push(...(response.data.data || []));
-        }
+      const response = await API.get(`/assets/type/${selectedAssetType}`);
+      if (response.data && response.data.success) {
+        setAvailableAssets(response.data.data || []);
+      } else {
+        toast.error('Failed to fetch assets');
       }
-      
-      // Remove duplicates based on asset_id
-      const uniqueAssets = allAssets.filter((asset, index, self) => 
-        index === self.findIndex(a => a.asset_id === asset.asset_id)
-      );
-      
-      setAvailableAssets(uniqueAssets);
     } catch (error) {
-      console.error('Error fetching assets for all types:', error);
+      console.error('Error fetching assets:', error);
       toast.error('Failed to fetch assets');
     } finally {
       setLoadingAssets(false);
@@ -161,36 +151,15 @@ const CreateGroupAsset = () => {
   };
 
   const handleAssetTypeSelect = (assetType) => {
-    // Check if asset type is already selected
-    if (selectedAssetTypes.includes(assetType.asset_type_id)) {
-      toast.error('This asset type is already selected');
-      return;
-    }
-    
-    // Add new asset type to selection
-    const newSelectedTypes = [...selectedAssetTypes, assetType.asset_type_id];
-    setSelectedAssetTypes(newSelectedTypes);
-    
-    // Keep existing selected assets (don't clear them)
-    // setSelectedAssets([]); // Removed this line
-    
+    setSelectedAssetType(assetType.asset_type_id);
+    setSelectedAssets([]);
     setIsDropdownOpen(false);
     setDropdownSearchTerm('');
-    
-    // Fetch assets for the newly selected asset type and add to existing ones
-    fetchAssetsByType(assetType.asset_type_id);
+    fetchAssetsForSelectedType();
   };
 
   // Remove asset type from selection
-  const handleRemoveAssetType = (assetTypeId) => {
-    setSelectedAssetTypes(prev => prev.filter(id => id !== assetTypeId));
-    
-    // Remove assets that belong to the removed asset type
-    setAvailableAssets(prev => prev.filter(asset => asset.asset_type_id !== assetTypeId));
-    
-    // Remove selected assets that belong to the removed asset type
-    setSelectedAssets(prev => prev.filter(asset => asset.asset_type_id !== assetTypeId));
-  };
+  // Not needed for single select
 
   const handleSave = async () => {
     if (!groupName.trim()) {
@@ -198,8 +167,8 @@ const CreateGroupAsset = () => {
       return;
     }
 
-    if (selectedAssetTypes.length === 0) {
-      toast.error('Please select at least one asset type');
+    if (!selectedAssetType) {
+      toast.error('Please select an asset type');
       return;
     }
 
@@ -214,7 +183,7 @@ const CreateGroupAsset = () => {
       const groupData = {
         text: groupName.trim(),
         asset_ids: selectedAssets.map(asset => asset.asset_id),
-        asset_type_ids: selectedAssetTypes // Include selected asset types
+        asset_type_ids: [selectedAssetType]
       };
 
       // Call the API to create asset group
@@ -242,21 +211,13 @@ const CreateGroupAsset = () => {
 
 
   // Get names of all selected asset types
-  const getSelectedAssetTypeNames = () => {
-    return selectedAssetTypes.map(typeId => {
-      const type = assetTypes.find(t => t.asset_type_id === typeId);
-      return type ? `${type.asset_type_id} - ${type.text}` : typeId;
-    });
-  };
+  // Not needed for single select
 
   // Get display text for dropdown button
   const getDropdownDisplayText = () => {
-    if (selectedAssetTypes.length === 0) return 'Select Asset Type';
-    if (selectedAssetTypes.length === 1) {
-      const type = assetTypes.find(t => t.asset_type_id === selectedAssetTypes[0]);
-      return type ? `${type.asset_type_id} - ${type.text}` : selectedAssetTypes[0];
-    }
-    return `${selectedAssetTypes.length} Asset Types Selected`;
+    if (!selectedAssetType) return 'Select Asset Type';
+    const type = assetTypes.find(t => t.asset_type_id === selectedAssetType);
+    return type ? `${type.asset_type_id} - ${type.text}` : selectedAssetType;
   };
 
   // Format date for user display
@@ -312,35 +273,14 @@ const CreateGroupAsset = () => {
                       onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-left bg-white flex items-center justify-between"
                     >
-                      <span className={selectedAssetTypes.length > 0 ? 'text-gray-900' : 'text-gray-500'}>
+                      <span className={selectedAssetType ? 'text-gray-900' : 'text-gray-500'}>
                         {getDropdownDisplayText()}
                       </span>
                       <ChevronDown size={16} className="text-gray-400" />
                     </button>
                     
                     {/* Selected Asset Type Badges */}
-                    {selectedAssetTypes.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {getSelectedAssetTypeNames().map((typeName, index) => {
-                          const typeId = selectedAssetTypes[index];
-                          return (
-                            <div
-                              key={typeId}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                            >
-                              <span>{typeName}</span>
-                              <button
-                                onClick={() => handleRemoveAssetType(typeId)}
-                                className="ml-1 text-blue-600 hover:text-blue-800"
-                                title="Remove asset type"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {/* No badges for single selection */}
                     
                     {isDropdownOpen && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
@@ -365,20 +305,16 @@ const CreateGroupAsset = () => {
                             <div className="px-3 py-2 text-sm text-gray-500">Loading asset types...</div>
                           ) : filteredAssetTypes.length > 0 ? (
                             filteredAssetTypes.map((type) => {
-                              const isSelected = selectedAssetTypes.includes(type.asset_type_id);
                               return (
                                 <button
                                   key={type.asset_type_id}
                                   onClick={() => handleAssetTypeSelect(type)}
-                                  disabled={isSelected}
-                                  className={`w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between ${
-                                    isSelected ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : ''
-                                  }`}
+                                  className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between"
                                 >
                                   <span className="text-sm text-gray-900">
                                     {type.asset_type_id} - {type.text}
                                   </span>
-                                  {isSelected && (
+                                  {selectedAssetType === type.asset_type_id && (
                                     <Check size={16} className="text-blue-600" />
                                   )}
                                 </button>
@@ -422,9 +358,7 @@ const CreateGroupAsset = () => {
                     </div>
                   ) : availableAssets.length === 0 ? (
                     <div className="flex items-center justify-center h-32">
-                      <div className="text-gray-500">
-                        {selectedAssetTypes.length > 0 ? 'No assets found for selected asset types' : 'Please select an asset type to view assets'}
-                      </div>
+                      <div className="text-gray-500">{selectedAssetType ? 'No assets found for selected asset type' : 'Please select an asset type to view assets'}</div>
                     </div>
                   ) : (
                     <table className="w-full">

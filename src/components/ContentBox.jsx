@@ -128,6 +128,16 @@ const ContentBox = ({
     }))
   );
 
+  // Sync visibleColumns when incoming filters change
+  useEffect(() => {
+    setVisibleColumns(
+      filters.map((f, i) => ({
+        ...f,
+        visible: i < 7 || f.name === 'status',
+      }))
+    );
+  }, [filters]);
+
   const toggleColumn = (name) => {
     const updated = visibleColumns.map((col) =>
       col.name === name ? { ...col, visible: !col.visible } : col
@@ -359,7 +369,7 @@ const ContentBox = ({
       <div className="max-h-[500px] min-h-[400px] overflow-y-auto">
         <table className="min-w-full border border-gray-200">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-[#0E2F4B] text-white text-sm font-medium border-b-4 border-[#F  FC107]">
+          <tr className="bg-[#0E2F4B] text-white text-sm font-medium border-b-4 border-[#FFC107]">
               {visibleFilters.map((filter, index) => {
                 // Safely access sortConfig
                 const sortInfo = sortConfig?.sorts?.find(s => s.column === filter.name);

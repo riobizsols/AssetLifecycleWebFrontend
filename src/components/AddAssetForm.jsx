@@ -822,24 +822,17 @@ const AddAssetForm = ({ userRole }) => {
         </div>
 
         {/* Accounting Details Section */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Accounting Details</h3>
-            <button
-              type="button"
-              onClick={() => toggleSection('accounting')}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              {collapsedSections.accounting ? (
-                <MdKeyboardArrowRight className="w-5 h-5" />
-              ) : (
-                <MdKeyboardArrowDown className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-
+        <div className="mb-6">
+          <button type="button" onClick={() => toggleSection('accounting')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
+            <span>Accounting Details</span>
+            {collapsedSections.accounting ? (
+              <MdKeyboardArrowRight size={24} />
+            ) : (
+              <MdKeyboardArrowDown size={24} />
+            )}
+          </button>
           {!collapsedSections.accounting && (
-            <div className="grid grid-cols-2 gap-6 mb-4">
+            <div className="grid grid-cols-4 gap-6 mb-4">
               <div>
                 <label className="block text-sm mb-1 font-medium">Salvage Value</label>
                 <input 

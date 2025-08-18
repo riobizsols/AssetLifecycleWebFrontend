@@ -16,6 +16,7 @@ const CreateScrapAsset = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [notes, setNotes] = useState('');
+  const [columns, setColumns] = useState([]);
   
   // Asset selection states
   const [showAssetSelection, setShowAssetSelection] = useState(false);
@@ -89,129 +90,149 @@ const CreateScrapAsset = () => {
     setShowScanner(false);
   };
 
-  // Mock data for available assets to scrap
-  const mockAvailableAssets = [
-    {
-      asset_id: 'ASSET001',
-      asset_name: 'Dell Laptop',
-      serial_number: 'SN12345',
-      category: 'Computers',
-      location: 'Head Office',
-      expiry_date: '2025-01-15',
-      action: 'Create Scrap',
-      asset_type_id: 1
-    },
-    {
-      asset_id: 'ASSET002',
-      asset_name: 'HP Printer',
-      serial_number: 'SN11223',
-      category: 'Computers',
-      location: 'Remote Site',
-      expiry_date: '2025-02-20',
-      action: 'Create Scrap',
-      asset_type_id: 1
-    },
-    {
-      asset_id: 'ASSET003',
-      asset_name: 'Office Desk',
-      serial_number: 'SN67890',
-      category: 'Furniture',
-      location: 'Warehouse A',
-      expiry_date: '2025-03-25',
-      action: 'Create Scrap',
-      asset_type_id: 2
-    },
-    {
-      asset_id: 'ASSET004',
-      asset_name: 'Conference Chair',
-      serial_number: 'SN7',
-      category: 'Furniture',
-      location: 'Warehouse A',
-      expiry_date: '2025-04-30',
-      action: 'Create Scrap',
-      asset_type_id: 2
-    },
-    {
-      asset_id: 'ASSET005',
-      asset_name: 'Company Van',
-      serial_number: 'SN20',
-      category: 'Vehicles',
-      location: 'Logistics',
-      expiry_date: '2025-06-15',
-      action: 'Create Scrap',
-      asset_type_id: 3
-    },
-    {
-      asset_id: 'ASSET006',
-      asset_name: 'Industrial Drill',
-      serial_number: 'SN21',
-      category: 'Machinery',
-      location: 'Operations',
-      expiry_date: '2025-08-20',
-      action: 'Create Scrap',
-      asset_type_id: 4
+  // Fetch available assets by selected asset type
+  const fetchAvailableAssetsByType = async (assetTypeId) => {
+    if (!assetTypeId) {
+      setScrapAssets([]);
+      setColumns([]);
+      return;
     }
-  ];
+    try {
+      setLoading(true);
+      const res = await API.get(`/scrap-assets/available-by-type/${assetTypeId}`);
+      const apiAssets = Array.isArray(res.data?.assets)
+        ? res.data.assets
+        : Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+            ? res.data
+            : [];
+
+      // Normalize strictly to fields present in the response
+      const normalized = apiAssets.map((asset) => ({
+        asset_id: asset.asset_id || '',
+        asset_name: asset.asset_name || '',
+        serial_number: asset.serial_number || '',
+        asset_type_id: asset.asset_type_id || assetTypeId,
+        asset_type_name: asset.asset_type_name || '',
+        org_id: asset.org_id || ''
+      }));
+
+      setScrapAssets(normalized);
+      // Derive columns strictly from keys present in normalized data
+      if (normalized.length > 0) {
+        const keys = Object.keys(normalized[0]);
+        const labels = {
+          asset_id: 'ASSET ID',
+          asset_name: 'ASSET NAME',
+          serial_number: 'SERIAL NUMBER',
+          asset_type_id: 'ASSET TYPE ID',
+          asset_type_name: 'ASSET TYPE',
+          org_id: 'ORG ID'
+        };
+        const derived = keys.map((k) => ({ key: k, name: k, label: labels[k] || k.toUpperCase(), sortable: true, visible: true }));
+        // Append action column for Scrap button
+        const actionCol = { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true };
+        setColumns([...derived, actionCol]);
+      } else {
+        setColumns([]);
+      }
+    } catch (error) {
+      console.error('Error fetching available assets by type:', error);
+      toast.error('Failed to load assets for selected type');
+      setScrapAssets([]);
+      setColumns([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setScrapAssets(mockAvailableAssets);
-      setLoading(false);
-    }, 1000);
-
-    // Fetch asset types
+    // Initial: load asset types; assets loaded on asset type selection
+    setLoading(false);
     fetchAssetTypes();
   }, []);
 
   const fetchAssetTypes = async () => {
     try {
-      const response = await API.get('/assets/types');
-      if (response.data && response.data.asset_types) {
-        setAssetTypes(response.data.asset_types);
-      }
+      const res = await API.get('/asset-types');
+      const types = (res.data?.asset_types) || res.data?.rows || res.data || [];
+      setAssetTypes(Array.isArray(types) ? types : []);
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      // Use mock asset types if API fails
-      setAssetTypes([
-        { asset_type_id: 1, text: 'Computers' },
-        { asset_type_id: 2, text: 'Furniture' },
-        { asset_type_id: 3, text: 'Vehicles' },
-        { asset_type_id: 4, text: 'Machinery' }
-      ]);
+      setAssetTypes([]);
     }
   };
 
   const handleAssetTypeChange = (e) => {
     setSelectedAssetType(e.target.value);
-    
-    // Auto-scroll to table when asset type is selected
-    if (e.target.value) {
-      scrollToTable();
-    }
+    // Fetch available assets for the selected asset type
+    fetchAvailableAssetsByType(e.target.value);
   };
 
-  const handleScanSubmit = (e) => {
+  const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
       toast.error("Please enter an asset ID");
       return;
     }
-    
-    // Find the asset by ID or serial number
-    const asset = scrapAssets.find(a => a.asset_id === scannedAssetId || a.serial_number === scannedAssetId);
-    if (!asset) {
-      toast.error("Asset not found");
-      return;
+
+    try {
+      // Fetch the asset by ID
+      const assetResp = await API.get(`/assets/${encodeURIComponent(scannedAssetId)}`);
+      if (!assetResp || !assetResp.data) {
+        toast.error('Asset not found');
+        return;
+      }
+
+      // Normalize asset object
+      const data = assetResp.data;
+      const asset = Array.isArray(data?.rows) ? data.rows[0] : (data.asset || data);
+      if (!asset) {
+        toast.error('Asset not found');
+        return;
+      }
+
+      const typeId = String(
+        asset.asset_type_id || asset.asset_type || asset.asset_type_fk || asset.assetTypeId || ''
+      );
+      if (!typeId) {
+        toast.error('Asset type not found for this asset');
+        return;
+      }
+
+      // Build a single-row dataset strictly with fields from response
+      const singleRow = [{
+        asset_id: asset.asset_id || asset.id || scannedAssetId,
+        asset_name: asset.asset_name || asset.text || asset.name || '',
+        serial_number: asset.serial_number || asset.serial || asset.sn || '',
+        asset_type_id: typeId,
+        asset_type_name: asset.asset_type_name || asset.type_name || '',
+        org_id: asset.org_id || ''
+      }];
+
+      // Set asset type (to display table section) and populate table with this single asset
+      setSelectedAssetType(typeId);
+      setScrapAssets(singleRow);
+      // Derive columns from singleRow
+      const keys = Object.keys(singleRow[0]);
+      const labels = {
+        asset_id: 'ASSET ID',
+        asset_name: 'ASSET NAME',
+        serial_number: 'SERIAL NUMBER',
+        asset_type_id: 'ASSET TYPE ID',
+        asset_type_name: 'ASSET TYPE',
+        org_id: 'ORG ID'
+      };
+      const derived = keys.map((k) => ({ key: k, name: k, label: labels[k] || k.toUpperCase(), sortable: true, visible: true }));
+      const actionCol = { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true };
+      setColumns([...derived, actionCol]);
+      setScannedAssetId('');
+      toast.success('Asset found and displayed');
+    } catch (error) {
+      console.error('Error finding asset by scan:', error);
+      toast.error('Failed to find asset');
     }
-    
-    // Set the asset type to show this asset in the table
-    setSelectedAssetType(asset.asset_type_id.toString());
-    setScannedAssetId('');
-    toast.success(`Asset ${asset.asset_name} found and displayed`);
-    
-    // Auto-scroll to table when asset is found via scan
-    scrollToTable();
   };
 
   const toggleAssetSelection = () => {
@@ -220,48 +241,27 @@ const CreateScrapAsset = () => {
       // Reset filters when opening
       setSelectedAssetType('');
       setScannedAssetId('');
-      setScrapAssets(mockAvailableAssets);
+      setScrapAssets([]);
     } else {
       // Reset filters when closing
       setSelectedAssetType('');
       setScannedAssetId('');
-      setScrapAssets(mockAvailableAssets);
+      setScrapAssets([]);
     }
   };
 
-  // Filter assets based on selection and add expiry status
+  // Use API-fetched assets for selected type
   const getFilteredAssets = () => {
     // Only show assets when an asset type is selected
     if (!selectedAssetType) {
       return [];
     }
-    
-    let filteredAssets = scrapAssets.filter(asset => asset.asset_type_id.toString() === selectedAssetType);
-    
-    // Add expiry status to each asset
-    return filteredAssets.map(asset => ({
-      ...asset,
-      expiry_status: calculateExpiryStatus(asset.expiry_date)
-    }));
+
+    // API already returns assets for selected type
+    return scrapAssets;
   };
 
-  // Function to scroll to table and center it vertically
-  const scrollToTable = () => {
-    setTimeout(() => {
-      const tableElement = document.querySelector('[data-table-section]');
-      if (tableElement) {
-        const windowHeight = window.innerHeight;
-        const elementTop = tableElement.offsetTop;
-        const elementHeight = tableElement.offsetHeight;
-        const scrollTo = elementTop - (windowHeight / 2) + (elementHeight / 2);
-        
-        window.scrollTo({
-          top: scrollTo,
-          behavior: 'smooth'
-        });
-      }
-    }, 100); // Small delay to ensure DOM is updated
-  };
+  // Removed scroll behavior
 
   // Function to calculate days/months until expiry
   const calculateExpiryStatus = (expiryDate) => {
@@ -283,15 +283,7 @@ const CreateScrapAsset = () => {
     }
   };
 
-  const columns = [
-    { key: 'asset_name', name: 'asset_name', label: 'ASSET NAME', sortable: true, visible: true },
-    { key: 'serial_number', name: 'serial_number', label: 'SERIAL NUMBER', sortable: true, visible: true },
-    { key: 'category', name: 'category', label: 'CATEGORY', sortable: true, visible: true },
-    { key: 'location', name: 'location', label: 'LOCATION', sortable: true, visible: true },
-    { key: 'expiry_date', name: 'expiry_date', label: 'EXPIRY DATE', sortable: true, visible: true },
-    { key: 'expiry_status', name: 'expiry_status', label: 'EXPIRY STATUS', sortable: true, visible: true },
-    { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true }
-  ];
+  // Columns are derived dynamically from API responses
 
   const handleScrap = (row) => {
     setSelectedAsset(row);
@@ -594,7 +586,7 @@ const CreateScrapAsset = () => {
       
       {/* Table Section - Only show when asset type is selected */}
       {selectedAssetType ? (
-        <div data-table-section>
+        <div>
           <ContentBox
             filters={columns}
             onFilterChange={handleFilterChange}
