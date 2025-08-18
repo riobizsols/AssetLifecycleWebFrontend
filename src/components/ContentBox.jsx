@@ -124,7 +124,7 @@ const ContentBox = ({
   const [visibleColumns, setVisibleColumns] = useState(
     filters.map((f, i) => ({
       ...f,
-      visible: i < 7 || f.name === 'status', // Always show Status column
+      visible: i < 7 || f.name === "status", // Always show Status column
     }))
   );
 
@@ -133,7 +133,7 @@ const ContentBox = ({
     setVisibleColumns(
       filters.map((f, i) => ({
         ...f,
-        visible: i < 7 || f.name === 'status',
+        visible: i < 7 || f.name === "status",
       }))
     );
   }, [filters]);
@@ -154,7 +154,9 @@ const ContentBox = ({
 
   const toggleAll = (e) => {
     if (e.target.checked) {
-      const allIds = data.map((item) => item.branch_id || item.user_id || item.id); // Support different ID fields
+      const allIds = data.map(
+        (item) => item.branch_id || item.user_id || item.id
+      ); // Support different ID fields
       setSelectedRows(allIds);
     } else {
       setSelectedRows([]);
@@ -202,23 +204,31 @@ const ContentBox = ({
 
                     // Get unique values for the value dropdown based on selected column
                     const valueOptions = cf.column
-                      ? [...new Set(data.map((item) => {
-                          const value = item[cf.column];
-                          // Handle object values (like days_until_expiry: {days: 5})
-                          if (value && typeof value === 'object' && value.days !== undefined) {
-                            return `${value.days} days`;
-                          }
-                          // Handle other object values by converting to string
-                          if (value && typeof value === 'object') {
-                            return JSON.stringify(value);
-                          }
-                          // Handle null/undefined values
-                          if (value === null || value === undefined) {
-                            return 'N/A';
-                          }
-                          // Return string values as-is
-                          return String(value);
-                        }))]
+                      ? [
+                          ...new Set(
+                            data.map((item) => {
+                              const value = item[cf.column];
+                              // Handle object values (like days_until_expiry: {days: 5})
+                              if (
+                                value &&
+                                typeof value === "object" &&
+                                value.days !== undefined
+                              ) {
+                                return `${value.days} days`;
+                              }
+                              // Handle other object values by converting to string
+                              if (value && typeof value === "object") {
+                                return JSON.stringify(value);
+                              }
+                              // Handle null/undefined values
+                              if (value === null || value === undefined) {
+                                return "N/A";
+                              }
+                              // Return string values as-is
+                              return String(value);
+                            })
+                          ),
+                        ]
                       : [];
 
                     return (
@@ -355,12 +365,12 @@ const ContentBox = ({
           )}
 
           {onDownload && (
-          <button
+            <button
               onClick={onDownload}
-            className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
-          >
-            <Download size={16} />
-          </button>
+              className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
+            >
+              <Download size={16} />
+            </button>
           )}
         </div>
       </div>
@@ -369,10 +379,12 @@ const ContentBox = ({
       <div className="max-h-[500px] min-h-[400px] overflow-y-auto">
         <table className="min-w-full border border-gray-200">
           <thead className="sticky top-0 z-10">
-          <tr className="bg-[#0E2F4B] text-white text-sm font-medium border-b-4 border-[#FFC107]">
+            <tr className="bg-[#0E2F4B] text-white text-sm font-medium border-b-4 border-[#FFC107]">
               {visibleFilters.map((filter, index) => {
                 // Safely access sortConfig
-                const sortInfo = sortConfig?.sorts?.find(s => s.column === filter.name);
+                const sortInfo = sortConfig?.sorts?.find(
+                  (s) => s.column === filter.name
+                );
                 const isSorted = !!sortInfo;
 
                 return (
@@ -381,7 +393,7 @@ const ContentBox = ({
                     className="px-4 py-3 relative text-left group"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span 
+                      <span
                         className="flex items-center gap-2 cursor-pointer flex-grow"
                         onClick={() => onSort(filter.name)}
                       >
@@ -395,7 +407,7 @@ const ContentBox = ({
                           />
                         )}
                         {filter.label}
-                        
+
                         {/* Sort Indicator */}
                         {sortInfo && (
                           <div className="flex items-center ml-2">
@@ -403,29 +415,35 @@ const ContentBox = ({
                               {sortInfo.order}
                             </span>
                             <span className="text-[#FFC107]">
-                              {sortInfo.direction === 'asc' ? '↑' : '↓'}
+                              {sortInfo.direction === "asc" ? "↑" : "↓"}
                             </span>
                           </div>
                         )}
                       </span>
-                      
+
                       {/* Dropdown Trigger */}
-                      <div 
+                      <div
                         className="flex items-center cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setOpenDropdown(openDropdown === index ? null : index);
+                          setOpenDropdown(
+                            openDropdown === index ? null : index
+                          );
                         }}
                       >
                         <ChevronDown
                           size={16}
-                          className={`text-white ${!openDropdown ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'} transition-opacity duration-150`}
+                          className={`text-white ${
+                            !openDropdown
+                              ? "opacity-0 group-hover:opacity-100"
+                              : "opacity-100"
+                          } transition-opacity duration-150`}
                         />
                       </div>
                     </div>
 
                     {openDropdown === index && (
-                      <div 
+                      <div
                         className="z-50 absolute top-full left-0 mt-1 bg-white text-black shadow-lg border border-gray-300 w-48 text-sm"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -436,37 +454,38 @@ const ContentBox = ({
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
                             onSort(filter.name);
-                            if (!sortInfo || sortInfo.direction === 'desc') {
+                            if (!sortInfo || sortInfo.direction === "desc") {
                               onSort(filter.name); // Set to ascending
                             }
                             setOpenDropdown(null);
                           }}
                         >
-                          Sort Ascending {sortInfo?.direction === 'asc' && '✓'}
+                          Sort Ascending {sortInfo?.direction === "asc" && "✓"}
                         </div>
                         <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
                             onSort(filter.name);
-                            if (!sortInfo || sortInfo.direction === 'asc') {
+                            if (!sortInfo || sortInfo.direction === "asc") {
                               onSort(filter.name); // Set to descending
                             }
                             setOpenDropdown(null);
                           }}
                         >
-                          Sort Descending {sortInfo?.direction === 'desc' && '✓'}
+                          Sort Descending{" "}
+                          {sortInfo?.direction === "desc" && "✓"}
                         </div>
                         {sortInfo && (
-                        <div
+                          <div
                             className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold border-t"
-                          onClick={() => {
+                            onClick={() => {
                               onSort(filter.name);
                               onSort(filter.name); // Remove sort
-                            setOpenDropdown(null);
-                          }}
-                        >
+                              setOpenDropdown(null);
+                            }}
+                          >
                             Remove Sort
-                        </div>
+                          </div>
                         )}
                         <div className="relative border-t">
                           <button
@@ -480,9 +499,68 @@ const ContentBox = ({
                             <ChevronRight size={16} />
                           </button>
                           {showColumnsDropdown && (
-                            <div 
-                              className="absolute left-full top-0 mt-0 ml-1 bg-white shadow-lg border border-gray-300 w-48 z-50"
-                              onClick={(e) => e.stopPropagation()}
+                            <div
+                              className="fixed bg-white shadow-lg border border-gray-300 w-48 z-50 max-h-[300px] overflow-y-auto"
+                              style={{
+                                top: "0px",
+                                left: "0px",
+                              }}
+                              ref={(el) => {
+                                if (el) {
+                                  // Position the dropdown next to the button
+                                  const button =
+                                    el.parentElement?.querySelector("button");
+                                  if (button) {
+                                    const rect = button.getBoundingClientRect();
+                                    el.style.top = `${rect.top}px`;
+                                    el.style.left = `${rect.right + 4}px`; // 4px gap
+
+                                    // Adjust vertical position if dropdown would go off screen
+                                    const dropdownRect =
+                                      el.getBoundingClientRect();
+                                    if (
+                                      dropdownRect.bottom > window.innerHeight
+                                    ) {
+                                      const topOffset =
+                                        dropdownRect.bottom -
+                                        window.innerHeight;
+                                      el.style.top = `${
+                                        rect.top - topOffset
+                                      }px`;
+                                    }
+                                  }
+                                }
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.nativeEvent.stopImmediatePropagation();
+                              }}
+                              onWheel={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                const element = e.currentTarget;
+                                const scrollSpeed = 30; // Adjust scroll speed
+                                const atTop = element.scrollTop === 0;
+                                const atBottom =
+                                  element.scrollTop + element.clientHeight ===
+                                  element.scrollHeight;
+
+                                // Only scroll if we're not at the limits or we're scrolling away from them
+                                if (!atTop || (atTop && e.deltaY > 0)) {
+                                  if (!atBottom || (atBottom && e.deltaY < 0)) {
+                                    element.scrollTop +=
+                                      e.deltaY > 0 ? scrollSpeed : -scrollSpeed;
+                                  }
+                                }
+                              }}
+                              onMouseEnter={(e) => {
+                                // Prevent scrolling of parent elements while hovering
+                                document.body.style.overflow = "hidden";
+                              }}
+                              onMouseLeave={(e) => {
+                                // Restore scrolling when leaving dropdown
+                                document.body.style.overflow = "";
+                              }}
                             >
                               {visibleColumns.map((col, i) => (
                                 <label
