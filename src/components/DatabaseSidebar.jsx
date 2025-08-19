@@ -87,7 +87,7 @@ const DatabaseSidebar = () => {
     'DEPARTMENTSASSET': '/master-data/departments-asset',
     'BRANCHES': '/master-data/branches',
     'PRODSERV': '/master-data/prod-serv',
-    'ROLES': '/master-data/users',
+    'ROLES': '/master-data/roles',
     'USERS': '/master-data/users',
     'MAINTENANCESCHEDULE': '/maintenance-schedule-view', // Unique route
     'AUDITLOGS': '/audit-logs-view', // Unique route
