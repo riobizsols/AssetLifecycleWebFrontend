@@ -36,7 +36,7 @@ const AssetsDetail = ({ userRole }) => {
   // Get asset_id from URL params
   const { asset_id } = useParams();
   const location = useLocation();
-  const { employee_int_id, dept_id, org_id } = location.state || {};
+  const { employee_int_id, dept_id, org_id, hideAssign, backTo, selectedAssetType } = location.state || {};
 
   // Helper to generate a unique assignment ID
   const generateUniqueId = () => `AA${Date.now()}`;
@@ -98,19 +98,27 @@ const AssetsDetail = ({ userRole }) => {
         <div className="flex justify-end gap-3">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (backTo) {
+                navigate(backTo, { state: { selectedAssetType } });
+              } else {
+                navigate(-1);
+              }
+            }}
             className="bg-gray-300 text-gray-700 px-8 py-2 rounded-lg text-base font-semibold hover:bg-gray-400 transition shadow-sm"
           >
             Cancel
           </button>
-          <button
-            type="button"
-           onClick={handleAssignAsset}
-           className="bg-[#0E2F4B] text-white px-8 py-2 rounded-lg text-base font-semibold hover:bg-[#1a4971] transition shadow-sm"
-           disabled={!assetDetails || !employee_int_id || !dept_id || !org_id}
-          >
-            Assign
-          </button>
+          {!hideAssign && (
+            <button
+              type="button"
+              onClick={handleAssignAsset}
+              className="bg-[#0E2F4B] text-white px-8 py-2 rounded-lg text-base font-semibold hover:bg-[#1a4971] transition shadow_sm"
+              disabled={!assetDetails || !employee_int_id || !dept_id || !org_id}
+            >
+              Assign
+            </button>
+          )}
         </div>
       </form>
     </div>

@@ -29,7 +29,9 @@ import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
 import CronJobManagement from "../pages/CronJobManagement";
 import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
-import ReportBreakdown from "../pages/ReportBreakdown";
+import ReportsBreakdown from "../pages/ReportsBreakdown";
+import BreakdownSelection from "../components/reportbreakdown/BreakdownSelection";
+import BreakdownDetails from "../components/reportbreakdown/BreakdownDetails";
 import AdminSettingsView from "../pages/AdminSettingsView";
 import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
 import AuditLogsView from "../pages/AuditLogsView";
@@ -180,7 +182,29 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <MainLayout>
-                <ReportBreakdown />
+                <ReportsBreakdown />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/breakdown-selection"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <BreakdownSelection />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/breakdown-details"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <BreakdownDetails />
               </MainLayout>
             </ProtectedRoute>
           }
