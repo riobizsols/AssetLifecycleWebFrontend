@@ -29,8 +29,7 @@ import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
 import CronJobManagement from "../pages/CronJobManagement";
 import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
-import DatabasePermissionDemo from "../pages/DatabasePermissionDemo";
-import ReportsView from "../pages/ReportsView";
+import ReportBreakdown from "../pages/ReportBreakdown";
 import AdminSettingsView from "../pages/AdminSettingsView";
 import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
 import AuditLogsView from "../pages/AuditLogsView";
@@ -177,22 +176,11 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="/database-permission-demo"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <DatabasePermissionDemo />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
           path="/reports-view"
           element={
             <ProtectedRoute>
               <MainLayout>
-                <ReportsView />
+                <ReportBreakdown />
               </MainLayout>
             </ProtectedRoute>
           }
