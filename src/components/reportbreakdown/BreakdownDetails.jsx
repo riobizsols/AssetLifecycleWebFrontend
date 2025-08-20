@@ -154,7 +154,7 @@ const BreakdownDetails = () => {
     };
     console.log("Create breakdown payload", payload);
     toast.success("Breakdown draft created");
-    navigate("/reports-view");
+    navigate("/report-breakdown");
   };
 
   return (

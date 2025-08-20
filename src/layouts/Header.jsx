@@ -13,7 +13,15 @@ export default function Header() {
   // Map paths to page titles and subtitles
   const pathTitleMap = {
     "/supervisor-approval": { title: "Maintenance Supervisor", subtitle: "" },
-    "/approval-detail": { title: "Maintenance Approval", subtitle: "" },
+    "/assets": { title: "Assets", subtitle: "" },
+    "/assign-department-assets": {
+      title: "Department Assignment",
+      subtitle: "",
+    },
+    "/assign-employee-assets": { title: "Employee Assignment", subtitle: "" },
+    "/workorder-management": { title: "Workorder Management", subtitle: "" },
+    "/maintenance-approval": { title: "Maintenance Approval", subtitle: "" },
+    "/report-breakdown": { title: "Report Breakdown", subtitle: "" },
     "/dashboard": { title: "Dashboard", subtitle: "" },
     "/assets/add": { title: "Add Asset", subtitle: "" },
     "/master-data/asset-types/add": { title: "Add Asset Type", subtitle: "" },
@@ -21,25 +29,57 @@ export default function Header() {
     "/master-data/vendors/add": { title: "Add Vendor", subtitle: "" },
     "/master-data/prod-serv": { title: "Product / Service", subtitle: "" },
     "/group-asset": { title: "Asset Groups", subtitle: "" },
-    "/group-asset/create": { title: "Asset Groups", subtitle: "Create a new asset group" },
-    "/group-asset/edit": { title: "Asset Groups", subtitle: "Edit asset group" },
-    "/group-asset/view": { title: "Asset Groups", subtitle: "View asset group" },
-    "/scrap-sales": { title: "Scrap Sales", subtitle: "Manage asset scrap sales and disposal records" },
-    "/scrap-assets": { title: "Scrap Assets Dashboard", subtitle: "Overview of assets marked for disposal and scrapping" },
+    "/group-asset/create": {
+      title: "Asset Groups",
+      subtitle: "Create a new asset group",
+    },
+    "/group-asset/edit": {
+      title: "Asset Groups",
+      subtitle: "Edit asset group",
+    },
+    "/group-asset/view": {
+      title: "Asset Groups",
+      subtitle: "View asset group",
+    },
+    "/scrap-sales": {
+      title: "Scrap Sales",
+      subtitle: "Manage asset scrap sales and disposal records",
+    },
+    "/scrap-assets": {
+      title: "Scrap Assets Dashboard",
+      subtitle: "Overview of assets marked for disposal and scrapping",
+    },
 
-    "/scrap-assets/nearing-expiry": { title: "Assets Nearing Expiry", subtitle: "Assets that will expire within the next 30 days" },
-    "/scrap-assets/expired": { title: "Expired Assets", subtitle: "Assets that have passed their expiry date" },
-    "/scrap-assets/categories": { title: "All Expiring Categories", subtitle: "Overview of all asset types with expiring assets" },
-    "/scrap-assets/by-category": { title: "Expiring Assets by Category", subtitle: "Assets expiring soon grouped by category" },
-    "/scrap-assets/by-category/:category": { title: "Category Assets", subtitle: "Assets filtered by specific category" },
-    "/scrap-assets/create": { title: "Add Scrap Asset", subtitle: "Manually scrap assets that are not necessarily nearing expiry" },
-    
+    "/scrap-assets/nearing-expiry": {
+      title: "Assets Nearing Expiry",
+      subtitle: "Assets that will expire within the next 30 days",
+    },
+    "/scrap-assets/expired": {
+      title: "Expired Assets",
+      subtitle: "Assets that have passed their expiry date",
+    },
+    "/scrap-assets/categories": {
+      title: "All Expiring Categories",
+      subtitle: "Overview of all asset types with expiring assets",
+    },
+    "/scrap-assets/by-category": {
+      title: "Expiring Assets by Category",
+      subtitle: "Assets expiring soon grouped by category",
+    },
+    "/scrap-assets/by-category/:category": {
+      title: "Category Assets",
+      subtitle: "Assets filtered by specific category",
+    },
+    "/scrap-assets/create": {
+      title: "Add Scrap Asset",
+      subtitle: "Manually scrap assets that are not necessarily nearing expiry",
+    },
+
     // Add more routes as needed
   };
-  const pageInfo =
-    Object.entries(pathTitleMap).find(([path]) =>
-      location.pathname.startsWith(path)
-    )?.[1] || { title: "", subtitle: "" };
+  const pageInfo = Object.entries(pathTitleMap).find(([path]) =>
+    location.pathname.startsWith(path)
+  )?.[1] || { title: "", subtitle: "" };
 
   const handleLogout = () => {
     logout();
@@ -76,9 +116,7 @@ export default function Header() {
           {pageInfo.title}
         </div>
         {pageInfo.subtitle && (
-          <div className="text-sm text-gray-600">
-            {pageInfo.subtitle}
-          </div>
+          <div className="text-sm text-gray-600">{pageInfo.subtitle}</div>
         )}
       </div>
       <div className="relative" ref={dropdownRef}>

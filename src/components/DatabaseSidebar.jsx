@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
-import { 
-  Menu, 
-  Eye, 
-  Edit, 
-  Shield, 
-  Lock, 
-  ChevronDown, 
+import {
+  Menu,
+  Eye,
+  Edit,
+  Shield,
+  Lock,
+  ChevronDown,
   ChevronRight,
   LayoutDashboard,
   Package,
@@ -25,11 +25,18 @@ import {
   Home,
   Database,
   Calendar,
-  History
+  History,
 } from "lucide-react";
 
 const DatabaseSidebar = () => {
-  const { navigation, loading, error, getAccessLevel, getAccessLevelLabel, getAccessLevelColor } = useNavigation();
+  const {
+    navigation,
+    loading,
+    error,
+    getAccessLevel,
+    getAccessLevelLabel,
+    getAccessLevelColor,
+  } = useNavigation();
   const location = useLocation();
   const [openDropdown, setOpenDropdown] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -43,9 +50,9 @@ const DatabaseSidebar = () => {
   // Get icon based on access level
   const getAccessIcon = (accessLevel) => {
     switch (accessLevel) {
-      case 'A':
+      case "A":
         return <Shield size={12} className="text-green-400" />;
-      case 'D':
+      case "D":
         return <Eye size={12} className="text-yellow-400" />;
       default:
         return <Lock size={12} className="text-red-400" />;
@@ -55,9 +62,9 @@ const DatabaseSidebar = () => {
   // Get color class based on access level
   const getAccessColorClass = (accessLevel) => {
     switch (accessLevel) {
-      case 'A':
+      case "A":
         return "border-l-2 border-green-400";
-      case 'D':
+      case "D":
         return "border-l-2 border-yellow-400";
       default:
         return "border-l-2 border-red-400";
@@ -66,70 +73,68 @@ const DatabaseSidebar = () => {
 
   // Map app_id to route paths
   const appIdToPath = {
-    'DASHBOARD': '/dashboard',
-    'ASSETS': '/assets',
-    'ADDASSET': '/assets/add',
-    'ASSETASSIGNMENT': '/assign-department-assets',
-    'VENDORS': '/master-data/vendors',
-    'DEPTASSIGNMENT': '/assign-department-assets',
-    'EMPASSIGNMENT': '/assign-employee-assets',
-    'MAINTENANCE': '/maintenance-view', // Separate route for maintenance
-    'INSPECTION': '/inspection-view', // Separate route for inspection
-    'MAINTENANCEAPPROVAL': '/maintenance-approval',
-    'SUPERVISORAPPROVAL': '/supervisor-approval',
-    'REPORTS': '/reports-view', // Unique route for reports
-    'ADMINSETTINGS': '/admin-settings-view', // Unique route for admin settings
-    'MASTERDATA': '/master-data/vendors',
-    'ORGANIZATIONS': '/master-data/organizations',
-    'ASSETTYPES': '/master-data/asset-types',
-    'DEPARTMENTS': '/master-data/departments',
-    'DEPARTMENTSADMIN': '/master-data/departments-admin',
-    'DEPARTMENTSASSET': '/master-data/departments-asset',
-    'BRANCHES': '/master-data/branches',
-    'PRODSERV': '/master-data/prod-serv',
-    'ROLES': '/master-data/roles',
-    'USERS': '/master-data/users',
-    'MAINTENANCESCHEDULE': '/maintenance-schedule-view', // Unique route
-    'AUDITLOGS': '/audit-logs-view', // Unique route
-    'GROUPASSET': '/group-asset', // Group Asset route
-    'CREATEGROUPASSET': '/group-asset/create', // Create Group Asset route
-    'SCRAPSALES': '/scrap-sales', // Scrap Sales route
-    'SCRAPASSETS': '/scrap-assets' // Scrap Assets route
+    DASHBOARD: "/dashboard",
+    ASSETS: "/assets",
+    ADDASSET: "/assets/add",
+    ASSETASSIGNMENT: "/assign-department-assets",
+    VENDORS: "/master-data/vendors",
+    DEPTASSIGNMENT: "/assign-department-assets",
+    EMPASSIGNMENT: "/assign-employee-assets",
+    WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance
+    INSPECTION: "/inspection-view", // Separate route for inspection
+    MAINTENANCEAPPROVAL: "/maintenance-approval",
+    SUPERVISORAPPROVAL: "/supervisor-approval",
+    REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports
+    ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings
+    MASTERDATA: "/master-data/vendors",
+    ORGANIZATIONS: "/master-data/organizations",
+    ASSETTYPES: "/master-data/asset-types",
+    DEPARTMENTS: "/master-data/departments",
+    DEPARTMENTSADMIN: "/master-data/departments-admin",
+    DEPARTMENTSASSET: "/master-data/departments-asset",
+    BRANCHES: "/master-data/branches",
+    PRODSERV: "/master-data/prod-serv",
+    ROLES: "/master-data/roles",
+    USERS: "/master-data/users",
+    MAINTENANCESCHEDULE: "/maintenance-schedule-view", // Unique route
+    AUDITLOGS: "/audit-logs-view", // Unique route
+    GROUPASSET: "/group-asset", // Group Asset route
+    CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
+    SCRAPSALES: "/scrap-sales", // Scrap Sales route
+    SCRAPASSETS: "/scrap-assets", // Scrap Assets route
   };
-
-
 
   // Dynamic icon component
   const getIconComponent = (appId) => {
     const iconMap = {
-      'DASHBOARD': LayoutDashboard,
-      'ASSETS': Package,
-      'ADDASSET': Package,
-      'ASSETASSIGNMENT': Users,
-      'DEPTASSIGNMENT': Building,
-      'EMPASSIGNMENT': UserCheck,
-      'MAINTENANCE': Wrench,
-      'INSPECTION': CheckSquare,
-      'MAINTENANCEAPPROVAL': ClipboardList,
-      'SUPERVISORAPPROVAL': UserCheck,
-      'REPORTS': BarChart3,
-      'ADMINSETTINGS': Settings,
-      'MASTERDATA': Database,
-      'ORGANIZATIONS': Building,
-      'ASSETTYPES': Package,
-      'DEPARTMENTS': Users,
-      'DEPARTMENTSADMIN': UserCheck,
-      'DEPARTMENTSASSET': Package,
-      'BRANCHES': Home,
-      'VENDORS': Truck,
-      'PRODSERV': Briefcase,
-      'ROLES': Shield,
-      'USERS': Users,
-      'MAINTENANCESCHEDULE': Calendar,
-      'AUDITLOGS': History,
-      'GROUPASSET': Package,
-      'SCRAPSALES': Package,
-      'SCRAPASSETS': Package
+      DASHBOARD: LayoutDashboard,
+      ASSETS: Package,
+      ADDASSET: Package,
+      ASSETASSIGNMENT: Users,
+      DEPTASSIGNMENT: Building,
+      EMPASSIGNMENT: UserCheck,
+      WORKORDERMANAGEMENT: Wrench,
+      INSPECTION: CheckSquare,
+      MAINTENANCEAPPROVAL: ClipboardList,
+      SUPERVISORAPPROVAL: UserCheck,
+      REPORTBREAKDOWN: BarChart3,
+      ADMINSETTINGS: Settings,
+      MASTERDATA: Database,
+      ORGANIZATIONS: Building,
+      ASSETTYPES: Package,
+      DEPARTMENTS: Users,
+      DEPARTMENTSADMIN: UserCheck,
+      DEPARTMENTSASSET: Package,
+      BRANCHES: Home,
+      VENDORS: Truck,
+      PRODSERV: Briefcase,
+      ROLES: Shield,
+      USERS: Users,
+      MAINTENANCESCHEDULE: Calendar,
+      AUDITLOGS: History,
+      GROUPASSET: Package,
+      SCRAPSALES: Package,
+      SCRAPASSETS: Package,
     };
 
     const IconComponent = iconMap[appId] || Building;
@@ -141,31 +146,42 @@ const DatabaseSidebar = () => {
     const path = appIdToPath[item.app_id];
     const accessLevel = getAccessLevel(item.app_id);
     const IconComponent = getIconComponent(item.app_id);
-    
-
 
     if (item.is_group) {
       const hasChildren = item.children && item.children.length > 0;
-      const isAnyChildActive = hasChildren && item.children.some(child => 
-        location.pathname.startsWith(appIdToPath[child.app_id])
-      );
+      const isAnyChildActive =
+        hasChildren &&
+        item.children.some((child) =>
+          location.pathname.startsWith(appIdToPath[child.app_id])
+        );
 
       return (
         <li key={item.id} className="mb-2">
           <div
             onClick={() => toggleDropdown(item.id)}
-            className={`flex items-center justify-between px-3 py-2 cursor-pointer rounded ${
+            className={`group flex items-center justify-between px-3 py-2 cursor-pointer rounded ${
               isAnyChildActive
                 ? "bg-[#FFC107] text-white"
                 : "hover:bg-[#143d65] text-white"
             }`}
+            title={!collapsed ? item.label : ""} // Tooltip for collapsed state
           >
-            <div className="flex items-center gap-2">
-              {IconComponent && <IconComponent />}
-              {!collapsed && <span>{item.label}</span>}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              {IconComponent && <IconComponent className="flex-shrink-0" />}
+              {!collapsed && (
+                <span className="truncate text-sm font-medium">
+                  {item.label}
+                </span>
+              )}
             </div>
             {!collapsed && hasChildren && (
-              <span>{openDropdown === item.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
+              <span className="flex-shrink-0 ml-2">
+                {openDropdown === item.id ? (
+                  <ChevronDown size={16} />
+                ) : (
+                  <ChevronRight size={16} />
+                )}
+              </span>
             )}
           </div>
 
@@ -181,19 +197,26 @@ const DatabaseSidebar = () => {
 
                 return (
                   <li key={child.id} className="mb-1">
-                                         <NavLink
-                       to={childPath || '/dashboard'}
-                       className={({ isActive }) =>
-                         `flex items-center gap-2 px-4 py-2 rounded text-sm ${
-                           isActive
-                             ? "bg-[#FFC107] text-white"
-                             : "hover:bg-[#143d65] text-white"
-                         } ${getAccessColorClass(childAccessLevel)}`
-                       }
-                     >
-                      {ChildIconComponent && <ChildIconComponent />}
-                      <span>{child.label}</span>
-                      {getAccessIcon(childAccessLevel)}
+                    <NavLink
+                      to={childPath || "/dashboard"}
+                      className={({ isActive }) =>
+                        `group flex items-center gap-2 px-4 py-2 rounded text-sm ${
+                          isActive
+                            ? "bg-[#FFC107] text-white"
+                            : "hover:bg-[#143d65] text-white"
+                        } ${getAccessColorClass(childAccessLevel)}`
+                      }
+                      title={child.label}
+                    >
+                      {ChildIconComponent && (
+                        <ChildIconComponent className="flex-shrink-0" />
+                      )}
+                      <span className="truncate flex-1 min-w-0">
+                        {child.label}
+                      </span>
+                      <span className="flex-shrink-0">
+                        {getAccessIcon(childAccessLevel)}
+                      </span>
                     </NavLink>
                   </li>
                 );
@@ -206,24 +229,33 @@ const DatabaseSidebar = () => {
       // Only show items that have access
       if (!accessLevel) return null;
 
-             return (
-         <li key={item.id} className="mb-2">
-           <NavLink
-             to={path || '/dashboard'}
-             className={({ isActive }) =>
-               `flex items-center gap-2 px-4 py-2 rounded ${
-                 isActive
-                   ? "bg-[#FFC107] text-white"
-                   : "hover:bg-[#143d65] text-white"
-               } ${getAccessColorClass(accessLevel)}`
-             }
-           >
-             {IconComponent && <IconComponent />}
-             {!collapsed && <span>{item.label}</span>}
-             {!collapsed && getAccessIcon(accessLevel)}
-           </NavLink>
-         </li>
-       );
+      return (
+        <li key={item.id} className="mb-2">
+          <NavLink
+            to={path || "/dashboard"}
+            className={({ isActive }) =>
+              `group flex items-center gap-2 px-4 py-2 rounded ${
+                isActive
+                  ? "bg-[#FFC107] text-white"
+                  : "hover:bg-[#143d65] text-white"
+              } ${getAccessColorClass(accessLevel)}`
+            }
+            title={!collapsed ? item.label : ""}
+          >
+            {IconComponent && <IconComponent className="flex-shrink-0" />}
+            {!collapsed && (
+              <span className="truncate flex-1 min-w-0 text-sm font-medium">
+                {item.label}
+              </span>
+            )}
+            {!collapsed && (
+              <span className="flex-shrink-0">
+                {getAccessIcon(accessLevel)}
+              </span>
+            )}
+          </NavLink>
+        </li>
+      );
     }
   };
 
@@ -282,10 +314,8 @@ const DatabaseSidebar = () => {
           navigation.map((item) => renderNavigationItem(item))
         )}
       </ul>
-
-
     </aside>
   );
 };
 
-export default DatabaseSidebar; 
+export default DatabaseSidebar;

@@ -35,7 +35,6 @@ import BreakdownDetails from "../components/reportbreakdown/BreakdownDetails";
 import AdminSettingsView from "../pages/AdminSettingsView";
 import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
 import AuditLogsView from "../pages/AuditLogsView";
-import MaintenanceView from "../pages/MaintenanceView";
 import InspectionView from "../pages/InspectionView";
 import GroupAsset from "../pages/GroupAsset";
 import CreateGroupAsset from "../components/groupAsset/CreateGroupAsset";
@@ -53,6 +52,7 @@ import ExpiringByCategory from "../components/scrapAssets/ExpiringByCategory";
 import CategoryAssets from "../components/scrapAssets/CategoryAssets";
 import CategoriesOverview from "../components/scrapAssets/CategoriesOverview";
 import CreateScrapAsset from "../components/scrapAssets/CreateScrapAsset";
+import WorkorderManagement from "../pages/WorkorderManagement";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -123,7 +123,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/maintenance-approval"
           element={
@@ -178,7 +178,7 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="/reports-view"
+          path="/report-breakdown"
           element={
             <ProtectedRoute>
               <MainLayout>
@@ -244,11 +244,11 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="/maintenance-view"
+          path="/workorder-management"
           element={
             <ProtectedRoute>
               <MainLayout>
-                <MaintenanceView />
+                <WorkorderManagement />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -306,10 +306,8 @@ export default function AppRoutes() {
           }
         />
 
-        
-
-          <Route
-            path="/assets"
+        <Route
+          path="/assets"
           element={
             <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
@@ -323,11 +321,10 @@ export default function AppRoutes() {
           <Route path="add" element={<AddAssetForm />} />
         </Route>
 
-
-                  <Route
+        <Route
           path="/master-data/asset-types"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -339,11 +336,10 @@ export default function AppRoutes() {
           <Route path="add" element={<AddAssetType />} />
         </Route>
 
-        
         <Route
           path="/master-data/prod-serv"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "employee","JR001"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "employee", "JR001"]}>
               <MainLayout>
                 <ProdServ />
               </MainLayout>
@@ -354,7 +350,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/users"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <Users />
               </MainLayout>
@@ -374,7 +370,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/departments-admin"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <DepartmentsAdmin />
               </MainLayout>
@@ -384,7 +380,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/departments-asset"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <DepartmentsAsset />
               </MainLayout>
@@ -401,13 +397,11 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
 
-
-      <Route
+        <Route
           path="/master-data/vendors"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -424,7 +418,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/branches"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin","JR001"]}>
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -549,8 +543,6 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-
-
       </Routes>
     </BrowserRouter>
   );
