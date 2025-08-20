@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { useAuthStore } from "../../store/auth";
+import { useAuthStore } from "../../store/useAuthStore";
 import API from "../../lib/axios";
 
 const BreakdownDetails = () => {
@@ -14,16 +14,12 @@ const BreakdownDetails = () => {
   const isReadOnly = !!existingBreakdown;
 
   const [reasonCodes, setReasonCodes] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [users, setUsers] = useState([]);
-
   const [brCode, setBrCode] = useState("");
   const [description, setDescription] = useState("");
-  const [reportedByType, setReportedByType] = useState("Department");
-  const [reportedByDeptId, setReportedByDeptId] = useState("");
-  const [reportedByUserId, setReportedByUserId] = useState("");
+  const [reportedByType, setReportedByType] = useState("");
   const [createMaintenance, setCreateMaintenance] = useState("Yes");
   const [upcomingMaintenanceDate, setUpcomingMaintenanceDate] = useState("");
+  const [assetTypeDetails, setAssetTypeDetails] = useState(null);
 
   const assetId = useMemo(
     () => existingBreakdown?.asset_id || selectedAsset?.asset_id || "",
@@ -36,17 +32,38 @@ const BreakdownDetails = () => {
   );
 
   useEffect(() => {
+    // Fetch asset type details when asset type changes
+    const fetchAssetTypeDetails = async () => {
+      if (!assetTypeId) return;
+      try {
+        const response = await API.get(`/asset-types/${assetTypeId}`);
+        const typeDetails = response.data;
+        if (!typeDetails?.assignment_type) {
+          throw new Error("No assignment type found for this asset type");
+        }
+        setAssetTypeDetails(typeDetails);
+        setReportedByType(typeDetails.assignment_type);
+      } catch (err) {
+        console.error("Failed to fetch asset type details:", err);
+        toast.error(err.message || "Failed to fetch asset type details");
+        navigate(-1); // Go back if we can't get the required assignment type
+      }
+    };
+
+    fetchAssetTypeDetails();
+  }, [assetTypeId]);
+
+  useEffect(() => {
     // Prefill when viewing existing breakdown
     if (existingBreakdown) {
       setBrCode(
         existingBreakdown.br_code || existingBreakdown.reason_code || ""
       );
       setDescription(existingBreakdown.description || "");
+      setReportedByType(assetTypeDetails?.assignment_type || "Department");
       if (existingBreakdown.reported_by_user_id) {
-        setReportedByType("User");
         setReportedByUserId(existingBreakdown.reported_by_user_id);
       } else if (existingBreakdown.reported_by_dept_id) {
-        setReportedByType("Department");
         setReportedByDeptId(existingBreakdown.reported_by_dept_id);
       }
       if (existingBreakdown.create_maintenance !== undefined) {
@@ -63,16 +80,8 @@ const BreakdownDetails = () => {
           setUpcomingMaintenanceDate(`${yyyy}-${mm}-${dd}`);
         } catch {}
       }
-    } else {
-      // Default reported by based on asset - if it looks employee-bound, choose User else Department
-      if (selectedAsset?.employee_int_id) {
-        setReportedByType("User");
-      } else {
-        setReportedByType("Department");
-        if (selectedAsset?.dept_id) setReportedByDeptId(selectedAsset.dept_id);
-      }
     }
-  }, [existingBreakdown, selectedAsset]);
+  }, [existingBreakdown, assetTypeDetails]);
 
   useEffect(() => {
     const fetchReasonCodes = async () => {
@@ -96,28 +105,6 @@ const BreakdownDetails = () => {
     };
     fetchReasonCodes();
   }, [assetTypeId, user?.org_id]);
-
-  useEffect(() => {
-    const fetchSupportingLists = async () => {
-      try {
-        const [deptRes, usersRes] = await Promise.allSettled([
-          API.get("/admin/departments"),
-          API.get("/users/get-users"),
-        ]);
-        if (deptRes.status === "fulfilled") {
-          setDepartments(
-            Array.isArray(deptRes.value.data) ? deptRes.value.data : []
-          );
-        }
-        if (usersRes.status === "fulfilled") {
-          setUsers(
-            Array.isArray(usersRes.value.data) ? usersRes.value.data : []
-          );
-        }
-      } catch {}
-    };
-    fetchSupportingLists();
-  }, []);
 
   useEffect(() => {
     const fetchUpcomingMaintenance = async () => {
@@ -250,66 +237,11 @@ const BreakdownDetails = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Reported By
+                Reported By Type
               </label>
-              <div className="flex gap-4 mb-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="reportedByType"
-                    value="Department"
-                    checked={reportedByType === "Department"}
-                    onChange={() => setReportedByType("Department")}
-                    disabled={isReadOnly}
-                  />
-                  Department
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="reportedByType"
-                    value="User"
-                    checked={reportedByType === "User"}
-                    onChange={() => setReportedByType("User")}
-                    disabled={isReadOnly}
-                  />
-                  User
-                </label>
+              <div className="px-3 py-2 text-sm border rounded bg-gray-50">
+                {assetTypeDetails?.assignment_type || "Loading..."}
               </div>
-              {reportedByType === "Department" ? (
-                <select
-                  className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
-                  value={reportedByDeptId}
-                  onChange={(e) => setReportedByDeptId(e.target.value)}
-                  disabled={isReadOnly}
-                  required
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((d) => (
-                    <option key={d.dept_id || d.id} value={d.dept_id || d.id}>
-                      {d.text || d.dept_name || d.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <select
-                  className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
-                  value={reportedByUserId}
-                  onChange={(e) => setReportedByUserId(e.target.value)}
-                  disabled={isReadOnly}
-                  required
-                >
-                  <option value="">Select User</option>
-                  {users.map((u) => (
-                    <option
-                      key={u.emp_int_id || u.user_id || u.id}
-                      value={u.emp_int_id || u.user_id || u.id}
-                    >
-                      {u.full_name || u.user_name || u.name}
-                    </option>
-                  ))}
-                </select>
-              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

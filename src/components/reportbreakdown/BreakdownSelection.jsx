@@ -53,7 +53,11 @@ const BreakdownSelection = () => {
   const fetchInactiveAssetsByType = async (assetTypeId) => {
     try {
       const res = await API.get(`/assets/type/${assetTypeId}/inactive`);
-      const assetsArr = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      const assetsArr = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+        ? res.data
+        : [];
       setInactiveAssets(assetsArr);
     } catch (err) {
       console.error("Failed to fetch inactive assets", err);
@@ -123,13 +127,17 @@ const BreakdownSelection = () => {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="bg-white rounded shadow mb-4">
-        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">Breakdown Selection</div>
+        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
+          Breakdown Selection
+        </div>
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
             <button
               onClick={() => setActiveTab("select")}
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === "select" ? "border-b-2 border-[#0E2F4B] text-[#0E2F4B]" : "text-gray-500 hover:text-gray-700"
+                activeTab === "select"
+                  ? "border-b-2 border-[#0E2F4B] text-[#0E2F4B]"
+                  : "text-gray-500 hover:text-gray-700"
               }`}
             >
               Select Asset
@@ -137,7 +145,9 @@ const BreakdownSelection = () => {
             <button
               onClick={() => setActiveTab("scan")}
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === "scan" ? "border-b-2 border-[#0E2F4B] text-[#0E2F4B]" : "text-gray-500 hover:text-gray-700"
+                activeTab === "scan"
+                  ? "border-b-2 border-[#0E2F4B] text-[#0E2F4B]"
+                  : "text-gray-500 hover:text-gray-700"
               }`}
             >
               Scan Asset
@@ -149,7 +159,9 @@ const BreakdownSelection = () => {
           {activeTab === "select" ? (
             <div className="flex gap-4 items-end">
               <div className="w-64">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Asset Type
+                </label>
                 <select
                   className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
                   value={selectedAssetType || ""}
@@ -165,7 +177,10 @@ const BreakdownSelection = () => {
               </div>
 
               <div className="flex gap-2">
-                <button className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm" onClick={() => navigate(-1)}>
+                <button
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
+                  onClick={() => navigate(-1)}
+                >
                   Cancel
                 </button>
               </div>
@@ -173,7 +188,9 @@ const BreakdownSelection = () => {
           ) : (
             <form onSubmit={handleScanSubmit} className="flex gap-4 items-end">
               <div className="w-64">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Asset ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Asset ID
+                </label>
                 <div className="relative">
                   <input
                     type="text"
@@ -193,10 +210,18 @@ const BreakdownSelection = () => {
               </div>
 
               <div className="flex gap-2">
-                <button type="button" className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text_sm" onClick={() => navigate(-1)}>
+                <button
+                  type="button"
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text_sm"
+                  onClick={() => navigate(-1)}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="bg-[#0E2F4B] text-white px-4 py-2 rounded text_sm disabled:opacity-50" disabled={!scannedAssetId}>
+                <button
+                  type="submit"
+                  className="bg-[#0E2F4B] text-white px-4 py-2 rounded text_sm disabled:opacity-50"
+                  disabled={!scannedAssetId}
+                >
                   Create Breakdown
                 </button>
               </div>
@@ -206,54 +231,90 @@ const BreakdownSelection = () => {
       </div>
 
       {activeTab === "select" && (
-        <div className={`bg-white rounded shadow transition-all duration-300 ${isMaximized ? "fixed inset-0 z-50 p-6 m-6 overflow-auto" : ""}`}>
+        <div
+          className={`bg-white rounded shadow transition-all duration-300 ${
+            isMaximized ? "fixed inset-0 z-50 p-6 m-6 overflow-auto" : ""
+          }`}
+        >
           <div className="bg-white rounded shadow">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
               Available Assets
-              <button onClick={() => setIsMaximized((prev) => !prev)}>{isMaximized ? <Minimize className="text-[#0E2F4B]" size={18} /> : <Maximize className="text-[#0E2F4B]" size={18} />}</button>
+              <button onClick={() => setIsMaximized((prev) => !prev)}>
+                {isMaximized ? (
+                  <Minimize className="text-[#0E2F4B]" size={18} />
+                ) : (
+                  <Maximize className="text-[#0E2F4B]" size={18} />
+                )}
+              </button>
             </div>
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
               {inactiveAssets.length > 0 && (
-                <div className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400`} style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
+                <div
+                  className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400`}
+                  style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
+                >
                   <div>Asset Type ID</div>
                   <div>Asset ID</div>
                   <div>Asset Type Name</div>
                   <div>Asset Name</div>
-                  <div>Vendor ID</div>
+                  <div>Service Vendor ID</div>
                   <div>Product/Service ID</div>
                   <div className="flex justify-center">Actions</div>
                 </div>
               )}
 
-              <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}>
+              <div
+                className={`${
+                  isMaximized ? "max-h-[60vh] overflow-y-auto" : ""
+                }`}
+              >
                 {inactiveAssets.map((asset, i) => (
                   <div
                     key={asset.asset_id}
-                    className={`grid px-4 py-2 items-center border-b ${i % 2 === 0 ? "bg-white" : "bg-gray-100"} text-gray-800 hover:bg-gray-200`}
+                    className={`grid px-4 py-2 items-center border-b ${
+                      i % 2 === 0 ? "bg-white" : "bg-gray-100"
+                    } text-gray-800 hover:bg-gray-200`}
                     style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
                   >
                     <div>{asset.asset_type_id}</div>
                     <div>
                       <button
                         className="text-blue-600 underline hover:text-blue-800"
-                        onClick={() => navigate(`/asset-detail/${asset.asset_id}`, { state: { hideAssign: true, backTo: '/breakdown-selection', selectedAssetType } })}
+                        onClick={() =>
+                          navigate(`/asset-detail/${asset.asset_id}`, {
+                            state: {
+                              hideAssign: true,
+                              backTo: "/breakdown-selection",
+                              selectedAssetType,
+                            },
+                          })
+                        }
                       >
                         {asset.asset_id}
                       </button>
                     </div>
                     <div>{asset.text}</div>
-                    <div title={asset.description}>{asset.description && asset.description.length > 15 ? asset.description.slice(0, 15) + "..." : asset.description}</div>
-                    <div>{asset.vendor_id}</div>
+                    <div title={asset.description}>
+                      {asset.description && asset.description.length > 15
+                        ? asset.description.slice(0, 15) + "..."
+                        : asset.description}
+                    </div>
+                    <div>{asset.service_vendor_id}</div>
                     <div>{asset.prod_serv_id}</div>
                     <div className="flex justify-center">
-                      <button onClick={() => goToBreakdownDetails(asset)} className="bg-[#0E2F4B] text-white px-3 py-1 rounded text_sm hover:bg-[#1a4971] transition-colors">
+                      <button
+                        onClick={() => goToBreakdownDetails(asset)}
+                        className="bg-[#0E2F4B] text-white px-3 py-1 rounded text_sm hover:bg-[#1a4971] transition-colors"
+                      >
                         Create Breakdown
                       </button>
                     </div>
                   </div>
                 ))}
                 {inactiveAssets.length === 0 && (
-                  <div className="px-4 py-6 text-center text-gray-500 col-span-4 bg-white rounded-b">No inactive assets found for this type.</div>
+                  <div className="px-4 py-6 text-center text-gray-500 col-span-4 bg-white rounded-b">
+                    No inactive assets found for this type.
+                  </div>
                 )}
               </div>
             </div>
@@ -265,8 +326,13 @@ const BreakdownSelection = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Scan Barcode</h3>
-              <button onClick={stopScanner} className="text-gray-400 hover:text-gray-600">
+              <h3 className="text-lg font-medium text-gray-900">
+                Scan Barcode
+              </h3>
+              <button
+                onClick={stopScanner}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -280,11 +346,16 @@ const BreakdownSelection = () => {
             </div>
 
             <div className="p-4 text-center">
-              <p className="text-sm text-gray-600">Position the barcode within the scanning area</p>
+              <p className="text-sm text-gray-600">
+                Position the barcode within the scanning area
+              </p>
             </div>
 
             <div className="p-4 border-t flex justify-end">
-              <button onClick={stopScanner} className="bg-gray-200 text-gray-800 px-4 py-2 rounded text_sm hover:bg-gray-300">
+              <button
+                onClick={stopScanner}
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded text_sm hover:bg-gray-300"
+              >
                 Cancel
               </button>
             </div>
@@ -296,6 +367,3 @@ const BreakdownSelection = () => {
 };
 
 export default BreakdownSelection;
-
-
-
