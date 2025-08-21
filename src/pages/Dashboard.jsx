@@ -56,13 +56,13 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      <div className="w-full max-w-none xl:max-w-7xl 2xl:max-w-none mx-auto space-y-4 sm:space-y-6">
         {/* Removed Dashboard heading section */}
 
         <DashboardMetrics metrics={metrics} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
           <Card onClick={() => navigate("/department-distribution")}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-semibold">
@@ -88,7 +88,7 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
           <Card onClick={() => navigate("/department-details")}>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
@@ -116,12 +116,12 @@ const Dashboard = () => {
         </div>
 
         {/* Cron Job Monitor - Added for maintenance schedule generation */}
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
           <CronJobMonitor />
         </div>
 
         {/* Depreciation Cron Job Trigger */}
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
           <DashboardCronJobTrigger />
         </div>
       </div>
