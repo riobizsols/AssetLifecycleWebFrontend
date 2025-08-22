@@ -233,6 +233,17 @@ export default function AppRoutes() {
           }
         />
 
+        {/* <Route
+          path="/master-data/roles"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Roles />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        /> */}
+        
         <Route
           path="/audit-logs-view"
           element={

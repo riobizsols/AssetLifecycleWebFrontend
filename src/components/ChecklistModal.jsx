@@ -4,6 +4,10 @@ import { CheckCircle, X } from "lucide-react";
 export default function ChecklistModal({ assetType, open, onClose, checklist = [] }) {
   if (!open) return null;
 
+  console.log('ChecklistModal received checklist:', checklist);
+  console.log('Checklist type:', typeof checklist);
+  console.log('Checklist length:', checklist?.length);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg relative">
@@ -26,12 +30,23 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
         {/* Checklist */}
         <div className="px-6 pb-6 pt-2 max-h-80 overflow-y-auto">
           <ul className="list-disc pl-6">
-            {checklist.length > 0 ? (
-              checklist.map((checklistItem, idx) => (
-                <li key={checklistItem.id || idx} className="mb-1 text-gray-800">
-                  {checklistItem.item}
-                </li>
-              ))
+            {checklist && checklist.length > 0 ? (
+              checklist.map((checklistItem, idx) => {
+                console.log('Rendering checklist item:', checklistItem);
+                // Handle different possible data structures
+                const itemText = checklistItem.item || 
+                               checklistItem.description || 
+                               checklistItem.task || 
+                               checklistItem.text || 
+                               checklistItem.name ||
+                               (typeof checklistItem === 'string' ? checklistItem : JSON.stringify(checklistItem));
+                
+                return (
+                  <li key={checklistItem.id || checklistItem.checklist_id || idx} className="mb-1 text-gray-800">
+                    {itemText}
+                  </li>
+                );
+              })
             ) : (
               <li className="text-gray-400 italic">No checklist items found.</li>
             )}

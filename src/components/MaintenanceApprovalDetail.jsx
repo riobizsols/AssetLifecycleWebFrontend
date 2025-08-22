@@ -184,6 +184,7 @@ const MaintenanceApprovalDetail = () => {
           console.log('Full approval details response:', response.data.data);
           console.log('All keys in response:', Object.keys(response.data.data));
           console.log('Vendor details in response:', response.data.data?.vendorDetails);
+          console.log('Checklist in response:', response.data.data?.checklist);
           console.log('Response data type:', typeof response.data.data);
           setApprovalDetails(response.data.data);
           // Set workflow steps from API data
@@ -203,7 +204,8 @@ const MaintenanceApprovalDetail = () => {
           vendor: "VendorX",
           assetType: "Hardware",
           assetId: id,
-          notes: null
+          notes: null,
+          checklist: [] // Empty array - real checklist should come from API
         });
         // Fallback to mock steps
         setSteps(mockApiResponse.steps);
@@ -518,7 +520,10 @@ const MaintenanceApprovalDetail = () => {
                         <div className="flex flex-col justify-end">
                           <label className="block text-sm font-medium mb-1 text-gray-700">Checklist</label>
                           <button
-                            onClick={() => setShowChecklist(true)}
+                            onClick={() => {
+                              console.log('Opening checklist with data:', approvalDetails?.checklist);
+                              setShowChecklist(true);
+                            }}
                             className="w-full px-3 py-2 border border-gray-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition"
                             title="View and complete the asset maintenance checklist"
                             type="button"
