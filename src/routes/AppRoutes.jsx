@@ -53,6 +53,7 @@ import CategoryAssets from "../components/scrapAssets/CategoryAssets";
 import CategoriesOverview from "../components/scrapAssets/CategoriesOverview";
 import CreateScrapAsset from "../components/scrapAssets/CreateScrapAsset";
 import WorkorderManagement from "../pages/WorkorderManagement";
+import WorkOrderDetail from "../pages/WorkOrderDetail";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -249,6 +250,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <WorkorderManagement />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/workorder-management/workorder-detail/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <WorkOrderDetail />
               </MainLayout>
             </ProtectedRoute>
           }
