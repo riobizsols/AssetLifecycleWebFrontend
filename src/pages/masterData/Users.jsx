@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import DeleteConfirmModal from "../../components/DeleteConfirmModal";
+import { useNavigation } from "../../hooks/useNavigation";
 
 const Users = () => {
   const navigate = useNavigate();
@@ -21,6 +22,10 @@ const Users = () => {
   const [sortConfig, setSortConfig] = useState({
     sorts: []
   });
+  
+  // Access control
+  const { hasEditAccess } = useNavigation();
+  const canEdit = hasEditAccess('USERS');
   
   // State for edit modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -488,12 +493,14 @@ const Users = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={() => navigate("/master-data/add-user")}
-        onDeleteSelected={handleDelete}  // Changed from onDelete to onDeleteSelected
+        onAdd={canEdit ? () => navigate("/master-data/add-user") : null}
+        onDeleteSelected={canEdit ? handleDelete : null}
         onDownload={handleDownload}
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        showAddButton={canEdit}
+        showActions={canEdit}
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
@@ -506,16 +513,17 @@ const Users = () => {
               data={sortedData}
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
-              onEdit={(row) => {
+              onEdit={canEdit ? (row) => {
                 setEditingUser(row);
                 setShowEditModal(true);
-              }}
-              onDelete={(row) => {
+              } : null}
+              onDelete={canEdit ? (row) => {
                 console.log("Delete clicked for row:", row);
                 // setUserToDelete(row); // This state was removed
                 // setShowDeleteModal(true); // This state was removed
-              }}
+              } : null}
               rowKey="user_id"
+              showActions={canEdit}
             />
           );
         }}

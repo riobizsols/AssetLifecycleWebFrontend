@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import UpdateAssetTypeModal from "../components/UpdateAssetTypeModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
+import { useNavigation } from "../hooks/useNavigation";
 
 const AssetType = () => {
   const navigate = useNavigate();
@@ -21,6 +22,11 @@ const AssetType = () => {
   const [sortConfig, setSortConfig] = useState({
     sorts: []
   });
+  
+  // Access control
+  const { hasEditAccess } = useNavigation();
+  const canEdit = hasEditAccess('ASSETTYPES');
+  
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAssetType, setSelectedAssetType] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -342,12 +348,14 @@ const AssetType = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={() => navigate('/master-data/asset-types/add')}
-        onDeleteSelected={handleDeleteClick}
+        onAdd={canEdit ? () => navigate('/master-data/asset-types/add') : null}
+        onDeleteSelected={canEdit ? handleDeleteClick : null}
         onDownload={handleDownload}
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        showAddButton={canEdit}
+        showActions={canEdit}
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
@@ -361,8 +369,9 @@ const AssetType = () => {
                 data={sortedData}
                 selectedRows={selectedRows}
                 setSelectedRows={setSelectedRows}
-                onEdit={handleEdit}
+                onEdit={canEdit ? handleEdit : null}
                 rowKey="asset_type_id"
+                showActions={canEdit}
               />
               {updateModalOpen && (
                 <UpdateAssetTypeModal

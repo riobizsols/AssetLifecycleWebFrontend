@@ -7,6 +7,7 @@ import { exportToExcel } from "../../utils/exportToExcel";
 import { useNavigate } from "react-router-dom";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
+import { useNavigation } from "../../hooks/useNavigation";
 
 const Vendors = () => {
   const navigate = useNavigate();
@@ -23,6 +24,10 @@ const Vendors = () => {
   const [sortConfig, setSortConfig] = useState({
     sorts: []
   });
+  
+  // Access control
+  const { hasEditAccess } = useNavigation();
+  const canEdit = hasEditAccess('VENDORS');
 
   const [columns] = useState([
     { label: "Vendor ID", name: "vendor_id", visible: true },
@@ -250,12 +255,14 @@ const Vendors = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={() => navigate("/master-data/add-vendor")}
-        onDeleteSelected={handleDelete}
+        onAdd={canEdit ? () => navigate("/master-data/add-vendor") : null}
+        onDeleteSelected={canEdit ? handleDelete : null}
         onDownload={handleDownload}
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        showAddButton={canEdit}
+        showActions={canEdit}
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
@@ -269,9 +276,10 @@ const Vendors = () => {
                 data={sortedData}
                 selectedRows={selectedRows}
                 setSelectedRows={setSelectedRows}
-                onEdit={handleEdit}
-                onDelete={(row) => console.log("Delete vendor:", row)}
+                onEdit={canEdit ? handleEdit : null}
+                onDelete={canEdit ? (row) => console.log("Delete vendor:", row) : null}
                 rowKey="vendor_id"
+                showActions={canEdit}
               />
               <EditVendorModal
                 show={showEditModal}

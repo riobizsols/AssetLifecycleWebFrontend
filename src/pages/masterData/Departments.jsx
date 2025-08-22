@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
+import { useNavigation } from "../../hooks/useNavigation";
 
 const Departments = () => {
   const [departments, setDepartments] = useState([]);
@@ -13,6 +14,10 @@ const Departments = () => {
   const [newDeptName, setNewDeptName] = useState("");
   const [isMaximized, setIsMaximized] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  
+  // Access control
+  const { hasEditAccess } = useNavigation();
+  const canEdit = hasEditAccess('DEPARTMENTS');
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
   useEffect(() => {
@@ -148,11 +153,12 @@ const Departments = () => {
   return (
     <div className="flex">
       <div className="flex-1 p-6 bg-gray-100 relative">
-        {/* Add Form */}
-        <div className="bg-white rounded shadow mb-6">
-          <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-            Add / Modify Departments
-          </div>
+        {/* Add Form - Only show for users with edit access */}
+        {canEdit && (
+          <div className="bg-white rounded shadow mb-6">
+            <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
+              Add / Modify Departments
+            </div>
           <div className="p-4 flex gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Department ID</label>
@@ -182,6 +188,7 @@ const Departments = () => {
             </button>
           </div>
         </div>
+        )}
 
         {/* Department List */}
         <div
@@ -202,10 +209,10 @@ const Departments = () => {
             </div>
 
             <div className="bg-[#0E2F4B] text-white text-sm">
-              <div className="grid grid-cols-3 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+              <div className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400 ${canEdit ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <div>Department Id</div>
                 <div>Department Name</div>
-                <div className="text-center">Actions</div>
+                {canEdit && <div className="text-center">Actions</div>}
               </div>
 
               <div
@@ -216,20 +223,22 @@ const Departments = () => {
                 {departments.map((dept, i) => (
                   <div
                     key={dept.dept_id}
-                    className={`grid grid-cols-3 px-4 py-2 items-center border-b ${
+                    className={`grid px-4 py-2 items-center border-b ${canEdit ? 'grid-cols-3' : 'grid-cols-2'} ${
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800`}
                   >
                     <div>{dept.dept_id}</div>
                     <div>{dept.text}</div>
-                    <div className="flex justify-center gap-4">
-                      <button onClick={() => handleEdit(dept)}>
-                        <Pencil className="text-[#0E2F4B]" size={18} />
-                      </button>
-                      <button onClick={() => handleDelete(dept)}>
-                        <Trash2 className="text-yellow-500" size={18} />
-                      </button>
-                    </div>
+                    {canEdit && (
+                      <div className="flex justify-center gap-4">
+                        <button onClick={() => handleEdit(dept)}>
+                          <Pencil className="text-[#0E2F4B]" size={18} />
+                        </button>
+                        <button onClick={() => handleDelete(dept)}>
+                          <Trash2 className="text-yellow-500" size={18} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

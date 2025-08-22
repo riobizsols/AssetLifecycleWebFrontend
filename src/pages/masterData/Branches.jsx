@@ -7,6 +7,7 @@ import { exportToExcel } from "../../utils/exportToExcel";
 import { useNavigate } from "react-router-dom";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
+import { useNavigation } from "../../hooks/useNavigation";
 
 const Branches = () => {
   const navigate = useNavigate();
@@ -22,6 +23,10 @@ const Branches = () => {
   const [sortConfig, setSortConfig] = useState({
     sorts: []
   });
+  
+  // Access control
+  const { hasEditAccess } = useNavigation();
+  const canEdit = hasEditAccess('BRANCHES');
 
   const [columns] = useState([
     { label: "Branch ID", name: "branch_id", visible: true },
@@ -211,12 +216,14 @@ const Branches = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={() => navigate("/master-data/add-branch")}
-        onDeleteSelected={handleDeleteSelected}
+        onAdd={canEdit ? () => navigate("/master-data/add-branch") : null}
+        onDeleteSelected={canEdit ? handleDeleteSelected : null}
         onDownload={handleDownload}
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        showAddButton={canEdit}
+        showActions={canEdit}
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
@@ -230,8 +237,9 @@ const Branches = () => {
                 data={sortedData}
                 selectedRows={selectedRows}
                 setSelectedRows={setSelectedRows}
-                onEdit={handleEdit}
+                onEdit={canEdit ? handleEdit : null}
                 rowKey="branch_id"
+                showActions={canEdit}
               />
               <EditBranchModal
                 show={showEditModal}

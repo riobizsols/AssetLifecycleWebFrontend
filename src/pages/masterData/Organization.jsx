@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
+import { useNavigation } from "../../hooks/useNavigation";
 
 const Organization = () => {
   const [orgs, setOrgs] = useState([]);
@@ -14,6 +15,10 @@ const Organization = () => {
   // Add validation state
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  
+  // Access control
+  const { hasEditAccess } = useNavigation();
+  const canEdit = hasEditAccess('ORGANIZATIONS');
 
   const toggleMaximize = () => setIsMaximized((p) => !p);
 
@@ -147,11 +152,12 @@ const Organization = () => {
   return (
     <div className="flex">
       <div className="flex-1 p-6 bg-gray-100 relative">
-        {/* Add / Modify */}
-        <div className="bg-white rounded shadow mb-6">
-          <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-            Add Organization
-          </div>
+        {/* Add / Modify - Only show for users with edit access */}
+        {canEdit && (
+          <div className="bg-white rounded shadow mb-6">
+            <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
+              Add Organization
+            </div>
           <div className="p-4 flex gap-4">
             <div className="flex flex-col">
               <label className="text-sm font-medium mb-1">
@@ -197,6 +203,7 @@ const Organization = () => {
             </button>
           </div>
         </div>
+        )}
 
         {/* Organization List */}
         <div
@@ -217,11 +224,11 @@ const Organization = () => {
             </div>
 
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+              <div className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400 ${canEdit ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <div>Name</div>
                 <div>Code</div>
                 <div>City</div>
-                <div className="text-center">Actions</div>
+                {canEdit && <div className="text-center">Actions</div>}
               </div>
               <div
                 className={`${
@@ -231,21 +238,23 @@ const Organization = () => {
                 {orgs.map((org, i) => (
                   <div
                     key={org.org_id || org.id || i}
-                    className={`grid grid-cols-4 px-4 py-2 items-center border-b ${
+                    className={`grid px-4 py-2 items-center border-b ${canEdit ? 'grid-cols-4' : 'grid-cols-3'} ${
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800`}
                   >
                     <div>{org.org_name || org.name || org.text}</div>
                     <div>{org.org_code || org.code}</div>
                     <div>{org.org_city || org.city}</div>
-                    <div className="flex justify-center gap-4">
-                      <button onClick={() => handleEdit(org)}>
-                        <Pencil className="text-[#0E2F4B]" size={18} />
-                      </button>
-                      <button onClick={() => triggerDelete(org)}>
-                        <Trash2 className="text-yellow-500" size={18} />
-                      </button>
-                    </div>
+                    {canEdit && (
+                      <div className="flex justify-center gap-4">
+                        <button onClick={() => handleEdit(org)}>
+                          <Pencil className="text-[#0E2F4B]" size={18} />
+                        </button>
+                        <button onClick={() => triggerDelete(org)}>
+                          <Trash2 className="text-yellow-500" size={18} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
