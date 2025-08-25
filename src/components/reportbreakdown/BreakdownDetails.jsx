@@ -3,6 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "../../store/useAuthStore";
 import API from "../../lib/axios";
+import EnhancedDropdown from "../ui/EnhancedDropdown";
+
+
 
 const BreakdownDetails = () => {
   const navigate = useNavigate();
@@ -17,10 +20,10 @@ const BreakdownDetails = () => {
   const [brCode, setBrCode] = useState("");
   const [description, setDescription] = useState("");
   const [reportedByType, setReportedByType] = useState("");
-  const [createMaintenance, setCreateMaintenance] = useState("Yes");
+  const [decisionCode, setDecisionCode] = useState("");
+  const [priority, setPriority] = useState("");
   const [upcomingMaintenanceDate, setUpcomingMaintenanceDate] = useState("");
   const [assetTypeDetails, setAssetTypeDetails] = useState(null);
-  const [maintenanceRecommendationReason, setMaintenanceRecommendationReason] = useState("");
 
   const assetId = useMemo(
     () => existingBreakdown?.asset_id || selectedAsset?.asset_id || "",
@@ -67,11 +70,12 @@ const BreakdownDetails = () => {
       } else if (existingBreakdown.reported_by_dept_id) {
         setReportedByDeptId(existingBreakdown.reported_by_dept_id);
       }
-      if (existingBreakdown.create_maintenance !== undefined) {
-        setCreateMaintenance(
-          existingBreakdown.create_maintenance ? "Yes" : "No"
-        );
-      }
+             if (existingBreakdown.decision_code) {
+         setDecisionCode(existingBreakdown.decision_code);
+       }
+       if (existingBreakdown.priority) {
+         setPriority(existingBreakdown.priority);
+       }
       if (existingBreakdown.upcoming_maintenance_date) {
         try {
           const d = new Date(existingBreakdown.upcoming_maintenance_date);
@@ -121,24 +125,6 @@ const BreakdownDetails = () => {
           const dd = String(date.getDate()).padStart(2, "0");
           setUpcomingMaintenanceDate(`${yyyy}-${mm}-${dd}`);
         }
-        
-        // Set the maintenance recommendation
-        if (maintenanceData?.create_maintenance_recommendation) {
-          setCreateMaintenance(maintenanceData.create_maintenance_recommendation);
-          
-          // Set the reason for the recommendation
-          if (maintenanceData.days_until_maintenance !== undefined) {
-            if (maintenanceData.days_until_maintenance < 0) {
-              setMaintenanceRecommendationReason(`Maintenance is overdue by ${Math.abs(maintenanceData.days_until_maintenance)} days`);
-            } else if (maintenanceData.days_until_maintenance < 30) {
-              setMaintenanceRecommendationReason(`Maintenance is scheduled in ${maintenanceData.days_until_maintenance} days (within 30 days)`);
-            } else {
-              setMaintenanceRecommendationReason(`Maintenance is scheduled in ${maintenanceData.days_until_maintenance} days (more than 30 days away)`);
-            }
-          } else {
-            setMaintenanceRecommendationReason("No maintenance scheduled");
-          }
-        }
       } catch (err) {
         console.warn("Failed to fetch upcoming maintenance date:", err);
       }
@@ -146,17 +132,25 @@ const BreakdownDetails = () => {
     fetchUpcomingMaintenance();
   }, [assetId]);
 
+  // Handle decision code change and update priority options
+  const handleDecisionCodeChange = (newDecisionCode) => {
+    setDecisionCode(newDecisionCode);
+    // Reset priority when decision code changes
+    setPriority("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
-      const payload = {
-        asset_id: assetId,
-        atbrrc_id: brCode,
-        reported_by: user?.user_id || user?.emp_int_id || 'SYSTEM',
-        is_create_maintenance: createMaintenance === "Yes",
-        description: description
-      };
+             const payload = {
+         asset_id: assetId,
+         atbrrc_id: brCode,
+         reported_by: user?.user_id || user?.emp_int_id || 'SYSTEM',
+         decision_code: decisionCode,
+         priority: priority,
+         description: description
+       };
 
       console.log("Create breakdown payload", payload);
       
@@ -236,35 +230,18 @@ const BreakdownDetails = () => {
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
                   Breakdown Code (BR Code)
                 </label>
-                <div className="relative">
-                  <select
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all appearance-none"
-                    value={brCode}
-                    onChange={(e) => setBrCode(e.target.value)}
-                    disabled={isReadOnly}
-                    required
-                  >
-                    <option value="">Select code</option>
-                    {reasonCodes.map((c) => (
-                      <option key={c.code || c.id} value={c.code || c.id}>
-                        {c.text || c.name || c.description || c.code}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                </div>
+                                                  <EnhancedDropdown
+                   options={reasonCodes.map((c) => ({
+                     value: c.code || c.id,
+                     label: c.text || c.name || c.description || c.code,
+                     description: c.description || ""
+                   }))}
+                   value={brCode}
+                   onChange={setBrCode}
+                   placeholder="Select Breakdown Code"
+                   disabled={isReadOnly}
+                   required
+                 />
               </div>
 
               <div className="space-y-1">
@@ -299,43 +276,62 @@ const BreakdownDetails = () => {
               Maintenance Planning
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                              <div className="space-y-1">
-                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                   Create Maintenance
-                 </label>
-                 <div className="relative">
-                   <select
-                     className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all appearance-none"
-                     value={createMaintenance}
-                     onChange={(e) => setCreateMaintenance(e.target.value)}
-                     disabled={true}
-                   >
-                     <option value="Yes">Yes</option>
-                     <option value="No">No</option>
-                   </select>
-                   <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                     <svg
-                       className="w-4 h-4 text-gray-400"
-                       viewBox="0 0 20 20"
-                       fill="currentColor"
-                     >
-                       <path
-                         fillRule="evenodd"
-                         d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                         clipRule="evenodd"
-                       />
-                     </svg>
-                   </div>
-                 </div>
-                 {maintenanceRecommendationReason && (
-                   <div className="mt-1">
-                     <p className="text-xs text-gray-500 italic">
-                       {maintenanceRecommendationReason}
-                     </p>
-                   </div>
-                 )}
-               </div>
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Decision Code
+                </label>
+                                                  <EnhancedDropdown
+                   options={[
+                     {
+                       value: "BF01",
+                       label: "BF01 – Maintenance Request & Breakdown Fix",
+                       description: "Create maintenance request along with breakdown fix"
+                     },
+                     {
+                       value: "BF02", 
+                       label: "BF02 - Create Breakdown fix only",
+                       description: "Create Breakdown fix only"
+                     },
+                     {
+                       value: "BF03",
+                       label: "BF03 - Postpone fix to next maintenance", 
+                       description: "Postpone breakdown fix until next maintenance"
+                     }
+                   ]}
+                   value={decisionCode}
+                   onChange={handleDecisionCodeChange}
+                   placeholder="Select Decision Code"
+                   disabled={isReadOnly}
+                   required
+                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Priority
+                </label>
+                                                  <EnhancedDropdown
+                   options={
+                     (decisionCode === "BF01" || decisionCode === "BF02") 
+                       ? [
+                           { value: "High", label: "High", description: "High priority breakdown fix" },
+                           { value: "Very High", label: "Very High", description: "Very high priority breakdown fix" }
+                         ]
+                       : decisionCode === "BF03"
+                       ? [
+                           { value: "Medium", label: "Medium", description: "Medium priority - can wait until maintenance" },
+                           { value: "Low", label: "Low", description: "Low priority - can wait until maintenance" }
+                         ]
+                       : []
+                   }
+                   value={priority}
+                   onChange={setPriority}
+                   placeholder={!decisionCode ? "Select Decision Code First" : "Select Priority"}
+                   disabled={isReadOnly || !decisionCode}
+                   required
+                 />
+              </div>
 
                              <div className="space-y-1">
                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
