@@ -4,6 +4,7 @@ import { Maximize, Minimize, QrCode, X } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
+ 
 
 const AssetSelection = () => {
   const location = useLocation();
@@ -119,7 +120,33 @@ const AssetSelection = () => {
   const fetchAssetTypes = async () => {
     try {
       const res = await API.get("/dept-assets/asset-types");
-      setAssetTypes(Array.isArray(res.data) ? res.data : []);
+      const incoming = Array.isArray(res.data) ? res.data : [];
+
+      // Determine target assignment type based on context
+      const targetAssignment = entityType === "department" ? "department" : "user";
+
+      // If assignment_type is already present, filter directly
+      let filtered = incoming;
+      if (incoming.length && Object.prototype.hasOwnProperty.call(incoming[0], "assignment_type")) {
+        filtered = incoming.filter((t) => t.assignment_type === targetAssignment);
+      } else {
+        // Fallback: fetch full asset types to get assignment_type, then filter by intersection
+        try {
+          const typesRes = await API.get("/asset-types");
+          const allTypes = Array.isArray(typesRes.data) ? typesRes.data : (Array.isArray(typesRes.data?.data) ? typesRes.data.data : []);
+          const allowedIds = new Set(
+            allTypes
+              .filter((t) => t.assignment_type === targetAssignment)
+              .map((t) => t.asset_type_id)
+          );
+          filtered = incoming.filter((t) => allowedIds.has(t.asset_type_id));
+        } catch (fallbackErr) {
+          console.warn("Fallback fetch for /asset-types failed, showing unfiltered list", fallbackErr);
+          filtered = incoming; // gracefully degrade
+        }
+      }
+
+      setAssetTypes(filtered);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
       toast.error("Failed to fetch asset types");

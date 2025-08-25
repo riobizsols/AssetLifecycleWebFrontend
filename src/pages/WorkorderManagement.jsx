@@ -119,7 +119,7 @@ const WorkorderManagement = () => {
   };
 
   const handleRowClick = (row) => {
-    navigate(`/workorder-management/workorder-detail/${row.ams_id}`);
+    navigate(`/workorder-management/workorder-detail/${row.ams_id}`, { state: { workOrder: row } });
   };
 
   const filters = columns.map((col) => ({

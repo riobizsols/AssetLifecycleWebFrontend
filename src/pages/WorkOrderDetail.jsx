@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import API from "../lib/axios";
@@ -19,6 +19,7 @@ import {
 
 const WorkOrderDetail = () => {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const printRef = useRef();
   const exportRef = useRef();
@@ -38,9 +39,14 @@ const WorkOrderDetail = () => {
   const fetchWorkOrderDetails = async () => {
     setIsLoading(true);
     try {
-      // Fetch work order details
-      const woResponse = await API.get(`/work-orders/${id}`);
-      const workOrderData = woResponse.data?.data;
+      // Prefer navigation state if available to avoid failing API and faster load
+      const stateWO = location.state?.workOrder;
+      let workOrderData = stateWO;
+
+      if (!workOrderData) {
+        const woResponse = await API.get(`/work-orders/${id}`);
+        workOrderData = woResponse.data?.data;
+      }
       
       if (!workOrderData) {
         toast.error("Work order not found");
@@ -48,7 +54,14 @@ const WorkOrderDetail = () => {
         return;
       }
       
-      setWorkOrder(workOrderData);
+      // Align fields to new API shape
+      const aligned = {
+        ...workOrderData,
+        final_approver_name: workOrderData.final_approver_name,
+        approval_date: Array.isArray(workOrderData.approval_date) ? workOrderData.approval_date[0] : workOrderData.approval_date,
+        recent_activities: Array.isArray(workOrderData.recent_activities) ? workOrderData.recent_activities : [],
+      };
+      setWorkOrder(aligned);
 
       // Set asset details from the work order response
       if (workOrderData.asset) {
@@ -60,15 +73,8 @@ const WorkOrderDetail = () => {
         setChecklist(workOrderData.asset_type.checklist_items);
       }
 
-      // Fetch maintenance history for the asset
-      if (workOrderData.asset?.asset_id) {
-        try {
-          const historyResponse = await API.get(`/maintenance-schedules/asset/${workOrderData.asset.asset_id}`);
-          setMaintenanceHistory(historyResponse.data?.data?.slice(0, 5) || []);
-        } catch (err) {
-          console.warn("Could not fetch maintenance history:", err);
-        }
-      }
+      // Use backend-provided recent_activities for history
+      setMaintenanceHistory(aligned.recent_activities || []);
 
     } catch (error) {
       console.error("Error fetching work order details:", error);
@@ -703,7 +709,7 @@ const WorkOrderDetail = () => {
                             <WrenchIcon className="w-4 h-4 text-blue-600" />
                           </div>
                           <div>
-                            <h3 className="font-medium text-sm">{record.maint_type_name || 'Maintenance Activity'}</h3>
+                            <h3 className="font-medium text-sm">{record.status || 'Activity'}</h3>
                             <p className="text-xs text-gray-500">
                               {record.act_maint_st_date ? new Date(record.act_maint_st_date).toLocaleDateString() : 'N/A'}
                             </p>
@@ -713,14 +719,14 @@ const WorkOrderDetail = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm mt-3">
                         <div>
-                          <span className="text-gray-500">Vendor:</span> {record.vendor_name || 'N/A'}
+                          <span className="text-gray-500">Notes:</span> {record.notes || 'N/A'}
                         </div>
                         <div>
-                          <span className="text-gray-500">Maintenance ID:</span> {record.ams_id || 'N/A'}
+                          <span className="text-gray-500">Work Order ID:</span> {record.wo_id || record.ams_id || 'N/A'}
                         </div>
-                        {record.act_maint_end_date && (
+                        {record.act_main_end_date && (
                           <div>
-                            <span className="text-gray-500">Completed:</span> {new Date(record.act_maint_end_date).toLocaleDateString()}
+                            <span className="text-gray-500">Completed:</span> {new Date(record.act_main_end_date).toLocaleDateString()}
                           </div>
                         )}
                       </div>
@@ -801,7 +807,7 @@ const WorkOrderDetail = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Approval Date</label>
-                    <p className="text-gray-900">{workOrder.act_main_end_date ? new Date(workOrder.act_main_end_date).toLocaleDateString('en-GB').replaceAll('/', '-') : 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.approval_date ? new Date(workOrder.approval_date).toLocaleDateString('en-GB').replaceAll('/', '-') : 'N/A'}</p>
                   </div>
                 </div>
               </Card>
@@ -906,7 +912,7 @@ const WorkOrderDetail = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm mt-3">
                         <div>
-                          <span className="text-gray-500">Vendor:</span> {record.vendor_name || 'N/A'}
+                          <span className="text-gray-500">Vendor:</span> {workOrder.vendor?.vendor_name || 'N/A'}
                         </div>
                         <div>
                           <span className="text-gray-500">Maintenance ID:</span> {record.ams_id || 'N/A'}

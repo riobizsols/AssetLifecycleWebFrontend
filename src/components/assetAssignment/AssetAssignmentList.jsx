@@ -127,7 +127,7 @@ const AssetAssignmentList = ({
             </button>
             <button
               className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50 flex items-center gap-2"
-              onClick={() => navigate('/asset-selection', { 
+              onClick={() => navigate('/asset-selection', {     
                 state: { 
                   entityId: selectedEntity,
                   entityIntId: selectedEntityIntId,
