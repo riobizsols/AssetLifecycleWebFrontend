@@ -7,6 +7,7 @@ import { ArrowLeft, Plus, Search, QrCode, X, Maximize, Minimize } from 'lucide-r
 import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 import { Html5Qrcode } from "html5-qrcode";
+import SearchableDropdown from '../ui/SearchableDropdown';
 
 const CreateScrapAsset = () => {
   const navigate = useNavigate();
@@ -512,18 +513,16 @@ const CreateScrapAsset = () => {
                 <div className="flex gap-4 items-end">
                   <div className="w-64">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type *</label>
-                    <select
-                      className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
+                    <SearchableDropdown
+                      options={assetTypes}
                       value={selectedAssetType || ""}
-                      onChange={handleAssetTypeChange}
-                    >
-                      <option value="">Select an asset type...</option>
-                      {assetTypes.map((type) => (
-                        <option key={type.asset_type_id} value={type.asset_type_id}>
-                          {type.text}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => handleAssetTypeChange({ target: { value } })}
+                      placeholder="Select an asset type..."
+                      searchPlaceholder="Search asset types..."
+                      className="h-10"
+                      displayKey="text"
+                      valueKey="asset_type_id"
+                    />
                   </div>
 
                   <div className="flex gap-2">

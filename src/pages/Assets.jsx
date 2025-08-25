@@ -28,9 +28,9 @@ const Assets = () => {
   const [columns] = useState([
     { label: "Asset Id", name: "asset_id", visible: true },
     { label: "Asset Type Id", name: "asset_type_id", visible: true },
-    { label: "Asset Name", name: "text", visible: true },
+    { label: "Asset Type", name: "text", visible: true },
     { label: "Serial Number", name: "serial_number", visible: true },
-    { label: "Description", name: "description", visible: true },
+    { label: "Asset Name", name: "description", visible: true },
     { label: "Current Status", name: "current_status", visible: true },
     { label: "Purchase Cost", name: "purchased_cost", visible: true },
     { label: "Purchase Date", name: "purchased_on", visible: true },

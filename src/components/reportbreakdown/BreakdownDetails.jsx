@@ -20,6 +20,7 @@ const BreakdownDetails = () => {
   const [createMaintenance, setCreateMaintenance] = useState("Yes");
   const [upcomingMaintenanceDate, setUpcomingMaintenanceDate] = useState("");
   const [assetTypeDetails, setAssetTypeDetails] = useState(null);
+  const [maintenanceRecommendationReason, setMaintenanceRecommendationReason] = useState("");
 
   const assetId = useMemo(
     () => existingBreakdown?.asset_id || selectedAsset?.asset_id || "",
@@ -110,51 +111,67 @@ const BreakdownDetails = () => {
     const fetchUpcomingMaintenance = async () => {
       if (!assetId) return;
       try {
-        const res = await API.get(`/maintenance-schedules/asset/${assetId}`);
-        const wf = res.data?.workflow_schedules || [];
-        const reg = res.data?.maintenance_schedules || [];
-        const extractDate = (s) =>
-          s.pl_sch_date ||
-          s.planned_schedule_date ||
-          s.plannedDate ||
-          s.planned_date;
-        const dates = [
-          ...wf.map(extractDate).filter(Boolean),
-          ...reg.map(extractDate).filter(Boolean),
-        ]
-          .map((d) => new Date(d))
-          .filter((d) => !isNaN(d));
-        if (dates.length) {
-          const min = new Date(Math.min(...dates));
-          const yyyy = min.getFullYear();
-          const mm = String(min.getMonth() + 1).padStart(2, "0");
-          const dd = String(min.getDate()).padStart(2, "0");
+        const res = await API.get(`/reportbreakdown/upcoming-maintenance/${assetId}`);
+        const maintenanceData = res.data?.data;
+        
+        if (maintenanceData?.upcoming_maintenance_date) {
+          const date = new Date(maintenanceData.upcoming_maintenance_date);
+          const yyyy = date.getFullYear();
+          const mm = String(date.getMonth() + 1).padStart(2, "0");
+          const dd = String(date.getDate()).padStart(2, "0");
           setUpcomingMaintenanceDate(`${yyyy}-${mm}-${dd}`);
         }
+        
+        // Set the maintenance recommendation
+        if (maintenanceData?.create_maintenance_recommendation) {
+          setCreateMaintenance(maintenanceData.create_maintenance_recommendation);
+          
+          // Set the reason for the recommendation
+          if (maintenanceData.days_until_maintenance !== undefined) {
+            if (maintenanceData.days_until_maintenance < 0) {
+              setMaintenanceRecommendationReason(`Maintenance is overdue by ${Math.abs(maintenanceData.days_until_maintenance)} days`);
+            } else if (maintenanceData.days_until_maintenance < 30) {
+              setMaintenanceRecommendationReason(`Maintenance is scheduled in ${maintenanceData.days_until_maintenance} days (within 30 days)`);
+            } else {
+              setMaintenanceRecommendationReason(`Maintenance is scheduled in ${maintenanceData.days_until_maintenance} days (more than 30 days away)`);
+            }
+          } else {
+            setMaintenanceRecommendationReason("No maintenance scheduled");
+          }
+        }
       } catch (err) {
-        console.warn("Failed to fetch upcoming maintenance");
+        console.warn("Failed to fetch upcoming maintenance date:", err);
       }
     };
     fetchUpcomingMaintenance();
   }, [assetId]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Submit payload stub
-    const payload = {
-      asset_id: assetId,
-      br_code: brCode,
-      description,
-      reported_by_type: reportedByType,
-      reported_by_dept_id:
-        reportedByType === "Department" ? reportedByDeptId : null,
-      reported_by_user_id: reportedByType === "User" ? reportedByUserId : null,
-      create_maintenance: createMaintenance === "Yes",
-      upcoming_maintenance_date: upcomingMaintenanceDate,
-    };
-    console.log("Create breakdown payload", payload);
-    toast.success("Breakdown draft created");
-    navigate("/report-breakdown");
+    
+    try {
+      const payload = {
+        asset_id: assetId,
+        atbrrc_id: brCode,
+        reported_by: user?.user_id || user?.emp_int_id || 'SYSTEM',
+        is_create_maintenance: createMaintenance === "Yes",
+        description: description
+      };
+
+      console.log("Create breakdown payload", payload);
+      
+      const response = await API.post('/reportbreakdown/create', payload);
+      
+      if (response.data.success) {
+        toast.success("Breakdown report created successfully");
+        navigate("/report-breakdown");
+      } else {
+        toast.error("Failed to create breakdown report");
+      }
+    } catch (error) {
+      console.error("Error creating breakdown report:", error);
+      toast.error(error.response?.data?.error || "Failed to create breakdown report");
+    }
   };
 
   return (
@@ -196,13 +213,12 @@ const BreakdownDetails = () => {
               </div>
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Status
+                  Asset ID
                 </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 rounded-full bg-yellow-400 mr-2"></div>
-                  <span className="text-base font-medium text-gray-900">
-                    Breakdown Reported
-                  </span>
+                <div className="text-base font-medium text-gray-900">
+                  {selectedAsset?.asset_id ||
+                    existingBreakdown?.asset_name ||
+                    "-"}
                 </div>
               </div>
             </div>
@@ -284,48 +300,61 @@ const BreakdownDetails = () => {
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Create Maintenance
-                </label>
-                <div className="relative">
-                  <select
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all appearance-none"
-                    value={createMaintenance}
-                    onChange={(e) => setCreateMaintenance(e.target.value)}
-                    disabled={isReadOnly}
-                  >
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+                             <div className="space-y-1">
+                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                   Create Maintenance
+                 </label>
+                 <div className="relative">
+                   <select
+                     className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all appearance-none"
+                     value={createMaintenance}
+                     onChange={(e) => setCreateMaintenance(e.target.value)}
+                     disabled={true}
+                   >
+                     <option value="Yes">Yes</option>
+                     <option value="No">No</option>
+                   </select>
+                   <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                     <svg
+                       className="w-4 h-4 text-gray-400"
+                       viewBox="0 0 20 20"
+                       fill="currentColor"
+                     >
+                       <path
+                         fillRule="evenodd"
+                         d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                         clipRule="evenodd"
+                       />
+                     </svg>
+                   </div>
+                 </div>
+                 {maintenanceRecommendationReason && (
+                   <div className="mt-1">
+                     <p className="text-xs text-gray-500 italic">
+                       {maintenanceRecommendationReason}
+                     </p>
+                   </div>
+                 )}
+               </div>
 
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Upcoming Maintenance Date
-                </label>
-                <input
-                  type="date"
-                  value={upcomingMaintenanceDate}
-                  onChange={(e) => setUpcomingMaintenanceDate(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all"
-                  disabled
-                />
-              </div>
+                             <div className="space-y-1">
+                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
+                   Upcoming Maintenance Date
+                 </label>
+                 {upcomingMaintenanceDate ? (
+                   <input
+                     type="date"
+                     value={upcomingMaintenanceDate}
+                     onChange={(e) => setUpcomingMaintenanceDate(e.target.value)}
+                     className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all"
+                     disabled
+                   />
+                 ) : (
+                   <div className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-500">
+                     No maintenance scheduled
+                   </div>
+                 )}
+               </div>
             </div>
           </div>
 

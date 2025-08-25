@@ -323,7 +323,7 @@ const WorkOrderDetail = () => {
             }`}
           >
             <CalendarIcon className="w-5 h-5 inline mr-2" />
-            Activity
+            History
           </button>
         </nav>
       </div>

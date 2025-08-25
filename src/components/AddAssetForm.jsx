@@ -783,7 +783,7 @@ const AddAssetForm = ({ userRole }) => {
               </div>
               </div>
               <div className="col-span-4">
-                <label className="block text-sm mb-1 font-medium">Description</label>
+                <label className="block text-sm mb-1 font-medium">Asset Name</label>
                 <textarea name="description" placeholder="" onChange={handleChange} value={form.description} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm" rows={3}></textarea>
               </div>
             </div>

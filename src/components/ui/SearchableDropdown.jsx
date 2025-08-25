@@ -57,7 +57,7 @@ const SearchableDropdown = ({
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
+        <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg top-full">
           {/* Search input */}
           <div className="sticky top-0 p-2 border-b bg-white">
             <input
