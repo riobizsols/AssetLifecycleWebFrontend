@@ -17,40 +17,43 @@ const WorkorderManagement = () => {
     toDate: "",
   });
   const [columns] = useState([
-    { label: "Breakdown ID", name: "abr_id", visible: true },
+    { label: "Work Order ID", name: "ams_id", visible: true },
     { label: "Asset ID", name: "asset_id", visible: true },
-    { label: "Breakdown Code", name: "atbrrc_id", visible: true },
-    { label: "Reported By", name: "reported_by", visible: true },
-    { label: "Status", name: "status", visible: true },
     { label: "Description", name: "description", visible: true },
-    { label: "Org ID", name: "org_id", visible: true },
+    { label: "Maintenance Type", name: "maintenance_type_name", visible: true },
+    { label: "Start Date", name: "act_maint_st_date", visible: true },
+    { label: "Status", name: "status", visible: true },
+    { label: "Asset Type", name: "asset_type_name", visible: true },
   ]);
 
   useEffect(() => {
-    const fetchBreakdowns = async () => {
+    const fetchWorkOrders = async () => {
       setIsLoading(true);
       try {
-        const res = await API.get("/reportbreakdown/reports");
+        const res = await API.get("/work-orders/all");
         const raw = Array.isArray(res.data?.data)
           ? res.data.data
           : Array.isArray(res.data)
           ? res.data
           : [];
-        const formatted = raw.map((b) => ({
-          ...b,
-          created_on: b.created_at
-            ? new Date(b.created_at).toLocaleString()
+        const formatted = raw.map((wo) => ({
+          ...wo,
+          asset_id: wo.asset?.asset_id || 'N/A',
+          description: wo.asset?.description || 'N/A',
+          asset_type_name: wo.asset_type?.asset_type_name || 'N/A',
+          act_maint_st_date: wo.act_maint_st_date
+            ? new Date(wo.act_maint_st_date).toLocaleDateString()
             : "",
         }));
         setData(formatted);
       } catch (err) {
-        console.error("Failed to fetch breakdowns", err);
+        console.error("Failed to fetch work orders", err);
         setData([]);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchBreakdowns();
+    fetchWorkOrders();
   }, []);
 
   const handleSort = (column) => {
@@ -116,7 +119,7 @@ const WorkorderManagement = () => {
   };
 
   const handleRowClick = (row) => {
-    navigate(`/workorder-management/workorder-detail/${row.abr_id || row.breakdown_id}`);
+    navigate(`/workorder-management/workorder-detail/${row.ams_id}`);
   };
 
   const filters = columns.map((col) => ({
@@ -148,7 +151,7 @@ const WorkorderManagement = () => {
               data={isLoading ? [] : sorted}
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
-              rowKey="breakdown_id"
+              rowKey="ams_id"
               showActions={false}
               onRowClick={handleRowClick}
             />

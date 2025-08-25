@@ -39,8 +39,8 @@ const WorkOrderDetail = () => {
     setIsLoading(true);
     try {
       // Fetch work order details
-      const woResponse = await API.get(`/reportbreakdown/reports`);
-      const workOrderData = woResponse.data?.data?.find(wo => wo.abr_id === id);
+      const woResponse = await API.get(`/work-orders/${id}`);
+      const workOrderData = woResponse.data?.data;
       
       if (!workOrderData) {
         toast.error("Work order not found");
@@ -50,33 +50,23 @@ const WorkOrderDetail = () => {
       
       setWorkOrder(workOrderData);
 
-      // Fetch asset details
-      if (workOrderData.asset_id) {
-        try {
-          const assetResponse = await API.get(`/assets/${workOrderData.asset_id}`);
-          setAssetDetails(assetResponse.data?.data || assetResponse.data);
-        } catch (err) {
-          console.warn("Could not fetch asset details:", err);
-        }
+      // Set asset details from the work order response
+      if (workOrderData.asset) {
+        setAssetDetails(workOrderData.asset);
+      }
+
+      // Set checklist from the work order response
+      if (workOrderData.asset_type?.checklist_items) {
+        setChecklist(workOrderData.asset_type.checklist_items);
       }
 
       // Fetch maintenance history for the asset
-      if (workOrderData.asset_id) {
+      if (workOrderData.asset?.asset_id) {
         try {
-          const historyResponse = await API.get(`/maintenance-schedules/asset/${workOrderData.asset_id}`);
+          const historyResponse = await API.get(`/maintenance-schedules/asset/${workOrderData.asset.asset_id}`);
           setMaintenanceHistory(historyResponse.data?.data?.slice(0, 5) || []);
         } catch (err) {
           console.warn("Could not fetch maintenance history:", err);
-        }
-      }
-
-      // Fetch checklist if available
-      if (workOrderData.asset_id) {
-        try {
-          const checklistResponse = await API.get(`/checklist/${workOrderData.asset_id}`);
-          setChecklist(checklistResponse.data?.data || []);
-        } catch (err) {
-          console.warn("Could not fetch checklist:", err);
         }
       }
 
@@ -159,7 +149,7 @@ const WorkOrderDetail = () => {
       }
 
       pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
-      pdf.save(`WorkOrder_${workOrder?.abr_id || id}_${new Date().toISOString().split('T')[0]}.pdf`);
+      pdf.save(`WorkOrder_${workOrder?.ams_id || id}_${new Date().toISOString().split('T')[0]}.pdf`);
       
       toast.success("PDF exported successfully");
     } catch (error) {
@@ -234,7 +224,7 @@ const WorkOrderDetail = () => {
             Work Orders
           </span>
           <span>/</span>
-          <span className="text-gray-900 font-bold">{workOrder.abr_id}</span>
+          <span className="text-gray-900 font-bold">{workOrder.ams_id}</span>
         </div>
       </nav>
 
@@ -243,18 +233,18 @@ const WorkOrderDetail = () => {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl font-bold text-gray-900">
-              {workOrder.description || `Work Order ${workOrder.abr_id}`}
+              {workOrder.maintenance_type_name || `Work Order ${workOrder.ams_id}`}
             </h1>
             <StatusBadge status={workOrder.status} className="print:hidden" />
           </div>
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <span className="flex items-center gap-1">
               <WrenchIcon className="w-4 h-4" />
-              Breakdown Maintenance
+              {workOrder.maintenance_type_name || 'Maintenance'}
             </span>
             <span className="flex items-center gap-1">
               <DocumentTextIcon className="w-4 h-4" />
-              <span className="font-bold">{workOrder.abr_id}</span>
+              <span className="font-bold">{workOrder.ams_id}</span>
             </span>
           </div>
         </div>
@@ -333,16 +323,16 @@ const WorkOrderDetail = () => {
         {/* PDF Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {workOrder.description || `Work Order ${workOrder.abr_id}`}
+            {workOrder.maintenance_type_name || `Work Order ${workOrder.ams_id}`}
           </h1>
           <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
             <span className="flex items-center gap-1">
               <WrenchIcon className="w-4 h-4" />
-              Breakdown Maintenance
+              {workOrder.maintenance_type_name || 'Maintenance'}
             </span>
             <span className="flex items-center gap-1">
               <DocumentTextIcon className="w-4 h-4" />
-              <span className="font-bold">{workOrder.abr_id}</span>
+              <span className="font-bold">{workOrder.ams_id}</span>
             </span>
           </div>
         </div>
@@ -542,16 +532,16 @@ const WorkOrderDetail = () => {
         {/* Print Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {workOrder.description || `Work Order ${workOrder.abr_id}`}
+            {workOrder.maintenance_type_name || `Work Order ${workOrder.ams_id}`}
           </h1>
           <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
             <span className="flex items-center gap-1">
               <WrenchIcon className="w-4 h-4" />
-              Breakdown Maintenance
+              {workOrder.maintenance_type_name || 'Maintenance'}
             </span>
             <span className="flex items-center gap-1">
               <DocumentTextIcon className="w-4 h-4" />
-              <span className="font-bold">{workOrder.abr_id}</span>
+              <span className="font-bold">{workOrder.ams_id}</span>
             </span>
           </div>
         </div>
@@ -568,27 +558,27 @@ const WorkOrderDetail = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Asset ID</label>
-                    <p className="text-gray-900">{workOrder.asset_id}</p>
+                    <p className="text-gray-900">{workOrder.asset?.asset_id || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
-                    <p className="text-gray-900">{assetDetails?.serial_number || 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.asset?.serial_number || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
-                    <p className="text-gray-900">{assetDetails?.asset_type_name || 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.asset_type?.asset_type_name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <p className="text-gray-900">{assetDetails?.branch_name || assetDetails?.department_name || 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.asset?.branch_name || workOrder.asset?.department_name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Date</label>
-                    <p className="text-gray-900">{workOrder.created_at ? new Date(workOrder.created_at).toLocaleDateString() : 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.act_maint_st_date ? new Date(workOrder.act_maint_st_date).toLocaleDateString() : 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Current Condition</label>
-                    <p className="text-gray-900">{assetDetails?.condition || 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.asset?.condition || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -628,27 +618,27 @@ const WorkOrderDetail = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
-                  <p className="text-gray-900">{assetDetails?.vendor_name || 'Not Assigned'}</p>
+                  <p className="text-gray-900">{workOrder.vendor?.vendor_name || 'Not Assigned'}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Contract</label>
-                  <p className="text-gray-900">{workOrder.atbrrc_id || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">SLA</label>
-                  <p className="text-gray-900">4h response, NBD restore</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Information</label>
-                  <p className="text-gray-900">{assetDetails?.vendor_contact || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
+                  <p className="text-gray-900">{workOrder.vendor?.contact_person || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <p className="text-gray-900">{assetDetails?.vendor_email || 'N/A'}</p>
+                  <p className="text-gray-900">{workOrder.vendor?.email || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <p className="text-gray-900">{assetDetails?.vendor_address || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <p className="text-gray-900">{workOrder.vendor?.phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
+                  <p className="text-gray-900">{workOrder.maintenance_type_name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <p className="text-gray-900">{workOrder.status || 'N/A'}</p>
                 </div>
               </div>
             </section>
@@ -664,7 +654,7 @@ const WorkOrderDetail = () => {
                       <div className="w-4 h-4 border border-gray-400 rounded mt-1"></div>
                       <div className="flex-1">
                         <div className="text-sm text-gray-900">
-                          {item.task_description || item.description || `Task ${index + 1}`}
+                          {item.text || item.task_description || item.description || `Task ${index + 1}`}
                         </div>
                         {item.is_mandatory && (
                           <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded mt-2 inline-block">Required</span>
@@ -761,27 +751,27 @@ const WorkOrderDetail = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Asset ID</label>
-                    <p className="text-gray-900">{workOrder.asset_id}</p>
+                    <p className="text-gray-900">{workOrder.asset?.asset_id || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
-                    <p className="text-gray-900">{assetDetails?.serial_number || 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.asset?.serial_number || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
-                    <p className="text-gray-900">{assetDetails?.asset_type_name || 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.asset_type?.asset_type_name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <p className="text-gray-900">{assetDetails?.branch_name || assetDetails?.department_name || 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.asset?.branch_name || workOrder.asset?.department_name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Date</label>
-                    <p className="text-gray-900">{workOrder.created_at ? new Date(workOrder.created_at).toLocaleDateString() : 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.act_maint_st_date ? new Date(workOrder.act_maint_st_date).toLocaleDateString() : 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Current Condition</label>
-                    <p className="text-gray-900">{assetDetails?.condition || 'N/A'}</p>
+                    <p className="text-gray-900">{workOrder.asset?.condition || 'N/A'}</p>
                   </div>
                 </div>
               </Card>
@@ -791,11 +781,9 @@ const WorkOrderDetail = () => {
                 <h2 className="text-lg font-semibold mb-4">Additional Issues</h2>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Additional Issues Identified</label>
-                  <textarea 
-                    className="w-full p-3 border border-gray-300 rounded-md resize-none"
-                    rows="4"
-                    placeholder="Document any additional issues found during maintenance that require rectification..."
-                  ></textarea>
+                  <div className="w-full p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[96px] whitespace-pre-line">
+                    {workOrder.notes || 'N/A'}
+                  </div>
                 </div>
               </Card>
 
@@ -805,26 +793,15 @@ const WorkOrderDetail = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Final Approver's Name</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter final approver's name"
-                    />
+                    <p className="text-gray-900">{workOrder.final_approver_name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Supervisor</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter maintenance supervisor's name"
-                    />
+                    <p className="text-gray-900">{workOrder.technician_name || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Approval Date</label>
-                    <input 
-                      type="date" 
-                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    />
+                    <p className="text-gray-900">{workOrder.act_main_end_date ? new Date(workOrder.act_main_end_date).toLocaleDateString('en-GB').replaceAll('/', '-') : 'N/A'}</p>
                   </div>
                 </div>
               </Card>
@@ -840,27 +817,27 @@ const WorkOrderDetail = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
-                  <p className="text-gray-900">{assetDetails?.vendor_name || 'Not Assigned'}</p>
+                  <p className="text-gray-900">{workOrder.vendor?.vendor_name || 'Not Assigned'}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Contract</label>
-                  <p className="text-gray-900">{workOrder.atbrrc_id || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">SLA</label>
-                  <p className="text-gray-900">4h response, NBD restore</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Information</label>
-                  <p className="text-gray-900">{assetDetails?.vendor_contact || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
+                  <p className="text-gray-900">{workOrder.vendor?.contact_person || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <p className="text-gray-900">{assetDetails?.vendor_email || 'N/A'}</p>
+                  <p className="text-gray-900">{workOrder.vendor?.email || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <p className="text-gray-900">{assetDetails?.vendor_address || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <p className="text-gray-900">{workOrder.vendor?.phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
+                  <p className="text-gray-900">{workOrder.maintenance_type_name || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <p className="text-gray-900">{workOrder.status || 'N/A'}</p>
                 </div>
               </div>
             </Card>
@@ -875,7 +852,7 @@ const WorkOrderDetail = () => {
                   {checklist.map((item, index) => (
                     <div key={index} className="p-3 border rounded-lg hover:bg-gray-50">
                       <div className="text-sm text-gray-900">
-                        {item.task_description || item.description || `Task ${index + 1}`}
+                        {item.text || item.task_description || item.description || `Task ${index + 1}`}
                       </div>
                       {item.is_mandatory && (
                         <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded mt-2 inline-block">Required</span>
