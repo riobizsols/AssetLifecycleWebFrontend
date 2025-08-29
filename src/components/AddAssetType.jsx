@@ -3,6 +3,7 @@ import API from "../lib/axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
+import SearchableDropdown from './ui/SearchableDropdown';
 
 const AddAssetType = () => {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ const AddAssetType = () => {
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
   const [requireMaintenance, setRequireMaintenance] = useState(false);
+  const [checklistFiles, setChecklistFiles] = useState([]); // files to upload when maintenance required
   const [isActive, setIsActive] = useState(true);
   const [parentChild, setParentChild] = useState("parent"); // Default to parent
   const [parentAssetTypes, setParentAssetTypes] = useState([]);
@@ -146,6 +148,19 @@ const AddAssetType = () => {
           },
         }
       );
+      // Upload checklist files if required
+      const newId = response.data?.asset_type_id || response.data?.data?.asset_type_id || response.data?.id;
+      if (requireMaintenance && newId && checklistFiles.length > 0) {
+        for (const f of checklistFiles) {
+          const fd = new FormData();
+          fd.append('file', f);
+          try {
+            await API.post(`/asset-types/${newId}/checklist`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+          } catch (upErr) {
+            console.warn('Checklist upload failed', upErr);
+          }
+        }
+      }
       navigate('/master-data/asset-types');
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Failed to create asset type";
@@ -336,6 +351,99 @@ const AddAssetType = () => {
                 placeholder="Enter maintenance lead type"
               />
             </div>
+            {/* Checklist upload with improved UI */}
+            <div className="col-span-2 mt-4">
+              <div className="flex items-center gap-3 mb-2">
+                <label className="text-sm font-medium text-gray-900">Maintenance Checklist</label>
+                <div className="text-xs text-gray-500 flex-shrink-0">Supported formats: PDF, DOC, DOCX, XLS, XLSX (Max 10MB)</div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 max-w-md">
+                  <input
+                    type="file"
+                    id="checklist-upload"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Convert MB to bytes (15MB = 15 * 1024 * 1024)
+                        const maxSize = 15 * 1024 * 1024;
+                        if (file.size > maxSize) {
+                          toast.error('File size exceeds 15MB limit');
+                          e.target.value = ''; // Reset input
+                          return;
+                        }
+                        setChecklistFiles([file]); // Only store one file
+                      }
+                    }}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  />
+                  <label
+                    htmlFor="checklist-upload"
+                    className={`flex items-center w-full px-4 py-2 border ${checklistFiles[0] ? 'border-blue-200 bg-blue-50' : 'border-gray-300 bg-white'} rounded-md shadow-sm text-sm hover:bg-gray-50 cursor-pointer`}
+                  >
+                    <div className="flex items-center min-w-0 flex-1">
+                      <svg className="w-5 h-5 mr-2 text-gray-400 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      <div className="min-w-0 flex-1">
+                        <span className="truncate block">
+                          {checklistFiles[0] ? checklistFiles[0].name : 'Choose checklist file'}
+                        </span>
+                        {checklistFiles[0] && (
+                          <span className="text-xs text-blue-500">
+                            {(checklistFiles[0].size / (1024 * 1024)).toFixed(2)}MB
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {checklistFiles[0] && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (checklistFiles[0]?.name) {
+                          // Create object URL for preview
+                          const url = URL.createObjectURL(checklistFiles[0]);
+                          window.open(url, '_blank');
+                          // Clean up the URL after opening
+                          URL.revokeObjectURL(url);
+                        }
+                      }}
+                      className="h-9 px-4 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChecklistFiles([]);
+                        const input = document.getElementById('checklist-upload');
+                        if (input) input.value = '';
+                      }}
+                      className="h-9 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Remove
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <div className="mt-2 text-xs text-gray-500">
+                Upload maintenance checklist document. This will be available when performing maintenance on assets of this type.
+              </div>
+            </div>
           </div>
         )}
 
@@ -356,22 +464,23 @@ const AddAssetType = () => {
 
             {/* Parent Asset Type Dropdown (shown only when Child is selected) */}
             {parentChild === "child" && (
-              <div className="max-w-xs">
+              <div className="max-w-xs w-full">
                 <label className="block text-sm font-medium mb-1">
                   Parent Asset Type <span className="text-red-500">*</span>
                 </label>
-                <select
+                <SearchableDropdown
+                  options={parentAssetTypes.map(type => ({
+                    id: type.asset_type_id,
+                    text: type.text
+                  }))}
                   value={selectedParentType}
-                  onChange={(e) => setSelectedParentType(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isFieldInvalid(selectedParentType) ? 'border-red-500' : 'border-gray-300'}`}
-                >
-                  <option value="">Select parent asset type</option>
-                  {parentAssetTypes.map((type) => (
-                    <option key={type.asset_type_id} value={type.asset_type_id}>
-                      {type.text}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedParentType}
+                  placeholder="Select parent asset type"
+                  searchPlaceholder="Search parent types..."
+                  className={isFieldInvalid(selectedParentType) ? 'border-red-500' : ''}
+                  displayKey="text"
+                  valueKey="id"
+                />
               </div>
             )}
           </div>

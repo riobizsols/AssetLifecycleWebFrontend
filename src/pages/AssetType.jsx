@@ -59,18 +59,24 @@ const AssetType = () => {
         return map;
       }, {});
 
-      const formattedData = res.data.map(item => ({
-        ...item,
-        int_status: item.int_status === 1 ? 'Active' : 'Inactive',
-        assignment_type: item.assignment_type === 'user' ? 'User-wise' : 'Department-wise',
-        group_required: item.group_required ? 'Yes' : 'No',
-        inspection_required: item.inspection_required ? 'Yes' : 'No',
-        maintenance_schedule: Number(item.maintenance_schedule) === 1 ? 'Yes' : 'No',
-        created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-        changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
-        type: item.is_child ? 'Child' : 'Parent',
-        parent_asset_type: item.parent_asset_type_id ? assetTypeMap[item.parent_asset_type_id] : '-'
-      }));
+      // Store original data for edit modal
+      const formattedData = res.data.map(item => {
+        const displayData = {
+          ...item,
+          int_status: item.int_status === 1 ? 'Active' : 'Inactive',
+          assignment_type: item.assignment_type === 'user' ? 'User-wise' : 'Department-wise',
+          group_required: item.group_required ? 'Yes' : 'No',
+          inspection_required: item.inspection_required ? 'Yes' : 'No',
+          maintenance_schedule: Number(item.maintenance_schedule) === 1 ? 'Yes' : 'No',
+          created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
+          changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
+          type: item.is_child ? 'Child' : 'Parent',
+          parent_asset_type: item.parent_asset_type_id ? assetTypeMap[item.parent_asset_type_id] : '-',
+          // Store original data for edit modal
+          _original: { ...item }
+        };
+        return displayData;
+      });
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch asset types:", err);
@@ -150,7 +156,8 @@ const AssetType = () => {
   };
 
   const handleEdit = (row) => {
-    setSelectedAssetType(row);
+    // Use original data for edit modal
+    setSelectedAssetType(row._original || row);
     setUpdateModalOpen(true);
   };
 

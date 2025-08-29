@@ -1,9 +1,9 @@
 // AssetFormPage.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
 import API from '../lib/axios';
 import toast from 'react-hot-toast';
 import { MdKeyboardArrowRight, MdKeyboardArrowDown } from 'react-icons/md';
+import SearchableDropdown from './ui/SearchableDropdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -42,6 +42,13 @@ const AddAssetForm = ({ userRole }) => {
   const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState('Configuration');
+  const [attachments, setAttachments] = useState([]); // {id, type, file, docTypeName, previewUrl}
+  const [assetsForUpload, setAssetsForUpload] = useState([]);
+  const [selectedUploadAssetId, setSelectedUploadAssetId] = useState('');
+  const [assetDropdownOpen, setAssetDropdownOpen] = useState(false);
+  const [assetSearchQuery, setAssetSearchQuery] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   // Add validation state
   const [touched, setTouched] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -408,6 +415,156 @@ const AddAssetForm = ({ userRole }) => {
     setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
+  // Attachments tab helpers
+  const allowedTypes = [
+    'Purchase_Order',
+    'Invoice',
+    'Warranty',
+    'Technical_Spec',
+    'Insurance',
+    'OT'
+  ];
+
+  const addAttachmentRow = () => {
+    setAttachments(prev => ([...prev, { 
+      id: crypto.randomUUID(), 
+      type: '', 
+      file: null, 
+      docTypeName: '', 
+      previewUrl: '',
+      dropdownOpen: false,
+      searchQuery: ''
+    }]));
+  };
+
+  const updateAttachment = (id, patch) => {
+    setAttachments(prev => prev.map(a => a.id === id ? { ...a, ...patch } : a));
+  };
+
+  const removeAttachment = (id) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  };
+
+  const onSelectFile = (id, file) => {
+    const previewUrl = file ? URL.createObjectURL(file) : '';
+    updateAttachment(id, { file, previewUrl });
+  };
+
+  // Fetch assets for direct upload dropdown
+  // Click outside handler for asset dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (assetDropdownOpen && !event.target.closest('.asset-dropdown')) {
+        setAssetDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [assetDropdownOpen]);
+
+  // Click outside handler for document type dropdowns
+  useEffect(() => {
+    function handleClickOutside(event) {
+      setAttachments(prev => prev.map(att => 
+        att.dropdownOpen && !event.target.closest(`#doc-type-${att.id}`) 
+          ? { ...att, dropdownOpen: false }
+          : att
+      ));
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Reset attachments when selected asset changes
+  useEffect(() => {
+    if (attachments.length > 0) {
+      setAttachments([]);
+      toast('Attachments cleared due to asset change', {
+        icon: 'ℹ️',
+        style: {
+          background: '#3b82f6',
+          color: '#fff',
+        },
+      });
+    }
+  }, [selectedUploadAssetId]);
+
+  useEffect(() => {
+    const fetchAssets = async () => {
+      try {
+        const res = await API.get('/assets');
+        const arr = Array.isArray(res.data) ? res.data : (res.data?.rows || []);
+        setAssetsForUpload(arr);
+      } catch (e) {
+        setAssetsForUpload([]);
+      }
+    };
+    fetchAssets();
+  }, []);
+
+  const handleBatchUpload = async () => {
+    if (!selectedUploadAssetId) {
+      toast.error('Select an asset first');
+      return;
+    }
+
+    if (attachments.length === 0) {
+      toast.error('Add at least one file');
+      return;
+    }
+
+    // Validate all attachments
+    for (const a of attachments) {
+      if (!a.type || !a.file) {
+        toast.error('Select document type and choose a file for all rows');
+        return;
+      }
+      if (a.type === 'OT' && !a.docTypeName?.trim()) {
+        toast.error('Enter Doc Type Name for OT documents');
+        return;
+      }
+    }
+
+    setIsUploading(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (const a of attachments) {
+        try {
+          const fd = new FormData();
+          fd.append('file', a.file);
+          fd.append('doc_type', a.type);
+          if (a.type === 'OT') fd.append('doc_type_name', a.docTypeName);
+          
+          await API.post(`/assets/${selectedUploadAssetId}/documents`, fd, { 
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          successCount++;
+        } catch (err) {
+          console.error('Failed to upload file:', a.file.name, err);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        if (failCount === 0) {
+          toast.success('All files uploaded successfully');
+        } else {
+          toast.success(`${successCount} files uploaded, ${failCount} failed`);
+        }
+        setAttachments([]); // Clear all attachments after upload
+      } else {
+        toast.error('Failed to upload any files');
+      }
+    } catch (err) {
+      console.error('Upload process error:', err);
+      toast.error('Upload process failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handlePropChange = (propName, value) => {
     setForm(prev => ({
       ...prev,
@@ -564,6 +721,22 @@ const AddAssetForm = ({ userRole }) => {
       <div className="bg-[#0E2F4B] text-white py-4 px-8 rounded-t-xl border-b-4 border-[#FFC107] flex justify-center items-center">
         {/* <span className="text-2xl font-semibold text-center w-full">Add Asset</span> */}
       </div>
+      {/* Tabs */}
+      <div className="px-8 pt-6">
+        <div className="flex border-b border-gray-200 mb-6 gap-6">
+          {['Configuration', 'Attachments'].map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 -mb-px font-semibold text-base border-b-2 ${activeTab === tab ? 'border-[#0E2F4B] text-[#0E2F4B]' : 'border-transparent text-gray-500'}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+      {activeTab === 'Configuration' && (
       <form onSubmit={handleSubmit} className="px-8 pt-8 pb-4">
         {/* Asset Details */}
         <div className="mb-6">
@@ -1212,6 +1385,157 @@ const AddAssetForm = ({ userRole }) => {
           </button>
         </div>
       </form>
+      )}
+      {activeTab === 'Attachments' && (
+        <div className="px-8 pt-8 pb-4">
+          {/* Header row: Asset dropdown + Add File button */}
+          <div className="mb-4 flex items-end gap-3">
+                         <div className="w-80">
+               <label className="block text-xs font-medium mb-1">Asset</label>
+               <SearchableDropdown
+                 options={assetsForUpload.map(a => ({
+                   id: a.asset_id,
+                   text: `${a.asset_id} - ${a.description || a.text || a.asset_name}`
+                 }))}
+                 value={selectedUploadAssetId}
+                 onChange={setSelectedUploadAssetId}
+                 placeholder="Select Asset"
+                 searchPlaceholder="Search assets..."
+                 className="w-full"
+                 displayKey="text"
+                 valueKey="id"
+               />
+             </div>
+            
+          </div>
+          <div className="mb-4 flex items-center justify-between">
+            <div className="text-lg font-semibold">Attachments</div>
+            <button 
+              type="button" 
+              onClick={addAttachmentRow} 
+              className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
+            >
+              <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add File
+            </button>
+          </div>
+          <div className="text-sm text-gray-600 mb-3">Types: Purchase_Order, Invoice, Warranty, Technical_Spec, Insurance, OT (Others)</div>
+          {attachments.length === 0 ? (
+            <div className="text-sm text-gray-500">No files added.</div>
+          ) : (
+            <div className="space-y-3">
+              {attachments.map(att => (
+                <div key={att.id} className="grid grid-cols-6 gap-3 items-start bg-white border border-gray-200 rounded p-3">
+                                     <div className="col-span-2">
+                     <label className="block text-xs font-medium mb-1">Document Type</label>
+                                    <SearchableDropdown
+                 options={allowedTypes.map(t => ({ id: t, text: t.replace('_', ' ') }))}
+                 value={att.type}
+                 onChange={(value) => updateAttachment(att.id, { type: value })}
+                 placeholder="Select type"
+                 searchPlaceholder="Search types..."
+                 className="w-full "
+                 displayKey="text"
+                 valueKey="id"
+               />
+                   </div>
+                  {att.type === 'OT' && (
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium mb-1">Doc Type Name</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded px-2 py-2 text-sm bg-white"
+                        value={att.docTypeName}
+                        onChange={(e) => updateAttachment(att.id, { docTypeName: e.target.value })}
+                        placeholder="Enter document type"
+                      />
+                    </div>
+                  )}
+                                                        <div className={att.type === 'OT' ? 'col-span-1' : 'col-span-2'}>
+                     <label className="block text-xs font-medium mb-1">File</label>
+                     <div className="flex items-center gap-2">
+                       <div className="relative flex-1">
+                         <input
+                           type="file"
+                           id={`file-${att.id}`}
+                           onChange={(e) => onSelectFile(att.id, e.target.files?.[0] || null)}
+                           className="hidden"
+                         />
+                         <label
+                           htmlFor={`file-${att.id}`}
+                           className="flex items-center h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full"
+                         >
+                           <svg className="flex-shrink-0 w-5 h-5 mr-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                           </svg>
+                           <span className="truncate max-w-[200px] inline-block">
+                             {att.file ? att.file.name : 'Choose file'}
+                           </span>
+                         </label>
+                       </div>
+
+                       {att.previewUrl && (
+                         <a 
+                           href={att.previewUrl} 
+                           target="_blank" 
+                           rel="noreferrer" 
+                           className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
+                         >
+                           <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                           </svg>
+                           Preview
+                         </a>
+                       )}
+                       <button 
+                         type="button" 
+                         onClick={() => removeAttachment(att.id)} 
+                         className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                       >
+                         <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                         </svg>
+                         Remove
+                       </button>
+                     </div>
+                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Upload Button */}
+          {attachments.length > 0 && (
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={handleBatchUpload}
+                disabled={isUploading || !selectedUploadAssetId || attachments.some(a => !a.type || !a.file || (a.type === 'OT' && !a.docTypeName?.trim()))}
+                className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUploading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Uploading...
+                  </span>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Upload All Files
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       <style>{`
         .scrollable-dropdown {
           max-height: 180px;

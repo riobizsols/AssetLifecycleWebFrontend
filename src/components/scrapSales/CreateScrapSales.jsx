@@ -16,6 +16,7 @@ import {
   Plus,
 } from "lucide-react";
 import API from "../../lib/axios";
+import SearchableDropdown from '../ui/SearchableDropdown';
 
 const CreateScrapSales = () => {
   const navigate = useNavigate();
@@ -46,6 +47,8 @@ const CreateScrapSales = () => {
   const [individualValues, setIndividualValues] = useState({});
   const [groupName, setGroupName] = useState("");
   const [collectionDate, setCollectionDate] = useState("");
+  const [activeTab, setActiveTab] = useState('Configuration');
+  const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
 
   // Fetch asset types from API
   useEffect(() => {
@@ -414,6 +417,26 @@ const CreateScrapSales = () => {
         toast.success(
           response.data.message || "Scrap sale created successfully!"
         );
+        const scrapId = response.data?.data?.scrap_id || response.data?.scrap_id || response.data?.id;
+        // Upload related documents if any
+        if (scrapId && uploadRows.length > 0) {
+          for (const r of uploadRows) {
+            if (!r.type || !r.file) continue;
+            if (r.type === 'OT' && !r.docTypeName?.trim()) {
+              toast.error('Enter DocTypeName for OT before uploading');
+              continue;
+            }
+            const fd = new FormData();
+            fd.append('file', r.file);
+            fd.append('doc_type', r.type);
+            if (r.type === 'OT') fd.append('doc_type_name', r.docTypeName);
+            try {
+              await API.post(`/scrap-sales/${scrapId}/documents`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            } catch (upErr) {
+              console.warn('Scrap sales doc upload failed', upErr);
+            }
+          }
+        }
         navigate("/scrap-sales");
       } else {
         throw new Error(response.data.message || "Failed to create scrap sale");
@@ -459,6 +482,7 @@ const CreateScrapSales = () => {
           </div>
         </div>
 
+        {/* Main Content */}
         {/* Asset Type Selection */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -1042,6 +1066,110 @@ const CreateScrapSales = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Documents Section */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
+          <div className="text-sm text-gray-600 mb-3">Types: PO, Invoice, Delivery Confirmation, Outpass, Clearence Certificate, OT</div>
+          <div className="flex justify-end mb-3">
+            <button 
+              type="button" 
+              className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
+              onClick={() => setUploadRows(prev => ([...prev, { id: crypto.randomUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
+            >
+              <Plus size={16} />
+              Add Document
+            </button>
+          </div>
+          <div className="space-y-3">
+            {uploadRows.length === 0 && <div className="text-sm text-gray-500">No files added.</div>}
+            {uploadRows.map(r => (
+              <div key={r.id} className="grid grid-cols-12 gap-3 items-start bg-white border rounded p-3">
+                <div className="col-span-3">
+                  <label className="block text-xs font-medium mb-1">Document Type</label>
+                  <SearchableDropdown
+                    options={[
+                      { id: 'PO', text: 'PO' },
+                      { id: 'Invoice', text: 'Invoice' },
+                      { id: 'Delivery_Confirmation', text: 'Delivery Confirmation' },
+                      { id: 'Outpass', text: 'Outpass' },
+                      { id: 'Clearence_Certificate', text: 'Clearence Certificate' },
+                      { id: 'OT', text: 'OT' }
+                    ]}
+                    value={r.type}
+                    onChange={(value) => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:value}:x))}
+                    placeholder="Select type"
+                    searchPlaceholder="Search document types..."
+                    className="w-full"
+                    displayKey="text"
+                    valueKey="id"
+                  />
+                </div>
+                {r.type==='OT' && (
+                  <div className="col-span-3">
+                    <label className="block text-xs font-medium mb-1">Doc Type Name</label>
+                    <input 
+                      className="w-full border rounded h-[38px] px-2 text-sm" 
+                      value={r.docTypeName} 
+                      onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))} 
+                      placeholder="Enter type name" 
+                    />
+                  </div>
+                )}
+                <div className={r.type==='OT' ? 'col-span-4':'col-span-7'}>
+                  <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="file"
+                        id={`file-${r.id}`}
+                        onChange={e => {
+                          const f = e.target.files?.[0] || null;
+                          if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
+                            toast.error('File size exceeds 15MB limit');
+                            e.target.value = '';
+                            return;
+                          }
+                          const previewUrl = f ? URL.createObjectURL(f) : '';
+                          setUploadRows(prev => prev.map(x => x.id===r.id?{...x,file:f,previewUrl}:x));
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor={`file-${r.id}`}
+                        className="flex items-center h-[38px] px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full"
+                      >
+                        <svg className="flex-shrink-0 w-5 h-5 mr-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span className="truncate max-w-[200px] inline-block">
+                          {r.file ? r.file.name : 'Choose file'}
+                        </span>
+                      </label>
+                    </div>
+                    {r.previewUrl && (
+                      <a 
+                        href={r.previewUrl} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
+                      >
+                        Preview
+                      </a>
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => setUploadRows(prev => prev.filter(x => x.id!==r.id))}
+                      className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
