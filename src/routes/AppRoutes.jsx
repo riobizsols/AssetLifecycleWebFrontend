@@ -54,6 +54,14 @@ import CategoriesOverview from "../components/scrapAssets/CategoriesOverview";
 import CreateScrapAsset from "../components/scrapAssets/CreateScrapAsset";
 import WorkorderManagement from "../pages/WorkorderManagement";
 import WorkOrderDetail from "../pages/WorkOrderDetail";
+import AssetReport from "../pages/reports/AssetReport";
+import AssetLifecycleReport from "../pages/reports/AssetLifecycleReport";
+import MaintenanceHistory from "../pages/reports/MaintenanceHistory";
+import AssetValuation from "../pages/reports/AssetValuation";
+import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
+import ReportHistory from "../pages/reports/ReportHistory";
+import BreakdownHistory from "../pages/reports/BreakdownHistory";
+import ReportBuilder from "../components/reportModels/ReportBuilder";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -190,6 +198,83 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/reports/asset-report"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AssetReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/asset-lifecycle-report"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AssetLifecycleReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/maintenance-history"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MaintenanceHistory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/asset-valuation"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AssetValuation />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/asset-workflow-history"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AssetWorkflowHistory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/report-history"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ReportHistory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/breakdown-history"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <BreakdownHistory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/breakdown-selection"
           element={
             <ProtectedRoute>
@@ -243,7 +328,22 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         /> */}
+
+
+
+
         
+        <Route
+          path="report-modal"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ReportBuilder />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/audit-logs-view"
           element={
@@ -435,6 +535,17 @@ export default function AppRoutes() {
 
           <Route path="add" element={<AddEntityForm />} />
         </Route>
+
+        <Route
+  path="/master-data/add-vendor"
+  element={
+    <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+      <MainLayout>
+        <AddEntityForm />
+      </MainLayout>
+    </ProtectedRoute>
+  }
+/>
 
         {/* nesting routing  branches and add department  */}
 

@@ -33,9 +33,11 @@ const SearchableDropdown = ({
   }, []);
 
   // Filter options based on search term
-  const filteredOptions = options.filter(option => 
-    option[displayKey].toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOptions = options.filter(option => {
+    // Add a check to ensure the option and its displayKey property are not undefined
+    const displayValue = option && option[displayKey];
+    return displayValue && displayValue.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   // Get display value for selected option
   const selectedOption = options.find(option => option[valueKey] === value);
@@ -46,11 +48,10 @@ const SearchableDropdown = ({
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 text-left border rounded-md flex items-center justify-between ${
-          disabled 
-            ? 'bg-gray-100 cursor-not-allowed text-gray-500' 
+        className={`w-full px-3 py-2 text-left border rounded-md flex items-center justify-between ${disabled
+            ? 'bg-gray-100 cursor-not-allowed text-gray-500'
             : 'bg-white hover:bg-gray-50'
-        }`}
+          }`}
       >
         <span className="truncate">{displayValue}</span>
         <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'transform rotate-180' : ''}`} />
@@ -80,9 +81,8 @@ const SearchableDropdown = ({
                   setIsOpen(false);
                   setSearchTerm("");
                 }}
-                className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${
-                  option[valueKey] === value ? 'bg-gray-100' : ''
-                }`}
+                className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${option[valueKey] === value ? 'bg-gray-100' : ''
+                  }`}
               >
                 {option[displayKey]}
               </div>
@@ -108,4 +108,4 @@ const SearchableDropdown = ({
   );
 };
 
-export default SearchableDropdown; 
+export default SearchableDropdown;

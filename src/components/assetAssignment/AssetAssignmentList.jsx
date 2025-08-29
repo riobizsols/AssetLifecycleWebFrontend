@@ -61,8 +61,8 @@ const AssetAssignmentList = ({
     }
   };
 
-  // Find department ID for display in table rows
-  const departmentId = (typeof department === 'object' && department?.dept_id) ? department.dept_id : selectedEntity;
+  // Corrected: Directly use selectedEntity for departmentId
+  const departmentId = selectedEntity;
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -118,13 +118,6 @@ const AssetAssignmentList = ({
           )}
 
           <div className="flex gap-2">
-            <button
-              className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
-              onClick={() => {/* Add your Go button functionality here */}}
-              disabled={!selectedEntity || (showDepartmentFilter && !selectedDepartment)}
-            >
-              Go
-            </button>
             <button
               className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50 flex items-center gap-2"
               onClick={() => navigate('/asset-selection', {     
@@ -314,4 +307,4 @@ const AssetAssignmentList = ({
   );
 };
 
-export default AssetAssignmentList; 
+export default AssetAssignmentList;

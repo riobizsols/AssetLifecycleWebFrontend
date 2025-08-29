@@ -26,6 +26,9 @@ import {
   Database,
   Calendar,
   History,
+  DollarSign,
+  GitBranch,
+  AlertTriangle,
 } from "lucide-react";
 
 const DatabaseSidebar = () => {
@@ -85,6 +88,14 @@ const DatabaseSidebar = () => {
     MAINTENANCEAPPROVAL: "/maintenance-approval",
     SUPERVISORAPPROVAL: "/supervisor-approval",
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports
+    // Report routes
+    ASSETLIFECYCLEREPORT: "/reports/asset-lifecycle-report",
+    ASSETREPORT: "/reports/asset-report",
+    MAINTENANCEHISTORY: "/reports/maintenance-history",
+    ASSETVALUATION: "/reports/asset-valuation",
+    ASSETWORKFLOWHISTORY: "/reports/asset-workflow-history",
+    REPORTHISTORY: "/reports/report-history",
+    BREAKDOWNHISTORY: "/reports/breakdown-history",
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings
     MASTERDATA: "/master-data/vendors",
     ORGANIZATIONS: "/master-data/organizations",
@@ -118,6 +129,14 @@ const DatabaseSidebar = () => {
       MAINTENANCEAPPROVAL: ClipboardList,
       SUPERVISORAPPROVAL: UserCheck,
       REPORTBREAKDOWN: BarChart3,
+      // Report icons
+      ASSETLIFECYCLEREPORT: FileText,
+      ASSETREPORT: FileText,
+      MAINTENANCEHISTORY: Wrench,
+      ASSETVALUATION: DollarSign,
+      ASSETWORKFLOWHISTORY: GitBranch,
+      REPORTHISTORY: History,
+      BREAKDOWNHISTORY: AlertTriangle,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
       ORGANIZATIONS: Building,

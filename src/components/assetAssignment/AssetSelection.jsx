@@ -201,76 +201,57 @@ const AssetSelection = () => {
       toast.error("Please select an asset from the list");
       return;
     }
-
-    // Check if asset type exists and has assignment_type
+  
     if (!asset.asset_type_id) {
       toast.error("Asset type information is missing");
       return;
     }
-
-    if (entityType === "employee") {
-      if (!entityIntId) {
-        toast.error("Employee internal ID is missing");
+  
+    try {
+      // Fetch asset type details to get assignment_type for validation
+      const typeRes = await API.get(`/asset-types/${asset.asset_type_id}`);
+      const assetType = typeRes.data;
+  
+      if (!assetType) {
+        toast.error("Failed to validate asset type");
         return;
       }
-
-      try {
-        // Fetch asset type details to get assignment_type
-        const typeRes = await API.get(`/asset-types/${asset.asset_type_id}`);
-        const assetType = typeRes.data;
-
-        if (!assetType) {
-          toast.error("Failed to validate asset type");
-          return;
-        }
-
-        if (assetType.assignment_type !== "User") {
+  
+      if (entityType === "employee") {
+        // Logic for Employee Assignment
+        if (assetType.assignment_type !== "user") {
           toast.error("This asset type can only be assigned to departments");
           return;
         }
-
+        if (!entityIntId) {
+          toast.error("Employee internal ID is missing");
+          return;
+        }
+  
         const payload = {
           asset_assign_id: generateUniqueId(),
           asset_id: asset.asset_id,
           org_id: asset.org_id,
-          dept_id: asset.dept_id || departmentId, // Only use departmentId for employee's department
+          dept_id: asset.dept_id || departmentId,
           employee_int_id: entityIntId,
           latest_assignment_flag: true,
           action: "A",
         };
         await API.post("/asset-assignments/employee", payload);
         toast.success("Asset assigned to employee successfully");
-        navigate(-1);
-      } catch (err) {
-        console.error("Failed to assign asset to employee", err);
-        const errorMessage =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          err.message ||
-          "An error occurred";
-        toast.error(`Failed to assign asset: ${errorMessage}`);
-      }
-    } else if (entityType === "department") {
-      if (!entityId && !departmentId) {
-        toast.error("Department ID missing");
-        return;
-      }
-
-      try {
-        // Fetch asset type details to validate assignment
-        const typeRes = await API.get(`/asset-types/${asset.asset_type_id}`);
-        const assetType = typeRes.data;
-
-        if (!assetType) {
-          toast.error("Failed to validate asset type");
-          return;
-        }
-
-        if (assetType.assignment_type !== "Department") {
+  
+      } else if (entityType === "department") {
+        // Logic for Department Assignment
+        // CORRECTED: Check for 'department' assignment type
+        if (assetType.assignment_type !== "department") {
           toast.error("This asset type can only be assigned to users");
           return;
         }
-
+        if (!entityId && !departmentId) {
+          toast.error("Department ID missing");
+          return;
+        }
+  
         const payload = {
           asset_assign_id: generateUniqueId(),
           asset_id: asset.asset_id,
@@ -281,18 +262,116 @@ const AssetSelection = () => {
         };
         await API.post("/asset-assignments", payload);
         toast.success("Asset assigned to department successfully");
-        navigate(-1);
-      } catch (err) {
-        console.error("Failed to assign asset to department", err);
-        const errorMessage =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          err.message ||
-          "An error occurred";
-        toast.error(`Failed to assign asset: ${errorMessage}`);
       }
+      
+      // Redirect after successful assignment
+      navigate(-1);
+  
+    } catch (err) {
+      console.error("Failed to assign asset", err);
+      const errorMessage =
+        err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
+      toast.error(`Failed to assign asset: ${errorMessage}`);
     }
   };
+
+  // const handleAssignAsset = async (asset) => {
+  //   if (!asset) {
+  //     toast.error("Please select an asset from the list");
+  //     return;
+  //   }
+
+  //   // Check if asset type exists and has assignment_type
+  //   if (!asset.asset_type_id) {
+  //     toast.error("Asset type information is missing");
+  //     return;
+  //   }
+
+  //   if (entityType === "employee") {
+  //     if (!entityIntId) {
+  //       toast.error("Employee internal ID is missing");
+  //       return;
+  //     }
+
+  //     try {
+  //       // Fetch asset type details to get assignment_type
+  //       const typeRes = await API.get(`/asset-types/${asset.asset_type_id}`);
+  //       const assetType = typeRes.data;
+
+  //       if (!assetType) {
+  //         toast.error("Failed to validate asset type");
+  //         return;
+  //       }
+
+  //       if (assetType.assignment_type !== "User") {
+  //         toast.error("This asset type can only be assigned to departments");
+  //         return;
+  //       }
+
+  //       const payload = {
+  //         asset_assign_id: generateUniqueId(),
+  //         asset_id: asset.asset_id,
+  //         org_id: asset.org_id,
+  //         dept_id: asset.dept_id || departmentId, // Only use departmentId for employee's department
+  //         employee_int_id: entityIntId,
+  //         latest_assignment_flag: true,
+  //         action: "A",
+  //       };
+  //       await API.post("/asset-assignments/employee", payload);
+  //       toast.success("Asset assigned to employee successfully");
+  //       navigate(-1);
+  //     } catch (err) {
+  //       console.error("Failed to assign asset to employee", err);
+  //       const errorMessage =
+  //         err.response?.data?.message ||
+  //         err.response?.data?.error ||
+  //         err.message ||
+  //         "An error occurred";
+  //       toast.error(`Failed to assign asset: ${errorMessage}`);
+  //     }
+  //   } else if (entityType === "department") {
+  //     if (!entityId && !departmentId) {
+  //       toast.error("Department ID missing");
+  //       return;
+  //     }
+
+  //     try {
+  //       // Fetch asset type details to validate assignment
+  //       const typeRes = await API.get(`/asset-types/${asset.asset_type_id}`);
+  //       const assetType = typeRes.data;
+
+  //       if (!assetType) {
+  //         toast.error("Failed to validate asset type");
+  //         return;
+  //       }
+
+  //       if (assetType.assignment_type !== "Department") {
+  //         toast.error("This asset type can only be assigned to users");
+  //         return;
+  //       }
+
+  //       const payload = {
+  //         asset_assign_id: generateUniqueId(),
+  //         asset_id: asset.asset_id,
+  //         org_id: asset.org_id,
+  //         dept_id: asset.dept_id || departmentId || entityId,
+  //         latest_assignment_flag: true,
+  //         action: "A",
+  //       };
+  //       await API.post("/asset-assignments", payload);
+  //       toast.success("Asset assigned to department successfully");
+  //       navigate(-1);
+  //     } catch (err) {
+  //       console.error("Failed to assign asset to department", err);
+  //       const errorMessage =
+  //         err.response?.data?.message ||
+  //         err.response?.data?.error ||
+  //         err.message ||
+  //         "An error occurred";
+  //       toast.error(`Failed to assign asset: ${errorMessage}`);
+  //     }
+  //   }
+  // };
 
   const handleScanSubmit = async (e) => {
     e.preventDefault();
