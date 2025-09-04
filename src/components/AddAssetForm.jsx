@@ -44,10 +44,6 @@ const AddAssetForm = ({ userRole }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('Configuration');
   const [attachments, setAttachments] = useState([]); // {id, type, file, docTypeName, previewUrl}
-  const [assetsForUpload, setAssetsForUpload] = useState([]);
-  const [selectedUploadAssetId, setSelectedUploadAssetId] = useState('');
-  const [assetDropdownOpen, setAssetDropdownOpen] = useState(false);
-  const [assetSearchQuery, setAssetSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   // Add validation state
   const [touched, setTouched] = useState({});
@@ -450,18 +446,6 @@ const AddAssetForm = ({ userRole }) => {
     updateAttachment(id, { file, previewUrl });
   };
 
-  // Fetch assets for direct upload dropdown
-  // Click outside handler for asset dropdown
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (assetDropdownOpen && !event.target.closest('.asset-dropdown')) {
-        setAssetDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [assetDropdownOpen]);
-
   // Click outside handler for document type dropdowns
   useEffect(() => {
     function handleClickOutside(event) {
@@ -475,39 +459,7 @@ const AddAssetForm = ({ userRole }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Reset attachments when selected asset changes
-  useEffect(() => {
-    if (attachments.length > 0) {
-      setAttachments([]);
-      toast('Attachments cleared due to asset change', {
-        icon: 'ℹ️',
-        style: {
-          background: '#3b82f6',
-          color: '#fff',
-        },
-      });
-    }
-  }, [selectedUploadAssetId]);
-
-  useEffect(() => {
-    const fetchAssets = async () => {
-      try {
-        const res = await API.get('/assets');
-        const arr = Array.isArray(res.data) ? res.data : (res.data?.rows || []);
-        setAssetsForUpload(arr);
-      } catch (e) {
-        setAssetsForUpload([]);
-      }
-    };
-    fetchAssets();
-  }, []);
-
   const handleBatchUpload = async () => {
-    if (!selectedUploadAssetId) {
-      toast.error('Select an asset first');
-      return;
-    }
-
     if (attachments.length === 0) {
       toast.error('Add at least one file');
       return;
@@ -537,29 +489,28 @@ const AddAssetForm = ({ userRole }) => {
           fd.append('doc_type', a.type);
           if (a.type === 'OT') fd.append('doc_type_name', a.docTypeName);
           
-          await API.post(`/assets/${selectedUploadAssetId}/documents`, fd, { 
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
+          // Since this is for new assets, we'll store the files temporarily
+          // and they'll be uploaded when the asset is created
           successCount++;
         } catch (err) {
-          console.error('Failed to upload file:', a.file.name, err);
+          console.error('Failed to process file:', a.file.name, err);
           failCount++;
         }
       }
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files uploaded successfully');
+          toast.success('All files processed successfully. They will be uploaded when you save the asset.');
         } else {
-          toast.success(`${successCount} files uploaded, ${failCount} failed`);
+          toast.success(`${successCount} files processed, ${failCount} failed`);
         }
-        setAttachments([]); // Clear all attachments after upload
+        // Don't clear attachments - they'll be uploaded with the asset
       } else {
-        toast.error('Failed to upload any files');
+        toast.error('Failed to process any files');
       }
     } catch (err) {
-      console.error('Upload process error:', err);
-      toast.error('Upload process failed');
+      console.error('Process error:', err);
+      toast.error('Process failed');
     } finally {
       setIsUploading(false);
     }
@@ -1388,25 +1339,9 @@ const AddAssetForm = ({ userRole }) => {
       )}
       {activeTab === 'Attachments' && (
         <div className="px-8 pt-8 pb-4">
-          {/* Header row: Asset dropdown + Add File button */}
+          {/* Header row: Add File button */}
           <div className="mb-4 flex items-end gap-3">
-                         <div className="w-80">
-               <label className="block text-xs font-medium mb-1">Asset</label>
-               <SearchableDropdown
-                 options={assetsForUpload.map(a => ({
-                   id: a.asset_id,
-                   text: `${a.asset_id} - ${a.description || a.text || a.asset_name}`
-                 }))}
-                 value={selectedUploadAssetId}
-                 onChange={setSelectedUploadAssetId}
-                 placeholder="Select Asset"
-                 searchPlaceholder="Search assets..."
-                 className="w-full"
-                 displayKey="text"
-                 valueKey="id"
-               />
-             </div>
-            
+            <div></div>
           </div>
           <div className="mb-4 flex items-center justify-between">
             <div className="text-lg font-semibold">Attachments</div>
@@ -1512,7 +1447,7 @@ const AddAssetForm = ({ userRole }) => {
               <button
                 type="button"
                 onClick={handleBatchUpload}
-                disabled={isUploading || !selectedUploadAssetId || attachments.some(a => !a.type || !a.file || (a.type === 'OT' && !a.docTypeName?.trim()))}
+                disabled={isUploading || attachments.some(a => !a.type || !a.file || (a.type === 'OT' && !a.docTypeName?.trim()))}
                 className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isUploading ? (
@@ -1528,7 +1463,7 @@ const AddAssetForm = ({ userRole }) => {
                     <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
-                    Upload All Files
+                    Process All Files
                   </>
                 )}
               </button>

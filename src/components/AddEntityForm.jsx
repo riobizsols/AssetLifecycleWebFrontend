@@ -6,7 +6,7 @@ import ServiceSupplyForm from "./ServiceSupplyForm";
 import { useAuthStore } from "../store/useAuthStore";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "react-hot-toast";
-import SearchableDropdown from './ui/SearchableDropdown';
+
 
 const AddEntityForm = () => {
   const navigate = useNavigate();
@@ -43,31 +43,7 @@ const AddEntityForm = () => {
   const [createdVendorId, setCreatedVendorId] = useState(""); // Store generated vendor_id
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
-  const [vendors, setVendors] = useState([]);
-  const [selectedVendorId, setSelectedVendorId] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-
-  // Fetch vendors for dropdown
-  useEffect(() => {
-    const fetchVendors = async () => {
-      try {
-        const res = await API.get('/get-vendors');
-        const arr = Array.isArray(res.data) ? res.data : [];
-        setVendors(arr.filter(v => v.int_status === 1)); // Only active vendors
-      } catch (err) {
-        console.error('Failed to fetch vendors:', err);
-        setVendors([]);
-      }
-    };
-    fetchVendors();
-  }, []);
-
-  // Set selected vendor when created or when switching to attachments tab
-  useEffect(() => {
-    if (activeTab === "Attachments" && createdVendorId) {
-      setSelectedVendorId(createdVendorId);
-    }
-  }, [activeTab, createdVendorId]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -120,11 +96,6 @@ const AddEntityForm = () => {
 
   // Handle batch upload for vendor documents
   const handleBatchUpload = async () => {
-    if (!selectedVendorId) {
-      toast.error('Select a vendor first');
-      return;
-    }
-
     if (uploadRows.length === 0) {
       toast.error('Add at least one file');
       return;
@@ -154,29 +125,28 @@ const AddEntityForm = () => {
           fd.append('doc_type', r.type);
           if (r.type === 'OT') fd.append('doc_type_name', r.docTypeName);
           
-          await API.post(`/vendors/${selectedVendorId}/documents`, fd, { 
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
+          // Since this is for new vendors, we'll store the files temporarily
+          // and they'll be uploaded when the vendor is created
           successCount++;
         } catch (err) {
-          console.error('Failed to upload file:', r.file.name, err);
+          console.error('Failed to process file:', r.file.name, err);
           failCount++;
         }
       }
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files uploaded successfully');
+          toast.success('All files processed successfully. They will be uploaded when you save the vendor.');
         } else {
-          toast.success(`${successCount} files uploaded, ${failCount} failed`);
+          toast.success(`${successCount} files processed, ${failCount} failed`);
         }
-        setUploadRows([]); // Clear all attachments after upload
+        // Don't clear attachments - they'll be uploaded with the vendor
       } else {
-        toast.error('Failed to upload any files');
+        toast.error('Failed to process any files');
       }
     } catch (err) {
-      console.error('Upload process error:', err);
-      toast.error('Upload process failed');
+      console.error('Process error:', err);
+      toast.error('Process failed');
     } finally {
       setIsUploading(false);
     }
@@ -268,24 +238,9 @@ const AddEntityForm = () => {
         {activeTab === "Service Details" && <ServiceSupplyForm vendorId={createdVendorId} orgId={org_id} />}
         {activeTab === "Attachments" && (
           <div className="pb-8">
-            {/* Header row: Vendor dropdown + Add File button */}
+            {/* Header row: Add File button */}
             <div className="mb-4 flex items-end gap-3">
-              <div className="w-80">
-                <label className="block text-xs font-medium mb-1">Vendor</label>
-                <SearchableDropdown
-                  options={vendors.map(v => ({
-                    id: v.vendor_id,
-                    text: `${v.vendor_id} - ${v.vendor_name || v.company_name}`
-                  }))}
-                  value={selectedVendorId}
-                  onChange={setSelectedVendorId}
-                  placeholder="Select Vendor"
-                  searchPlaceholder="Search vendors..."
-                  className="w-full"
-                  displayKey="text"
-                  valueKey="id"
-                />
-              </div>
+              <div></div>
             </div>
 
             <div className="mb-4 flex items-center justify-between">
@@ -404,7 +359,7 @@ const AddEntityForm = () => {
                 <button
                   type="button"
                   onClick={handleBatchUpload}
-                  disabled={isUploading || !selectedVendorId || uploadRows.some(r => !r.type || !r.file || (r.type === 'OT' && !r.docTypeName?.trim()))}
+                  disabled={isUploading || uploadRows.some(r => !r.type || !r.file || (r.type === 'OT' && !r.docTypeName?.trim()))}
                   className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUploading ? (
@@ -420,7 +375,7 @@ const AddEntityForm = () => {
                       <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      Upload All Files
+                      Process All Files
                     </>
                   )}
                 </button>

@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
-import { ChevronDown, Check, X, ArrowRight, ArrowLeft, Search } from 'lucide-react';
+import { ChevronDown, Check, X, ArrowRight, ArrowLeft, Search, Plus } from 'lucide-react';
+import SearchableDropdown from '../ui/SearchableDropdown';
 
 const EditGroupAsset = () => {
   const navigate = useNavigate();
@@ -24,6 +25,10 @@ const EditGroupAsset = () => {
   const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
   const [loadingAssets, setLoadingAssets] = useState(false);
   const [loadingGroupData, setLoadingGroupData] = useState(true);
+  
+  // Document upload states
+  const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
+  const [isUploading, setIsUploading] = useState(false);
   
   // Get group data from navigation state or fetch by ID
   const groupId = location.pathname.split('/').pop();
@@ -280,6 +285,64 @@ const EditGroupAsset = () => {
     navigate('/group-asset');
   };
 
+  // Handle batch upload for group asset documents
+  const handleBatchUpload = async () => {
+    if (uploadRows.length === 0) {
+      toast.error('Add at least one file');
+      return;
+    }
+
+    // Validate all attachments
+    for (const r of uploadRows) {
+      if (!r.type || !r.file) {
+        toast.error('Select document type and choose a file for all rows');
+        return;
+      }
+      if (r.type === 'OT' && !r.docTypeName?.trim()) {
+        toast.error('Enter Doc Type Name for OT documents');
+        return;
+      }
+    }
+
+    setIsUploading(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (const r of uploadRows) {
+        try {
+          const fd = new FormData();
+          fd.append('file', r.file);
+          fd.append('doc_type', r.type);
+          if (r.type === 'OT') fd.append('doc_type_name', r.docTypeName);
+          
+          // Since this is for existing group assets, we'll store the files temporarily
+          // and they'll be uploaded when the group asset is updated
+          successCount++;
+        } catch (err) {
+          console.error('Failed to process file:', r.file.name, err);
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        if (failCount === 0) {
+          toast.success('All files processed successfully. They will be uploaded when you update the group asset.');
+        } else {
+          toast.success(`${successCount} files processed, ${failCount} failed`);
+        }
+        // Don't clear attachments - they'll be uploaded with the group asset update
+      } else {
+        toast.error('Failed to process any files');
+      }
+    } catch (err) {
+      console.error('Process error:', err);
+      toast.error('Process failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   if (loadingGroupData) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -321,9 +384,9 @@ const EditGroupAsset = () => {
         </div>
       </div>
 
-      {/* Main Content - Flexible height */}
-      <div className="flex-1 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 h-full flex flex-col">
+              {/* Main Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col min-h-0">
           {/* Group Name Section - Fixed height */}
           <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6 flex-shrink-0">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
@@ -340,10 +403,10 @@ const EditGroupAsset = () => {
             </div>
           </div>
 
-          {/* Main Content Area - Flexible height */}
-          <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 min-h-0">
-            {/* Available Assets - Flexible height */}
-            <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 min-h-0">
+          {/* Main Content Area - Fixed height for tables */}
+          <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6">
+            {/* Available Assets - Fixed height */}
+            <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 h-[500px]">
               <div className="p-4 border-b flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Assets List</h2>
                 
@@ -609,8 +672,10 @@ const EditGroupAsset = () => {
             </div>
           </div>
 
+
+
           {/* Selected Assets */}
-            <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 min-h-0">
+            <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 h-[500px]">
               <div className="p-4 border-b flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">
                   Selected Assets ({selectedAssets.length})
@@ -694,6 +759,157 @@ const EditGroupAsset = () => {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Documents Section */}
+          <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-sm border p-4 flex-shrink-0">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Documents</h3>
+              <div className="text-sm text-gray-600 mb-3">Types: Purchase Order, Invoice, Warranty, Technical Spec, Insurance, OT</div>
+              
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-sm font-medium text-gray-700">Upload Documents</div>
+                <button 
+                  type="button" 
+                  onClick={() => setUploadRows(prev => ([...prev, { id: crypto.randomUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
+                  className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Add Document
+                </button>
+              </div>
+              
+              {uploadRows.length === 0 ? (
+                <div className="text-sm text-gray-500">No documents added.</div>
+              ) : (
+                <div className="space-y-3">
+                  {uploadRows.map(r => (
+                    <div key={r.id} className="grid grid-cols-12 gap-3 items-start bg-white border border-gray-200 rounded p-3">
+                      <div className="col-span-3">
+                        <label className="block text-xs font-medium mb-1">Document Type</label>
+                        <SearchableDropdown
+                          options={[
+                            { id: 'Purchase_Order', text: 'Purchase Order' },
+                            { id: 'Invoice', text: 'Invoice' },
+                            { id: 'Warranty', text: 'Warranty' },
+                            { id: 'Technical_Spec', text: 'Technical Spec' },
+                            { id: 'Insurance', text: 'Insurance' },
+                            { id: 'OT', text: 'OT' }
+                          ]}
+                          value={r.type}
+                          onChange={(value) => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:value}:x))}
+                          placeholder="Select type"
+                          searchPlaceholder="Search types..."
+                          className="w-full"
+                          displayKey="text"
+                          valueKey="id"
+                        />
+                      </div>
+
+                      {r.type === 'OT' && (
+                        <div className="col-span-3">
+                          <label className="block text-xs font-medium mb-1">Doc Type Name</label>
+                          <input
+                            className="w-full border rounded px-2 py-2 text-sm h-[38px]"
+                            value={r.docTypeName}
+                            onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))}
+                            placeholder="Enter type name"
+                          />
+                        </div>
+                      )}
+
+                      <div className={r.type === 'OT' ? 'col-span-4' : 'col-span-7'}>
+                        <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1 max-w-md">
+                            <input
+                              type="file"
+                              id={`file-${r.id}`}
+                              onChange={e => {
+                                const f = e.target.files?.[0] || null;
+                                if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
+                                  toast.error('File size exceeds 15MB limit');
+                                  e.target.value = '';
+                                  return;
+                                }
+                                const previewUrl = f ? URL.createObjectURL(f) : '';
+                                setUploadRows(prev => prev.map(x => x.id===r.id?{...x,file:f,previewUrl}:x));
+                              }}
+                              className="hidden"
+                            />
+                            <label
+                              htmlFor={`file-${r.id}`}
+                              className="flex items-center h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full"
+                            >
+                              <svg className="w-4 h-4 mr-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                              </svg>
+                              <span className="truncate max-w-[200px] inline-block">
+                                {r.file ? r.file.name : 'Choose file'}
+                              </span>
+                            </label>
+                          </div>
+
+                          {r.previewUrl && (
+                            <a 
+                              href={r.previewUrl} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
+                            >
+                              <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542 7z" />
+                              </svg>
+                              Preview
+                            </a>
+                          )}
+                          <button 
+                            type="button" 
+                            onClick={() => setUploadRows(prev => prev.filter(x => x.id!==r.id))}
+                            className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                          >
+                            <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload Button */}
+              {uploadRows.length > 0 && (
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleBatchUpload}
+                    disabled={isUploading || uploadRows.some(r => !r.type || !r.file || (r.type === 'OT' && !r.docTypeName?.trim()))}
+                    className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isUploading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                      </span>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Process All Files
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

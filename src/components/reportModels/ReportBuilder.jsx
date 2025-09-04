@@ -364,12 +364,22 @@ function DateRange({ value, onChange, preset }) {
   );
 }
 
-function SearchableSelect({ onChange, options, placeholder = "Select..." }) {
+function SearchableSelect({ onChange, options, placeholder = "Select...", value }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
 
-  const filteredOptions = useMemo(() => options.filter((opt) => opt.toLowerCase().includes(searchTerm.toLowerCase())), [options, searchTerm]);
+  // Debug logging
+  console.log('🔍 [SearchableSelect] Received options:', options.length, options.slice(0, 3));
+  console.log('🔍 [SearchableSelect] Current value:', value);
+
+  const filteredOptions = useMemo(() => {
+    return options.filter((opt) => {
+      // Handle both string and object options
+      const searchText = typeof opt === 'string' ? opt : (opt.label || opt.value || '');
+      return searchText.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  }, [options, searchTerm]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -382,7 +392,9 @@ function SearchableSelect({ onChange, options, placeholder = "Select..." }) {
   }, []);
   
   const handleSelect = (option) => {
-    onChange(option);
+    // For object options, return the value; for string options, return the string
+    const selectedValue = typeof option === 'string' ? option : option.value;
+    onChange(selectedValue);
     setIsOpen(false);
     setSearchTerm("");
   };
@@ -394,7 +406,16 @@ function SearchableSelect({ onChange, options, placeholder = "Select..." }) {
         onClick={() => setIsOpen(!isOpen)}
         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-left bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center justify-between"
       >
-        <span className="truncate pr-2">{placeholder}</span>
+        <span className="truncate pr-2">
+          {value ? (() => {
+            // Find the selected option to display its label
+            const selectedOption = options.find(opt => {
+              const optValue = typeof opt === 'string' ? opt : opt.value;
+              return optValue === value;
+            });
+            return selectedOption ? (typeof selectedOption === 'string' ? selectedOption : selectedOption.label) : value;
+          })() : placeholder}
+        </span>
         <span className="text-slate-500">▼</span>
       </button>
       {isOpen && (
@@ -413,11 +434,15 @@ function SearchableSelect({ onChange, options, placeholder = "Select..." }) {
             {filteredOptions.length === 0 ? (
               <div className="text-sm text-slate-500 p-2">No matches found.</div>
             ) : (
-              filteredOptions.map((opt) => (
-                <div key={opt} onClick={() => handleSelect(opt)} className="text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer">
-                  {opt}
-                </div>
-              ))
+              filteredOptions.map((opt) => {
+                const displayText = typeof opt === 'string' ? opt : opt.label;
+                const key = typeof opt === 'string' ? opt : opt.value;
+                return (
+                  <div key={key} onClick={() => handleSelect(opt)} className="text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer">
+                    {displayText}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -558,7 +583,10 @@ function filterRows(allRows, reportId, quickFilters, advancedFilters) {
 
     // Apply advanced filters
     for (const filter of advancedFilters) {
-      if (!filter.field || !filter.op || filter.val === null) continue;
+        if (!filter.field || !filter.op || filter.val === null || filter.val === undefined) continue;
+      if (Array.isArray(filter.val) && filter.val.length === 0) continue;
+      if (typeof filter.val === 'string' && filter.val.trim() === '') continue;
+      if (Array.isArray(filter.val) && filter.val.every(v => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) continue;
       const field = reportDef.fields.find(f => f.key === filter.field);
       if (!field) continue; // Check if field exists
       const colName = FIELD_TO_COLUMN_MAP[reportId]?.[filter.field];
