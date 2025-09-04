@@ -18,6 +18,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
   const [loadingActions, setLoadingActions] = useState({});
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
   const [isUploading, setIsUploading] = useState(false);
+  const [documentTypes, setDocumentTypes] = useState([]);
   
   // New state variables for maintenance fields
   const [maintenanceTypes, setMaintenanceTypes] = useState([]);
@@ -67,6 +68,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
   // Fetch maintenance types when component mounts
   useEffect(() => {
     fetchMaintenanceTypes();
+    fetchDocumentTypes();
   }, []);
 
   // Fetch checklist when asset type is loaded and requires maintenance
@@ -142,6 +144,31 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       console.error('Error fetching maintenance types:', err);
       toast.error('Failed to fetch maintenance types');
       setMaintenanceTypes([]);
+    }
+  };
+
+  const fetchDocumentTypes = async () => {
+    try {
+      console.log('Fetching document types for asset types...');
+      const res = await API.get('/doc-type-objects/object-type/asset type');
+      console.log('Document types response:', res.data);
+
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        // Transform API data to dropdown format
+        const docTypes = res.data.data.map(docType => ({
+          id: docType.doc_type,
+          text: docType.doc_type_text
+        }));
+        setDocumentTypes(docTypes);
+        console.log('Document types loaded:', docTypes);
+      } else {
+        console.log('No document types found, using fallback');
+        setDocumentTypes([]);
+      }
+    } catch (err) {
+      console.error('Error fetching document types:', err);
+      toast.error('Failed to load document types');
+      setDocumentTypes([]);
     }
   };
 
@@ -264,8 +291,14 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
 
     // Validate all attachments
     for (const r of uploadRows) {
-      if (!r.file) {
-        toast.error('Choose a file for all rows');
+      if (!r.type || !r.file) {
+        toast.error('Select document type and choose a file for all rows');
+        return;
+      }
+      // Check if the selected document type requires a custom name
+      const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
+        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
     }
@@ -279,6 +312,10 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
         try {
           const fd = new FormData();
           fd.append('file', r.file);
+          fd.append('doc_type', r.type);
+          if (r.type && r.docTypeName?.trim()) {
+            fd.append('doc_type_name', r.docTypeName);
+          }
           
           await API.post(`/asset-types/${assetData.asset_type_id}/checklist`, fd, { 
             headers: { 'Content-Type': 'multipart/form-data' }
@@ -535,8 +572,42 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                     {uploadRows.length === 0 && <div className="text-sm text-gray-500">No new files added.</div>}
                     {uploadRows.map(r => (
                       <div key={r.id} className="grid grid-cols-12 gap-3 items-start bg-white border rounded p-3">
-                        <div className="col-span-4">
-                          <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
+                        <div className="col-span-3">
+                          <label className="block text-xs font-medium mb-1">Document Type</label>
+                          <select 
+                            className="w-full border rounded h-[38px] px-2 text-sm" 
+                            value={r.type} 
+                            onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:e.target.value}:x))}
+                          >
+                            <option value="">Select type</option>
+                            {documentTypes.map(docType => (
+                              <option key={docType.id} value={docType.id}>
+                                {docType.text}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {(() => {
+                          const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                          const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                          return needsCustomName && (
+                            <div className="col-span-3">
+                              <label className="block text-xs font-medium mb-1">Custom Name</label>
+                              <input 
+                                className="w-full border rounded h-[38px] px-2 text-sm" 
+                                value={r.docTypeName} 
+                                onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))} 
+                                placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                              />
+                            </div>
+                          );
+                        })()}
+                        <div className={(() => {
+                          const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                          const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                          return needsCustomName ? 'col-span-4' : 'col-span-7';
+                        })()}>
+                          <label className="block text-xs font-medium mb-1">File (Max 15MB)</label>
                           <div className="flex items-center gap-2">
                             <div className="relative flex-1">
                               <input
@@ -553,6 +624,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                                   setUploadRows(prev => prev.map(x => x.id===r.id?{...x,file:f,previewUrl}:x));
                                 }}
                                 className="hidden"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx"
                               />
                               <label
                                 htmlFor={`file-${r.id}`}
@@ -595,7 +667,12 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                       <button
                         type="button"
                         onClick={handleUploadChecklist}
-                        disabled={isUploading || uploadRows.some(r => !r.file)}
+                        disabled={isUploading || uploadRows.some(r => {
+                          if (!r.type || !r.file) return true;
+                          const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                          const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                          return needsCustomName && !r.docTypeName?.trim();
+                        })}
                         className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isUploading ? (

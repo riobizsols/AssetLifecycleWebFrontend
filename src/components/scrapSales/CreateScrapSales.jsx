@@ -49,6 +49,7 @@ const CreateScrapSales = () => {
   const [collectionDate, setCollectionDate] = useState("");
   const [activeTab, setActiveTab] = useState('Configuration');
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
+  const [documentTypes, setDocumentTypes] = useState([]);
 
   // Fetch asset types from API
   useEffect(() => {
@@ -68,6 +69,36 @@ const CreateScrapSales = () => {
     };
     fetchAssetTypes();
   }, []);
+
+  // Fetch document types on component mount
+  useEffect(() => {
+    fetchDocumentTypes();
+  }, []);
+
+  const fetchDocumentTypes = async () => {
+    try {
+      console.log('Fetching document types for scrap sales...');
+      const res = await API.get('/doc-type-objects/object-type/scrap sales');
+      console.log('Document types response:', res.data);
+
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        // Transform API data to dropdown format
+        const docTypes = res.data.data.map(docType => ({
+          id: docType.doc_type,
+          text: docType.doc_type_text
+        }));
+        setDocumentTypes(docTypes);
+        console.log('Document types loaded:', docTypes);
+      } else {
+        console.log('No document types found, using fallback');
+        setDocumentTypes([]);
+      }
+    } catch (err) {
+      console.error('Error fetching document types:', err);
+      toast.error('Failed to load document types');
+      setDocumentTypes([]);
+    }
+  };
 
   useEffect(() => {
     const fetchAvailableAssets = async () => {
@@ -422,14 +453,18 @@ const CreateScrapSales = () => {
         if (scrapId && uploadRows.length > 0) {
           for (const r of uploadRows) {
             if (!r.type || !r.file) continue;
-            if (r.type === 'OT' && !r.docTypeName?.trim()) {
-              toast.error('Enter DocTypeName for OT before uploading');
+            // Check if the selected document type requires a custom name
+            const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+            if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
+              toast.error(`Enter custom name for ${selectedDocType.text} before uploading`);
               continue;
             }
             const fd = new FormData();
             fd.append('file', r.file);
             fd.append('doc_type', r.type);
-            if (r.type === 'OT') fd.append('doc_type_name', r.docTypeName);
+            if (r.type && r.docTypeName?.trim()) {
+              fd.append('doc_type_name', r.docTypeName);
+            }
             try {
               await API.post(`/scrap-sales/${scrapId}/documents`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
             } catch (upErr) {
@@ -1072,7 +1107,7 @@ const CreateScrapSales = () => {
         {/* Documents Section */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
-          <div className="text-sm text-gray-600 mb-3">Types: PO, Invoice, Delivery Confirmation, Outpass, Clearence Certificate, OT</div>
+          <div className="text-sm text-gray-600 mb-3">Document types are loaded from the system configuration</div>
           <div className="flex justify-end mb-3">
             <button 
               type="button" 
@@ -1090,14 +1125,7 @@ const CreateScrapSales = () => {
                 <div className="col-span-3">
                   <label className="block text-xs font-medium mb-1">Document Type</label>
                   <SearchableDropdown
-                    options={[
-                      { id: 'PO', text: 'PO' },
-                      { id: 'Invoice', text: 'Invoice' },
-                      { id: 'Delivery_Confirmation', text: 'Delivery Confirmation' },
-                      { id: 'Outpass', text: 'Outpass' },
-                      { id: 'Clearence_Certificate', text: 'Clearence Certificate' },
-                      { id: 'OT', text: 'OT' }
-                    ]}
+                    options={documentTypes}
                     value={r.type}
                     onChange={(value) => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:value}:x))}
                     placeholder="Select type"
@@ -1107,18 +1135,26 @@ const CreateScrapSales = () => {
                     valueKey="id"
                   />
                 </div>
-                {r.type==='OT' && (
-                  <div className="col-span-3">
-                    <label className="block text-xs font-medium mb-1">Doc Type Name</label>
-                    <input 
-                      className="w-full border rounded h-[38px] px-2 text-sm" 
-                      value={r.docTypeName} 
-                      onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))} 
-                      placeholder="Enter type name" 
-                    />
-                  </div>
-                )}
-                <div className={r.type==='OT' ? 'col-span-4':'col-span-7'}>
+                {(() => {
+                  const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                  const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                  return needsCustomName && (
+                    <div className="col-span-3">
+                      <label className="block text-xs font-medium mb-1">Custom Name</label>
+                      <input 
+                        className="w-full border rounded h-[38px] px-2 text-sm" 
+                        value={r.docTypeName} 
+                        onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))} 
+                        placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                      />
+                    </div>
+                  );
+                })()}
+                <div className={(() => {
+                  const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                  const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                  return needsCustomName ? 'col-span-4' : 'col-span-7';
+                })()}>
                   <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">

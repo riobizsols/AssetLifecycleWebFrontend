@@ -36,6 +36,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [loadingActions, setLoadingActions] = useState({});
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
   const [isUploading, setIsUploading] = useState(false);
+  const [documentTypes, setDocumentTypes] = useState([]);
 
   // Load asset data when modal opens
   useEffect(() => {
@@ -76,6 +77,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     fetchUsers();
     fetchProdServs();
     fetchVendors();
+    fetchDocumentTypes();
   }, []);
 
   // Fetch attached documents for this asset
@@ -233,6 +235,31 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     }
   };
 
+  const fetchDocumentTypes = async () => {
+    try {
+      console.log('Fetching document types for assets...');
+      const res = await API.get('/doc-type-objects/object-type/asset');
+      console.log('Document types response:', res.data);
+
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        // Transform API data to dropdown format
+        const docTypes = res.data.data.map(docType => ({
+          id: docType.doc_type,
+          text: docType.doc_type_text
+        }));
+        setDocumentTypes(docTypes);
+        console.log('Document types loaded:', docTypes);
+      } else {
+        console.log('No document types found, using fallback');
+        setDocumentTypes([]);
+      }
+    } catch (err) {
+      console.error('Error fetching document types:', err);
+      toast.error('Failed to load document types');
+      setDocumentTypes([]);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.assetType || !form.serialNumber || !form.purchaseDate || !form.purchaseCost) {
@@ -284,8 +311,10 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         toast.error('Select document type and choose a file for all rows');
         return;
       }
-      if (r.type === 'OT' && !r.docTypeName?.trim()) {
-        toast.error('Enter Doc Type Name for OT documents');
+      // Check if the selected document type requires a custom name
+      const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
+        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
     }
@@ -620,26 +649,33 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                         onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:e.target.value}:x))}
                       >
                         <option value="">Select type</option>
-                        <option value="Purchase_Order">Purchase Order</option>
-                        <option value="Invoice">Invoice</option>
-                        <option value="Warranty">Warranty</option>
-                        <option value="Technical_Spec">Technical Spec</option>
-                        <option value="Insurance">Insurance</option>
-                        <option value="OT">OT</option>
+                        {documentTypes.map(docType => (
+                          <option key={docType.id} value={docType.id}>
+                            {docType.text}
+                          </option>
+                        ))}
                       </select>
                     </div>
-                    {r.type==='OT' && (
-                      <div className="col-span-3">
-                        <label className="block text-xs font-medium mb-1">Doc Type Name</label>
-                        <input 
-                          className="w-full border rounded h-[38px] px-2 text-sm" 
-                          value={r.docTypeName} 
-                          onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))} 
-                          placeholder="Enter type name" 
-                        />
-                      </div>
-                    )}
-                    <div className={r.type==='OT' ? 'col-span-4':'col-span-7'}>
+                    {(() => {
+                      const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      return needsCustomName && (
+                        <div className="col-span-3">
+                          <label className="block text-xs font-medium mb-1">Custom Name</label>
+                          <input 
+                            className="w-full border rounded h-[38px] px-2 text-sm" 
+                            value={r.docTypeName} 
+                            onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))} 
+                            placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                          />
+                        </div>
+                      );
+                    })()}
+                    <div className={(() => {
+                      const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      return needsCustomName ? 'col-span-4' : 'col-span-7';
+                    })()}>
                       <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
                       <div className="flex items-center gap-2">
                         <div className="relative flex-1">
@@ -699,7 +735,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                   <button
                     type="button"
                     onClick={handleUploadDocuments}
-                    disabled={isUploading || uploadRows.some(r => !r.type || !r.file || (r.type === 'OT' && !r.docTypeName?.trim()))}
+                    disabled={isUploading || uploadRows.some(r => {
+                      if (!r.type || !r.file) return true;
+                      const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      return needsCustomName && !r.docTypeName?.trim();
+                    })}
                     className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isUploading ? (

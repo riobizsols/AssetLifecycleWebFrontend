@@ -75,6 +75,7 @@ const AddAssetForm = ({ userRole }) => {
   const [parentAssetDropdownOpen, setParentAssetDropdownOpen] = useState(false);
   const [searchParentAsset, setSearchParentAsset] = useState("");
   const parentAssetDropdownRef = useRef(null);
+  const [documentTypes, setDocumentTypes] = useState([]);
 
   // Add state for search and dropdown visibility
   const [searchStates, setSearchStates] = useState({
@@ -119,6 +120,7 @@ const AddAssetForm = ({ userRole }) => {
     fetchUsers();
     fetchProdServs();
     fetchVendors();
+    fetchDocumentTypes();
   }, []);
 
   useEffect(() => {
@@ -360,6 +362,31 @@ const AddAssetForm = ({ userRole }) => {
     }
   };
 
+  const fetchDocumentTypes = async () => {
+    try {
+      console.log('Fetching document types for assets...');
+      const res = await API.get('/doc-type-objects/object-type/asset');
+      console.log('Document types response:', res.data);
+
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        // Transform API data to dropdown format
+        const docTypes = res.data.data.map(docType => ({
+          id: docType.doc_type,
+          text: docType.doc_type_text
+        }));
+        setDocumentTypes(docTypes);
+        console.log('Document types loaded:', docTypes);
+      } else {
+        console.log('No document types found, using fallback');
+        setDocumentTypes([]);
+      }
+    } catch (err) {
+      console.error('Error fetching document types:', err);
+      toast.error('Failed to load document types');
+      setDocumentTypes([]);
+    }
+  };
+
   const fetchDynamicProperties = async (assetTypeId) => {
     if (!assetTypeId) {
       setDynamicProperties([]);
@@ -411,15 +438,7 @@ const AddAssetForm = ({ userRole }) => {
     setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
-  // Attachments tab helpers
-  const allowedTypes = [
-    'Purchase_Order',
-    'Invoice',
-    'Warranty',
-    'Technical_Spec',
-    'Insurance',
-    'OT'
-  ];
+  // Attachments tab helpers - document types are now fetched from API
 
   const addAttachmentRow = () => {
     setAttachments(prev => ([...prev, { 
@@ -471,8 +490,10 @@ const AddAssetForm = ({ userRole }) => {
         toast.error('Select document type and choose a file for all rows');
         return;
       }
-      if (a.type === 'OT' && !a.docTypeName?.trim()) {
-        toast.error('Enter Doc Type Name for OT documents');
+      // Check if the selected document type requires a custom name (like OT - Others)
+      const selectedDocType = documentTypes.find(dt => dt.id === a.type);
+      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !a.docTypeName?.trim()) {
+        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
     }
@@ -1356,7 +1377,7 @@ const AddAssetForm = ({ userRole }) => {
               Add File
             </button>
           </div>
-          <div className="text-sm text-gray-600 mb-3">Types: Purchase_Order, Invoice, Warranty, Technical_Spec, Insurance, OT (Others)</div>
+          <div className="text-sm text-gray-600 mb-3">Document types are loaded from the system configuration</div>
           {attachments.length === 0 ? (
             <div className="text-sm text-gray-500">No files added.</div>
           ) : (
@@ -1366,7 +1387,7 @@ const AddAssetForm = ({ userRole }) => {
                                      <div className="col-span-2">
                      <label className="block text-xs font-medium mb-1">Document Type</label>
                                     <SearchableDropdown
-                 options={allowedTypes.map(t => ({ id: t, text: t.replace('_', ' ') }))}
+                 options={documentTypes}
                  value={att.type}
                  onChange={(value) => updateAttachment(att.id, { type: value })}
                  placeholder="Select type"
@@ -1376,19 +1397,27 @@ const AddAssetForm = ({ userRole }) => {
                  valueKey="id"
                />
                    </div>
-                  {att.type === 'OT' && (
-                    <div className="col-span-2">
-                      <label className="block text-xs font-medium mb-1">Doc Type Name</label>
-                      <input
-                        type="text"
-                        className="w-full border rounded px-2 py-2 text-sm bg-white"
-                        value={att.docTypeName}
-                        onChange={(e) => updateAttachment(att.id, { docTypeName: e.target.value })}
-                        placeholder="Enter document type"
-                      />
-                    </div>
-                  )}
-                                                        <div className={att.type === 'OT' ? 'col-span-1' : 'col-span-2'}>
+                  {(() => {
+                    const selectedDocType = documentTypes.find(dt => dt.id === att.type);
+                    const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                    return needsCustomName && (
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium mb-1">Custom Name</label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-2 py-2 text-sm bg-white"
+                          value={att.docTypeName}
+                          onChange={(e) => updateAttachment(att.id, { docTypeName: e.target.value })}
+                          placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                        />
+                      </div>
+                    );
+                  })()}
+                                                        <div className={(() => {
+                                                          const selectedDocType = documentTypes.find(dt => dt.id === att.type);
+                                                          const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                                                          return needsCustomName ? 'col-span-1' : 'col-span-2';
+                                                        })()}>
                      <label className="block text-xs font-medium mb-1">File</label>
                      <div className="flex items-center gap-2">
                        <div className="relative flex-1">
@@ -1447,7 +1476,12 @@ const AddAssetForm = ({ userRole }) => {
               <button
                 type="button"
                 onClick={handleBatchUpload}
-                disabled={isUploading || attachments.some(a => !a.type || !a.file || (a.type === 'OT' && !a.docTypeName?.trim()))}
+                disabled={isUploading || attachments.some(a => {
+                  if (!a.type || !a.file) return true;
+                  const selectedDocType = documentTypes.find(dt => dt.id === a.type);
+                  const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                  return needsCustomName && !a.docTypeName?.trim();
+                })}
                 className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isUploading ? (

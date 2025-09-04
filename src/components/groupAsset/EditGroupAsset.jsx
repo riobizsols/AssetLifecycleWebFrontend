@@ -29,6 +29,7 @@ const EditGroupAsset = () => {
   // Document upload states
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
   const [isUploading, setIsUploading] = useState(false);
+  const [documentTypes, setDocumentTypes] = useState([]);
   
   // Get group data from navigation state or fetch by ID
   const groupId = location.pathname.split('/').pop();
@@ -48,7 +49,34 @@ const EditGroupAsset = () => {
     
     // Fetch asset types for dropdown
     fetchAssetTypes();
+    fetchDocumentTypes();
   }, [groupId, isEdit, groupData]);
+
+  // Fetch document types on component mount
+  const fetchDocumentTypes = async () => {
+    try {
+      console.log('Fetching document types for asset groups...');
+      const res = await API.get('/doc-type-objects/object-type/asset group');
+      console.log('Document types response:', res.data);
+
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        // Transform API data to dropdown format
+        const docTypes = res.data.data.map(docType => ({
+          id: docType.doc_type,
+          text: docType.doc_type_text
+        }));
+        setDocumentTypes(docTypes);
+        console.log('Document types loaded:', docTypes);
+      } else {
+        console.log('No document types found, using fallback');
+        setDocumentTypes([]);
+      }
+    } catch (err) {
+      console.error('Error fetching document types:', err);
+      toast.error('Failed to load document types');
+      setDocumentTypes([]);
+    }
+  };
 
   // Fetch existing group details
   const fetchGroupDetails = async (id) => {
@@ -298,8 +326,10 @@ const EditGroupAsset = () => {
         toast.error('Select document type and choose a file for all rows');
         return;
       }
-      if (r.type === 'OT' && !r.docTypeName?.trim()) {
-        toast.error('Enter Doc Type Name for OT documents');
+      // Check if the selected document type requires a custom name
+      const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
+        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
     }
@@ -314,7 +344,9 @@ const EditGroupAsset = () => {
           const fd = new FormData();
           fd.append('file', r.file);
           fd.append('doc_type', r.type);
-          if (r.type === 'OT') fd.append('doc_type_name', r.docTypeName);
+          if (r.type && r.docTypeName?.trim()) {
+            fd.append('doc_type_name', r.docTypeName);
+          }
           
           // Since this is for existing group assets, we'll store the files temporarily
           // and they'll be uploaded when the group asset is updated
@@ -766,7 +798,7 @@ const EditGroupAsset = () => {
           <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-sm border p-4 flex-shrink-0">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Documents</h3>
-              <div className="text-sm text-gray-600 mb-3">Types: Purchase Order, Invoice, Warranty, Technical Spec, Insurance, OT</div>
+              <div className="text-sm text-gray-600 mb-3">Document types are loaded from the system configuration</div>
               
               <div className="flex items-center justify-between mb-4">
                 <div className="text-sm font-medium text-gray-700">Upload Documents</div>
@@ -789,14 +821,7 @@ const EditGroupAsset = () => {
                       <div className="col-span-3">
                         <label className="block text-xs font-medium mb-1">Document Type</label>
                         <SearchableDropdown
-                          options={[
-                            { id: 'Purchase_Order', text: 'Purchase Order' },
-                            { id: 'Invoice', text: 'Invoice' },
-                            { id: 'Warranty', text: 'Warranty' },
-                            { id: 'Technical_Spec', text: 'Technical Spec' },
-                            { id: 'Insurance', text: 'Insurance' },
-                            { id: 'OT', text: 'OT' }
-                          ]}
+                          options={documentTypes}
                           value={r.type}
                           onChange={(value) => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:value}:x))}
                           placeholder="Select type"
@@ -807,19 +832,27 @@ const EditGroupAsset = () => {
                         />
                       </div>
 
-                      {r.type === 'OT' && (
-                        <div className="col-span-3">
-                          <label className="block text-xs font-medium mb-1">Doc Type Name</label>
-                          <input
-                            className="w-full border rounded px-2 py-2 text-sm h-[38px]"
-                            value={r.docTypeName}
-                            onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))}
-                            placeholder="Enter type name"
-                          />
-                        </div>
-                      )}
+                      {(() => {
+                        const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                        const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                        return needsCustomName && (
+                          <div className="col-span-3">
+                            <label className="block text-xs font-medium mb-1">Custom Name</label>
+                            <input
+                              className="w-full border rounded px-2 py-2 text-sm h-[38px]"
+                              value={r.docTypeName}
+                              onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))}
+                              placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                            />
+                          </div>
+                        );
+                      })()}
 
-                      <div className={r.type === 'OT' ? 'col-span-4' : 'col-span-7'}>
+                      <div className={(() => {
+                        const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                        const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                        return needsCustomName ? 'col-span-4' : 'col-span-7';
+                      })()}>
                         <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
                         <div className="flex items-center gap-2">
                           <div className="relative flex-1 max-w-md">
@@ -888,7 +921,12 @@ const EditGroupAsset = () => {
                   <button
                     type="button"
                     onClick={handleBatchUpload}
-                    disabled={isUploading || uploadRows.some(r => !r.type || !r.file || (r.type === 'OT' && !r.docTypeName?.trim()))}
+                    disabled={isUploading || uploadRows.some(r => {
+                      if (!r.type || !r.file) return true;
+                      const selectedDocType = documentTypes.find(dt => dt.id === r.type);
+                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      return needsCustomName && !r.docTypeName?.trim();
+                    })}
                     className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isUploading ? (

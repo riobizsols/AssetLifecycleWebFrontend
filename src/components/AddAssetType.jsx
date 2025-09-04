@@ -13,6 +13,7 @@ const AddAssetType = () => {
   const [requireInspection, setRequireInspection] = useState(false);
   const [requireMaintenance, setRequireMaintenance] = useState(false);
   const [checklistFiles, setChecklistFiles] = useState([]); // files to upload when maintenance required
+  const [checklistUploads, setChecklistUploads] = useState([]); // {id, type, docTypeName, file, previewUrl}
   const [isActive, setIsActive] = useState(true);
   const [parentChild, setParentChild] = useState("parent"); // Default to parent
   const [parentAssetTypes, setParentAssetTypes] = useState([]);
@@ -27,6 +28,9 @@ const AddAssetType = () => {
   
   // New state variable for depreciation type
   const [depreciationType, setDepreciationType] = useState("ND");
+  
+  // Document types from API
+  const [documentTypes, setDocumentTypes] = useState([]);
 
   useEffect(() => {
     // Reset parent selection when parentChild changes
@@ -41,6 +45,7 @@ const AddAssetType = () => {
   // Fetch maintenance types when component mounts
   useEffect(() => {
     fetchMaintenanceTypes();
+    fetchDocumentTypes();
   }, []);
 
   const fetchParentAssetTypes = async () => {
@@ -63,6 +68,55 @@ const AddAssetType = () => {
       toast.error('Failed to fetch maintenance types');
       setMaintenanceTypes([]);
     }
+  };
+
+  const fetchDocumentTypes = async () => {
+    try {
+      console.log('Fetching document types for asset types...');
+      const res = await API.get('/doc-type-objects/object-type/asset type');
+      console.log('Document types response:', res.data);
+
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        // Transform API data to dropdown format
+        const docTypes = res.data.data.map(docType => ({
+          id: docType.doc_type,
+          text: docType.doc_type_text
+        }));
+        setDocumentTypes(docTypes);
+        console.log('Document types loaded:', docTypes);
+      } else {
+        console.log('No document types found, using fallback');
+        setDocumentTypes([]);
+      }
+    } catch (err) {
+      console.error('Error fetching document types:', err);
+      toast.error('Failed to load document types');
+      setDocumentTypes([]);
+    }
+  };
+
+    // Helper functions for checklist uploads
+  const addChecklistUpload = () => {
+    setChecklistUploads(prev => ([...prev, { 
+      id: crypto.randomUUID(), 
+      type: '', 
+      docTypeName: '', 
+      file: null, 
+      previewUrl: '' 
+    }]));
+  };
+
+  const updateChecklistUpload = (id, patch) => {
+    setChecklistUploads(prev => prev.map(u => u.id === id ? { ...u, ...patch } : u));
+  };
+
+  const removeChecklistUpload = (id) => {
+    setChecklistUploads(prev => prev.filter(u => u.id !== id));
+  };
+
+  const onSelectChecklistFile = (id, file) => {
+    const previewUrl = file ? URL.createObjectURL(file) : '';
+    updateChecklistUpload(id, { file, previewUrl });
   };
 
   const handleSubmit = async (e) => {
@@ -150,14 +204,20 @@ const AddAssetType = () => {
       );
       // Upload checklist files if required
       const newId = response.data?.asset_type_id || response.data?.data?.asset_type_id || response.data?.id;
-      if (requireMaintenance && newId && checklistFiles.length > 0) {
-        for (const f of checklistFiles) {
-          const fd = new FormData();
-          fd.append('file', f);
-          try {
-            await API.post(`/asset-types/${newId}/checklist`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-          } catch (upErr) {
-            console.warn('Checklist upload failed', upErr);
+      if (requireMaintenance && newId && checklistUploads.length > 0) {
+        for (const upload of checklistUploads) {
+          if (upload.file) {
+            const fd = new FormData();
+            fd.append('file', upload.file);
+            fd.append('doc_type', upload.type);
+            if (upload.type && upload.docTypeName?.trim()) {
+              fd.append('doc_type_name', upload.docTypeName);
+            }
+            try {
+              await API.post(`/asset-types/${newId}/checklist`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            } catch (upErr) {
+              console.warn('Checklist upload failed', upErr);
+            }
           }
         }
       }
@@ -353,95 +413,114 @@ const AddAssetType = () => {
             </div>
             {/* Checklist upload with improved UI */}
             <div className="col-span-2 mt-4">
-              <div className="flex items-center gap-3 mb-2">
-                <label className="text-sm font-medium text-gray-900">Maintenance Checklist</label>
-                <div className="text-xs text-gray-500 flex-shrink-0">Supported formats: PDF, DOC, DOCX, XLS, XLSX (Max 10MB)</div>
+              <div className="flex items-center justify-between mb-4">
+                <label className="text-sm font-medium text-gray-900">Doc Upload</label>
+                <button 
+                  type="button" 
+                  className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
+                  onClick={addChecklistUpload}
+                >
+                  <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Document
+                </button>
               </div>
               
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 max-w-md">
-                  <input
-                    type="file"
-                    id="checklist-upload"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        // Convert MB to bytes (15MB = 15 * 1024 * 1024)
-                        const maxSize = 15 * 1024 * 1024;
-                        if (file.size > maxSize) {
-                          toast.error('File size exceeds 15MB limit');
-                          e.target.value = ''; // Reset input
-                          return;
-                        }
-                        setChecklistFiles([file]); // Only store one file
-                      }
-                    }}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx"
-                  />
-                  <label
-                    htmlFor="checklist-upload"
-                    className={`flex items-center w-full px-4 py-2 border ${checklistFiles[0] ? 'border-blue-200 bg-blue-50' : 'border-gray-300 bg-white'} rounded-md shadow-sm text-sm hover:bg-gray-50 cursor-pointer`}
-                  >
-                    <div className="flex items-center min-w-0 flex-1">
-                      <svg className="w-5 h-5 mr-2 text-gray-400 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                      </svg>
-                      <div className="min-w-0 flex-1">
-                        <span className="truncate block">
-                          {checklistFiles[0] ? checklistFiles[0].name : 'Choose checklist file'}
-                        </span>
-                        {checklistFiles[0] && (
-                          <span className="text-xs text-blue-500">
-                            {(checklistFiles[0].size / (1024 * 1024)).toFixed(2)}MB
-                          </span>
+              <div className="space-y-3">
+                {checklistUploads.length === 0 && <div className="text-sm text-gray-500">No checklist documents added.</div>}
+                {checklistUploads.map(upload => (
+                  <div key={upload.id} className="grid grid-cols-12 gap-3 items-start bg-white border rounded p-3">
+                    <div className="col-span-3">
+                      <label className="block text-xs font-medium mb-1">Document Type</label>
+                      <select 
+                        className="w-full border rounded h-[38px] px-2 text-sm" 
+                        value={upload.type} 
+                        onChange={e => updateChecklistUpload(upload.id, { type: e.target.value })}
+                      >
+                        <option value="">Select type</option>
+                        {documentTypes.map(docType => (
+                          <option key={docType.id} value={docType.id}>
+                            {docType.text}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {(() => {
+                      const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
+                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      return needsCustomName && (
+                        <div className="col-span-3">
+                          <label className="block text-xs font-medium mb-1">Custom Name</label>
+                          <input 
+                            className="w-full border rounded h-[38px] px-2 text-sm" 
+                            value={upload.docTypeName} 
+                            onChange={e => updateChecklistUpload(upload.id, { docTypeName: e.target.value })} 
+                            placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                          />
+                        </div>
+                      );
+                    })()}
+                    <div className={(() => {
+                      const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
+                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      return needsCustomName ? 'col-span-4' : 'col-span-7';
+                    })()}>
+                      <label className="block text-xs font-medium mb-1">File (Max 15MB)</label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="file"
+                            id={`file-${upload.id}`}
+                            onChange={e => {
+                              const f = e.target.files?.[0] || null;
+                              if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
+                                toast.error('File size exceeds 15MB limit');
+                                e.target.value = '';
+                                return;
+                              }
+                              onSelectChecklistFile(upload.id, f);
+                            }}
+                            className="hidden"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx"
+                          />
+                          <label
+                            htmlFor={`file-${upload.id}`}
+                            className="flex items-center h-[38px] px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full"
+                          >
+                            <svg className="flex-shrink-0 w-5 h-4 mr-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            <span className="truncate max-w-[200px] inline-block">
+                              {upload.file ? upload.file.name : 'Choose file'}
+                            </span>
+                          </label>
+                        </div>
+                        {upload.previewUrl && (
+                          <a 
+                            href={upload.previewUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
+                          >
+                            Preview
+                          </a>
                         )}
+                        <button 
+                          type="button" 
+                          onClick={() => removeChecklistUpload(upload.id)}
+                          className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </div>
-                  </label>
-                </div>
-
-                {checklistFiles[0] && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (checklistFiles[0]?.name) {
-                          // Create object URL for preview
-                          const url = URL.createObjectURL(checklistFiles[0]);
-                          window.open(url, '_blank');
-                          // Clean up the URL after opening
-                          URL.revokeObjectURL(url);
-                        }
-                      }}
-                      className="h-9 px-4 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      Preview
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setChecklistFiles([]);
-                        const input = document.getElementById('checklist-upload');
-                        if (input) input.value = '';
-                      }}
-                      className="h-9 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Remove
-                    </button>
-                  </>
-                )}
+                  </div>
+                ))}
               </div>
 
               <div className="mt-2 text-xs text-gray-500">
-                Upload maintenance checklist document. This will be available when performing maintenance on assets of this type.
+                Upload maintenance checklist documents. These will be available when performing maintenance on assets of this type.
               </div>
             </div>
           </div>

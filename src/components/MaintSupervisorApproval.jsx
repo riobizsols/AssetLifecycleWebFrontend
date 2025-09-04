@@ -27,6 +27,10 @@ export default function MaintSupervisorApproval() {
   const [beforeAfterUploads, setBeforeAfterUploads] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   
+  // Document types from API
+  const [maintenanceDocTypes, setMaintenanceDocTypes] = useState([]);
+  const [photoDocTypes, setPhotoDocTypes] = useState([]);
+  
   // Form state for updatable fields
   const [formData, setFormData] = useState({
     notes: "",
@@ -41,6 +45,7 @@ export default function MaintSupervisorApproval() {
   useEffect(() => {
     if (id) {
       fetchMaintenanceData();
+      fetchDocumentTypes();
     }
   }, [id]);
 
@@ -102,6 +107,58 @@ export default function MaintSupervisorApproval() {
       setChecklist([]);
     } finally {
       setLoadingChecklist(false);
+    }
+  };
+
+  const fetchDocumentTypes = async () => {
+    try {
+      console.log('Fetching document types for maintenance...');
+      
+      // Fetch maintenance document types
+      const maintenanceRes = await API.get('/doc-type-objects/object-type/maintenance');
+      console.log('Maintenance document types response:', maintenanceRes.data);
+
+      if (maintenanceRes.data && maintenanceRes.data.success && Array.isArray(maintenanceRes.data.data)) {
+        // Transform API data to dropdown format, excluding photo types
+        const docTypes = maintenanceRes.data.data
+          .filter(docType => 
+            docType.doc_type !== 'BP' && docType.doc_type !== 'AP' && 
+            !docType.doc_type_text.toLowerCase().includes('photo') &&
+            !docType.doc_type_text.toLowerCase().includes('before') &&
+            !docType.doc_type_text.toLowerCase().includes('after')
+          )
+          .map(docType => ({
+            id: docType.doc_type,
+            text: docType.doc_type_text
+          }));
+        setMaintenanceDocTypes(docTypes);
+        console.log('Maintenance document types loaded (excluding photos):', docTypes);
+      } else {
+        console.log('No maintenance document types found');
+        setMaintenanceDocTypes([]);
+      }
+
+      // Filter photo document types (Before Photos, After Photos)
+      const photoTypes = maintenanceRes.data.data
+        .filter(docType => 
+          docType.doc_type === 'BP' || docType.doc_type === 'AP' || 
+          docType.doc_type_text.toLowerCase().includes('photo') ||
+          docType.doc_type_text.toLowerCase().includes('before') ||
+          docType.doc_type_text.toLowerCase().includes('after')
+        )
+        .map(docType => ({
+          id: docType.doc_type,
+          text: docType.doc_type_text
+        }));
+      
+      setPhotoDocTypes(photoTypes);
+      console.log('Photo document types loaded:', photoTypes);
+      
+    } catch (err) {
+      console.error('Error fetching document types:', err);
+      toast.error('Failed to load document types');
+      setMaintenanceDocTypes([]);
+      setPhotoDocTypes([]);
     }
   };
 
@@ -195,8 +252,10 @@ export default function MaintSupervisorApproval() {
         toast.error('Select document type and choose a file for all rows');
         return;
       }
-      if (upload.type === 'OT' && !upload.docTypeName?.trim()) {
-        toast.error('Enter Doc Type Name for OT documents');
+      // Check if the selected document type requires a custom name
+      const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
+      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !upload.docTypeName?.trim()) {
+        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
     }
@@ -404,25 +463,25 @@ export default function MaintSupervisorApproval() {
           )}
         </div>
 
-        {/* Invoice Upload Section */}
+        {/* Doc Upload Section */}
         <div className="p-6 rounded-lg border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Invoice Upload</h2>
-          <div className="text-sm text-gray-600 mb-3">Upload invoice documents (Invoice, OT - Others)</div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Doc Upload</h2>
+          <div className="text-sm text-gray-600 mb-3">Upload maintenance documents (Work Order, Invoice, etc.)</div>
           
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm font-medium text-gray-700">Upload Invoices</div>
+            <div className="text-sm font-medium text-gray-700">Upload Documents</div>
             <button 
               type="button" 
               onClick={addInvoiceUpload} 
               className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
             >
               <Plus size={16} className="mr-2" />
-              Add Invoice
+              Add Document
             </button>
           </div>
           
           {invoiceUploads.length === 0 ? (
-            <div className="text-sm text-gray-500">No invoices added.</div>
+            <div className="text-sm text-gray-500">No documents added.</div>
           ) : (
             <div className="space-y-3">
               {invoiceUploads.map(upload => (
@@ -430,10 +489,7 @@ export default function MaintSupervisorApproval() {
                   <div className="col-span-3">
                     <label className="block text-xs font-medium mb-1">Document Type</label>
                     <SearchableDropdown
-                      options={[
-                        { id: 'Invoice', text: 'Invoice' },
-                        { id: 'OT', text: 'OT - Others' }
-                      ]}
+                      options={maintenanceDocTypes}
                       value={upload.type}
                       onChange={(value) => updateInvoiceUpload(upload.id, { type: value })}
                       placeholder="Select type"
@@ -444,20 +500,28 @@ export default function MaintSupervisorApproval() {
                     />
                   </div>
 
-                  {upload.type === 'OT' && (
-                    <div className="col-span-3">
-                      <label className="block text-xs font-medium mb-1">Doc Type Name</label>
-                      <input
-                        type="text"
-                        className="w-full border rounded px-2 py-2 text-sm h-[38px] bg-white"
-                        value={upload.docTypeName}
-                        onChange={(e) => updateInvoiceUpload(upload.id, { docTypeName: e.target.value })}
-                        placeholder="Enter document type name"
-                      />
-                    </div>
-                  )}
+                  {(() => {
+                    const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
+                    const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                    return needsCustomName && (
+                      <div className="col-span-3">
+                        <label className="block text-xs font-medium mb-1">Custom Name</label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-2 py-2 text-sm h-[38px] bg-white"
+                          value={upload.docTypeName}
+                          onChange={(e) => updateInvoiceUpload(upload.id, { docTypeName: e.target.value })}
+                          placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                        />
+                      </div>
+                    );
+                  })()}
 
-                  <div className={upload.type === 'OT' ? 'col-span-4' : 'col-span-7'}>
+                  <div className={(() => {
+                    const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
+                    const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                    return needsCustomName ? 'col-span-4' : 'col-span-7';
+                  })()}>
                     <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1 max-w-md">
@@ -511,7 +575,12 @@ export default function MaintSupervisorApproval() {
               <button
                 type="button"
                 onClick={handleInvoiceUpload}
-                disabled={isUploading || invoiceUploads.some(u => !u.type || !u.file || (u.type === 'OT' && !u.docTypeName?.trim()))}
+                disabled={isUploading || invoiceUploads.some(u => {
+                  if (!u.type || !u.file) return true;
+                  const selectedDocType = maintenanceDocTypes.find(dt => dt.id === u.type);
+                  const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                  return needsCustomName && !u.docTypeName?.trim();
+                })}
                 className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isUploading ? (
@@ -558,17 +627,19 @@ export default function MaintSupervisorApproval() {
                 <div key={upload.id} className="grid grid-cols-12 gap-3 items-start bg-white border border-gray-200 rounded p-3">
                   <div className="col-span-3">
                     <label className="block text-xs font-medium mb-1">Image Type</label>
-                    <select 
-                      className="w-full border rounded px-2 py-2 text-sm h-[38px] bg-white" 
-                      value={upload.type} 
-                      onChange={(e) => updateBeforeAfterUpload(upload.id, { type: e.target.value })}
-                    >
-                      <option value="Before">Before Maintenance</option>
-                      <option value="After">After Maintenance</option>
-                    </select>
+                    <SearchableDropdown
+                      options={photoDocTypes}
+                      value={upload.type}
+                      onChange={(value) => updateBeforeAfterUpload(upload.id, { type: value })}
+                      placeholder="Select type"
+                      searchPlaceholder="Search types..."
+                      className="w-full"
+                      displayKey="text"
+                      valueKey="id"
+                    />
                   </div>
 
-                  <div className="col-span-7">
+                  <div className="col-span-9">
                     <label className="block text-xs font-medium mb-1">Image File (Max 10MB)</label>
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1 max-w-md">
