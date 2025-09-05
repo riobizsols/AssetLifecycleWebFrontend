@@ -172,6 +172,43 @@ const AddAssetType = () => {
       return;
     }
 
+    // Validate document uploads
+    if (checklistUploads.length > 0) {
+      for (const upload of checklistUploads) {
+        if (!upload.type || !upload.file) {
+          toast(
+            "Please select document type and choose a file for all documents",
+            {
+              icon: '❌',
+              style: {
+                borderRadius: '8px',
+                background: '#7F1D1D',
+                color: '#fff',
+              },
+            }
+          );
+          return;
+        }
+        
+        // Check if the selected document type requires a custom name
+        const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
+        if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !upload.docTypeName?.trim()) {
+          toast(
+            `Please enter a custom name for ${selectedDocType.text} documents`,
+            {
+              icon: '❌',
+              style: {
+                borderRadius: '8px',
+                background: '#7F1D1D',
+                color: '#fff',
+              },
+            }
+          );
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -203,9 +240,13 @@ const AddAssetType = () => {
           },
         }
       );
-      // Upload checklist files if required
-      const newId = response.data?.asset_type_id || response.data?.data?.asset_type_id || response.data?.id;
-      if (requireMaintenance && newId && checklistUploads.length > 0) {
+      // Upload checklist files if any are provided
+      const newId = response.data?.asset_type?.asset_type_id;
+      console.log('Asset type creation response:', response.data);
+      console.log('Extracted asset type ID:', newId);
+      console.log('Checklist uploads:', checklistUploads);
+      
+      if (newId && checklistUploads.length > 0) {
         for (const upload of checklistUploads) {
           if (upload.file) {
             const fd = new FormData();
@@ -216,9 +257,12 @@ const AddAssetType = () => {
               fd.append('doc_type_name', upload.docTypeName);
             }
             try {
-              await API.post('/asset-type-docs/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+              console.log(`Uploading file: ${upload.file.name} for asset type: ${newId}`);
+              const uploadResponse = await API.post('/asset-type-docs/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+              console.log('Upload successful:', uploadResponse.data);
             } catch (upErr) {
-              console.warn('Checklist upload failed', upErr);
+              console.error('Checklist upload failed', upErr);
+              console.error('Upload error details:', upErr.response?.data);
               toast.error(`Failed to upload ${upload.file.name}: ${upErr.response?.data?.message || upErr.message}`);
             }
           }
@@ -433,44 +477,45 @@ const AddAssetType = () => {
               <div className="space-y-3">
                 {checklistUploads.length === 0 && <div className="text-sm text-gray-500">No checklist documents added.</div>}
                 {checklistUploads.map(upload => (
-                  <div key={upload.id} className="grid grid-cols-12 gap-3 items-start bg-white border rounded p-3">
-                    <div className="col-span-3">
-                      <label className="block text-xs font-medium mb-1">Document Type</label>
-                      <select 
-                        className="w-full border rounded h-[38px] px-2 text-sm" 
-                        value={upload.type} 
-                        onChange={e => updateChecklistUpload(upload.id, { type: e.target.value })}
-                      >
-                        <option value="">Select type</option>
-                        {documentTypes.map(docType => (
-                          <option key={docType.id} value={docType.id}>
-                            {docType.text}
-                          </option>
-                        ))}
-                      </select>
+                  <div key={upload.id} className="bg-white border rounded p-3 space-y-3">
+                    {/* First row: Document Type and Custom Name */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium mb-1">Document Type</label>
+                        <select 
+                          className="w-full border rounded h-[38px] px-2 text-sm" 
+                          value={upload.type} 
+                          onChange={e => updateChecklistUpload(upload.id, { type: e.target.value })}
+                        >
+                          <option value="">Select type</option>
+                          {documentTypes.map(docType => (
+                            <option key={docType.id} value={docType.id}>
+                              {docType.text}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {(() => {
+                        const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
+                        const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
+                        return needsCustomName && (
+                          <div>
+                            <label className="block text-xs font-medium mb-1">Custom Name</label>
+                            <input 
+                              className="w-full border rounded h-[38px] px-2 text-sm" 
+                              value={upload.docTypeName} 
+                              onChange={e => updateChecklistUpload(upload.id, { docTypeName: e.target.value })} 
+                              placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                            />
+                          </div>
+                        );
+                      })()}
                     </div>
-                    {(() => {
-                      const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
-                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
-                      return needsCustomName && (
-                        <div className="col-span-3">
-                          <label className="block text-xs font-medium mb-1">Custom Name</label>
-                          <input 
-                            className="w-full border rounded h-[38px] px-2 text-sm" 
-                            value={upload.docTypeName} 
-                            onChange={e => updateChecklistUpload(upload.id, { docTypeName: e.target.value })} 
-                            placeholder={`Enter custom name for ${selectedDocType?.text}`}
-                          />
-                        </div>
-                      );
-                    })()}
-                    <div className={(() => {
-                      const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
-                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
-                      return needsCustomName ? 'col-span-4' : 'col-span-7';
-                    })()}>
+                    
+                    {/* Second row: File input and buttons */}
+                    <div>
                       <label className="block text-xs font-medium mb-1">File (Max 15MB)</label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <div className="relative flex-1">
                           <input
                             type="file"
@@ -494,28 +539,31 @@ const AddAssetType = () => {
                             <svg className="flex-shrink-0 w-5 h-4 mr-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                             </svg>
-                            <span className="truncate max-w-[200px] inline-block">
+                            <span className="truncate">
                               {upload.file ? upload.file.name : 'Choose file'}
                             </span>
                           </label>
                         </div>
-                        {upload.previewUrl && (
-                          <a 
-                            href={upload.previewUrl} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
+                        
+                        <div className="flex gap-2">
+                          {upload.previewUrl && (
+                            <a 
+                              href={upload.previewUrl} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="h-[38px] inline-flex items-center px-3 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors whitespace-nowrap"
+                            >
+                              Preview
+                            </a>
+                          )}
+                          <button 
+                            type="button" 
+                            onClick={() => removeChecklistUpload(upload.id)}
+                            className="h-[38px] inline-flex items-center px-3 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors whitespace-nowrap"
                           >
-                            Preview
-                          </a>
-                        )}
-                        <button 
-                          type="button" 
-                          onClick={() => removeChecklistUpload(upload.id)}
-                          className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                        >
-                          Remove
-                        </button>
+                            Remove
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

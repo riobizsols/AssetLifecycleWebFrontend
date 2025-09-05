@@ -228,6 +228,48 @@ const CreateGroupAsset = () => {
       
       // Check if the response indicates success (201 status or has asset_group data)
       if (response.status === 201 || (response.data && response.data.asset_group)) {
+        console.log('CreateGroupAsset - Full response:', response);
+        console.log('CreateGroupAsset - Response data:', response.data);
+        console.log('CreateGroupAsset - Response data keys:', Object.keys(response.data || {}));
+        
+        // Extract asset group ID from the correct response structure
+        const assetGroupId = response.data?.asset_group?.header?.assetgroup_h_id;
+        
+        console.log('CreateGroupAsset - Extracted assetGroupId:', assetGroupId);
+        
+        // Upload documents if any
+        if (assetGroupId && uploadRows.length > 0) {
+          console.log('CreateGroupAsset - Uploading documents for assetGroupId:', assetGroupId);
+          console.log('CreateGroupAsset - Upload rows:', uploadRows);
+          
+          for (const r of uploadRows) {
+            if (!r.type || !r.file) continue;
+            
+            console.log('CreateGroupAsset - Uploading document:', r.file.name, 'Type:', r.type);
+            
+            const fd = new FormData();
+            fd.append('file', r.file);
+            fd.append('dto_id', r.type);
+            fd.append('asset_group_id', assetGroupId);
+            if (r.type && r.docTypeName?.trim()) {
+              fd.append('doc_type_name', r.docTypeName);
+            }
+            
+            try {
+              const uploadResponse = await API.post('/asset-group-docs/upload', fd, { 
+                headers: { 'Content-Type': 'multipart/form-data' }
+              });
+              console.log('CreateGroupAsset - Document upload success:', uploadResponse.data);
+            } catch (upErr) {
+              console.error('Asset group doc upload failed', upErr);
+            }
+          }
+        } else {
+          console.log('CreateGroupAsset - No documents to upload or no assetGroupId');
+          console.log('CreateGroupAsset - assetGroupId:', assetGroupId);
+          console.log('CreateGroupAsset - uploadRows.length:', uploadRows.length);
+        }
+        
         toast.success('Asset group created successfully!');
         navigate('/group-asset');
       } else {
@@ -260,7 +302,7 @@ const CreateGroupAsset = () => {
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
+      if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
         toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
@@ -654,7 +696,7 @@ const CreateGroupAsset = () => {
 
                       {(() => {
                         const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                        const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                        const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                         return needsCustomName && (
                           <div className="col-span-3">
                             <label className="block text-xs font-medium mb-1">Custom Name</label>
@@ -670,7 +712,7 @@ const CreateGroupAsset = () => {
 
                       <div className={(() => {
                         const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                        const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                        const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                         return needsCustomName ? 'col-span-4' : 'col-span-7';
                       })()}>
                         <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
@@ -744,7 +786,7 @@ const CreateGroupAsset = () => {
                     disabled={isUploading || uploadRows.some(r => {
                       if (!r.type || !r.file) return true;
                       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                       return needsCustomName && !r.docTypeName?.trim();
                     })}
                     className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

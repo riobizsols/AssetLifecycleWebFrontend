@@ -449,25 +449,28 @@ const CreateScrapSales = () => {
         toast.success(
           response.data.message || "Scrap sale created successfully!"
         );
-        const scrapId = response.data?.data?.scrap_id || response.data?.scrap_id || response.data?.id;
+        const scrapId = response.data?.scrap_sale?.ssh_id || response.data?.data?.scrap_id || response.data?.scrap_id || response.data?.id;
+        console.log('CreateScrapSales - Response data:', response.data);
+        console.log('CreateScrapSales - Extracted scrapId:', scrapId);
         // Upload related documents if any
         if (scrapId && uploadRows.length > 0) {
           for (const r of uploadRows) {
             if (!r.type || !r.file) continue;
             // Check if the selected document type requires a custom name
             const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-            if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
+            if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
               toast.error(`Enter custom name for ${selectedDocType.text} before uploading`);
               continue;
             }
             const fd = new FormData();
             fd.append('file', r.file);
             fd.append('dto_id', r.type);  // Send dto_id instead of doc_type
+            fd.append('ssh_id', scrapId);  // Add scrap sale ID
             if (r.type && r.docTypeName?.trim()) {
               fd.append('doc_type_name', r.docTypeName);
             }
             try {
-              await API.post(`/scrap-sales/${scrapId}/documents`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+              await API.post(`/scrap-sales-docs/upload`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
             } catch (upErr) {
               console.warn('Scrap sales doc upload failed', upErr);
             }

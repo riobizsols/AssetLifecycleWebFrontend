@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'react-hot-toast';
@@ -315,6 +316,69 @@ const EditScrapSales = () => {
     navigate('/scrap-sales');
   };
 
+  // Toggle dropdown
+  const toggleDropdown = (docId, event) => {
+    event.stopPropagation();
+    if (activeDropdown === docId) {
+      setActiveDropdown(null);
+    } else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 5,
+        left: rect.left + window.scrollX
+      });
+      setActiveDropdown(docId);
+    }
+  };
+
+  // Close all dropdowns
+  const closeAllDropdowns = () => {
+    setActiveDropdown(null);
+  };
+
+  // Handle document actions
+  const handleDocumentAction = async (doc, action) => {
+    try {
+      if (action === 'view') {
+        const res = await API.get(`/scrap-sales-docs/${doc.ssdoc_id}/download?mode=view`);
+        window.open(res.data.url, '_blank');
+      } else if (action === 'download') {
+        const res = await API.get(`/scrap-sales-docs/${doc.ssdoc_id}/download?mode=download`);
+        window.open(res.data.url, '_blank');
+      } else if (action === 'archive') {
+        await API.put(`/scrap-sales-docs/${doc.ssdoc_id}/archive-status`, {
+          is_archived: true,
+          archived_path: doc.doc_path
+        });
+        toast.success('Document archived successfully');
+        // Refresh documents
+        const res = await API.get(`/scrap-sales-docs/${scrapId}`);
+        const allDocs = res.data?.documents || [];
+        const active = allDocs.filter(d => !d.is_archived);
+        const archived = allDocs.filter(d => d.is_archived);
+        setDocs(active);
+        setArchivedDocs(archived);
+      } else if (action === 'unarchive') {
+        await API.put(`/scrap-sales-docs/${doc.ssdoc_id}/archive-status`, {
+          is_archived: false,
+          archived_path: null
+        });
+        toast.success('Document unarchived successfully');
+        // Refresh documents
+        const res = await API.get(`/scrap-sales-docs/${scrapId}`);
+        const allDocs = res.data?.documents || [];
+        const active = allDocs.filter(d => !d.is_archived);
+        const archived = allDocs.filter(d => d.is_archived);
+        setDocs(active);
+        setArchivedDocs(archived);
+      }
+      setActiveDropdown(null);
+    } catch (error) {
+      console.error('Document action failed:', error);
+      toast.error(`Failed to ${action} document`);
+    }
+  };
+
   // Handle document uploads
   const handleUploadDocuments = async () => {
     if (uploadRows.length === 0) {
@@ -330,7 +394,7 @@ const EditScrapSales = () => {
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
+      if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
         toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
@@ -346,11 +410,12 @@ const EditScrapSales = () => {
           const fd = new FormData();
           fd.append('file', r.file);
           fd.append('dto_id', r.type);  // Send dto_id instead of doc_type
+          fd.append('ssh_id', scrapId);  // Add scrap sale ID
           if (r.type && r.docTypeName?.trim()) {
             fd.append('doc_type_name', r.docTypeName);
           }
           
-          await API.post(`/scrap-sales/${scrapId}/documents`, fd, { 
+          await API.post(`/scrap-sales-docs/upload`, fd, { 
             headers: { 'Content-Type': 'multipart/form-data' }
           });
           successCount++;
@@ -368,9 +433,12 @@ const EditScrapSales = () => {
         }
         setUploadRows([]); // Clear all attachments after upload
         // Refresh the documents list
-        const res = await API.get(`/scrap-sales/${scrapId}/documents`);
-        const arr = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        setDocs(arr);
+        const res = await API.get(`/scrap-sales-docs/${scrapId}`);
+        const allDocs = res.data?.documents || [];
+        const active = allDocs.filter(doc => !doc.is_archived);
+        const archived = allDocs.filter(doc => doc.is_archived);
+        setDocs(active);
+        setArchivedDocs(archived);
       } else {
         toast.error('Failed to upload any files');
       }
@@ -384,22 +452,35 @@ const EditScrapSales = () => {
 
   const selectedAssetTypeName = mockAssetTypes.find(type => type.asset_type_id === selectedAssetType);
   const [docs, setDocs] = useState([]);
+  const [archivedDocs, setArchivedDocs] = useState([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
   const [isUploading, setIsUploading] = useState(false);
   const [documentTypes, setDocumentTypes] = useState([]);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     const fetchDocs = async () => {
       if (!scrapId) return;
+      console.log('EditScrapSales - Fetching documents for scrapId:', scrapId);
       setDocsLoading(true);
       try {
-        const res = await API.get(`/scrap-sales/${scrapId}/documents`);
-        const arr = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        setDocs(arr);
+        const res = await API.get(`/scrap-sales-docs/${scrapId}`);
+        console.log('EditScrapSales - Documents API response:', res.data);
+        const allDocs = res.data?.documents || res.data?.data || [];
+        
+        // Separate active and archived documents
+        const active = allDocs.filter(doc => !doc.is_archived);
+        const archived = allDocs.filter(doc => doc.is_archived);
+        
+        setDocs(active);
+        setArchivedDocs(archived);
       } catch (err) {
         console.warn('Failed to fetch scrap sales documents', err);
         setDocs([]);
+        setArchivedDocs([]);
       } finally {
         setDocsLoading(false);
       }
@@ -411,6 +492,20 @@ const EditScrapSales = () => {
   useEffect(() => {
     fetchDocumentTypes();
   }, []);
+
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeDropdown && !event.target.closest('.dropdown-portal')) {
+        closeAllDropdowns();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeDropdown]);
 
   const fetchDocumentTypes = async () => {
     try {
@@ -832,48 +927,62 @@ const EditScrapSales = () => {
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
           <div className="text-sm text-gray-600 mb-3">Document types are loaded from the system configuration</div>
-          <div className="border rounded overflow-hidden">
-            {docsLoading ? (
-              <div className="p-3 text-sm text-gray-500">Loading documents…</div>
-            ) : docs.length === 0 ? (
-              <div className="p-3 text-sm text-gray-500">No documents uploaded.</div>
-            ) : (
-              <div className="space-y-3 p-3">
-                {docs.map((d, i) => (
-                  <div key={i} className="grid grid-cols-12 gap-3 items-center bg-white border rounded p-3">
-                    <div className="col-span-3">
-                      <div className="font-medium text-sm">
-                        {d.doc_type || d.type || '-'}
-                        {d.doc_type_name && d.doc_type === 'OT' && (
-                          <span className="text-gray-500 ml-1">({d.doc_type_name})</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="col-span-6">
-                      <div className="text-sm truncate">{d.file_name || d.name || 'document'}</div>
-                    </div>
-                    <div className="col-span-3 flex justify-end gap-2">
-                      <a 
-                        href={d.url || d.download_url} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
-                      >
-                        View
-                      </a>
-                      <a 
-                        href={(d.url || d.download_url) + ((d.url || d.download_url)?.includes('?') ? '&' : '?') + 'download=1'} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                      >
-                        Download
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          
+          {/* Active Documents */}
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Active Documents</h3>
+            <div className="border rounded-lg overflow-hidden bg-white">
+              {docsLoading ? (
+                <div className="p-4 text-sm text-gray-500 text-center">Loading documents...</div>
+              ) : docs.length === 0 ? (
+                <div className="p-4 text-sm text-gray-500 text-center">No active documents found.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">Type</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">File Name</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">Status</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {docs.map((doc) => (
+                        <tr key={doc.ssdoc_id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900">
+                              {doc.doc_type_text || doc.doc_type || '-'}
+                              {doc.doc_type_name && doc.doc_type === 'OT' && (
+                                <span className="text-gray-500 ml-1">({doc.doc_type_name})</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-900">{doc.file_name || 'document'}</td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Active
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="relative">
+                              <button
+                                onClick={(e) => toggleDropdown(doc.ssdoc_id, e)}
+                                className={`p-1 focus:outline-none ${activeDropdown === doc.ssdoc_id ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                              >
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Upload New Documents */}
@@ -1016,6 +1125,74 @@ const EditScrapSales = () => {
               </div>
             )}
           </div>
+
+          {/* Archived Documents Section */}
+          <div className="mt-6 border-t pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-gray-900">Archived Documents</h3>
+              <button
+                type="button"
+                onClick={() => setShowArchived(!showArchived)}
+                className="px-4 py-2 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 transition-colors"
+              >
+                {showArchived ? 'Hide Archived' : 'Show Archived'} ({archivedDocs.length})
+              </button>
+            </div>
+            {showArchived && (
+              <div className="border rounded-lg overflow-hidden bg-gray-50">
+                {archivedDocs.length === 0 ? (
+                  <div className="p-4 text-sm text-gray-500 text-center">
+                    No archived documents found.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-medium text-gray-900">Type</th>
+                          <th className="px-4 py-3 text-left font-medium text-gray-900">File Name</th>
+                          <th className="px-4 py-3 text-left font-medium text-gray-900">Status</th>
+                          <th className="px-4 py-3 text-left font-medium text-gray-900">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {archivedDocs.map((doc) => (
+                          <tr key={doc.ssdoc_id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-gray-900">
+                                {doc.doc_type_text || doc.doc_type || '-'}
+                                {doc.doc_type_name && doc.doc_type === 'OT' && (
+                                  <span className="text-gray-500 ml-1">({doc.doc_type_name})</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-gray-900">{doc.file_name || 'document'}</td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Archived
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="relative">
+                                <button
+                                  onClick={(e) => toggleDropdown(doc.ssdoc_id, e)}
+                                  className={`p-1 focus:outline-none ${activeDropdown === doc.ssdoc_id ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -1044,6 +1221,66 @@ const EditScrapSales = () => {
             )}
           </button>
         </div>
+
+        {/* Dropdown Portal */}
+        {activeDropdown && (() => {
+          const doc = [...docs, ...archivedDocs].find(d => d.ssdoc_id === activeDropdown);
+          if (!doc) return null;
+          const isArchived = archivedDocs.some(d => d.ssdoc_id === activeDropdown);
+          return createPortal(
+            <div
+              className="dropdown-portal fixed w-48 bg-white rounded-md shadow-xl z-[9999] border border-gray-200"
+              style={{
+                top: dropdownPosition.top,
+                left: dropdownPosition.left
+              }}
+            >
+              <div className="py-1">
+                <button
+                  onClick={() => handleDocumentAction(doc, 'view')}
+                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  View
+                </button>
+                <button
+                  onClick={() => handleDocumentAction(doc, 'download')}
+                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download
+                </button>
+                {isArchived ? (
+                  <button
+                    onClick={() => handleDocumentAction(doc, 'unarchive')}
+                    className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Unarchive
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleDocumentAction(doc, 'archive')}
+                    className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4m0 0l4-4m-4 4V3m0 0h4m-4 0H3" />
+                    </svg>
+                    Archive
+                  </button>
+                )}
+              </div>
+            </div>,
+            document.body
+          );
+        })()}
       </div>
     </div>
   );

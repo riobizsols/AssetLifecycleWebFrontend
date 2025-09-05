@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { CheckCircle, ArrowLeft, ClipboardCheck, FileText, Upload, Eye, Download, X, Plus } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { CheckCircle, ArrowLeft, ClipboardCheck, FileText, Upload, Eye, Download, X, Plus, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { createPortal } from "react-dom";
 import API from "../lib/axios";
 import ChecklistModal from "./ChecklistModal";
 import SearchableDropdown from "./ui/SearchableDropdown";
@@ -17,10 +18,19 @@ export default function MaintSupervisorApproval() {
   const [showChecklist, setShowChecklist] = useState(false);
   
   // New states for documents and images
-  const [assetDocuments, setAssetDocuments] = useState([]);
-  const [loadingDocuments, setLoadingDocuments] = useState(false);
-  const [showManual, setShowManual] = useState(false);
   const [selectedManual, setSelectedManual] = useState(null);
+  
+  // Asset maintenance documents states
+  const [maintenanceDocs, setMaintenanceDocs] = useState([]);
+  const [archivedDocs, setArchivedDocs] = useState([]);
+  const [manualDocs, setManualDocs] = useState([]);
+  const [loadingMaintenanceDocs, setLoadingMaintenanceDocs] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  
+  // Dropdown states
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const dropdownRef = useRef(null);
   
   // Upload states
   const [invoiceUploads, setInvoiceUploads] = useState([]);
@@ -53,7 +63,7 @@ export default function MaintSupervisorApproval() {
   useEffect(() => {
     if (maintenanceData?.asset_type_id) {
       fetchChecklist();
-      fetchAssetDocuments();
+      fetchMaintenanceDocuments();
     }
   }, [maintenanceData]);
 
@@ -164,29 +174,237 @@ export default function MaintSupervisorApproval() {
     }
   };
 
-  const fetchAssetDocuments = async () => {
-    if (!maintenanceData?.asset_id) return;
+
+  const fetchMaintenanceDocuments = async () => {
+    if (!maintenanceData?.asset_id) {
+      console.log('No asset_id available for fetching maintenance documents');
+      return;
+    }
     
-    setLoadingDocuments(true);
+    setLoadingMaintenanceDocs(true);
     try {
-      const res = await API.get(`/assets/${maintenanceData.asset_id}/documents`, {
-        validateStatus: (status) => status < 500 // Don't treat 404 as error
+      console.log('Fetching all documents for asset:', maintenanceData.asset_id);
+      
+      // Use the same endpoint as the Assets screen - this returns all documents for the asset
+      const res = await API.get(`/assets/${maintenanceData.asset_id}/docs`, {
+        // Add validateStatus to prevent Axios from treating 404 as an error
+        validateStatus: function (status) {
+          return status === 200 || status === 404; // Accept both 200 and 404
+        }
       });
       
+      console.log('Assets documents API response:', res.data);
+      
+      // If 404, set empty arrays
       if (res.status === 404) {
-        setAssetDocuments([]);
-      } else if (res.data && res.data.success) {
-        setAssetDocuments(res.data.data || []);
+        console.log('No documents found for asset');
+        setMaintenanceDocs([]);
+        setArchivedDocs([]);
+        setManualDocs([]);
+        return;
+      }
+      
+      // Process the response - should be an array of documents
+      const allDocs = Array.isArray(res.data) ? res.data : [];
+      console.log('All documents from assets endpoint:', allDocs);
+      
+      // Debug each document's structure
+      allDocs.forEach((doc, index) => {
+        console.log(`Document ${index + 1}:`, {
+          a_d_id: doc.a_d_id,
+          doc_type: doc.doc_type,
+          doc_type_text: doc.doc_type_text,
+          doc_type_name: doc.doc_type_name,
+          file_name: doc.file_name,
+          is_archived: doc.is_archived,
+          source: 'asset'
+        });
+      });
+      
+      if (allDocs.length > 0) {
+        // Filter documents for technical manual display (case-insensitive)
+        const manualDocs = allDocs.filter(doc => {
+          const docTypeText = (doc.doc_type_text || '').toLowerCase();
+          const docType = (doc.doc_type || '').toLowerCase();
+          const fileName = (doc.file_name || '').toLowerCase();
+          const docTypeName = (doc.doc_type_name || '').toLowerCase();
+          
+          // Check for technical manual by document type code 'TM' or text 'technical manual'
+          const hasTechnicalManualCode = docType === 'tm';
+          const hasTechnicalManualText = docTypeText.includes('technical manual') || docTypeText === 'technical manual';
+          const hasTechnicalManualName = docTypeName.includes('technical manual') || docTypeName === 'technical manual';
+          
+          // Also check if the original text (not lowercased) contains "Technical Manual"
+          const hasTechnicalManualOriginal = (doc.doc_type_text || '').includes('Technical Manual');
+          
+          const isTechnicalManual = hasTechnicalManualCode || hasTechnicalManualText || hasTechnicalManualName || hasTechnicalManualOriginal;
+          
+          console.log('Technical Manual filter check:', {
+            a_d_id: doc.a_d_id,
+            doc_type: doc.doc_type,
+            doc_type_text: doc.doc_type_text,
+            file_name: doc.file_name,
+            doc_type_name: doc.doc_type_name,
+            hasTechnicalManualCode: hasTechnicalManualCode,
+            hasTechnicalManualText: hasTechnicalManualText,
+            hasTechnicalManualName: hasTechnicalManualName,
+            hasTechnicalManualOriginal: hasTechnicalManualOriginal,
+            isTechnicalManual: isTechnicalManual
+          });
+          
+          return isTechnicalManual;
+        });
+        
+        console.log('Filtered manualDocs result:', manualDocs);
+        
+        // Separate active and archived documents (same logic as Assets screen)
+        const active = allDocs.filter(doc => !doc.is_archived || doc.is_archived === false);
+        const archived = allDocs.filter(doc => doc.is_archived === true || doc.is_archived === 'true');
+        
+        setMaintenanceDocs(active);
+        setArchivedDocs(archived);
+        setManualDocs(manualDocs);
+        
+        console.log('All documents loaded:', { 
+          total: allDocs.length,
+          active: active.length, 
+          archived: archived.length,
+          manualDocs: manualDocs.length,
+          activeDocs: active,
+          archivedDocs: archived,
+          manualDocsList: manualDocs
+        });
+        
+        console.log('Technical Manual documents found:', manualDocs.map(doc => ({
+          id: doc.a_d_id,
+          doc_type_text: doc.doc_type_text,
+          file_name: doc.file_name,
+          doc_type_name: doc.doc_type_name,
+          source: 'asset'
+        })));
+        
+        // Test the specific case for technical manual
+        const testDoc = { doc_type: 'TM', doc_type_text: 'Technical Manual', file_name: 'test.pdf', doc_type_name: 'technical manual' };
+        const testDocType = (testDoc.doc_type || '').toLowerCase();
+        const testDocTypeText = (testDoc.doc_type_text || '').toLowerCase();
+        const testDocTypeName = (testDoc.doc_type_name || '').toLowerCase();
+        const testHasTechnicalManualCode = testDocType === 'tm';
+        const testHasTechnicalManualText = testDocTypeText.includes('technical manual');
+        const testHasTechnicalManualName = testDocTypeName.includes('technical manual');
+        const testIsTechnicalManual = testHasTechnicalManualCode || testHasTechnicalManualText || testHasTechnicalManualName;
+        
+        console.log('Test case "Technical Manual (TM)":', {
+          doc_type: testDoc.doc_type,
+          doc_type_text: testDoc.doc_type_text,
+          doc_type_name: testDoc.doc_type_name,
+          hasTechnicalManualCode: testHasTechnicalManualCode,
+          hasTechnicalManualText: testHasTechnicalManualText,
+          hasTechnicalManualName: testHasTechnicalManualName,
+          isTechnicalManual: testIsTechnicalManual
+        });
       } else {
-        setAssetDocuments([]);
+        console.log('No documents found for asset');
+        setMaintenanceDocs([]);
+        setArchivedDocs([]);
+        setManualDocs([]);
       }
     } catch (err) {
-      console.error("Failed to fetch asset documents:", err);
-      setAssetDocuments([]);
+      console.error("Failed to fetch documents:", err);
+      console.error("Error details:", err.response?.data);
+      setMaintenanceDocs([]);
+      setArchivedDocs([]);
+      setManualDocs([]);
     } finally {
-      setLoadingDocuments(false);
+      setLoadingMaintenanceDocs(false);
     }
   };
+
+  // Dropdown functionality
+  const handleClickOutside = (event) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target) && !event.target.closest('[data-dropdown-menu]')) {
+      setActiveDropdown(null);
+    }
+  };
+
+  const toggleDropdown = (doc, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const docId = doc.a_d_id;
+    
+    if (activeDropdown === docId) {
+      setActiveDropdown(null);
+    } else {
+      const rect = event.target.closest('button').getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 5,
+        left: rect.left + window.scrollX
+      });
+      setActiveDropdown(docId);
+    }
+  };
+
+  const handleDocumentAction = async (action, doc) => {
+    console.log(`Document action: ${action} for doc:`, doc);
+    
+    try {
+      const docId = doc.a_d_id;
+      
+      if (action === 'view') {
+        // Use the same API as Assets screen
+        const res = await API.get(`/asset-docs/${docId}/download-url?mode=view`);
+        if (res.data && res.data.url) {
+          window.open(res.data.url, '_blank');
+        } else {
+          throw new Error('No URL returned from API');
+        }
+      } else if (action === 'download') {
+        // Use the same API as Assets screen
+        const res = await API.get(`/asset-docs/${docId}/download-url?mode=download`);
+        if (res.data && res.data.url) {
+          window.open(res.data.url, '_blank');
+        } else {
+          throw new Error('No URL returned from API');
+        }
+      } else if (action === 'archive') {
+        const res = await API.put(`/asset-docs/${docId}/archive-status`, {
+          is_archived: true
+        });
+        
+        if (res.data && res.data.message && res.data.message.includes('successfully')) {
+          toast.success('Document archived successfully');
+          // Refresh documents
+          fetchMaintenanceDocuments();
+        } else {
+          toast.error('Failed to archive document');
+        }
+      } else if (action === 'unarchive') {
+        const res = await API.put(`/asset-docs/${docId}/archive-status`, {
+          is_archived: false
+        });
+        
+        if (res.data && res.data.message && res.data.message.includes('successfully')) {
+          toast.success('Document unarchived successfully');
+          // Refresh documents
+          fetchMaintenanceDocuments();
+        } else {
+          toast.error('Failed to unarchive document');
+        }
+      }
+    } catch (err) {
+      console.error(`Failed to ${action} document:`, err);
+      toast.error(`Failed to ${action} document`);
+    }
+    
+    setActiveDropdown(null);
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -210,7 +428,8 @@ export default function MaintSupervisorApproval() {
   const addBeforeAfterUpload = () => {
     setBeforeAfterUploads(prev => ([...prev, { 
       id: crypto.randomUUID(), 
-      type: 'Before', // Default to Before
+      type: '', // Will be selected from photoDocTypes
+      docTypeName: '', // For custom names
       file: null, 
       previewUrl: '' 
     }]));
@@ -256,7 +475,7 @@ export default function MaintSupervisorApproval() {
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
-      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !upload.docTypeName?.trim()) {
+      if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !upload.docTypeName?.trim()) {
         toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
@@ -273,10 +492,12 @@ export default function MaintSupervisorApproval() {
           fd.append('file', upload.file);
           fd.append('dto_id', upload.type);  // Send dto_id instead of doc_type
           if (upload.type === 'OT') fd.append('doc_type_name', upload.docTypeName);
+          fd.append('asset_id', maintenanceData.asset_id);
           
-          // Upload to maintenance schedule documents
-          const res = await API.post(`/maintenance-schedules/${id}/documents`, fd);
-          if (res.data.success) {
+          // Upload to asset maintenance documents
+          const res = await API.post(`/asset-maint-docs/upload`, fd);
+          console.log('Invoice upload response:', res.data);
+          if (res.data.message && res.data.message.includes('successfully')) {
             successCount++;
           } else {
             failCount++;
@@ -294,6 +515,8 @@ export default function MaintSupervisorApproval() {
           toast.success(`${successCount} files uploaded, ${failCount} failed`);
         }
         setInvoiceUploads([]); // Clear uploads after successful upload
+        // Refresh maintenance documents
+        fetchMaintenanceDocuments();
       } else {
         toast.error('Failed to upload any files');
       }
@@ -317,6 +540,12 @@ export default function MaintSupervisorApproval() {
         toast.error('Select image type and choose a file for all rows');
         return;
       }
+      // Check if the selected document type requires a custom name
+      const selectedDocType = photoDocTypes.find(dt => dt.id === upload.type);
+      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !upload.docTypeName?.trim()) {
+        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -328,11 +557,14 @@ export default function MaintSupervisorApproval() {
         try {
           const fd = new FormData();
           fd.append('file', upload.file);
-          fd.append('doc_type', upload.type === 'Before' ? 'Before_Image' : 'After_Image');
+          fd.append('dto_id', upload.type);  // Use dto_id for photo types
+          if (upload.type === 'OT') fd.append('doc_type_name', upload.docTypeName);
+          fd.append('asset_id', maintenanceData.asset_id);
           
-          // Upload to maintenance schedule documents
-          const res = await API.post(`/maintenance-schedules/${id}/documents`, fd);
-          if (res.data.success) {
+          // Upload to asset maintenance documents
+          const res = await API.post(`/asset-maint-docs/upload`, fd);
+          console.log('Image upload response:', res.data);
+          if (res.data.message && res.data.message.includes('successfully')) {
             successCount++;
           } else {
             failCount++;
@@ -350,6 +582,8 @@ export default function MaintSupervisorApproval() {
           toast.success(`${successCount} images uploaded, ${failCount} failed`);
         }
         setBeforeAfterUploads([]); // Clear uploads after successful upload
+        // Refresh maintenance documents
+        fetchMaintenanceDocuments();
       } else {
         toast.error('Failed to upload any images');
       }
@@ -442,27 +676,95 @@ export default function MaintSupervisorApproval() {
         <div className="p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">Technical Manual</h2>
-            <button
-              type="button"
-              onClick={() => setShowManual(true)}
-              disabled={loadingDocuments || assetDocuments.length === 0}
-              className="px-4 py-2 border border-blue-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              title="View technical specifications and manuals"
-            >
-              <FileText className="w-4 h-4" />
-              {loadingDocuments ? "Loading..." : "View Manual"}
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => {
+                  console.log('View Manual clicked - manualDocs:', manualDocs);
+                  console.log('View Manual clicked - maintenanceDocs:', maintenanceDocs);
+                  
+                  if (activeDropdown === 'manual-dropdown') {
+                    setActiveDropdown(null);
+                  } else {
+                    const rect = e.target.getBoundingClientRect();
+                    setDropdownPosition({
+                      top: rect.bottom + window.scrollY + 5,
+                      left: rect.left + window.scrollX
+                    });
+                    setActiveDropdown('manual-dropdown');
+                  }
+                }}
+                disabled={loadingMaintenanceDocs || manualDocs.length === 0}
+                className="px-4 py-2 border border-blue-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title="View technical specifications and manuals"
+              >
+                <FileText className="w-4 h-4" />
+                {loadingMaintenanceDocs ? "Loading..." : `View Manual ${manualDocs.length > 0 ? `(${manualDocs.length})` : ''}`}
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              
+              {activeDropdown === 'manual-dropdown' && manualDocs.length > 0 && createPortal(
+                <div
+                  ref={dropdownRef}
+                  className="fixed z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 min-w-[160px]"
+                  style={{
+                    top: dropdownPosition.top,
+                    left: dropdownPosition.left
+                  }}
+                  data-dropdown-menu
+                >
+                  {manualDocs.map((doc, index) => (
+                    <div key={doc.a_d_id || index}>
+                      <div className="px-3 py-2 text-xs text-gray-500 border-b border-gray-100 last:border-b-0">
+                        {doc.file_name || 'Document'}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDocumentAction('view', doc);
+                          setActiveDropdown(null);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        View
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDocumentAction('download', doc);
+                          setActiveDropdown(null);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </button>
+                    </div>
+                  ))}
+                </div>,
+                document.body
+              )}
+            </div>
           </div>
           
-          {assetDocuments.length > 0 && (
+          {manualDocs.length > 0 && (
             <div className="text-sm text-gray-600">
-              {assetDocuments.filter(doc => 
-                doc.doc_type === 'Technical_Spec' || 
-                doc.doc_type === 'Manual' || 
-                doc.doc_type === 'OT'
-              ).length} technical document(s) available
+              {manualDocs.length} technical manual document(s) available
             </div>
           )}
+          
+          {/* Debug info */}
+          <div className="mt-2 text-xs text-gray-400">
+            Debug: technicalManualDocs.length = {manualDocs.length}, totalDocs.length = {maintenanceDocs.length + archivedDocs.length}
+            {maintenanceDocs.length > 0 && (
+              <div className="mt-1">
+                Available docs: {maintenanceDocs.map(doc => `${doc.doc_type_name || doc.doc_type_text || doc.doc_type} (${doc.file_name})`).join(', ')}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Doc Upload Section */}
@@ -504,7 +806,7 @@ export default function MaintSupervisorApproval() {
 
                   {(() => {
                     const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
-                    const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                    const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName && (
                       <div className="col-span-3">
                         <label className="block text-xs font-medium mb-1">Custom Name</label>
@@ -521,7 +823,7 @@ export default function MaintSupervisorApproval() {
 
                   <div className={(() => {
                     const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
-                    const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                    const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName ? 'col-span-4' : 'col-span-7';
                   })()}>
                     <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
@@ -580,7 +882,7 @@ export default function MaintSupervisorApproval() {
                 disabled={isUploading || invoiceUploads.some(u => {
                   if (!u.type || !u.file) return true;
                   const selectedDocType = maintenanceDocTypes.find(dt => dt.id === u.type);
-                  const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                  const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                   return needsCustomName && !u.docTypeName?.trim();
                 })}
                 className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -641,7 +943,28 @@ export default function MaintSupervisorApproval() {
                     />
                   </div>
 
-                  <div className="col-span-9">
+                  {(() => {
+                    const selectedDocType = photoDocTypes.find(dt => dt.id === upload.type);
+                    const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
+                    return needsCustomName && (
+                      <div className="col-span-3">
+                        <label className="block text-xs font-medium mb-1">Custom Name</label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-2 py-2 text-sm h-[38px] bg-white"
+                          value={upload.docTypeName}
+                          onChange={(e) => updateBeforeAfterUpload(upload.id, { docTypeName: e.target.value })}
+                          placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                        />
+                      </div>
+                    );
+                  })()}
+
+                  <div className={(() => {
+                    const selectedDocType = photoDocTypes.find(dt => dt.id === upload.type);
+                    const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
+                    return needsCustomName ? 'col-span-6' : 'col-span-9';
+                  })()}>
                     <label className="block text-xs font-medium mb-1">Image File (Max 10MB)</label>
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1 max-w-md">
@@ -695,7 +1018,12 @@ export default function MaintSupervisorApproval() {
               <button
                 type="button"
                 onClick={handleBeforeAfterUpload}
-                disabled={isUploading || beforeAfterUploads.some(u => !u.type || !u.file)}
+                disabled={isUploading || beforeAfterUploads.some(u => {
+                  if (!u.type || !u.file) return true;
+                  const selectedDocType = photoDocTypes.find(dt => dt.id === u.type);
+                  const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
+                  return needsCustomName && !u.docTypeName?.trim();
+                })}
                 className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isUploading ? (
@@ -713,6 +1041,224 @@ export default function MaintSupervisorApproval() {
                   </>
                 )}
               </button>
+            </div>
+          )}
+        </div>
+
+        {/* Maintenance Documents Display Section */}
+        <div className="p-6 rounded-lg border border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Uploaded Maintenance Documents</h2>
+          
+          {loadingMaintenanceDocs ? (
+            <div className="text-center text-gray-500 py-4">Loading documents...</div>
+          ) : maintenanceDocs.length === 0 && archivedDocs.length === 0 ? (
+            <div className="text-center text-gray-500 py-4">No maintenance documents uploaded yet.</div>
+          ) : (
+            <div className="space-y-6">
+              {/* Active Documents */}
+              {maintenanceDocs.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-700 mb-3">Active Documents ({maintenanceDocs.length})</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document Type</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded Date</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {maintenanceDocs.map((doc) => (
+                          <tr key={doc.a_d_id}>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {doc.doc_type_text || doc.doc_type || 'Unknown'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              {doc.file_name || 'Document'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-500">
+                              N/A
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Active
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-500">
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={(e) => toggleDropdown(doc, e)}
+                                  className="inline-flex items-center px-2 py-1 border border-gray-300 text-gray-700 text-xs rounded hover:bg-gray-50 transition-colors"
+                                >
+                                  <MoreVertical className="w-3 h-3" />
+                                </button>
+                                
+                                {activeDropdown === doc.a_d_id && createPortal(
+                                  <div
+                                    ref={dropdownRef}
+                                    className="absolute z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 min-w-[120px]"
+                                    style={{
+                                      top: dropdownPosition.top,
+                                      left: dropdownPosition.left
+                                    }}
+                                    data-dropdown-menu
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDocumentAction('view', doc);
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
+                                    >
+                                      <Eye className="w-3 h-3 mr-2" />
+                                      View
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDocumentAction('download', doc);
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
+                                    >
+                                      <Download className="w-3 h-3 mr-2" />
+                                      Download
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDocumentAction('archive', doc);
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
+                                    >
+                                      <Archive className="w-3 h-3 mr-2" />
+                                      Archive
+                                    </button>
+                                  </div>,
+                                  document.body
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Archived Documents */}
+              {archivedDocs.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-medium text-gray-700">Archived Documents ({archivedDocs.length})</h3>
+                    <button
+                      onClick={() => setShowArchived(!showArchived)}
+                      className="text-sm text-[#0E2F4B] hover:text-[#1a4971] font-medium"
+                    >
+                      {showArchived ? 'Hide Archived' : 'Show Archived'}
+                    </button>
+                  </div>
+                  
+                  {showArchived && (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document Type</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Archived Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {archivedDocs.map((doc) => (
+                            <tr key={doc.a_d_id}>
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                {doc.doc_type_text || doc.doc_type || 'Unknown'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                {doc.file_name || 'Document'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-500">
+                                N/A
+                              </td>
+                              <td className="px-4 py-3 text-sm">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  Archived
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-500">
+                                <div className="flex items-center space-x-2">
+                                  <button
+                                    onClick={(e) => toggleDropdown(doc, e)}
+                                    className="inline-flex items-center px-2 py-1 border border-gray-300 text-gray-700 text-xs rounded hover:bg-gray-50 transition-colors"
+                                  >
+                                    <MoreVertical className="w-3 h-3" />
+                                  </button>
+                                  
+                                  {activeDropdown === doc.a_d_id && createPortal(
+                                    <div
+                                      ref={dropdownRef}
+                                      className="absolute z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 min-w-[120px]"
+                                      style={{
+                                        top: dropdownPosition.top,
+                                        left: dropdownPosition.left
+                                      }}
+                                      data-dropdown-menu
+                                    >
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleDocumentAction('view', doc);
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
+                                      >
+                                        <Eye className="w-3 h-3 mr-2" />
+                                        View
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleDocumentAction('download', doc);
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
+                                      >
+                                        <Download className="w-3 h-3 mr-2" />
+                                        Download
+                                      </button>
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleDocumentAction('unarchive', doc);
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
+                                      >
+                                        <ArchiveRestore className="w-3 h-3 mr-2" />
+                                        Unarchive
+                                      </button>
+                                    </div>,
+                                    document.body
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -839,75 +1385,6 @@ export default function MaintSupervisorApproval() {
         checklist={checklist}
       />
 
-      {/* Manual View Modal */}
-      {showManual && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-800">Technical Manual & Specifications</h2>
-                <button
-                  onClick={() => setShowManual(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6">
-              {loadingDocuments ? (
-                <div className="text-center text-gray-500">Loading documents...</div>
-              ) : assetDocuments.length === 0 ? (
-                <div className="text-center text-gray-500">No technical documents available for this asset.</div>
-              ) : (
-                <div className="space-y-4">
-                  {assetDocuments
-                    .filter(doc => 
-                      doc.doc_type === 'Technical_Spec' || 
-                      doc.doc_type === 'Manual' || 
-                      doc.doc_type === 'OT'
-                    )
-                    .map((doc, index) => (
-                      <div key={doc.id || index} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">
-                              {doc.doc_type === 'OT' && doc.doc_type_name 
-                                ? `${doc.doc_type} (${doc.doc_type_name})`
-                                : doc.doc_type
-                              }
-                            </div>
-                            <div className="text-sm text-gray-500">{doc.file_name || doc.name || 'Document'}</div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={doc.file_url || doc.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center px-3 py-1 bg-[#0E2F4B] text-white text-sm rounded hover:bg-[#1a4971] transition-colors"
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              View
-                            </a>
-                            <a
-                              href={doc.file_url || doc.url}
-                              download
-                              className="inline-flex items-center px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50 transition-colors"
-                            >
-                              <Download className="w-4 h-4 mr-1" />
-                              Download
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

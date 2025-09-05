@@ -92,13 +92,13 @@ const ScrapSales = () => {
 
   const handleView = (row) => {
     // Navigate to view page
-    navigate(`/scrap-sales/view/${row.scrap_id}`);
+    navigate(`/scrap-sales/view/${row.ssh_id}`);
   };
 
   const handleEdit = (row) => {
     // Transform the data to match the expected structure in EditScrapSales
     const transformedData = {
-      scrap_id: row.scrap_id,
+      scrap_id: row.ssh_id,
       group_name: row.group_name,
       selected_assets: [
         {
@@ -125,7 +125,7 @@ const ScrapSales = () => {
     };
 
     // Navigate to edit page with scrap sale data
-    navigate(`/scrap-sales/edit/${row.scrap_id}`, { 
+    navigate(`/scrap-sales/edit/${row.ssh_id}`, { 
       state: { 
         scrapData: transformedData,
         isEdit: true 

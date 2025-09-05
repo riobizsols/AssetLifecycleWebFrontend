@@ -43,14 +43,21 @@ const ViewScrapSales = () => {
   };
 
   useEffect(() => {
+    console.log('ViewScrapSales - scrapId from params:', scrapId);
+    console.log('ViewScrapSales - location.state:', location.state);
+    
     // Simulate API call to fetch scrap sale data
     setTimeout(() => {
       setScrapData(mockScrapData);
       setLoading(false);
     }, 1000);
-  }, [scrapId]);
+  }, [scrapId, location.state]);
 
   const handleEdit = () => {
+    if (!scrapId) {
+      toast.error('Scrap sale ID not found');
+      return;
+    }
     navigate(`/scrap-sales/edit/${scrapId}`, {
       state: {
         scrapData: scrapData,
@@ -123,6 +130,7 @@ const ViewScrapSales = () => {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{scrapData.asset_name}</h1>
                 <p className="text-sm text-gray-600">Scrap Sale Details</p>
+                <p className="text-xs text-red-500">Debug - Scrap ID: {scrapId || 'undefined'}</p>
               </div>
             </div>
             <div className="flex gap-3">

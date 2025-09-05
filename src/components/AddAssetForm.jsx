@@ -494,7 +494,7 @@ const AddAssetForm = ({ userRole }) => {
       }
       // Check if the selected document type requires a custom name (like OT - Others)
       const selectedDocType = documentTypes.find(dt => dt.id === a.type);
-      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !a.docTypeName?.trim()) {
+      if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !a.docTypeName?.trim()) {
         toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
@@ -1430,89 +1430,92 @@ const AddAssetForm = ({ userRole }) => {
           ) : (
             <div className="space-y-3">
               {attachments.map(att => (
-                <div key={att.id} className="grid grid-cols-6 gap-3 items-start bg-white border border-gray-200 rounded p-3">
-                                     <div className="col-span-2">
-                     <label className="block text-xs font-medium mb-1">Document Type</label>
-                                    <SearchableDropdown
-                 options={documentTypes}
-                 value={att.type}
-                 onChange={(value) => updateAttachment(att.id, { type: value })}
-                 placeholder="Select type"
-                 searchPlaceholder="Search types..."
-                 className="w-full "
-                 displayKey="text"
-                 valueKey="id"
-               />
-                   </div>
-                  {(() => {
-                    const selectedDocType = documentTypes.find(dt => dt.id === att.type);
-                    const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
-                    return needsCustomName && (
-                      <div className="col-span-2">
-                        <label className="block text-xs font-medium mb-1">Custom Name</label>
+                <div key={att.id} className="bg-white border border-gray-200 rounded p-3 space-y-3">
+                  {/* First row: Document Type and Custom Name */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Document Type</label>
+                      <SearchableDropdown
+                        options={documentTypes}
+                        value={att.type}
+                        onChange={(value) => updateAttachment(att.id, { type: value })}
+                        placeholder="Select type"
+                        searchPlaceholder="Search types..."
+                        className="w-full"
+                        displayKey="text"
+                        valueKey="id"
+                      />
+                    </div>
+                    {(() => {
+                      const selectedDocType = documentTypes.find(dt => dt.id === att.type);
+                      const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
+                      return needsCustomName && (
+                        <div>
+                          <label className="block text-xs font-medium mb-1">Custom Name</label>
+                          <input
+                            type="text"
+                            className="w-full border rounded px-2 py-2 text-sm bg-white h-[38px]"
+                            value={att.docTypeName}
+                            onChange={(e) => updateAttachment(att.id, { docTypeName: e.target.value })}
+                            placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  
+                  {/* Second row: File input and buttons */}
+                  <div>
+                    <label className="block text-xs font-medium mb-1">File</label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="relative flex-1">
                         <input
-                          type="text"
-                          className="w-full border rounded px-2 py-2 text-sm bg-white"
-                          value={att.docTypeName}
-                          onChange={(e) => updateAttachment(att.id, { docTypeName: e.target.value })}
-                          placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                          type="file"
+                          id={`file-${att.id}`}
+                          onChange={(e) => onSelectFile(att.id, e.target.files?.[0] || null)}
+                          className="hidden"
                         />
+                        <label
+                          htmlFor={`file-${att.id}`}
+                          className="flex items-center h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full"
+                        >
+                          <svg className="flex-shrink-0 w-5 h-5 mr-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                          <span className="truncate">
+                            {att.file ? att.file.name : 'Choose file'}
+                          </span>
+                        </label>
                       </div>
-                    );
-                  })()}
-                                                        <div className={(() => {
-                                                          const selectedDocType = documentTypes.find(dt => dt.id === att.type);
-                                                          const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
-                                                          return needsCustomName ? 'col-span-1' : 'col-span-2';
-                                                        })()}>
-                     <label className="block text-xs font-medium mb-1">File</label>
-                     <div className="flex items-center gap-2">
-                       <div className="relative flex-1">
-                         <input
-                           type="file"
-                           id={`file-${att.id}`}
-                           onChange={(e) => onSelectFile(att.id, e.target.files?.[0] || null)}
-                           className="hidden"
-                         />
-                         <label
-                           htmlFor={`file-${att.id}`}
-                           className="flex items-center h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full"
-                         >
-                           <svg className="flex-shrink-0 w-5 h-5 mr-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                           </svg>
-                           <span className="truncate max-w-[200px] inline-block">
-                             {att.file ? att.file.name : 'Choose file'}
-                           </span>
-                         </label>
-                       </div>
 
-                       {att.previewUrl && (
-                         <a 
-                           href={att.previewUrl} 
-                           target="_blank" 
-                           rel="noreferrer" 
-                           className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
-                         >
-                           <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                           </svg>
-                           Preview
-                         </a>
-                       )}
-                       <button 
-                         type="button" 
-                         onClick={() => removeAttachment(att.id)} 
-                         className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                       >
-                         <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                         </svg>
-                         Remove
-                       </button>
-                     </div>
-                   </div>
+                      <div className="flex gap-2">
+                        {att.previewUrl && (
+                          <a 
+                            href={att.previewUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="h-[38px] inline-flex items-center px-3 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors whitespace-nowrap"
+                          >
+                            <svg className="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Preview
+                          </a>
+                        )}
+                        <button 
+                          type="button" 
+                          onClick={() => removeAttachment(att.id)} 
+                          className="h-[38px] inline-flex items-center px-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors whitespace-nowrap"
+                        >
+                          <svg className="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1526,7 +1529,7 @@ const AddAssetForm = ({ userRole }) => {
                 disabled={isUploading || !form.assetId || attachments.some(a => {
                   if (!a.type || !a.file) return true;
                   const selectedDocType = documentTypes.find(dt => dt.id === a.type);
-                  const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                  const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                   return needsCustomName && !a.docTypeName?.trim();
                 })}
                 className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

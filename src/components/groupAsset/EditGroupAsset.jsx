@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
-import { ChevronDown, Check, X, ArrowRight, ArrowLeft, Search, Plus } from 'lucide-react';
+import { ChevronDown, Check, X, ArrowRight, ArrowLeft, Search, Plus, MoreVertical, Eye, Download, Archive, ArchiveRestore } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import SearchableDropdown from '../ui/SearchableDropdown';
 
 const EditGroupAsset = () => {
@@ -31,10 +32,92 @@ const EditGroupAsset = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [documentTypes, setDocumentTypes] = useState([]);
   
+  // Document management states
+  const [docs, setDocs] = useState([]);
+  const [archivedDocs, setArchivedDocs] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [showArchived, setShowArchived] = useState(false);
+
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeDropdown && !event.target.closest('.dropdown-container') && !event.target.closest('[data-dropdown-menu]')) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeDropdown]);
+
+  // Toggle dropdown for document actions
+  const toggleDropdown = (docId, event) => {
+    console.log('Toggle dropdown clicked for doc:', docId);
+    event.stopPropagation();
+    if (activeDropdown === docId) {
+      console.log('Closing dropdown for doc:', docId);
+      setActiveDropdown(null);
+    } else {
+      console.log('Opening dropdown for doc:', docId);
+      const rect = event.currentTarget.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX
+      });
+      setActiveDropdown(docId);
+      console.log('Dropdown position set:', {
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX
+      });
+    }
+  };
+
+  // Close all dropdowns
+  const closeAllDropdowns = () => {
+    setActiveDropdown(null);
+  };
+  
   // Get group data from navigation state or fetch by ID
   const groupId = location.pathname.split('/').pop();
   const isEdit = location.state?.isEdit || false;
   const groupData = location.state?.groupData;
+
+  // Fetch documents for the asset group
+  const fetchDocs = async () => {
+    if (!groupId) return;
+    console.log('EditGroupAsset - Fetching documents for groupId:', groupId);
+    setDocsLoading(true);
+    try {
+      const res = await API.get(`/asset-group-docs/${groupId}`);
+      console.log('EditGroupAsset - Documents API response:', res.data);
+      console.log('EditGroupAsset - Response status:', res.status);
+      console.log('EditGroupAsset - Response data keys:', Object.keys(res.data || {}));
+      
+      const allDocs = res.data?.documents || res.data?.data || [];
+      console.log('EditGroupAsset - All documents:', allDocs);
+      
+      // Separate active and archived documents
+      const active = allDocs.filter(doc => !doc.is_archived);
+      const archived = allDocs.filter(doc => doc.is_archived);
+      
+      console.log('EditGroupAsset - Active documents:', active);
+      console.log('EditGroupAsset - Archived documents:', archived);
+      
+      setDocs(active);
+      setArchivedDocs(archived);
+    } catch (err) {
+      console.error('Failed to fetch asset group documents', err);
+      console.error('Error details:', err.response?.data);
+      setDocs([]);
+      setArchivedDocs([]);
+    } finally {
+      setDocsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isEdit && groupData) {
@@ -50,6 +133,7 @@ const EditGroupAsset = () => {
     // Fetch asset types for dropdown
     fetchAssetTypes();
     fetchDocumentTypes();
+    fetchDocs();
   }, [groupId, isEdit, groupData]);
 
   // Fetch document types on component mount
@@ -314,6 +398,52 @@ const EditGroupAsset = () => {
     navigate('/group-asset');
   };
 
+  // Handle document actions
+  const handleDocumentAction = async (doc, action) => {
+    console.log('Document action triggered:', action, 'for doc:', doc.agd_id);
+    try {
+      if (action === 'view') {
+        console.log('Opening view for document:', doc.agd_id);
+        const res = await API.get(`/asset-group-docs/${doc.agd_id}/download?mode=view`);
+        window.open(res.data.url, '_blank');
+      } else if (action === 'download') {
+        console.log('Downloading document:', doc.agd_id);
+        const res = await API.get(`/asset-group-docs/${doc.agd_id}/download?mode=download`);
+        window.open(res.data.url, '_blank');
+      } else if (action === 'archive') {
+        console.log('Archiving document:', doc.agd_id);
+        await API.put(`/asset-group-docs/${doc.agd_id}/archive-status`, {
+          is_archived: true
+        });
+        toast.success('Document archived successfully');
+        // Refresh documents
+        const res = await API.get(`/asset-group-docs/${groupId}`);
+        const allDocs = res.data?.documents || [];
+        const active = allDocs.filter(d => !d.is_archived);
+        const archived = allDocs.filter(d => d.is_archived);
+        setDocs(active);
+        setArchivedDocs(archived);
+      } else if (action === 'unarchive') {
+        console.log('Unarchiving document:', doc.agd_id);
+        await API.put(`/asset-group-docs/${doc.agd_id}/archive-status`, {
+          is_archived: false
+        });
+        toast.success('Document unarchived successfully');
+        // Refresh documents
+        const res = await API.get(`/asset-group-docs/${groupId}`);
+        const allDocs = res.data?.documents || [];
+        const active = allDocs.filter(d => !d.is_archived);
+        const archived = allDocs.filter(d => d.is_archived);
+        setDocs(active);
+        setArchivedDocs(archived);
+      }
+    } catch (error) {
+      console.error('Document action failed:', error);
+      console.error('Error details:', error.response?.data);
+      toast.error(`Failed to ${action} document`);
+    }
+  };
+
   // Handle batch upload for group asset documents
   const handleBatchUpload = async () => {
     if (uploadRows.length === 0) {
@@ -329,7 +459,7 @@ const EditGroupAsset = () => {
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
+      if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
         toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
@@ -345,32 +475,41 @@ const EditGroupAsset = () => {
           const fd = new FormData();
           fd.append('file', r.file);
           fd.append('dto_id', r.type);  // Send dto_id instead of doc_type
+          fd.append('asset_group_id', groupId);  // Add asset group ID
           if (r.type && r.docTypeName?.trim()) {
             fd.append('doc_type_name', r.docTypeName);
           }
           
-          // Since this is for existing group assets, we'll store the files temporarily
-          // and they'll be uploaded when the group asset is updated
+          await API.post('/asset-group-docs/upload', fd, { 
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
           successCount++;
         } catch (err) {
-          console.error('Failed to process file:', r.file.name, err);
+          console.error('Failed to upload file:', r.file.name, err);
           failCount++;
         }
       }
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files processed successfully. They will be uploaded when you update the group asset.');
+          toast.success('All files uploaded successfully');
         } else {
-          toast.success(`${successCount} files processed, ${failCount} failed`);
+          toast.success(`${successCount} files uploaded, ${failCount} failed`);
         }
-        // Don't clear attachments - they'll be uploaded with the group asset update
+        setUploadRows([]); // Clear all attachments after upload
+        // Refresh the documents list
+        const res = await API.get(`/asset-group-docs/${groupId}`);
+        const allDocs = res.data?.documents || [];
+        const active = allDocs.filter(doc => !doc.is_archived);
+        const archived = allDocs.filter(doc => doc.is_archived);
+        setDocs(active);
+        setArchivedDocs(archived);
       } else {
-        toast.error('Failed to process any files');
+        toast.error('Failed to upload any files');
       }
     } catch (err) {
-      console.error('Process error:', err);
-      toast.error('Process failed');
+      console.error('Upload error:', err);
+      toast.error('Upload failed');
     } finally {
       setIsUploading(false);
     }
@@ -835,7 +974,7 @@ const EditGroupAsset = () => {
 
                       {(() => {
                         const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                        const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                        const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                         return needsCustomName && (
                           <div className="col-span-3">
                             <label className="block text-xs font-medium mb-1">Custom Name</label>
@@ -851,7 +990,7 @@ const EditGroupAsset = () => {
 
                       <div className={(() => {
                         const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                        const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                        const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                         return needsCustomName ? 'col-span-4' : 'col-span-7';
                       })()}>
                         <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
@@ -925,7 +1064,7 @@ const EditGroupAsset = () => {
                     disabled={isUploading || uploadRows.some(r => {
                       if (!r.type || !r.file) return true;
                       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                       return needsCustomName && !r.docTypeName?.trim();
                     })}
                     className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -949,6 +1088,234 @@ const EditGroupAsset = () => {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Document Management Section */}
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Document Management</h3>
+              
+              {/* Active Documents */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Active Documents</h3>
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  {docsLoading ? (
+                    <div className="p-4 text-sm text-gray-500 text-center">Loading documents...</div>
+                  ) : docs.length === 0 ? (
+                    <div className="p-4 text-sm text-gray-500 text-center">No active documents found.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {docs.map((doc) => (
+                            <tr key={doc.agd_id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm text-gray-900">{doc.file_name || 'document'}</td>
+                              <td className="px-4 py-3 text-sm text-gray-500">{doc.doc_type_text || doc.doc_type_name || 'N/A'}</td>
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Active
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-500">
+                                <div className="relative dropdown-container">
+                                  <button
+                                    onClick={(e) => toggleDropdown(doc.agd_id, e)}
+                                    className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                                  >
+                                    <MoreVertical size={16} />
+                                  </button>
+                                  
+                                  {activeDropdown === doc.agd_id && (() => {
+                                    console.log('Rendering dropdown for doc:', doc.agd_id);
+                                    return createPortal(
+                                      <div
+                                        data-dropdown-menu
+                                        className="absolute z-50 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                                        style={{
+                                          top: dropdownPosition.top,
+                                          left: dropdownPosition.left,
+                                          transform: 'translateX(-100%)'
+                                        }}
+                                      >
+                                        <div className="py-1">
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              console.log('View button clicked for doc:', doc.agd_id);
+                                              handleDocumentAction(doc, 'view');
+                                              closeAllDropdowns();
+                                            }}
+                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                          >
+                                            <Eye size={16} className="mr-3" />
+                                            View
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              console.log('Download button clicked for doc:', doc.agd_id);
+                                              handleDocumentAction(doc, 'download');
+                                              closeAllDropdowns();
+                                            }}
+                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                          >
+                                            <Download size={16} className="mr-3" />
+                                            Download
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              console.log('Archive button clicked for doc:', doc.agd_id);
+                                              handleDocumentAction(doc, 'archive');
+                                              closeAllDropdowns();
+                                            }}
+                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                          >
+                                            <Archive size={16} className="mr-3" />
+                                            Archive
+                                          </button>
+                                        </div>
+                                      </div>,
+                                      document.body
+                                    );
+                                  })()}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Archived Documents */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-900">Archived Documents</h3>
+                  <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    {showArchived ? 'Hide Archived' : `Show Archived (${archivedDocs.length})`}
+                  </button>
+                </div>
+                
+                {showArchived && (
+                  <div className="border rounded-lg overflow-hidden bg-gray-50">
+                    {archivedDocs.length === 0 ? (
+                      <div className="p-4 text-sm text-gray-500 text-center">
+                        No archived documents found.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {archivedDocs.map((doc) => (
+                              <tr key={doc.agd_id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-sm text-gray-900">{doc.file_name || 'document'}</td>
+                                <td className="px-4 py-3 text-sm text-gray-500">{doc.doc_type_text || doc.doc_type_name || 'N/A'}</td>
+                                <td className="px-4 py-3">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    Archived
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-500">
+                                  <div className="relative dropdown-container">
+                                    <button
+                                      onClick={(e) => toggleDropdown(doc.agd_id, e)}
+                                      className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                                    >
+                                      <MoreVertical size={16} />
+                                    </button>
+                                    
+                                    {activeDropdown === doc.agd_id && (() => {
+                                      console.log('Rendering archived dropdown for doc:', doc.agd_id);
+                                      return createPortal(
+                                        <div
+                                          data-dropdown-menu
+                                          className="absolute z-50 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                                          style={{
+                                            top: dropdownPosition.top,
+                                            left: dropdownPosition.left,
+                                            transform: 'translateX(-100%)'
+                                          }}
+                                        >
+                                          <div className="py-1">
+                                            <button
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                console.log('View button clicked for archived doc:', doc.agd_id);
+                                                handleDocumentAction(doc, 'view');
+                                                closeAllDropdowns();
+                                              }}
+                                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            >
+                                              <Eye size={16} className="mr-3" />
+                                              View
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                console.log('Download button clicked for archived doc:', doc.agd_id);
+                                                handleDocumentAction(doc, 'download');
+                                                closeAllDropdowns();
+                                              }}
+                                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            >
+                                              <Download size={16} className="mr-3" />
+                                              Download
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                console.log('Unarchive button clicked for archived doc:', doc.agd_id);
+                                                handleDocumentAction(doc, 'unarchive');
+                                                closeAllDropdowns();
+                                              }}
+                                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            >
+                                              <ArchiveRestore size={16} className="mr-3" />
+                                              Unarchive
+                                            </button>
+                                          </div>
+                                        </div>,
+                                        document.body
+                                      );
+                                    })()}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

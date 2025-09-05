@@ -133,6 +133,12 @@ const AddEntityForm = () => {
       return;
     }
 
+    // Check if vendor has been created
+    if (!createdVendorId) {
+      toast.error('Please create the vendor first before uploading documents');
+      return;
+    }
+
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
@@ -141,7 +147,7 @@ const AddEntityForm = () => {
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-      if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
+      if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
         toast.error(`Enter custom name for ${selectedDocType.text} documents`);
         return;
       }
@@ -156,13 +162,16 @@ const AddEntityForm = () => {
         try {
           const fd = new FormData();
           fd.append('file', r.file);
+          fd.append('vendor_id', createdVendorId); // Add vendor_id
           fd.append('dto_id', r.type);  // Send dto_id instead of doc_type
           if (r.type && r.docTypeName?.trim()) {
             fd.append('doc_type_name', r.docTypeName);
           }
           
-          // Since this is for new vendors, we'll store the files temporarily
-          // and they'll be uploaded when the vendor is created
+          // Upload the file to the vendor document API
+          await API.post('/vendor-docs/upload', fd, { 
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
           successCount++;
         } catch (err) {
           console.error('Failed to process file:', r.file.name, err);
@@ -172,13 +181,13 @@ const AddEntityForm = () => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files processed successfully. They will be uploaded when you save the vendor.');
+          toast.success('All files uploaded successfully');
         } else {
-          toast.success(`${successCount} files processed, ${failCount} failed`);
+          toast.success(`${successCount} files uploaded, ${failCount} failed`);
         }
-        // Don't clear attachments - they'll be uploaded with the vendor
+        setUploadRows([]); // Clear attachments after successful upload
       } else {
-        toast.error('Failed to process any files');
+        toast.error('Failed to upload any files');
       }
     } catch (err) {
       console.error('Process error:', err);
@@ -293,7 +302,14 @@ const AddEntityForm = () => {
               </button>
             </div>
 
-            <div className="text-sm text-gray-600 mb-3">Document types are loaded from the system configuration</div>
+            <div className="text-sm text-gray-600 mb-3">
+              Document types are loaded from the system configuration
+              {!createdVendorId && (
+                <span className="text-amber-600 font-medium ml-2">
+                  ⚠️ Please create the vendor first before uploading documents
+                </span>
+              )}
+            </div>
 
             {uploadRows.length === 0 ? (
               <div className="text-sm text-gray-500">No files added.</div>
@@ -319,7 +335,7 @@ const AddEntityForm = () => {
 
                     {(() => {
                       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                       return needsCustomName && (
                         <div className="col-span-2">
                           <label className="block text-xs font-medium mb-1">Custom Name</label>
@@ -335,7 +351,7 @@ const AddEntityForm = () => {
 
                     <div className={(() => {
                       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                      const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                      const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                       return needsCustomName ? 'col-span-3' : 'col-span-4';
                     })()}>
                       <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
@@ -405,10 +421,10 @@ const AddEntityForm = () => {
                 <button
                   type="button"
                   onClick={handleBatchUpload}
-                  disabled={isUploading || uploadRows.some(r => {
+                  disabled={isUploading || !createdVendorId || uploadRows.some(r => {
                     if (!r.type || !r.file) return true;
                     const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                    const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
+                    const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName && !r.docTypeName?.trim();
                   })}
                   className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -426,7 +442,7 @@ const AddEntityForm = () => {
                       <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      Process All Files
+                      Upload All Files
                     </>
                   )}
                 </button>
