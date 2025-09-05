@@ -23,6 +23,7 @@ const initialForm = {
   serviceSupply: '',
   vendorId: '',
   parentAsset: '', // Add parent asset field
+  assetId: '', // Add asset ID field for document uploads
   // Accounting fields that users need to enter
   salvageValue: '',
   usefulLifeYears: '5',
@@ -371,8 +372,9 @@ const AddAssetForm = ({ userRole }) => {
       if (res.data && res.data.success && Array.isArray(res.data.data)) {
         // Transform API data to dropdown format
         const docTypes = res.data.data.map(docType => ({
-          id: docType.doc_type,
-          text: docType.doc_type_text
+          id: docType.dto_id,  // Use dto_id instead of doc_type
+          text: docType.doc_type_text,
+          doc_type: docType.doc_type  // Keep doc_type for reference
         }));
         setDocumentTypes(docTypes);
         console.log('Document types loaded:', docTypes);
@@ -498,6 +500,12 @@ const AddAssetForm = ({ userRole }) => {
       }
     }
 
+    // Check if asset is already created
+    if (!form.assetId) {
+      toast.error('Please save the asset first before uploading documents');
+      return;
+    }
+
     setIsUploading(true);
     let successCount = 0;
     let failCount = 0;
@@ -507,31 +515,42 @@ const AddAssetForm = ({ userRole }) => {
         try {
           const fd = new FormData();
           fd.append('file', a.file);
-          fd.append('doc_type', a.type);
-          if (a.type === 'OT') fd.append('doc_type_name', a.docTypeName);
+          fd.append('dto_id', a.type);  // Send dto_id instead of doc_type
+          if (a.type && a.docTypeName?.trim()) {
+            fd.append('doc_type_name', a.docTypeName);
+          }
           
-          // Since this is for new assets, we'll store the files temporarily
-          // and they'll be uploaded when the asset is created
+          // Get org_id from auth store
+          const user = useAuthStore.getState().user;
+          if (user?.org_id) {
+            fd.append('org_id', user.org_id);
+          }
+          
+          // Upload to the asset documents API
+          await API.post(`/assets/${form.assetId}/docs/upload`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
           successCount++;
         } catch (err) {
-          console.error('Failed to process file:', a.file.name, err);
+          console.error('Failed to upload file:', a.file.name, err);
+          console.error('Error details:', err.response?.data);
           failCount++;
         }
       }
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files processed successfully. They will be uploaded when you save the asset.');
+          toast.success('All files uploaded successfully');
+          setAttachments([]); // Clear attachments after successful upload
         } else {
-          toast.success(`${successCount} files processed, ${failCount} failed`);
+          toast.success(`${successCount} files uploaded, ${failCount} failed`);
         }
-        // Don't clear attachments - they'll be uploaded with the asset
       } else {
-        toast.error('Failed to process any files');
+        toast.error('Failed to upload any files');
       }
     } catch (err) {
-      console.error('Process error:', err);
-      toast.error('Process failed');
+      console.error('Upload process error:', err);
+      toast.error('Upload process failed');
     } finally {
       setIsUploading(false);
     }
@@ -670,8 +689,29 @@ const AddAssetForm = ({ userRole }) => {
       console.log('📦 Submitting asset data:', assetData);
       const response = await API.post('/assets/add', assetData);
       console.log('✅ Asset created successfully:', response.data);
-      toast.success('Asset created successfully');
-      navigate('/assets');
+      
+      // Store the created asset ID for document uploads
+      const createdAssetId = response.data?.asset?.asset_id || response.data?.asset_id || response.data?.data?.asset_id;
+      console.log('🔍 Created Asset ID:', createdAssetId);
+      console.log('🔍 Response structure:', {
+        'response.data': response.data,
+        'response.data.asset': response.data?.asset,
+        'response.data.asset.asset_id': response.data?.asset?.asset_id,
+        'response.data.asset_id': response.data?.asset_id,
+        'response.data.data': response.data?.data,
+        'response.data.data.asset_id': response.data?.data?.asset_id
+      });
+      
+      if (createdAssetId) {
+        setForm(prev => ({ ...prev, assetId: createdAssetId }));
+        console.log('✅ Asset ID stored in form state:', createdAssetId);
+        toast.success('Asset created successfully! You can now upload documents.');
+        // Switch to Attachments tab to allow document upload
+        setActiveTab('Attachments');
+      } else {
+        console.error('No asset ID returned from server:', response.data);
+        toast.error('Asset created but no ID returned. Please refresh and try again.');
+      }
     } catch (err) {
       console.error('❌ Error creating asset:', err);
       const errorMessage = err.response?.data?.error || 'Failed to create asset';
@@ -1377,7 +1417,14 @@ const AddAssetForm = ({ userRole }) => {
               Add File
             </button>
           </div>
-          <div className="text-sm text-gray-600 mb-3">Document types are loaded from the system configuration</div>
+          <div className="text-sm text-gray-600 mb-3">
+            Document types are loaded from the system configuration
+            {form.assetId && (
+              <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                Asset ID: {form.assetId}
+              </span>
+            )}
+          </div>
           {attachments.length === 0 ? (
             <div className="text-sm text-gray-500">No files added.</div>
           ) : (
@@ -1476,7 +1523,7 @@ const AddAssetForm = ({ userRole }) => {
               <button
                 type="button"
                 onClick={handleBatchUpload}
-                disabled={isUploading || attachments.some(a => {
+                disabled={isUploading || !form.assetId || attachments.some(a => {
                   if (!a.type || !a.file) return true;
                   const selectedDocType = documentTypes.find(dt => dt.id === a.type);
                   const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
@@ -1497,7 +1544,7 @@ const AddAssetForm = ({ userRole }) => {
                     <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
-                    Process All Files
+                    {form.assetId ? 'Upload All Files' : 'Save Asset First'}
                   </>
                 )}
               </button>

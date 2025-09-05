@@ -57,8 +57,9 @@ const CreateGroupAsset = () => {
       if (res.data && res.data.success && Array.isArray(res.data.data)) {
         // Transform API data to dropdown format
         const docTypes = res.data.data.map(docType => ({
-          id: docType.doc_type,
-          text: docType.doc_type_text
+          id: docType.dto_id,  // Use dto_id instead of doc_type
+          text: docType.doc_type_text,
+          doc_type: docType.doc_type  // Keep doc_type for reference
         }));
         setDocumentTypes(docTypes);
         console.log('Document types loaded:', docTypes);
@@ -274,7 +275,7 @@ const CreateGroupAsset = () => {
         try {
           const fd = new FormData();
           fd.append('file', r.file);
-          fd.append('doc_type', r.type);
+          fd.append('dto_id', r.type);  // Send dto_id instead of doc_type
           if (r.type && r.docTypeName?.trim()) {
             fd.append('doc_type_name', r.docTypeName);
           }

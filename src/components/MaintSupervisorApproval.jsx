@@ -128,8 +128,9 @@ export default function MaintSupervisorApproval() {
             !docType.doc_type_text.toLowerCase().includes('after')
           )
           .map(docType => ({
-            id: docType.doc_type,
-            text: docType.doc_type_text
+            id: docType.dto_id,  // Use dto_id instead of doc_type
+            text: docType.doc_type_text,
+            doc_type: docType.doc_type  // Keep doc_type for reference
           }));
         setMaintenanceDocTypes(docTypes);
         console.log('Maintenance document types loaded (excluding photos):', docTypes);
@@ -147,8 +148,9 @@ export default function MaintSupervisorApproval() {
           docType.doc_type_text.toLowerCase().includes('after')
         )
         .map(docType => ({
-          id: docType.doc_type,
-          text: docType.doc_type_text
+          id: docType.dto_id,  // Use dto_id instead of doc_type
+          text: docType.doc_type_text,
+          doc_type: docType.doc_type  // Keep doc_type for reference
         }));
       
       setPhotoDocTypes(photoTypes);
@@ -269,7 +271,7 @@ export default function MaintSupervisorApproval() {
         try {
           const fd = new FormData();
           fd.append('file', upload.file);
-          fd.append('doc_type', upload.type);
+          fd.append('dto_id', upload.type);  // Send dto_id instead of doc_type
           if (upload.type === 'OT') fd.append('doc_type_name', upload.docTypeName);
           
           // Upload to maintenance schedule documents

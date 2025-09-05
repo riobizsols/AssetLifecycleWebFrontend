@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import API from '../lib/axios';
 import toast from 'react-hot-toast';
 import { MdKeyboardArrowDown } from 'react-icons/md';
@@ -37,6 +38,11 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
   const [isUploading, setIsUploading] = useState(false);
   const [documentTypes, setDocumentTypes] = useState([]);
+  const [openDropdowns, setOpenDropdowns] = useState({});
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedDocs, setArchivedDocs] = useState([]);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [activeDropdown, setActiveDropdown] = useState(null);
 
   // Load asset data when modal opens
   useEffect(() => {
@@ -54,6 +60,16 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         }
       };
 
+      // Clean numeric values by removing currency symbols and formatting
+      const cleanNumericValue = (value) => {
+        if (!value) return '';
+        // Remove currency symbols, commas, and other non-numeric characters except decimal point
+        const cleaned = String(value).replace(/[^\d.-]/g, '');
+        // Ensure it's a valid number
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? '' : num.toString();
+      };
+
       setForm({
         assetType: assetData.asset_type_id || '',
         serialNumber: assetData.serial_number || '',
@@ -61,7 +77,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         expiryDate: formatDate(assetData.expiry_date),
         warrantyPeriod: assetData.warranty_period || '',
         purchaseDate: formatDate(assetData.purchased_on),
-        purchaseCost: assetData.purchased_cost || '',
+        purchaseCost: cleanNumericValue(assetData.purchased_cost),
         purchaseBy: assetData.purchased_by || '',
         vendorBrand: '',
         vendorModel: '',
@@ -80,13 +96,29 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     fetchDocumentTypes();
   }, []);
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.dropdown-container') && !event.target.closest('.dropdown-portal')) {
+        closeAllDropdowns();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isOpen]);
+
   // Fetch attached documents for this asset
   useEffect(() => {
     const fetchDocs = async () => {
       if (!assetData?.asset_id) return;
       setDocsLoading(true);
       try {
-        const res = await API.get(`/assets/${assetData.asset_id}/documents`, {
+        const res = await API.get(`/assets/${assetData.asset_id}/docs`, {
           // Add validateStatus to prevent Axios from treating 404 as an error
           validateStatus: function (status) {
             return status === 200 || status === 404; // Accept both 200 and 404
@@ -100,8 +132,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         }
         
         // Otherwise process the response
-        const arr = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        setDocs(arr);
+        const arr = Array.isArray(res.data) ? res.data : [];
+        // Separate active and archived documents
+        const activeDocs = arr.filter(doc => !doc.is_archived || doc.is_archived === false);
+        const archivedDocs = arr.filter(doc => doc.is_archived === true || doc.is_archived === 'true');
+        setDocs(activeDocs);
+        setArchivedDocs(archivedDocs);
       } catch (err) {
         // Only show error for non-404 errors (network issues, etc.)
         console.error('Document fetch error:', err);
@@ -115,37 +151,81 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   }, [assetData?.asset_id]);
 
   const handleDocumentAction = async (doc, action) => {
-    const actionKey = `${doc.id}-${action}`;
+    const actionKey = `${doc.a_d_id || doc.id}-${action}`;
     if (loadingActions[actionKey]) return;
-
-    const baseUrl = doc.url || doc.download_url;
-    if (!baseUrl) {
-      toast.error('Document URL not available');
-      return;
-    }
 
     try {
       setLoadingActions(prev => ({ ...prev, [actionKey]: true }));
       
-      const url = new URL(baseUrl);
-      if (action === 'download') {
-        url.searchParams.append('download', '1');
+      // Get the download URL from the API
+      const res = await API.get(`/asset-docs/${doc.a_d_id || doc.id}/download-url?mode=${action}`);
+      
+      if (res.data && res.data.url) {
+        // Open in new tab
+        window.open(res.data.url, '_blank');
+      } else {
+        throw new Error('No URL returned from API');
       }
-
-      // First verify the URL is accessible
-      const checkResponse = await fetch(url.toString(), { method: 'HEAD' });
-      if (!checkResponse.ok) {
-        throw new Error('Document not accessible');
-      }
-
-      // Open in new tab
-      window.open(url.toString(), '_blank');
     } catch (err) {
       console.error(`Error ${action}ing document:`, err);
       toast.error(`Failed to ${action} document. Please try again.`);
     } finally {
       setLoadingActions(prev => ({ ...prev, [actionKey]: false }));
     }
+  };
+
+  const handleArchiveDocument = async (doc, archiveStatus) => {
+    const actionKey = `${doc.a_d_id || doc.id}-archive`;
+    if (loadingActions[actionKey]) return;
+
+    try {
+      setLoadingActions(prev => ({ ...prev, [actionKey]: true }));
+      
+      // Update archive status
+      const res = await API.put(`/asset-docs/${doc.a_d_id || doc.id}/archive-status`, {
+        is_archived: archiveStatus
+      });
+      
+      console.log('Archive response:', res.data); // Debug log
+      
+      if (res.data && res.data.message && res.data.message.includes('successfully')) {
+        toast.success(`Document ${archiveStatus ? 'archived' : 'unarchived'} successfully`);
+        // Refresh the documents list and separate active/archived
+        const refreshRes = await API.get(`/assets/${assetData.asset_id}/docs`);
+        const arr = Array.isArray(refreshRes.data) ? refreshRes.data : [];
+        const activeDocs = arr.filter(doc => !doc.is_archived || doc.is_archived === false);
+        const archivedDocs = arr.filter(doc => doc.is_archived === true || doc.is_archived === 'true');
+        setDocs(activeDocs);
+        setArchivedDocs(archivedDocs);
+      } else {
+        console.error('Archive response error:', res.data);
+        throw new Error(res.data?.message || 'Failed to update archive status');
+      }
+    } catch (err) {
+      console.error('Error updating archive status:', err);
+      toast.error(`Failed to ${archiveStatus ? 'archive' : 'unarchive'} document. ${err.message || 'Please try again.'}`);
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [actionKey]: false }));
+    }
+  };
+
+  const toggleDropdown = (docId, event) => {
+    if (activeDropdown === docId) {
+      setActiveDropdown(null);
+      return;
+    }
+
+    // Get button position
+    const buttonRect = event.currentTarget.getBoundingClientRect();
+    setDropdownPosition({
+      top: buttonRect.bottom + window.scrollY + 8,
+      left: buttonRect.right - 192 // 192px is the width of the dropdown (w-48)
+    });
+    setActiveDropdown(docId);
+  };
+
+  const closeAllDropdowns = () => {
+    setActiveDropdown(null);
   };
 
   const fetchAssetTypes = async () => {
@@ -244,11 +324,13 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       if (res.data && res.data.success && Array.isArray(res.data.data)) {
         // Transform API data to dropdown format
         const docTypes = res.data.data.map(docType => ({
-          id: docType.doc_type,
-          text: docType.doc_type_text
+          id: docType.dto_id,  // Use dto_id instead of doc_type
+          text: docType.doc_type_text,
+          doc_type: docType.doc_type  // Keep doc_type for reference
         }));
         setDocumentTypes(docTypes);
         console.log('Document types loaded:', docTypes);
+        console.log('Available dto_ids:', docTypes.map(dt => dt.id));
       } else {
         console.log('No document types found, using fallback');
         setDocumentTypes([]);
@@ -326,17 +408,28 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     try {
       for (const r of uploadRows) {
         try {
+          console.log('Uploading file:', r.file.name, 'with dto_id:', r.type);
           const fd = new FormData();
           fd.append('file', r.file);
-          fd.append('doc_type', r.type);
-          if (r.type === 'OT') fd.append('doc_type_name', r.docTypeName);
+          fd.append('dto_id', r.type);  // Send dto_id instead of doc_type
+          if (r.type && r.docTypeName?.trim()) {
+            fd.append('doc_type_name', r.docTypeName);
+          }
           
-          await API.post(`/assets/${assetData.asset_id}/documents`, fd, { 
+          // Get org_id from auth store
+          const user = useAuthStore.getState().user;
+          if (user?.org_id) {
+            fd.append('org_id', user.org_id);
+          }
+          
+          // Use the correct API endpoint for asset documents
+          await API.post(`/assets/${assetData.asset_id}/docs/upload`, fd, { 
             headers: { 'Content-Type': 'multipart/form-data' }
           });
           successCount++;
         } catch (err) {
           console.error('Failed to upload file:', r.file.name, err);
+          console.error('Error details:', err.response?.data);
           failCount++;
         }
       }
@@ -348,9 +441,9 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           toast.success(`${successCount} files uploaded, ${failCount} failed`);
         }
         setUploadRows([]); // Clear all attachments after upload
-        // Refresh the documents list
-        const res = await API.get(`/assets/${assetData.asset_id}/documents`);
-        const arr = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        // Refresh the documents list using the correct endpoint
+        const res = await API.get(`/assets/${assetData.asset_id}/docs`);
+        const arr = Array.isArray(res.data) ? res.data : [];
         setDocs(arr);
       } else {
         toast.error('Failed to upload any files');
@@ -367,12 +460,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-visible">
         <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
           <h1 className="text-2xl font-semibold">Update Asset</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="p-6 overflow-visible">
           <div className="grid grid-cols-3 gap-6 mb-6">
             {/* Asset Type Dropdown */}
             <div>
@@ -465,7 +558,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
               <label className="block text-sm font-medium mb-1">Purchase Cost</label>
               <input
                 type="number"
-                value={form.purchaseCost}
+                step="0.01"
+                value={form.purchaseCost || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseCost: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter purchase cost"
@@ -563,63 +657,151 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           {/* Attached Documents */}
           <div className="mt-4">
             <div className="text-md font-semibold mb-2">Documents</div>
-            <div className="border rounded-lg overflow-hidden bg-white mb-6">
+            <div className="border rounded-lg bg-white mb-6 overflow-visible">
               {docsLoading ? (
                 <div className="p-4 text-sm text-gray-500">Loading documents…</div>
               ) : docs.length === 0 ? (
                 <div className="p-4 text-sm text-gray-500">No documents uploaded.</div>
               ) : (
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto overflow-y-visible">
+                  <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="text-left px-3 py-2">Type</th>
                       <th className="text-left px-3 py-2">Name</th>
+                      <th className="text-left px-3 py-2">Status</th>
                       <th className="text-left px-3 py-2">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {docs.map((doc) => {
-                      const viewLoading = loadingActions[`${doc.id}-view`];
-                      const downloadLoading = loadingActions[`${doc.id}-download`];
+                      const docId = doc.a_d_id || doc.id;
+                      const viewLoading = loadingActions[`${docId}-view`];
+                      const downloadLoading = loadingActions[`${docId}-download`];
+                      const archiveLoading = loadingActions[`${docId}-archive`];
+                      const isArchived = doc.is_archived === true || doc.is_archived === 'true';
                       
                       return (
-                        <tr key={doc.id || doc.file_name} className="odd:bg-white even:bg-gray-50">
+                        <tr key={docId} className={`odd:bg-white even:bg-gray-50 ${isArchived ? 'opacity-60' : ''}`}>
                           <td className="px-3 py-2 whitespace-nowrap">
-                            {doc.doc_type || doc.type || '-'}
-                            {doc.doc_type_name && doc.doc_type === 'OT' && (
+                            {doc.doc_type_text || doc.doc_type || doc.type || '-'}
+                            {doc.doc_type_name && (doc.doc_type === 'OT' || doc.doc_type_text?.toLowerCase().includes('other')) && (
                               <span className="text-gray-500 ml-1">({doc.doc_type_name})</span>
                             )}
                           </td>
                           <td className="px-3 py-2">
-                            <div className="max-w-md truncate">{doc.file_name || doc.name || 'document'}</div>
+                            <div className="max-w-md truncate">
+                              {doc.file_name || doc.name || 'document'}
+                            </div>
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="flex gap-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              isArchived 
+                                ? 'bg-gray-100 text-gray-800' 
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {isArchived ? 'Archived' : 'Active'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="relative dropdown-container">
                               <button
                                 type="button"
-                                onClick={() => handleDocumentAction(doc, 'view')}
-                                disabled={viewLoading}
-                                className="px-3 py-1 rounded bg-[#0E2F4B] text-white disabled:opacity-50 disabled:cursor-not-allowed min-w-[60px]"
+                                onClick={(e) => toggleDropdown(docId, e)}
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
                               >
-                                {viewLoading ? '...' : 'View'}
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                </svg>
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDocumentAction(doc, 'download')}
-                                disabled={downloadLoading}
-                                className="px-3 py-1 rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px]"
-                              >
-                                {downloadLoading ? '...' : 'Download'}
-                              </button>
+                              
                             </div>
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               )}
             </div>
+
+            {/* Archived Documents Section */}
+            {archivedDocs.length > 0 && (
+              <div className="mt-6 border-t pt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-md font-semibold text-gray-700">Archived Documents ({archivedDocs.length})</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-2"
+                  >
+                    {showArchived ? 'Hide' : 'Show'} Archived
+                    <svg className={`w-4 h-4 transition-transform ${showArchived ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+                
+                {showArchived && (
+                  <div className="border rounded-lg overflow-hidden bg-gray-50">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="text-left px-3 py-2">Type</th>
+                          <th className="text-left px-3 py-2">Name</th>
+                          <th className="text-left px-3 py-2">Status</th>
+                          <th className="text-left px-3 py-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {archivedDocs.map((doc) => {
+                          const docId = doc.a_d_id || doc.id;
+                          const viewLoading = loadingActions[`${docId}-view`];
+                          const downloadLoading = loadingActions[`${docId}-download`];
+                          const archiveLoading = loadingActions[`${docId}-archive`];
+                          const isArchived = doc.is_archived === true || doc.is_archived === 'true';
+                          
+                          return (
+                            <tr key={docId} className="odd:bg-white even:bg-gray-50 opacity-75">
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {doc.doc_type_text || doc.doc_type || doc.type || '-'}
+                                {doc.doc_type_name && (doc.doc_type === 'OT' || doc.doc_type_text?.toLowerCase().includes('other')) && (
+                                  <span className="text-gray-500 ml-1">({doc.doc_type_name})</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2">
+                                <div className="max-w-md truncate">
+                                  {doc.file_name || doc.name || 'document'}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  Archived
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <div className="relative dropdown-container">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => toggleDropdown(docId, e)}
+                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                                  >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Upload New Documents */}
             <div className="border-t pt-6">
@@ -785,6 +967,83 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           </div>
         </form>
       </div>
+
+      {/* Portal Dropdown */}
+      {activeDropdown && createPortal(
+        <div 
+          className="dropdown-portal fixed w-48 bg-white rounded-md shadow-xl z-[9999] border border-gray-200"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left
+          }}
+        >
+          <div className="py-1">
+            <button
+              type="button"
+              onClick={() => {
+                const doc = [...docs, ...archivedDocs].find(d => (d.a_d_id || d.id) === activeDropdown);
+                if (doc) {
+                  handleDocumentAction(doc, 'view');
+                  closeAllDropdowns();
+                }
+              }}
+              disabled={loadingActions[`${activeDropdown}-view`]}
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              {loadingActions[`${activeDropdown}-view`] ? 'Loading...' : 'View'}
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => {
+                const doc = [...docs, ...archivedDocs].find(d => (d.a_d_id || d.id) === activeDropdown);
+                if (doc) {
+                  handleDocumentAction(doc, 'download');
+                  closeAllDropdowns();
+                }
+              }}
+              disabled={loadingActions[`${activeDropdown}-download`]}
+              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {loadingActions[`${activeDropdown}-download`] ? 'Loading...' : 'Download'}
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => {
+                const doc = [...docs, ...archivedDocs].find(d => (d.a_d_id || d.id) === activeDropdown);
+                if (doc) {
+                  const isArchived = doc.is_archived === true || doc.is_archived === 'true';
+                  handleArchiveDocument(doc, !isArchived);
+                  closeAllDropdowns();
+                }
+              }}
+              disabled={loadingActions[`${activeDropdown}-archive`]}
+              className={`flex items-center w-full px-4 py-2 text-sm hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed ${
+                [...docs, ...archivedDocs].find(d => (d.a_d_id || d.id) === activeDropdown)?.is_archived ? 'text-green-700' : 'text-orange-700'
+              }`}
+            >
+              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {[...docs, ...archivedDocs].find(d => (d.a_d_id || d.id) === activeDropdown)?.is_archived ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6 6-6" />
+                )}
+              </svg>
+              {loadingActions[`${activeDropdown}-archive`] ? 'Loading...' : 
+                [...docs, ...archivedDocs].find(d => (d.a_d_id || d.id) === activeDropdown)?.is_archived ? 'Unarchive' : 'Archive'}
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

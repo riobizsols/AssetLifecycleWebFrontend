@@ -79,8 +79,9 @@ const AddAssetType = () => {
       if (res.data && res.data.success && Array.isArray(res.data.data)) {
         // Transform API data to dropdown format
         const docTypes = res.data.data.map(docType => ({
-          id: docType.doc_type,
-          text: docType.doc_type_text
+          id: docType.dto_id,  // Use dto_id instead of doc_type
+          text: docType.doc_type_text,
+          doc_type: docType.doc_type  // Keep doc_type for reference
         }));
         setDocumentTypes(docTypes);
         console.log('Document types loaded:', docTypes);
@@ -209,14 +210,16 @@ const AddAssetType = () => {
           if (upload.file) {
             const fd = new FormData();
             fd.append('file', upload.file);
-            fd.append('doc_type', upload.type);
+            fd.append('asset_type_id', newId);
+            fd.append('dto_id', upload.type);  // Send dto_id instead of doc_type
             if (upload.type && upload.docTypeName?.trim()) {
               fd.append('doc_type_name', upload.docTypeName);
             }
             try {
-              await API.post(`/asset-types/${newId}/checklist`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+              await API.post('/asset-type-docs/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
             } catch (upErr) {
               console.warn('Checklist upload failed', upErr);
+              toast.error(`Failed to upload ${upload.file.name}: ${upErr.response?.data?.message || upErr.message}`);
             }
           }
         }
