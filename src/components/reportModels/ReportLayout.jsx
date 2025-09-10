@@ -95,6 +95,7 @@ export default function ReportLayout({
 
   // Get filter options from API data or fallback to domain
   const getFilterOptions = (fieldKey) => {
+    console.log('🔍 [ReportLayout] getFilterOptions called for:', fieldKey, 'apiData:', !!apiData?.filterOptions);
     if (!apiData?.filterOptions) return null;
     
     const filterOptions = apiData.filterOptions;
@@ -107,6 +108,30 @@ export default function ReportLayout({
         return filterOptions.departments || [];
       case 'vendor':
         return filterOptions.vendors || [];
+      case 'maintenanceType':
+        return filterOptions.maintenance_type_options || [];
+      case 'workOrderStatus':
+        return filterOptions.status_options || [];
+      case 'vendorId':
+        return filterOptions.vendor_options || [];
+      case 'assetId':
+        return filterOptions.asset_options || [];
+      case 'workOrderId':
+        return filterOptions.work_order_options || [];
+      case 'breakdownReason':
+        return filterOptions.breakdown_reason_options || [];
+      case 'reportedBy':
+        return filterOptions.reported_by_options || [];
+      case 'breakdownStatus':
+        return filterOptions.breakdown_status_options || [];
+      case 'workflowStatus':
+        return filterOptions.workflow_status_options || [];
+      case 'stepStatus':
+        return filterOptions.step_status_options || [];
+      case 'assignedTo':
+        return filterOptions.user_options || [];
+      case 'vendorName':
+        return filterOptions.vendor_options || [];
       default:
         return null;
     }
@@ -687,15 +712,10 @@ export default function ReportLayout({
                     {f.type === "searchable" && (() => {
                       // For searchable fields, use allAvailableAssets for options (not filtered data)
                       // This ensures dropdown always shows all available options
-                      const options = f.key === "assetId" ? (allAvailableAssets || allRows).map(row => ({
-                        value: row["Asset ID"],
-                        label: `${row["Asset ID"]} - ${row["Asset Name"]}`
-                      })) : f.key === "workOrderId" ? (allAvailableAssets || allRows).map(row => ({
-                        value: row["Work Order ID"],
-                        label: row["Work Order ID"]
-                      })) : (getFilterOptions(f.key) || f.domain || []);
+                      const options = f.domain || (getFilterOptions(f.key) || []);
                       
                       console.log(`🔍 [ReportLayout] ${f.key} options:`, options.length, options.slice(0, 3));
+                      console.log(`🔍 [ReportLayout] ${f.key} field domain:`, f.domain?.length || 0, 'items');
                       
                       return (
                         <SearchableSelect 

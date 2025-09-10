@@ -21,11 +21,12 @@ export default function AssetWorkflowHistory() {
     filteredRows,
     hasFilters,
     setQuickField,
+    report: updatedReport,
   } = useReportState(selectedReportId, report);
 
   return (
     <ReportLayout
-      report={report}
+      report={updatedReport || report}
       selectedReportId={selectedReportId}
       allRows={allRows}
       filteredRows={filteredRows}
@@ -37,6 +38,7 @@ export default function AssetWorkflowHistory() {
       setColumns={setColumns}
       views={views}
       setViews={setViews}
+      setQuickField={setQuickField}
     />
   );
 }

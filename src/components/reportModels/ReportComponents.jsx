@@ -80,20 +80,100 @@ export function Select({ value, onChange, options, placeholder = "Select" }) {
   );
 }
 
-export function DropdownMultiSelect({ values = [], onChange, options, placeholder = "Select..." }) {
+// Error boundary wrapper for DropdownMultiSelect - Updated to fix React errors
+function SafeDropdownMultiSelect({ values = [], onChange, options, placeholder = "Select..." }) {
+  try {
+    return <DropdownMultiSelectInner values={values} onChange={onChange} options={options} placeholder={placeholder} />;
+  } catch (error) {
+    console.error('🔍 [SafeDropdownMultiSelect] Error in DropdownMultiSelect:', error);
+    return (
+      <div className="w-full rounded-xl border border-red-300 px-3 py-2 text-sm text-red-600 bg-red-50">
+        Error loading dropdown: {error.message}
+      </div>
+    );
+  }
+}
+
+function DropdownMultiSelectInner({ values = [], onChange, options, placeholder = "Select..." }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
 
-  const filteredOptions = useMemo(
-    () => options.filter((opt) => opt.toLowerCase().includes(searchTerm.toLowerCase())),
-    [options, searchTerm]
-  );
+  // Ensure options is always an array and safe
+  const safeOptions = useMemo(() => {
+    try {
+      if (!Array.isArray(options)) return [];
+      return options.filter(opt => opt !== null && opt !== undefined);
+    } catch (error) {
+      console.error('🔍 [DropdownMultiSelect] Error processing options:', error);
+      return [];
+    }
+  }, [options]);
+
+  // Debug logging
+  console.log('🔍 [DropdownMultiSelect] Options received:', options);
+  console.log('🔍 [DropdownMultiSelect] Safe options length:', safeOptions.length);
+  if (safeOptions.length > 0) {
+    console.log('🔍 [DropdownMultiSelect] First option:', safeOptions[0]);
+    console.log('🔍 [DropdownMultiSelect] First option type:', typeof safeOptions[0]);
+  }
+
+  // Ultra-safe filter function
+  const filteredOptions = useMemo(() => {
+    try {
+      if (!Array.isArray(safeOptions) || safeOptions.length === 0) return [];
+      
+      const searchText = String(searchTerm || '').toLowerCase();
+      
+      return safeOptions.filter((opt) => {
+        try {
+          // Handle null/undefined
+          if (opt === null || opt === undefined) {
+            return false;
+          }
+          
+          // Handle objects with value and label
+          if (typeof opt === 'object' && opt !== null) {
+            if (opt.value !== undefined && opt.label !== undefined) {
+              const valueStr = String(opt.value || '');
+              const labelStr = String(opt.label || '');
+              return valueStr.toLowerCase().includes(searchText) || labelStr.toLowerCase().includes(searchText);
+            }
+            // Handle other object types
+            const objStr = String(opt);
+            return objStr.toLowerCase().includes(searchText);
+          }
+          
+          // Handle strings
+          if (typeof opt === 'string') {
+            return opt.toLowerCase().includes(searchText);
+          }
+          
+          // Handle numbers and other types
+          const optStr = String(opt);
+          return optStr.toLowerCase().includes(searchText);
+        } catch (error) {
+          console.error('🔍 [DropdownMultiSelect] Error filtering option:', opt, error);
+          return false;
+        }
+      });
+    } catch (error) {
+      console.error('🔍 [DropdownMultiSelect] Error in filteredOptions:', error);
+      return [];
+    }
+  }, [safeOptions, searchTerm]);
 
   const toggle = (opt) => {
     const set = new Set(values);
-    set.has(opt) ? set.delete(opt) : set.add(opt);
-    onChange([...set]);
+    // For object options, compare by value; for string options, compare directly
+    const optValue = typeof opt === 'object' ? opt.value : opt;
+    const existingValue = values.find(v => (typeof v === 'object' ? v.value : v) === optValue);
+    
+    if (existingValue) {
+      onChange(values.filter(v => (typeof v === 'object' ? v.value : v) !== optValue));
+    } else {
+      onChange([...values, opt]);
+    }
   };
 
   useEffect(() => {
@@ -113,7 +193,9 @@ export function DropdownMultiSelect({ values = [], onChange, options, placeholde
         onClick={() => setIsOpen(!isOpen)}
         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-left bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center justify-between"
       >
-        <span className="truncate pr-2">{values.length > 0 ? values.join(", ") : placeholder}</span>
+        <span className="truncate pr-2">
+          {values.length > 0 ? values.map(v => typeof v === 'object' ? v.label : String(v || '')).join(", ") : placeholder}
+        </span>
         <span className="text-slate-500">▼</span>
       </button>
       {isOpen && (
@@ -132,14 +214,20 @@ export function DropdownMultiSelect({ values = [], onChange, options, placeholde
             {filteredOptions.length === 0 ? (
               <div className="text-sm text-slate-500 p-2">No matches found.</div>
             ) : (
-              filteredOptions.map((opt) => (
-                <label key={opt} className="flex items-center gap-2 text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer">
-                  <input type="checkbox" checked={values?.includes(opt)} onChange={() => toggle(opt)} className="cursor-pointer" />
-                  <span className="truncate" title={opt}>
-                    {opt}
-                  </span>
-                </label>
-              ))
+              filteredOptions.map((opt, index) => {
+                const optValue = typeof opt === 'object' ? opt.value : opt;
+                const optLabel = typeof opt === 'object' ? opt.label : opt;
+                const isChecked = values.some(v => (typeof v === 'object' ? v.value : v) === optValue);
+                
+                return (
+                  <label key={optValue || index} className="flex items-center gap-2 text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer">
+                    <input type="checkbox" checked={isChecked} onChange={() => toggle(opt)} className="cursor-pointer" />
+                    <span className="truncate" title={String(optLabel || '')}>
+                      {String(optLabel || '')}
+                    </span>
+                  </label>
+                );
+              })
             )}
           </div>
         </div>
@@ -147,6 +235,9 @@ export function DropdownMultiSelect({ values = [], onChange, options, placeholde
     </div>
   );
 }
+
+// Export the safe wrapper
+export { SafeDropdownMultiSelect as DropdownMultiSelect };
 
 export function DateRange({ value, onChange, preset }) {
   const [mode, setMode] = useState("custom");
@@ -266,7 +357,7 @@ export function GroupedField({ field, value, onChange, onSubFieldChange }) {
                 />
               )}
               {subField.type === "multiselect" && (
-                <DropdownMultiSelect
+                <SafeDropdownMultiSelect
                   values={value?.[subField.key] || []}
                   onChange={(val) => handleSubFieldChange(subField.key, val)}
                   options={subField.domain || []}
@@ -290,17 +381,43 @@ export function GroupedField({ field, value, onChange, onSubFieldChange }) {
 }
 
 export function SearchableSelect({ onChange, options, placeholder = "Select...", value }) {
+  // Force rebuild - React error fix applied
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
 
+  // Debug logging
+  console.log('🔍 [SearchableSelect] Options received:', options);
+  console.log('🔍 [SearchableSelect] Options type:', typeof options);
+  console.log('🔍 [SearchableSelect] Options length:', Array.isArray(options) ? options.length : 'not array');
+  if (Array.isArray(options) && options.length > 0) {
+    console.log('🔍 [SearchableSelect] First option:', options[0]);
+    console.log('🔍 [SearchableSelect] First option type:', typeof options[0]);
+  }
+
   const filteredOptions = useMemo(() => {
-    return options.filter((opt) => {
+    return (Array.isArray(options) ? options : []).filter((opt) => {
       const searchText = searchTerm.toLowerCase();
-      if (typeof opt === 'object' && opt.value && opt.label) {
-        return opt.value.toLowerCase().includes(searchText) || opt.label.toLowerCase().includes(searchText);
+      
+      // Handle different option types safely
+      if (opt === null || opt === undefined) {
+        return false;
       }
-      return opt.toLowerCase().includes(searchText);
+      
+      if (typeof opt === 'object' && opt.value !== undefined && opt.label !== undefined) {
+        // Object with value and label
+        const valueStr = String(opt.value || '');
+        const labelStr = String(opt.label || '');
+        return valueStr.toLowerCase().includes(searchText) || labelStr.toLowerCase().includes(searchText);
+      }
+      
+      if (typeof opt === 'string') {
+        return opt.toLowerCase().includes(searchText);
+      }
+      
+      // Fallback for other types
+      const optStr = String(opt || '');
+      return optStr.toLowerCase().includes(searchText);
     });
   }, [options, searchTerm]);
 
@@ -334,7 +451,7 @@ export function SearchableSelect({ onChange, options, placeholder = "Select...",
               const option = options.find(opt => 
                 (typeof opt === 'object' && opt.value === value) || opt === value
               );
-              return typeof option === 'object' && option.label ? option.label : value;
+              return typeof option === 'object' && option.label ? option.label : String(value || '');
             }
             return placeholder;
           })()}
@@ -357,9 +474,9 @@ export function SearchableSelect({ onChange, options, placeholder = "Select...",
             {filteredOptions.length === 0 ? (
               <div className="text-sm text-slate-500 p-2">No matches found.</div>
             ) : (
-              filteredOptions.map((opt) => (
-                <div key={typeof opt === 'object' ? opt.value : opt} onClick={() => handleSelect(opt)} className="text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer">
-                  {typeof opt === 'object' && opt.label ? opt.label : opt}
+              filteredOptions.map((opt, index) => (
+                <div key={typeof opt === 'object' ? opt.value || index : opt || index} onClick={() => handleSelect(opt)} className="text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer">
+                  {typeof opt === 'object' && opt.label ? opt.label : String(opt || '')}
                 </div>
               ))
             )}
@@ -447,7 +564,7 @@ export function AdvValueInput({ field, cur, onChange }) {
   if (field.type === "text") return <Input value={cur} onChange={onChange} placeholder="Enter text" />;
   if (field.type === "boolean") return <Select value={cur} onChange={onChange} options={["true", "false"]} />;
   if (field.type === "select") return <Select value={cur} onChange={onChange} options={field.domain || []} />;
-  if (field.type === "multiselect") return <DropdownMultiSelect values={cur || []} onChange={onChange} options={field.domain || []} />;
+  if (field.type === "multiselect") return <SafeDropdownMultiSelect values={cur || []} onChange={onChange} options={field.domain || []} />;
   if (field.type === "daterange") return <DateRange value={cur || ["", ""]} onChange={onChange} />;
   return <Input value={cur} onChange={onChange} />;
 }

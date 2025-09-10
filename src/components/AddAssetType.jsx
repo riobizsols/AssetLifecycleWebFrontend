@@ -29,6 +29,10 @@ const AddAssetType = () => {
   // New state variable for depreciation type
   const [depreciationType, setDepreciationType] = useState("ND");
   
+  // Properties state variables
+  const [properties, setProperties] = useState([]);
+  const [selectedProperty, setSelectedProperty] = useState("");
+  
   // Document types from API
   const [documentTypes, setDocumentTypes] = useState([]);
 
@@ -46,6 +50,7 @@ const AddAssetType = () => {
   useEffect(() => {
     fetchMaintenanceTypes();
     fetchDocumentTypes();
+    fetchProperties();
   }, []);
 
   const fetchParentAssetTypes = async () => {
@@ -93,6 +98,32 @@ const AddAssetType = () => {
       console.error('Error fetching document types:', err);
       toast.error('Failed to load document types');
       setDocumentTypes([]);
+    }
+  };
+
+  const fetchProperties = async () => {
+    try {
+      console.log('Fetching properties from tblProps...');
+      const res = await API.get('/properties');
+      console.log('Properties response:', res.data);
+
+      if (res.data && Array.isArray(res.data)) {
+        // Transform API data to dropdown format
+        const props = res.data.map(prop => ({
+          id: prop.prop_id || prop.id,
+          text: prop.prop_name || prop.name,
+          value: prop.prop_id || prop.id
+        }));
+        setProperties(props);
+        console.log('Properties loaded:', props);
+      } else {
+        console.log('No properties found');
+        setProperties([]);
+      }
+    } catch (err) {
+      console.error('Error fetching properties:', err);
+      toast.error('Failed to load properties');
+      setProperties([]);
     }
   };
 
@@ -223,7 +254,8 @@ const AddAssetType = () => {
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
         maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
         maint_lead_type: requireMaintenance ? maintenanceLeadType : null,
-        depreciation_type: depreciationType
+        depreciation_type: depreciationType,
+        property: selectedProperty
       };
 
       // Make API call
@@ -388,6 +420,27 @@ const AddAssetType = () => {
               <option value="DD">Double Decline (DD)</option>
             </select>
           </div>
+        </div>
+
+        {/* Properties Selection */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-1">Properties</label>
+          <select
+            value={selectedProperty}
+            onChange={(e) => setSelectedProperty(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select property</option>
+            {properties.length === 0 ? (
+              <option disabled>Loading properties...</option>
+            ) : (
+              properties.map((prop) => (
+                <option key={prop.id} value={prop.value}>
+                  {prop.text}
+                </option>
+              ))
+            )}
+          </select>
         </div>
 
         {/* Second Row: Checkboxes */}

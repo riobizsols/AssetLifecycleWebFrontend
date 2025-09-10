@@ -29,6 +29,10 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
   const [maintenanceTypes, setMaintenanceTypes] = useState([]);
   const [selectedMaintenanceType, setSelectedMaintenanceType] = useState("");
   const [maintenanceLeadType, setMaintenanceLeadType] = useState("");
+  
+  // Properties state variables
+  const [properties, setProperties] = useState([]);
+  const [selectedProperty, setSelectedProperty] = useState("");
 
   useEffect(() => {
     if (assetData) {
@@ -43,6 +47,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       setSelectedParentType(assetData.parent_asset_type_id || "");
       setSelectedMaintenanceType(assetData.maint_type_id || "");
       setMaintenanceLeadType(assetData.maint_lead_type || "");
+      setSelectedProperty(assetData.property || "");
 
       // Log the data for debugging
       console.log('Asset Type Data:', {
@@ -55,7 +60,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
         is_child: assetData.is_child,
         parent_asset_type_id: assetData.parent_asset_type_id,
         maint_type_id: assetData.maint_type_id,
-        maint_lead_type: assetData.maint_lead_type
+        maint_lead_type: assetData.maint_lead_type,
+        property: assetData.property
       });
     }
   }, [assetData]);
@@ -74,6 +80,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
   useEffect(() => {
     fetchMaintenanceTypes();
     fetchDocumentTypes();
+    fetchProperties();
   }, []);
 
   // Fetch checklist when asset type is loaded
@@ -241,6 +248,32 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
     }
   };
 
+  const fetchProperties = async () => {
+    try {
+      console.log('Fetching properties from tblProps...');
+      const res = await API.get('/properties');
+      console.log('Properties response:', res.data);
+
+      if (res.data && Array.isArray(res.data)) {
+        // Transform API data to dropdown format
+        const props = res.data.map(prop => ({
+          id: prop.prop_id || prop.id,
+          text: prop.prop_name || prop.name,
+          value: prop.prop_id || prop.id
+        }));
+        setProperties(props);
+        console.log('Properties loaded:', props);
+      } else {
+        console.log('No properties found');
+        setProperties([]);
+      }
+    } catch (err) {
+      console.error('Error fetching properties:', err);
+      toast.error('Failed to load properties');
+      setProperties([]);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -305,7 +338,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
         maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
-        maint_lead_type: requireMaintenance ? maintenanceLeadType : null
+        maint_lead_type: requireMaintenance ? maintenanceLeadType : null,
+        property: selectedProperty
       };
 
       // Make API call
@@ -497,6 +531,27 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 <span className={`text-sm ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>Active</span>
               </div>
             </div>
+          </div>
+
+          {/* Properties Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1">Properties</label>
+            <select
+              value={selectedProperty}
+              onChange={(e) => setSelectedProperty(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select property</option>
+              {properties.length === 0 ? (
+                <option disabled>Loading properties...</option>
+              ) : (
+                properties.map((prop) => (
+                  <option key={prop.id} value={prop.value}>
+                    {prop.text}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
 
           {/* Second Row: Checkboxes */}

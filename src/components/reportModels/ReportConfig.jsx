@@ -54,8 +54,8 @@ export const ALL_COLUMNS = {
   ],
   "depreciation-schedule": ["Asset Code", "Name", "Book", "Method", "Depn for Period", "Accum Depn", "Net Book Value"],
   "maintenance-history": ["Work Order ID", "Asset ID", "Asset Name", "Maintenance Start Date", "Maintenance End Date", "Notes", "Vendor ID", "Vendor Name", "Work Order Status", "Maintenance Type", "Cost (₹)", "Downtime (h)"],
-  "asset-workflow-history": ["Work Order ID", "Asset ID", "Asset Name", "Workflow Step", "Maintenance Start Date", "Maintenance End Date", "Notes", "Vendor ID", "Vendor Name", "Work Order Status", "Workflow Status", "Assigned To", "Priority", "Cost (₹)"],
-  "breakdown-history": ["Work Order ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Work Order Status", "Priority", "Resolution Time (h)", "Cost (₹)", "Root Cause"],
+  "asset-workflow-history": ["Work Order ID", "Asset ID", "Asset Name", "Workflow Step", "Planned Schedule Date", "Actual Schedule Date", "Notes", "Vendor ID", "Vendor Name", "Workflow Status", "Step Status", "Assigned To", "Maintenance Type", "Asset Type", "Department", "Serial Number", "Asset Status", "Purchased On", "Purchased Cost", "Vendor Contact", "Vendor Email", "Vendor Phone", "Vendor Address", "User Name", "User Email", "Job Role", "Sequence", "History Count", "Latest Action", "Latest Action Date", "Latest Action By", "History ID", "Action By", "Action On", "Action", "History Notes", "Action By Email", "Step User", "Step User Email"],
+  "breakdown-history": ["Breakdown ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Work Order Status", "Breakdown Status", "Breakdown Reason", "Asset Type", "Department", "Branch", "Serial Number", "Asset Status", "Purchased On", "Purchased Cost", "Vendor Contact", "Vendor Email", "Vendor Phone", "Vendor Address", "Reported By Email", "Reported By Phone"],
   "warranty-amc-expiry": ["Asset", "Category", "Vendor", "Coverage", "Start", "End", "Days Left"],
   "spares-inventory": ["Part Code", "Description", "UoM", "On Hand", "Safety", "Reorder", "Non‑Moving (days)", "Preferred Vendor"],
   "vendor-performance": ["Vendor", "Jobs", "On‑time %", "Avg TAT (hrs)", "FTF %", "Defect %"],
@@ -128,21 +128,6 @@ export const FIELD_TO_COLUMN_MAP = {
     cost: "Cost (₹)",
     downtime: "Downtime (h)"
   },
-  "asset-workflow-history": {
-    maintenanceStartDateRange: "Maintenance Start Date",
-    maintenanceEndDateRange: "Maintenance End Date",
-    notes: "Notes",
-    vendorId: "Vendor ID",
-    assetId: "Asset ID",
-    workOrderId: "Work Order ID",
-    assetName: "Asset Name",
-    vendorName: "Vendor Name",
-    workOrderStatus: "Work Order Status",
-    workflowStatus: "Workflow Status",
-    assignedTo: "Assigned To",
-    priority: "Priority",
-    cost: "Cost (₹)"
-  },
   "breakdown-history": {
     breakdownDateRange: "Breakdown Date",
     reportedBy: "Reported By",
@@ -152,10 +137,36 @@ export const FIELD_TO_COLUMN_MAP = {
     assetName: "Asset Name",
     vendorName: "Vendor Name",
     workOrderStatus: "Work Order Status",
-    priority: "Priority",
-    resolutionTime: "Resolution Time (h)",
-    cost: "Cost (₹)",
-    rootCause: "Root Cause"
+    breakdownReason: "Breakdown Reason",
+    breakdownStatus: "Breakdown Status",
+    description: "Description",
+    assetType: "Asset Type",
+    department: "Department",
+    serialNumber: "Serial Number",
+    assetStatus: "Asset Status",
+    branch: "Branch",
+    reportedByEmail: "Reported By Email",
+    vendorEmail: "Vendor Email"
+  },
+  "asset-workflow-history": {
+    assetId: "Asset ID",
+    plannedScheduleDateRange: "Planned Schedule Date",
+    actualScheduleDateRange: "Actual Schedule Date",
+    vendorId: "Vendor ID",
+    workOrderId: "Work Order ID",
+    assetName: "Asset Name",
+    vendorName: "Vendor Name",
+    workflowStatus: "Workflow Status",
+    stepStatus: "Step Status",
+    maintenanceType: "Maintenance Type",
+    assignedTo: "Assigned To",
+    department: "Department",
+    notes: "Notes",
+    serialNumber: "Serial Number",
+    assetStatus: "Asset Status",
+    assetType: "Asset Type",
+    purchasedCost: "Purchased Cost",
+    workflowCreatedDateRange: "Workflow Created Date"
   },
 };
 
@@ -293,50 +304,61 @@ export const REPORTS = [
     allColumns: ALL_COLUMNS,
   },
   {
-    id: "asset-workflow-history",
-    name: "Asset Workflow History",
-    description: "Complete view of workflow and maintenance activities associated with assets.",
-    quickFields: [
-      { key: "maintenanceStartDateRange", label: "Maintenance Start Date", type: "daterange" },
-      { key: "maintenanceEndDateRange", label: "Maintenance End Date", type: "daterange" },
-      { key: "notes", label: "Notes", type: "text", placeholder: "Search within notes text" },
-      { key: "vendorId", label: "Vendor ID", type: "searchable", domain: VENDORS.map(vendor => ({ value: vendor, label: `${vendor} - VND-${VENDORS.indexOf(vendor) + 100}` })), placeholder: "Search Vendor..." },
-      { key: "assetId", label: "Asset ID", type: "searchable", domain: [], placeholder: "Search Asset ID..." },
-      { key: "workOrderId", label: "Work Order ID", type: "searchable", domain: [], placeholder: "Search Work Order ID..." },
-    ],
-    fields: [
-      { key: "assetName", label: "Asset Name", type: "text" },
-      { key: "vendorName", label: "Vendor Name", type: "multiselect", domain: VENDORS },
-      { key: "workOrderStatus", label: "Work Order Status", type: "multiselect", domain: ["Open", "In Progress", "Completed", "Cancelled", "On Hold"] },
-      { key: "workflowStatus", label: "Workflow Status", type: "multiselect", domain: ["Pending", "In Progress", "Completed", "On Hold", "Cancelled"] },
-      { key: "assignedTo", label: "Assigned To", type: "multiselect", domain: USERS },
-      { key: "priority", label: "Priority", type: "multiselect", domain: ["Low", "Medium", "High", "Critical"] },
-      { key: "cost", label: "Cost ≥ (₹)", type: "number" },
-    ],
-    defaultColumns: ["Work Order ID", "Asset ID", "Asset Name", "Workflow Step", "Maintenance Start Date", "Maintenance End Date", "Notes", "Vendor ID", "Vendor Name", "Work Order Status", "Workflow Status", "Assigned To", "Priority", "Cost (₹)"],
-    allColumns: ALL_COLUMNS,
-  },
-  {
     id: "breakdown-history",
     name: "Breakdown History",
     description: "Complete record of all breakdown events associated with assets.",
     quickFields: [
       { key: "assetId", label: "Asset ID", type: "searchable", domain: [], placeholder: "Search Asset ID..." },
       { key: "breakdownDateRange", label: "Breakdown Date", type: "daterange" },
-      { key: "reportedBy", label: "Reported By", type: "searchable", domain: USERS.map(user => ({ value: user, label: user })), placeholder: "Search Employee..." },
-      { key: "vendorId", label: "Vendor", type: "searchable", domain: VENDORS.map(vendor => ({ value: vendor, label: `${vendor} - VND-${VENDORS.indexOf(vendor) + 100}` })), placeholder: "Search Vendor..." },
+      { key: "reportedBy", label: "Reported By", type: "searchable", domain: [], placeholder: "Search Employee..." },
+      { key: "vendorId", label: "Vendor", type: "searchable", domain: [], placeholder: "Search Vendor..." },
       { key: "workOrderId", label: "Work Order ID", type: "searchable", domain: [], placeholder: "Search Work Order ID..." },
     ],
     fields: [
       { key: "assetName", label: "Asset Name", type: "text" },
-      { key: "vendorName", label: "Vendor Name", type: "multiselect", domain: VENDORS },
-      { key: "workOrderStatus", label: "Work Order Status", type: "multiselect", domain: ["Open", "In Progress", "Completed", "Cancelled", "On Hold"] },
-      { key: "priority", label: "Priority", type: "multiselect", domain: ["Low", "Medium", "High", "Critical"] },
-      { key: "resolutionTime", label: "Resolution Time ≥ (h)", type: "number" },
-      { key: "cost", label: "Cost ≥ (₹)", type: "number" },
-      { key: "rootCause", label: "Root Cause", type: "text" },
+      { key: "vendorName", label: "Vendor Name", type: "multiselect", domain: [] },
+      { key: "workOrderStatus", label: "Work Order Status", type: "multiselect", domain: [] },
+      { key: "breakdownReason", label: "Breakdown Reason", type: "multiselect", domain: [] },
+      { key: "breakdownStatus", label: "Breakdown Status", type: "multiselect", domain: [] },
+      { key: "description", label: "Description", type: "text" },
+      { key: "assetType", label: "Asset Type", type: "multiselect", domain: [] },
+      { key: "department", label: "Department", type: "multiselect", domain: [] },
+      { key: "serialNumber", label: "Serial Number", type: "text" },
+      { key: "assetStatus", label: "Asset Status", type: "multiselect", domain: [] },
+      { key: "branch", label: "Branch", type: "multiselect", domain: [] },
+      { key: "reportedByEmail", label: "Reported By Email", type: "text" },
+      { key: "vendorEmail", label: "Vendor Email", type: "text" },
     ],
-    defaultColumns: ["Work Order ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Work Order Status", "Priority", "Resolution Time (h)", "Cost (₹)", "Root Cause"],
+    defaultColumns: ["Breakdown ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Breakdown Status", "Breakdown Reason", "Asset Type", "Department", "Branch", "Serial Number", "Asset Status"],
+    allColumns: ALL_COLUMNS,
+  },
+  {
+    id: "asset-workflow-history",
+    name: "Asset Workflow History",
+    description: "Complete workflow and maintenance history for assets with step-by-step tracking.",
+    quickFields: [
+      { key: "assetId", label: "Asset ID", type: "searchable", domain: [], placeholder: "Search Asset ID..." },
+      { key: "plannedScheduleDateRange", label: "Planned Schedule Date", type: "daterange" },
+      { key: "actualScheduleDateRange", label: "Actual Schedule Date", type: "daterange" },
+      { key: "vendorId", label: "Vendor", type: "searchable", domain: [], placeholder: "Search Vendor..." },
+      { key: "workOrderId", label: "Work Order ID", type: "searchable", domain: [], placeholder: "Search Work Order ID..." },
+    ],
+    fields: [
+      { key: "assetName", label: "Asset Name", type: "text" },
+      { key: "vendorName", label: "Vendor Name", type: "multiselect", domain: [] },
+      { key: "workflowStatus", label: "Workflow Status", type: "multiselect", domain: [] },
+      { key: "stepStatus", label: "Step Status", type: "multiselect", domain: [] },
+      { key: "maintenanceType", label: "Maintenance Type", type: "multiselect", domain: [] },
+      { key: "assignedTo", label: "Assigned To", type: "multiselect", domain: [] },
+      { key: "department", label: "Department", type: "multiselect", domain: [] },
+      { key: "notes", label: "Notes", type: "text" },
+      { key: "serialNumber", label: "Serial Number", type: "text" },
+      { key: "assetStatus", label: "Asset Status", type: "multiselect", domain: [] },
+      { key: "assetType", label: "Asset Type", type: "multiselect", domain: [] },
+      { key: "purchasedCost", label: "Purchased Cost ≥ (₹)", type: "number" },
+      { key: "workflowCreatedDateRange", label: "Workflow Created Date", type: "daterange" },
+    ],
+    defaultColumns: ["Work Order ID", "Asset ID", "Asset Name", "Workflow Step", "Planned Schedule Date", "Actual Schedule Date", "Notes", "Vendor ID", "Vendor Name", "Workflow Status", "Step Status", "Assigned To", "Maintenance Type", "Asset Type", "Department", "Serial Number", "Asset Status"],
     allColumns: ALL_COLUMNS,
   },
   {
@@ -615,45 +637,8 @@ export function fakeRows(reportId, n = 8) {
          "Cost (₹)": 1500 + i * 300,
                });
       } else if (reportId === "breakdown-history") {
-        const assetNames = ["Lathe Machine", "CNC Mill", "Laptop Dell", "UPS System", "Forklift", "Conveyor Belt", "Compressor", "Generator"];
-        const workOrderStatuses = ["Open", "In Progress", "Completed", "Cancelled", "On Hold"];
-        const priorities = ["Low", "Medium", "High", "Critical"];
-        const rootCauses = [
-          "Mechanical wear and tear",
-          "Electrical fault",
-          "Hydraulic system failure",
-          "Software malfunction",
-          "Operator error",
-          "Power supply issue",
-          "Cooling system failure",
-          "Sensor malfunction"
-        ];
-        const descriptions = [
-          "Motor overheating due to bearing failure",
-          "Control panel malfunction - buttons not responding",
-          "Hydraulic pump failure causing pressure loss",
-          "Software crash during operation",
-          "Incorrect operation procedure followed",
-          "Power supply fluctuation causing shutdown",
-          "Cooling fan failure leading to overheating",
-          "Proximity sensor failure causing false readings"
-        ];
-        
-        r.push({
-          "Work Order ID": `WO-${2400 + i}`,
-          "Asset ID": `AST-${1000 + i}`,
-          "Asset Name": assetNames[i % assetNames.length],
-          "Breakdown Date": dateOffset(-20 - i * 2),
-          "Description": descriptions[i % descriptions.length],
-          "Reported By": USERS[i % USERS.length],
-          "Vendor ID": `VND-${100 + i}`,
-          "Vendor Name": VENDORS[i % VENDORS.length],
-          "Work Order Status": workOrderStatuses[i % workOrderStatuses.length],
-          "Priority": priorities[i % priorities.length],
-          "Resolution Time (h)": (4 + i * 2),
-          "Cost (₹)": 2000 + i * 500,
-          "Root Cause": rootCauses[i % rootCauses.length],
-        });
+        // No fake data generation for breakdown history - use real API data only
+        // This ensures only real data from the database is displayed
       } else if (reportId === "warranty-amc-expiry") {
       r.push({
         Asset: ["Laptop", "UPS", "Forklift", "Router"][i % 4],

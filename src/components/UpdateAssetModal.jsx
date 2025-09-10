@@ -43,6 +43,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [archivedDocs, setArchivedDocs] = useState([]);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [showQSNPrintModal, setShowQSNPrintModal] = useState(false);
+  const [qsnPrintReason, setQsnPrintReason] = useState("");
 
   // Load asset data when modal opens
   useEffect(() => {
@@ -948,22 +950,36 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="flex justify-between items-center mt-6">
             <button
               type="button"
-              onClick={() => onClose(false)}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              onClick={() => setShowQSNPrintModal(true)}
+              className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#1a4971] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] transition-colors flex items-center gap-2"
               disabled={isSubmitting}
             >
-              Cancel
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              QSN Print
             </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Saving..." : "Save"}
-            </button>
+            
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => onClose(false)}
+                className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Saving..." : "Save"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -1043,6 +1059,83 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* QSN Print Modal */}
+      {showQSNPrintModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">QSN Print</h3>
+              <button
+                onClick={() => {
+                  setShowQSNPrintModal(false);
+                  setQsnPrintReason("");
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <div className="p-3 bg-gray-50 rounded-lg mb-4">
+                <span className="text-sm font-medium text-gray-700">Asset Serial Number:</span>
+                <div className="text-lg font-mono text-gray-900 mt-1">{form.serialNumber}</div>
+              </div>
+              
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for QSN Print <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={qsnPrintReason}
+                onChange={(e) => setQsnPrintReason(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                placeholder="Enter reason for printing QSN label..."
+                rows={4}
+                required
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQSNPrintModal(false);
+                  setQsnPrintReason("");
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!qsnPrintReason.trim()) {
+                    toast.error('Please enter a reason for QSN print');
+                    return;
+                  }
+                  
+                  // Here you can add the actual print logic
+                  console.log('QSN Print requested:', {
+                    serialNumber: form.serialNumber,
+                    reason: qsnPrintReason,
+                    assetId: assetData.asset_id
+                  });
+                  
+                  toast.success('QSN print request submitted successfully');
+                  setShowQSNPrintModal(false);
+                  setQsnPrintReason("");
+                }}
+                className="px-4 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#1a4971] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B]"
+              >
+                Print QSN
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

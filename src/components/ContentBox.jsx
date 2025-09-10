@@ -7,6 +7,7 @@ import {
   Trash2,
   Minus,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -23,9 +24,11 @@ const ContentBox = ({
   onDeleteSelected = () => {},
   data = [], // The actual data to be displayed and filtered
   onDownload,
+  onRefresh, // Add onRefresh prop
   children,
   showAddButton = true, // <-- Add this line
   showActions = true, // <-- Add this line
+  showFilterButton = true, // Add this line
   onAdd, // Add onAdd prop
 }) => {
   const navigate = useNavigate();
@@ -37,6 +40,22 @@ const ContentBox = ({
   const [columnFilters, setColumnFilters] = useState([]);
   const [showColumnsDropdown, setShowColumnsDropdown] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Handle refresh with animation
+  const handleRefresh = async () => {
+    if (isRefreshing || !onRefresh) return;
+    
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      // Keep animation for a minimum duration for better UX
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 1000);
+    }
+  };
 
   // Effect to apply initial filter if 'search by column' is active on mount
   useEffect(() => {
@@ -173,12 +192,14 @@ const ContentBox = ({
 
       <div className="flex flex-wrap items-start justify-between gap-2 p-2 bg-gray-100 border-b">
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
-            onClick={() => setFilterMenuOpen(!filterMenuOpen)}
-          >
-            <Filter size={18} />
-          </button>
+          {showFilterButton && (
+            <button
+              className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
+              onClick={() => setFilterMenuOpen(!filterMenuOpen)}
+            >
+              <Filter size={18} />
+            </button>
+          )}
 
           {activeFilters.map((filter, idx) => (
             <div
@@ -364,6 +385,20 @@ const ContentBox = ({
             </button>
           )}
 
+          {onRefresh && (
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B] group relative disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh"
+            >
+              <RefreshCw 
+                size={16} 
+                className={`transition-transform duration-300 ${isRefreshing ? 'animate-spin' : ''}`}
+              />
+            </button>
+          )}
+
           {onDownload && (
             <button
               onClick={onDownload}
@@ -378,8 +413,8 @@ const ContentBox = ({
       {/* Table */}
       <div className="max-h-[500px] min-h-[400px] overflow-y-auto">
         <table className="min-w-full border border-gray-200">
-          <thead className="sticky top-0 z-10">
-            <tr className="bg-[#0E2F4B] text-white text-sm font-medium border-b-4 border-[#FFC107]">
+          <thead className="sticky top-0 z-10 bg-[#0E2F4B] border-b-4 border-[#FFC107]">
+            <tr className="text-white text-sm font-medium">
               {visibleFilters.map((filter, index) => {
                 // Safely access sortConfig
                 const sortInfo = sortConfig?.sorts?.find(

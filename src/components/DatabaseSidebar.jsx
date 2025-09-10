@@ -94,7 +94,7 @@ const DatabaseSidebar = () => {
     MAINTENANCEHISTORY: "/reports/maintenance-history",
     ASSETVALUATION: "/reports/asset-valuation",
     ASSETWORKFLOWHISTORY: "/reports/asset-workflow-history",
-    REPORTHISTORY: "/reports/report-history",
+    SERIALNUMBERPRINT: "/serial-number-print",
     BREAKDOWNHISTORY: "/reports/breakdown-history",
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings
     MASTERDATA: "/master-data/vendors",
@@ -135,7 +135,7 @@ const DatabaseSidebar = () => {
       MAINTENANCEHISTORY: Wrench,
       ASSETVALUATION: DollarSign,
       ASSETWORKFLOWHISTORY: GitBranch,
-      REPORTHISTORY: History,
+      SERIALNUMBERPRINT: History,
       BREAKDOWNHISTORY: AlertTriangle,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,

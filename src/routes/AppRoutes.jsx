@@ -59,9 +59,9 @@ import AssetLifecycleReport from "../pages/reports/AssetLifecycleReport";
 import MaintenanceHistory from "../pages/reports/MaintenanceHistory";
 import AssetValuation from "../pages/reports/AssetValuation";
 import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
-import ReportHistory from "../pages/reports/ReportHistory";
 import BreakdownHistory from "../pages/reports/BreakdownHistory";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
+import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -253,11 +253,11 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="/reports/report-history"
+          path="/serial-number-print"
           element={
             <ProtectedRoute>
               <MainLayout>
-                <ReportHistory />
+                <SerialNumberPrint />
               </MainLayout>
             </ProtectedRoute>
           }
