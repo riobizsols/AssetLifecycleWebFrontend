@@ -52,162 +52,231 @@ const SerialNumberPrint = () => {
     { id: 10, name: 'Production Line 2 Printer', location: 'Production Floor - Line 2', ipAddress: '192.168.1.109', status: 'Online', type: 'Industrial', paperSize: 'A2' }
   ]);
 
-  // Asset type templates with specific label requirements
-  const assetTemplates = {
-    'Laptop': {
-      labelSize: '4x2',
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      template: 'laptop-template',
-      description: 'Durable vinyl labels for laptop serial numbers'
-    },
-    'Desktop Computer': {
-      labelSize: '3x1.5',
-      paperType: 'Paper',
-      paperQuality: 'High',
-      template: 'desktop-template',
-      description: 'Paper labels for desktop computer identification'
-    },
-    'Printer': {
-      labelSize: '2x1',
+  // Comprehensive Label Templates System
+  const labelTemplates = {
+    // Standard Templates
+    'standard-small': {
+      id: 'standard-small',
+      name: 'Standard Small Label',
+      dimensions: { width: 2, height: 1, unit: 'inch' },
       paperType: 'Paper',
       paperQuality: 'Normal',
-      template: 'printer-template',
-      description: 'Standard paper labels for printer equipment'
+      printerTypes: ['Laser', 'Inkjet', 'Multifunction'],
+      format: 'text-only',
+      description: 'Standard small paper label for basic equipment',
+      layout: {
+        title: { fontSize: 12, fontWeight: 'bold', position: 'top' },
+        serialNumber: { fontSize: 16, fontWeight: 'bold', position: 'center' },
+        details: { fontSize: 10, position: 'bottom' }
+      }
     },
-    'Scanner': {
-      labelSize: '2x1',
+    'standard-medium': {
+      id: 'standard-medium',
+      name: 'Standard Medium Label',
+      dimensions: { width: 3, height: 1.5, unit: 'inch' },
       paperType: 'Paper',
-      paperQuality: 'Normal',
-      template: 'scanner-template',
-      description: 'Standard paper labels for scanner equipment'
+      paperQuality: 'High',
+      printerTypes: ['Laser', 'Inkjet', 'Multifunction'],
+      format: 'text-with-barcode',
+      description: 'Standard medium paper label with barcode',
+      layout: {
+        title: { fontSize: 14, fontWeight: 'bold', position: 'top' },
+        serialNumber: { fontSize: 18, fontWeight: 'bold', position: 'center' },
+        barcode: { height: 40, position: 'center' },
+        details: { fontSize: 11, position: 'bottom' }
+      }
     },
-    'Monitor': {
-      labelSize: '3x1',
+    'standard-large': {
+      id: 'standard-large',
+      name: 'Standard Large Label',
+      dimensions: { width: 4, height: 2, unit: 'inch' },
+      paperType: 'Paper',
+      paperQuality: 'High',
+      printerTypes: ['Laser', 'Inkjet', 'Multifunction'],
+      format: 'text-with-qr',
+      description: 'Standard large paper label with QR code',
+      layout: {
+        title: { fontSize: 16, fontWeight: 'bold', position: 'top' },
+        serialNumber: { fontSize: 20, fontWeight: 'bold', position: 'center' },
+        qrCode: { size: 60, position: 'center' },
+        details: { fontSize: 12, position: 'bottom' }
+      }
+    },
+
+    // Vinyl Templates
+    'vinyl-small': {
+      id: 'vinyl-small',
+      name: 'Vinyl Small Label',
+      dimensions: { width: 1.5, height: 0.75, unit: 'inch' },
       paperType: 'Vinyl',
       paperQuality: 'High',
-      template: 'monitor-template',
-      description: 'Vinyl labels for monitor identification'
+      printerTypes: ['Label'],
+      format: 'barcode-only',
+      description: 'Small vinyl label with barcode for small equipment',
+      layout: {
+        barcode: { height: 30, position: 'center' },
+        serialNumber: { fontSize: 8, position: 'bottom' }
+      }
     },
-    'Server': {
-      labelSize: '4x2',
+    'vinyl-medium': {
+      id: 'vinyl-medium',
+      name: 'Vinyl Medium Label',
+      dimensions: { width: 3, height: 1, unit: 'inch' },
+      paperType: 'Vinyl',
+      paperQuality: 'High',
+      printerTypes: ['Label'],
+      format: 'text-with-barcode',
+      description: 'Medium vinyl label with barcode and text',
+      layout: {
+        title: { fontSize: 12, fontWeight: 'bold', position: 'top' },
+        serialNumber: { fontSize: 16, fontWeight: 'bold', position: 'center' },
+        barcode: { height: 35, position: 'center' },
+        details: { fontSize: 10, position: 'bottom' }
+      }
+    },
+    'vinyl-large': {
+      id: 'vinyl-large',
+      name: 'Vinyl Large Label',
+      dimensions: { width: 4, height: 2, unit: 'inch' },
+      paperType: 'Vinyl',
+      paperQuality: 'High',
+      printerTypes: ['Label'],
+      format: 'text-with-qr',
+      description: 'Large vinyl label with QR code and detailed text',
+      layout: {
+        title: { fontSize: 14, fontWeight: 'bold', position: 'top' },
+        serialNumber: { fontSize: 18, fontWeight: 'bold', position: 'center' },
+        qrCode: { size: 50, position: 'center' },
+        details: { fontSize: 11, position: 'bottom' }
+      }
+    },
+
+    // Industrial Templates
+    'industrial-small': {
+      id: 'industrial-small',
+      name: 'Industrial Small Label',
+      dimensions: { width: 2, height: 1, unit: 'inch' },
       paperType: 'Metal',
       paperQuality: 'High',
-      template: 'server-template',
-      description: 'Metal labels for server equipment identification'
+      printerTypes: ['Industrial'],
+      format: 'text-only',
+      description: 'Small metal label for industrial equipment',
+      layout: {
+        title: { fontSize: 10, fontWeight: 'bold', position: 'top' },
+        serialNumber: { fontSize: 14, fontWeight: 'bold', position: 'center' },
+        details: { fontSize: 8, position: 'bottom' }
+      }
     },
-    'Router': {
-      labelSize: '1.5x0.75',
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      template: 'router-template',
-      description: 'Small vinyl labels for network equipment'
-    },
-    'Switch': {
-      labelSize: '1.5x0.75',
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      template: 'switch-template',
-      description: 'Small vinyl labels for network switches'
-    },
-    'Projector': {
-      labelSize: '3x1.5',
-      paperType: 'Paper',
-      paperQuality: 'High',
-      template: 'projector-template',
-      description: 'Paper labels for projector equipment'
-    },
-    'Camera': {
-      labelSize: '2x1',
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      template: 'camera-template',
-      description: 'Vinyl labels for camera equipment'
-    },
-    'Keyboard': {
-      labelSize: '2x1',
-      paperType: 'Paper',
-      paperQuality: 'Normal',
-      template: 'keyboard-template',
-      description: 'Paper labels for keyboard equipment'
-    },
-    'Mouse': {
-      labelSize: '1.5x0.75',
-      paperType: 'Paper',
-      paperQuality: 'Normal',
-      template: 'mouse-template',
-      description: 'Small paper labels for mouse equipment'
-    },
-    'Tablet': {
-      labelSize: '3x1.5',
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      template: 'tablet-template',
-      description: 'Vinyl labels for tablet devices'
-    },
-    'Phone': {
-      labelSize: '2x1',
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      template: 'phone-template',
-      description: 'Vinyl labels for phone devices'
-    },
-    'Headset': {
-      labelSize: '2x1',
-      paperType: 'Paper',
-      paperQuality: 'Normal',
-      template: 'headset-template',
-      description: 'Paper labels for headset equipment'
-    },
-    'External Drive': {
-      labelSize: '2x1',
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      template: 'drive-template',
-      description: 'Vinyl labels for external drives'
-    },
-    'UPS': {
-      labelSize: '3x1.5',
+    'industrial-medium': {
+      id: 'industrial-medium',
+      name: 'Industrial Medium Label',
+      dimensions: { width: 3, height: 1.5, unit: 'inch' },
       paperType: 'Metal',
       paperQuality: 'High',
-      template: 'ups-template',
-      description: 'Metal labels for UPS equipment'
+      printerTypes: ['Industrial'],
+      format: 'text-with-qr',
+      description: 'Medium metal label with QR code for industrial equipment',
+      layout: {
+        title: { fontSize: 12, fontWeight: 'bold', position: 'top' },
+        serialNumber: { fontSize: 16, fontWeight: 'bold', position: 'center' },
+        qrCode: { size: 40, position: 'center' },
+        details: { fontSize: 10, position: 'bottom' }
+      }
     },
-    'Firewall': {
-      labelSize: '3x1',
+    'industrial-large': {
+      id: 'industrial-large',
+      name: 'Industrial Large Label',
+      dimensions: { width: 4, height: 2, unit: 'inch' },
       paperType: 'Metal',
       paperQuality: 'High',
-      template: 'firewall-template',
-      description: 'Metal labels for firewall equipment'
+      printerTypes: ['Industrial'],
+      format: 'text-with-qr',
+      description: 'Large metal label with QR code for server equipment',
+      layout: {
+        title: { fontSize: 14, fontWeight: 'bold', position: 'top' },
+        serialNumber: { fontSize: 18, fontWeight: 'bold', position: 'center' },
+        qrCode: { size: 60, position: 'center' },
+        details: { fontSize: 12, position: 'bottom' }
+      }
     },
-    'Access Point': {
-      labelSize: '2x1',
+
+    // Specialized Templates
+    'network-equipment': {
+      id: 'network-equipment',
+      name: 'Network Equipment Label',
+      dimensions: { width: 1.5, height: 0.75, unit: 'inch' },
       paperType: 'Vinyl',
       paperQuality: 'High',
-      template: 'ap-template',
-      description: 'Vinyl labels for access points'
+      printerTypes: ['Label'],
+      format: 'barcode-only',
+      description: 'Small vinyl label for network equipment (routers, switches)',
+      layout: {
+        barcode: { height: 25, position: 'center' },
+        serialNumber: { fontSize: 7, position: 'bottom' }
+      }
     },
-    'Cable': {
-      labelSize: '1.5x0.75',
+    'cable-label': {
+      id: 'cable-label',
+      name: 'Cable Label',
+      dimensions: { width: 1, height: 0.5, unit: 'inch' },
       paperType: 'Paper',
       paperQuality: 'Normal',
-      template: 'cable-template',
-      description: 'Small paper labels for cables'
+      printerTypes: ['Label'],
+      format: 'text-only',
+      description: 'Very small label for cable identification',
+      layout: {
+        serialNumber: { fontSize: 8, fontWeight: 'bold', position: 'center' }
+      }
     },
-    'Adapter': {
-      labelSize: '1.5x0.75',
+    'asset-tag': {
+      id: 'asset-tag',
+      name: 'Asset Tag',
+      dimensions: { width: 2.5, height: 1.5, unit: 'inch' },
       paperType: 'Paper',
-      paperQuality: 'Normal',
-      template: 'adapter-template',
-      description: 'Small paper labels for adapters'
+      paperQuality: 'High',
+      printerTypes: ['Laser', 'Inkjet'],
+      format: 'text-with-barcode',
+      description: 'Standard asset tag with company branding',
+      layout: {
+        companyLogo: { position: 'top-left', size: 20 },
+        title: { fontSize: 12, fontWeight: 'bold', position: 'top' },
+        serialNumber: { fontSize: 16, fontWeight: 'bold', position: 'center' },
+        barcode: { height: 30, position: 'center' },
+        details: { fontSize: 10, position: 'bottom' }
+      }
     }
+  };
+
+  // Asset type to template mapping (recommended templates for each asset type)
+  const assetTypeTemplateMapping = {
+    'Laptop': ['vinyl-large', 'standard-large', 'asset-tag'],
+    'Desktop Computer': ['standard-large', 'asset-tag', 'industrial-medium'],
+    'Printer': ['standard-medium', 'standard-small'],
+    'Scanner': ['standard-medium', 'standard-small'],
+    'Monitor': ['vinyl-medium', 'standard-medium'],
+    'Server': ['industrial-large', 'asset-tag'],
+    'Router': ['network-equipment', 'vinyl-small'],
+    'Switch': ['network-equipment', 'vinyl-small'],
+    'Projector': ['standard-medium', 'vinyl-medium'],
+    'Camera': ['vinyl-medium', 'standard-medium'],
+    'Keyboard': ['standard-small', 'vinyl-small'],
+    'Mouse': ['vinyl-small', 'standard-small'],
+    'Tablet': ['vinyl-medium', 'standard-medium'],
+    'Phone': ['vinyl-medium', 'standard-medium'],
+    'Headset': ['standard-small', 'vinyl-small'],
+    'External Drive': ['vinyl-medium', 'standard-medium'],
+    'UPS': ['industrial-medium', 'asset-tag'],
+    'Firewall': ['industrial-medium', 'asset-tag'],
+    'Access Point': ['network-equipment', 'vinyl-small'],
+    'Cable': ['cable-label'],
+    'Adapter': ['cable-label', 'vinyl-small']
   };
 
   // Print settings state
   const [printSettings, setPrintSettings] = useState({
     printerId: '',
     printerType: '',
-    dimension: ''
+    template: ''
   });
 
 
@@ -461,14 +530,15 @@ const SerialNumberPrint = () => {
 
   const handleSelectItem = (item) => {
     setSelectedItem(item);
-    // Auto-select recommended printer
+    // Auto-select recommended printer and template
     const recommendedPrinter = getRecommendedPrinter(item);
-    const template = assetTemplates[item.asset_type_name] || assetTemplates['Laptop'];
+    const recommendedTemplateIds = assetTypeTemplateMapping[item.asset_type_name] || [];
+    const primaryTemplate = recommendedTemplateIds.length > 0 ? recommendedTemplateIds[0] : 'standard-medium';
     
     setPrintSettings({
       printerId: recommendedPrinter.id.toString(),
       printerType: recommendedPrinter.type,
-      dimension: template.labelSize
+      template: primaryTemplate
     });
     setShowPrintPage(true);
   };
@@ -481,20 +551,20 @@ const SerialNumberPrint = () => {
   const handleBackToList = () => {
     setShowPrintPage(false);
     setSelectedItem(null);
-    setPrintSettings({ printerId: '', printerType: '', dimension: '' });
+    setPrintSettings({ printerId: '', printerType: '', template: '' });
   };
 
   const handlePreview = () => {
-    if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.dimension) {
-      toast.error('Please select printer name, type, and dimension');
+    if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.template) {
+      toast.error('Please select printer name, type, and template');
       return;
     }
     setShowPreviewModal(true);
   };
 
   const handlePrint = async () => {
-    if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.dimension) {
-      toast.error('Please select printer name, type, and dimension');
+    if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.template) {
+      toast.error('Please select printer name, type, and template');
       return;
     }
 
@@ -506,8 +576,9 @@ const SerialNumberPrint = () => {
         return;
       }
 
-      // Get asset template
-      const template = assetTemplates[selectedItem.asset_type_name] || assetTemplates['Laptop'];
+      // Get selected template
+      const selectedTemplate = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
+      const template = selectedTemplate || { format: 'text-only', layout: {} };
       
       // Simulate print process
       toast.loading('Generating PDF and sending to printer...', { duration: 3000 });
@@ -554,7 +625,7 @@ const SerialNumberPrint = () => {
       location: printer.location,
       ipAddress: printer.ipAddress,
       printerType: printSettings.printerType,
-      dimension: printSettings.dimension,
+      template: printSettings.template,
       labelSize: template.labelSize,
       paperType: template.paperType,
       paperQuality: template.paperQuality
@@ -581,14 +652,17 @@ const SerialNumberPrint = () => {
       asset.asset_location.toLowerCase().includes(printer.location.toLowerCase())
     );
 
-    // Get printers that match the asset type requirements
-    const template = assetTemplates[asset.asset_type_name] || assetTemplates['Laptop']; // Default to Laptop template if not found
-    const typeMatch = printers.filter(printer => {
-      if (template && template.paperType === 'Vinyl' && printer.type === 'Label') return true;
-      if (template && template.paperType === 'Paper' && (printer.type === 'Laser' || printer.type === 'Inkjet')) return true;
-      if (template && template.paperType === 'Metal' && printer.type === 'Industrial') return true;
-      return false;
-    });
+    // Get recommended templates for this asset type
+    const recommendedTemplateIds = assetTypeTemplateMapping[asset.asset_type_name] || [];
+    const primaryTemplate = recommendedTemplateIds.length > 0 ? labelTemplates[recommendedTemplateIds[0]] : null;
+    
+    // Get printers that match the primary template requirements
+    let typeMatch = [];
+    if (primaryTemplate) {
+      typeMatch = printers.filter(printer => 
+        primaryTemplate.printerTypes.includes(printer.type)
+      );
+    }
 
     // Return the best match
     if (locationMatch.length > 0) return locationMatch[0];
@@ -596,45 +670,120 @@ const SerialNumberPrint = () => {
     return printers.find(p => p.status === 'Online') || printers[0];
   };
 
-  // Get available printer types based on asset template
+  // Get available printer types based on selected template
   const getAvailablePrinterTypes = (asset) => {
-    const template = assetTemplates[asset.asset_type_name] || assetTemplates['Laptop'];
-    const availableTypes = [];
-    
-    if (template.paperType === 'Vinyl') {
-      availableTypes.push('Label');
-    }
-    if (template.paperType === 'Paper') {
-      availableTypes.push('Laser', 'Inkjet');
-    }
-    if (template.paperType === 'Metal') {
-      availableTypes.push('Industrial');
+    // If a template is selected, get its supported printer types
+    if (printSettings.template) {
+      const selectedTemplate = getAvailableTemplates(asset).find(t => t.id === printSettings.template);
+      if (selectedTemplate) {
+        return selectedTemplate.printerTypes;
+      }
     }
     
-    // Always include all types as fallback
-    const allTypes = [...new Set([...availableTypes, 'Laser', 'Inkjet', 'Label', 'Industrial', 'Multifunction'])];
-    return allTypes;
+    // If no template selected, get printer types from recommended templates
+    const recommendedTemplateIds = assetTypeTemplateMapping[asset.asset_type_name] || [];
+    const allPrinterTypes = new Set();
+    
+    recommendedTemplateIds.forEach(templateId => {
+      if (labelTemplates[templateId]) {
+        labelTemplates[templateId].printerTypes.forEach(type => allPrinterTypes.add(type));
+      }
+    });
+    
+    // Fallback to all available printer types
+    if (allPrinterTypes.size === 0) {
+      return ['Laser', 'Inkjet', 'Label', 'Industrial', 'Multifunction'];
+    }
+    
+    return Array.from(allPrinterTypes);
   };
 
-  // Get available dimensions based on asset template
-  const getAvailableDimensions = (asset) => {
-    const template = assetTemplates[asset.asset_type_name] || assetTemplates['Laptop'];
-    const availableDimensions = [template.labelSize];
+  // Get available templates based on asset type
+  const getAvailableTemplates = (asset) => {
+    const assetType = asset.asset_type_name;
+    const templates = [];
     
-    // Add common dimensions as fallback
-    const commonDimensions = ['2x1', '3x1', '3x1.5', '3x2', '4x2', '4x6', 'A4', 'A3', 'A2'];
-    return [...new Set([...availableDimensions, ...commonDimensions])];
+    // Get recommended templates for this asset type
+    const recommendedTemplateIds = assetTypeTemplateMapping[assetType] || [];
+    
+    // Add recommended templates first
+    recommendedTemplateIds.forEach(templateId => {
+      if (labelTemplates[templateId]) {
+        const template = labelTemplates[templateId];
+        templates.push({
+          id: template.id,
+          text: `${template.name} (${template.dimensions.width}"×${template.dimensions.height}")`,
+          name: template.name,
+          dimensions: template.dimensions,
+          paperType: template.paperType,
+          paperQuality: template.paperQuality,
+          printerTypes: template.printerTypes,
+          format: template.format,
+          description: template.description,
+          layout: template.layout,
+          isRecommended: true
+        });
+      }
+    });
+    
+    // Add all other templates as additional options
+    Object.values(labelTemplates).forEach(template => {
+      if (!templates.find(t => t.id === template.id)) {
+        templates.push({
+          id: template.id,
+          text: `${template.name} (${template.dimensions.width}"×${template.dimensions.height}")`,
+          name: template.name,
+          dimensions: template.dimensions,
+          paperType: template.paperType,
+          paperQuality: template.paperQuality,
+          printerTypes: template.printerTypes,
+          format: template.format,
+          description: template.description,
+          layout: template.layout,
+          isRecommended: false
+        });
+      }
+    });
+    
+    // Debug logging
+    console.log('Available templates for', assetType, ':', templates);
+    
+    return templates;
   };
 
-  // Get filtered printers based on selected type and dimension
+  // Get filtered printers based on selected type and template
   const getFilteredPrinters = () => {
     if (!selectedItem) return printers;
     
-    return printers.filter(printer => {
-      const typeMatch = !printSettings.printerType || printer.type === printSettings.printerType;
-      const dimensionMatch = !printSettings.dimension || printer.paperSize === printSettings.dimension;
-      return typeMatch && dimensionMatch;
+    let filtered = printers;
+    
+    // Filter by printer type if selected
+    if (printSettings.printerType) {
+      filtered = printers.filter(printer => printer.type === printSettings.printerType);
+    }
+    
+    // Filter by template requirements if template is selected
+    if (printSettings.template) {
+      const selectedTemplate = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
+      if (selectedTemplate) {
+        // Filter printers that support the template's printer types
+        filtered = filtered.filter(printer => 
+          selectedTemplate.printerTypes.includes(printer.type)
+        );
+      }
+    }
+    
+    // Debug logging
+    console.log('Filtering printers:', {
+      totalPrinters: printers.length,
+      printerType: printSettings.printerType,
+      template: printSettings.template,
+      selectedItem: selectedItem?.asset_type_name,
+      filteredCount: filtered.length,
+      filteredPrinters: filtered.map(p => ({ id: p.id, name: p.name, type: p.type, paperSize: p.paperSize }))
     });
+    
+    return filtered;
   };
 
   // Generate preview content for the label
@@ -642,7 +791,8 @@ const SerialNumberPrint = () => {
     if (!selectedItem || !printSettings.printerId) return null;
     
     const selectedPrinter = printers.find(p => p.id === parseInt(printSettings.printerId));
-    const template = assetTemplates[selectedItem.asset_type_name] || assetTemplates['Laptop'];
+    const selectedTemplate = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
+    const template = selectedTemplate || { format: 'text-only', layout: {} };
     
     return {
       asset: selectedItem,
@@ -811,12 +961,13 @@ const SerialNumberPrint = () => {
         onPreview={handlePreview}
         onPrint={handlePrint}
         printers={printers}
-        assetTemplates={assetTemplates}
+        labelTemplates={labelTemplates}
+        assetTypeTemplateMapping={assetTypeTemplateMapping}
         printSettings={printSettings}
         setPrintSettings={setPrintSettings}
         getRecommendedPrinter={getRecommendedPrinter}
         getAvailablePrinterTypes={getAvailablePrinterTypes}
-        getAvailableDimensions={getAvailableDimensions}
+        getAvailableTemplates={getAvailableTemplates}
         getFilteredPrinters={getFilteredPrinters}
         getStatusBadgeColor={getStatusBadgeColor}
         showPreviewModal={showPreviewModal}

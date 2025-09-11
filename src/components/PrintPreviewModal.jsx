@@ -9,49 +9,51 @@ const PrintPreviewModal = ({
   selectedItem, 
   printSettings, 
   printers = [], 
-  assetTemplates = {} 
+  labelTemplates = {},
+  assetTypeTemplateMapping = {}
 }) => {
   if (!show) return null;
 
   const selectedPrinter = printers.find(p => p.id === parseInt(printSettings.printerId));
-  const template = assetTemplates[selectedItem?.asset_type_name] || assetTemplates['Laptop'];
+  
+  // Get selected template or fallback to default
+  const getSelectedTemplate = () => {
+    if (!printSettings.template) return null;
+    return Object.values(labelTemplates).find(t => t.id === printSettings.template);
+  };
+  
+  const template = getSelectedTemplate() || { format: 'text-only', dimensions: { width: 3, height: 1.5 } };
 
-  // Determine label format based on printer type and asset template
-  const getLabelFormat = (printSettings, template) => {
-    const printerType = printSettings.printerType;
-    const paperType = template?.paperType;
+  // Determine label format based on template format
+  const getLabelFormat = (template) => {
+    if (!template || !template.format) return 'text-only';
     
-    // Label printers with vinyl paper = Barcode
-    if (printerType === 'Label' && paperType === 'Vinyl') {
-      return 'Barcode';
+    // Map template format to display format
+    switch (template.format) {
+      case 'barcode-only':
+      case 'text-with-barcode':
+        return 'Barcode';
+      case 'text-with-qr':
+        return 'QR Code';
+      case 'text-only':
+        return 'Text Only';
+      default:
+        return 'Text Only';
     }
-    // Industrial printers with metal paper = QR Code
-    if (printerType === 'Industrial' && paperType === 'Metal') {
-      return 'QR Code';
-    }
-    // Laser/Inkjet with paper = Text Only
-    if ((printerType === 'Laser' || printerType === 'Inkjet') && paperType === 'Paper') {
-      return 'Text Only';
-    }
-    // Default to barcode for most cases
-    return 'Barcode';
   };
 
-  // Get max width based on label dimension
-  const getLabelMaxWidth = (dimension) => {
-    const dimensionMap = {
-      '1.5x0.75': '150px',
-      '2x1': '200px',
-      '3x1': '300px',
-      '3x1.5': '300px',
-      '3x2': '300px',
-      '4x2': '400px',
-      '4x6': '400px',
-      'A4': '600px',
-      'A3': '800px',
-      'A2': '1000px'
-    };
-    return dimensionMap[dimension] || '300px';
+  // Get max width based on template dimensions
+  const getLabelMaxWidth = (template) => {
+    if (!template || !template.dimensions) return '300px';
+    
+    const { width, height } = template.dimensions;
+    // Convert inches to pixels (assuming 96 DPI)
+    const widthPx = Math.round(width * 96);
+    const heightPx = Math.round(height * 96);
+    
+    // Use the larger dimension for max width, but cap at reasonable limits
+    const maxWidth = Math.max(widthPx, heightPx);
+    return `${Math.min(maxWidth, 600)}px`;
   };
 
   // Refs for barcode canvas
@@ -69,7 +71,7 @@ const PrintPreviewModal = ({
         barcodeRef.current.appendChild(canvas);
         
         // Get label dimensions to adjust barcode size
-        const isSmallLabel = printSettings.dimension?.includes('1.5x') || printSettings.dimension?.includes('2x1');
+        const isSmallLabel = template.dimensions?.width <= 2 && template.dimensions?.height <= 1;
         
         // Generate Code128 barcode with proper settings for scanning
         console.log('🔍 Generating barcode for:', selectedItem.serial_number);
@@ -116,11 +118,11 @@ const PrintPreviewModal = ({
         barcodeRef.current.innerHTML = '<div class="text-red-500 text-xs">Barcode generation failed</div>';
       }
     }
-  }, [selectedItem?.serial_number, printSettings.dimension]);
+  }, [selectedItem?.serial_number, template.dimensions]);
 
   // Render different label formats
-  const renderLabelFormat = (selectedItem, printSettings, template) => {
-    const format = getLabelFormat(printSettings, template);
+  const renderLabelFormat = (selectedItem, template) => {
+    const format = getLabelFormat(template);
     
     switch (format) {
       case 'Barcode':
@@ -166,14 +168,14 @@ const PrintPreviewModal = ({
               <div className="flex justify-center items-center bg-white border border-gray-300 rounded p-2 overflow-hidden">
                 <QRCode
                   value={selectedItem?.serial_number || ''}
-                  size={printSettings.dimension?.includes('1.5x') ? 50 : 80}
+                  size={template.dimensions?.width <= 2 ? 50 : 80}
                   style={{ 
                     height: "auto", 
                     maxWidth: "100%", 
                     width: "100%",
                     maxHeight: "80px"
                   }}
-                  viewBox={`0 0 ${printSettings.dimension?.includes('1.5x') ? 50 : 80} ${printSettings.dimension?.includes('1.5x') ? 50 : 80}`}
+                  viewBox={`0 0 ${template.dimensions?.width <= 2 ? 50 : 80} ${template.dimensions?.width <= 2 ? 50 : 80}`}
                 />
               </div>
             </div>
@@ -227,21 +229,25 @@ const PrintPreviewModal = ({
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 text-center">Label Preview</h3>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 bg-gray-50">
-              <div className="text-center">
-                <div className="text-sm text-gray-500 mb-2">Label Size: {printSettings.dimension}</div>
-                <div 
-                  className="bg-white border border-gray-200 rounded p-4 mx-auto overflow-hidden" 
-                  style={{ 
-                    maxWidth: getLabelMaxWidth(printSettings.dimension),
-                    width: '100%'
-                  }}
-                >
-                  {renderLabelFormat(selectedItem, printSettings, template)}
-                </div>
-                <div className="text-xs text-gray-500 mt-2">
-                  Template: {template?.template || 'Default'} | Format: {getLabelFormat(printSettings, template)}
-                </div>
+            <div className="text-center">
+              <div className="text-sm text-gray-500 mb-2">
+                Label Size: {template.dimensions?.width}"×{template.dimensions?.height}" | 
+                Paper: {template.paperType} | 
+                Quality: {template.paperQuality}
               </div>
+              <div 
+                className="bg-white border border-gray-200 rounded p-4 mx-auto overflow-hidden" 
+                style={{ 
+                  maxWidth: getLabelMaxWidth(template),
+                  width: '100%'
+                }}
+              >
+                {renderLabelFormat(selectedItem, template)}
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                Template: {template?.name || 'Default'} | Format: {getLabelFormat(template)}
+              </div>
+            </div>
             </div>
           </div>
         </div>

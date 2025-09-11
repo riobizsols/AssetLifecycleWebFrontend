@@ -23,12 +23,13 @@ const PrintLabelScreen = ({
   onPreview, 
   onPrint,
   printers = [],
-  assetTemplates = {},
+  labelTemplates = {},
+  assetTypeTemplateMapping = {},
   printSettings,
   setPrintSettings,
   getRecommendedPrinter,
   getAvailablePrinterTypes,
-  getAvailableDimensions,
+  getAvailableTemplates,
   getFilteredPrinters,
   getStatusBadgeColor,
   showPreviewModal,
@@ -61,15 +62,15 @@ const PrintLabelScreen = ({
       ...prev, 
       printerType: e.target.value,
       printerId: '', // Reset printer selection when type changes
-      dimension: '' // Reset dimension when type changes
+      template: '' // Reset template when type changes
     }));
   };
 
-  const handleDimensionChange = (e) => {
+  const handleTemplateChange = (e) => {
     setPrintSettings(prev => ({ 
       ...prev, 
-      dimension: e.target.value,
-      printerId: '' // Reset printer selection when dimension changes
+      template: e.target.value,
+      printerId: '' // Reset printer selection when template changes
     }));
   };
 
@@ -85,8 +86,8 @@ const PrintLabelScreen = ({
   };
 
   const generatePDF = async () => {
-    if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.dimension) {
-      toast.error('Please select printer name, type, and dimension');
+    if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.template) {
+      toast.error('Please select printer name, type, and template');
       return;
     }
 
@@ -111,19 +112,13 @@ const PrintLabelScreen = ({
       
       document.body.appendChild(labelDiv);
 
-      // Determine label format
-      const getLabelFormat = (printerType, paperType) => {
-        if (printerType === 'Label' && paperType === 'Vinyl') return 'Barcode';
-        if (printerType === 'Industrial' && paperType === 'Metal') return 'QR Code';
-        if ((printerType === 'Laser' || printerType === 'Inkjet') && paperType === 'Paper') return 'Text Only';
-        return 'Barcode';
-      };
+      // Get selected template
+      const templateData = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
+      const template = templateData || { format: 'text-only', layout: {} };
+      const format = template.format;
 
-      const template = assetTemplates[selectedItem.asset_type_name] || assetTemplates['Laptop'];
-      const format = getLabelFormat(printSettings.printerType, template.paperType);
-
-       // Generate the label content
-       if (format === 'Barcode') {
+       // Generate the label content based on template format
+       if (format === 'barcode-only' || format === 'text-with-barcode') {
          // Create the complete label structure
          const labelContainer = document.createElement('div');
          labelContainer.style.textAlign = 'center';
@@ -198,7 +193,7 @@ const PrintLabelScreen = ({
          scanDiv.textContent = 'Scan with any barcode scanner app';
          labelContainer.appendChild(scanDiv);
 
-      } else if (format === 'QR Code') {
+      } else if (format === 'text-with-qr') {
         // Create the complete label structure
         const labelContainer = document.createElement('div');
         labelContainer.style.textAlign = 'center';
@@ -326,12 +321,16 @@ const PrintLabelScreen = ({
       console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
       console.log('Canvas data URL length:', canvas.toDataURL('image/png').length);
 
+      // Get template dimensions
+      const templateInfo = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
+      const templateDimension = templateInfo ? `${templateInfo.dimensions.width}x${templateInfo.dimensions.height}` : 'a4';
+      
       // Create PDF
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
-        orientation: printSettings.dimension.includes('A') ? 'portrait' : 'landscape',
+        orientation: templateDimension.includes('A') ? 'portrait' : 'landscape',
         unit: 'mm',
-        format: printSettings.dimension.includes('A') ? printSettings.dimension : 'a4'
+        format: templateDimension.includes('A') ? templateDimension : 'a4'
       });
 
        // Calculate dimensions
@@ -505,50 +504,65 @@ const PrintLabelScreen = ({
               {printSettings.printerType && (
                 <div className="mt-1 text-xs text-gray-600">
                   {(() => {
-                    const template = assetTemplates[selectedItem.asset_type_name] || assetTemplates['Laptop'];
-                    const isRecommended = (
-                      (template.paperType === 'Vinyl' && printSettings.printerType === 'Label') ||
-                      (template.paperType === 'Paper' && ['Laser', 'Inkjet'].includes(printSettings.printerType)) ||
-                      (template.paperType === 'Metal' && printSettings.printerType === 'Industrial')
-                    );
+                    // Get recommended templates for this asset type
+                    const recommendedTemplateIds = assetTypeTemplateMapping[selectedItem.asset_type_name] || [];
+                    const primaryTemplate = recommendedTemplateIds.length > 0 ? labelTemplates[recommendedTemplateIds[0]] : null;
+                    
+                    if (!primaryTemplate) return null;
+                    
+                    const isRecommended = primaryTemplate.printerTypes.includes(printSettings.printerType);
                     return isRecommended ? (
-                      <span className="text-green-600">✅ Recommended type for {template.paperType} labels</span>
+                      <span className="text-green-600">✅ Recommended type for {primaryTemplate.paperType} labels</span>
                     ) : (
-                      <span className="text-yellow-600">⚠️ May not be optimal for {template.paperType} labels</span>
+                      <span className="text-yellow-600">⚠️ May not be optimal for {primaryTemplate.paperType} labels</span>
                     );
                   })()}
                 </div>
               )}
             </div>
 
-            {/* Dimension Selection */}
+            {/* Template Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Dimension <span className="text-red-500">*</span>
+                Template <span className="text-red-500">*</span>
               </label>
               <SearchableDropdown
-                options={getAvailableDimensions(selectedItem).map(dimension => ({
-                  id: dimension,
-                  text: dimension
+                options={getAvailableTemplates(selectedItem).map(template => ({
+                  id: template.id,
+                  text: template.text
                 }))}
-                value={printSettings.dimension}
+                value={printSettings.template}
                 onChange={(value) => setPrintSettings(prev => ({ 
                   ...prev, 
-                  dimension: value,
-                  printerId: '' // Reset printer selection when dimension changes
+                  template: value,
+                  printerId: '' // Reset printer selection when template changes
                 }))}
-                placeholder="Select dimension..."
+                placeholder="Select template..."
                 className="w-full"
               />
-              {printSettings.dimension && (
-                <div className="mt-1 text-xs text-gray-600">
+              {printSettings.template && (
+                <div className="mt-2 space-y-1">
                   {(() => {
-                    const template = assetTemplates[selectedItem.asset_type_name] || assetTemplates['Laptop'];
-                    const isRecommended = template.labelSize === printSettings.dimension;
-                    return isRecommended ? (
-                      <span className="text-green-600">✅ Recommended size for this asset type</span>
-                    ) : (
-                      <span className="text-yellow-600">⚠️ Using custom size instead of recommended {template.labelSize}</span>
+                    const selectedTemplate = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
+                    if (!selectedTemplate) return null;
+                    
+                    return (
+                      <div className="text-xs text-gray-600 space-y-1">
+                        <div className="flex items-center gap-2">
+                          {selectedTemplate.isRecommended ? (
+                            <span className="text-green-600">✅ Recommended</span>
+                          ) : (
+                            <span className="text-yellow-600">⚠️ Custom</span>
+                          )}
+                          <span>• {selectedTemplate.dimensions.width}"×{selectedTemplate.dimensions.height}" • {selectedTemplate.paperType}</span>
+                        </div>
+                        <div className="text-gray-500">{selectedTemplate.description}</div>
+                        <div className="text-gray-500">
+                          Format: {selectedTemplate.format.replace('-', ' ').toUpperCase()} • 
+                          Quality: {selectedTemplate.paperQuality} • 
+                          Printers: {selectedTemplate.printerTypes.join(', ')}
+                        </div>
+                      </div>
                     );
                   })()}
                 </div>
@@ -572,15 +586,15 @@ const PrintLabelScreen = ({
                 onChange={(value) => setPrintSettings(prev => ({ ...prev, printerId: value }))}
                 placeholder="Select a printer..."
                 className="w-full"
-                disabled={!printSettings.printerType || !printSettings.dimension}
+                disabled={!printSettings.printerType || !printSettings.template}
               />
-              {!printSettings.printerType || !printSettings.dimension ? (
+              {!printSettings.printerType || !printSettings.template ? (
                 <div className="mt-1 text-xs text-gray-500">
-                  Please select printer type and dimension first
+                  Please select printer type and template first
                 </div>
               ) : getFilteredPrinters().length === 0 ? (
                 <div className="mt-1 text-xs text-red-600">
-                  No printers available with selected type and dimension
+                  No printers available with selected type and template
                 </div>
               ) : printSettings.printerId ? (
                 <div className="mt-1 text-xs text-gray-600">
@@ -605,11 +619,11 @@ const PrintLabelScreen = ({
          <button
            onClick={(e) => {
              console.log('🖱️ Button click event triggered');
-             console.log('Button disabled state:', !printSettings.printerId || !printSettings.printerType || !printSettings.dimension);
+             console.log('Button disabled state:', !printSettings.printerId || !printSettings.printerType || !printSettings.template);
              e.preventDefault();
              onPreview();
            }}
-           disabled={!printSettings.printerId || !printSettings.printerType || !printSettings.dimension}
+           disabled={!printSettings.printerId || !printSettings.printerType || !printSettings.template}
            className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
          >
            <Eye className="w-5 h-5" />
@@ -629,7 +643,7 @@ const PrintLabelScreen = ({
              console.log('Print Label clicked for:', selectedItem);
              onPrint();
            }}
-           disabled={!printSettings.printerId || !printSettings.printerType || !printSettings.dimension}
+           disabled={!printSettings.printerId || !printSettings.printerType || !printSettings.template}
            className="px-8 py-3 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
            style={{ backgroundColor: '#143d65' }}
            onMouseEnter={(e) => !e.target.disabled && (e.target.style.backgroundColor = '#0f2d4a')}
@@ -641,11 +655,11 @@ const PrintLabelScreen = ({
       </div>
       
       {/* Validation Status */}
-      {(!printSettings.printerId || !printSettings.printerType || !printSettings.dimension) && (
+      {(!printSettings.printerId || !printSettings.printerType || !printSettings.template) && (
         <div className="mt-4 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
             <AlertCircle className="w-4 h-4" />
-            Please select printer name, type, and dimension to proceed with printing
+            Please select printer name, type, and template to proceed with printing
           </div>
         </div>
       )}
@@ -657,7 +671,8 @@ const PrintLabelScreen = ({
         selectedItem={selectedItem}
         printSettings={printSettings}
         printers={printers}
-        assetTemplates={assetTemplates}
+        labelTemplates={labelTemplates}
+        assetTypeTemplateMapping={assetTypeTemplateMapping}
       />
     </div>
   );
