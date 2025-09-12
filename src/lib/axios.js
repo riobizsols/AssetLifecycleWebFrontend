@@ -18,4 +18,21 @@ API.interceptors.request.use((config) => {
     return config;
 });
 
+// Response interceptor to handle unauthorized responses
+API.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            // Clear authentication state
+            useAuthStore.getState().logout();
+            
+            // Navigate to root route
+            window.location.href = '/';
+            
+            console.log('🔒 [Axios] Unauthorized - redirected to login');
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default API;

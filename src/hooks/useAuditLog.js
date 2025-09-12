@@ -138,6 +138,10 @@ export const useAuditLog = (appId) => {
       text += ` - Asset: ${cleanData.assetId}`;
     }
     
+    if (cleanData.assetIds && Array.isArray(cleanData.assetIds)) {
+      text += ` - Assets: ${cleanData.assetIds.join(', ')}`;
+    }
+    
     if (cleanData.count) {
       text += ` (${cleanData.count} items)`;
     }

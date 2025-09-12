@@ -19,11 +19,14 @@ import {
   Settings
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
 import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
 
 const AuditLogsView = () => {
+  const navigate = useNavigate();
+  
   // State management
   const [auditLogs, setAuditLogs] = useState([]);
   const [filteredLogs, setFilteredLogs] = useState([]);
@@ -363,6 +366,13 @@ const AuditLogsView = () => {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => navigate('/audit-logs-view/config')}
+              className="flex items-center gap-2 px-4 py-2 bg-[#0E2F4B] text-white rounded-lg hover:bg-[#143d65] transition-colors"
+            >
+              <Settings className="w-4 h-4 text-[#FFC107]" />
+              Config
+            </button>
+            <button
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
@@ -646,6 +656,7 @@ const AuditLogsView = () => {
           </p>
         </div>
       )}
+
     </div>
   );
 };

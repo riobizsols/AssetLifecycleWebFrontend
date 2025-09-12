@@ -74,6 +74,10 @@ export default function Header() {
       title: "Add Scrap Asset",
       subtitle: "Manually scrap assets that are not necessarily nearing expiry",
     },
+    "/audit-logs-view/config": {
+      title: "Audit Log Configuration",
+      subtitle: "Manage reporting requirements",
+    },
 
     // Add more routes as needed
   };
