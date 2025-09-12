@@ -56,9 +56,8 @@ export const useAuditLog = (appId) => {
     // Generate dynamic text if not provided
     let finalText = text;
     if (!finalText && eventData) {
-      // Import the dynamic description function
-      const { getEventDescription } = await import('../constants/auditEvents');
-      finalText = getEventDescription(eventId, additionalData, eventData);
+      // Use a simple fallback description
+      finalText = `${eventData.text || 'Event'}: ${additionalData.action || 'Action performed'}`;
     }
 
     try {
