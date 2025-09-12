@@ -118,7 +118,107 @@ const PrintLabelScreen = ({
       const format = template.format;
 
        // Generate the label content based on template format
-       if (format === 'barcode-only' || format === 'text-with-barcode') {
+       if (format === 'barcode-enhanced') {
+         // Create the enhanced label structure with company logo, name, and barcode
+         const labelContainer = document.createElement('div');
+         labelContainer.style.position = 'relative';
+         
+         // Set dimensions based on template
+         const width = template.dimensions?.width || 2;
+         const height = template.dimensions?.height || 1;
+         const unit = template.dimensions?.unit || 'inch';
+         
+         // Convert inches to pixels (assuming 96 DPI)
+         const widthPx = Math.round(width * 96);
+         const heightPx = Math.round(height * 96);
+         
+         labelContainer.style.width = `${widthPx}px`;
+         labelContainer.style.height = `${heightPx}px`;
+         labelContainer.style.border = '2px dashed #ccc';
+         labelContainer.style.fontFamily = 'Arial, sans-serif';
+         labelContainer.style.padding = '4px';
+         labelDiv.appendChild(labelContainer);
+
+         // Company Logo - Top Left
+         const logoDiv = document.createElement('div');
+         logoDiv.style.position = 'absolute';
+         logoDiv.style.top = '4px';
+         logoDiv.style.left = '4px';
+         logoDiv.style.width = '32px';
+         logoDiv.style.height = '24px';
+         logoDiv.style.backgroundColor = '#dbeafe';
+         logoDiv.style.borderRadius = '4px';
+         logoDiv.style.display = 'flex';
+         logoDiv.style.alignItems = 'center';
+         logoDiv.style.justifyContent = 'center';
+         logoDiv.style.fontSize = '8px';
+         logoDiv.style.fontWeight = 'bold';
+         logoDiv.style.color = '#1e40af';
+         logoDiv.textContent = 'LOGO';
+         labelContainer.appendChild(logoDiv);
+
+         // Company Name - Top Right
+         const companyDiv = document.createElement('div');
+         companyDiv.style.position = 'absolute';
+         companyDiv.style.top = '4px';
+         companyDiv.style.right = '4px';
+         companyDiv.style.fontSize = '8px';
+         companyDiv.style.fontWeight = 'bold';
+         companyDiv.style.color = '#374151';
+         companyDiv.textContent = 'AssetLife';
+         labelContainer.appendChild(companyDiv);
+
+         // Serial Number - Center
+         const serialContainer = document.createElement('div');
+         serialContainer.style.position = 'absolute';
+         serialContainer.style.top = '50%';
+         serialContainer.style.left = '50%';
+         serialContainer.style.transform = 'translate(-50%, -50%)';
+         serialContainer.style.textAlign = 'center';
+         labelContainer.appendChild(serialContainer);
+
+         const serialTitle = document.createElement('div');
+         serialTitle.style.fontSize = '8px';
+         serialTitle.style.color = '#666';
+         serialTitle.style.marginBottom = '2px';
+         serialTitle.textContent = 'SERIAL NUMBER';
+         serialContainer.appendChild(serialTitle);
+
+         const serialNumber = document.createElement('div');
+         serialNumber.style.fontSize = '12px';
+         serialNumber.style.fontWeight = 'bold';
+         serialNumber.style.color = '#111';
+         serialNumber.style.fontFamily = 'monospace';
+         serialNumber.textContent = selectedItem.serial_number;
+         serialContainer.appendChild(serialNumber);
+
+         // Barcode - Bottom
+         const barcodeContainer = document.createElement('div');
+         barcodeContainer.style.position = 'absolute';
+         barcodeContainer.style.bottom = '4px';
+         barcodeContainer.style.left = '4px';
+         barcodeContainer.style.right = '4px';
+         barcodeContainer.style.textAlign = 'center';
+         labelContainer.appendChild(barcodeContainer);
+
+         const barcodeTitle = document.createElement('div');
+         barcodeTitle.style.fontSize = '6px';
+         barcodeTitle.style.color = '#666';
+         barcodeTitle.style.marginBottom = '2px';
+         barcodeTitle.textContent = 'BARCODE';
+         barcodeContainer.appendChild(barcodeTitle);
+
+         const barcodeDiv = document.createElement('div');
+         barcodeDiv.style.fontSize = '8px';
+         barcodeDiv.style.backgroundColor = '#000';
+         barcodeDiv.style.color = '#fff';
+         barcodeDiv.style.padding = '2px 4px';
+         barcodeDiv.style.borderRadius = '2px';
+         barcodeDiv.style.fontFamily = 'monospace';
+         barcodeDiv.textContent = '||| ||| ||| ||| ||| ||| ||| |||';
+         barcodeContainer.appendChild(barcodeDiv);
+
+       } else if (format === 'barcode-only' || format === 'text-with-barcode') {
          // Create the complete label structure
          const labelContainer = document.createElement('div');
          labelContainer.style.textAlign = 'center';
@@ -291,7 +391,6 @@ const PrintLabelScreen = ({
         detailsDiv.innerHTML = `
           <div style="margin-bottom: 3px;">${selectedItem.asset_type_name}</div>
           <div style="margin-bottom: 3px;">${selectedItem.asset_name}</div>
-          <div>${selectedItem.asset_location}</div>
         `;
         labelContainer.appendChild(detailsDiv);
       }
@@ -450,25 +549,6 @@ const PrintLabelScreen = ({
               <span className="font-medium">{selectedItem.asset_name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Location:</span>
-              <span className="font-medium">{selectedItem.asset_location}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Department:</span>
-              <span className="font-medium">{selectedItem.department}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Priority:</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                selectedItem.priority === 'Low' ? 'bg-gray-100 text-gray-800' :
-                selectedItem.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                selectedItem.priority === 'High' ? 'bg-orange-100 text-orange-800' :
-                'bg-red-100 text-red-800'
-              }`}>
-                {selectedItem.priority}
-              </span>
-            </div>
-            <div className="flex justify-between">
               <span className="text-gray-600">Status:</span>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(selectedItem.status)}`}>
                 {selectedItem.status}
@@ -579,7 +659,7 @@ const PrintLabelScreen = ({
                   const isRecommended = getRecommendedPrinter(selectedItem).id === printer.id;
                   return {
                     id: printer.id.toString(),
-                    text: `${isRecommended ? '⭐ ' : ''}${printer.name} - ${printer.location} (${printer.ipAddress}) - ${printer.status}`
+                    text: `${isRecommended ? '⭐ ' : ''}${printer.name} - ${printer.location} (${printer.ip_address}) - ${printer.status}`
                   };
                 })}
                 value={printSettings.printerId}

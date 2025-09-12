@@ -262,6 +262,16 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/serial-number-print/:assetId"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <SerialNumberPrint />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/reports/breakdown-history"

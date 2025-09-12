@@ -45,6 +45,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showQSNPrintModal, setShowQSNPrintModal] = useState(false);
   const [qsnPrintReason, setQsnPrintReason] = useState("");
+  const [isQSNPrintLoading, setIsQSNPrintLoading] = useState(false);
 
   // Load asset data when modal opens
   useEffect(() => {
@@ -954,8 +955,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
             <button
               type="button"
               onClick={() => setShowQSNPrintModal(true)}
-              className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#1a4971] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] transition-colors flex items-center gap-2"
-              disabled={isSubmitting}
+              className={`px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] transition-colors flex items-center gap-2 ${
+                isSubmitting || isQSNPrintLoading
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  : 'bg-[#0E2F4B] text-white hover:bg-[#1a4971]'
+              }`}
+              disabled={isSubmitting || isQSNPrintLoading}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -1112,26 +1117,68 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
+                  if (isQSNPrintLoading) return; // Prevent multiple clicks
+                  
                   if (!qsnPrintReason.trim()) {
                     toast.error('Please enter a reason for QSN print');
                     return;
                   }
                   
-                  // Here you can add the actual print logic
-                  console.log('QSN Print requested:', {
-                    serialNumber: form.serialNumber,
-                    reason: qsnPrintReason,
-                    assetId: assetData.asset_id
-                  });
+                  setIsQSNPrintLoading(true);
                   
-                  toast.success('QSN print request submitted successfully');
-                  setShowQSNPrintModal(false);
-                  setQsnPrintReason("");
+                  try {
+                    console.log('QSN Print requested:', {
+                      serialNumber: form.serialNumber,
+                      reason: qsnPrintReason,
+                      assetId: assetData.asset_id
+                    });
+                    
+                    // Call the asset serial print API
+                    const response = await API.post('/asset-serial-print/', {
+                      serial_no: form.serialNumber,
+                      status: 'New',
+                      reason: qsnPrintReason.trim()
+                    });
+                    
+                    console.log('QSN Print API response:', response.data);
+                    toast.success('QSN print request submitted successfully');
+                    setShowQSNPrintModal(false);
+                    setQsnPrintReason("");
+                  } catch (error) {
+                    console.error('Error submitting QSN print request:', error);
+                    
+                    // Handle specific cases
+                    if (error.response?.status === 409) {
+                      // Serial number already exists in print queue
+                      toast.error('This serial number is already in the print queue');
+                    } else {
+                      // Other errors
+                      const errorMessage = error.response?.data?.message || 'Failed to submit QSN print request';
+                      toast.error(errorMessage);
+                    }
+                  } finally {
+                    setIsQSNPrintLoading(false);
+                  }
                 }}
-                className="px-4 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#1a4971] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B]"
+                disabled={isQSNPrintLoading}
+                className={`px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] ${
+                  isQSNPrintLoading 
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                    : 'bg-[#0E2F4B] text-white hover:bg-[#1a4971]'
+                }`}
               >
-                Print QSN
+                {isQSNPrintLoading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </span>
+                ) : (
+                  'Print QSN'
+                )}
               </button>
             </div>
           </div>

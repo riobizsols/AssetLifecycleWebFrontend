@@ -182,6 +182,64 @@ const PrintPreviewModal = ({
           </div>
         );
 
+      case 'barcode-enhanced':
+        // Get template dimensions for proper sizing
+        const template = getSelectedTemplate();
+        const width = template?.dimensions?.width || 2;
+        const height = template?.dimensions?.height || 1;
+        
+        // Calculate aspect ratio for responsive sizing
+        const aspectRatio = width / height;
+        const maxWidth = 200;
+        const maxHeight = 100;
+        
+        let previewWidth = maxWidth;
+        let previewHeight = maxHeight;
+        
+        if (aspectRatio > maxWidth / maxHeight) {
+          previewHeight = maxWidth / aspectRatio;
+        } else {
+          previewWidth = maxHeight * aspectRatio;
+        }
+        
+        return (
+          <div 
+            className="relative p-1 mx-auto"
+            style={{ 
+              width: `${previewWidth}px`, 
+              height: `${previewHeight}px`,
+              minWidth: '120px',
+              minHeight: '60px'
+            }}
+          >
+            {/* Company Logo - Top Left */}
+            <div className="absolute top-1 left-1 w-4 h-3 flex items-center justify-center bg-blue-100 rounded text-xs font-bold text-blue-800">
+              LOGO
+            </div>
+            
+            {/* Company Name - Top Right */}
+            <div className="absolute top-1 right-1 text-xs font-bold text-gray-800">
+              AssetLife
+            </div>
+            
+            {/* Serial Number - Center */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+              <div className="text-xs text-gray-500 mb-1">SERIAL NUMBER</div>
+              <div className="font-mono text-sm font-bold text-gray-900">
+                {selectedItem?.serial_number}
+              </div>
+            </div>
+            
+            {/* Barcode - Bottom */}
+            <div className="absolute bottom-1 left-1 right-1 text-center">
+              <div className="text-xs text-gray-500 mb-1">BARCODE</div>
+              <div className="font-mono text-xs bg-black text-white px-1 py-0.5 rounded">
+                ||| ||| ||| ||| ||| ||| ||| |||
+              </div>
+            </div>
+          </div>
+        );
+
       case 'Text Only':
         return (
           <div className="text-center">
@@ -191,7 +249,6 @@ const PrintPreviewModal = ({
             </div>
             <div className="text-xs text-gray-600 mb-1">{selectedItem?.asset_type_name}</div>
             <div className="text-xs text-gray-600 mb-1">{selectedItem?.asset_name}</div>
-            <div className="text-xs text-gray-500">{selectedItem?.asset_location}</div>
           </div>
         );
 

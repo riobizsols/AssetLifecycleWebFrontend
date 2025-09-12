@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
+import SearchableDropdown from "./ui/SearchableDropdown";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
   const [assetType, setAssetType] = useState("");
@@ -32,7 +33,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
   
   // Properties state variables
   const [properties, setProperties] = useState([]);
-  const [selectedProperty, setSelectedProperty] = useState("");
+  const [selectedProperties, setSelectedProperties] = useState([]);
+  const [existingProperties, setExistingProperties] = useState([]);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(false);
 
   useEffect(() => {
     if (assetData) {
@@ -47,7 +50,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       setSelectedParentType(assetData.parent_asset_type_id || "");
       setSelectedMaintenanceType(assetData.maint_type_id || "");
       setMaintenanceLeadType(assetData.maint_lead_type || "");
-      setSelectedProperty(assetData.property || "");
 
       // Log the data for debugging
       console.log('Asset Type Data:', {
@@ -60,8 +62,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
         is_child: assetData.is_child,
         parent_asset_type_id: assetData.parent_asset_type_id,
         maint_type_id: assetData.maint_type_id,
-        maint_lead_type: assetData.maint_lead_type,
-        property: assetData.property
+        maint_lead_type: assetData.maint_lead_type
       });
     }
   }, [assetData]);
@@ -83,10 +84,11 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
     fetchProperties();
   }, []);
 
-  // Fetch checklist when asset type is loaded
+  // Fetch checklist and properties when asset type is loaded
   useEffect(() => {
     if (assetData?.asset_type_id) {
       fetchChecklist();
+      fetchExistingProperties();
     }
   }, [assetData?.asset_type_id]);
 
@@ -253,24 +255,128 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       console.log('Fetching properties from tblProps...');
       const res = await API.get('/properties');
       console.log('Properties response:', res.data);
+      console.log('Response status:', res.status);
+      console.log('Response headers:', res.headers);
 
-      if (res.data && Array.isArray(res.data)) {
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
         // Transform API data to dropdown format
-        const props = res.data.map(prop => ({
+        const props = res.data.data.map(prop => ({
           id: prop.prop_id || prop.id,
-          text: prop.prop_name || prop.name,
+          text: prop.property || prop.prop_name || prop.name,
           value: prop.prop_id || prop.id
         }));
         setProperties(props);
         console.log('Properties loaded:', props);
+        console.log('Properties count:', props.length);
       } else {
-        console.log('No properties found');
+        console.log('No properties found or invalid response format');
+        console.log('Response data structure:', {
+          hasData: !!res.data,
+          hasSuccess: res.data?.success,
+          hasDataArray: Array.isArray(res.data?.data),
+          dataType: typeof res.data,
+          dataKeys: res.data ? Object.keys(res.data) : 'no data'
+        });
         setProperties([]);
       }
     } catch (err) {
       console.error('Error fetching properties:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
       toast.error('Failed to load properties');
       setProperties([]);
+    }
+  };
+
+  const fetchExistingProperties = async () => {
+    if (!assetData?.asset_type_id) {
+      console.log('❌ No asset_type_id provided');
+      return;
+    }
+    
+    setIsLoadingProperties(true);
+    try {
+      console.log('🔍 Fetching existing properties for asset type:', assetData.asset_type_id);
+      const url = `/asset-types/${assetData.asset_type_id}/properties`;
+      console.log('API URL:', url);
+      
+      const res = await API.get(url);
+      console.log('Existing properties response:', res.data);
+      console.log('Response status:', res.status);
+
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        setExistingProperties(res.data.data);
+        console.log('✅ Existing properties loaded:', res.data.data);
+        console.log('Properties count:', res.data.data.length);
+      } else {
+        console.log('❌ No properties found or invalid response format');
+        console.log('Response structure:', {
+          hasData: !!res.data,
+          hasSuccess: res.data?.success,
+          hasDataArray: Array.isArray(res.data?.data),
+          dataType: typeof res.data,
+          dataKeys: res.data ? Object.keys(res.data) : 'no data'
+        });
+        setExistingProperties([]);
+      }
+    } catch (err) {
+      console.error('❌ Error fetching existing properties:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      console.error('Error message:', err.message);
+      toast.error('Failed to load existing properties');
+      setExistingProperties([]);
+    } finally {
+      setIsLoadingProperties(false);
+    }
+  };
+
+  const handleAddProperty = async (propertyId) => {
+    if (!assetData?.asset_type_id || !propertyId) return;
+
+    try {
+      console.log('Adding property to asset type:', { asset_type_id: assetData.asset_type_id, property_id: propertyId });
+      const res = await API.post(`/asset-types/${assetData.asset_type_id}/properties`, {
+        properties: [propertyId]
+      });
+      
+      console.log('Add property response:', res.data);
+      
+      if (res.data && res.data.success) {
+        toast.success('Property added successfully');
+        // Clear the selected property
+        setSelectedProperties([]);
+        // Refresh existing properties
+        fetchExistingProperties();
+      } else {
+        const errorMessage = res.data?.error || res.data?.message || 'Failed to add property';
+        toast.error(errorMessage);
+      }
+    } catch (err) {
+      console.error('Error adding property:', err);
+      console.error('Error response:', err.response?.data);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to add property';
+      toast.error(errorMessage);
+    }
+  };
+
+  const handleRemoveProperty = async (assetTypePropId) => {
+    if (!assetTypePropId) return;
+
+    try {
+      console.log('Removing property from asset type:', assetTypePropId);
+      const res = await API.delete(`/asset-types/properties/${assetTypePropId}`);
+      
+      if (res.data && res.data.success) {
+        toast.success('Property removed successfully');
+        // Refresh existing properties
+        fetchExistingProperties();
+      } else {
+        throw new Error(res.data?.message || 'Failed to remove property');
+      }
+    } catch (err) {
+      console.error('Error removing property:', err);
+      toast.error('Failed to remove property');
     }
   };
 
@@ -338,8 +444,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
         maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
-        maint_lead_type: requireMaintenance ? maintenanceLeadType : null,
-        property: selectedProperty
+        maint_lead_type: requireMaintenance ? maintenanceLeadType : null
       };
 
       // Make API call
@@ -533,25 +638,78 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
             </div>
           </div>
 
-          {/* Properties Selection */}
+          {/* Properties Management Section */}
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-1">Properties</label>
-            <select
-              value={selectedProperty}
-              onChange={(e) => setSelectedProperty(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select property</option>
-              {properties.length === 0 ? (
-                <option disabled>Loading properties...</option>
+            <div className="text-md font-medium text-gray-900 mb-4">Properties Management</div>
+            
+            {/* Add New Property */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Add Property</label>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <SearchableDropdown
+                    options={properties.filter(prop => 
+                      !existingProperties.some(existing => existing.prop_id === prop.id)
+                    )}
+                    value={selectedProperties.length > 0 ? selectedProperties[0] : ""}
+                    onChange={(value) => {
+                      if (value) {
+                        setSelectedProperties([value]);
+                      }
+                    }}
+                    placeholder="Select property to add"
+                    searchPlaceholder="Search properties..."
+                    displayKey="text"
+                    valueKey="id"
+                    className="w-full"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedProperties.length > 0) {
+                      handleAddProperty(selectedProperties[0]);
+                      setSelectedProperties([]);
+                    }
+                  }}
+                  disabled={selectedProperties.length === 0}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Existing Properties */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Current Properties</label>
+              {isLoadingProperties ? (
+                <div className="text-sm text-gray-500">Loading properties...</div>
+              ) : existingProperties.length === 0 ? (
+                <div className="text-sm text-gray-500">No properties assigned</div>
               ) : (
-                properties.map((prop) => (
-                  <option key={prop.id} value={prop.value}>
-                    {prop.text}
-                  </option>
-                ))
+                <div className="space-y-2">
+                  {existingProperties.map((prop) => (
+                    <div key={prop.asset_type_prop_id} className="flex items-center justify-between bg-gray-50 p-3 rounded border">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-900">{prop.prop_name || prop.property}</span>
+                        <span className="ml-2 text-xs text-gray-500">({prop.prop_id})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveProperty(prop.asset_type_prop_id)}
+                        className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                        title="Remove property"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
-            </select>
+            </div>
           </div>
 
           {/* Second Row: Checkboxes */}

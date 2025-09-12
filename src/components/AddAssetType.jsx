@@ -31,7 +31,7 @@ const AddAssetType = () => {
   
   // Properties state variables
   const [properties, setProperties] = useState([]);
-  const [selectedProperty, setSelectedProperty] = useState("");
+  const [selectedProperties, setSelectedProperties] = useState([]);
   
   // Document types from API
   const [documentTypes, setDocumentTypes] = useState([]);
@@ -107,12 +107,12 @@ const AddAssetType = () => {
       const res = await API.get('/properties');
       console.log('Properties response:', res.data);
 
-      if (res.data && Array.isArray(res.data)) {
+      if (res.data && res.data.success && Array.isArray(res.data.data)) { 
         // Transform API data to dropdown format
-        const props = res.data.map(prop => ({
-          id: prop.prop_id || prop.id,
-          text: prop.prop_name || prop.name,
-          value: prop.prop_id || prop.id
+        const props = res.data.data.map(prop => ({
+          id: prop.prop_id,
+          text: prop.property,
+          value: prop.prop_id
         }));
         setProperties(props);
         console.log('Properties loaded:', props);
@@ -255,8 +255,13 @@ const AddAssetType = () => {
         maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
         maint_lead_type: requireMaintenance ? maintenanceLeadType : null,
         depreciation_type: depreciationType,
-        property: selectedProperty
+        properties: selectedProperties
       };
+
+      console.log('🔍 Frontend sending form data:', formData);
+      console.log('🔍 Selected properties:', selectedProperties);
+      console.log('🔍 Properties type:', typeof selectedProperties);
+      console.log('🔍 Properties length:', selectedProperties?.length);
 
       // Make API call
       const response = await API.post('/asset-types', formData);
@@ -422,25 +427,78 @@ const AddAssetType = () => {
           </div>
         </div>
 
-        {/* Properties Selection */}
+        {/* Properties Selection - Enhanced UI */}
         <div className="mb-6">
-          <label className="block text-sm font-medium mb-1">Properties</label>
-          <select
-            value={selectedProperty}
-            onChange={(e) => setSelectedProperty(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select property</option>
-            {properties.length === 0 ? (
-              <option disabled>Loading properties...</option>
-            ) : (
-              properties.map((prop) => (
-                <option key={prop.id} value={prop.value}>
-                  {prop.text}
-                </option>
-              ))
-            )}
-          </select>
+          <label className="block text-sm font-medium mb-3">Properties</label>
+          {properties.length === 0 ? (
+            <div className="text-sm text-gray-500">Loading properties...</div>
+          ) : (
+            <div className="space-y-4">
+              {/* Selected Properties - Shown at top */}
+              {selectedProperties.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-700">
+                    Selected Properties ({selectedProperties.length})
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProperties.map((propId) => {
+                      const prop = properties.find(p => p.id === propId);
+                      return (
+                        <div
+                          key={propId}
+                          className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg border border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors"
+                          onClick={() => {
+                            setSelectedProperties(prev => prev.filter(id => id !== propId));
+                          }}
+                        >
+                          <span className="text-sm font-medium">{prop?.text}</span>
+                          <button
+                            type="button"
+                            className="text-blue-600 hover:text-blue-800 ml-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProperties(prev => prev.filter(id => id !== propId));
+                            }}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Available Properties */}
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-gray-700">
+                  Available Properties ({properties.filter(prop => !selectedProperties.includes(prop.id)).length})
+                </div>
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
+                  {properties
+                    .filter(prop => !selectedProperties.includes(prop.id))
+                    .map((prop) => (
+                      <div
+                        key={prop.id}
+                        className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-md cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                        onClick={() => {
+                          setSelectedProperties(prev => [...prev, prop.id]);
+                        }}
+                      >
+                        <span className="text-sm text-gray-700">{prop.text}</span>
+                        <div className="w-5 h-5 border border-gray-300 rounded flex items-center justify-center">
+                          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Second Row: Checkboxes */}

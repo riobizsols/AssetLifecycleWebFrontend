@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Filter, 
   RefreshCw, 
@@ -18,6 +19,9 @@ import PrintLabelScreen from '../../components/PrintLabelScreen';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 
 const SerialNumberPrint = () => {
+  const navigate = useNavigate();
+  const { assetId } = useParams();
+  
   // State management
   const [printQueue, setPrintQueue] = useState([]);
   const [filteredQueue, setFilteredQueue] = useState([]);
@@ -32,25 +36,81 @@ const SerialNumberPrint = () => {
   // Filter states
   const [filters, setFilters] = useState({
     status: 'New', // Default to New status
-    assetType: '',
-    location: '',
-    priority: '',
-    department: ''
+    assetType: ''
   });
 
   // Printer and status options
-  const [printers, setPrinters] = useState([
-    { id: 1, name: 'Main Office Laser Printer', location: 'Main Office - Floor 1', ipAddress: '192.168.1.100', status: 'Online', type: 'Laser', paperSize: 'A4' },
-    { id: 2, name: 'Warehouse Label Printer', location: 'Warehouse A - Storage', ipAddress: '192.168.1.101', status: 'Online', type: 'Label', paperSize: '4x6' },
-    { id: 3, name: 'Production Floor Printer', location: 'Production Floor - Line 1', ipAddress: '192.168.1.102', status: 'Offline', type: 'Industrial', paperSize: 'A3' },
-    { id: 4, name: 'Admin Office Printer', location: 'Admin Office - HR', ipAddress: '192.168.1.103', status: 'Online', type: 'Multifunction', paperSize: 'A4' },
-    { id: 5, name: 'IT Department Printer', location: 'Admin Office - IT', ipAddress: '192.168.1.104', status: 'Online', type: 'Laser', paperSize: 'A4' },
-    { id: 6, name: 'Conference Room Printer', location: 'Conference Room A', ipAddress: '192.168.1.105', status: 'Online', type: 'Inkjet', paperSize: 'A4' },
-    { id: 7, name: 'Lab Printer', location: 'Lab - Testing', ipAddress: '192.168.1.106', status: 'Online', type: 'Laser', paperSize: 'A4' },
-    { id: 8, name: 'Security Office Printer', location: 'Security Office', ipAddress: '192.168.1.107', status: 'Maintenance', type: 'Laser', paperSize: 'A4' },
-    { id: 9, name: 'Warehouse B Printer', location: 'Warehouse B - Receiving', ipAddress: '192.168.1.108', status: 'Online', type: 'Label', paperSize: '3x2' },
-    { id: 10, name: 'Production Line 2 Printer', location: 'Production Floor - Line 2', ipAddress: '192.168.1.109', status: 'Online', type: 'Industrial', paperSize: 'A2' }
-  ]);
+  const [printers, setPrinters] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Mock printers data for local development
+  const mockPrinters = [
+    {
+      id: 1,
+      printer_id: 'PRT001',
+      name: 'Main Office Laser Printer',
+      location: 'Main Office - Floor 1',
+      ip_address: '192.168.1.100',
+      status: 'Online',
+      type: 'Laser',
+      paper_size: 'A4',
+      paper_type: 'Paper',
+      paper_quality: 'High',
+      description: 'High-quality laser printer for standard labels'
+    },
+    {
+      id: 2,
+      printer_id: 'PRT002',
+      name: 'Warehouse Label Printer',
+      location: 'Warehouse A - Storage',
+      ip_address: '192.168.1.101',
+      status: 'Online',
+      type: 'Label',
+      paper_size: '4x6',
+      paper_type: 'Vinyl',
+      paper_quality: 'High',
+      description: 'Industrial label printer for vinyl labels'
+    },
+    {
+      id: 3,
+      printer_id: 'PRT003',
+      name: 'Small Label Printer',
+      location: 'Production Floor - Line 1',
+      ip_address: '192.168.1.102',
+      status: 'Online',
+      type: 'Label',
+      paper_size: '2x1',
+      paper_type: 'Paper',
+      paper_quality: 'High',
+      description: 'Specialized printer for small labels'
+    },
+    {
+      id: 4,
+      printer_id: 'PRT004',
+      name: 'Admin Office Printer',
+      location: 'Admin Office - HR',
+      ip_address: '192.168.1.103',
+      status: 'Online',
+      type: 'Multifunction',
+      paper_size: 'A4',
+      paper_type: 'Paper',
+      paper_quality: 'Normal',
+      description: 'Multifunction printer for various document types'
+    },
+    {
+      id: 5,
+      printer_id: 'PRT005',
+      name: 'IT Department Printer',
+      location: 'Admin Office - IT',
+      ip_address: '192.168.1.104',
+      status: 'Online',
+      type: 'Laser',
+      paper_size: 'A4',
+      paper_type: 'Paper',
+      paper_quality: 'High',
+      description: 'IT department laser printer'
+    }
+  ];
 
   // Comprehensive Label Templates System
   const labelTemplates = {
@@ -62,12 +122,36 @@ const SerialNumberPrint = () => {
       paperType: 'Paper',
       paperQuality: 'Normal',
       printerTypes: ['Laser', 'Inkjet', 'Multifunction'],
-      format: 'text-only',
-      description: 'Standard small paper label for basic equipment',
+      format: 'barcode-enhanced',
+      description: 'Enhanced small label with company logo, name, serial number and barcode',
       layout: {
-        title: { fontSize: 12, fontWeight: 'bold', position: 'top' },
-        serialNumber: { fontSize: 16, fontWeight: 'bold', position: 'center' },
-        details: { fontSize: 10, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 8, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '20%',
+          height: '30%'
+        },
+        companyName: { 
+          fontSize: 6, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '75%',
+          height: '15%'
+        },
+        serialNumber: { 
+          fontSize: 14, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '25%'
+        },
+        barcode: { 
+          fontSize: 8, 
+          position: 'bottom',
+          width: '100%',
+          height: '30%'
+        }
       }
     },
     'standard-medium': {
@@ -77,13 +161,36 @@ const SerialNumberPrint = () => {
       paperType: 'Paper',
       paperQuality: 'High',
       printerTypes: ['Laser', 'Inkjet', 'Multifunction'],
-      format: 'text-with-barcode',
-      description: 'Standard medium paper label with barcode',
+      format: 'barcode-enhanced',
+      description: 'Enhanced medium label with company logo, name, serial number and barcode',
       layout: {
-        title: { fontSize: 14, fontWeight: 'bold', position: 'top' },
-        serialNumber: { fontSize: 18, fontWeight: 'bold', position: 'center' },
-        barcode: { height: 40, position: 'center' },
-        details: { fontSize: 11, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 10, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '20%',
+          height: '25%'
+        },
+        companyName: { 
+          fontSize: 8, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '75%',
+          height: '12%'
+        },
+        serialNumber: { 
+          fontSize: 16, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '30%'
+        },
+        barcode: { 
+          fontSize: 10, 
+          position: 'bottom',
+          width: '100%',
+          height: '33%'
+        }
       }
     },
     'standard-large': {
@@ -93,13 +200,36 @@ const SerialNumberPrint = () => {
       paperType: 'Paper',
       paperQuality: 'High',
       printerTypes: ['Laser', 'Inkjet', 'Multifunction'],
-      format: 'text-with-qr',
-      description: 'Standard large paper label with QR code',
+      format: 'barcode-enhanced',
+      description: 'Enhanced large label with company logo, name, serial number and barcode',
       layout: {
-        title: { fontSize: 16, fontWeight: 'bold', position: 'top' },
-        serialNumber: { fontSize: 20, fontWeight: 'bold', position: 'center' },
-        qrCode: { size: 60, position: 'center' },
-        details: { fontSize: 12, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 12, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '20%',
+          height: '20%'
+        },
+        companyName: { 
+          fontSize: 10, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '75%',
+          height: '10%'
+        },
+        serialNumber: { 
+          fontSize: 18, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '25%'
+        },
+        barcode: { 
+          fontSize: 12, 
+          position: 'bottom',
+          width: '100%',
+          height: '45%'
+        }
       }
     },
 
@@ -111,11 +241,36 @@ const SerialNumberPrint = () => {
       paperType: 'Vinyl',
       paperQuality: 'High',
       printerTypes: ['Label'],
-      format: 'barcode-only',
-      description: 'Small vinyl label with barcode for small equipment',
+      format: 'barcode-enhanced',
+      description: 'Enhanced small vinyl label with company logo, name, serial number and barcode',
       layout: {
-        barcode: { height: 30, position: 'center' },
-        serialNumber: { fontSize: 8, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 6, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '25%',
+          height: '40%'
+        },
+        companyName: { 
+          fontSize: 4, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '70%',
+          height: '20%'
+        },
+        serialNumber: { 
+          fontSize: 8, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '20%'
+        },
+        barcode: { 
+          fontSize: 6, 
+          position: 'bottom',
+          width: '100%',
+          height: '20%'
+        }
       }
     },
     'vinyl-medium': {
@@ -125,13 +280,36 @@ const SerialNumberPrint = () => {
       paperType: 'Vinyl',
       paperQuality: 'High',
       printerTypes: ['Label'],
-      format: 'text-with-barcode',
-      description: 'Medium vinyl label with barcode and text',
+      format: 'barcode-enhanced',
+      description: 'Enhanced medium vinyl label with company logo, name, serial number and barcode',
       layout: {
-        title: { fontSize: 12, fontWeight: 'bold', position: 'top' },
-        serialNumber: { fontSize: 16, fontWeight: 'bold', position: 'center' },
-        barcode: { height: 35, position: 'center' },
-        details: { fontSize: 10, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 8, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '20%',
+          height: '30%'
+        },
+        companyName: { 
+          fontSize: 6, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '75%',
+          height: '15%'
+        },
+        serialNumber: { 
+          fontSize: 14, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '25%'
+        },
+        barcode: { 
+          fontSize: 8, 
+          position: 'bottom',
+          width: '100%',
+          height: '30%'
+        }
       }
     },
     'vinyl-large': {
@@ -141,13 +319,36 @@ const SerialNumberPrint = () => {
       paperType: 'Vinyl',
       paperQuality: 'High',
       printerTypes: ['Label'],
-      format: 'text-with-qr',
-      description: 'Large vinyl label with QR code and detailed text',
+      format: 'barcode-enhanced',
+      description: 'Enhanced large vinyl label with company logo, name, serial number and barcode',
       layout: {
-        title: { fontSize: 14, fontWeight: 'bold', position: 'top' },
-        serialNumber: { fontSize: 18, fontWeight: 'bold', position: 'center' },
-        qrCode: { size: 50, position: 'center' },
-        details: { fontSize: 11, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 10, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '20%',
+          height: '20%'
+        },
+        companyName: { 
+          fontSize: 8, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '75%',
+          height: '10%'
+        },
+        serialNumber: { 
+          fontSize: 16, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '25%'
+        },
+        barcode: { 
+          fontSize: 10, 
+          position: 'bottom',
+          width: '100%',
+          height: '45%'
+        }
       }
     },
 
@@ -159,12 +360,36 @@ const SerialNumberPrint = () => {
       paperType: 'Metal',
       paperQuality: 'High',
       printerTypes: ['Industrial'],
-      format: 'text-only',
-      description: 'Small metal label for industrial equipment',
+      format: 'barcode-enhanced',
+      description: 'Enhanced small metal label with company logo, name, serial number and barcode',
       layout: {
-        title: { fontSize: 10, fontWeight: 'bold', position: 'top' },
-        serialNumber: { fontSize: 14, fontWeight: 'bold', position: 'center' },
-        details: { fontSize: 8, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 8, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '20%',
+          height: '30%'
+        },
+        companyName: { 
+          fontSize: 6, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '75%',
+          height: '15%'
+        },
+        serialNumber: { 
+          fontSize: 12, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '25%'
+        },
+        barcode: { 
+          fontSize: 8, 
+          position: 'bottom',
+          width: '100%',
+          height: '30%'
+        }
       }
     },
     'industrial-medium': {
@@ -174,13 +399,36 @@ const SerialNumberPrint = () => {
       paperType: 'Metal',
       paperQuality: 'High',
       printerTypes: ['Industrial'],
-      format: 'text-with-qr',
-      description: 'Medium metal label with QR code for industrial equipment',
+      format: 'barcode-enhanced',
+      description: 'Enhanced medium metal label with company logo, name, serial number and barcode',
       layout: {
-        title: { fontSize: 12, fontWeight: 'bold', position: 'top' },
-        serialNumber: { fontSize: 16, fontWeight: 'bold', position: 'center' },
-        qrCode: { size: 40, position: 'center' },
-        details: { fontSize: 10, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 10, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '20%',
+          height: '25%'
+        },
+        companyName: { 
+          fontSize: 8, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '75%',
+          height: '12%'
+        },
+        serialNumber: { 
+          fontSize: 14, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '30%'
+        },
+        barcode: { 
+          fontSize: 10, 
+          position: 'bottom',
+          width: '100%',
+          height: '33%'
+        }
       }
     },
     'industrial-large': {
@@ -190,13 +438,36 @@ const SerialNumberPrint = () => {
       paperType: 'Metal',
       paperQuality: 'High',
       printerTypes: ['Industrial'],
-      format: 'text-with-qr',
-      description: 'Large metal label with QR code for server equipment',
+      format: 'barcode-enhanced',
+      description: 'Enhanced large metal label with company logo, name, serial number and barcode',
       layout: {
-        title: { fontSize: 14, fontWeight: 'bold', position: 'top' },
-        serialNumber: { fontSize: 18, fontWeight: 'bold', position: 'center' },
-        qrCode: { size: 60, position: 'center' },
-        details: { fontSize: 12, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 12, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '20%',
+          height: '20%'
+        },
+        companyName: { 
+          fontSize: 10, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '75%',
+          height: '10%'
+        },
+        serialNumber: { 
+          fontSize: 16, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '25%'
+        },
+        barcode: { 
+          fontSize: 12, 
+          position: 'bottom',
+          width: '100%',
+          height: '45%'
+        }
       }
     },
 
@@ -208,11 +479,36 @@ const SerialNumberPrint = () => {
       paperType: 'Vinyl',
       paperQuality: 'High',
       printerTypes: ['Label'],
-      format: 'barcode-only',
-      description: 'Small vinyl label for network equipment (routers, switches)',
+      format: 'barcode-enhanced',
+      description: 'Enhanced small vinyl label for network equipment with company logo, name, serial number and barcode',
       layout: {
-        barcode: { height: 25, position: 'center' },
-        serialNumber: { fontSize: 7, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 6, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '25%',
+          height: '40%'
+        },
+        companyName: { 
+          fontSize: 4, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '70%',
+          height: '20%'
+        },
+        serialNumber: { 
+          fontSize: 7, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '20%'
+        },
+        barcode: { 
+          fontSize: 6, 
+          position: 'bottom',
+          width: '100%',
+          height: '20%'
+        }
       }
     },
     'cable-label': {
@@ -222,10 +518,36 @@ const SerialNumberPrint = () => {
       paperType: 'Paper',
       paperQuality: 'Normal',
       printerTypes: ['Label'],
-      format: 'text-only',
-      description: 'Very small label for cable identification',
+      format: 'barcode-enhanced',
+      description: 'Enhanced very small label for cable identification with company logo, name, serial number and barcode',
       layout: {
-        serialNumber: { fontSize: 8, fontWeight: 'bold', position: 'center' }
+        companyLogo: { 
+          fontSize: 4, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '30%',
+          height: '50%'
+        },
+        companyName: { 
+          fontSize: 3, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '65%',
+          height: '25%'
+        },
+        serialNumber: { 
+          fontSize: 6, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '25%'
+        },
+        barcode: { 
+          fontSize: 4, 
+          position: 'bottom',
+          width: '100%',
+          height: '0%'
+        }
       }
     },
     'asset-tag': {
@@ -235,34 +557,56 @@ const SerialNumberPrint = () => {
       paperType: 'Paper',
       paperQuality: 'High',
       printerTypes: ['Laser', 'Inkjet'],
-      format: 'text-with-barcode',
-      description: 'Standard asset tag with company branding',
+      format: 'barcode-enhanced',
+      description: 'Enhanced standard asset tag with company logo, name, serial number and barcode',
       layout: {
-        companyLogo: { position: 'top-left', size: 20 },
-        title: { fontSize: 12, fontWeight: 'bold', position: 'top' },
-        serialNumber: { fontSize: 16, fontWeight: 'bold', position: 'center' },
-        barcode: { height: 30, position: 'center' },
-        details: { fontSize: 10, position: 'bottom' }
+        companyLogo: { 
+          fontSize: 10, 
+          fontWeight: 'bold', 
+          position: 'top-left',
+          width: '20%',
+          height: '25%'
+        },
+        companyName: { 
+          fontSize: 8, 
+          fontWeight: 'bold', 
+          position: 'top-right',
+          width: '75%',
+          height: '12%'
+        },
+        serialNumber: { 
+          fontSize: 14, 
+          fontWeight: 'bold', 
+          position: 'center',
+          width: '100%',
+          height: '30%'
+        },
+        barcode: { 
+          fontSize: 10, 
+          position: 'bottom',
+          width: '100%',
+          height: '33%'
+        }
       }
     }
   };
 
   // Asset type to template mapping (recommended templates for each asset type)
   const assetTypeTemplateMapping = {
-    'Laptop': ['vinyl-large', 'standard-large', 'asset-tag'],
-    'Desktop Computer': ['standard-large', 'asset-tag', 'industrial-medium'],
-    'Printer': ['standard-medium', 'standard-small'],
-    'Scanner': ['standard-medium', 'standard-small'],
-    'Monitor': ['vinyl-medium', 'standard-medium'],
+    'Laptop': ['standard-small', 'standard-medium', 'asset-tag'],
+    'Desktop Computer': ['standard-small', 'standard-medium', 'asset-tag'],
+    'Printer': ['standard-small', 'standard-medium'],
+    'Scanner': ['standard-small', 'standard-medium'],
+    'Monitor': ['standard-small', 'standard-medium'],
     'Server': ['industrial-large', 'asset-tag'],
     'Router': ['network-equipment', 'vinyl-small'],
     'Switch': ['network-equipment', 'vinyl-small'],
-    'Projector': ['standard-medium', 'vinyl-medium'],
-    'Camera': ['vinyl-medium', 'standard-medium'],
+    'Projector': ['standard-small', 'standard-medium'],
+    'Camera': ['standard-small', 'standard-medium'],
     'Keyboard': ['standard-small', 'vinyl-small'],
-    'Mouse': ['vinyl-small', 'standard-small'],
-    'Tablet': ['vinyl-medium', 'standard-medium'],
-    'Phone': ['vinyl-medium', 'standard-medium'],
+    'Mouse': ['standard-small', 'vinyl-small'],
+    'Tablet': ['standard-small', 'standard-medium'],
+    'Phone': ['standard-small', 'standard-medium'],
     'Headset': ['standard-small', 'vinyl-small'],
     'External Drive': ['vinyl-medium', 'standard-medium'],
     'UPS': ['industrial-medium', 'asset-tag'],
@@ -279,6 +623,98 @@ const SerialNumberPrint = () => {
     template: ''
   });
 
+  // Data fetching functions
+  const fetchPrintQueue = async (status = filters.status) => {
+    try {
+      setIsLoading(true);
+      console.log('Fetching print queue with status:', status);
+      
+      // Use the new API endpoint with status parameter
+      const response = await API.get(`/asset-serial-print/status/${status}`);
+      
+      if (response.data && response.data.success) {
+        console.log('Print queue response:', response.data);
+        
+        // Transform the data to match the expected format
+        const transformedData = response.data.data.map(item => ({
+          psnq_id: item.psnq_id,
+          serial_number: item.serial_no,
+          status: item.status,
+          reason: item.reason,
+          created_by: item.created_by,
+          created_at: item.created_on,
+          org_id: item.org_id,
+          // Asset details
+          asset_id: item.asset_details?.asset_id,
+          asset_name: item.asset_details?.asset_name,
+          asset_serial_number: item.asset_details?.asset_serial_number,
+          purchased_on: item.asset_details?.purchased_on,
+          expiry_date: item.asset_details?.expiry_date,
+          current_status: item.asset_details?.current_status,
+          // Asset type details
+          asset_type_id: item.asset_type_details?.asset_type_id,
+          asset_type_name: item.asset_type_details?.asset_type_name,
+          assignment_type: item.asset_type_details?.assignment_type,
+          maint_required: item.asset_type_details?.maint_required,
+          inspection_required: item.asset_type_details?.inspection_required,
+          group_required: item.asset_type_details?.group_required,
+          // Additional fields for compatibility
+          asset_description: item.asset_details?.asset_name || '',
+          estimated_cost: 0 // Default cost
+        }));
+        
+        console.log('Transformed data:', transformedData);
+        setPrintQueue(transformedData);
+        setFilteredQueue(transformedData);
+      } else {
+        console.error('Failed to fetch print queue:', response.data);
+        setPrintQueue([]);
+        setFilteredQueue([]);
+      }
+    } catch (error) {
+      console.error('Error fetching print queue:', error);
+      toast.error('Failed to load print queue');
+      setPrintQueue([]);
+      setFilteredQueue([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchPrinters = async () => {
+    try {
+      console.log('Loading mock printers...');
+      // Use mock data for local development
+      setPrinters(mockPrinters);
+      console.log('Mock printers loaded:', mockPrinters.length);
+    } catch (error) {
+      console.error('Error loading mock printers:', error);
+      setPrinters([]);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchPrintQueue();
+    fetchPrinters();
+  }, []);
+
+  // Debug printers when they change
+  useEffect(() => {
+    console.log('Printers state changed:', printers);
+  }, [printers]);
+
+  // Debug printSettings when they change
+  useEffect(() => {
+    console.log('Print settings changed:', printSettings);
+  }, [printSettings]);
+
+  // Fetch data when status filter changes
+  useEffect(() => {
+    if (filters.status) {
+      fetchPrintQueue(filters.status);
+    }
+  }, [filters.status]);
 
   const statusOptions = [
     { id: 'New', name: 'New', color: 'bg-blue-100 text-blue-800' },
@@ -293,16 +729,23 @@ const SerialNumberPrint = () => {
     { name: 'asset_type_name', label: 'Asset Type', visible: true },
     { name: 'asset_name', label: 'Asset Name', visible: true },
     { name: 'asset_description', label: 'Description', visible: true },
-    { name: 'asset_location', label: 'Location', visible: true },
     { name: 'reason', label: 'Reason', visible: true },
-    { name: 'priority', label: 'Priority', visible: true },
-    { name: 'department', label: 'Department', visible: true },
     { name: 'status', label: 'Status', visible: true },
     { name: 'created_at', label: 'Created Date', visible: true },
     { name: 'created_by', label: 'Created By', visible: false },
     { name: 'estimated_cost', label: 'Est. Cost', visible: false },
     { name: 'actions', label: 'Actions', visible: true }
   ];
+
+  // Get unique asset types for dropdown
+  const getAssetTypeOptions = () => {
+    const uniqueAssetTypes = [...new Set(printQueue.map(item => item.asset_type_name).filter(Boolean))];
+    const options = uniqueAssetTypes.map(type => ({
+      id: type,
+      text: type
+    }));
+    return [{ id: '', text: 'All Asset Types' }, ...options];
+  };
 
   // Fetch print queue data
   useEffect(() => {
@@ -314,208 +757,38 @@ const SerialNumberPrint = () => {
     applyFilters();
   }, [filters, printQueue]);
 
-  const fetchPrintQueue = async () => {
-    setIsLoading(true);
-    try {
-      // For now, always use mock data for demonstration
-      // TODO: Replace with actual API call when backend is ready
-      const mockData = generateMockPrintQueue();
-      console.log('Generated mock data:', mockData.length, 'items');
-      setPrintQueue(mockData);
-      
-      // Uncomment below when API is ready:
-      // const response = await API.get('/serial-numbers/print-queue', {
-      //   params: { status: filters.status }
-      // });
-      // 
-      // if (response.data && response.data.success) {
-      //   setPrintQueue(response.data.data);
-      // } else {
-      //   setPrintQueue(generateMockPrintQueue());
-      // }
-    } catch (error) {
-      console.error('Error fetching print queue:', error);
-      // Use mock data on error
-      setPrintQueue(generateMockPrintQueue());
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const generateMockPrintQueue = () => {
-    const mockData = [];
-    
-    // More comprehensive asset types
-    const assetTypes = [
-      'Laptop', 'Desktop Computer', 'Printer', 'Scanner', 'Tablet', 
-      'Monitor', 'Keyboard', 'Mouse', 'Router', 'Switch', 'Server',
-      'Projector', 'Camera', 'Phone', 'Headset', 'External Drive',
-      'UPS', 'Firewall', 'Access Point', 'Cable', 'Adapter'
-    ];
-    
-    // More detailed locations
-    const locations = [
-      'Main Office - Floor 1', 'Main Office - Floor 2', 'Main Office - Floor 3',
-      'Warehouse A - Storage', 'Warehouse B - Receiving', 'Warehouse C - Shipping',
-      'Production Floor - Line 1', 'Production Floor - Line 2', 'Production Floor - Line 3',
-      'Admin Office - HR', 'Admin Office - Finance', 'Admin Office - IT',
-      'Conference Room A', 'Conference Room B', 'Meeting Room 1',
-      'Lab - Testing', 'Lab - Development', 'Lab - Quality Control',
-      'Reception Area', 'Security Office', 'Maintenance Room'
-    ];
-    
-    // More specific reasons
-    const reasons = [
-      'New Asset Purchase', 'Asset Replacement', 'Maintenance Required', 
-      'Upgrade Needed', 'Warranty Claim', 'Damage Repair', 'End of Life',
-      'Department Transfer', 'Employee Assignment', 'Project Allocation',
-      'Backup Equipment', 'Emergency Replacement', 'Seasonal Requirement',
-      'Compliance Update', 'Technology Refresh', 'Capacity Expansion'
-    ];
-    
-    // Status distribution (more realistic)
-    const statusDistribution = [
-      { status: 'New', weight: 40 },
-      { status: 'In-progress', weight: 25 },
-      { status: 'Completed', weight: 30 },
-      { status: 'Cancelled', weight: 5 }
-    ];
-    
-    // Generate weighted random status
-    const getRandomStatus = () => {
-      const random = Math.random() * 100;
-      let cumulative = 0;
-      for (const item of statusDistribution) {
-        cumulative += item.weight;
-        if (random <= cumulative) {
-          return item.status;
-        }
+  // Auto-select asset when assetId is provided in URL
+  useEffect(() => {
+    if (assetId && printQueue.length > 0) {
+      const asset = printQueue.find(item => item.asset_id === assetId);
+      if (asset) {
+        console.log('Auto-selecting asset from URL:', asset);
+        handleSelectItem(asset);
+      } else {
+        console.log('Asset not found with ID:', assetId);
+        toast.error('Asset not found');
       }
-      return 'New';
-    };
-    
-    // More detailed asset names and descriptions
-    const assetNameTemplates = {
-      'Laptop': ['Dell Latitude 5520', 'HP EliteBook 850', 'Lenovo ThinkPad X1', 'MacBook Pro 16"', 'Surface Laptop 4'],
-      'Desktop Computer': ['Dell OptiPlex 7090', 'HP ProDesk 400', 'Lenovo ThinkCentre M920', 'iMac 24"', 'Custom Build PC'],
-      'Printer': ['HP LaserJet Pro 400', 'Canon imageCLASS LBP', 'Brother HL-L2350DW', 'Epson WorkForce Pro', 'Xerox Phaser 6510'],
-      'Scanner': ['HP ScanJet Pro 2500', 'Canon CanoScan LiDE 400', 'Epson Perfection V600', 'Fujitsu ScanSnap iX1500', 'Brother MFC-L2750DW'],
-      'Monitor': ['Dell UltraSharp 27"', 'HP EliteDisplay E243', 'Samsung 24" LED', 'LG 27" 4K', 'ASUS ProArt PA248QV'],
-      'Server': ['Dell PowerEdge R750', 'HP ProLiant DL380', 'Lenovo ThinkSystem SR650', 'IBM System x3650', 'Supermicro SuperServer'],
-      'Router': ['Cisco ISR 4331', 'Netgear Nighthawk X10', 'TP-Link Archer C9', 'Ubiquiti EdgeRouter X', 'Fortinet FortiGate 60E'],
-      'Switch': ['Cisco Catalyst 2960', 'Netgear ProSAFE GS728TP', 'TP-Link T1600G-28TS', 'Ubiquiti UniFi Switch', 'HP ProCurve 2520'],
-      'Projector': ['Epson PowerLite 1781W', 'BenQ MW632ST', 'Optoma HD146X', 'ViewSonic PA503X', 'Sony VPL-FHZ75'],
-      'Camera': ['Canon EOS R5', 'Sony A7R IV', 'Nikon D850', 'Panasonic Lumix GH5', 'Fujifilm X-T4']
-    };
-    
-    const assetDescriptions = {
-      'Laptop': [
-        'High-performance business laptop with Intel i7 processor, 16GB RAM, and 512GB SSD',
-        'Ultra-portable laptop with long battery life and premium build quality',
-        'Gaming laptop with dedicated graphics card and high-refresh display',
-        'Convertible 2-in-1 laptop with touchscreen and stylus support',
-        'Enterprise laptop with enhanced security features and manageability'
-      ],
-      'Desktop Computer': [
-        'High-end workstation with Intel i9 processor, 32GB RAM, and 1TB NVMe SSD',
-        'Compact desktop with energy-efficient components and quiet operation',
-        'Gaming desktop with RTX graphics card and liquid cooling',
-        'All-in-one desktop with integrated display and wireless peripherals',
-        'Server-grade desktop with ECC memory and redundant storage'
-      ],
-      'Printer': [
-        'High-speed laser printer with duplex printing and network connectivity',
-        'Color laser printer with automatic document feeder and finishing options',
-        'Inkjet printer with photo-quality printing and wireless connectivity',
-        'Multifunction printer with scan, copy, and fax capabilities',
-        'Large format printer for architectural and engineering drawings'
-      ],
-      'Scanner': [
-        'High-resolution flatbed scanner with automatic document feeder',
-        'Portable document scanner with battery operation and wireless transfer',
-        'Sheet-fed scanner with duplex scanning and OCR capabilities',
-        'Film scanner for 35mm negatives and slides with dust removal',
-        '3D scanner for creating digital models of physical objects'
-      ]
-    };
-    
-    // Generate 50 items for better testing
-    for (let i = 0; i < 50; i++) {
-      const randomDate = new Date();
-      randomDate.setDate(randomDate.getDate() - Math.floor(Math.random() * 90)); // Last 3 months
-      
-      const assetType = assetTypes[Math.floor(Math.random() * assetTypes.length)];
-      const nameTemplates = assetNameTemplates[assetType] || [`${assetType} Model ${i + 1}`];
-      const descriptions = assetDescriptions[assetType] || [`Professional ${assetType.toLowerCase()} for office use`];
-      
-      // Generate realistic serial number based on asset type
-      const typeCode = assetType.substring(0, 2).toUpperCase().padStart(2, '0');
-      const year = (new Date().getFullYear() - Math.floor(Math.random() * 3)).toString().slice(-2);
-      const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
-      const sequence = String(i + 1).padStart(5, '0');
-      const serialNumber = `${typeCode}${year}${month}${sequence}`;
-      
-      mockData.push({
-        psnq_id: i + 1,
-        serial_number: serialNumber,
-        asset_type_name: assetType,
-        asset_name: nameTemplates[Math.floor(Math.random() * nameTemplates.length)],
-        asset_description: descriptions[Math.floor(Math.random() * descriptions.length)],
-        asset_location: locations[Math.floor(Math.random() * locations.length)],
-        reason: reasons[Math.floor(Math.random() * reasons.length)],
-        status: getRandomStatus(),
-        created_at: randomDate.toISOString(),
-        created_by: ['admin', 'manager1', 'supervisor', 'technician', 'user1'][Math.floor(Math.random() * 5)],
-        priority: ['Low', 'Medium', 'High', 'Critical'][Math.floor(Math.random() * 4)],
-        estimated_cost: Math.floor(Math.random() * 5000) + 100,
-        department: ['IT', 'Finance', 'HR', 'Operations', 'Maintenance', 'Security'][Math.floor(Math.random() * 6)]
-      });
     }
-    
-    // Sort by created date (newest first)
-    return mockData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  };
+  }, [assetId, printQueue]);
+
+ 
 
   const applyFilters = () => {
     let filtered = [...printQueue];
     console.log('Applying filters. Original data:', printQueue.length, 'items');
     console.log('Current filters:', filters);
 
-    // Filter by status
-    if (filters.status) {
-      filtered = filtered.filter(item => item.status === filters.status);
-      console.log('After status filter:', filtered.length, 'items');
-    }
+    // Note: Status filtering is now handled by the API call
+    // We only apply client-side filters for other fields
 
     // Filter by asset type
     if (filters.assetType) {
       filtered = filtered.filter(item => 
-        item.asset_type_name.toLowerCase().includes(filters.assetType.toLowerCase())
+        item.asset_type_name && item.asset_type_name.toLowerCase().includes(filters.assetType.toLowerCase())
       );
       console.log('After asset type filter:', filtered.length, 'items');
     }
 
-    // Filter by location
-    if (filters.location) {
-      filtered = filtered.filter(item => 
-        item.asset_location.toLowerCase().includes(filters.location.toLowerCase())
-      );
-      console.log('After location filter:', filtered.length, 'items');
-    }
-
-    // Filter by priority
-    if (filters.priority) {
-      filtered = filtered.filter(item => item.priority === filters.priority);
-      console.log('After priority filter:', filtered.length, 'items');
-    }
-
-    // Filter by department
-    if (filters.department) {
-      filtered = filtered.filter(item => 
-        item.department.toLowerCase().includes(filters.department.toLowerCase())
-      );
-      console.log('After department filter:', filtered.length, 'items');
-    }
 
     console.log('Final filtered data:', filtered.length, 'items');
     setFilteredQueue(filtered);
@@ -532,12 +805,13 @@ const SerialNumberPrint = () => {
     setSelectedItem(item);
     // Auto-select recommended printer and template
     const recommendedPrinter = getRecommendedPrinter(item);
-    const recommendedTemplateIds = assetTypeTemplateMapping[item.asset_type_name] || [];
-    const primaryTemplate = recommendedTemplateIds.length > 0 ? recommendedTemplateIds[0] : 'standard-medium';
+    const recommendedTemplateIds = assetTypeTemplateMapping[item.asset_type_name] || ['standard-small'];
+    const primaryTemplate = recommendedTemplateIds.length > 0 ? recommendedTemplateIds[0] : 'standard-small';
     
+    // Set print settings with fallbacks
     setPrintSettings({
-      printerId: recommendedPrinter.id.toString(),
-      printerType: recommendedPrinter.type,
+      printerId: recommendedPrinter?.id?.toString() || '',
+      printerType: recommendedPrinter?.type || '',
       template: primaryTemplate
     });
     setShowPrintPage(true);
@@ -617,8 +891,7 @@ const SerialNumberPrint = () => {
     console.log('Asset details:', {
       serialNumber: asset.serial_number,
       assetType: asset.asset_type_name,
-      assetName: asset.asset_name,
-      location: asset.asset_location
+      assetName: asset.asset_name
     });
     console.log('Print settings:', {
       printer: printer.name,
@@ -646,28 +919,38 @@ const SerialNumberPrint = () => {
   };
 
   const getRecommendedPrinter = (asset) => {
-    // Get printers that match the asset's location
-    const locationMatch = printers.filter(printer => 
-      printer.location.toLowerCase().includes(asset.asset_location.toLowerCase()) ||
-      asset.asset_location.toLowerCase().includes(printer.location.toLowerCase())
-    );
+    console.log('getRecommendedPrinter called with asset:', asset);
+    console.log('Available printers:', printers);
+    
+    // If no printers available, return null
+    if (!printers || printers.length === 0) {
+      console.log('No printers available');
+      return null;
+    }
+
+    // Skip location matching since location column was removed
+    let locationMatch = [];
 
     // Get recommended templates for this asset type
-    const recommendedTemplateIds = assetTypeTemplateMapping[asset.asset_type_name] || [];
-    const primaryTemplate = recommendedTemplateIds.length > 0 ? labelTemplates[recommendedTemplateIds[0]] : null;
+    const recommendedTemplateIds = assetTypeTemplateMapping[asset.asset_type_name] || ['standard-small'];
+    const primaryTemplate = recommendedTemplateIds.length > 0 ? labelTemplates[recommendedTemplateIds[0]] : labelTemplates['standard-small'];
     
     // Get printers that match the primary template requirements
     let typeMatch = [];
-    if (primaryTemplate) {
+    if (primaryTemplate && primaryTemplate.printerTypes) {
       typeMatch = printers.filter(printer => 
         primaryTemplate.printerTypes.includes(printer.type)
       );
     }
 
     // Return the best match
-    if (locationMatch.length > 0) return locationMatch[0];
-    if (typeMatch.length > 0) return typeMatch[0];
-    return printers.find(p => p.status === 'Online') || printers[0];
+    if (locationMatch.length > 0) {
+      return locationMatch[0];
+    }
+    if (typeMatch.length > 0) {
+      return typeMatch[0];
+    }
+    return printers.find(p => p.status === 'Online') || printers[0] || null;
   };
 
   // Get available printer types based on selected template
@@ -753,34 +1036,49 @@ const SerialNumberPrint = () => {
 
   // Get filtered printers based on selected type and template
   const getFilteredPrinters = () => {
-    if (!selectedItem) return printers;
+    console.log('getFilteredPrinters called with:', {
+      selectedItem: selectedItem?.asset_type_name,
+      printerType: printSettings.printerType,
+      template: printSettings.template,
+      totalPrinters: printers.length
+    });
     
-    let filtered = printers;
+    if (!selectedItem) {
+      console.log('No selected item, returning all printers');
+      return printers;
+    }
+    
+    let filtered = [...printers];
+    console.log('Starting with', filtered.length, 'printers');
     
     // Filter by printer type if selected
     if (printSettings.printerType) {
-      filtered = printers.filter(printer => printer.type === printSettings.printerType);
+      filtered = filtered.filter(printer => printer.type === printSettings.printerType);
+      console.log('After printer type filter:', filtered.length, 'printers');
     }
     
     // Filter by template requirements if template is selected
     if (printSettings.template) {
-      const selectedTemplate = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
-      if (selectedTemplate) {
+      const selectedTemplate = labelTemplates[printSettings.template];
+      console.log('Selected template:', selectedTemplate);
+      if (selectedTemplate && selectedTemplate.printerTypes) {
+        console.log('Template printer types:', selectedTemplate.printerTypes);
         // Filter printers that support the template's printer types
         filtered = filtered.filter(printer => 
           selectedTemplate.printerTypes.includes(printer.type)
         );
+        console.log('After template filter:', filtered.length, 'printers');
       }
     }
     
     // Debug logging
-    console.log('Filtering printers:', {
+    console.log('Final filtered printers:', {
       totalPrinters: printers.length,
       printerType: printSettings.printerType,
       template: printSettings.template,
       selectedItem: selectedItem?.asset_type_name,
       filteredCount: filtered.length,
-      filteredPrinters: filtered.map(p => ({ id: p.id, name: p.name, type: p.type, paperSize: p.paperSize }))
+      filteredPrinters: filtered.map(p => ({ id: p.id, name: p.name, type: p.type }))
     });
     
     return filtered;
@@ -865,17 +1163,6 @@ const SerialNumberPrint = () => {
     return row[col.name];
   };
 
-  const renderLocation = (col, row) => {
-    if (col.name === 'asset_location') {
-      return (
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-gray-500" />
-          <span className="text-sm">{row.asset_location}</span>
-        </div>
-      );
-    }
-    return row[col.name];
-  };
 
   const renderActions = (col, row) => {
     if (col.name === 'actions') {
@@ -902,33 +1189,7 @@ const SerialNumberPrint = () => {
     return row[col.name];
   };
 
-  const renderPriority = (col, row) => {
-    if (col.name === 'priority') {
-      const priorityColors = {
-        'Low': 'bg-gray-100 text-gray-800',
-        'Medium': 'bg-yellow-100 text-yellow-800',
-        'High': 'bg-orange-100 text-orange-800',
-        'Critical': 'bg-red-100 text-red-800'
-      };
-      return (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${priorityColors[row.priority] || 'bg-gray-100 text-gray-800'}`}>
-          {row.priority}
-        </span>
-      );
-    }
-    return row[col.name];
-  };
 
-  const renderDepartment = (col, row) => {
-    if (col.name === 'department') {
-      return (
-        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-          {row.department}
-        </span>
-      );
-    }
-    return row[col.name];
-  };
 
   const renderEstimatedCost = (col, row) => {
     if (col.name === 'estimated_cost') {
@@ -994,7 +1255,7 @@ const SerialNumberPrint = () => {
               Filters
             </button>
             <button
-              onClick={fetchPrintQueue}
+              onClick={() => fetchPrintQueue(filters.status)}
               className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
@@ -1030,70 +1291,15 @@ const SerialNumberPrint = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Asset Type
               </label>
-              <input
-                type="text"
+              <SearchableDropdown
+                options={getAssetTypeOptions()}
                 value={filters.assetType}
-                onChange={(e) => handleFilterChange('assetType', e.target.value)}
-                placeholder="Filter by asset type..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            {/* Location Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Location
-              </label>
-              <input
-                type="text"
-                value={filters.location}
-                onChange={(e) => handleFilterChange('location', e.target.value)}
-                placeholder="Filter by location..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            {/* Priority Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Priority
-              </label>
-              <SearchableDropdown
-                options={[
-                  { id: '', text: 'All Priorities' },
-                  { id: 'Low', text: 'Low' },
-                  { id: 'Medium', text: 'Medium' },
-                  { id: 'High', text: 'High' },
-                  { id: 'Critical', text: 'Critical' }
-                ]}
-                value={filters.priority}
-                onChange={(value) => setFilters(prev => ({ ...prev, priority: value }))}
-                placeholder="Select priority..."
+                onChange={(value) => setFilters(prev => ({ ...prev, assetType: value }))}
+                placeholder="Select asset type..."
                 className="w-full"
               />
             </div>
 
-            {/* Department Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Department
-              </label>
-              <SearchableDropdown
-                options={[
-                  { id: '', text: 'All Departments' },
-                  { id: 'IT', text: 'IT' },
-                  { id: 'Finance', text: 'Finance' },
-                  { id: 'HR', text: 'HR' },
-                  { id: 'Operations', text: 'Operations' },
-                  { id: 'Maintenance', text: 'Maintenance' },
-                  { id: 'Security', text: 'Security' }
-                ]}
-                value={filters.department}
-                onChange={(value) => setFilters(prev => ({ ...prev, department: value }))}
-                placeholder="Select department..."
-                className="w-full"
-              />
-            </div>
           </div>
         </div>
       )}
@@ -1146,11 +1352,8 @@ const SerialNumberPrint = () => {
             renderCell={(col, row) => {
               if (col.name === 'serial_number') return renderSerialNumber(col, row);
               if (col.name === 'status') return renderStatus(col, row);
-              if (col.name === 'asset_location') return renderLocation(col, row);
               if (col.name === 'actions') return renderActions(col, row);
               if (col.name === 'created_at') return renderCreatedDate(col, row);
-              if (col.name === 'priority') return renderPriority(col, row);
-              if (col.name === 'department') return renderDepartment(col, row);
               if (col.name === 'estimated_cost') return renderEstimatedCost(col, row);
               if (col.name === 'created_by') return renderCreatedBy(col, row);
               return row[col.name];

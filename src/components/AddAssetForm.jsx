@@ -705,7 +705,30 @@ const AddAssetForm = ({ userRole }) => {
       if (createdAssetId) {
         setForm(prev => ({ ...prev, assetId: createdAssetId }));
         console.log('✅ Asset ID stored in form state:', createdAssetId);
-        toast.success('Asset created successfully! You can now upload documents.');
+        
+        // Add serial number to print queue
+        try {
+          console.log('🖨️ Adding serial number to print queue:', form.serialNumber);
+          const printQueueResponse = await API.post('/asset-serial-print/', {
+            serial_no: form.serialNumber,
+            status: 'New',
+            reason: null
+          });
+          console.log('✅ Serial number added to print queue:', printQueueResponse.data);
+          toast.success('Asset created and added to print queue successfully! You can now upload documents.');
+        } catch (printError) {
+          console.error('❌ Error adding to print queue:', printError);
+          
+          // Handle specific cases
+          if (printError.response?.status === 409) {
+            // Serial number already exists in print queue
+            toast.success('Asset created successfully! (Serial number already in print queue)');
+          } else {
+            // Other errors
+            toast.success('Asset created successfully! (Print queue addition failed - you can add manually later)');
+          }
+        }
+        
         // Switch to Attachments tab to allow document upload
         setActiveTab('Attachments');
       } else {

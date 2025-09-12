@@ -7,7 +7,6 @@ import API from "../lib/axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import UpdateAssetTypeModal from "../components/UpdateAssetTypeModal";
-import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import { useNavigation } from "../hooks/useNavigation";
 
 const AssetType = () => {
@@ -29,7 +28,6 @@ const AssetType = () => {
   
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAssetType, setSelectedAssetType] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [columns] = useState([
     { label: "Asset Type ID", name: "asset_type_id", visible: true },
@@ -161,13 +159,6 @@ const AssetType = () => {
     setUpdateModalOpen(true);
   };
 
-  const handleDeleteClick = () => {
-    if (selectedRows.length === 0) {
-      toast.error('Please select asset types to delete');
-      return;
-    }
-    setShowDeleteModal(true);
-  };
 
   const handleDeleteConfirm = async () => {
     try {
@@ -270,13 +261,13 @@ const AssetType = () => {
         });
       }
 
-      setShowDeleteModal(false);
       setSelectedRows([]); // Clear selection
       fetchAssetTypes(); // Refresh the list
+      return true; // Return success for ContentBox
     } catch (error) {
       console.error("Error in delete operation:", error);
       toast.error("An unexpected error occurred while deleting asset types. Please try again.");
-      setShowDeleteModal(false);
+      return false; // Return failure for ContentBox
     }
   };
 
@@ -356,7 +347,7 @@ const AssetType = () => {
         onSort={handleSort}
         sortConfig={sortConfig}
         onAdd={canEdit ? () => navigate('/master-data/asset-types/add') : null}
-        onDeleteSelected={canEdit ? handleDeleteClick : null}
+        onDeleteSelected={canEdit ? handleDeleteConfirm : null}
         onDownload={handleDownload}
         data={data}
         selectedRows={selectedRows}
@@ -387,16 +378,6 @@ const AssetType = () => {
                   assetData={selectedAssetType}
                 />
               )}
-              <DeleteConfirmModal
-                show={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
-                onConfirm={handleDeleteConfirm}
-                message={
-                  selectedRows.length === 1
-                    ? `Do you want to delete the selected asset type?`
-                    : `Do you want to delete ${selectedRows.length} selected asset types?`
-                }
-              />
             </>
           );
         }}
