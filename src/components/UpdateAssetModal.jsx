@@ -4,8 +4,13 @@ import API from '../lib/axios';
 import toast from 'react-hot-toast';
 import { MdKeyboardArrowDown } from 'react-icons/md';
 import { useAuthStore } from '../store/useAuthStore';
+import useAuditLog from '../hooks/useAuditLog';
+import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
 
 const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
+  
   const [form, setForm] = useState({
     assetType: '',
     serialNumber: '',
@@ -166,6 +171,14 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       if (res.data && res.data.url) {
         // Open in new tab
         window.open(res.data.url, '_blank');
+        
+        // Log document view/download action
+        const eventName = action === 'view' ? 'Create' : 'Download';
+        console.log('Document action:', action, 'Event name:', eventName);
+        await recordActionByNameWithFetch(eventName, { 
+          assetId: assetData.asset_id,
+          docId: doc.a_d_id || doc.id
+        });
       } else {
         throw new Error('No URL returned from API');
       }
@@ -359,8 +372,9 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         asset_type_id: form.assetType,
         serial_number: form.serialNumber,
         description: form.description,
-        vendor_id: form.purchaseSupply || null,
-        prod_serv_id: form.serviceSupply || null,
+        purchase_vendor_id: form.purchaseSupply || null,
+        service_vendor_id: form.serviceSupply || null,
+        prod_serv_id: null,
         maintsch_id: null,
         purchased_cost: form.purchaseCost,
         purchased_on: form.purchaseDate,
@@ -372,6 +386,19 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
       // Use the asset_id from the passed assetData prop
       await API.put(`/assets/${assetData.asset_id}`, updateData);
+      
+      // Log asset update action
+      await recordActionByNameWithFetch('Update', { 
+        assetId: assetData.asset_id,
+        serialNumber: form.serialNumber,
+        changes: {
+          assetType: form.assetType,
+          description: form.description,
+          purchaseCost: form.purchaseCost
+        },
+        action: 'Asset Updated Successfully'
+      });
+      
       toast.success('Asset updated successfully');
       onClose(true);
     } catch (err) {
@@ -430,6 +457,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
           successCount++;
+          
+          // Log document upload
+          await recordActionByNameWithFetch('Add Document', { 
+            assetId: assetData.asset_id,
+            docTypeId: r.type
+          });
         } catch (err) {
           console.error('Failed to upload file:', r.file.name, err);
           console.error('Error details:', err.response?.data);
@@ -1142,6 +1175,14 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                     });
                     
                     console.log('QSN Print API response:', response.data);
+                    
+                    // Log QSN print action
+                    await recordActionByNameWithFetch('Save', { 
+                      serialNumber: form.serialNumber,
+                      assetId: assetData.asset_id,
+                      reason: qsnPrintReason.trim()
+                    });
+                    
                     toast.success('QSN print request submitted successfully');
                     setShowQSNPrintModal(false);
                     setQsnPrintReason("");

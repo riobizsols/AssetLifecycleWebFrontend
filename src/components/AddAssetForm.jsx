@@ -6,6 +6,8 @@ import { MdKeyboardArrowRight, MdKeyboardArrowDown } from 'react-icons/md';
 import SearchableDropdown from './ui/SearchableDropdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
+import useAuditLog from '../hooks/useAuditLog';
+import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
 
 const initialForm = {
   assetType: '',
@@ -49,6 +51,9 @@ const AddAssetForm = ({ userRole }) => {
   // Add validation state
   const [touched, setTouched] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
   const [assetTypes, setAssetTypes] = useState([]);
   const [propertiesMap, setPropertiesMap] = useState({});
   const [dynamicProperties, setDynamicProperties] = useState([]);
@@ -531,6 +536,12 @@ const AddAssetForm = ({ userRole }) => {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
           successCount++;
+          
+          // Log document upload
+          await recordActionByNameWithFetch('Add Document', { 
+            assetId: form.assetId,
+            docTypeId: a.type
+          });
         } catch (err) {
           console.error('Failed to upload file:', a.file.name, err);
           console.error('Error details:', err.response?.data);
@@ -567,6 +578,56 @@ const AddAssetForm = ({ userRole }) => {
     setTouched((prev) => ({ ...prev, [propName]: true }));
   };
 
+  // Add new property value to the backend
+  const addPropertyValue = async (propId, value) => {
+    try {
+      const response = await API.post('/properties/property-values', {
+        propId,
+        value
+      });
+      
+      if (response.data.success) {
+        // Refresh the dynamic properties to include the new value
+        await fetchDynamicProperties(form.assetType);
+        return response.data.data;
+      }
+    } catch (error) {
+      console.error('Error adding property value:', error);
+      toast.error('Failed to add property value');
+      throw error;
+    }
+  };
+
+  // Handle custom property value input
+  const handleCustomPropValue = async (property, value) => {
+    if (!value.trim()) return;
+    
+    try {
+      // Add the new value to the backend
+      const newValue = await addPropertyValue(property.prop_id, value);
+      
+      // Update the form with the new value
+      setForm(prev => ({
+        ...prev,
+        properties: {
+          ...prev.properties,
+          [property.prop_id]: value
+        }
+      }));
+      
+      // Log property value addition
+      await recordActionByNameWithFetch('Create', { 
+        propertyName: property.property,
+        value: value,
+        propId: property.prop_id
+      });
+      
+      toast.success(`Added "${value}" to ${property.property}`);
+    } catch (error) {
+      console.error('Error adding custom property value:', error);
+    }
+  };
+
 
 
   const generateSerialNumber = async () => {
@@ -590,6 +651,8 @@ const AddAssetForm = ({ userRole }) => {
         setForm(prev => ({ ...prev, serialNumber }));
         toast.success(`Serial number preview: ${serialNumber}`);
         console.log(`👀 Preview serial number: ${serialNumber} (Will be saved when asset is created)`);
+        
+        // Note: Serial number generation logging removed as requested
       } else {
         toast.error(response.data.message || 'Failed to generate serial number');
       }
@@ -705,6 +768,14 @@ const AddAssetForm = ({ userRole }) => {
       if (createdAssetId) {
         setForm(prev => ({ ...prev, assetId: createdAssetId }));
         console.log('✅ Asset ID stored in form state:', createdAssetId);
+        
+        // Log asset save action
+        await recordActionByNameWithFetch('Save', { 
+          assetId: createdAssetId,
+          serialNumber: form.serialNumber,
+          assetTypeId: form.assetType,
+          action: 'Asset Saved Successfully'
+        });
         
         // Add serial number to print queue
         try {
@@ -1371,28 +1442,57 @@ const AddAssetForm = ({ userRole }) => {
             </div>
             {dynamicProperties.length > 0 ? (
               <div className="grid grid-cols-3 gap-6">
-                {dynamicProperties.map((property) => (
-                  <div key={property.prop_id}>
-                    <label className="block text-sm mb-1 font-medium">{property.property}</label>
-                    <select
-                      name={`property_${property.prop_id}`}
-                      value={form.properties[property.prop_id] || ''}
-                      onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown"
-                    >
-                      <option value="">Select {property.property}</option>
-                      {property.values && property.values.length > 0 ? (
-                        property.values.map((value) => (
-                          <option key={value.aplv_id} value={value.value}>
-                            {value.value}
-                          </option>
-                        ))
+                {dynamicProperties.map((property) => {
+                  const hasValues = property.values && property.values.length > 0;
+                  const hasValidValues = hasValues && property.values.some(v => v.value && v.value.trim() !== '');
+                  
+                  return (
+                    <div key={property.prop_id}>
+                      <label className="block text-sm mb-1 font-medium">{property.property}</label>
+                      {hasValidValues ? (
+                        // Show dropdown if there are valid values
+                        <select
+                          name={`property_${property.prop_id}`}
+                          value={form.properties[property.prop_id] || ''}
+                          onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown"
+                        >
+                          <option value="">Select {property.property}</option>
+                          {property.values.map((value) => (
+                            <option key={value.aplv_id} value={value.value}>
+                              {value.value}
+                            </option>
+                          ))}
+                        </select>
                       ) : (
-                        <option value="">No values available</option>
+                        // Show input field if no valid values exist
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            name={`property_${property.prop_id}`}
+                            value={form.properties[property.prop_id] || ''}
+                            onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
+                            placeholder={`Enter ${property.property}`}
+                            className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const value = form.properties[property.prop_id];
+                              if (value && value.trim()) {
+                                handleCustomPropValue(property, value.trim());
+                              }
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                            disabled={!form.properties[property.prop_id] || !form.properties[property.prop_id].trim()}
+                          >
+                            Add to dropdown options
+                          </button>
+                        </div>
                       )}
-                    </select>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-gray-500 text-sm py-4">

@@ -8,6 +8,8 @@ import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/UpdateAssetModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
+import useAuditLog from "../hooks/useAuditLog";
+import { ASSETS_APP_ID } from "../constants/assetsAuditEvents";
 
 const Assets = () => {
   const navigate = useNavigate();
@@ -23,7 +25,10 @@ const Assets = () => {
   });
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  // Delete modal state removed - delete happens immediately
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
 
   const [columns] = useState([
     { label: "Asset Id", name: "asset_id", visible: true },
@@ -78,13 +83,14 @@ const Assets = () => {
         };
       });
       setData(formattedData);
+      
     } catch (err) {
       console.error("Failed to fetch assets", err);
       toast.error("Failed to fetch assets");
     }
   };
 
-  const handleFilterChange = (columnName, value) => {
+  const handleFilterChange = async (columnName, value) => {
     setFilterValues((prev) => ({
       ...prev,
       columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
@@ -95,9 +101,10 @@ const Assets = () => {
         ],
       }),
     }));
+
   };
 
-  const handleSort = (column) => {
+  const handleSort = async (column) => {
     setSortConfig((prev) => {
       const sorts = [...prev.sorts];
       const existingSort = sorts.find((s) => s.column === column);
@@ -114,6 +121,7 @@ const Assets = () => {
 
       return { sorts };
     });
+
   };
 
   const handleDeleteSelected = async () => {
@@ -121,10 +129,17 @@ const Assets = () => {
       toast.error("Please select assets to delete");
       return false;
     }
-
+    
     try {
       await API.post("/assets/delete", { asset_ids: selectedRows });
       toast.success(`${selectedRows.length} asset(s) deleted successfully`);
+      
+      // Log bulk delete action
+      await recordActionByNameWithFetch('Delete', { 
+        count: selectedRows.length,
+        assetIds: selectedRows 
+      });
+      
       setSelectedRows([]);
       fetchAssets();
       return true;
@@ -144,10 +159,16 @@ const Assets = () => {
     }
   };
 
+  // Unused confirmBulkDelete function removed
+
   const handleDelete = async (row) => {
     try {
       await API.delete(`/assets/${row.asset_id}`);
       toast.success("Asset deleted successfully");
+      
+      // Log delete action
+      await recordActionByNameWithFetch('Delete', { assetId: row.asset_id });
+      
       fetchAssets();
     } catch (err) {
       console.error("Failed to delete asset", err);
@@ -163,10 +184,43 @@ const Assets = () => {
     }
   };
 
-  const handleEdit = (row) => {
+  const confirmDelete = async () => {
+    if (selectedAsset) {
+      // Single asset delete
+      try {
+        await API.delete(`/assets/${selectedAsset.asset_id}`);
+        toast.success("Asset deleted successfully");
+        
+        // Log delete action only when confirmed
+        await recordActionByNameWithFetch('Delete', { assetId: selectedAsset.asset_id });
+        
+        setShowDeleteModal(false);
+        setSelectedAsset(null);
+        fetchAssets();
+      } catch (err) {
+        console.error("Failed to delete asset", err);
+        if (err.response?.data?.code === '23503') {
+          toast.error(
+            err.response.data.message || 
+            `Asset ${selectedAsset.asset_id} cannot be deleted because it is currently assigned. Please unassign it first.`,
+            { duration: 5000 }
+          );
+        } else {
+          toast.error(err.response?.data?.message || "Failed to delete asset");
+        }
+      }
+    } else if (selectedRows.length > 0) {
+      // Bulk delete
+      await confirmBulkDelete();
+    }
+  };
+
+  const handleEdit = async (row) => {
     console.log("Edit asset:", row);
     setSelectedAsset(row);
     setUpdateModalOpen(true);
+    
+    // Note: Edit action logging removed - will log when actual update is saved
   };
 
   const handleUpdateModalClose = (wasUpdated) => {
@@ -177,7 +231,7 @@ const Assets = () => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     try {
       // Get the filtered and sorted data
       const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
@@ -191,6 +245,9 @@ const Assets = () => {
       );
 
       if (success) {
+        // Log export action
+        await recordActionByNameWithFetch('Create', { count: dataToExport.length });
+        
         toast(
           'Assets exported successfully',
           {
@@ -254,7 +311,13 @@ const Assets = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={() => navigate("/assets/add")}
+        onAdd={async () => {
+          // Log Create event when plus icon is clicked
+          await recordActionByNameWithFetch('Create', { 
+            action: 'Add Asset Form Opened'
+          });
+          navigate("/assets/add");
+        }}
         onDeleteSelected={handleDeleteSelected}
         onDownload={handleDownload}
         data={data}
@@ -284,6 +347,8 @@ const Assets = () => {
                   assetData={selectedAsset}
                 />
               )}
+              
+              {/* Delete confirmation modal removed - delete happens immediately */}
             </>
           );
         }}
