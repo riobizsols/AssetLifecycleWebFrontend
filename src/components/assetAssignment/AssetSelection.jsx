@@ -4,6 +4,9 @@ import { Maximize, Minimize, QrCode, X } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
+import useAuditLog from "../../hooks/useAuditLog";
+import { DEPT_ASSIGNMENT_APP_ID } from "../../constants/deptAssignmentAuditEvents";
+import { EMP_ASSIGNMENT_APP_ID } from "../../constants/empAssignmentAuditEvents";
  
 
 const AssetSelection = () => {
@@ -25,6 +28,10 @@ const AssetSelection = () => {
   const videoRef = useRef(null);
   const [inactiveAssets, setInactiveAssets] = useState([]);
   const [inactiveAssetsRaw, setInactiveAssetsRaw] = useState([]);
+
+  // Initialize audit logging based on entity type
+  const appId = entityType === 'employee' ? EMP_ASSIGNMENT_APP_ID : DEPT_ASSIGNMENT_APP_ID;
+  const { recordActionByNameWithFetch } = useAuditLog(appId);
 
   useEffect(() => {
     // Initialize scanner when modal opens
@@ -238,6 +245,15 @@ const AssetSelection = () => {
           action: "A",
         };
         await API.post("/asset-assignments/employee", payload);
+        
+        // Log assign action for employee
+        await recordActionByNameWithFetch('Assign', {
+          assetId: asset.asset_id,
+          employeeId: entityIntId,
+          deptId: asset.dept_id || departmentId,
+          action: 'Asset Assigned to Employee'
+        });
+        
         toast.success("Asset assigned to employee successfully");
   
       } else if (entityType === "department") {
@@ -261,6 +277,14 @@ const AssetSelection = () => {
           action: "A",
         };
         await API.post("/asset-assignments", payload);
+        
+        // Log assign action for department
+        await recordActionByNameWithFetch('Assign', {
+          assetId: asset.asset_id,
+          deptId: asset.dept_id || departmentId || entityId,
+          action: 'Asset Assigned to Department'
+        });
+        
         toast.success("Asset assigned to department successfully");
       }
       

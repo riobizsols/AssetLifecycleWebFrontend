@@ -43,18 +43,10 @@ const DepartmentWiseAssetAssignment = () => {
     }
   };
 
-  // Handle asset unassignment
-  const handleUnassign = async (item) => {
-    try {
-      await API.delete("/admin/dept-assets", {
-        data: {
-          dept_id: item.dept_id,
-          asset_id: item.asset_id,
-        },
-      });
-    } catch (err) {
-      throw err;
-    }
+  // Handle asset unassignment (this is now handled in AssetAssignmentList component)
+  const handleUnassign = async () => {
+    // This function is no longer used as unassignment is handled in AssetAssignmentList
+    // The audit logging is now handled in the confirmDelete function of AssetAssignmentList
   };
 
   useEffect(() => {

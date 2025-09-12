@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Maximize, Minimize, Trash2, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import API from '../../lib/axios';
 import AssetAssignmentHistory from "./AssetAssignmentHistory";
+import useAuditLog from '../../hooks/useAuditLog';
+import { DEPT_ASSIGNMENT_APP_ID } from '../../constants/deptAssignmentAuditEvents';
+import { EMP_ASSIGNMENT_APP_ID } from '../../constants/empAssignmentAuditEvents';
 
 const AssetAssignmentList = ({
   title,
@@ -12,7 +15,7 @@ const AssetAssignmentList = ({
   selectedEntity,
   selectedEntityIntId,
   onEntitySelect,
-  onDelete,
+  onDelete, // eslint-disable-line no-unused-vars
   assignmentList,
   fetchAssignments,
   // Department filter props
@@ -27,6 +30,10 @@ const AssetAssignmentList = ({
   const [itemToDelete, setItemToDelete] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const navigate = useNavigate();
+
+  // Initialize audit logging based on entity type
+  const appId = entityType === 'employee' ? EMP_ASSIGNMENT_APP_ID : DEPT_ASSIGNMENT_APP_ID;
+  const { recordActionByNameWithFetch } = useAuditLog(appId);
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
 
@@ -51,6 +58,23 @@ const AssetAssignmentList = ({
         payload.employee_int_id = itemToDelete.employee_int_id;
       }
       await API.put(`/asset-assignments/${itemToDelete.asset_assign_id}`, payload);
+      
+      // Log unassign action after successful unassignment
+      const auditData = {
+        assetId: itemToDelete.asset_id,
+        action: entityType === 'employee' ? 'Asset Unassigned from Employee' : 'Asset Unassigned from Department'
+      };
+      
+      if (entityType === 'employee') {
+        auditData.employeeId = itemToDelete.employee_id || selectedEntity;
+        auditData.employeeIntId = itemToDelete.employee_int_id;
+        auditData.deptId = itemToDelete.dept_id;
+      } else {
+        auditData.deptId = itemToDelete.dept_id || selectedEntity;
+      }
+      
+      await recordActionByNameWithFetch('Unassign', auditData);
+      
       fetchAssignments();
       setShowDeleteModal(false);
       toast.success('Asset unassigned successfully');
@@ -152,7 +176,22 @@ const AssetAssignmentList = ({
               <div className="flex items-center gap-2">
                 {(entityType === 'employee' || entityType === 'department') && selectedEntity && (
                   <button
-                    onClick={() => setShowHistory(true)}
+                    onClick={async () => {
+                      // Log history view action
+                      const auditData = {
+                        action: `${entityType === 'department' ? 'Department' : 'Employee'} Assignment History Viewed`
+                      };
+                      
+                      if (entityType === 'department') {
+                        auditData.deptId = selectedEntity;
+                      } else {
+                        auditData.employeeId = selectedEntity;
+                        auditData.employeeIntId = selectedEntityIntId;
+                      }
+                      
+                      await recordActionByNameWithFetch('History', auditData);
+                      setShowHistory(true);
+                    }}
                     className="flex items-center gap-1 px-4 py-2 rounded-lg bg-white/30 backdrop-blur-md border border-white/40 shadow-sm text-[#0E2F4B] font-semibold hover:bg-white/50 transition"
                     style={{ boxShadow: '0 4px 24px 0 rgba(30, 41, 59, 0.08)' }}
                   >
