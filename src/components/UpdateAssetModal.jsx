@@ -6,6 +6,7 @@ import { MdKeyboardArrowDown } from 'react-icons/md';
 import { useAuthStore } from '../store/useAuthStore';
 import useAuditLog from '../hooks/useAuditLog';
 import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
+import { generateUUID } from '../utils/uuid';
 
 const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Initialize audit logging
@@ -846,7 +847,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 <button 
                   type="button" 
                   className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
-                  onClick={() => setUploadRows(prev => ([...prev, { id: crypto.randomUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
+                  onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
                 >
                   <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

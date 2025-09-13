@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { generateUUID } from '../../utils/uuid';
 
 const ASSET_CATEGORIES = [
   "Plant & Machinery",
@@ -701,7 +702,7 @@ export default function ReportBuilder() {
 
   const saveView = () => {
     if (!viewName.trim()) return;
-    setViews([...views, { id: crypto.randomUUID(), name: viewName, reportId: report.id, quick, advanced, columns: cols }]);
+    setViews([...views, { id: generateUUID(), name: viewName, reportId: report.id, quick, advanced, columns: cols }]);
     setIsSaving(false);
     setViewName("");
   };

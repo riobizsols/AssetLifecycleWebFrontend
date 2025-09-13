@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FaShareAlt } from "react-icons/fa";
+import { generateUUID } from '../../utils/uuid';
 import {
   SectionTitle,
   Chip,
@@ -313,7 +314,7 @@ export default function ReportLayout({
 
   const saveView = () => {
     if (!viewName.trim()) return;
-    setViews([...views, { id: crypto.randomUUID(), name: viewName, reportId: report.id, quick, advanced, columns: cols }]);
+    setViews([...views, { id: generateUUID(), name: viewName, reportId: report.id, quick, advanced, columns: cols }]);
     setIsSaving(false);
     setViewName("");
   };

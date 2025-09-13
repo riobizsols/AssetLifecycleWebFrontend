@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { ChevronDown, Check, X, ArrowRight, ArrowLeft, Search, Plus, MoreVertical, Eye, Download, Archive, ArchiveRestore } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SearchableDropdown from '../ui/SearchableDropdown';
+import { generateUUID } from '../../utils/uuid';
 
 const EditGroupAsset = () => {
   const navigate = useNavigate();
@@ -944,7 +945,7 @@ const EditGroupAsset = () => {
                 <div className="text-sm font-medium text-gray-700">Upload Documents</div>
                 <button 
                   type="button" 
-                  onClick={() => setUploadRows(prev => ([...prev, { id: crypto.randomUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
+                  onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
                   className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
                 >
                   <Plus size={16} className="mr-2" />
