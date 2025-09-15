@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import API from '../lib/axios';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -12,6 +12,8 @@ export const useAuditLog = (appId) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const user = useAuthStore((state) => state.user);
+  const hasFetched = useRef(false);
+  const currentAppId = useRef(appId);
 
   // Fetch enabled events for the app
   const fetchEnabledEvents = useCallback(async () => {
@@ -158,44 +160,58 @@ export const useAuditLog = (appId) => {
   // Record action by event name with fresh data fetch (fallback)
   const recordActionByNameWithFetch = useCallback(async (eventName, additionalData = {}) => {
     try {
+      console.log(`🔍 [Audit] Starting audit log for app: ${appId}, event: ${eventName}`);
+      
       // Fetch events fresh to avoid race condition
+      console.log(`🔍 [Audit] Fetching events for app: ${appId}`);
       const response = await API.get(`/app-events/enabled/${appId}`);
+      console.log(`🔍 [Audit] Events API response:`, response.data);
+      
       if (!response.data.success) {
-        console.warn('Failed to fetch events for audit logging');
+        console.warn('❌ [Audit] Failed to fetch events for audit logging');
         return false;
       }
       
       const events = response.data.data.enabled_events || [];
+      console.log(`📊 [Audit] Available events for ${appId}:`, events.map(e => ({ id: e.event_id, text: e.text })));
+      
       const event = events.find(e => 
         e.text && e.text.toLowerCase() === eventName.toLowerCase()
       );
       
       if (!event) {
-        console.warn(`Event "${eventName}" not found in enabled events for app ${appId}`);
+        console.warn(`❌ [Audit] Event "${eventName}" not found in enabled events for app ${appId}`);
         console.log('Available events:', events.map(e => e.text));
         return false;
       }
       
+      console.log(`✅ [Audit] Found event:`, { id: event.event_id, text: event.text });
+      
       // Generate clean text without timestamps (created_on field handles timing)
       const cleanText = generateCleanAuditText(eventName, additionalData);
+      console.log(`📝 [Audit] Generated clean text:`, cleanText);
       
       // Call audit log API directly to avoid state race condition
-      const auditResponse = await API.post('/audit-logs/record', {
+      const auditPayload = {
         app_id: appId,
         event_id: event.event_id,
         text: cleanText,
         ...additionalData
-      });
+      };
+      console.log(`📤 [Audit] Sending audit payload:`, auditPayload);
+      
+      const auditResponse = await API.post('/audit-logs/record', auditPayload);
+      console.log(`📥 [Audit] Audit API response:`, auditResponse.data);
       
       if (auditResponse.data.success) {
-        console.log('✅ Audit log recorded successfully:', auditResponse.data.data);
+        console.log('✅ [Audit] Audit log recorded successfully:', auditResponse.data.data);
         return true;
       } else {
-        console.warn('Failed to record audit log:', auditResponse.data.message);
+        console.warn('❌ [Audit] Failed to record audit log:', auditResponse.data.message);
         return false;
       }
     } catch (error) {
-      console.error('Error recording audit log:', error);
+      console.error('❌ [Audit] Error recording audit log:', error);
       return false;
     }
   }, [appId]);
@@ -205,10 +221,25 @@ export const useAuditLog = (appId) => {
     return enabledEvents.map(e => e.text).filter(Boolean);
   }, [enabledEvents]);
 
-  // Initialize enabled events on mount
+  // Initialize enabled events on mount - only for non-auth apps
   useEffect(() => {
-    fetchEnabledEvents();
-  }, [fetchEnabledEvents]);
+    // Skip fetching for auth apps to prevent infinite loops
+    if (appId === 'LOGOUT' || appId === 'LOGIN' || appId === 'RESETPASSWORD') {
+      return;
+    }
+    
+    // Reset fetch flag if appId changes
+    if (currentAppId.current !== appId) {
+      hasFetched.current = false;
+      currentAppId.current = appId;
+    }
+    
+    // Only fetch if we haven't fetched for this appId yet
+    if (appId && !hasFetched.current && !loading) {
+      hasFetched.current = true;
+      fetchEnabledEvents();
+    }
+  }, [appId, loading]);
 
   return {
     enabledEvents,

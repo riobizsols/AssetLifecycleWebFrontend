@@ -3,10 +3,15 @@ import ReportLayout from "../../components/reportModels/ReportLayout";
 import { useReportState } from "../../components/reportModels/useReportState";
 import { REPORTS } from "../../components/reportModels/ReportConfig";
 import { maintenanceHistoryService } from "../../services/maintenanceHistoryService";
+import { useAuditLog } from "../../hooks/useAuditLog";
+import { REPORTS_APP_IDS } from "../../constants/reportsAuditEvents";
 
 export default function MaintenanceHistory() {
   const selectedReportId = "maintenance-history";
   const report = useMemo(() => REPORTS.find((r) => r.id === selectedReportId), []);
+  
+  // Audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(REPORTS_APP_IDS.MAINTENANCE_HISTORY);
 
   const {
     quick,
@@ -27,10 +32,31 @@ export default function MaintenanceHistory() {
     report: updatedReport,
   } = useReportState(selectedReportId, report);
 
+  // Audit logging handlers
+  const handleGenerateReport = async () => {
+    await recordActionByNameWithFetch('Generate Report', { 
+      reportType: 'Maintenance History',
+      action: 'Report Generated Successfully',
+      filterCount: Object.keys(quick).filter(key => quick[key] && quick[key] !== '').length
+    });
+  };
+
+  const handleExportReport = async (exportType = 'pdf') => {
+    await recordActionByNameWithFetch('Export Report', { 
+      reportType: 'Maintenance History',
+      exportFormat: exportType,
+      action: `Report Exported as ${exportType.toUpperCase()}`,
+      filterCount: Object.keys(quick).filter(key => quick[key] && quick[key] !== '').length
+    });
+  };
+
   // Export functionality
   const handleExport = async (exportType = 'pdf') => {
     try {
       console.log('🔍 [MaintenanceHistory] Starting export as', exportType);
+      
+      // Log audit event for export
+      await handleExportReport(exportType);
       
       // Convert quick filters to API parameters
       const apiFilters = {};
@@ -110,6 +136,8 @@ export default function MaintenanceHistory() {
       error={error}
       onExport={handleExport}
       exportFormats={['pdf', 'csv']}
+      onGenerateReport={handleGenerateReport}
+      onExportReport={handleExportReport}
     />
   );
 }

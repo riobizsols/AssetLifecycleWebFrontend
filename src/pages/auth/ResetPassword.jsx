@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import API from "../../lib/axios";
+import { useAuditLog } from "../../hooks/useAuditLog";
+import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -17,6 +19,9 @@ const ResetPassword = () => {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [sent, setSent] = useState(false);
+  
+  // Audit logging for reset password
+  const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.RESETPASSWORD);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,18 +34,35 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
+      console.log("🔄 Starting password reset process...");
+      console.log("🔑 Token:", token ? "Present" : "Missing");
+      
       const res = await API.post("/auth/reset-password", {
         token,
         newPassword,
       });
 
+      console.log("✅ Password reset API response:", res.data);
       setMessage(res.data.message || "Password reset successfully.");
       setSent(true);
+
+      // Log audit event for successful password reset
+      console.log("📝 Attempting to log audit event for reset password...");
+      try {
+        const auditResult = await recordActionByNameWithFetch('Reset Password', { 
+          action: 'Password Reset Successfully',
+          token: token ? 'Valid Token' : 'No Token'
+        });
+        console.log("📝 Audit log result:", auditResult);
+      } catch (auditError) {
+        console.error("❌ Audit logging failed:", auditError);
+      }
 
       setTimeout(() => {
         navigate("/"); // 👈 login page
       }, 2500);
     } catch (err) {
+      console.error("❌ Password reset failed:", err);
       setError(
         err.response?.data?.message || "Something went wrong. Please try again."
       );
