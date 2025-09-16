@@ -3,6 +3,8 @@ import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import { useNavigation } from "../../hooks/useNavigation";
+import useAuditLog from "../../hooks/useAuditLog";
+import { ORGANIZATIONS_APP_ID } from "../../constants/organizationsAuditEvents";
 
 const Organization = () => {
   const [orgs, setOrgs] = useState([]);
@@ -19,6 +21,9 @@ const Organization = () => {
   // Access control
   const { hasEditAccess } = useNavigation();
   const canEdit = hasEditAccess('ORGANIZATIONS');
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(ORGANIZATIONS_APP_ID);
 
   const toggleMaximize = () => setIsMaximized((p) => !p);
 
@@ -78,14 +83,34 @@ const Organization = () => {
           org_name: formName.trim(),
           org_city: formCity.trim(),
         });
+        
+        // Log update action
+        await recordActionByNameWithFetch('Update', {
+          orgId: selectedOrg.org_id,
+          orgName: formName.trim(),
+          orgCode: formCode.trim(),
+          orgCity: formCity.trim(),
+          action: 'Organization Updated'
+        });
+        
         toast.success(`Organization "${formName}" updated successfully`);
       } else {
         // Add
-        await API.post("/orgs", {
+        const response = await API.post("/orgs", {
           org_code: formCode.trim(),
           org_name: formName.trim(),
           org_city: formCity.trim(),
         });
+        
+        // Log create action
+        await recordActionByNameWithFetch('Create', {
+          orgId: response.data?.org_id || 'NEW_ORG',
+          orgName: formName.trim(),
+          orgCode: formCode.trim(),
+          orgCity: formCity.trim(),
+          action: 'Organization Created'
+        });
+        
         toast.success(`Organization "${formName}" created successfully`);
       }
       resetForm();
