@@ -3,6 +3,8 @@ import API from "../../lib/axios";
 import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import useAuditLog from "../../hooks/useAuditLog";
+import { DEPARTMENTS_ADMIN_APP_ID } from "../../constants/departmentsAdminAuditEvents";
 
 const DepartmentsAdmin = () => {
   const [departments, setDepartments] = useState([]);
@@ -21,6 +23,9 @@ const DepartmentsAdmin = () => {
   const [searchUser, setSearchUser] = useState("");
   const dropdownUserRef = React.useRef(null);
   const navigate = useNavigate();
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(DEPARTMENTS_ADMIN_APP_ID);
 
   // Fetch departments
   const fetchDepartments = async () => {
@@ -73,6 +78,15 @@ const DepartmentsAdmin = () => {
         user_id: selectedUser,
       });
       
+      // Log create action
+      await recordActionByNameWithFetch('Create', {
+        userId: selectedUser,
+        userName: selectedUserName,
+        deptId: selectedDept,
+        deptName: selectedDeptName,
+        action: 'Department Admin Created'
+      });
+      
       fetchAllAdmins();
       setSelectedUser(null);
       toast.success(`"${selectedUserName}" added as admin for "${selectedDeptName}" department`);
@@ -96,6 +110,15 @@ const DepartmentsAdmin = () => {
           user_id: userToDelete.user_id,
         },
       });
+      // Log delete action
+      await recordActionByNameWithFetch('Delete', {
+        userId: userToDelete.user_id,
+        userName: userToDelete.full_name,
+        deptId: userToDelete.dept_id,
+        deptName: userToDelete.dept_name,
+        action: 'Department Admin Removed'
+      });
+
       fetchAllAdmins();
       setShowDeleteModal(false);
       toast.success(`"${userToDelete.full_name}" removed as admin from "${userToDelete.dept_name}" department`);

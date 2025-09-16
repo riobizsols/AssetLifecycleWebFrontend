@@ -8,6 +8,8 @@ import { useNavigate } from "react-router-dom";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import { useNavigation } from "../../hooks/useNavigation";
+import useAuditLog from "../../hooks/useAuditLog";
+import { VENDORS_APP_ID } from "../../constants/vendorsAuditEvents";
 
 const Vendors = () => {
   const navigate = useNavigate();
@@ -28,6 +30,9 @@ const Vendors = () => {
   // Access control
   const { hasEditAccess } = useNavigation();
   const canEdit = hasEditAccess('VENDORS');
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(VENDORS_APP_ID);
 
   const [columns] = useState([
     { label: "Vendor ID", name: "vendor_id", visible: true },
@@ -156,6 +161,13 @@ const Vendors = () => {
         data: { ids: selectedRows },
       });
 
+      // Log delete action
+      await recordActionByNameWithFetch('Delete', {
+        vendorIds: selectedRows,
+        count: selectedRows.length,
+        action: `${selectedRows.length} Vendor(s) Deleted`
+      });
+
       setData((prev) =>
         prev.filter((vendor) => !selectedRows.includes(vendor.vendor_id))
       );
@@ -206,6 +218,19 @@ const Vendors = () => {
 
       const response = await API.put(`/update/${editingVendor.vendor_id}`, cleanedData);
 
+      // Log update action
+      await recordActionByNameWithFetch('Update', {
+        vendorId: editingVendor.vendor_id,
+        vendorName: formData.vendor_name,
+        companyName: formData.company_name,
+        companyEmail: formData.company_email,
+        gstNumber: formData.gst_number,
+        contactPerson: formData.contact_person_name,
+        contactEmail: formData.contact_person_email,
+        contactNumber: formData.contact_person_number,
+        action: 'Vendor Updated'
+      });
+
       // Update the data state with the updated vendor
       setData(prev => prev.map(vendor => 
         vendor.vendor_id === editingVendor.vendor_id 
@@ -223,17 +248,24 @@ const Vendors = () => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     try {
       const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
       const sortedData = sortData(filteredData);
       const success = exportToExcel(sortedData, columns, "Vendors_List");
       if (success) {
+        // Log download action
+        await recordActionByNameWithFetch('Download', {
+          count: sortedData.length,
+          action: 'Vendors Data Downloaded'
+        });
+        
         toast('Vendors exported successfully', { icon: '✅' });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
+      console.error('Error downloading vendors:', error);
       toast('Failed to export vendors', { icon: '❌' });
     }
   };
@@ -255,7 +287,13 @@ const Vendors = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={canEdit ? () => navigate("/master-data/add-vendor") : null}
+        onAdd={canEdit ? async () => {
+          // Log create action when Add button is clicked
+          await recordActionByNameWithFetch('Create', {
+            action: 'Add Vendor Form Opened'
+          });
+          navigate("/master-data/add-vendor");
+        } : null}
         onDeleteSelected={canEdit ? handleDelete : null}
         onDownload={handleDownload}
         data={data}

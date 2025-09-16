@@ -8,6 +8,8 @@ import { useNavigate } from "react-router-dom";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import { useNavigation } from "../../hooks/useNavigation";
+import useAuditLog from "../../hooks/useAuditLog";
+import { BRANCHES_APP_ID } from "../../constants/branchesAuditEvents";
 
 const Branches = () => {
   const navigate = useNavigate();
@@ -27,6 +29,9 @@ const Branches = () => {
   // Access control
   const { hasEditAccess } = useNavigation();
   const canEdit = hasEditAccess('BRANCHES');
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(BRANCHES_APP_ID);
 
   const [columns] = useState([
     { label: "Branch ID", name: "branch_id", visible: true },
@@ -148,6 +153,16 @@ const Branches = () => {
     try {
       const response = await API.put(`/branches/${editingBranch.branch_id}`, formData);
       
+      // Log update action
+      await recordActionByNameWithFetch('Update', {
+        branchId: editingBranch.branch_id,
+        branchName: formData.text || editingBranch.text,
+        branchCode: formData.branch_code || editingBranch.branch_code,
+        city: formData.city || editingBranch.city,
+        orgId: formData.org_id || editingBranch.org_id,
+        action: 'Branch Updated'
+      });
+      
       // Update the data state with the updated branch
       setData(prev => prev.map(branch => 
         branch.branch_id === editingBranch.branch_id 
@@ -171,6 +186,13 @@ const Branches = () => {
         data: { ids: selectedRows },
       });
 
+      // Log delete action
+      await recordActionByNameWithFetch('Delete', {
+        branchIds: selectedRows,
+        count: selectedRows.length,
+        action: `${selectedRows.length} Branch(es) Deleted`
+      });
+
       // Update the data state to remove deleted branches
       setData((prev) =>
         prev.filter((branch) => !selectedRows.includes(branch.branch_id))
@@ -184,17 +206,24 @@ const Branches = () => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     try {
       const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
       const sortedData = sortData(filteredData);
       const success = exportToExcel(sortedData, columns, "Branches_List");
       if (success) {
+        // Log download action
+        await recordActionByNameWithFetch('Download', {
+          count: sortedData.length,
+          action: 'Branches Data Downloaded'
+        });
+        
         toast('Branches exported successfully', { icon: '✅' });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
+      console.error('Error downloading branches:', error);
       toast('Failed to export branches', { icon: '❌' });
     }
   };
@@ -216,7 +245,13 @@ const Branches = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={canEdit ? () => navigate("/master-data/add-branch") : null}
+        onAdd={canEdit ? async () => {
+          // Log create action when Add button is clicked
+          await recordActionByNameWithFetch('Create', {
+            action: 'Add Branch Form Opened'
+          });
+          navigate("/master-data/add-branch");
+        } : null}
         onDeleteSelected={canEdit ? handleDeleteSelected : null}
         onDownload={handleDownload}
         data={data}

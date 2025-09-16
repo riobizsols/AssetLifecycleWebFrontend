@@ -4,6 +4,8 @@ import API from '../../lib/axios';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import useAuditLog from '../../hooks/useAuditLog';
+import { PRODSERV_APP_ID } from '../../constants/prodServAuditEvents';
 
 // Debug log to confirm component loaded
 console.log('DeleteConfirmModal imported:', DeleteConfirmModal);
@@ -21,14 +23,17 @@ const tabStyles = {
   inactive: 'border-transparent text-gray-500 bg-transparent',
 };
 
-const tableHeader = 'bg-[#003366] text-white text-left text-sm font-semibold';
-const tableRow = 'text-sm text-gray-800';
-const tableAltRow = 'bg-gray-100';
-const borderBottom = 'border-b-2 border-[#FFC107]';
+const _tableHeader = 'bg-[#003366] text-white text-left text-sm font-semibold';
+const _tableRow = 'text-sm text-gray-800';
+const _tableAltRow = 'bg-gray-100';
+const _borderBottom = 'border-b-2 border-[#FFC107]';
 
 export default function ProdServ() {
   const navigate = useNavigate();
   const [tab, setTab] = useState('product');
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(PRODSERV_APP_ID);
   const [productForm, setProductForm] = useState({ assetType: '', brand: '', model: '', description: '' });
   const [serviceForm, setServiceForm] = useState({ assetType: '', description: '' });
   const [products, setProducts] = useState([]);
@@ -40,10 +45,10 @@ export default function ProdServ() {
 
   // Asset types for dropdown
   const [assetTypes, setAssetTypes] = useState([]);
-  const [brands, setBrands] = useState([]);
-  const [models, setModels] = useState([]);
-  const [searchAssetType, setSearchAssetType] = useState('');
-  const dropdownRef = useRef(null);
+  const [_brands, _setBrands] = useState([]);
+  const [_models, _setModels] = useState([]);
+  const [_searchAssetType, _setSearchAssetType] = useState('');
+  const _dropdownRef = useRef(null);
   // Add separate search and dropdown state for each dropdown
   const [searchAssetTypeProduct, setSearchAssetTypeProduct] = useState('');
   const [searchAssetTypeProductFilter, setSearchAssetTypeProductFilter] = useState('');
@@ -61,14 +66,14 @@ export default function ProdServ() {
   // Delete confirmation modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [_isDeleting, _setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchAssetTypes = async () => {
       try {
         const res = await API.get('/dept-assets/asset-types');
         setAssetTypes(res.data);
-      } catch (err) {
+      } catch {
         setAssetTypes([]);
       }
     };
@@ -83,7 +88,7 @@ export default function ProdServ() {
         const all = Array.isArray(res.data) ? res.data : [];
         setProducts(all.filter(p => p.ps_type === 'product'));
         setServices(all.filter(p => p.ps_type === 'service'));
-      } catch (err) {
+      } catch {
         setProducts([]);
         setServices([]);
       }
@@ -98,20 +103,32 @@ export default function ProdServ() {
     setProductSubmitAttempted(true);
     if (!productForm.assetType || !productForm.brand || !productForm.model) return;
     try {
-      await API.post('/prodserv', {
+      const response = await API.post('/prodserv', {
         assetType: productForm.assetType,
         brand: productForm.brand,
         model: productForm.model,
         description: null,
         ps_type: 'product'
       });
+      
+      // Log create action for product
+      await recordActionByNameWithFetch('Create', {
+        prodServId: response.data?.prod_serv_id,
+        assetTypeId: productForm.assetType,
+        assetTypeName: assetTypes.find(at => at.asset_type_id === productForm.assetType)?.text,
+        brand: productForm.brand,
+        model: productForm.model,
+        psType: 'product',
+        action: 'Product Created'
+      });
+      
       setProductForm({ assetType: '', brand: '', model: '', description: '' });
       setProductSubmitAttempted(false);
       // Refresh products
       const res = await API.get('/prodserv');
       const all = Array.isArray(res.data) ? res.data : [];
       setProducts(all.filter(p => p.ps_type === 'product'));
-    } catch (err) {
+    } catch {
       // Optionally handle error
     }
   };
@@ -121,18 +138,29 @@ export default function ProdServ() {
     setServiceSubmitAttempted(true);
     if (!serviceForm.assetType || !serviceForm.description) return;
     try {
-      await API.post('/prodserv', {
+      const response = await API.post('/prodserv', {
         assetType: serviceForm.assetType,
         description: serviceForm.description,
         ps_type: 'service'
       });
+      
+      // Log create action for service
+      await recordActionByNameWithFetch('Create', {
+        prodServId: response.data?.prod_serv_id,
+        assetTypeId: serviceForm.assetType,
+        assetTypeName: assetTypes.find(at => at.asset_type_id === serviceForm.assetType)?.text,
+        description: serviceForm.description,
+        psType: 'service',
+        action: 'Service Created'
+      });
+      
       setServiceForm({ assetType: '', description: '' });
       setServiceSubmitAttempted(false);
       // Refresh services
       const res = await API.get('/prodserv');
       const all = Array.isArray(res.data) ? res.data : [];
       setServices(all.filter(p => p.ps_type === 'service'));
-    } catch (err) {
+    } catch {
       // Optionally handle error
     }
   };
@@ -146,15 +174,15 @@ export default function ProdServ() {
   // State for dependency modal
   const [showDependencyModal, setShowDependencyModal] = useState(false);
   const [dependencies, setDependencies] = useState(null);
-  const [deleteOption, setDeleteOption] = useState('');
+  const [_deleteOption, _setDeleteOption] = useState('');
 
   // Check if item has vendor associations
   const checkVendorAssociations = async (itemId) => {
     try {
       const response = await API.get(`/vendor-prod-services/check/${itemId}`);
       return response.data;
-    } catch (err) {
-      console.error('Error checking vendor associations:', err);
+    } catch (_err) {
+      console.error('Error checking vendor associations:', _err);
       return { hasAssociations: true, vendors: [] };
     }
   };
@@ -163,7 +191,7 @@ export default function ProdServ() {
   const handleDeleteConfirm = async () => {
     if (!itemToDelete) return;
     
-    setIsDeleting(true);
+    _setIsDeleting(true);
     try {
       const itemId = itemToDelete.prod_serv_id || itemToDelete.id;
       
@@ -184,6 +212,18 @@ export default function ProdServ() {
 
       // Proceed with deletion if no associations
       await API.delete(`/prodserv/${itemId}`);
+      
+      // Log delete action
+      await recordActionByNameWithFetch('Delete', {
+        prodServId: itemId,
+        assetTypeId: itemToDelete.assetType || itemToDelete.asset_type_id,
+        assetTypeName: assetTypes.find(at => at.asset_type_id === (itemToDelete.assetType || itemToDelete.asset_type_id))?.text,
+        brand: itemToDelete.brand,
+        model: itemToDelete.model,
+        description: itemToDelete.description,
+        psType: itemToDelete.type,
+        action: `${itemToDelete.type === 'product' ? 'Product' : 'Service'} Deleted`
+      });
       
       // Update local state based on type
       if (itemToDelete.type === 'product') {
@@ -218,7 +258,7 @@ export default function ProdServ() {
       
       toast.error(errorMessage, { duration: 4000 });
     } finally {
-      setIsDeleting(false);
+      _setIsDeleting(false);
       setShowDeleteModal(false);
       setItemToDelete(null);
     }
@@ -649,7 +689,7 @@ export default function ProdServ() {
                 onClick={() => {
                   setShowDependencyModal(false);
                   setDependencies(null);
-                  setDeleteOption('');
+                  _setDeleteOption('');
                 }}
                 className="text-yellow-400 text-xl font-bold"
               >
@@ -720,7 +760,7 @@ export default function ProdServ() {
                 onClick={() => {
                   setShowDependencyModal(false);
                   setDependencies(null);
-                  setDeleteOption('');
+                  _setDeleteOption('');
                 }}
               >
                 Close

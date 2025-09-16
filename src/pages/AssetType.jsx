@@ -8,6 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import UpdateAssetTypeModal from "../components/UpdateAssetTypeModal";
 import { useNavigation } from "../hooks/useNavigation";
+import useAuditLog from "../hooks/useAuditLog";
+import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 
 const AssetType = () => {
   const navigate = useNavigate();
@@ -25,6 +27,9 @@ const AssetType = () => {
   // Access control
   const { hasEditAccess } = useNavigation();
   const canEdit = hasEditAccess('ASSETTYPES');
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(ASSET_TYPES_APP_ID);
   
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAssetType, setSelectedAssetType] = useState(null);
@@ -212,6 +217,13 @@ const AssetType = () => {
       const failed = results.filter(r => !r.success);
 
       if (successful.length > 0) {
+        // Log delete action for successful deletions
+        await recordActionByNameWithFetch('Delete', {
+          assetTypeIds: successful.map(s => s.id),
+          count: successful.length,
+          action: `${successful.length} Asset Type(s) Deleted`
+        });
+
         if (successful.length === 1) {
           toast(
             `Successfully deleted asset type "${successful[0].name}"`,
@@ -279,7 +291,7 @@ const AssetType = () => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     try {
       // Get the filtered and sorted data
       const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
@@ -293,6 +305,12 @@ const AssetType = () => {
       );
 
       if (success) {
+        // Log download action
+        await recordActionByNameWithFetch('Download', {
+          count: dataToExport.length,
+          action: 'Asset Types Data Downloaded'
+        });
+        
         toast(
           'Asset types exported successfully',
           {

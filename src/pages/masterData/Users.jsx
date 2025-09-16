@@ -8,6 +8,8 @@ import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import DeleteConfirmModal from "../../components/DeleteConfirmModal";
 import { useNavigation } from "../../hooks/useNavigation";
+import useAuditLog from "../../hooks/useAuditLog";
+import { USERS_APP_ID } from "../../constants/usersAuditEvents";
 
 const Users = () => {
   const navigate = useNavigate();
@@ -26,6 +28,9 @@ const Users = () => {
   // Access control
   const { hasEditAccess } = useNavigation();
   const canEdit = hasEditAccess('USERS');
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(USERS_APP_ID);
   
   // State for edit modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -334,6 +339,13 @@ const Users = () => {
           setData(formattedData);
         }
 
+        // Log delete action
+        await recordActionByNameWithFetch('Delete', {
+          userIds: selectedRows,
+          count: selectedRows.length,
+          action: `${selectedRows.length} User(s) Deleted`
+        });
+
         // Show success message
         toast.dismiss(loadingToast);
         toast.success(`Successfully deleted ${selectedRows.length} user(s)`, {
@@ -443,6 +455,18 @@ const Users = () => {
       const response = await API.put(`/users/update-users/${userId}`, updatedData);
       
       if (response.data) {
+        // Log update action
+        await recordActionByNameWithFetch('Update', {
+          userId: userId,
+          fullName: updatedData.full_name,
+          email: updatedData.email,
+          phone: updatedData.phone,
+          deptId: updatedData.dept_id,
+          deptName: departments.find(d => d.dept_id === updatedData.dept_id)?.text,
+          status: updatedData.int_status === 1 ? 'Active' : 'Inactive',
+          action: 'User Updated'
+        });
+
         setData(prev => prev.map(user => 
           user.user_id === userId ? { 
             ...user, 
@@ -461,17 +485,24 @@ const Users = () => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     try {
       const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
       const sortedData = sortData(filteredData);
       const success = exportToExcel(sortedData, columns, "Users_List");
       if (success) {
+        // Log download action
+        await recordActionByNameWithFetch('Download', {
+          count: sortedData.length,
+          action: 'Users Data Downloaded'
+        });
+        
         toast('Users exported successfully', { icon: '✅' });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
+      console.error('Error downloading users:', error);
       toast('Failed to export users', { icon: '❌' });
     }
   };
@@ -493,7 +524,13 @@ const Users = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={canEdit ? () => navigate("/master-data/add-user") : null}
+        onAdd={canEdit ? async () => {
+          // Log create action when Add button is clicked
+          await recordActionByNameWithFetch('Create', {
+            action: 'Add User Form Opened'
+          });
+          navigate("/master-data/add-user");
+        } : null}
         onDeleteSelected={canEdit ? handleDelete : null}
         onDownload={handleDownload}
         data={data}
