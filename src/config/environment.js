@@ -1,7 +1,7 @@
 // Environment configuration for frontend
 const config = {
   development: {
-    API_BASE_URL: 'http://localhost:4000/api',
+    API_BASE_URL: 'http://localhost:5000/api',
     FRONTEND_URL: 'http://localhost:5173',
     ENVIRONMENT: 'development'
   },
