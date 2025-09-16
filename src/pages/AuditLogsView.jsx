@@ -23,13 +23,13 @@ import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
 import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
+import SearchableDropdown from '../components/ui/SearchableDropdown';
 
 const AuditLogsView = () => {
   const navigate = useNavigate();
   
   // State management
   const [auditLogs, setAuditLogs] = useState([]);
-  const [filteredLogs, setFilteredLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,23 +48,8 @@ const AuditLogsView = () => {
 
   // Dropdown options
   const [users, setUsers] = useState([]);
-  const [applications, setApplications] = useState([
-    { id: 'asset-management', name: 'Asset Management' },
-    { id: 'maintenance', name: 'Maintenance' },
-    { id: 'reports', name: 'Reports' },
-    { id: 'user-management', name: 'User Management' },
-    { id: 'system', name: 'System' }
-  ]);
-  const [events, setEvents] = useState([
-    { id: 'create', name: 'Create' },
-    { id: 'view', name: 'View' },
-    { id: 'update', name: 'Update' },
-    { id: 'delete', name: 'Delete' },
-    { id: 'login', name: 'Login' },
-    { id: 'logout', name: 'Logout' },
-    { id: 'export', name: 'Export' },
-    { id: 'import', name: 'Import' }
-  ]);
+  const [applications, setApplications] = useState([]);
+  const [events, setEvents] = useState([]);
 
   // Table columns
   const columns = [
@@ -73,12 +58,59 @@ const AuditLogsView = () => {
     { name: 'user_name', label: 'User Name', visible: true },
     { name: 'application', label: 'Application', visible: true },
     { name: 'event', label: 'Event', visible: true },
-    { name: 'entity_type', label: 'Entity Type', visible: true },
-    { name: 'entity_id', label: 'Entity ID', visible: true },
     { name: 'description', label: 'Description', visible: true },
-    { name: 'ip_address', label: 'IP Address', visible: true },
+    { name: 'entity_type', label: 'Entity Type', visible: false },
+    { name: 'entity_id', label: 'Entity ID', visible: false },
+    { name: 'ip_address', label: 'IP Address', visible: false },
     { name: 'user_agent', label: 'User Agent', visible: false }
   ];
+
+  // Format timestamp to human-readable format
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffTime = now - date;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffMinutes = Math.floor(diffTime / (1000 * 60));
+
+      // Format the date
+      const formattedDate = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+
+      // Add relative time
+      let relativeTime = '';
+      if (diffMinutes < 1) {
+        relativeTime = 'Just now';
+      } else if (diffMinutes < 60) {
+        relativeTime = `${diffMinutes}m ago`;
+      } else if (diffHours < 24) {
+        relativeTime = `${diffHours}h ago`;
+      } else if (diffDays === 1) {
+        relativeTime = 'Yesterday';
+      } else if (diffDays < 7) {
+        relativeTime = `${diffDays}d ago`;
+      } else {
+        relativeTime = `${Math.floor(diffDays / 7)}w ago`;
+      }
+
+      return {
+        formatted: formattedDate,
+        relative: relativeTime
+      };
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return { formatted: timestamp, relative: 'Unknown' };
+    }
+  };
 
   // Generate user initials and random background color
   const getUserInitials = (userName) => {
@@ -114,21 +146,26 @@ const AuditLogsView = () => {
   // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
+    fetchApplications();
+    fetchEvents();
     fetchAuditLogs();
   }, []);
 
-  // Apply filters when they change
+  // Fetch audit logs when filters change
   useEffect(() => {
-    applyFilters();
-  }, [filters, auditLogs]);
+    fetchAuditLogs(1, filters.maxRows);
+  }, [filters]);
 
   const fetchUsers = async () => {
     try {
-      const response = await API.get('/users');
-      if (response.data && response.data.success) {
+      const response = await API.get('/users/get-users');
+      console.log('Users API response:', response.data);
+      
+      if (response.data && response.data.success && response.data.data) {
         setUsers(response.data.data.map(user => ({
           id: user.user_id,
-          name: user.username || user.email
+          text: `${user.full_name || user.email} (${user.user_id})`,
+          name: user.full_name || user.email
         })));
       }
     } catch (error) {
@@ -136,20 +173,103 @@ const AuditLogsView = () => {
     }
   };
 
-  const fetchAuditLogs = async () => {
+  const fetchApplications = async () => {
+    try {
+      const response = await API.get('/app-events/apps');
+      if (response.data && response.data.success) {
+        setApplications(response.data.data.apps.map(app => ({
+          id: app.app_id,
+          text: app.app_name,
+          name: app.app_name
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+    }
+  };
+
+  const fetchEvents = async () => {
+    try {
+      const response = await API.get('/app-events/events');
+      if (response.data && response.data.success) {
+        setEvents(response.data.data.events.map(event => ({
+          id: event.event_id,
+          text: event.text,
+          name: event.text
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    }
+  };
+
+  const fetchAuditLogs = async (page = 1, limit = filters.maxRows) => {
     setIsLoading(true);
     try {
-      // Mock data for demonstration - replace with actual API call
-      const mockData = generateMockAuditLogs();
-      setAuditLogs(mockData);
-      setTotalRecords(mockData.length);
-      setTotalPages(Math.ceil(mockData.length / filters.maxRows));
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+
+      // Add filters to query parameters
+      if (filters.users.length > 0) {
+        params.append('user_id', filters.users[0]); // API expects single user_id
+      }
+      if (filters.startDate) {
+        params.append('start_date', filters.startDate);
+      }
+      if (filters.endDate) {
+        params.append('end_date', filters.endDate);
+      }
+      if (filters.application) {
+        params.append('app_id', filters.application);
+      }
+      if (filters.event) {
+        params.append('event_id', filters.event);
+      }
+
+      const response = await API.get(`/audit-logs?${params.toString()}`);
       
-      // Simulate API delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (response.data && response.data.success) {
+        const { audit_logs, pagination } = response.data.data;
+        
+        // Transform API data to match component structure
+        const transformedLogs = audit_logs.map(log => ({
+          id: log.al_id,
+          timestamp: log.created_on,
+          user_id: log.user_id,
+          user_name: log.user_name || log.user_email || log.user_id, // Use full name, email, or user_id as fallback
+          application: log.app_name || log.app_id, // Use app name or app_id as fallback
+          event: log.event_name || log.event_id, // Use event name or event_id as fallback
+          entity_type: 'audit_log', // Default since not in API
+          entity_id: log.al_id,
+          description: log.text,
+          ip_address: 'N/A', // Not available in API
+          user_agent: 'N/A' // Not available in API
+        }));
+
+        setAuditLogs(transformedLogs);
+        setTotalRecords(pagination.total_count);
+        setTotalPages(pagination.total_pages);
+        setCurrentPage(pagination.current_page);
+        
+        // Debug logging
+        console.log('Pagination data:', {
+          total_count: pagination.total_count,
+          total_pages: pagination.total_pages,
+          current_page: pagination.current_page,
+          per_page: pagination.per_page
+        });
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error) {
       console.error('Error fetching audit logs:', error);
       toast.error('Failed to fetch audit logs');
+      setAuditLogs([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }
@@ -184,42 +304,7 @@ const AuditLogsView = () => {
     return mockLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   };
 
-  const applyFilters = () => {
-    let filtered = [...auditLogs];
-
-    // Filter by users
-    if (filters.users.length > 0) {
-      filtered = filtered.filter(log => 
-        filters.users.includes(log.user_id) || filters.users.includes(log.user_name)
-      );
-    }
-
-    // Filter by date range
-    if (filters.startDate) {
-      filtered = filtered.filter(log => 
-        new Date(log.timestamp) >= new Date(filters.startDate)
-      );
-    }
-    if (filters.endDate) {
-      filtered = filtered.filter(log => 
-        new Date(log.timestamp) <= new Date(filters.endDate + 'T23:59:59')
-      );
-    }
-
-    // Filter by application
-    if (filters.application) {
-      filtered = filtered.filter(log => log.application === filters.application);
-    }
-
-    // Filter by event
-    if (filters.event) {
-      filtered = filtered.filter(log => log.event === filters.event);
-    }
-
-    setFilteredLogs(filtered);
-    setTotalPages(Math.ceil(filtered.length / filters.maxRows));
-    setCurrentPage(1);
-  };
+  // Server-side filtering is handled in fetchAuditLogs
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
@@ -228,8 +313,13 @@ const AuditLogsView = () => {
     }));
   };
 
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchAuditLogs(page, filters.maxRows);
+  };
+
   const handleExport = () => {
-    const csvContent = generateCSV(filteredLogs);
+    const csvContent = generateCSV(auditLogs);
     downloadCSV(csvContent, 'audit_logs.csv');
     toast.success('Audit logs exported successfully');
   };
@@ -276,11 +366,8 @@ const AuditLogsView = () => {
     }
   };
 
-  const paginatedLogs = useMemo(() => {
-    const startIndex = (currentPage - 1) * filters.maxRows;
-    const endIndex = startIndex + filters.maxRows;
-    return filteredLogs.slice(startIndex, endIndex);
-  }, [filteredLogs, currentPage, filters.maxRows]);
+  // Since we're using server-side pagination, we don't need client-side pagination
+  const paginatedLogs = auditLogs;
 
   const resetFilters = () => {
     setFilters({
@@ -338,7 +425,13 @@ const AuditLogsView = () => {
   // Custom render function for timestamp column
   const renderTimestamp = (col, row) => {
     if (col.name === 'timestamp') {
-      return new Date(row.timestamp).toLocaleString();
+      const timeInfo = formatTimestamp(row.timestamp);
+      return (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-gray-900">{timeInfo.formatted}</span>
+          <span className="text-xs text-gray-500">{timeInfo.relative}</span>
+        </div>
+      );
     }
     return row[col.name];
   };
@@ -359,11 +452,7 @@ const AuditLogsView = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Audit Logs</h1>
-            <p className="text-gray-600 mt-1">Track and monitor all user activities across the system</p>
-          </div>
+        <div className="flex items-center justify-end">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/audit-logs-view/config')}
@@ -394,22 +483,16 @@ const AuditLogsView = () => {
                 <User className="w-4 h-4 inline mr-1" />
                 Users
               </label>
-              <select
-                multiple
-                value={filters.users}
-                onChange={(e) => {
-                  const selectedUsers = Array.from(e.target.selectedOptions, option => option.value);
-                  handleFilterChange('users', selectedUsers);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                size="3"
-              >
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
+              <SearchableDropdown
+                options={users}
+                value={filters.users.length > 0 ? filters.users[0] : ''}
+                onChange={(value) => handleFilterChange('users', value ? [value] : [])}
+                placeholder="Select User"
+                searchPlaceholder="Search users..."
+                displayKey="text"
+                valueKey="id"
+                className="w-full"
+              />
             </div>
 
             {/* Start Date */}
@@ -448,18 +531,16 @@ const AuditLogsView = () => {
                 <Database className="w-4 h-4 inline mr-1" />
                 Application
               </label>
-              <select
+              <SearchableDropdown
+                options={[{ id: '', text: 'All Applications' }, ...applications]}
                 value={filters.application}
-                onChange={(e) => handleFilterChange('application', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Applications</option>
-                {applications.map(app => (
-                  <option key={app.id} value={app.id}>
-                    {app.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => handleFilterChange('application', value)}
+                placeholder="Select Application"
+                searchPlaceholder="Search applications..."
+                displayKey="text"
+                valueKey="id"
+                className="w-full"
+              />
             </div>
 
             {/* Event */}
@@ -468,18 +549,16 @@ const AuditLogsView = () => {
                 <Activity className="w-4 h-4 inline mr-1" />
                 Event
               </label>
-              <select
+              <SearchableDropdown
+                options={[{ id: '', text: 'All Events' }, ...events]}
                 value={filters.event}
-                onChange={(e) => handleFilterChange('event', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">All Events</option>
-                {events.map(event => (
-                  <option key={event.id} value={event.id}>
-                    {event.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => handleFilterChange('event', value)}
+                placeholder="Select Event"
+                searchPlaceholder="Search events..."
+                displayKey="text"
+                valueKey="id"
+                className="w-full"
+              />
             </div>
           </div>
 
@@ -503,7 +582,7 @@ const AuditLogsView = () => {
                 </select>
               </div>
               <div className="text-sm text-gray-500 mt-6">
-                Showing {filteredLogs.length} of {totalRecords} records
+                Showing {auditLogs.length} of {totalRecords} records
               </div>
             </div>
             <button
@@ -526,7 +605,7 @@ const AuditLogsView = () => {
             </div>
             <div className="text-sm">
               <span className="text-gray-600">Filtered:</span>
-              <span className="font-semibold ml-1">{filteredLogs.length.toLocaleString()}</span>
+              <span className="font-semibold ml-1">{auditLogs.length.toLocaleString()}</span>
             </div>
             <div className="text-sm">
               <span className="text-gray-600">Page:</span>
@@ -573,19 +652,19 @@ const AuditLogsView = () => {
       </ContentBox>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {totalRecords > 0 && (
         <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-4 rounded-lg shadow-sm border">
           <div className="flex-1 flex justify-between sm:hidden">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
+              onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+              disabled={currentPage === 1 || totalPages <= 1}
               className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages <= 1}
               className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
@@ -598,18 +677,18 @@ const AuditLogsView = () => {
                 <span className="font-medium">{(currentPage - 1) * filters.maxRows + 1}</span>
                 {' '}to{' '}
                 <span className="font-medium">
-                  {Math.min(currentPage * filters.maxRows, filteredLogs.length)}
+                  {Math.min(currentPage * filters.maxRows, totalRecords)}
                 </span>
                 {' '}of{' '}
-                <span className="font-medium">{filteredLogs.length}</span>
+                <span className="font-medium">{totalRecords}</span>
                 {' '}results
               </p>
             </div>
             <div>
               <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                 <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
+                  onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                  disabled={currentPage === 1 || totalPages <= 1}
                   className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
@@ -621,7 +700,7 @@ const AuditLogsView = () => {
                   return (
                     <button
                       key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
+                      onClick={() => handlePageChange(pageNum)}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                         currentPage === pageNum
                           ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
@@ -634,8 +713,8 @@ const AuditLogsView = () => {
                 })}
                 
                 <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages <= 1}
                   className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
@@ -647,7 +726,7 @@ const AuditLogsView = () => {
       )}
 
       {/* Empty State */}
-      {!isLoading && filteredLogs.length === 0 && (
+      {!isLoading && auditLogs.length === 0 && (
         <div className="text-center py-12">
           <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No audit logs found</h3>

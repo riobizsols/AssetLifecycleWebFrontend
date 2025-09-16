@@ -32,6 +32,7 @@ import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
 import ReportsBreakdown from "../pages/ReportsBreakdown";
 import BreakdownSelection from "../components/reportbreakdown/BreakdownSelection";
 import BreakdownDetails from "../components/reportbreakdown/BreakdownDetails";
+import EditBreakdownReport from "../components/reportbreakdown/EditBreakdownReport";
 import AdminSettingsView from "../pages/AdminSettingsView";
 import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
 import AuditLogsView from "../pages/AuditLogsView";
@@ -291,6 +292,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <BreakdownSelection />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/edit-breakdown"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <EditBreakdownReport />
               </MainLayout>
             </ProtectedRoute>
           }

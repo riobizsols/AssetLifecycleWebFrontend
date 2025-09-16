@@ -79,6 +79,10 @@ export default function Header() {
       title: "Add Scrap Asset",
       subtitle: "Manually scrap assets that are not necessarily nearing expiry",
     },
+    "/audit-logs-view": {
+      title: "Audit Logs",
+      subtitle: "Track and monitor all user activities across the system",
+    },
     "/audit-logs-view/config": {
       title: "Audit Log Configuration",
       subtitle: "Manage reporting requirements",

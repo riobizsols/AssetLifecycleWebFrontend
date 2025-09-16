@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import useAuditLog from '../hooks/useAuditLog';
 import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
 import { generateUUID } from '../utils/uuid';
+import { useAppData } from '../contexts/AppDataContext';
 
 const initialForm = {
   assetType: '',
@@ -44,6 +45,17 @@ const statusOptions = [
 
 const AddAssetForm = ({ userRole }) => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const { 
+    users, 
+    vendors, 
+    assetTypes, 
+    loading: appDataLoading,
+    getUserBranchId,
+    getUserBranchName,
+    getUserDepartmentName 
+  } = useAppData();
+  
   const [form, setForm] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('Configuration');
@@ -55,7 +67,6 @@ const AddAssetForm = ({ userRole }) => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
-  const [assetTypes, setAssetTypes] = useState([]);
   const [propertiesMap, setPropertiesMap] = useState({});
   const [dynamicProperties, setDynamicProperties] = useState([]);
   const [assetTypePropsMap, setAssetTypePropsMap] = useState({});
@@ -714,7 +725,7 @@ const AddAssetForm = ({ userRole }) => {
         text: assetTypeText, // Asset type name like "Laptop", "Router", etc.
         serial_number: form.serialNumber,
         description: form.description,
-        branch_id: null, // null as specified
+        branch_id: getUserBranchId(user?.user_id), // Auto-populate user's branch
         purchase_vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
         service_vendor_id: form.serviceSupply || null, // Set from Service Vendor dropdown
         prod_serv_id: form.serviceSupply || null, // Set from Service Vendor dropdown

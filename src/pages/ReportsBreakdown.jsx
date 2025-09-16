@@ -26,6 +26,10 @@ const ReportsBreakdown = () => {
     { label: "Org ID", name: "org_id", visible: true },
   ]);
 
+  const handleEdit = (breakdown) => {
+    navigate("/edit-breakdown", { state: { breakdown } });
+  };
+
   useEffect(() => {
     const fetchBreakdowns = async () => {
       setIsLoading(true);
@@ -132,7 +136,7 @@ const ReportsBreakdown = () => {
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
-        showActions={false}
+        showActions={true}
         onAdd={() => navigate("/breakdown-selection")}
       >
         {({ visibleColumns }) => {
@@ -144,8 +148,9 @@ const ReportsBreakdown = () => {
               data={isLoading ? [] : sorted}
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
-              rowKey="breakdown_id"
-              showActions={false}
+              rowKey="abr_id"
+              showActions={true}
+              onEdit={handleEdit}
             />
           );
         }}

@@ -3,7 +3,10 @@ import {
   RefreshCw,
   Search,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Edit,
+  Save,
+  X
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import API from '../lib/axios';
@@ -19,6 +22,8 @@ const AuditLogConfig = () => {
   const [filterApp, setFilterApp] = useState('');
   const [eventNames, setEventNames] = useState({});
   const [appNames, setAppNames] = useState({});
+  const [editingEmail, setEditingEmail] = useState(null);
+  const [emailValue, setEmailValue] = useState('');
 
 
   // Fetch audit log configurations
@@ -133,6 +138,67 @@ const AuditLogConfig = () => {
       toast.error('Failed to update status');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Start editing email
+  const startEditingEmail = (alcId, currentEmail) => {
+    setEditingEmail(alcId);
+    setEmailValue(currentEmail || '');
+  };
+
+  // Cancel editing email
+  const cancelEditingEmail = () => {
+    setEditingEmail(null);
+    setEmailValue('');
+  };
+
+  // Save email
+  const saveEmail = async (alcId) => {
+    if (!emailValue.trim()) {
+      toast.error('Email cannot be empty');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailValue.trim())) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await API.put(`/audit-log-configs/${alcId}`, {
+        reporting_email: emailValue.trim()
+      });
+      
+      if (response.data && response.data.success) {
+        setConfigs(prev => prev.map(config => 
+          config.alc_id === alcId 
+            ? { ...config, reporting_email: emailValue.trim() }
+            : config
+        ));
+        setEditingEmail(null);
+        setEmailValue('');
+        toast.success('Email updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating email:', error);
+      toast.error('Failed to update email');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle keyboard events for email editing
+  const handleEmailKeyDown = (e, alcId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEmail(alcId);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditingEmail();
     }
   };
 
@@ -269,8 +335,54 @@ const AuditLogConfig = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-900">
-                      {config.reporting_email}
+                    <td className="px-4 py-4">
+                      {editingEmail === config.alc_id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="email"
+                            value={emailValue}
+                            onChange={(e) => setEmailValue(e.target.value)}
+                            onKeyDown={(e) => handleEmailKeyDown(e, config.alc_id)}
+                            className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-[#FFC107] focus:border-[#FFC107] min-w-[200px]"
+                            placeholder="Enter email address"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => saveEmail(config.alc_id)}
+                            disabled={isSaving}
+                            className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
+                            title="Save email"
+                          >
+                            {isSaving ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Save className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={cancelEditingEmail}
+                            disabled={isSaving}
+                            className="p-1 text-red-600 hover:text-red-800 disabled:opacity-50"
+                            title="Cancel editing"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-900">
+                            {config.reporting_email || 'No email set'}
+                          </span>
+                          <button
+                            onClick={() => startEditingEmail(config.alc_id, config.reporting_email)}
+                            disabled={isSaving}
+                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                            title="Edit email"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

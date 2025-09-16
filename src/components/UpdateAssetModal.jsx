@@ -7,10 +7,22 @@ import { useAuthStore } from '../store/useAuthStore';
 import useAuditLog from '../hooks/useAuditLog';
 import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
 import { generateUUID } from '../utils/uuid';
+import { useAppData } from '../contexts/AppDataContext';
 
 const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
+  
+  const { user } = useAuthStore();
+  const { 
+    users, 
+    vendors, 
+    assetTypes, 
+    loading: appDataLoading,
+    getUserBranchId,
+    getUserBranchName,
+    getUserDepartmentName 
+  } = useAppData();
   
   const [form, setForm] = useState({
     assetType: '',
@@ -25,11 +37,11 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     vendorModel: '',
     purchaseSupply: '',
     serviceSupply: '',
-    vendorId: ''
+    vendorId: '',
+    properties: {}
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [assetTypes, setAssetTypes] = useState([]);
   const [purchaseByOptions, setPurchaseByOptions] = useState([]);
   const [vendorBrandOptions, setVendorBrandOptions] = useState([]);
   const [vendorModelOptions, setVendorModelOptions] = useState([]);
@@ -38,6 +50,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [searchAssetType, setSearchAssetType] = useState("");
   const assetTypeDropdownRef = useRef(null);
   const [assetTypeDropdownOpen, setAssetTypeDropdownOpen] = useState(false);
+  const [dynamicProperties, setDynamicProperties] = useState([]);
+  const [assetTypePropsMap, setAssetTypePropsMap] = useState({});
   const [docs, setDocs] = useState([]); // existing documents
   const [docsLoading, setDocsLoading] = useState(false);
   const [loadingActions, setLoadingActions] = useState({});
@@ -53,55 +67,111 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [qsnPrintReason, setQsnPrintReason] = useState("");
   const [isQSNPrintLoading, setIsQSNPrintLoading] = useState(false);
 
+  // Fetch full asset data with properties
+  const fetchAssetWithProperties = async (assetId) => {
+    try {
+      const response = await API.get(`/assets/${assetId}`);
+      if (response.data) {
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error fetching asset with properties:', error);
+    }
+    return null;
+  };
+
   // Load asset data when modal opens
   useEffect(() => {
-    if (assetData) {
-      // Format dates to YYYY-MM-DD for input type="date"
-      const formatDate = (dateString) => {
-        if (!dateString) return '';
-        try {
-          const date = new Date(dateString);
-          if (isNaN(date.getTime())) return ''; // Invalid date
-          return date.toISOString().split('T')[0];
-        } catch (err) {
-          console.error('Error formatting date:', err);
-          return '';
+    const loadAssetData = async () => {
+      if (assetData?.asset_id) {
+        // Fetch full asset data with properties
+        const fullAssetData = await fetchAssetWithProperties(assetData.asset_id);
+        const dataToUse = fullAssetData || assetData;
+
+        // Format dates to YYYY-MM-DD for input type="date"
+        const formatDate = (dateString) => {
+          if (!dateString) return '';
+          try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return ''; // Invalid date
+            return date.toISOString().split('T')[0];
+          } catch (err) {
+            console.error('Error formatting date:', err);
+            return '';
+          }
+        };
+
+        // Clean numeric values by removing currency symbols and formatting
+        const cleanNumericValue = (value) => {
+          if (!value) return '';
+          // Remove currency symbols, commas, and other non-numeric characters except decimal point
+          const cleaned = String(value).replace(/[^\d.-]/g, '');
+          // Ensure it's a valid number
+          const num = parseFloat(cleaned);
+          return isNaN(num) ? '' : num.toString();
+        };
+
+        console.log('Loading asset data:', dataToUse);
+        console.log('Asset properties from API:', dataToUse.properties);
+        console.log('Purchased by value:', dataToUse.purchased_by);
+        console.log('Available purchase by options:', purchaseByOptions);
+        
+        setForm({
+          assetType: dataToUse.asset_type_id || '',
+          serialNumber: dataToUse.serial_number || '',
+          description: dataToUse.description || '',
+          expiryDate: formatDate(dataToUse.expiry_date),
+          warrantyPeriod: dataToUse.warranty_period || '',
+          purchaseDate: formatDate(dataToUse.purchased_on),
+          purchaseCost: cleanNumericValue(dataToUse.purchased_cost),
+          purchaseBy: dataToUse.purchased_by || '',
+          vendorBrand: '',
+          vendorModel: '',
+          purchaseSupply: dataToUse.purchase_vendor_id || '',
+          serviceSupply: dataToUse.service_vendor_id || '',
+          vendorId: dataToUse.purchase_vendor_id || '',
+          properties: dataToUse.properties || {}
+        });
+
+        // Fetch dynamic properties for the asset type
+        if (dataToUse.asset_type_id) {
+          await fetchDynamicProperties(dataToUse.asset_type_id);
         }
-      };
+      }
+    };
 
-      // Clean numeric values by removing currency symbols and formatting
-      const cleanNumericValue = (value) => {
-        if (!value) return '';
-        // Remove currency symbols, commas, and other non-numeric characters except decimal point
-        const cleaned = String(value).replace(/[^\d.-]/g, '');
-        // Ensure it's a valid number
-        const num = parseFloat(cleaned);
-        return isNaN(num) ? '' : num.toString();
-      };
-
-      setForm({
-        assetType: assetData.asset_type_id || '',
-        serialNumber: assetData.serial_number || '',
-        description: assetData.description || '',
-        expiryDate: formatDate(assetData.expiry_date),
-        warrantyPeriod: assetData.warranty_period || '',
-        purchaseDate: formatDate(assetData.purchased_on),
-        purchaseCost: cleanNumericValue(assetData.purchased_cost),
-        purchaseBy: assetData.purchased_by || '',
-        vendorBrand: '',
-        vendorModel: '',
-        purchaseSupply: assetData.vendor_id || '',
-        serviceSupply: assetData.prod_serv_id || '',
-        vendorId: assetData.vendor_id || ''
-      });
-    }
+    loadAssetData();
   }, [assetData]);
 
+  // Populate dropdowns when context data is available
   useEffect(() => {
-    fetchAssetTypes();
-    fetchUsers();
-    fetchProdServs();
-    fetchVendors();
+    if (users.length > 0) {
+      const userOptions = [
+        { value: '', label: 'Select User' },
+        ...users.map(user => ({
+          value: user.user_id,
+          label: user.full_name || user.email || `User ${user.user_id}`
+        }))
+      ];
+      setPurchaseByOptions(userOptions);
+    }
+  }, [users]);
+
+  useEffect(() => {
+    if (vendors.length > 0) {
+      const vendorOptions = [
+        { value: '', label: 'Select Vendor' },
+        ...vendors.map(vendor => ({
+          value: vendor.vendor_id,
+          label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
+        }))
+      ];
+      setPurchaseSupplyOptions(vendorOptions);
+      setServiceSupplyOptions(vendorOptions);
+    }
+  }, [vendors]);
+
+  useEffect(() => {
     fetchDocumentTypes();
   }, []);
 
@@ -245,39 +315,13 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     setActiveDropdown(null);
   };
 
-  const fetchAssetTypes = async () => {
-    try {
-      const res = await API.get('/dept-assets/asset-types');
-      setAssetTypes(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error('Error fetching asset types:', err);
-      setAssetTypes([]);
-    }
-  };
 
-  const fetchUsers = async () => {
-    try {
-      const res = await API.get('/users/get-users');
-      if (res.data && Array.isArray(res.data)) {
-        // Transform API data to dropdown format
-        const users = [
-          { value: '', label: 'Select' },
-          ...res.data.map(user => ({
-            value: user.user_id,
-            label: user.full_name
-          }))
-        ];
-        setPurchaseByOptions(users);
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      setPurchaseByOptions([]);
-    }
-  };
 
   const fetchProdServs = async () => {
     try {
+      console.log('Fetching product/services...');
       const res = await API.get('/prodserv');
+      console.log('ProdServ API response:', res.data);
       if (res.data && Array.isArray(res.data)) {
         // Extract unique brands
         const uniqueBrands = [...new Set(res.data.map(item => item.brand).filter(Boolean))];
@@ -300,37 +344,44 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           }))
         ];
         setVendorModelOptions(modelOptions);
+        
+        // Set service supply options to product/services
+        const prodServOptions = [
+          { value: '', label: 'Select Service' },
+          ...res.data.map(item => {
+            let label = '';
+            if (item.description) {
+              // For services, use the description
+              label = item.description;
+            } else if (item.brand && item.model) {
+              // For products, use brand + model
+              label = `${item.brand} ${item.model}`;
+            } else if (item.brand) {
+              // If only brand is available
+              label = item.brand;
+            } else if (item.model) {
+              // If only model is available
+              label = item.model;
+            } else {
+              // Fallback to ID
+              label = item.prod_serv_id;
+            }
+            
+            return {
+              value: item.prod_serv_id,
+              label: label
+            };
+          })
+        ];
+        console.log('Service Supply Options:', prodServOptions);
+        setServiceSupplyOptions(prodServOptions);
       }
     } catch (err) {
       console.error('Error fetching product/services:', err);
-      setPurchaseSupplyOptions([]);
       setServiceSupplyOptions([]);
     }
   };
 
-  const fetchVendors = async () => {
-    try {
-      const res = await API.get('/get-vendors');
-      if (res.data && Array.isArray(res.data)) {
-        // Transform API data to dropdown format - only show active vendors
-        const vendors = [
-          { value: '', label: 'Select' },
-          ...res.data
-            .filter(vendor => vendor.int_status === 1) // Only active vendors
-            .map(vendor => ({
-              value: vendor.vendor_id,
-              label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
-            }))
-        ];
-        setPurchaseSupplyOptions(vendors);
-        setServiceSupplyOptions(vendors);
-      }
-    } catch (err) {
-      console.error('Error fetching vendors:', err);
-      setPurchaseSupplyOptions([]);
-      setServiceSupplyOptions([]);
-    }
-  };
 
   const fetchDocumentTypes = async () => {
     try {
@@ -359,6 +410,51 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     }
   };
 
+  const fetchDynamicProperties = async (assetTypeId) => {
+    if (!assetTypeId) {
+      setDynamicProperties([]);
+      setAssetTypePropsMap({});
+      return;
+    }
+
+    try {
+      console.log(`Fetching properties for asset type: ${assetTypeId}`);
+      const res = await API.get(`/properties/asset-types/${assetTypeId}/properties-with-values`);
+      console.log('Properties response:', res.data);
+
+      if (res.data && res.data.data) {
+        setDynamicProperties(res.data.data);
+
+        // Create mapping from prop_id to asset_type_prop_id
+        const propsMap = {};
+        res.data.data.forEach(property => {
+          propsMap[property.prop_id] = property.asset_type_prop_id;
+        });
+        setAssetTypePropsMap(propsMap);
+        
+        console.log('Dynamic properties loaded:', res.data.data);
+        console.log('Current form properties:', form.properties);
+      } else {
+        setDynamicProperties([]);
+        setAssetTypePropsMap({});
+      }
+    } catch (err) {
+      console.error('Error fetching dynamic properties:', err);
+      setDynamicProperties([]);
+      setAssetTypePropsMap({});
+    }
+  };
+
+  const handlePropChange = (propName, value) => {
+    setForm(prev => ({
+      ...prev,
+      properties: {
+        ...prev.properties,
+        [propName]: value
+      }
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.assetType || !form.serialNumber || !form.purchaseDate || !form.purchaseCost) {
@@ -368,21 +464,27 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
     setIsSubmitting(true);
     try {
+      // Get user's branch ID automatically
+      const userBranchId = getUserBranchId(user?.user_id);
+      console.log('User branch ID for asset update:', userBranchId);
+
       // Prepare the asset data according to backend requirements
       const updateData = {
         asset_type_id: form.assetType,
         serial_number: form.serialNumber,
         description: form.description,
+        branch_id: userBranchId, // Auto-populate user's branch
         purchase_vendor_id: form.purchaseSupply || null,
-        service_vendor_id: form.serviceSupply || null,
-        prod_serv_id: null,
+        service_vendor_id: form.serviceSupply || null, // Service Supply is service vendor
+        prod_serv_id: null, // Product/Service is not used in this form
         maintsch_id: null,
         purchased_cost: form.purchaseCost,
         purchased_on: form.purchaseDate,
         purchased_by: form.purchaseBy || null,
         expiry_date: form.expiryDate || null,
         current_status: 'Active',
-        warranty_period: form.warrantyPeriod || null
+        warranty_period: form.warrantyPeriod || null,
+        properties: form.properties || {}
       };
 
       // Use the asset_id from the passed assetData prop
@@ -664,7 +766,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseSupply: e.target.value, vendorId: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select Vendor</option>
+                <option value="">Select Purchase Vendor</option>
                 {purchaseSupplyOptions.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -681,7 +783,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 onChange={(e) => setForm(prev => ({ ...prev, serviceSupply: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select Service</option>
+                <option value="">Select Service Vendor</option>
                 {serviceSupplyOptions.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -690,6 +792,63 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
               </select>
             </div>
           </div>
+
+          {/* Asset Properties */}
+          {form.assetType && dynamicProperties.length > 0 && (
+            <div className="mt-6">
+              <div className="border-b flex gap-8 mb-4">
+                <button type="button" className="text-base font-semibold border-b-2 border-[#0E2F4B] text-[#0E2F4B] px-4 py-2 bg-transparent">
+                  Asset Properties
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-6">
+                {dynamicProperties.map((property) => {
+                  const hasValues = property.values && property.values.length > 0;
+                  const hasValidValues = hasValues && property.values.some(v => v.value && v.value.trim() !== '');
+                  const currentValue = form.properties[property.prop_id] || '';
+                  
+                  console.log(`Property ${property.property} (${property.prop_id}):`, {
+                    currentValue,
+                    hasValues,
+                    hasValidValues,
+                    availableValues: property.values?.map(v => v.value)
+                  });
+                  
+                  return (
+                    <div key={property.prop_id}>
+                      <label className="block text-sm mb-1 font-medium">{property.property}</label>
+                      {hasValidValues ? (
+                        // Show dropdown if there are valid values
+                        <select
+                          name={`property_${property.prop_id}`}
+                          value={currentValue}
+                          onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown"
+                        >
+                          <option value="">Select {property.property}</option>
+                          {property.values.map((value) => (
+                            <option key={value.aplv_id} value={value.value}>
+                              {value.value}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        // Show input field if no valid values exist
+                        <input
+                          type="text"
+                          name={`property_${property.prop_id}`}
+                          value={currentValue}
+                          onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
+                          placeholder={`Enter ${property.property}`}
+                          className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Attached Documents */}
           <div className="mt-4">
@@ -1226,6 +1385,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           </div>
         </div>
       )}
+      <style>{`
+        .scrollable-dropdown {
+          max-height: 180px;
+          overflow-y: auto;
+        }
+      `}</style>
     </div>
   );
 };

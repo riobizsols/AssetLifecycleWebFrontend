@@ -1,9 +1,10 @@
 import AppRoutes from "./routes/AppRoutes";
 import { Toaster } from "react-hot-toast";
+import { AppDataProvider } from "./contexts/AppDataContext";
 
 const App = () => {
   return (
-    <>
+    <AppDataProvider>
       <AppRoutes />
       <Toaster
         position="bottom-right"
@@ -76,7 +77,7 @@ const App = () => {
           }
         `}
       </style>
-    </>
+    </AppDataProvider>
   );
 };
 
