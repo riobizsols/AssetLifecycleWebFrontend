@@ -2,6 +2,8 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useAuditLog } from "../hooks/useAuditLog";
+import { AUTH_APP_IDS } from "../constants/authAuditEvents";
 
 export default function Header() {
   const { user, logout } = useAuthStore();
@@ -9,6 +11,9 @@ export default function Header() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+  
+  // Audit logging for logout
+  const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.LOGOUT);
 
   // Map paths to page titles and subtitles
   const pathTitleMap = {
@@ -74,6 +79,10 @@ export default function Header() {
       title: "Add Scrap Asset",
       subtitle: "Manually scrap assets that are not necessarily nearing expiry",
     },
+    "/audit-logs-view/config": {
+      title: "Audit Log Configuration",
+      subtitle: "Manage reporting requirements",
+    },
 
     // Add more routes as needed
   };
@@ -81,7 +90,14 @@ export default function Header() {
     location.pathname.startsWith(path)
   )?.[1] || { title: "", subtitle: "" };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Log audit event for logout
+    await recordActionByNameWithFetch('Logging Out', { 
+      action: 'User Logged Out Successfully',
+      userId: user?.user_id,
+      userEmail: user?.email
+    });
+    
     logout();
     navigate("/");
   };

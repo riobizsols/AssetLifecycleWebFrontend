@@ -8,6 +8,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import useAuditLog from '../hooks/useAuditLog';
 import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
+import { generateUUID } from '../utils/uuid';
 
 const initialForm = {
   assetType: '',
@@ -449,7 +450,7 @@ const AddAssetForm = ({ userRole }) => {
 
   const addAttachmentRow = () => {
     setAttachments(prev => ([...prev, { 
-      id: crypto.randomUUID(), 
+      id: generateUUID(), 
       type: '', 
       file: null, 
       docTypeName: '', 

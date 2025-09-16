@@ -35,6 +35,7 @@ import BreakdownDetails from "../components/reportbreakdown/BreakdownDetails";
 import AdminSettingsView from "../pages/AdminSettingsView";
 import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
 import AuditLogsView from "../pages/AuditLogsView";
+import AuditLogConfig from "../components/AuditLogConfig";
 import InspectionView from "../pages/InspectionView";
 import GroupAsset from "../pages/GroupAsset";
 import CreateGroupAsset from "../components/groupAsset/CreateGroupAsset";
@@ -360,6 +361,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <AuditLogsView />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/audit-logs-view/config"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AuditLogConfig />
               </MainLayout>
             </ProtectedRoute>
           }

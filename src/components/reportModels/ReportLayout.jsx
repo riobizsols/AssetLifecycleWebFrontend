@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FaShareAlt } from "react-icons/fa";
+import { generateUUID } from '../../utils/uuid';
 import {
   SectionTitle,
   Chip,
@@ -38,7 +39,9 @@ export default function ReportLayout({
   loading,
   error,
   apiData,
-  exportService
+  exportService,
+  onGenerateReport,
+  onExportReport
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [viewName, setViewName] = useState("");
@@ -211,6 +214,11 @@ export default function ReportLayout({
   const handleGenerateReport = async (format = 'pdf') => {
     setIsGeneratingReport(true);
     try {
+      // Call audit logging handler if provided
+      if (onGenerateReport) {
+        await onGenerateReport();
+      }
+
       // For asset-valuation report, use the comprehensive export functionality
       if (report.id === 'asset-valuation') {
         await handleAssetValuationExport(format);
@@ -267,20 +275,33 @@ export default function ReportLayout({
       switch (format) {
         case 'pdf':
           // For PDF, use the same comprehensive logic as Export PDF
-          exportPDF();
+          // Note: Skip audit logging here since it's already handled in handleGenerateReport
+          exportPDF(true); // Skip audit log for generate report flow
           return; // PDF export doesn't need blob download
           
         case 'excel':
+          // Call audit logging handler for non-PDF exports
+          if (onExportReport) {
+            await onExportReport('excel');
+          }
           blob = await assetValuationService.exportToExcel(apiFilters);
           filename = `Asset_Valuation_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
           mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
           break;
         case 'csv':
+          // Call audit logging handler for non-PDF exports
+          if (onExportReport) {
+            await onExportReport('csv');
+          }
           blob = await assetValuationService.exportToCSV(apiFilters);
           filename = `Asset_Valuation_Report_${new Date().toISOString().slice(0, 10)}.csv`;
           mimeType = 'text/csv';
           break;
         case 'json':
+          // Call audit logging handler for non-PDF exports
+          if (onExportReport) {
+            await onExportReport('json');
+          }
           blob = await assetValuationService.exportToJSON(apiFilters);
           filename = `Asset_Valuation_Report_${new Date().toISOString().slice(0, 10)}.json`;
           mimeType = 'application/json';
@@ -313,7 +334,7 @@ export default function ReportLayout({
 
   const saveView = () => {
     if (!viewName.trim()) return;
-    setViews([...views, { id: crypto.randomUUID(), name: viewName, reportId: report.id, quick, advanced, columns: cols }]);
+    setViews([...views, { id: generateUUID(), name: viewName, reportId: report.id, quick, advanced, columns: cols }]);
     setIsSaving(false);
     setViewName("");
   };
@@ -354,7 +375,12 @@ export default function ReportLayout({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const exportCSV = () => {
+  const exportCSV = async () => {
+    // Call audit logging handler if provided
+    if (onExportReport) {
+      await onExportReport('csv');
+    }
+
     let csvContent = [];
     
     // Add report header
@@ -395,7 +421,12 @@ export default function ReportLayout({
     URL.revokeObjectURL(url);
   };
 
-  const exportPDF = () => {
+  const exportPDF = async (skipAuditLog = false) => {
+    // Call audit logging handler if provided (skip for generate report flow)
+    if (onExportReport && !skipAuditLog) {
+      await onExportReport('pdf');
+    }
+
     const doc = new jsPDF("l", "pt", "a4");
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
@@ -512,7 +543,10 @@ export default function ReportLayout({
     doc.save(`${report.name.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
-  const exportOptions = [{ label: "Export as CSV", action: exportCSV }, { label: "Export as PDF", action: exportPDF }];
+  const exportOptions = [
+    { label: "Export as CSV", action: () => exportCSV() }, 
+    { label: "Export as PDF", action: () => exportPDF(false) } // Don't skip audit log for explicit export
+  ];
 
   // Mock users for sharing (this should come from props or context in real app)
   const USERS = ["Arun Kumar", "Divya T", "Shweta", "Rahul", "Sanjay"];

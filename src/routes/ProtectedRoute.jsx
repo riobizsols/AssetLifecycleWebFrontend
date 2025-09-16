@@ -12,7 +12,7 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(job_role_id)) {
     console.log('Access denied. User role:', job_role_id, 'Allowed roles:', allowedRoles);
-    return <Navigate to="/dashboard" />; // or a 403 page
+    return <Navigate to="/" />; // Redirect to login page
   }
 
   return children;

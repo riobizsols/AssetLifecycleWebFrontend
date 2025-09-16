@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'react-hot-toast';
+import { generateUUID } from '../../utils/uuid';
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -17,6 +18,8 @@ import {
 } from 'lucide-react';
 import API from '../../lib/axios';
 import SearchableDropdown from '../ui/SearchableDropdown';
+import { useAuditLog } from '../../hooks/useAuditLog';
+import { GROUP_ASSETS_APP_ID } from '../../constants/groupAssetsAuditEvents';
 
 const CreateGroupAsset = () => {
   const navigate = useNavigate();
@@ -30,6 +33,9 @@ const CreateGroupAsset = () => {
   const [filterTerm, setFilterTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownSearchTerm, setDropdownSearchTerm] = useState('');
+  
+  // Audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(GROUP_ASSETS_APP_ID);
   
   // New state for API data
   const [assetTypes, setAssetTypes] = useState([]);
@@ -237,6 +243,14 @@ const CreateGroupAsset = () => {
         
         console.log('CreateGroupAsset - Extracted assetGroupId:', assetGroupId);
         
+        // Log audit event for group creation
+        await recordActionByNameWithFetch('Create', { 
+          groupId: assetGroupId,
+          groupName: groupName.trim(),
+          assetCount: selectedAssets.length,
+          action: 'Group Asset Created Successfully'
+        });
+        
         // Upload documents if any
         if (assetGroupId && uploadRows.length > 0) {
           console.log('CreateGroupAsset - Uploading documents for assetGroupId:', assetGroupId);
@@ -260,6 +274,13 @@ const CreateGroupAsset = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
               });
               console.log('CreateGroupAsset - Document upload success:', uploadResponse.data);
+              
+              // Log audit event for document upload
+              await recordActionByNameWithFetch('Add Document', { 
+                groupId: assetGroupId,
+                docTypeId: r.type,
+                action: 'Document Added to Group Asset'
+              });
             } catch (upErr) {
               console.error('Asset group doc upload failed', upErr);
             }
@@ -666,7 +687,7 @@ const CreateGroupAsset = () => {
                 <div className="text-sm font-medium text-gray-700">Upload Documents</div>
                 <button 
                   type="button" 
-                  onClick={() => setUploadRows(prev => ([...prev, { id: crypto.randomUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
+                  onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
                   className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
                 >
                   <Plus size={16} className="mr-2" />

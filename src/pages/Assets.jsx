@@ -246,7 +246,7 @@ const Assets = () => {
 
       if (success) {
         // Log export action
-        await recordActionByNameWithFetch('Create', { count: dataToExport.length });
+        await recordActionByNameWithFetch('Download', { count: dataToExport.length });
         
         toast(
           'Assets exported successfully',

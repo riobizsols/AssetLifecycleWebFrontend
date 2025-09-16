@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import API from "../lib/axios";
 import ChecklistModal from "./ChecklistModal";
 import SearchableDropdown from "./ui/SearchableDropdown";
+import { generateUUID } from '../utils/uuid';
 
 export default function MaintSupervisorApproval() {
   const { id } = useParams();
@@ -417,7 +418,7 @@ export default function MaintSupervisorApproval() {
   // Document upload handlers
   const addInvoiceUpload = () => {
     setInvoiceUploads(prev => ([...prev, { 
-      id: crypto.randomUUID(), 
+      id: generateUUID(), 
       type: '', 
       docTypeName: '', 
       file: null, 
@@ -427,7 +428,7 @@ export default function MaintSupervisorApproval() {
 
   const addBeforeAfterUpload = () => {
     setBeforeAfterUploads(prev => ([...prev, { 
-      id: crypto.randomUUID(), 
+      id: generateUUID(), 
       type: '', // Will be selected from photoDocTypes
       docTypeName: '', // For custom names
       file: null, 

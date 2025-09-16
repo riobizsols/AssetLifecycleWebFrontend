@@ -6,6 +6,9 @@ import { toast } from 'react-hot-toast';
 import { ChevronDown, Check, X, ArrowRight, ArrowLeft, Search, Plus, MoreVertical, Eye, Download, Archive, ArchiveRestore } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SearchableDropdown from '../ui/SearchableDropdown';
+import { generateUUID } from '../../utils/uuid';
+import { useAuditLog } from '../../hooks/useAuditLog';
+import { GROUP_ASSETS_APP_ID } from '../../constants/groupAssetsAuditEvents';
 
 const EditGroupAsset = () => {
   const navigate = useNavigate();
@@ -20,6 +23,9 @@ const EditGroupAsset = () => {
   const [filterTerm, setFilterTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownSearchTerm, setDropdownSearchTerm] = useState('');
+  
+  // Audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(GROUP_ASSETS_APP_ID);
   
   // API data states
   const [assetTypes, setAssetTypes] = useState([]);
@@ -381,8 +387,16 @@ const EditGroupAsset = () => {
       const response = await API.put(`/asset-groups/${groupId}`, updateData);
       
       if (response.data && response.data.message) {
+        // Log audit event for group update
+        await recordActionByNameWithFetch('Update', { 
+          groupId: groupId,
+          groupName: groupName.trim(),
+          assetCount: selectedAssets.length,
+          action: 'Group Asset Updated Successfully'
+        });
+        
         toast.success('Asset group updated successfully!');
-      navigate('/group-asset');
+        navigate('/group-asset');
       } else {
         toast.error('Failed to update asset group');
       }
@@ -409,12 +423,30 @@ const EditGroupAsset = () => {
       } else if (action === 'download') {
         console.log('Downloading document:', doc.agd_id);
         const res = await API.get(`/asset-group-docs/${doc.agd_id}/download?mode=download`);
+        
+        // Log audit event for document download
+        await recordActionByNameWithFetch('Download', { 
+          groupId: groupId,
+          docId: doc.agd_id,
+          docTypeId: doc.dto_id,
+          action: 'Document Downloaded from Group Asset'
+        });
+        
         window.open(res.data.url, '_blank');
       } else if (action === 'archive') {
         console.log('Archiving document:', doc.agd_id);
         await API.put(`/asset-group-docs/${doc.agd_id}/archive-status`, {
           is_archived: true
         });
+          
+        // Log audit event for document archive (treating as document update)
+        await recordActionByNameWithFetch('Add Document', { 
+          groupId: groupId,
+          docId: doc.agd_id,
+          docTypeId: doc.dto_id,
+          action: 'Document Archived in Group Asset'
+        });
+        
         toast.success('Document archived successfully');
         // Refresh documents
         const res = await API.get(`/asset-group-docs/${groupId}`);
@@ -428,6 +460,15 @@ const EditGroupAsset = () => {
         await API.put(`/asset-group-docs/${doc.agd_id}/archive-status`, {
           is_archived: false
         });
+        
+        // Log audit event for document unarchive (treating as document update)
+        await recordActionByNameWithFetch('Add Document', { 
+          groupId: groupId,
+          docId: doc.agd_id,
+          docTypeId: doc.dto_id,
+          action: 'Document Unarchived in Group Asset'
+        });
+        
         toast.success('Document unarchived successfully');
         // Refresh documents
         const res = await API.get(`/asset-group-docs/${groupId}`);
@@ -483,6 +524,14 @@ const EditGroupAsset = () => {
           await API.post('/asset-group-docs/upload', fd, { 
             headers: { 'Content-Type': 'multipart/form-data' }
           });
+          
+          // Log audit event for document upload
+          await recordActionByNameWithFetch('Add Document', { 
+            groupId: groupId,
+            docTypeId: r.type,
+            action: 'Document Added to Group Asset'
+          });
+          
           successCount++;
         } catch (err) {
           console.error('Failed to upload file:', r.file.name, err);
@@ -944,7 +993,7 @@ const EditGroupAsset = () => {
                 <div className="text-sm font-medium text-gray-700">Upload Documents</div>
                 <button 
                   type="button" 
-                  onClick={() => setUploadRows(prev => ([...prev, { id: crypto.randomUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
+                  onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
                   className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
                 >
                   <Plus size={16} className="mr-2" />

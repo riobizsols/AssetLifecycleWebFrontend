@@ -4,10 +4,15 @@ import { useReportState } from "../../components/reportModels/useReportState";
 import { REPORTS } from "../../components/reportModels/ReportConfig";
 import { assetValuationService } from "../../services/assetValuationService";
 import { toast } from "react-hot-toast";
+import { useAuditLog } from "../../hooks/useAuditLog";
+import { REPORTS_APP_IDS } from "../../constants/reportsAuditEvents";
 
 export default function AssetValuation() {
   const selectedReportId = "asset-valuation";
   const report = useMemo(() => REPORTS.find((r) => r.id === selectedReportId), []);
+  
+  // Audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(REPORTS_APP_IDS.ASSET_VALUATION);
   
   const [apiData, setApiData] = useState({
     assets: [],
@@ -145,6 +150,24 @@ export default function AssetValuation() {
     setApiData(prev => ({ ...prev, error: null }));
   };
 
+  // Audit logging handlers
+  const handleGenerateReport = async () => {
+    await recordActionByNameWithFetch('Generate Report', { 
+      reportType: 'Asset Valuation',
+      action: 'Report Generated Successfully',
+      filterCount: Object.keys(quick).filter(key => quick[key] && quick[key] !== '').length
+    });
+  };
+
+  const handleExportReport = async (exportType = 'pdf') => {
+    await recordActionByNameWithFetch('Export Report', { 
+      reportType: 'Asset Valuation',
+      exportFormat: exportType,
+      action: `Report Exported as ${exportType.toUpperCase()}`,
+      filterCount: Object.keys(quick).filter(key => quick[key] && quick[key] !== '').length
+    });
+  };
+
   // Use API data only
   const finalAllRows = apiData.assets || [];
   const finalFilteredRows = apiData.assets || [];
@@ -170,6 +193,8 @@ export default function AssetValuation() {
         filterOptions: apiData.filterOptions
       }}
       exportService={assetValuationService}
+      onGenerateReport={handleGenerateReport}
+      onExportReport={handleExportReport}
     />
   );
 }

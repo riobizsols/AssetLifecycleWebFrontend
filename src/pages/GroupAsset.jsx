@@ -6,12 +6,17 @@ import { toast } from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
+import { useAuditLog } from '../hooks/useAuditLog';
+import { GROUP_ASSETS_APP_ID } from '../constants/groupAssetsAuditEvents';
 
 const GroupAsset = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [groupAssets, setGroupAssets] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(GROUP_ASSETS_APP_ID);
 
   // Fetch asset groups from API
   const fetchAssetGroups = async () => {
@@ -71,7 +76,11 @@ const GroupAsset = () => {
     { key: 'status', name: 'status', label: 'Status', sortable: true, visible: true }
   ];
 
-  const handleAddGroupAsset = () => {
+  const handleAddGroupAsset = async () => {
+    // Log audit event for opening create form
+    await recordActionByNameWithFetch('Create', { 
+      action: 'Add Group Asset Form Opened' 
+    });
     navigate('/group-asset/create');
   };
 
@@ -93,6 +102,14 @@ const GroupAsset = () => {
   const handleDelete = async (row) => {
     try {
       await API.delete(`/asset-groups/${row.group_id}`);
+      
+      // Log audit event for delete
+      await recordActionByNameWithFetch('Delete', { 
+        groupId: row.group_id,
+        groupName: row.group_name,
+        action: 'Group Asset Deleted Successfully'
+      });
+      
       toast.success('Asset group deleted successfully');
       // Refresh the data
       fetchAssetGroups();
@@ -115,6 +132,14 @@ const GroupAsset = () => {
       );
       
       await Promise.all(deletePromises);
+      
+      // Log audit event for bulk delete
+      await recordActionByNameWithFetch('Delete', { 
+        groupIds: selectedRows,
+        count: selectedRows.length,
+        action: 'Multiple Group Assets Deleted Successfully'
+      });
+      
       toast.success(`${selectedRows.length} asset group(s) deleted successfully`);
       
       // Clear selection and refresh data

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
 import { toast } from "react-hot-toast";
+import { generateUUID } from '../../utils/uuid';
 import {
   ArrowRight,
   ArrowLeft,
@@ -1116,7 +1117,7 @@ const CreateScrapSales = () => {
             <button 
               type="button" 
               className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
-              onClick={() => setUploadRows(prev => ([...prev, { id: crypto.randomUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
+              onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
             >
               <Plus size={16} />
               Add Document

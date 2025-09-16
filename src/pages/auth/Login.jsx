@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuditLog } from "../../hooks/useAuditLog";
+import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -12,6 +14,9 @@ export default function Login() {
 
   const navigate = useNavigate();
   const { isAuthenticated, login } = useAuthStore();
+  
+  // Audit logging for login
+  const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.LOGIN);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -36,6 +41,14 @@ export default function Login() {
 
       // Store user + token in Zustand
       login({ ...user, token });
+
+      // Log audit event for successful login
+      await recordActionByNameWithFetch('Logging In', { 
+        action: 'User Logged In Successfully',
+        userId: user?.user_id,
+        userEmail: user?.email,
+        userRole: user?.job_role_id
+      });
 
       // Redirect to dashboard
       navigate("/dashboard");

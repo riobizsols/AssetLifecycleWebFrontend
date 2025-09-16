@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
 import SearchableDropdown from './ui/SearchableDropdown';
+import { generateUUID } from '../utils/uuid';
 
 const AddAssetType = () => {
   const navigate = useNavigate();
@@ -130,7 +131,7 @@ const AddAssetType = () => {
     // Helper functions for checklist uploads
   const addChecklistUpload = () => {
     setChecklistUploads(prev => ([...prev, { 
-      id: crypto.randomUUID(), 
+      id: generateUUID(), 
       type: '', 
       docTypeName: '', 
       file: null, 
