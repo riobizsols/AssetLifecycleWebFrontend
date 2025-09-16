@@ -3,6 +3,8 @@ import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import { useNavigation } from "../../hooks/useNavigation";
+import useAuditLog from "../../hooks/useAuditLog";
+import { DEPARTMENTS_APP_ID } from "../../constants/departmentsAuditEvents";
 
 const Departments = () => {
   const [departments, setDepartments] = useState([]);
@@ -18,6 +20,9 @@ const Departments = () => {
   // Access control
   const { hasEditAccess } = useNavigation();
   const canEdit = hasEditAccess('DEPARTMENTS');
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(DEPARTMENTS_APP_ID);
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
   useEffect(() => {
@@ -63,7 +68,15 @@ const Departments = () => {
       return;
     }
     try {
-      await API.post("/departments", { text: newDeptName.trim() });
+      const response = await API.post("/departments", { text: newDeptName.trim() });
+      
+      // Log create action
+      await recordActionByNameWithFetch('Create', {
+        deptId: response.data?.dept_id || nextDeptId,
+        deptName: newDeptName.trim(),
+        action: 'Department Created'
+      });
+      
       setNewDeptName("");
       fetchDepartments();
       fetchNextDeptId();
@@ -90,6 +103,14 @@ const Departments = () => {
           ],
         },
       });
+      // Log delete action
+      await recordActionByNameWithFetch('Delete', {
+        deptId: selectedDept.dept_id,
+        deptName: selectedDept.text,
+        orgId: selectedDept.org_id,
+        action: 'Department Deleted'
+      });
+
       setShowDeleteModal(false);
       fetchDepartments();
       fetchNextDeptId();
@@ -136,6 +157,15 @@ const Departments = () => {
         dept_id: selectedDept.dept_id,
         text: editName.trim(),
       });
+      
+      // Log update action
+      await recordActionByNameWithFetch('Update', {
+        deptId: selectedDept.dept_id,
+        deptName: editName.trim(),
+        orgId: selectedDept.org_id,
+        action: 'Department Updated'
+      });
+      
       setShowEditModal(false);
       fetchDepartments();
       toast.success(`Department "${editName}" updated successfully`);

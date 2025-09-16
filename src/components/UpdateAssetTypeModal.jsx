@@ -4,10 +4,15 @@ import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import SearchableDropdown from "./ui/SearchableDropdown";
 import { generateUUID } from '../utils/uuid';
+import useAuditLog from "../hooks/useAuditLog";
+import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
   const [assetType, setAssetType] = useState("");
   const [assignmentType, setAssignmentType] = useState("user");
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(ASSET_TYPES_APP_ID);
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
   const [requireMaintenance, setRequireMaintenance] = useState(false);
@@ -450,6 +455,19 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
 
       // Make API call
       const response = await API.put(`/asset-types/${assetData.asset_type_id}`, formData);
+
+      // Log update action after successful update
+      await recordActionByNameWithFetch('Update', {
+        assetTypeId: assetData.asset_type_id,
+        assetTypeName: assetType.trim(),
+        assignmentType: assignmentType,
+        maintenanceSchedule: requireMaintenance,
+        inspectionRequired: requireInspection,
+        groupRequired: groupRequired,
+        status: isActive ? 'Active' : 'Inactive',
+        parentAssetType: parentChild === "child" ? selectedParentType : null,
+        action: 'Asset Type Updated'
+      });
 
       toast(
         `Asset type "${assetType}" updated successfully`,

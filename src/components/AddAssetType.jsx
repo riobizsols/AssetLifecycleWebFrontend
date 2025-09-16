@@ -5,10 +5,15 @@ import { toast } from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
 import SearchableDropdown from './ui/SearchableDropdown';
 import { generateUUID } from '../utils/uuid';
+import useAuditLog from "../hooks/useAuditLog";
+import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 
 const AddAssetType = () => {
   const navigate = useNavigate();
   const [assetType, setAssetType] = useState("");
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(ASSET_TYPES_APP_ID);
   const [assignmentType, setAssignmentType] = useState("user"); // "user" or "department"
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
@@ -266,6 +271,19 @@ const AddAssetType = () => {
 
       // Make API call
       const response = await API.post('/asset-types', formData);
+
+      // Log create action after successful creation
+      await recordActionByNameWithFetch('Create', {
+        assetTypeId: response.data?.asset_type?.asset_type_id,
+        assetTypeName: assetType.trim(),
+        assignmentType: assignmentType,
+        maintenanceSchedule: requireMaintenance,
+        inspectionRequired: requireInspection,
+        groupRequired: groupRequired,
+        status: isActive ? 'Active' : 'Inactive',
+        parentAssetType: parentChild === "child" ? selectedParentType : null,
+        action: 'Asset Type Created'
+      });
 
       toast(
         `Asset type "${assetType}" created successfully`,

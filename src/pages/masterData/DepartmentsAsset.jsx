@@ -3,6 +3,8 @@ import API from "../../lib/axios";
 import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import useAuditLog from "../../hooks/useAuditLog";
+import { DEPARTMENTS_ASSET_APP_ID } from "../../constants/departmentsAssetAuditEvents";
 
 const DepartmentsAsset = () => {
   const [departments, setDepartments] = useState([]);
@@ -18,11 +20,14 @@ const DepartmentsAsset = () => {
 
   const [isMaximized, setIsMaximized] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const [showCreateAssetType, setShowCreateAssetType] = useState(false);
+  const [_showCreateAssetType, _setShowCreateAssetType] = useState(false);
   const [newAssetTypeName, setNewAssetTypeName] = useState("");
   const dropdownRef = useRef(null);
 
   const navigate = useNavigate();
+
+  // Initialize audit logging
+  const { recordActionByNameWithFetch } = useAuditLog(DEPARTMENTS_ASSET_APP_ID);
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
 
@@ -75,10 +80,21 @@ const DepartmentsAsset = () => {
       const selectedDeptName = departments.find(d => d.dept_id === selectedDeptId)?.text;
       const selectedAssetTypeName = assetTypes.find(at => at.asset_type_id === selectedAssetTypeId)?.text;
       
-      await API.post("/dept-assets", {
+      const response = await API.post("/dept-assets", {
         dept_id: selectedDeptId,
         asset_type_id: selectedAssetTypeId,
       });
+      
+      // Log create action
+      await recordActionByNameWithFetch('Create', {
+        deptId: selectedDeptId,
+        deptName: selectedDeptName,
+        assetTypeId: selectedAssetTypeId,
+        assetTypeName: selectedAssetTypeName,
+        mappingId: response.data?.dept_asset_type_id,
+        action: 'Department Asset Type Mapping Created'
+      });
+      
       setSelectedAssetTypeId("");
       fetchDeptAssets();
       toast.success(`"${selectedAssetTypeName}" added to "${selectedDeptName}" department`);
@@ -90,12 +106,12 @@ const DepartmentsAsset = () => {
   };
 
   // Add new asset type
-  const handleCreateAssetType = async () => {
+  const _handleCreateAssetType = async () => {
     if (!newAssetTypeName.trim()) return;
     try {
       await API.post("/asset-types", { text: newAssetTypeName });
       setNewAssetTypeName("");
-      setShowCreateAssetType(false);
+      _setShowCreateAssetType(false);
       fetchAssetTypes();
     } catch (err) {
       console.error("Failed to create asset type", err);
@@ -105,7 +121,21 @@ const DepartmentsAsset = () => {
   // Delete entry
   const handleDelete = async () => {
     try {
+      // Find the mapping details before deletion for audit logging
+      const mappingToDelete = deptAssets.find(item => item.dept_asset_type_id === deleteId);
+      
       await API.delete("/dept-assets", { data: { dept_asset_type_id: deleteId } });
+      
+      // Log delete action
+      await recordActionByNameWithFetch('Delete', {
+        mappingId: deleteId,
+        deptId: mappingToDelete?.dept_id,
+        deptName: mappingToDelete?.dept_name,
+        assetTypeId: mappingToDelete?.asset_type_id,
+        assetTypeName: mappingToDelete?.asset_name,
+        action: 'Department Asset Type Mapping Deleted'
+      });
+      
       setShowDeleteModal(false);
       fetchDeptAssets();
       toast.success("Asset mapping removed successfully");
