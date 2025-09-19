@@ -15,6 +15,11 @@ export const useAuthStore = create(
                     token: data.token,
                     job_role_id: data.job_role_id, // Keep for backward compatibility
                     roles: data.roles || [], // New roles array from tblUserJobRoles
+                    branch_id: data.branch_id || null,
+                    branch_name: data.branch_name || null,
+                    branch_code: data.branch_code || null,
+                    dept_id: data.dept_id || null,
+                    dept_name: data.dept_name || null,
                 }),
 
             logout: () =>
@@ -24,6 +29,11 @@ export const useAuthStore = create(
                     token: null,
                     job_role_id: null,
                     roles: [],
+                    branch_id: null,
+                    branch_name: null,
+                    branch_code: null,
+                    dept_id: null,
+                    dept_name: null,
                 }),
         }),
         {

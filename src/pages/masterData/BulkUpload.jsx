@@ -1,14 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Download, Upload, CheckCircle, AlertCircle, FileText, Users, Package } from 'lucide-react';
 import API from '../../lib/axios';
 
+// Helper functions for localStorage
+const saveToStorage = (key, data) => {
+  try {
+    localStorage.setItem(`bulkUpload_${key}`, JSON.stringify(data));
+  } catch (error) {
+    console.warn('Failed to save to localStorage:', error);
+  }
+};
+
+const loadFromStorage = (key, defaultValue = null) => {
+  try {
+    const stored = localStorage.getItem(`bulkUpload_${key}`);
+    return stored ? JSON.parse(stored) : defaultValue;
+  } catch (error) {
+    console.warn('Failed to load from localStorage:', error);
+    return defaultValue;
+  }
+};
+
+const clearStorage = () => {
+  try {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('bulkUpload_')) {
+        localStorage.removeItem(key);
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to clear localStorage:', error);
+  }
+};
+
 const Roles = () => {
-  const [activeTab, setActiveTab] = useState('assets');
-  const [uploadStatus, setUploadStatus] = useState({});
-  const [trialResults, setTrialResults] = useState({});
+  const [activeTab, setActiveTab] = useState(loadFromStorage('activeTab', 'assets'));
+  const [uploadStatus, setUploadStatus] = useState(loadFromStorage('uploadStatus', {}));
+  const [trialResults, setTrialResults] = useState(loadFromStorage('trialResults', {}));
   const [isValidating, setIsValidating] = useState(false);
   const [validationProgress, setValidationProgress] = useState(0);
   const [existingRecords, setExistingRecords] = useState({});
+  const [file, setFile] = useState(null);
+
+  // Clear trial results on component mount to start fresh
+  useEffect(() => {
+    setTrialResults({});
+  }, []);
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    saveToStorage('activeTab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    saveToStorage('uploadStatus', uploadStatus);
+  }, [uploadStatus]);
+
+  useEffect(() => {
+    saveToStorage('trialResults', trialResults);
+  }, [trialResults]);
+
+  // Reset validation state if it gets stuck
+  useEffect(() => {
+    if (isValidating) {
+      const timeout = setTimeout(() => {
+        console.warn('Validation timeout - resetting state');
+        setIsValidating(false);
+        setValidationProgress(0);
+      }, 30000); // 30 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isValidating]);
+
+  // Cleanup localStorage on component unmount (optional - you might want to keep state)
+  useEffect(() => {
+    return () => {
+      // Uncomment the line below if you want to clear state on unmount
+      // clearStorage();
+    };
+  }, []);
 
   const tabs = [
     { id: 'assets', label: 'Assets', icon: Package, color: 'bg-blue-500' },
@@ -42,32 +113,23 @@ const Roles = () => {
 
   const generateAssetsCSV = () => {
     const headers = [
-      'asset_type_id', 'asset_id', 'text', 'serial_number', 'description', 'branch_id',
-      'purchase_vendor_id', 'prod_serv_id', 'maintsch_id', 'purchased_cost', 'purchased_on',
-      'purchased_by', 'current_status', 'warranty_period', 'parent_asset_id', 'group_id',
-      'org_id', 'created_by', 'created_on', 'changed_by', 'changed_on', 'service_vendor_id',
-      'expiry_date', 'current_book_value', 'salvage_value', 'accumulated_depreciation',
-      'useful_life_years', 'last_depreciation_calc_date', 'invoice_no', 'commissioned_date',
-      'depreciation_start_date', 'project_code', 'grant_code', 'insurance_policy_no',
-      'gl_account_code', 'cost_center_code', 'depreciation_rate'
+      'asset_type_id', 'description', 'purchase_vendor_id', 'purchased_cost', 'purchased_on',
+      'purchased_by', 'warranty_period', 'expiry_date', 'service_vendor_id',
+      'salvage_value', 'useful_life_years'
+      // Note: Property fields are dynamic and will be added based on asset type
+      // Users can add property columns manually if needed (e.g., prop_ram, prop_storage, etc.)
     ];
     
     const sampleData = [
       [
-        'AT001', 'ASS001', 'Dell Laptop', 'DL-001', 'Dell Inspiron 15 3000',
-        'BR001', 'V001', 'PS001', '', '50000', '2024-01-15',
-        'USR001', 'Active', '3 years', '', '', 'ORG001',
-        'USR001', '2024-01-15 10:30:00', 'USR001', '2024-01-15 10:30:00', 'V001',
-        '2027-01-15', '45000', '5000', '0', '3', '', '', '',
-        '', '', '', '', '', '0'
+        'AT001', 'Dell Laptop for Development', 'V001', '1500.00', '2024-01-15',
+        'USR001', '2 years', '2026-01-15', 'V001',
+        '300.00', '5'
       ],
       [
-        'AT002', 'ASS002', 'HP Desktop', 'HP-002', 'HP Pavilion Desktop',
-        'BR001', 'V002', 'PS002', '', '35000', '2024-01-20',
-        'USR001', 'Active', '2 years', '', '', 'ORG001',
-        'USR001', '2024-01-20 14:15:00', 'USR001', '2024-01-20 14:15:00', 'V002',
-        '2026-01-20', '30000', '3500', '0', '2', '', '', '',
-        '', '', '', '', '', '0'
+        'AT002', 'HP Desktop for Office', 'V002', '1200.00', '2024-01-20',
+        'USR002', '3 years', '2027-01-20', 'V002',
+        '240.00', '4'
       ]
     ];
     
@@ -104,24 +166,23 @@ const Roles = () => {
 
   const generateEmployeesCSV = () => {
     const headers = [
-      'emp_int_id', 'employee_id', 'name', 'first_name', 'last_name', 'middle_name',
-      'full_name', 'email_id', 'dept_id', 'phone_number', 'employee_type', 'joining_date',
-      'releiving_date', 'language_code', 'int_status', 'created_by', 'created_on',
-      'changed_by', 'changed_on'
+      'name', 'first_name', 'last_name', 'middle_name', 'full_name', 'email_id', 
+      'dept_id', 'phone_number', 'employee_type', 'joining_date', 'language_code'
+      // Note: emp_int_id and employee_id will be auto-generated
+      // releiving_date will be null by default
+      // int_status will be 1 by default
+      // created_by, created_on, changed_by, changed_on are auto-populated
+      // joining_date accepts DD-MM-YYYY or YYYY-MM-DD format
     ];
     
     const sampleData = [
       [
-        'EMP001', 'EMP001', 'John Doe', 'John', 'Doe', '',
-        'John Doe', 'john.doe@company.com', 'DEPT001', '9876543210', 'Full Time',
-        '2024-01-01', '', 'en', '1', 'USR001', '2024-01-01 09:00:00',
-        'USR001', '2024-01-01 09:00:00'
+        'John Doe', 'John', 'Doe', '', 'John Doe', 'john.doe@company.com', 
+        'DEPT001', '9876543210', 'Full Time', '01-01-2024', 'en'
       ],
       [
-        'EMP002', 'EMP002', 'Jane Smith', 'Jane', 'Smith', '',
-        'Jane Smith', 'jane.smith@company.com', 'DEPT001', '9876543211', 'Full Time',
-        '2024-01-15', '', 'en', '1', 'USR001', '2024-01-15 09:00:00',
-        'USR001', '2024-01-15 09:00:00'
+        'Jane Smith', 'Jane', 'Smith', '', 'Jane Smith', 'jane.smith@company.com', 
+        'DEPT001', '9876543211', 'Full Time', '15-01-2024', 'en'
       ]
     ];
     
@@ -144,85 +205,99 @@ const Roles = () => {
 
   // CSV Validation Functions
   const validateCSVContent = async (type, csvContent) => {
-    setIsValidating(true);
-    setValidationProgress(10);
-    
-    const lines = csvContent.split('\n').filter(line => line.trim());
-    if (lines.length < 2) {
-      setIsValidating(false);
-      return { isValid: false, errors: ['CSV file must have at least a header row and one data row'] };
-    }
-
-    // Check file size limits
-    if (lines.length > 10000) {
-      setIsValidating(false);
-      return { isValid: false, errors: ['CSV file cannot exceed 10,000 rows'] };
-    }
-
-    setValidationProgress(20);
-    const headers = parseCSVLine(lines[0]);
-    const dataRows = lines.slice(1).map((line, index) => ({
-      rowNumber: index + 2,
-      data: parseCSVLine(line)
-    }));
-
-    setValidationProgress(30);
-    // Fetch reference data for referential integrity validation
-    const referenceData = await fetchReferenceData(type);
-    setValidationProgress(50);
-
-    // Check for duplicates within the CSV file
-    const duplicateErrors = checkForDuplicates(type, headers, dataRows);
-    if (duplicateErrors.length > 0) {
-      setIsValidating(false);
-      return { isValid: false, errors: duplicateErrors };
-    }
-
-    setValidationProgress(60);
-    // Check for existing records in database
-    const existingRecordsErrors = await checkExistingRecords(type, headers, dataRows, referenceData);
-    if (existingRecordsErrors.length > 0) {
-      setIsValidating(false);
-      return { isValid: false, errors: existingRecordsErrors };
-    }
-
-    setValidationProgress(70);
-    let validationResult;
-    switch (type) {
-      case 'assets':
-        validationResult = await validateAssetsCSV(headers, dataRows, referenceData);
-        break;
-      case 'assetTypes':
-        validationResult = await validateAssetTypesCSV(headers, dataRows, referenceData);
-        break;
-      case 'employees':
-        validationResult = await validateEmployeesCSV(headers, dataRows, referenceData);
-        break;
-      default:
+    try {
+      setIsValidating(true);
+      setValidationProgress(10);
+      
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      if (lines.length < 2) {
         setIsValidating(false);
-        return { isValid: false, errors: ['Unknown table type'] };
-    }
+        return { isValid: false, errors: ['CSV file must have at least a header row and one data row'] };
+      }
 
-    setValidationProgress(100);
-    setIsValidating(false);
-    return validationResult;
+      // Check file size limits
+      if (lines.length > 10000) {
+        setIsValidating(false);
+        return { isValid: false, errors: ['CSV file cannot exceed 10,000 rows'] };
+      }
+
+      setValidationProgress(20);
+      const headers = parseCSVLine(lines[0]);
+      const dataRows = lines.slice(1).map((line, index) => ({
+        rowNumber: index + 2,
+        data: parseCSVLine(line)
+      }));
+
+      setValidationProgress(30);
+      // Fetch reference data for referential integrity validation
+      const referenceData = await fetchReferenceData(type);
+      setValidationProgress(50);
+
+      // Check for duplicates within the CSV file
+      const duplicateErrors = checkForDuplicates(type, headers, dataRows);
+      if (duplicateErrors.length > 0) {
+        setIsValidating(false);
+        return { isValid: false, errors: duplicateErrors };
+      }
+
+      setValidationProgress(60);
+      // Check for existing records in database
+      const existingRecordsErrors = await checkExistingRecords(type, headers, dataRows, referenceData);
+      if (existingRecordsErrors.length > 0) {
+        setIsValidating(false);
+        return { isValid: false, errors: existingRecordsErrors };
+      }
+
+      setValidationProgress(70);
+      let validationResult;
+      switch (type) {
+        case 'assets':
+          validationResult = await validateAssetsCSV(headers, dataRows, referenceData);
+          break;
+        case 'assetTypes':
+          validationResult = await validateAssetTypesCSV(headers, dataRows, referenceData);
+          break;
+        case 'employees':
+          validationResult = await validateEmployeesCSV(headers, dataRows, referenceData);
+          break;
+        default:
+          setIsValidating(false);
+          return { isValid: false, errors: ['Unknown table type'] };
+      }
+
+      setValidationProgress(100);
+      setIsValidating(false);
+      return validationResult;
+    } catch (error) {
+      console.error('Error in validateCSVContent:', error);
+      setIsValidating(false);
+      return { 
+        isValid: false, 
+        errors: [`Validation failed: ${error.message}`] 
+      };
+    }
   };
 
   // Fetch reference data for validation
   const fetchReferenceData = async (type) => {
-    const referenceData = {
-      organizations: [],
-      departments: [],
-      branches: [],
-      vendors: [],
-      assetTypes: [],
-      employees: [],
-      users: [],
-      prodServ: []
-    };
+      const referenceData = {
+        organizations: [],
+        departments: [],
+        branches: [],
+        vendors: [],
+        assetTypes: [],
+        employees: [],
+        users: [],
+        vendorProdServices: []
+      };
 
     try {
-      // Fetch all reference data in parallel
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+
+      // Fetch all reference data in parallel with timeout
       const [
         orgsRes,
         deptsRes,
@@ -231,47 +306,72 @@ const Roles = () => {
         assetTypesRes,
         employeesRes,
         usersRes,
-        prodServRes
+        vendorProdServicesRes
       ] = await Promise.allSettled([
-        API.get('/organizations'),
-        API.get('/admin/departments'),
-        API.get('/branches'),
-        API.get('/vendors'),
-        API.get('/asset-types'),
-        API.get('/employees'),
-        API.get('/users/get-users'),
-        API.get('/prod-serv')
+        Promise.race([API.get('/organizations'), timeoutPromise]),
+        Promise.race([API.get('/admin/departments'), timeoutPromise]),
+        Promise.race([API.get('/branches'), timeoutPromise]),
+        Promise.race([API.get('/vendors'), timeoutPromise]),
+        Promise.race([API.get('/asset-types'), timeoutPromise]),
+        Promise.race([API.get('/employees'), timeoutPromise]),
+        Promise.race([API.get('/users/get-users'), timeoutPromise]),
+        Promise.race([API.get('/vendors/vendor-prod-services'), timeoutPromise])
       ]);
 
       // Extract data from responses
       if (orgsRes.status === 'fulfilled') {
         referenceData.organizations = orgsRes.value.data?.data || orgsRes.value.data || [];
+        console.log('Organizations fetched:', referenceData.organizations.length, 'items');
+      } else {
+        console.warn('Failed to fetch organizations:', orgsRes.reason?.response?.data?.message || orgsRes.reason?.message);
       }
       if (deptsRes.status === 'fulfilled') {
         referenceData.departments = deptsRes.value.data?.data || deptsRes.value.data || [];
+        console.log('Departments fetched:', referenceData.departments.length, 'items');
+      } else {
+        console.warn('Failed to fetch departments:', deptsRes.reason?.response?.data?.message || deptsRes.reason?.message);
       }
       if (branchesRes.status === 'fulfilled') {
         referenceData.branches = branchesRes.value.data?.data || branchesRes.value.data || [];
+        console.log('Branches fetched:', referenceData.branches.length, 'items');
+      } else {
+        console.warn('Failed to fetch branches:', branchesRes.reason?.response?.data?.message || branchesRes.reason?.message);
       }
       if (vendorsRes.status === 'fulfilled') {
         referenceData.vendors = vendorsRes.value.data?.data || vendorsRes.value.data || [];
+        console.log('Vendors fetched:', referenceData.vendors.length, 'items');
+      } else {
+        console.warn('Failed to fetch vendors:', vendorsRes.reason?.response?.data?.message || vendorsRes.reason?.message);
       }
       if (assetTypesRes.status === 'fulfilled') {
         referenceData.assetTypes = assetTypesRes.value.data?.data || assetTypesRes.value.data || [];
+        console.log('Asset Types fetched:', referenceData.assetTypes.length, 'items');
+      } else {
+        console.warn('Failed to fetch asset types:', assetTypesRes.reason?.response?.data?.message || assetTypesRes.reason?.message);
       }
       if (employeesRes.status === 'fulfilled') {
         referenceData.employees = employeesRes.value.data?.data || employeesRes.value.data || [];
+        console.log('Employees fetched:', referenceData.employees.length, 'items');
+      } else {
+        console.warn('Failed to fetch employees:', employeesRes.reason?.response?.data?.message || employeesRes.reason?.message);
       }
       if (usersRes.status === 'fulfilled') {
         referenceData.users = usersRes.value.data?.data || usersRes.value.data || [];
+        console.log('Users fetched:', referenceData.users.length, 'items');
+      } else {
+        console.warn('Failed to fetch users:', usersRes.reason?.response?.data?.message || usersRes.reason?.message);
       }
-      if (prodServRes.status === 'fulfilled') {
-        referenceData.prodServ = prodServRes.value.data?.data || prodServRes.value.data || [];
+          if (vendorProdServicesRes.status === 'fulfilled') {
+        referenceData.vendorProdServices = vendorProdServicesRes.value.data?.data || vendorProdServicesRes.value.data || [];
+        console.log('Vendor Product Services fetched:', referenceData.vendorProdServices.length, 'items');
+      } else {
+        console.warn('Failed to fetch vendor product services:', vendorProdServicesRes.reason?.response?.data?.message || vendorProdServicesRes.reason?.message);
       }
 
       console.log('Reference data fetched:', referenceData);
     } catch (error) {
       console.error('Error fetching reference data:', error);
+      // Return empty reference data instead of throwing
     }
 
     return referenceData;
@@ -300,27 +400,37 @@ const Roles = () => {
   };
 
   const validateAssetsCSV = async (headers, dataRows, referenceData) => {
+    console.log('🔍 Validating Assets CSV...');
+    console.log('Headers:', headers);
+    console.log('Data rows count:', dataRows.length);
+    console.log('Reference data:', referenceData);
+    
     const errors = [];
     const requiredFields = [
-      'asset_type_id', 'asset_id', 'text', 'serial_number', 'branch_id',
-      'purchase_vendor_id', 'prod_serv_id', 'purchased_cost', 'purchased_on',
-      'purchased_by', 'current_status', 'warranty_period', 'org_id',
-      'created_by', 'created_on', 'changed_by', 'changed_on', 'service_vendor_id'
+      'asset_type_id', 'description', 'purchase_vendor_id', 'purchased_cost', 'purchased_on',
+      'purchased_by', 'warranty_period', 'expiry_date', 'service_vendor_id',
+      'salvage_value', 'useful_life_years'
     ];
 
-    // Validate headers
+    // Validate headers - check for required fields and allow property fields
     const missingHeaders = requiredFields.filter(field => !headers.includes(field));
     if (missingHeaders.length > 0) {
       errors.push(`Missing required columns: ${missingHeaders.join(', ')}`);
     }
+    
+    // Check for property fields (fields starting with 'prop_')
+    const propertyFields = headers.filter(header => header.startsWith('prop_'));
+    console.log('🔍 Found property fields:', propertyFields);
 
     // Validate each data row
     dataRows.forEach(({ rowNumber, data }) => {
       const rowErrors = [];
       
-      // Check if row has correct number of columns
-      if (data.length !== headers.length) {
-        rowErrors.push(`Row ${rowNumber}: Expected ${headers.length} columns, found ${data.length}`);
+      // Check if row has correct number of columns (allow for optional property fields)
+      if (data.length < requiredFields.length) {
+        rowErrors.push(`Row ${rowNumber}: Expected at least ${requiredFields.length} columns, found ${data.length}`);
+      } else if (data.length > headers.length) {
+        rowErrors.push(`Row ${rowNumber}: Expected at most ${headers.length} columns, found ${data.length}`);
       }
 
       // Validate required fields
@@ -343,19 +453,12 @@ const Roles = () => {
         }
       }
 
-      const assetIdIndex = headers.indexOf('asset_id');
-      if (assetIdIndex !== -1 && data[assetIdIndex]) {
-        const assetId = data[assetIdIndex];
-        if (!/^ASS\d{3}$/.test(assetId)) {
-          rowErrors.push(`Row ${rowNumber}: asset_id must be in format ASS001, ASS002, etc.`);
-        }
-      }
-
-      const branchIdIndex = headers.indexOf('branch_id');
-      if (branchIdIndex !== -1 && data[branchIdIndex]) {
-        const branchId = data[branchIdIndex];
-        if (!/^BR\d{3}$/.test(branchId)) {
-          rowErrors.push(`Row ${rowNumber}: branch_id must be in format BR001, BR002, etc.`);
+      // Description validation
+      const descriptionIndex = headers.indexOf('description');
+      if (descriptionIndex !== -1 && data[descriptionIndex]) {
+        const description = data[descriptionIndex];
+        if (description.length < 3) {
+          rowErrors.push(`Row ${rowNumber}: description must be at least 3 characters long`);
         }
       }
 
@@ -367,13 +470,6 @@ const Roles = () => {
         }
       }
 
-      const prodServIdIndex = headers.indexOf('prod_serv_id');
-      if (prodServIdIndex !== -1 && data[prodServIdIndex]) {
-        const prodServId = data[prodServIdIndex];
-        if (!/^PS\d{3,4}$/.test(prodServId)) {
-          rowErrors.push(`Row ${rowNumber}: prod_serv_id must be in format PS001, PS1000, etc.`);
-        }
-      }
 
       const purchasedCostIndex = headers.indexOf('purchased_cost');
       if (purchasedCostIndex !== -1 && data[purchasedCostIndex]) {
@@ -391,30 +487,35 @@ const Roles = () => {
         }
       }
 
-      const currentStatusIndex = headers.indexOf('current_status');
-      if (currentStatusIndex !== -1 && data[currentStatusIndex]) {
-        const status = data[currentStatusIndex];
-        const validStatuses = ['Active', 'Inactive', 'Scrapped', 'Maintenance', 'Retired'];
-        if (!validStatuses.includes(status)) {
-          rowErrors.push(`Row ${rowNumber}: current_status must be one of: ${validStatuses.join(', ')}`);
+      // Salvage value validation
+      const salvageValueIndex = headers.indexOf('salvage_value');
+      if (salvageValueIndex !== -1 && data[salvageValueIndex]) {
+        const salvageValue = parseFloat(data[salvageValueIndex]);
+        if (isNaN(salvageValue) || salvageValue < 0) {
+          rowErrors.push(`Row ${rowNumber}: salvage_value must be a positive number`);
         }
       }
 
-      const orgIdIndex = headers.indexOf('org_id');
-      if (orgIdIndex !== -1 && data[orgIdIndex]) {
-        const orgId = data[orgIdIndex];
-        if (!/^ORG\d{3}$/.test(orgId)) {
-          rowErrors.push(`Row ${rowNumber}: org_id must be in format ORG001, ORG002, etc.`);
+      // Useful life years validation
+      const usefulLifeYearsIndex = headers.indexOf('useful_life_years');
+      if (usefulLifeYearsIndex !== -1 && data[usefulLifeYearsIndex]) {
+        const usefulLifeYears = parseInt(data[usefulLifeYearsIndex]);
+        if (isNaN(usefulLifeYears) || usefulLifeYears < 1 || usefulLifeYears > 50) {
+          rowErrors.push(`Row ${rowNumber}: useful_life_years must be a number between 1 and 50`);
         }
       }
 
-      const createdByIndex = headers.indexOf('created_by');
-      if (createdByIndex !== -1 && data[createdByIndex]) {
-        const createdBy = data[createdByIndex];
-        if (!/^(USR|EMP)\d{3}$/.test(createdBy)) {
-          rowErrors.push(`Row ${rowNumber}: created_by must be in format USR001 or EMP001`);
+      // Validate property fields (optional)
+      propertyFields.forEach(propField => {
+        const propIndex = headers.indexOf(propField);
+        if (propIndex !== -1 && data[propIndex] && data[propIndex].trim() !== '') {
+          const propValue = data[propIndex].trim();
+          // Basic validation - just check it's not empty if provided
+          if (propValue.length < 1) {
+            rowErrors.push(`Row ${rowNumber}: ${propField} cannot be empty if provided`);
+          }
         }
-      }
+      });
 
       if (rowErrors.length > 0) {
         errors.push(...rowErrors);
@@ -425,6 +526,9 @@ const Roles = () => {
     const referentialErrors = validateReferentialIntegrity('assets', headers, dataRows, referenceData);
     errors.push(...referentialErrors);
 
+    console.log('🔍 Validation completed. Errors found:', errors.length);
+    console.log('Validation errors:', errors);
+    
     return {
       isValid: errors.length === 0,
       errors: errors,
@@ -560,12 +664,7 @@ const Roles = () => {
 
   const validateEmployeesCSV = async (headers, dataRows, referenceData) => {
     const errors = [];
-    const requiredFields = [
-      'emp_int_id', 'employee_id', 'name', 'first_name', 'last_name',
-      'full_name', 'email_id', 'dept_id', 'phone_number', 'employee_type',
-      'joining_date', 'language_code', 'int_status', 'created_by', 'created_on',
-      'changed_by', 'changed_on'
-    ];
+    const requiredFields = ['name', 'email_id', 'dept_id', 'first_name', 'last_name', 'full_name', 'phone_number', 'employee_type', 'joining_date', 'language_code'];
 
     // Validate headers
     const missingHeaders = requiredFields.filter(field => !headers.includes(field));
@@ -593,23 +692,7 @@ const Roles = () => {
         }
       });
 
-      // Validate specific field formats
-      const empIntIdIndex = headers.indexOf('emp_int_id');
-      if (empIntIdIndex !== -1 && data[empIntIdIndex]) {
-        const empIntId = data[empIntIdIndex];
-        if (!/^EMP\d{3}$/.test(empIntId)) {
-          rowErrors.push(`Row ${rowNumber}: emp_int_id must be in format EMP001, EMP002, etc.`);
-        }
-      }
-
-      const employeeIdIndex = headers.indexOf('employee_id');
-      if (employeeIdIndex !== -1 && data[employeeIdIndex]) {
-        const employeeId = data[employeeIdIndex];
-        if (!/^EMP\d{3}$/.test(employeeId)) {
-          rowErrors.push(`Row ${rowNumber}: employee_id must be in format EMP001, EMP002, etc.`);
-        }
-      }
-
+      // Validate email format
       const emailIndex = headers.indexOf('email_id');
       if (emailIndex !== -1 && data[emailIndex]) {
         const email = data[emailIndex];
@@ -619,68 +702,43 @@ const Roles = () => {
         }
       }
 
-      const deptIdIndex = headers.indexOf('dept_id');
-      if (deptIdIndex !== -1 && data[deptIdIndex]) {
-        const deptId = data[deptIdIndex];
-        if (!/^DEPT\d{3}$/.test(deptId)) {
-          rowErrors.push(`Row ${rowNumber}: dept_id must be in format DEPT001, DEPT002, etc.`);
-        }
-      }
-
+      // Validate phone number format (if provided)
       const phoneIndex = headers.indexOf('phone_number');
       if (phoneIndex !== -1 && data[phoneIndex]) {
         const phone = data[phoneIndex];
-        if (!/^\d{10}$/.test(phone)) {
-          rowErrors.push(`Row ${rowNumber}: phone_number must be exactly 10 digits`);
+        const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+        if (!phoneRegex.test(phone)) {
+          rowErrors.push(`Row ${rowNumber}: phone_number must contain only digits, spaces, hyphens, plus signs, and parentheses`);
         }
       }
 
-      const employeeTypeIndex = headers.indexOf('employee_type');
-      if (employeeTypeIndex !== -1 && data[employeeTypeIndex]) {
-        const employeeType = data[employeeTypeIndex];
-        const validTypes = ['Full Time', 'Part Time', 'Contract', 'Intern'];
-        if (!validTypes.includes(employeeType)) {
-          rowErrors.push(`Row ${rowNumber}: employee_type must be one of: ${validTypes.join(', ')}`);
+      // Validate int_status (if provided)
+      const statusIndex = headers.indexOf('int_status');
+      if (statusIndex !== -1 && data[statusIndex]) {
+        const status = data[statusIndex];
+        if (!['0', '1', 'true', 'false'].includes(status.toLowerCase())) {
+          rowErrors.push(`Row ${rowNumber}: int_status must be 0, 1, true, or false`);
         }
       }
 
+      // Validate date formats (if provided)
       const joiningDateIndex = headers.indexOf('joining_date');
       if (joiningDateIndex !== -1 && data[joiningDateIndex]) {
-        const date = new Date(data[joiningDateIndex]);
-        if (isNaN(date.getTime())) {
-          rowErrors.push(`Row ${rowNumber}: joining_date must be a valid date (YYYY-MM-DD)`);
+        const joiningDate = data[joiningDateIndex];
+        // Accept both DD-MM-YYYY and YYYY-MM-DD formats
+        const dateRegexDDMMYYYY = /^\d{2}-\d{2}-\d{4}$/;
+        const dateRegexYYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegexDDMMYYYY.test(joiningDate) && !dateRegexYYYYMMDD.test(joiningDate)) {
+          rowErrors.push(`Row ${rowNumber}: joining_date must be in format DD-MM-YYYY or YYYY-MM-DD`);
         }
       }
 
       const releivingDateIndex = headers.indexOf('releiving_date');
-      if (releivingDateIndex !== -1 && data[releivingDateIndex] && data[releivingDateIndex] !== '') {
-        const date = new Date(data[releivingDateIndex]);
-        if (isNaN(date.getTime())) {
-          rowErrors.push(`Row ${rowNumber}: releiving_date must be a valid date (YYYY-MM-DD) or empty`);
-        }
-      }
-
-      const languageCodeIndex = headers.indexOf('language_code');
-      if (languageCodeIndex !== -1 && data[languageCodeIndex]) {
-        const languageCode = data[languageCodeIndex];
-        if (!/^[a-z]{2}$/.test(languageCode)) {
-          rowErrors.push(`Row ${rowNumber}: language_code must be a 2-letter code (e.g., en, hi, es)`);
-        }
-      }
-
-      const intStatusIndex = headers.indexOf('int_status');
-      if (intStatusIndex !== -1 && data[intStatusIndex]) {
-        const intStatus = data[intStatusIndex];
-        if (!['0', '1'].includes(intStatus)) {
-          rowErrors.push(`Row ${rowNumber}: int_status must be 0 or 1`);
-        }
-      }
-
-      const createdByIndex = headers.indexOf('created_by');
-      if (createdByIndex !== -1 && data[createdByIndex]) {
-        const createdBy = data[createdByIndex];
-        if (!/^(USR|EMP)\d{3}$/.test(createdBy)) {
-          rowErrors.push(`Row ${rowNumber}: created_by must be in format USR001 or EMP001`);
+      if (releivingDateIndex !== -1 && data[releivingDateIndex]) {
+        const releivingDate = data[releivingDateIndex];
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(releivingDate)) {
+          rowErrors.push(`Row ${rowNumber}: releiving_date must be in format YYYY-MM-DD`);
         }
       }
 
@@ -713,14 +771,103 @@ const Roles = () => {
 
     const headers = parseCSVLine(lines[0]);
     const dataRows = lines.slice(1).map(line => parseCSVLine(line));
+    
+    // Debug logging for CSV parsing
+    console.log('🔍 CSV Parsing Debug:', {
+      type,
+      totalLines: lines.length,
+      headers,
+      firstDataRow: dataRows[0],
+      csvContent: csvContent.substring(0, 200) + '...'
+    });
 
     return dataRows.map(row => {
       const obj = {};
-      headers.forEach((header, index) => {
-        obj[header] = row[index] || '';
-      });
+      
+      if (type === 'assets') {
+        // For assets, handle properties
+        const properties = {};
+        
+        headers.forEach((header, index) => {
+          const value = row[index] || '';
+          
+          // Check if this is a property field (not a standard asset field)
+          if (isPropertyField(header)) {
+            // This is a property field, add to properties object
+            // We need to map the property name to property ID
+            const propId = getPropertyIdByName(header);
+            if (propId && value.trim() !== '') {
+              properties[propId] = value.trim();
+            }
+          } else {
+            // This is a standard asset field
+            obj[header] = value;
+          }
+        });
+        
+        // Add properties to the object if any exist
+        if (Object.keys(properties).length > 0) {
+          obj.properties = properties;
+        }
+      } else {
+        // For employees and asset types, treat all fields as standard fields
+        headers.forEach((header, index) => {
+          const value = row[index] || '';
+          obj[header] = value;
+        });
+        
+        // Debug logging for employees
+        if (type === 'employees') {
+          console.log('🔍 Employee row data:', { headers, row, obj });
+        }
+      }
+      
       return obj;
     });
+  };
+
+  // Check if a field is a property field (not a standard asset field)
+  const isPropertyField = (fieldName) => {
+    const standardFields = [
+      'asset_type_id', 'text', 'serial_number', 'description', 'branch_id',
+      'purchase_vendor_id', 'service_vendor_id', 'prod_serv_id', 'maintsch_id',
+      'purchased_cost', 'purchased_on', 'purchased_by', 'current_status',
+      'warranty_period', 'parent_asset_id', 'group_id', 'org_id', 'expiry_date',
+      'current_book_value', 'salvage_value', 'accumulated_depreciation',
+      'useful_life_years', 'last_depreciation_calc_date', 'invoice_no',
+      'commissioned_date', 'depreciation_start_date', 'project_code',
+      'grant_code', 'insurance_policy_no', 'gl_account_code', 'cost_center_code',
+      'depreciation_rate', 'vendor_brand', 'vendor_model'
+    ];
+    
+    return !standardFields.includes(fieldName);
+  };
+
+  // State for property mappings
+  const [propertyMappings, setPropertyMappings] = useState({});
+
+  // Fetch property mappings for asset types
+  const fetchPropertyMappings = async (assetTypeId) => {
+    if (!assetTypeId) return {};
+    
+    try {
+      const response = await API.get(`/properties/asset-types/${assetTypeId}/properties-with-values`);
+      if (response.data && response.data.data) {
+        const mappings = {};
+        response.data.data.forEach(property => {
+          mappings[property.property] = property.asset_type_prop_id;
+        });
+        return mappings;
+      }
+    } catch (error) {
+      console.error('Error fetching property mappings:', error);
+    }
+    return {};
+  };
+
+  // Get property ID by property name
+  const getPropertyIdByName = (propertyName) => {
+    return propertyMappings[propertyName] || propertyName;
   };
 
   // Check for duplicates within CSV file
@@ -810,8 +957,13 @@ const Roles = () => {
           // TODO: Implement when asset types bulk upload is ready
           return [];
         case 'employees':
-          // TODO: Implement when employees bulk upload is ready
-          return [];
+          try {
+            const employeesRes = await API.post('/employees/check-existing', { employee_ids: keys });
+            return employeesRes.data?.existing_ids || [];
+          } catch (error) {
+            console.error('Error checking existing employees:', error);
+            return [];
+          }
         default:
           return [];
       }
@@ -901,6 +1053,14 @@ const Roles = () => {
 
   // Referential Integrity Validation Functions
   const validateReferentialIntegrity = (type, headers, dataRows, referenceData) => {
+    console.log('🔍 Validating referential integrity for type:', type);
+    console.log('Reference data available:', {
+      assetTypes: referenceData.assetTypes?.length || 0,
+      vendors: referenceData.vendors?.length || 0,
+      users: referenceData.users?.length || 0,
+      vendorProdServices: referenceData.vendorProdServices?.length || 0
+    });
+    
     const errors = [];
 
     dataRows.forEach(({ rowNumber, data }) => {
@@ -909,59 +1069,48 @@ const Roles = () => {
       switch (type) {
         case 'assets':
           // Validate Assets referential integrity
-          const orgIdIndex = headers.indexOf('org_id');
-          if (orgIdIndex !== -1 && data[orgIdIndex]) {
-            const orgId = data[orgIdIndex];
-            const orgExists = referenceData.organizations.some(org => org.org_id === orgId);
-            if (!orgExists) {
-              rowErrors.push(`org_id '${orgId}' does not exist in organizations table`);
-            }
-          }
 
           const assetTypeIdIndex = headers.indexOf('asset_type_id');
           if (assetTypeIdIndex !== -1 && data[assetTypeIdIndex]) {
             const assetTypeId = data[assetTypeIdIndex];
-            const assetTypeExists = referenceData.assetTypes.some(at => at.asset_type_id === assetTypeId);
-            if (!assetTypeExists) {
-              rowErrors.push(`asset_type_id '${assetTypeId}' does not exist in asset types table`);
+            if (referenceData.assetTypes.length > 0) {
+              const assetTypeExists = referenceData.assetTypes.some(at => at.asset_type_id === assetTypeId);
+              if (!assetTypeExists) {
+                rowErrors.push(`asset_type_id '${assetTypeId}' does not exist in asset types table`);
+              }
+            } else {
+              console.warn('Cannot validate asset_type_id - asset types data not available');
             }
           }
 
-          const branchIdIndex = headers.indexOf('branch_id');
-          if (branchIdIndex !== -1 && data[branchIdIndex]) {
-            const branchId = data[branchIdIndex];
-            const branchExists = referenceData.branches.some(branch => branch.branch_id === branchId);
-            if (!branchExists) {
-              rowErrors.push(`branch_id '${branchId}' does not exist in branches table`);
-            }
-          }
+          // Note: branch_id is auto-populated from user's branch, not user input
 
           const purchaseVendorIdIndex = headers.indexOf('purchase_vendor_id');
           if (purchaseVendorIdIndex !== -1 && data[purchaseVendorIdIndex]) {
             const vendorId = data[purchaseVendorIdIndex];
-            const vendorExists = referenceData.vendors.some(vendor => vendor.vendor_id === vendorId);
-            if (!vendorExists) {
-              rowErrors.push(`purchase_vendor_id '${vendorId}' does not exist in vendors table`);
+            if (referenceData.vendors.length > 0) {
+              const vendorExists = referenceData.vendors.some(vendor => vendor.vendor_id === vendorId);
+              if (!vendorExists) {
+                rowErrors.push(`purchase_vendor_id '${vendorId}' does not exist in vendors table`);
+              }
+            } else {
+              console.warn('Cannot validate purchase_vendor_id - vendors data not available');
             }
           }
 
           const serviceVendorIdIndex = headers.indexOf('service_vendor_id');
           if (serviceVendorIdIndex !== -1 && data[serviceVendorIdIndex]) {
             const serviceVendorId = data[serviceVendorIdIndex];
-            const serviceVendorExists = referenceData.vendors.some(vendor => vendor.vendor_id === serviceVendorId);
-            if (!serviceVendorExists) {
-              rowErrors.push(`service_vendor_id '${serviceVendorId}' does not exist in vendors table`);
+            if (referenceData.vendors.length > 0) {
+              const serviceVendorExists = referenceData.vendors.some(vendor => vendor.vendor_id === serviceVendorId);
+              if (!serviceVendorExists) {
+                rowErrors.push(`service_vendor_id '${serviceVendorId}' does not exist in vendors table`);
+              }
+            } else {
+              console.warn('Cannot validate service_vendor_id - vendors data not available');
             }
           }
 
-          const prodServIdIndex = headers.indexOf('prod_serv_id');
-          if (prodServIdIndex !== -1 && data[prodServIdIndex]) {
-            const prodServId = data[prodServIdIndex];
-            const prodServExists = referenceData.prodServ.some(ps => ps.prod_serv_id === prodServId);
-            if (!prodServExists) {
-              rowErrors.push(`prod_serv_id '${prodServId}' does not exist in products/services table`);
-            }
-          }
 
           const purchasedByIndex = headers.indexOf('purchased_by');
           if (purchasedByIndex !== -1 && data[purchasedByIndex]) {
@@ -1136,6 +1285,15 @@ const Roles = () => {
   const handleFileUpload = (type, file) => {
     console.log(`Uploading file for ${type}:`, file);
     
+    // Set the file state
+    setFile(file);
+    
+    // Clear previous trial results for this type
+    setTrialResults(prev => ({
+      ...prev,
+      [type]: {}
+    }));
+    
     // Validate file type
     if (!file.name.toLowerCase().endsWith('.csv')) {
       alert('Please select a CSV file');
@@ -1153,23 +1311,54 @@ const Roles = () => {
     reader.onload = async (e) => {
       try {
         const csvContent = e.target.result;
-        const validationResult = await validateCSVContent(type, csvContent);
         
-        if (validationResult.isValid) {
-          // Update upload status with validation results
+        // Basic validation first (without API calls)
+        const lines = csvContent.split('\n').filter(line => line.trim());
+        if (lines.length < 2) {
+          alert('CSV file must have at least a header row and one data row');
+          return;
+        }
+        
+        if (lines.length > 10000) {
+          alert('CSV file cannot exceed 10,000 rows');
+          return;
+        }
+        
+        // Set basic upload status first
+        setUploadStatus(prev => ({
+          ...prev,
+          [type]: {
+            fileName: file.name,
+            fileSize: file.size,
+            uploadTime: new Date().toISOString(),
+            status: 'uploaded',
+            csvContent: csvContent,
+            validationResult: {
+              isValid: true,
+              totalRows: lines.length - 1,
+              validRows: lines.length - 1,
+              errors: []
+            }
+          }
+        }));
+        
+        // Try full validation (with API calls) - but don't block the UI
+        try {
+          const validationResult = await validateCSVContent(type, csvContent);
           setUploadStatus(prev => ({
             ...prev,
             [type]: {
-              fileName: file.name,
-              fileSize: file.size,
-              uploadTime: new Date().toISOString(),
-              status: 'uploaded',
+              ...prev[type],
               validationResult: validationResult
             }
           }));
-        } else {
-          // Show validation errors
-          showValidationErrors(type, validationResult.errors);
+          
+          if (!validationResult.isValid) {
+            showValidationErrors(type, validationResult.errors);
+          }
+        } catch (validationError) {
+          console.warn('Full validation failed, using basic validation:', validationError);
+          // Keep the basic validation result
         }
       } catch (error) {
         alert('Error reading CSV file: ' + error.message);
@@ -1190,29 +1379,117 @@ const Roles = () => {
 
     // Check if validation passed
     if (!uploadStatusForType.validationResult.isValid) {
-      alert('Please fix validation errors before running trial upload');
+      console.error('Validation failed with errors:', uploadStatusForType.validationResult.errors);
+      alert(`Please fix validation errors before running trial upload:\n\n${uploadStatusForType.validationResult.errors.slice(0, 5).join('\n')}${uploadStatusForType.validationResult.errors.length > 5 ? '\n... and more errors' : ''}`);
       return;
     }
 
+    // Show loading state
+    setIsValidating(true);
+    setValidationProgress(50);
+
     try {
+      // For assets, fetch property mappings if needed
+      if (type === 'assets') {
+        // Get the first asset type from CSV to fetch property mappings
+        const lines = uploadStatusForType.csvContent.split('\n').filter(line => line.trim());
+        if (lines.length > 1) {
+          const headers = parseCSVLine(lines[0]);
+          const firstRow = parseCSVLine(lines[1]);
+          const assetTypeIndex = headers.indexOf('asset_type_id');
+          if (assetTypeIndex !== -1 && firstRow[assetTypeIndex]) {
+            const assetTypeId = firstRow[assetTypeIndex];
+            const mappings = await fetchPropertyMappings(assetTypeId);
+            setPropertyMappings(mappings);
+          }
+        }
+      }
+
       // Convert CSV data to array of objects for API
       const csvData = convertCSVToObjectArray(uploadStatusForType.csvContent, type);
       
       let response;
       switch (type) {
         case 'assets':
-          response = await API.post('/assets/trial-upload', { csvData });
+          try {
+            response = await API.post('/assets/trial-upload', { csvData });
+            if (response.data.success) {
+              setTrialResults(prev => ({
+                ...prev,
+                [type]: {
+                  totalRows: response.data.results.totalRows,
+                  newRecords: response.data.results.newRecords,
+                  updatedRecords: response.data.results.updatedRecords,
+                  errors: response.data.results.errors
+                }
+              }));
+              setUploadStatus(prev => ({ 
+                ...prev, 
+                [type]: { 
+                  ...prev[type], 
+                  trialCompleted: true 
+                } 
+              }));
+            } else {
+              alert('Trial upload failed: ' + (response.data.error || 'Unknown error'));
+            }
+          } catch (error) {
+            console.error('Trial upload error:', error);
+            if (error.response?.status === 401) {
+              alert('Session expired. Please refresh the page and try again.');
+            } else {
+              alert('Trial upload failed: ' + (error.response?.data?.error || error.message));
+            }
+          }
+          setIsValidating(false);
+          setValidationProgress(0);
           break;
         case 'assetTypes':
           // TODO: Implement when asset types bulk upload is ready
           alert('Asset Types trial upload not yet implemented');
+          setIsValidating(false);
+          setValidationProgress(0);
           return;
         case 'employees':
-          // TODO: Implement when employees bulk upload is ready
-          alert('Employees trial upload not yet implemented');
+          try {
+            console.log('🔍 Running employees trial upload with csvData:', csvData);
+            const response = await API.post('/employees/trial-upload', { csvData });
+            console.log('🔍 Employees trial upload response:', response.data);
+            if (response.data.success) {
+              setTrialResults(prev => ({
+                ...prev,
+                [type]: {
+                  totalRows: response.data.results.totalRows,
+                  newRecords: response.data.results.newRecords,
+                  updatedRecords: response.data.results.updatedRecords,
+                  errors: response.data.results.errors
+                }
+              }));
+              setUploadStatus(prev => ({ 
+                ...prev, 
+                [type]: { 
+                  ...prev[type], 
+                  trialCompleted: true 
+                } 
+              }));
+            } else {
+              alert('Trial upload failed: ' + (response.data.error || 'Unknown error'));
+            }
+          } catch (error) {
+            console.error('Trial upload error:', error);
+            if (error.response?.status === 401) {
+              alert('Session expired. Please refresh the page and try again.');
+            } else {
+              alert('Trial upload failed: ' + (error.response?.data?.error || error.message));
+            }
+          }
+          setIsValidating(false);
+          setValidationProgress(0);
           return;
         default:
           alert('Unknown table type');
+          setIsValidating(false);
+          setValidationProgress(0);
           return;
       }
 
@@ -1235,7 +1512,18 @@ const Roles = () => {
       }
     } catch (error) {
       console.error('Trial upload error:', error);
+      
+      // Handle authentication errors specifically
+      if (error.response?.status === 401) {
+        alert('Session expired. Please log in again.');
+        // The axios interceptor will handle the logout and redirect
+        return;
+      }
+      
       alert('Trial upload failed: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setIsValidating(false);
+      setValidationProgress(0);
     }
   };
 
@@ -1275,8 +1563,31 @@ const Roles = () => {
             alert('Asset Types commit not yet implemented');
             return;
           case 'employees':
-            // TODO: Implement when employees bulk upload is ready
-            alert('Employees commit not yet implemented');
+            try {
+              const response = await API.post('/employees/commit-bulk-upload', { csvData });
+              if (response.data.success) {
+                const results = response.data.results;
+                alert(`Employees bulk upload completed successfully!\n\n` +
+                      `Inserted: ${results.inserted} records\n` +
+                      `Updated: ${results.updated} records\n` +
+                      `Errors: ${results.errors} records`);
+                
+                // Clear the upload status for this tab
+                clearStorage(activeTab);
+                setUploadStatus({});
+                setTrialResults({});
+                setFile(null);
+              } else {
+                alert('Commit failed: ' + (response.data.error || 'Unknown error'));
+              }
+            } catch (error) {
+              console.error('Commit error:', error);
+              if (error.response?.status === 401) {
+                alert('Session expired. Please refresh the page and try again.');
+              } else {
+                alert('Commit failed: ' + (error.response?.data?.error || error.message));
+              }
+            }
             return;
           default:
             alert('Unknown table type');
@@ -1302,11 +1613,25 @@ const Roles = () => {
             ...prev,
             [type]: null
           }));
+
+          // Clear localStorage for this type
+          const newUploadStatus = { ...uploadStatus, [type]: null };
+          const newTrialResults = { ...trialResults, [type]: null };
+          saveToStorage('uploadStatus', newUploadStatus);
+          saveToStorage('trialResults', newTrialResults);
         } else {
           alert('Commit failed: ' + response.data.error);
         }
       } catch (error) {
         console.error('Commit error:', error);
+        
+        // Handle authentication errors specifically
+        if (error.response?.status === 401) {
+          alert('Session expired. Please log in again.');
+          // The axios interceptor will handle the logout and redirect
+          return;
+        }
+        
         alert('Commit failed: ' + (error.response?.data?.error || error.message));
       }
     }
@@ -1380,10 +1705,31 @@ const Roles = () => {
             </nav>
           </div>
 
-          {/* Tab Content */}
-          <div className="p-6">
-            {renderTabContent(activeTab)}
-          </div>
+        {/* Tab Content */}
+        <div className="p-6">
+          {/* Loading Overlay */}
+          {isValidating && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                  <span className="text-lg font-medium">Processing...</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${validationProgress}%` }}
+                  ></div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  {validationProgress < 50 ? 'Validating CSV data...' : 'Running trial upload...'}
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {renderTabContent(activeTab)}
+        </div>
         </div>
       </div>
     </div>
@@ -1483,7 +1829,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
         </button>
 
         {/* Trial Results */}
-        {trialResults && Object.keys(trialResults).length > 0 && (
+        {trialResults && trialResults.totalRows && trialResults.totalRows > 0 && (
           <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h5 className="font-semibold text-gray-900 mb-2">Trial Results:</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1501,7 +1847,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
               </div>
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-gray-500" />
-                <span>Total Processed: {trialResults.totalProcessed || 0}</span>
+                <span>Total Processed: {trialResults.totalRows || 0}</span>
               </div>
             </div>
           </div>
@@ -1623,7 +1969,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
         </button>
 
         {/* Trial Results */}
-        {trialResults && Object.keys(trialResults).length > 0 && (
+        {trialResults && trialResults.totalRows && trialResults.totalRows > 0 && (
           <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h5 className="font-semibold text-gray-900 mb-2">Trial Results:</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1641,7 +1987,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
               </div>
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-gray-500" />
-                <span>Total Processed: {trialResults.totalProcessed || 0}</span>
+                <span>Total Processed: {trialResults.totalRows || 0}</span>
               </div>
             </div>
           </div>
@@ -1763,7 +2109,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
         </button>
 
         {/* Trial Results */}
-        {trialResults && Object.keys(trialResults).length > 0 && (
+        {trialResults && trialResults.totalRows && trialResults.totalRows > 0 && (
           <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h5 className="font-semibold text-gray-900 mb-2">Trial Results:</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1781,7 +2127,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
               </div>
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-gray-500" />
-                <span>Total Processed: {trialResults.totalProcessed || 0}</span>
+                <span>Total Processed: {trialResults.totalRows || 0}</span>
               </div>
             </div>
           </div>
