@@ -118,14 +118,8 @@ const ContentBox = ({
 
   const handleAddFilter = (type) => {
     const labelMap = {
-<<<<<<< HEAD
-      date: "Expiry Date",
-      search: "Search by Column",
-      simpleSearch: "Search",
-=======
       date: t('assets.expiryDate'),
       search: t('common.searchByColumn'),
->>>>>>> origin/Naren
     };
     const newFilter = { type, label: labelMap[type] };
     setActiveFilters([...activeFilters, newFilter]);
@@ -402,14 +396,8 @@ const ContentBox = ({
                       setFilterMenuOpen(false);
                     }}
                   >
-<<<<<<< HEAD
-                    {type === "search" && "Search by Column"}
-                    {type === "simpleSearch" && "Search"}
-                    {type === "date" && "Expiry Date"}
-=======
                     {type === "search" && t('common.searchByColumn')}
                     {type === "date" && t('assets.expiryDate')}
->>>>>>> origin/Naren
                   </div>
                 ))}
               </div>
