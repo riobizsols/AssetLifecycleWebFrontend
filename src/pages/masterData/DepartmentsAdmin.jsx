@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import useAuditLog from "../../hooks/useAuditLog";
 import { DEPARTMENTS_ADMIN_APP_ID } from "../../constants/departmentsAdminAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const DepartmentsAdmin = () => {
   const [departments, setDepartments] = useState([]);
@@ -26,6 +27,9 @@ const DepartmentsAdmin = () => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(DEPARTMENTS_ADMIN_APP_ID);
+  
+  // Language context
+  const { t } = useLanguage();
 
   // Fetch departments
   const fetchDepartments = async () => {
@@ -34,7 +38,7 @@ const DepartmentsAdmin = () => {
       setDepartments(res.data);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error("Failed to fetch departments");
+      toast.error(t('departments.failedToFetchDepartments'));
     }
   };
 
@@ -45,7 +49,7 @@ const DepartmentsAdmin = () => {
       setAdminList(res.data);
     } catch (err) {
       console.error("Failed to fetch all admins", err);
-      toast.error("Failed to fetch admin list");
+      toast.error(t('departments.failedToFetchAdminList'));
     }
   };
 
@@ -60,14 +64,14 @@ const DepartmentsAdmin = () => {
       setUsersToAdd(usersData);
     } catch (err) {
       console.error("Failed to fetch users to add", err);
-      toast.error("Failed to fetch users list");
+      toast.error(t('departments.failedToFetchUsersList'));
     }
   };
 
   const handleAddAdmin = async () => {
     setSubmitAttempted(true);
     if (!selectedUser || !selectedDept) {
-      toast.error("Please select both department and user");
+      toast.error(t('departments.pleaseSelectBothDepartmentAndUser'));
       return;
     }
     
@@ -91,11 +95,11 @@ const DepartmentsAdmin = () => {
       
       fetchAllAdmins();
       setSelectedUser(null);
-      toast.success(`"${selectedUserName}" added as admin for "${selectedDeptName}" department`);
+      toast.success(t('departments.adminAddedSuccessfully', { userName: selectedUserName, deptName: selectedDeptName }));
     } catch (err) {
       console.error("Failed to add admin", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`Failed to add admin: ${errorMessage}`);
+      toast.error(`${t('departments.failedToAddAdmin')}: ${errorMessage}`);
     }
   };
 
@@ -123,11 +127,11 @@ const DepartmentsAdmin = () => {
 
       fetchAllAdmins();
       setShowDeleteModal(false);
-      toast.success(`"${userToDelete.full_name}" removed as admin from "${userToDelete.dept_name}" department`);
+      toast.success(t('departments.adminRemovedSuccessfully', { userName: userToDelete.full_name, deptName: userToDelete.dept_name }));
     } catch (err) {
       console.error("Failed to delete admin", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`Failed to remove admin: ${errorMessage}`);
+      toast.error(`${t('departments.failedToRemoveAdmin')}: ${errorMessage}`);
     }
   };
 
@@ -145,19 +149,19 @@ const DepartmentsAdmin = () => {
       {/* Department Dropdown */}
       <div className="bg-white rounded shadow mb-4">
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          Department Selection
+          {t('departments.departmentSelection')}
         </div>
         <div className="p-4 flex gap-4 items-center">
           <div className="flex flex-col">
             <label className="text-sm font-medium mb-1">
-              Department <span className="text-red-500">*</span>
+              {t('common.department')} <span className="text-red-500">*</span>
             </label>
             <select
               className={`border px-3 py-2 text-sm w-64 bg-white text-black focus:outline-none ${isFieldInvalid(selectedDept) ? 'border-red-500' : 'border-gray-300'}`}
               value={selectedDept || ""}
               onChange={(e) => setSelectedDept(e.target.value)}
             >
-              <option value="">Select Department</option>
+              <option value="">{t('departments.selectDepartment')}</option>
               {departments.map((dept) => (
                 <option key={dept.dept_id} value={dept.dept_id}>
                   {dept.text}
@@ -170,13 +174,13 @@ const DepartmentsAdmin = () => {
       {/* Add Admin Section */}
       <div className="bg-white rounded shadow mb-4">
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          Add Admin
+          {t('departments.addAdmin')}
         </div>
         <div className="p-4 flex gap-4 items-center">
           {/* Custom Searchable Dropdown for Users */}
           <div className="flex flex-col w-64">
             <label className="text-sm font-medium mb-1">
-              User <span className="text-red-500">*</span>
+              {t('departments.user')} <span className="text-red-500">*</span>
             </label>
             <div className="relative w-full">
               <button
@@ -187,8 +191,8 @@ const DepartmentsAdmin = () => {
                 type="button"
               >
                 {selectedUser
-                  ? usersToAdd.find((u) => u.user_id === selectedUser)?.full_name || "Select User"
-                  : "Select User"}
+                  ? usersToAdd.find((u) => u.user_id === selectedUser)?.full_name || t('departments.selectUser')
+                  : t('departments.selectUser')}
                 <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
               </button>
               {/* Dropdown List */}
@@ -202,7 +206,7 @@ const DepartmentsAdmin = () => {
                   <input
                     type="text"
                     className="w-full border px-2 py-1 rounded text-sm"
-                    placeholder="Search Users..."
+                    placeholder={t('departments.searchUsers')}
                     value={searchUser}
                     onChange={e => setSearchUser(e.target.value)}
                     autoFocus
@@ -241,7 +245,7 @@ const DepartmentsAdmin = () => {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    Create New User
+                    {t('departments.createNewUser')}
                   </button>
                 </div>
               </div>
@@ -252,7 +256,7 @@ const DepartmentsAdmin = () => {
             onClick={handleAddAdmin}
             disabled={!selectedUser || !selectedDept}
           >
-            Add
+            {t('common.add')}
           </button>
         </div>
       </div>
@@ -264,7 +268,7 @@ const DepartmentsAdmin = () => {
       >
         <div className="bg-white rounded shadow">
           <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-            Admin List
+            {t('departments.adminList')}
             <button onClick={toggleMaximize}>
               {isMaximized ? (
                 <Minimize className="text-[#0E2F4B]" size={18} />
@@ -275,10 +279,10 @@ const DepartmentsAdmin = () => {
           </div>
           <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
             <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-              <div>User ID</div>
-              <div>Admin Name</div>
-              <div>Department Name</div>
-              <div className="text-center">Actions</div>
+              <div>{t('departments.userId')}</div>
+              <div>{t('departments.adminName')}</div>
+              <div>{t('departments.departmentName')}</div>
+              <div className="text-center">{t('common.actions')}</div>
             </div>
 
             <div
@@ -310,7 +314,7 @@ const DepartmentsAdmin = () => {
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white w-[500px] rounded shadow-lg">
             <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-              <span>Confirm Delete</span>
+              <span>{t('departments.confirmDelete')}</span>
               <button
                 onClick={() => setShowDeleteModal(false)}
                 className="text-yellow-400 text-xl font-bold"
@@ -320,21 +324,20 @@ const DepartmentsAdmin = () => {
             </div>
             <div className="h-[3px] bg-yellow-400" />
             <div className="px-6 py-6 text-center text-gray-800 text-sm">
-              Do you want to remove <strong>{userToDelete?.name}</strong> from
-              admin list?
+              {t('departments.doYouWantToRemoveFromAdminList', { name: userToDelete?.full_name || userToDelete?.name })}
             </div>
             <div className="flex justify-end gap-3 px-6 pb-6">
               <button
                 className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
                 onClick={() => setShowDeleteModal(false)}
               >
-                Close
+                {t('departments.close')}
               </button>
               <button
                 className="bg-yellow-400 hover:bg-yellow-500 text-white text-sm font-medium py-1.5 px-5 rounded"
                 onClick={confirmDelete}
               >
-                Delete
+                {t('common.delete')}
               </button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuditLog } from "../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../constants/authAuditEvents";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function Header() {
   const { user, logout, roles } = useAuthStore();
@@ -11,81 +12,82 @@ export default function Header() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const { t } = useLanguage();
   
   // Audit logging for logout
   const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.LOGOUT);
 
-  // Map paths to page titles and subtitles
+  // Map paths to page titles and subtitles using translations
   const pathTitleMap = {
-    "/supervisor-approval": { title: "Maintenance Supervisor", subtitle: "" },
-    "/assets": { title: "Assets", subtitle: "" },
+    "/supervisor-approval": { title: t('maintenance.supervisor'), subtitle: "" },
+    "/assets": { title: t('navigation.assets'), subtitle: "" },
     "/assign-department-assets": {
-      title: "Department Assignment",
+      title: t('departments.assignment'),
       subtitle: "",
     },
-    "/assign-employee-assets": { title: "Employee Assignment", subtitle: "" },
-    "/workorder-management": { title: "Workorder Management", subtitle: "" },
-    "/maintenance-approval": { title: "Maintenance Approval", subtitle: "" },
+    "/assign-employee-assets": { title: t('navigation.employeeAssignment'), subtitle: "" },
+    "/workorder-management": { title: t('maintenance.workOrder') + " Management", subtitle: "" },
+    "/maintenance-approval": { title: t('maintenance.approval'), subtitle: "" },
     "/report-breakdown": { title: "Report Breakdown", subtitle: "" },
-    "/dashboard": { title: "Dashboard", subtitle: "" },
-    "/assets/add": { title: "Add Asset", subtitle: "" },
-    "/master-data/asset-types/add": { title: "Add Asset Type", subtitle: "" },
-    "/master-data/branches/add": { title: "Add Branch", subtitle: "" },
-    "/master-data/vendors/add": { title: "Add Vendor", subtitle: "" },
+    "/dashboard": { title: t('navigation.dashboard'), subtitle: "" },
+    "/assets/add": { title: t('assets.addAsset'), subtitle: "" },
+    "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },
+    "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },
+    "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: "Product / Service", subtitle: "" },
-    "/group-asset": { title: "Asset Groups", subtitle: "" },
+    "/group-asset": { title: t('navigation.groupAsset'), subtitle: "" },
     "/group-asset/create": {
-      title: "Asset Groups",
-      subtitle: "Create a new asset group",
+      title: t('navigation.groupAsset'),
+      subtitle: t('groupAsset.create'),
     },
     "/group-asset/edit": {
-      title: "Asset Groups",
-      subtitle: "Edit asset group",
+      title: t('navigation.groupAsset'),
+      subtitle: t('groupAsset.edit'),
     },
     "/group-asset/view": {
-      title: "Asset Groups",
-      subtitle: "View asset group",
+      title: t('navigation.groupAsset'),
+      subtitle: t('groupAsset.view'),
     },
     "/scrap-sales": {
-      title: "Scrap Sales",
-      subtitle: "Manage asset scrap sales and disposal records",
+      title: t('scrapSales.title'),
+      subtitle: t('scrapSales.subtitle'),
     },
     "/scrap-assets": {
-      title: "Scrap Assets Dashboard",
-      subtitle: "Overview of assets marked for disposal and scrapping",
+      title: t('scrapAssets.title'),
+      subtitle: t('scrapAssets.subtitle'),
     },
 
     "/scrap-assets/nearing-expiry": {
-      title: "Assets Nearing Expiry",
-      subtitle: "Assets that will expire within the next 30 days",
+      title: t('scrapAssets.nearingExpiry'),
+      subtitle: t('scrapAssets.nearingExpirySubtitle'),
     },
     "/scrap-assets/expired": {
-      title: "Expired Assets",
-      subtitle: "Assets that have passed their expiry date",
+      title: t('scrapAssets.expired'),
+      subtitle: t('scrapAssets.expiredSubtitle'),
     },
     "/scrap-assets/categories": {
-      title: "All Expiring Categories",
-      subtitle: "Overview of all asset types with expiring assets",
+      title: t('scrapAssets.categories'),
+      subtitle: t('scrapAssets.categoriesSubtitle'),
     },
     "/scrap-assets/by-category": {
-      title: "Expiring Assets by Category",
-      subtitle: "Assets expiring soon grouped by category",
+      title: t('scrapAssets.byCategory'),
+      subtitle: t('scrapAssets.byCategorySubtitle'),
     },
     "/scrap-assets/by-category/:category": {
-      title: "Category Assets",
-      subtitle: "Assets filtered by specific category",
+      title: t('scrapAssets.categoryAssets'),
+      subtitle: t('scrapAssets.categoryAssetsSubtitle'),
     },
     "/scrap-assets/create": {
-      title: "Add Scrap Asset",
-      subtitle: "Manually scrap assets that are not necessarily nearing expiry",
+      title: t('scrapAssets.create'),
+      subtitle: t('scrapAssets.createSubtitle'),
     },
     "/audit-logs-view": {
-      title: "Audit Logs",
-      subtitle: "Track and monitor all user activities across the system",
+      title: t('auditLogs.title'),
+      subtitle: t('auditLogs.subtitle'),
     },
     "/audit-logs-view/config": {
-      title: "Audit Log Configuration",
-      subtitle: "Manage reporting requirements",
+      title: t('auditLogs.config'),
+      subtitle: t('auditLogs.configSubtitle'),
     },
     "/master-data/roles": {
       title: "Role Management",
@@ -147,6 +149,8 @@ export default function Header() {
           <div className="text-sm text-gray-600">{pageInfo.subtitle}</div>
         )}
       </div>
+      
+      {/* User Menu */}
       <div className="relative" ref={dropdownRef}>
         {/* Avatar Button */}
         <button
@@ -188,7 +192,7 @@ export default function Header() {
               onClick={handleLogout}
               className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-100 text-gray-700"
             >
-              <LogOut size={16} /> Logout
+              <LogOut size={16} /> {t('auth.logout')}
             </button>
           </div>
         )}

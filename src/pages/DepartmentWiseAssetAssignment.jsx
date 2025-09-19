@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import AssetAssignmentList from "../components/assetAssignment/AssetAssignmentList";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const DepartmentWiseAssetAssignment = () => {
+  const { t } = useLanguage();
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState(null);
   const [assignmentList, setAssignmentList] = useState([]);
@@ -20,7 +22,7 @@ const DepartmentWiseAssetAssignment = () => {
       setDepartments(formattedDepts);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error("Failed to fetch departments");
+      toast.error(t('departments.failedToFetchDepartments'));
     }
   };
 
@@ -36,7 +38,7 @@ const DepartmentWiseAssetAssignment = () => {
       setAssignmentList(res.data.assignedAssets || []);
     } catch (err) {
       console.error("Failed to fetch assignments", err);
-      toast.error("Failed to fetch asset list");
+      toast.error(t('departments.failedToFetchAssetList'));
       setAssignmentList([]);
     } finally {
       setLoading(false);
@@ -63,7 +65,7 @@ const DepartmentWiseAssetAssignment = () => {
 
   return (
     <AssetAssignmentList
-      title="Department Assets List"
+      title={t('departments.departmentAssetsList')}
       entityType="department"
       entities={departments}
       selectedEntity={selectedDept}

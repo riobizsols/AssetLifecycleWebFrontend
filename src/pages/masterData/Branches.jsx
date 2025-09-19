@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { BRANCHES_APP_ID } from "../../constants/branchesAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const Branches = () => {
   const navigate = useNavigate();
@@ -32,20 +33,24 @@ const Branches = () => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(BRANCHES_APP_ID);
+  
+  // Language context
+  const { t } = useLanguage();
 
-  const [columns] = useState([
-    { label: "Branch ID", name: "branch_id", visible: true },
-    { label: "Organization ID", name: "org_id", visible: true },
-    { label: "Is Active", name: "int_status", visible: true },
-    { label: "Branch Name", name: "text", visible: true },
-    { label: "City", name: "city", visible: true },
-    { label: "Branch Code", name: "branch_code", visible: true },
-    { label: "Created By", name: "created_by", visible: false },
-    { label: "Ext ID", name: "ext_id", visible: false },
-    { label: "Created On", name: "created_on", visible: false },
-    { label: "Changed By", name: "changed_by", visible: false },
-    { label: "Changed On", name: "changed_on", visible: false },
-  ]);
+  // Create columns with translations
+  const columns = [
+    { label: t('branches.branchId'), name: "branch_id", visible: true },
+    { label: t('branches.organizationId'), name: "org_id", visible: true },
+    { label: t('branches.isActive'), name: "int_status", visible: true },
+    { label: t('branches.branchName'), name: "text", visible: true },
+    { label: t('branches.city'), name: "city", visible: true },
+    { label: t('branches.branchCode'), name: "branch_code", visible: true },
+    { label: t('branches.createdBy'), name: "created_by", visible: false },
+    { label: t('branches.extId'), name: "ext_id", visible: false },
+    { label: t('branches.createdOn'), name: "created_on", visible: false },
+    { label: t('branches.changedBy'), name: "changed_by", visible: false },
+    { label: t('branches.changedOn'), name: "changed_on", visible: false },
+  ];
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -60,7 +65,7 @@ const Branches = () => {
         setData(formattedData);
       } catch (error) {
         console.error("Error fetching branches:", error);
-        toast.error("Failed to fetch branches");
+        toast.error(t('branches.failedToFetchBranches'));
       }
     };
 
@@ -172,10 +177,10 @@ const Branches = () => {
       
       setShowEditModal(false);
       setEditingBranch(null);
-      toast.success("Branch updated successfully");
+      toast.success(t('branches.branchUpdatedSuccessfully'));
     } catch (error) {
       console.error("Error updating branch:", error);
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || "Failed to update branch";
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || t('branches.failedToUpdateBranch');
       toast.error(errorMessage);
     }
   };
@@ -198,10 +203,10 @@ const Branches = () => {
         prev.filter((branch) => !selectedRows.includes(branch.branch_id))
       );
       setSelectedRows([]);
-      toast.success(`${selectedRows.length} branch(es) deleted successfully`);
+      toast.success(t('branches.branchesDeletedSuccessfully', { count: selectedRows.length }));
     } catch (error) {
       console.error("Error deleting branches:", error);
-      const errorMessage = error.response?.data?.error || "Failed to delete branches";
+      const errorMessage = error.response?.data?.error || t('branches.failedToDeleteBranches');
       toast.error(errorMessage);
     }
   };
@@ -218,13 +223,13 @@ const Branches = () => {
           action: 'Branches Data Downloaded'
         });
         
-        toast('Branches exported successfully', { icon: '✅' });
+        toast(t('branches.branchesExportedSuccessfully'), { icon: '✅' });
       } else {
-        throw new Error('Export failed');
+        throw new Error(t('branches.exportFailed'));
       }
     } catch (error) {
       console.error('Error downloading branches:', error);
-      toast('Failed to export branches', { icon: '❌' });
+      toast(t('branches.failedToExportBranches'), { icon: '❌' });
     }
   };
 
@@ -232,8 +237,8 @@ const Branches = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'int_status' ? [
-      { label: "Active", value: "Active" },
-      { label: "Inactive", value: "Inactive" }
+      { label: t('branches.active'), value: "Active" },
+      { label: t('branches.inactive'), value: "Inactive" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));

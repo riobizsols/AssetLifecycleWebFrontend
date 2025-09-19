@@ -1,11 +1,13 @@
 import AppRoutes from "./routes/AppRoutes";
 import { Toaster } from "react-hot-toast";
 import { AppDataProvider } from "./contexts/AppDataContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
 
 const App = () => {
   return (
-    <AppDataProvider>
-      <AppRoutes />
+    <LanguageProvider>
+      <AppDataProvider>
+        <AppRoutes />
       <Toaster
         position="bottom-right"
         reverseOrder={false}
@@ -77,7 +79,8 @@ const App = () => {
           }
         `}
       </style>
-    </AppDataProvider>
+      </AppDataProvider>
+    </LanguageProvider>
   );
 };
 

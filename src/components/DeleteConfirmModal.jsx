@@ -1,4 +1,7 @@
-const DeleteConfirmModal = ({ show, onClose, onConfirm, message = "Do you want to delete this item?" }) => {
+import { useLanguage } from "../contexts/LanguageContext";
+
+const DeleteConfirmModal = ({ show, onClose, onConfirm, message = null }) => {
+  const { t } = useLanguage();
   if (!show) return null;
 
   return (
@@ -6,7 +9,7 @@ const DeleteConfirmModal = ({ show, onClose, onConfirm, message = "Do you want t
       <div className="bg-white w-[500px] rounded shadow-lg">
         {/* Header */}
         <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-          <span>Confirm Delete</span>
+          <span>{t('assets.confirmDelete')}</span>
           <button
             onClick={onClose}
             className="text-yellow-400 text-xl font-bold"
@@ -20,7 +23,7 @@ const DeleteConfirmModal = ({ show, onClose, onConfirm, message = "Do you want t
 
         {/* Body */}
         <div className="px-6 py-6 text-center text-gray-800 text-sm">
-          {message}
+          {message || t('messages.deleteConfirm')}
         </div>
 
         {/* Footer */}
@@ -29,13 +32,13 @@ const DeleteConfirmModal = ({ show, onClose, onConfirm, message = "Do you want t
             className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
             onClick={onClose}
           >
-            Close
+            {t('assets.close')}
           </button>
           <button
             className="bg-[#ffc107] hover:bg-[#e0a800] text-white text-sm font-medium py-1.5 px-5 rounded"
             onClick={onConfirm}
           >
-            Delete
+            {t('common.delete')}
           </button>
         </div>
       </div>

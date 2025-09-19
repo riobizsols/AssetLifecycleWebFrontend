@@ -13,6 +13,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import { toast } from "react-hot-toast";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const ContentBox = ({
   title,
@@ -36,6 +37,7 @@ const ContentBox = ({
   customHeaderActions, // Custom header actions
 }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [openDropdown, setOpenDropdown] = useState(null);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
@@ -116,9 +118,14 @@ const ContentBox = ({
 
   const handleAddFilter = (type) => {
     const labelMap = {
+<<<<<<< HEAD
       date: "Expiry Date",
       search: "Search by Column",
       simpleSearch: "Search",
+=======
+      date: t('assets.expiryDate'),
+      search: t('common.searchByColumn'),
+>>>>>>> origin/Naren
     };
     const newFilter = { type, label: labelMap[type] };
     setActiveFilters([...activeFilters, newFilter]);
@@ -385,7 +392,7 @@ const ContentBox = ({
           {filterMenuOpen && nextAvailableFilters.length > 0 && (
             <div className="relative">
               <div className="absolute z-50 mt-1 bg-white border text-sm w-60 p-2 shadow-lg left-0">
-                <div className="font-medium border-b pb-1 mb-1">Add Filter</div>
+                <div className="font-medium border-b pb-1 mb-1">{t('common.addFilter')}</div>
                 {nextAvailableFilters.map((type) => (
                   <div
                     key={type}
@@ -395,9 +402,14 @@ const ContentBox = ({
                       setFilterMenuOpen(false);
                     }}
                   >
+<<<<<<< HEAD
                     {type === "search" && "Search by Column"}
                     {type === "simpleSearch" && "Search"}
                     {type === "date" && "Expiry Date"}
+=======
+                    {type === "search" && t('common.searchByColumn')}
+                    {type === "date" && t('assets.expiryDate')}
+>>>>>>> origin/Naren
                   </div>
                 ))}
               </div>
@@ -425,7 +437,7 @@ const ContentBox = ({
             <button
               onClick={() => {
                 if (selectedRows.length === 0) {
-                  toast.error("Please select items to delete");
+                  toast.error(t('common.pleaseSelectItemsToDelete'));
                   return;
                 }
                 setShowDeleteModal(true);
@@ -534,7 +546,7 @@ const ContentBox = ({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="px-3 py-2 font-semibold border-b">
-                          Sort
+                          {t('common.sort')}
                         </div>
                         <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
@@ -546,7 +558,7 @@ const ContentBox = ({
                             setOpenDropdown(null);
                           }}
                         >
-                          Sort Ascending {sortInfo?.direction === "asc" && "✓"}
+                          {t('common.sortAscending')} {sortInfo?.direction === "asc" && "✓"}
                         </div>
                         <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
@@ -558,7 +570,7 @@ const ContentBox = ({
                             setOpenDropdown(null);
                           }}
                         >
-                          Sort Descending{" "}
+                          {t('common.sortDescending')}{" "}
                           {sortInfo?.direction === "desc" && "✓"}
                         </div>
                         {sortInfo && (
@@ -570,7 +582,7 @@ const ContentBox = ({
                               setOpenDropdown(null);
                             }}
                           >
-                            Remove Sort
+                            {t('common.removeSort')}
                           </div>
                         )}
                         <div className="relative border-t">
@@ -581,7 +593,7 @@ const ContentBox = ({
                               setShowColumnsDropdown(!showColumnsDropdown);
                             }}
                           >
-                            <span>Columns</span>
+                            <span>{t('common.columns')}</span>
                             <ChevronRight size={16} />
                           </button>
                           {showColumnsDropdown && (
@@ -668,7 +680,7 @@ const ContentBox = ({
                           )}
                         </div>
                         <div className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold">
-                          Add Filter
+                          {t('common.addFilter')}
                         </div>
                       </div>
                     )}
@@ -676,7 +688,7 @@ const ContentBox = ({
                 );
               })}
               {showActions && (
-                <th className="px-4 py-3 text-center">Actions</th>
+                <th className="px-4 py-3 text-center">{t('common.actions')}</th>
               )}
             </tr>
           </thead>
@@ -699,7 +711,7 @@ const ContentBox = ({
               setShowDeleteModal(false);
             }
           }}
-          message={`Are you sure you want to delete ${selectedRows.length} selected item(s)?`}
+          message={t('assets.areYouSureDelete', { count: selectedRows.length })}
         />
       )}
     </div>

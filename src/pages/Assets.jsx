@@ -10,9 +10,12 @@ import UpdateAssetModal from "../components/UpdateAssetModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSETS_APP_ID } from "../constants/assetsAuditEvents";
+import { useLanguage } from "../contexts/LanguageContext";
+import { translateErrorMessage } from "../utils/errorTranslation";
 
 const Assets = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [data, setData] = useState([]);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
@@ -30,26 +33,27 @@ const Assets = () => {
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
 
-  const [columns] = useState([
-    { label: "Asset Id", name: "asset_id", visible: true },
-    { label: "Asset Type Id", name: "asset_type_id", visible: true },
-    { label: "Asset Type", name: "text", visible: true },
-    { label: "Serial Number", name: "serial_number", visible: true },
-    { label: "Asset Name", name: "description", visible: true },
-    { label: "Current Status", name: "current_status", visible: true },
-    { label: "Purchase Cost", name: "purchased_cost", visible: true },
-    { label: "Purchase Date", name: "purchased_on", visible: true },
-    { label: "Purchase By", name: "purchased_by", visible: true },
-    { label: "Expiry Date", name: "expiry_date", visible: true },
-    { label: "Warranty Period", name: "warranty_period", visible: true },
-    { label: "Branch Id", name: "branch_id", visible: true },
-    { label: "Vendor Id", name: "vendor_id", visible: true },
-    { label: "Parent Id", name: "parent_asset_id", visible: true },
-    { label: "Group Id", name: "group_id", visible: true },
-    { label: "Maintenance Schedule Id", name: "maintsch_id", visible: false },
-    { label: "Product/Service Id", name: "prod_serv_id", visible: false },
-    { label: "Ext Id", name: "ext_id", visible: false },
-  ]);
+  // Create columns with translations
+  const columns = [
+    { label: t('assets.assetId'), name: "asset_id", visible: true },
+    { label: t('assets.assetTypeId'), name: "asset_type_id", visible: true },
+    { label: t('assets.assetType'), name: "text", visible: true },
+    { label: t('assets.serialNumber'), name: "serial_number", visible: true },
+    { label: t('assets.assetName'), name: "description", visible: true },
+    { label: t('assets.currentStatus'), name: "current_status", visible: true },
+    { label: t('assets.purchaseCost'), name: "purchased_cost", visible: true },
+    { label: t('assets.purchaseDate'), name: "purchased_on", visible: true },
+    { label: t('assets.purchaseBy'), name: "purchased_by", visible: true },
+    { label: t('assets.expiryDate'), name: "expiry_date", visible: true },
+    { label: t('assets.warrantyPeriod'), name: "warranty_period", visible: true },
+    { label: t('assets.branchId'), name: "branch_id", visible: true },
+    { label: t('assets.vendorId'), name: "vendor_id", visible: true },
+    { label: t('assets.parentId'), name: "parent_asset_id", visible: true },
+    { label: t('assets.groupId'), name: "group_id", visible: true },
+    { label: t('assets.maintenanceScheduleId'), name: "maintsch_id", visible: false },
+    { label: t('assets.productServiceId'), name: "prod_serv_id", visible: false },
+    { label: t('assets.extId'), name: "ext_id", visible: false },
+  ];
 
   useEffect(() => {
     fetchAssets();
@@ -86,7 +90,7 @@ const Assets = () => {
       
     } catch (err) {
       console.error("Failed to fetch assets", err);
-      toast.error("Failed to fetch assets");
+      toast.error(t('assets.failedToFetchAssets'));
     }
   };
 
@@ -126,13 +130,13 @@ const Assets = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error("Please select assets to delete");
+      toast.error(t('assets.pleaseSelectAssets'));
       return false;
     }
     
     try {
       await API.post("/assets/delete", { asset_ids: selectedRows });
-      toast.success(`${selectedRows.length} asset(s) deleted successfully`);
+      toast.success(t('assets.assetsDeletedSuccessfully', { count: selectedRows.length }));
       
       // Log bulk delete action
       await recordActionByNameWithFetch('Delete', { 
@@ -149,11 +153,12 @@ const Assets = () => {
         const assetId = err.response.data.assetId;
         toast.error(
           err.response.data.message || 
-          `Asset ${assetId} cannot be deleted because it is currently assigned. Please unassign it first.`,
+          t('assets.assetCannotBeDeleted', { assetId }),
           { duration: 5000 }
         );
       } else {
-        toast.error(err.response?.data?.message || "Failed to delete assets");
+        const errorMessage = err.response?.data?.message || t('assets.failedToDeleteAssets');
+        toast.error(translateErrorMessage(errorMessage));
       }
       return false;
     }
@@ -164,7 +169,7 @@ const Assets = () => {
   const handleDelete = async (row) => {
     try {
       await API.delete(`/assets/${row.asset_id}`);
-      toast.success("Asset deleted successfully");
+      toast.success(t('assets.assetDeletedSuccessfully'));
       
       // Log delete action
       await recordActionByNameWithFetch('Delete', { assetId: row.asset_id });
@@ -175,11 +180,12 @@ const Assets = () => {
       if (err.response?.data?.code === '23503') {
         toast.error(
           err.response.data.message || 
-          `Asset ${row.asset_id} cannot be deleted because it is currently assigned. Please unassign it first.`,
+          t('assets.assetCannotBeDeleted', { assetId: row.asset_id }),
           { duration: 5000 }
         );
       } else {
-        toast.error(err.response?.data?.message || "Failed to delete asset");
+        const errorMessage = err.response?.data?.message || t('assets.failedToDeleteAsset');
+        toast.error(translateErrorMessage(errorMessage));
       }
     }
   };
@@ -189,7 +195,7 @@ const Assets = () => {
       // Single asset delete
       try {
         await API.delete(`/assets/${selectedAsset.asset_id}`);
-        toast.success("Asset deleted successfully");
+        toast.success(t('assets.assetDeletedSuccessfully'));
         
         // Log delete action only when confirmed
         await recordActionByNameWithFetch('Delete', { assetId: selectedAsset.asset_id });
@@ -202,11 +208,12 @@ const Assets = () => {
         if (err.response?.data?.code === '23503') {
           toast.error(
             err.response.data.message || 
-            `Asset ${selectedAsset.asset_id} cannot be deleted because it is currently assigned. Please unassign it first.`,
+            t('assets.assetCannotBeDeleted', { assetId: selectedAsset.asset_id }),
             { duration: 5000 }
           );
         } else {
-          toast.error(err.response?.data?.message || "Failed to delete asset");
+          const errorMessage = err.response?.data?.message || t('assets.failedToDeleteAsset');
+          toast.error(translateErrorMessage(errorMessage));
         }
       }
     } else if (selectedRows.length > 0) {
@@ -249,7 +256,7 @@ const Assets = () => {
         await recordActionByNameWithFetch('Download', { count: dataToExport.length });
         
         toast(
-          'Assets exported successfully',
+          t('assets.assetsExportedSuccessfully'),
           {
             icon: '✅',
             style: {
@@ -265,7 +272,7 @@ const Assets = () => {
     } catch (error) {
       console.error('Error exporting data:', error);
       toast(
-        'Failed to export assets',
+        t('assets.failedToExportAssets'),
         {
           icon: '❌',
           style: {
@@ -297,9 +304,9 @@ const Assets = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'current_status' ? [
-      { label: "Active", value: "Active" },
-      { label: "Inactive", value: "Inactive" },
-      { label: "Disposed", value: "Disposed" }
+      { label: t('assets.active'), value: "Active" },
+      { label: t('assets.inactive'), value: "Inactive" },
+      { label: t('assets.disposed'), value: "Disposed" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
@@ -314,7 +321,7 @@ const Assets = () => {
         onAdd={async () => {
           // Log Create event when plus icon is clicked
           await recordActionByNameWithFetch('Create', { 
-            action: 'Add Asset Form Opened'
+            action: t('assets.addAssetFormOpened')
           });
           navigate("/assets/add");
         }}

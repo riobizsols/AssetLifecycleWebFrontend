@@ -16,13 +16,15 @@ import AssetTypeChart from "../components/dashboardModules/AssetTypeChart";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import CronJobMonitor from "../components/dashboardModules/CronJobMonitor";
 import DashboardCronJobTrigger from "../components/DashboardCronJobTrigger";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const metrics = [
     {
-      title: "Total Assets",
+      title: t('dashboard.totalAssets'),
       value: "227",
       icon: Package,
       color: "bg-blue-500",
@@ -30,7 +32,7 @@ const Dashboard = () => {
       path: "/assets",
     },
     {
-      title: "Assigned Assets",
+      title: t('dashboard.assignedAssets'),
       value: "227",
       icon: Users,
       color: "bg-sky-500",
@@ -38,7 +40,7 @@ const Dashboard = () => {
       path: "/assigned-assets",
     },
     {
-      title: "Under Maintenance",
+      title: t('dashboard.underMaintenance'),
       value: "227",
       icon: Wrench,
       color: "bg-cyan-500",
@@ -46,7 +48,7 @@ const Dashboard = () => {
       path: "/maintenance",
     },
     {
-      title: "Decommissioned",
+      title: t('dashboard.decommissioned'),
       value: "227",
       icon: Ban,
       color: "bg-yellow-500",
@@ -66,7 +68,7 @@ const Dashboard = () => {
           <Card onClick={() => navigate("/department-distribution")}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-semibold">
-                Department Wise Asset Distribution
+                {t('dashboard.departmentWiseDistribution')}
               </CardTitle>
               <PieChart className="w-5 h-5 text-gray-600" />
             </CardHeader>
@@ -78,7 +80,7 @@ const Dashboard = () => {
           <Card onClick={() => navigate("/asset-types")}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-semibold">
-                Top 5 Asset Type
+                {t('dashboard.topAssetTypes')}
               </CardTitle>
               <BarChart3 className="w-5 h-5 text-gray-600" />
             </CardHeader>
@@ -92,12 +94,12 @@ const Dashboard = () => {
           <Card onClick={() => navigate("/department-details")}>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
-                Department Wise Asset Distribution
+                {t('dashboard.departmentWiseDistribution')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-center text-gray-500">
-                Detailed breakdown coming soon...
+                {t('dashboard.comingSoon')}
               </p>
             </CardContent>
           </Card>
@@ -105,7 +107,7 @@ const Dashboard = () => {
           <Card onClick={() => navigate("/notifications")}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-semibold">
-                Notifications & Alerts
+                {t('dashboard.notifications')}
               </CardTitle>
               <Bell className="w-5 h-5 text-gray-600" />
             </CardHeader>

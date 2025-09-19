@@ -7,6 +7,7 @@ import AssetAssignmentHistory from "./AssetAssignmentHistory";
 import useAuditLog from '../../hooks/useAuditLog';
 import { DEPT_ASSIGNMENT_APP_ID } from '../../constants/deptAssignmentAuditEvents';
 import { EMP_ASSIGNMENT_APP_ID } from '../../constants/empAssignmentAuditEvents';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const AssetAssignmentList = ({
   title,
@@ -30,6 +31,7 @@ const AssetAssignmentList = ({
   const [itemToDelete, setItemToDelete] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // Initialize audit logging based on entity type
   const appId = entityType === 'employee' ? EMP_ASSIGNMENT_APP_ID : DEPT_ASSIGNMENT_APP_ID;
@@ -77,11 +79,11 @@ const AssetAssignmentList = ({
       
       fetchAssignments();
       setShowDeleteModal(false);
-      toast.success('Asset unassigned successfully');
+      toast.success(t('departments.assetUnassignedSuccessfully'));
     } catch (err) {
       console.error('Failed to unassign asset', err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'An error occurred';
-      toast.error(`Failed to unassign asset: ${errorMessage}`);
+      toast.error(`${t('departments.failedToUnassignAsset')}: ${errorMessage}`);
     }
   };
 
@@ -93,13 +95,13 @@ const AssetAssignmentList = ({
       {/* Selection Section */}
       <div className="bg-white rounded shadow mb-4">
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          {showDepartmentFilter ? 'Select Department and Employee' : 'Department Selection'}
+          {showDepartmentFilter ? t('departments.selectDepartmentAndEmployee') : t('departments.departmentSelection')}
         </div>
         <div className="p-4 flex gap-4 items-end">
           {/* Department Filter Dropdown (Only for Employee view) */}
           {showDepartmentFilter && (
             <div className="w-64">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.department')}</label>
               <select
                 className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
                 value={selectedDepartment || ""}
@@ -108,7 +110,7 @@ const AssetAssignmentList = ({
                   onDepartmentChange(e.target.value);
                 }}
               >
-                <option value="">Select Department</option>
+                <option value="">{t('departments.selectDepartment')}</option>
                 {departments.map((dept) => (
                   <option key={dept.id} value={dept.id}>
                     {dept.name}
@@ -122,7 +124,7 @@ const AssetAssignmentList = ({
           {(!showDepartmentFilter || (showDepartmentFilter && selectedDepartment)) && (
             <div className="w-64">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {entityType === 'department' ? 'Department' : 'Employee'}
+                {entityType === 'department' ? t('common.department') : t('employees.title')}
               </label>
               <select
                 className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
@@ -130,7 +132,7 @@ const AssetAssignmentList = ({
                 onChange={(e) => onEntitySelect(e.target.value)}
               >
                 <option value="">
-                  {`Select ${entityType === 'department' ? 'Department' : 'Employee'}`}
+                  {entityType === 'department' ? t('departments.selectDepartment') : t('employees.selectEmployee')}
                 </option>
                 {entities.map((entity) => (
                   <option key={entity.id} value={entity.id}>
@@ -157,7 +159,7 @@ const AssetAssignmentList = ({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              Assign Asset
+              {t('employees.assignAsset')}
             </button>
           </div>
         </div>
@@ -196,7 +198,7 @@ const AssetAssignmentList = ({
                     style={{ boxShadow: '0 4px 24px 0 rgba(30, 41, 59, 0.08)' }}
                   >
                     <History size={18} className="opacity-80" />
-                    <span className="text-sm">History</span>
+                    <span className="text-sm">{t('employees.history')}</span>
                   </button>
                 )}
                 <button onClick={toggleMaximize} className="ml-2">
@@ -212,17 +214,17 @@ const AssetAssignmentList = ({
           {entityType === 'department' ? (
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
               <div className="grid grid-cols-8 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-                <div>Asset ID</div>
-                <div>Department ID</div>
-                <div>Asset Type Name</div>
-                <div>Description</div>
-                <div>Action</div>
-                <div>Assignment Date</div>
-                <div>Assigned By</div>
-                <div className="text-center">Actions</div>
+                <div>{t('assets.assetId')}</div>
+                <div>{t('employees.departmentId')}</div>
+                <div>{t('employees.assetTypeName')}</div>
+                <div>{t('assets.description')}</div>
+                <div>{t('employees.action')}</div>
+                <div>{t('employees.assignmentDate')}</div>
+                <div>{t('employees.assignedBy')}</div>
+                <div className="text-center">{t('common.actions')}</div>
               </div>
               {assignmentList.length === 0 ? (
-                <div className="px-4 py-6 text-center text-gray-500 col-span-8 bg-white rounded-b">No assets assigned.</div>
+                <div className="px-4 py-6 text-center text-gray-500 col-span-8 bg-white rounded-b">{t('employees.noAssetsAssigned')}</div>
               ) : (
                 <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}> 
                   {assignmentList.map((item, i) => (
@@ -244,7 +246,7 @@ const AssetAssignmentList = ({
                           className="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-3 rounded shadow"
                           onClick={() => handleDelete(item)}
                         >
-                          Unassign
+                          {t('employees.unassign')}
                         </button>
                       </div>
                     </div>
@@ -255,18 +257,18 @@ const AssetAssignmentList = ({
           ) : (
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
               <div className="grid grid-cols-8 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-                <div>Asset ID</div>
-                <div>Department ID</div>
-                <div>Org ID</div>
-                <div>Employee Int ID</div>
-                <div>Action</div>
-                <div>Assignment Date</div>
-                <div>Assigned By</div>
-                <div className="text-center">Actions</div>
+                <div>{t('assets.assetId')}</div>
+                <div>{t('employees.departmentId')}</div>
+                <div>{t('employees.orgId')}</div>
+                <div>{t('employees.employeeIntId')}</div>
+                <div>{t('employees.action')}</div>
+                <div>{t('employees.assignmentDate')}</div>
+                <div>{t('employees.assignedBy')}</div>
+                <div className="text-center">{t('common.actions')}</div>
               </div>
               {assignmentList.length === 0 && (
                 <div className="px-4 py-6 text-center text-gray-500 col-span-7 bg-white rounded-b">
-                  No assets assigned.
+                  {t('employees.noAssetsAssigned')}
                 </div>
               )}
               <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}> 
@@ -289,7 +291,7 @@ const AssetAssignmentList = ({
                         className="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-3 rounded shadow"
                         onClick={() => handleDelete(item)}
                       >
-                        Unassign
+                        {t('employees.unassign')}
                       </button>
                     </div>
                   </div>
@@ -305,7 +307,7 @@ const AssetAssignmentList = ({
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white w-[500px] rounded shadow-lg">
             <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-              <span>Confirm Unassignment</span>
+              <span>{t('employees.confirmUnassignment')}</span>
               <button
                 onClick={() => setShowDeleteModal(false)}
                 className="text-yellow-400 text-xl font-bold"
@@ -315,20 +317,20 @@ const AssetAssignmentList = ({
             </div>
             <div className="h-[3px] bg-yellow-400" />
             <div className="px-6 py-6 text-center text-gray-800 text-sm">
-              Do you want to unassign this asset?
+              {t('employees.confirmUnassignmentMessage')}
             </div>
             <div className="flex justify-end gap-3 px-6 pb-6">
               <button
                 className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
                 onClick={() => setShowDeleteModal(false)}
               >
-                Close
+                {t('common.cancel')}
               </button>
               <button
                 className="bg-yellow-400 hover:bg-yellow-500 text-white text-sm font-medium py-1.5 px-5 rounded"
                 onClick={confirmDelete}
               >
-                Unassign
+                {t('employees.unassign')}
               </button>
             </div>
           </div>

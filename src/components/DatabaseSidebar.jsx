@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
+import { useLanguage } from "../contexts/LanguageContext";
 import {
   Menu,
   Eye,
@@ -43,12 +44,66 @@ const DatabaseSidebar = () => {
   const location = useLocation();
   const [openDropdown, setOpenDropdown] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
+  const { t } = useLanguage();
 
   const toggleDropdown = (id) => {
     setOpenDropdown(openDropdown === id ? null : id);
   };
 
   const toggleSidebar = () => setCollapsed(!collapsed);
+
+  // Translate navigation labels
+  const translateLabel = (label) => {
+    // Create a mapping from English labels to translation keys
+    const labelMap = {
+      'Dashboard': t('navigation.dashboard'),
+      'Assets': t('navigation.assets'),
+      'Asset Types': t('navigation.assetTypes'),
+      'Organizations': t('navigation.organizations'),
+      'Departments': t('navigation.departments'),
+      'Departments Admin': t('navigation.departments') + ' Admin',
+      'Departments Asset': t('navigation.departments') + ' Asset',
+      'Branches': t('navigation.branches'),
+      'Vendors': t('navigation.vendors'),
+      'Products/Services': t('navigation.productsServices'),
+      'Roles': t('navigation.roles'),
+      'Users': t('navigation.users'),
+      'Asset Assignment': t('navigation.assetAssignment'),
+      'Department Assignment': t('navigation.departmentAssignment'),
+      'Employee Assignment': t('navigation.employeeAssignment'),
+      'Workorder Management': t('navigation.workorderManagement'),
+      'Maintenance Approval': t('navigation.maintenanceApproval'),
+      'Maintenance Schedule': t('navigation.maintenanceSchedule'),
+      'Maintenance Sche...': t('navigation.maintenanceSchedule'),
+      'Supervisor Approval': t('navigation.supervisorApproval'),
+      'Serial Number Print': t('navigation.serialNumberPrint'),
+      'Report Breakdown': t('navigation.reportBreakdown'),
+      'Reports': t('navigation.reports'),
+      'Admin Settings': t('navigation.adminSettings'),
+      'Master Data': t('navigation.masterData'),
+      'Scrap Sales': t('navigation.scrapSales'),
+      'Scrap Assets': t('navigation.scrapAssets'),
+      'Group Asset': t('navigation.groupAsset'),
+      'Audit Logs': t('navigation.auditLogs'),
+      // Report sub-items
+      'Asset Lifecycle Report': t('navigation.assetLifecycleReport'),
+      'Asset Lifecycle Re...': t('navigation.assetLifecycleReport'),
+      'Asset Report': t('navigation.assetReport'),
+      'Maintenance History': t('navigation.maintenanceHistory'),
+      'Maintenance Histo...': t('navigation.maintenanceHistory'),
+      'Asset Valuation': t('navigation.assetValuation'),
+      'Asset Workflow History': t('navigation.assetWorkflowHistory'),
+      'Asset Workflow Hi...': t('navigation.assetWorkflowHistory'),
+      'Breakdown History': t('navigation.breakdownHistory')
+    };
+    
+    // Debug: Log the label to see what's being passed
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Translating label:', label, '→', labelMap[label] || label);
+    }
+    
+    return labelMap[label] || label; // Return original label if no translation found
+  };
 
   // Get icon based on access level
   const getAccessIcon = (accessLevel) => {
@@ -183,13 +238,13 @@ const DatabaseSidebar = () => {
                 ? "bg-[#FFC107] text-white"
                 : "hover:bg-[#143d65] text-white"
             }`}
-            title={!collapsed ? item.label : ""} // Tooltip for collapsed state
+            title={!collapsed ? translateLabel(item.label) : ""} // Tooltip for collapsed state
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               {IconComponent && <IconComponent className="flex-shrink-0" />}
               {!collapsed && (
                 <span className="truncate text-sm font-medium">
-                  {item.label}
+                  {translateLabel(item.label)}
                 </span>
               )}
             </div>
@@ -225,13 +280,13 @@ const DatabaseSidebar = () => {
                             : "hover:bg-[#143d65] text-white"
                         } ${getAccessColorClass(childAccessLevel)}`
                       }
-                      title={child.label}
+                      title={translateLabel(child.label)}
                     >
                       {ChildIconComponent && (
                         <ChildIconComponent className="flex-shrink-0" />
                       )}
                       <span className="truncate flex-1 min-w-0">
-                        {child.label}
+                        {translateLabel(child.label)}
                       </span>
                       <span className="flex-shrink-0">
                         {getAccessIcon(childAccessLevel)}
@@ -259,14 +314,14 @@ const DatabaseSidebar = () => {
                   : "hover:bg-[#143d65] text-white"
               } ${getAccessColorClass(accessLevel)}`
             }
-            title={!collapsed ? item.label : ""}
-          >
-            {IconComponent && <IconComponent className="flex-shrink-0" />}
-            {!collapsed && (
-              <span className="truncate flex-1 min-w-0 text-sm font-medium">
-                {item.label}
-              </span>
-            )}
+              title={!collapsed ? translateLabel(item.label) : ""}
+            >
+              {IconComponent && <IconComponent className="flex-shrink-0" />}
+              {!collapsed && (
+                <span className="truncate flex-1 min-w-0 text-sm font-medium">
+                  {translateLabel(item.label)}
+                </span>
+              )}
             {!collapsed && (
               <span className="flex-shrink-0">
                 {getAccessIcon(accessLevel)}
@@ -284,7 +339,7 @@ const DatabaseSidebar = () => {
         <div className="flex justify-center items-center h-full">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-            <p>Loading navigation...</p>
+            <p>{t('common.loading')}</p>
           </div>
         </div>
       </aside>
@@ -296,7 +351,7 @@ const DatabaseSidebar = () => {
       <aside className="w-64 h-screen bg-[#0E2F4B] text-white shadow overflow-y-auto">
         <div className="flex justify-center items-center h-full">
           <div className="text-center text-red-300">
-            <p>Error loading navigation</p>
+            <p>{t('common.error')}</p>
             <p className="text-sm">{error}</p>
           </div>
         </div>

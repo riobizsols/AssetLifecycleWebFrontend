@@ -5,10 +5,12 @@ import { useAuthStore } from "../store/useAuthStore";
 import { v4 as uuidv4 } from "uuid";
 import SearchableDropdown from "./ui/SearchableDropdown";
 import { toast } from "react-hot-toast";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const ProductSupplyForm = ({ vendorId, orgId }) => {
   // Debug logs
   console.log('ProductSupplyForm render:', { vendorId, orgId });
+  const { t } = useLanguage();
   const [assetTypes, setAssetTypes] = useState([]);
   const [brands, setBrands] = useState([]);
   const [models, setModels] = useState([]);
@@ -96,7 +98,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
     // Find the selected asset type object by asset_type_id
     const selectedAsset = assetTypes.find((t) => String(t.asset_type_id) === String(form.assetType));
     if (!selectedAsset) {
-      toast.error("Invalid asset type selected");
+      toast.error(t('vendors.invalidAssetTypeSelected') || 'Invalid asset type selected');
       return;
     }
 
@@ -115,7 +117,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
       sessionStorage.setItem('products', JSON.stringify(newProducts));
       setForm({ assetType: "", brand: "", model: "", description: "" });
     } catch (err) {
-      toast.error("Failed to add product supply: " + (err.response?.data?.error || err.message));
+      toast.error(t('vendors.failedToAddProductSupply') + ': ' + (err.response?.data?.error || err.message) || 'Failed to add product supply: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -134,7 +136,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
   const tableCard = (
     <div className="bg-[#F5F8FA] rounded shadow border relative">
       <div className="px-4 py-2 font-semibold text-[#0E2F4B] text-base border-b border-[#FFC107] flex items-center justify-between">
-        <span>Product List</span>
+        <span>{t('vendors.productList')}</span>
         <button
           type="button"
           onClick={() => setMaximized((m) => !m)}
@@ -152,10 +154,10 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
         <table className="min-w-full">
           <thead>
             <tr className="bg-[#0E2F4B] text-white sticky top-0 z-10"> {/* Added sticky top-0 */}
-              <th className="px-6 py-3 text-left text-sm font-medium">Asset Type</th>
-              <th className="px-6 py-3 text-left text-sm font-medium">Brand</th>
-              <th className="px-6 py-3 text-left text-sm font-medium">Model</th>
-              <th className="px-6 py-3 text-left text-sm font-medium">Description</th>
+              <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.assetType')}</th>
+              <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.brand')}</th>
+              <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.model')}</th>
+              <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.description')}</th>
               <th className="px-6 py-3 text-center text-sm font-medium w-20"></th>
             </tr>
           </thead>
@@ -192,7 +194,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
     try {
       console.log('handleDone called', { vendorId, orgId, products });
       if (!vendorId || !orgId) {
-        toast.error("Vendor must be created first.");
+        toast.error(t('vendors.vendorMustBeCreatedFirst') || 'Vendor must be created first.');
         return;
       }
       let productsFromStorage;
@@ -200,12 +202,12 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
         productsFromStorage = JSON.parse(sessionStorage.getItem('products') || '[]');
       } catch (parseErr) {
         console.error('Error parsing products from sessionStorage:', parseErr);
-        toast.error('Error reading products from local storage.');
+        toast.error(t('vendors.errorReadingProductsFromStorage') || 'Error reading products from local storage.');
         return;
       }
       if (!Array.isArray(productsFromStorage)) {
         console.error('productsFromStorage is not an array:', productsFromStorage);
-        toast.error('Internal error: products data is invalid.');
+        toast.error(t('vendors.internalErrorProductsDataInvalid') || 'Internal error: products data is invalid.');
         return;
       }
       let prodServIds = [];
@@ -218,17 +220,17 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
           if (match && match.prod_serv_id) prodServIds.push(match.prod_serv_id);
           else {
             console.warn('No matching prod_serv_id found for product:', p);
-            toast.error(`No matching product found in master list for: ${p.assetType}, ${p.brand}, ${p.model}`);
+            toast.error(t('vendors.noMatchingProductFound', { product: `${p.assetType}, ${p.brand}, ${p.model}` }) || `No matching product found in master list for: ${p.assetType}, ${p.brand}, ${p.model}`);
           }
         } catch (apiErr) {
           console.error('Error fetching /prodserv for product:', p, apiErr);
-          toast.error('Error looking up product in master list.');
+          toast.error(t('vendors.errorLookingUpProduct') || 'Error looking up product in master list.');
         }
       }
       prodServIds = [...new Set(prodServIds)];
       
       if (!prodServIds.length) {
-        toast.error("No valid products to link");
+        toast.error(t('vendors.noValidProductsToLink') || 'No valid products to link');
         return;
       }
 
@@ -258,11 +260,11 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
       } else if (successCount > 0) {
         toast.success(`${successCount} out of ${prodServIds.length} products linked successfully`);
       } else {
-        toast.error('Failed to link any products');
+        toast.error(t('vendors.failedToLinkAnyProducts') || 'Failed to link any products');
       }
     } catch (err) {
       console.error('Unexpected error in handleDone:', err);
-      toast.error('An unexpected error occurred');
+      toast.error(t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred');
     }
   };
 
@@ -272,13 +274,13 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
       <div className="flex items-end gap-4 mb-8">
         <div>
           <label className="block text-sm text-gray-700 mb-2">
-            Asset Type <span className="text-red-500">*</span>
+            {t('vendors.assetType')} <span className="text-red-500">*</span>
           </label>
           <SearchableDropdown
             options={assetTypes}
             value={form.assetType}
             onChange={(value) => handleChange({ target: { name: "assetType", value }})}
-            placeholder="Select Asset Type"
+            placeholder={t('vendors.selectAssetType')}
             searchPlaceholder="Search Asset Types..."
             createNewText="Create New"
             createNewPath="/master-data/asset-types"
@@ -289,13 +291,13 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
         </div>
         <div>
           <label className="block text-sm text-gray-700 mb-2">
-            Brand <span className="text-red-500">*</span>
+            {t('vendors.brand')} <span className="text-red-500">*</span>
           </label>
           <SearchableDropdown
             options={brands.map(brand => ({ id: brand, text: brand }))}
             value={form.brand}
             onChange={(value) => handleChange({ target: { name: "brand", value }})}
-            placeholder="Select Brand"
+            placeholder={t('vendors.selectBrand')}
             searchPlaceholder="Search Brands..."
             disabled={!form.assetType}
             className={`w-48 ${isFieldInvalid(form.brand) ? 'border border-red-500' : ''}`}
@@ -305,13 +307,13 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
         </div>
         <div>
           <label className="block text-sm text-gray-700 mb-2">
-            Model <span className="text-red-500">*</span>
+            {t('vendors.model')} <span className="text-red-500">*</span>
           </label>
           <SearchableDropdown
             options={models.map(model => ({ id: model, text: model }))}
             value={form.model}
             onChange={(value) => handleChange({ target: { name: "model", value }})}
-            placeholder="Select Model"
+            placeholder={t('vendors.selectModel')}
             searchPlaceholder="Search Models..."
             disabled={!form.brand}
             className={`w-48 ${isFieldInvalid(form.model) ? 'border border-red-500' : ''}`}
@@ -326,7 +328,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
           onClick={handleAdd}
           className="bg-[#0E2F4B] text-white px-6 py-1 rounded hover:bg-[#1e40af] transition-colors"
         >
-          Add
+          {t('vendors.add')}
         </button>
       </div>
       {/* Product List Table with maximize/minimize */}

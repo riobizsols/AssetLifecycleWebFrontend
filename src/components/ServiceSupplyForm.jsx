@@ -5,10 +5,12 @@ import { useAuthStore } from "../store/useAuthStore";
 import { v4 as uuidv4 } from "uuid";
 import SearchableDropdown from "./ui/SearchableDropdown";
 import { toast } from "react-hot-toast";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const ServiceSupplyForm = ({ vendorId, orgId }) => {
   // Debug logs
   console.log('ServiceSupplyForm render:', { vendorId, orgId });
+  const { t } = useLanguage();
   const [assetTypes, setAssetTypes] = useState([]);
   const [services, setServices] = useState([]);
   const [form, setForm] = useState({ assetType: "", description: "" });
@@ -70,11 +72,11 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
     setSubmitAttempted(true);
     // Validate required fields
     if (!form.assetType) {
-      toast.error("Please select an asset type");
+      toast.error(t('vendors.pleaseSelectAnAssetType'));
       return;
     }
     if (!form.description) {
-      toast.error("Please select a description");
+      toast.error(t('vendors.descriptionRequired'));
       return;
     }
 
@@ -83,7 +85,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
       service => service.asset_type_id === form.assetType && service.description === form.description
     );
     if (isDuplicate) {
-      toast.error("This service is already added");
+      toast.error(t('vendors.serviceAlreadyAdded') || 'This service is already added');
       return;
     }
 
@@ -102,7 +104,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
       toast.success("Service added successfully");
     } catch (err) {
       console.error("Error adding service:", err);
-      toast.error("Failed to add service");
+      toast.error(t('vendors.failedToAddService') || 'Failed to add service');
     }
   };
 
@@ -113,7 +115,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
   const tableCard = (
     <div className="bg-[#F5F8FA] rounded shadow border relative">
       <div className="px-4 py-2 font-semibold text-[#0E2F4B] text-base border-b border-[#FFC107] flex items-center justify-between">
-        <span>Service List</span>
+        <span>{t('vendors.serviceList')}</span>
         <button
           type="button"
           onClick={() => setMaximized((m) => !m)}
@@ -131,8 +133,8 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
         <table className="min-w-full">
           <thead>
             <tr className="bg-[#0E2F4B] text-white">
-              <th className="px-6 py-3 text-left text-sm font-medium">Asset Type</th>
-              <th className="px-6 py-3 text-left text-sm font-medium">Description</th>
+              <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.assetType')}</th>
+              <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.description')}</th>
               <th className="px-6 py-3 text-center text-sm font-medium w-20"></th>
             </tr>
           </thead>
@@ -164,12 +166,12 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
     try {
       // Validate required data
       if (!vendorId || !orgId) {
-        toast.error("Please create vendor first");
+        toast.error(t('vendors.pleaseCreateVendorFirst'));
         return;
       }
 
       if (!services.length) {
-        toast.error("Please add at least one service");
+        toast.error(t('vendors.pleaseAddAtLeastOneService') || 'Please add at least one service');
         return;
       }
 
@@ -182,7 +184,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
         }
       } catch (parseErr) {
         console.error('Error parsing services from sessionStorage:', parseErr);
-        toast.error('Error reading services data');
+        toast.error(t('vendors.errorReadingServicesData') || 'Error reading services data');
         return;
       }
 
@@ -205,7 +207,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
           if (match?.prod_serv_id) {
             prodServIds.push(match.prod_serv_id);
           } else {
-            toast.error(`Service not found: ${s.asset_type_text || s.asset_type_id} - ${s.description}`);
+            toast.error(t('vendors.serviceNotFound', { service: `${s.asset_type_text || s.asset_type_id} - ${s.description}` }) || `Service not found: ${s.asset_type_text || s.asset_type_id} - ${s.description}`);
           }
         } catch (apiErr) {
           console.error('Error fetching service:', apiErr);
@@ -220,7 +222,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
       prodServIds = [...new Set(prodServIds)];
 
       if (!prodServIds.length) {
-        toast.error("No valid services to link");
+        toast.error(t('vendors.noValidServicesToLink') || 'No valid services to link');
         toast.dismiss(loadingToast);
         return;
       }
@@ -254,11 +256,11 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
       } else if (successCount > 0) {
         toast.success(`${successCount} out of ${prodServIds.length} services linked successfully`);
       } else {
-        toast.error('Failed to link any services');
+        toast.error(t('vendors.failedToLinkAnyServices') || 'Failed to link any services');
       }
     } catch (err) {
       console.error('Unexpected error:', err);
-      toast.error('An unexpected error occurred');
+      toast.error(t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred');
     }
   };
 
@@ -268,13 +270,13 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
       <div className="flex items-end gap-4 mb-8">
         <div>
           <label className="block text-sm text-gray-700 mb-2">
-            Asset Type <span className="text-red-500">*</span>
+            {t('vendors.assetType')} <span className="text-red-500">*</span>
           </label>
           <SearchableDropdown
             options={assetTypes}
             value={form.assetType}
             onChange={(value) => handleChange({ target: { name: "assetType", value }})}
-            placeholder="Select Asset Type"
+            placeholder={t('vendors.selectAssetType')}
             searchPlaceholder="Search Asset Types..."
             createNewText="Create New"
             createNewPath="/master-data/asset-types"
@@ -285,13 +287,13 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
         </div>
         <div>
           <label className="block text-sm text-gray-700 mb-2">
-            Description <span className="text-red-500">*</span>
+            {t('vendors.description')} <span className="text-red-500">*</span>
           </label>
           <SearchableDropdown
             options={filteredDescriptions.map(s => ({ id: s.description, text: s.description }))}
             value={form.description}
             onChange={(value) => handleChange({ target: { name: "description", value }})}
-            placeholder="Select Description"
+            placeholder={t('vendors.selectDescription')}
             searchPlaceholder="Search Descriptions..."
             disabled={!form.assetType}
             className={`w-80 ${isFieldInvalid(form.description) ? 'border border-red-500' : ''}`}
@@ -304,7 +306,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
           onClick={handleAdd}
           className="bg-[#0E2F4B] text-white px-6 py-1 rounded hover:bg-[#1e40af] transition-colors"
         >
-          Add
+          {t('vendors.add')}
         </button>
       </div>
       {/* Service List Table with maximize/minimize */}

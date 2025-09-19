@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { DEPARTMENTS_APP_ID } from "../../constants/departmentsAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const Departments = () => {
   const [departments, setDepartments] = useState([]);
@@ -23,6 +24,9 @@ const Departments = () => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(DEPARTMENTS_APP_ID);
+  
+  // Language context
+  const { t } = useLanguage();
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
   useEffect(() => {
@@ -64,7 +68,7 @@ const Departments = () => {
   const handleCreate = async () => {
     setSubmitAttempted(true);
     if (!newDeptName.trim()) {
-      toast.error("Department name is required");
+      toast.error(t('departments.departmentNameRequired'));
       return;
     }
     try {
@@ -80,12 +84,12 @@ const Departments = () => {
       setNewDeptName("");
       fetchDepartments();
       fetchNextDeptId();
-      toast.success(`Department "${newDeptName}" created successfully`);
+      toast.success(t('departments.departmentCreatedSuccessfully', { name: newDeptName }));
       setSubmitAttempted(false);
     } catch (err) {
       console.error("Error creating department:", err);
       const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-      toast.error(`Failed to create department: ${errorMessage}`);
+      toast.error(`${t('departments.failedToCreateDepartment')}: ${errorMessage}`);
     }
   };
 
@@ -114,7 +118,7 @@ const Departments = () => {
       setShowDeleteModal(false);
       fetchDepartments();
       fetchNextDeptId();
-      toast.success(`Department "${selectedDept.text}" deleted successfully`);
+      toast.success(t('departments.departmentDeletedSuccessfully', { name: selectedDept.text }));
     } catch (err) {
       console.error("Error deleting department:", err);
       
@@ -122,7 +126,7 @@ const Departments = () => {
       if (err.response?.data?.error === "Cannot delete department") {
         const hint = err.response?.data?.hint || "";
         toast.error(
-          `${err.response?.data?.message || "Cannot delete department"}. ${hint}`,
+          `${err.response?.data?.message || t('departments.cannotDeleteDepartment')}. ${hint}`,
           {
             duration: 6000,
             style: {
@@ -134,7 +138,7 @@ const Departments = () => {
         );
       } else {
         const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-        toast.error(`Failed to delete department: ${errorMessage}`);
+        toast.error(`${t('departments.failedToDeleteDepartment')}: ${errorMessage}`);
       }
     }
   };
@@ -149,7 +153,7 @@ const Departments = () => {
   const confirmUpdate = async () => {
     setSubmitAttempted(true);
     if (!editName.trim()) {
-      toast.error("Department name is required");
+      toast.error(t('departments.departmentNameRequired'));
       return;
     }
     try {
@@ -168,12 +172,12 @@ const Departments = () => {
       
       setShowEditModal(false);
       fetchDepartments();
-      toast.success(`Department "${editName}" updated successfully`);
+      toast.success(t('departments.departmentUpdatedSuccessfully', { name: editName }));
       setSubmitAttempted(false);
     } catch (err) {
       console.error("Error updating department:", err);
       const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-      toast.error(`Failed to update department: ${errorMessage}`);
+      toast.error(`${t('departments.failedToUpdateDepartment')}: ${errorMessage}`);
     }
   };
 
@@ -187,25 +191,25 @@ const Departments = () => {
         {canEdit && (
           <div className="bg-white rounded shadow mb-6">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-              Add / Modify Departments
+              {t('departments.addModifyDepartments')}
             </div>
           <div className="p-4 flex gap-4 items-end">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department ID</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('departments.departmentId')}</label>
               <input
                 className="border px-3 py-2 rounded w-64 text-sm bg-gray-50 text-gray-700 font-medium"
-                placeholder="Department ID"
-                value={nextDeptId || "Loading..."}
+                placeholder={t('departments.departmentId')}
+                value={nextDeptId || t('departments.loading')}
                 disabled
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Department Name <span className="text-red-500">*</span>
+                {t('departments.departmentName')} <span className="text-red-500">*</span>
               </label>
               <input
                 className={`border px-3 py-2 rounded w-64 text-sm ${isFieldInvalid(newDeptName) ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Department Name"
+                placeholder={t('departments.departmentName')}
                 value={newDeptName}
                 onChange={(e) => setNewDeptName(e.target.value)}
               />
@@ -214,7 +218,7 @@ const Departments = () => {
               className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm h-10"
               onClick={handleCreate}
             >
-              Add
+              {t('common.add')}
             </button>
           </div>
         </div>
@@ -228,7 +232,7 @@ const Departments = () => {
         >
           <div className="bg-white rounded shadow">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-              Department List
+              {t('departments.departmentList')}
               <button onClick={toggleMaximize}>
                 {isMaximized ? (
                   <Minimize className="text-[#0E2F4B]" size={18} />
@@ -240,9 +244,9 @@ const Departments = () => {
 
             <div className="bg-[#0E2F4B] text-white text-sm">
               <div className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400 ${canEdit ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                <div>Department Id</div>
-                <div>Department Name</div>
-                {canEdit && <div className="text-center">Actions</div>}
+                <div>{t('departments.departmentId')}</div>
+                <div>{t('departments.departmentName')}</div>
+                {canEdit && <div className="text-center">{t('common.actions')}</div>}
               </div>
 
               <div
@@ -281,7 +285,7 @@ const Departments = () => {
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white w-[500px] rounded shadow-lg">
               <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-                <span>Confirm Delete</span>
+                <span>{t('departments.confirmDelete')}</span>
                 <button
                   onClick={() => setShowDeleteModal(false)}
                   className="text-yellow-400 text-xl font-bold"
@@ -291,21 +295,21 @@ const Departments = () => {
               </div>
               <div className="h-[3px] bg-yellow-400" />
               <div className="px-6 py-6 text-center text-gray-800 text-sm">
-                Do you want to delete department{" "}
-                <strong>“{selectedDept?.text}”</strong>?
+                {t('departments.doYouWantToDeleteDepartment')}{" "}
+                <strong>"{selectedDept?.text}"</strong>?
               </div>
               <div className="flex justify-end gap-3 px-6 pb-6">
                 <button
                   className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
                   onClick={() => setShowDeleteModal(false)}
                 >
-                  Close
+                  {t('departments.close')}
                 </button>
                 <button
                   className="bg-yellow-400 hover:bg-yellow-500 text-white text-sm font-medium py-1.5 px-5 rounded"
                   onClick={confirmDelete}
                 >
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             </div>
@@ -316,7 +320,7 @@ const Departments = () => {
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white w-[500px] rounded shadow-lg">
               <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-                <span>Update Department</span>
+                <span>{t('departments.updateDepartment')}</span>
                 <button
                   onClick={() => setShowEditModal(false)}
                   className="text-yellow-400 text-xl font-bold"
@@ -327,7 +331,7 @@ const Departments = () => {
               <div className="h-[3px] bg-yellow-400" />
               <div className="px-6 py-6 space-y-4">
                 <div>
-                  <label className="text-sm font-medium">Department Id</label>
+                  <label className="text-sm font-medium">{t('departments.departmentId')}</label>
                   <input
                     value={selectedDept?.dept_id}
                     className="border px-3 py-2 rounded w-full mt-1 bg-gray-100"
@@ -336,7 +340,7 @@ const Departments = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1">
-                    Department Name <span className="text-red-500">*</span>
+                    {t('departments.departmentName')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     value={editName}
@@ -349,13 +353,13 @@ const Departments = () => {
                     className="bg-gray-300 px-4 py-1 rounded"
                     onClick={() => setShowEditModal(false)}
                   >
-                    Close
+                    {t('departments.close')}
                   </button>
                   <button
                     className="bg-yellow-400 px-4 py-1 rounded"
                     onClick={confirmUpdate}
                   >
-                    Update
+                    {t('common.update')}
                   </button>
                 </div>
               </div>

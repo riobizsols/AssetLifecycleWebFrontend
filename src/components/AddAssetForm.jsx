@@ -10,6 +10,7 @@ import useAuditLog from '../hooks/useAuditLog';
 import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
 import { generateUUID } from '../utils/uuid';
 import { useAppData } from '../contexts/AppDataContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const initialForm = {
   assetType: '',
@@ -33,12 +34,7 @@ const initialForm = {
   usefulLifeYears: '5',
 };
 
-const statusOptions = [
-  { value: '', label: 'Select' },
-  { value: 'Active', label: 'Active' },
-  { value: 'Inactive', label: 'Inactive' },
-  { value: 'Disposed', label: 'Disposed' },
-];
+// Status options will be created dynamically with translations
 
 // Remove all dummy data arrays and fallback logic for vendors, brands, models, users, and maintenance schedules
 // Only keep the real API fetch logic for these dropdowns
@@ -46,6 +42,7 @@ const statusOptions = [
 const AddAssetForm = ({ userRole }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const { 
     users, 
     vendors, 
@@ -59,6 +56,14 @@ const AddAssetForm = ({ userRole }) => {
   const [form, setForm] = useState(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('Configuration');
+  
+  // Create status options with translations
+  const statusOptions = [
+    { value: '', label: t('assets.select') },
+    { value: 'Active', label: t('assets.active') },
+    { value: 'Inactive', label: t('assets.inactive') },
+    { value: 'Disposed', label: t('assets.disposed') },
+  ];
   const [attachments, setAttachments] = useState([]); // {id, type, file, docTypeName, previewUrl}
   const [isUploading, setIsUploading] = useState(false);
   // Add validation state
@@ -646,7 +651,7 @@ const AddAssetForm = ({ userRole }) => {
 
   const generateSerialNumber = async () => {
     if (!form.assetType) {
-      toast.error('Please select an asset type first');
+      toast.error(t('assets.pleaseSelectAssetTypeFirst'));
       return;
     }
 
@@ -663,16 +668,16 @@ const AddAssetForm = ({ userRole }) => {
       if (response.data.success) {
         const serialNumber = response.data.data.serialNumber;
         setForm(prev => ({ ...prev, serialNumber }));
-        toast.success(`Serial number preview: ${serialNumber}`);
+        toast.success(t('assets.serialNumberPreview', { serialNumber }));
         console.log(`👀 Preview serial number: ${serialNumber} (Will be saved when asset is created)`);
         
         // Note: Serial number generation logging removed as requested
       } else {
-        toast.error(response.data.message || 'Failed to generate serial number');
+        toast.error(response.data.message || t('assets.failedToGenerateSerialNumber'));
       }
     } catch (error) {
       console.error('Error generating serial number:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to generate serial number';
+      const errorMessage = error.response?.data?.message || t('assets.failedToGenerateSerialNumber');
       toast.error(errorMessage);
     } finally {
       setIsGeneratingSerial(false);
@@ -695,13 +700,13 @@ const AddAssetForm = ({ userRole }) => {
     setSubmitAttempted(true);
     // Validate required fields
     if (!form.assetType || !form.serialNumber || !form.purchaseDate || !form.purchaseCost) {
-      toast.error('Required fields missing');
+      toast.error(t('assets.requiredFieldsMissing'));
       return;
     }
     const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
     const isChild = (selectedType?.is_child === true || selectedType?.is_child === 'true') && !!selectedType?.parent_asset_type_id;
     if (isChild && !form.parentAsset) {
-      toast.error('Parent asset is required for this asset type');
+      toast.error(t('assets.parentAssetRequired'));
       return;
     }
 
@@ -851,7 +856,7 @@ const AddAssetForm = ({ userRole }) => {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 -mb-px font-semibold text-base border-b-2 ${activeTab === tab ? 'border-[#0E2F4B] text-[#0E2F4B]' : 'border-transparent text-gray-500'}`}
             >
-              {tab}
+              {tab === 'Configuration' ? t('assets.configuration') : t('assets.attachments')}
             </button>
           ))}
         </div>
@@ -861,7 +866,7 @@ const AddAssetForm = ({ userRole }) => {
         {/* Asset Details */}
         <div className="mb-6">
           <button type="button" onClick={() => toggleSection('asset')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
-            <span>Asset Details</span>
+            <span>{t('assets.assetDetails')}</span>
             {collapsedSections.asset ? (
               <MdKeyboardArrowRight size={24} />
             ) : (
@@ -873,7 +878,7 @@ const AddAssetForm = ({ userRole }) => {
               {/* Asset Type Dropdown */}
               <div>
                 <label className="block text-sm mb-1 font-medium">
-                  Asset Type <span className="text-red-500">*</span>
+                  {t('assets.assetType')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative w-full">
                   <button
@@ -883,8 +888,8 @@ const AddAssetForm = ({ userRole }) => {
                   >
                     <span className="text-xs truncate">
                       {form.assetType
-                        ? assetTypes.find((at) => at.asset_type_id === form.assetType)?.text || "Select"
-                        : "Select"}
+                        ? assetTypes.find((at) => at.asset_type_id === form.assetType)?.text || t('assets.select')
+                        : t('assets.select')}
                     </span>
                     <MdKeyboardArrowDown className="ml-2 w-4 h-4 text-gray-500" />
                   </button>
@@ -895,11 +900,11 @@ const AddAssetForm = ({ userRole }) => {
                       style={{ minWidth: "100%" }}
                     >
                       <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
-                        <input
-                          type="text"
-                          className="w-full border px-2 py-1 rounded text-xs"
-                          placeholder="Search by name or ID..."
-                          value={searchAssetType}
+                      <input
+                        type="text"
+                        className="w-full border px-2 py-1 rounded text-xs"
+                        placeholder={t('assets.searchByNameOrId')}
+                        value={searchAssetType}
                           onChange={e => setSearchAssetType(e.target.value)}
                           autoFocus
                         />
@@ -926,8 +931,8 @@ const AddAssetForm = ({ userRole }) => {
                             <div className="flex justify-between items-center">
                               <span>{at.text}</span>
                               <span className="text-gray-500">
-                                {at.asset_type_id} 
-                                {at.is_child ? ' (Child)' : ' (Parent)'}
+                              {at.asset_type_id} 
+                              {at.is_child ? ` (${t('assets.child')})` : ` (${t('assets.parent')})`}
                               </span>
                             </div>
                           </div>
@@ -974,7 +979,7 @@ const AddAssetForm = ({ userRole }) => {
               })() && (
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Parent Asset <span className="text-red-500">*</span>
+                    {t('assets.parentAsset')} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative w-full">
                     <button
@@ -997,9 +1002,9 @@ const AddAssetForm = ({ userRole }) => {
                               if (parent) {
                                 return `${parent.asset_name} (${parent.asset_type_name}) - ${parent.serial_number || 'No SN'}`;
                               }
-                              return "Select Parent Asset";
+                              return t('assets.selectParentAsset');
                             })()
-                          : "Select Parent Asset"}
+                          : t('assets.selectParentAsset')}
                       </span>
                       <MdKeyboardArrowDown className="ml-2 w-4 h-4 text-gray-500" />
                     </button>
@@ -1058,7 +1063,7 @@ const AddAssetForm = ({ userRole }) => {
 
               <div>
                 <label className="block text-sm mb-1 font-medium">
-                  Serial Number <span className="text-red-500">*</span>
+                  {t('assets.serialNumber')} <span className="text-red-500">*</span>
                 </label>
                               <div className="flex items-center">
                 <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('serialNumber') ? 'border-red-500' : 'border-gray-300'}`} />
@@ -1071,12 +1076,12 @@ const AddAssetForm = ({ userRole }) => {
                   className="ml-2 px-3 bg-[#0E2F4B] text-white rounded text-sm h-9 transition"
                   disabled={isGeneratingSerial || !form.assetType}
                 >
-                  {isGeneratingSerial ? 'Generating...' : 'Generate'}
+                  {isGeneratingSerial ? t('common.loading') : t('assets.generate')}
                 </button>
               </div>
               </div>
               <div className="col-span-4">
-                <label className="block text-sm mb-1 font-medium">Asset Name</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.assetName')}</label>
                 <textarea name="description" placeholder="" onChange={handleChange} value={form.description} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm" rows={3}></textarea>
               </div>
             </div>
@@ -1085,7 +1090,7 @@ const AddAssetForm = ({ userRole }) => {
         {/* Purchase Details Section */}
         <div className="mb-6">
           <button type="button" onClick={() => toggleSection('purchase')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
-            <span>Purchase Details</span>
+            <span>{t('assets.purchaseDetails')}</span>
             {collapsedSections.purchase ? (
               <MdKeyboardArrowRight size={24} />
             ) : (
@@ -1095,19 +1100,19 @@ const AddAssetForm = ({ userRole }) => {
           {!collapsedSections.purchase && (
             <div className="grid grid-cols-4 gap-6 mb-4">
               <div>
-                <label className="block text-sm mb-1 font-medium">Expiry Date</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.expiryDate')}</label>
                 <input name="expiryDate" type="date" onChange={handleChange} value={form.expiryDate} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Warranty Period</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
                 <input name="warrantyPeriod" type="text" placeholder="e.g., 2 years" onChange={handleChange} value={form.warrantyPeriod} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Purchase Date</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.purchaseDate')}</label>
                 <input name="purchaseDate" type="date" onChange={handleChange} value={form.purchaseDate} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Purchase Cost</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.purchaseCost')}</label>
                 <input name="purchaseCost" type="number" step="0.01" placeholder="0.00" onChange={handleChange} value={form.purchaseCost} className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${isFieldInvalid('purchaseCost') ? 'border-red-500' : 'border-gray-300'}`} />
               </div>
             </div>
@@ -1117,7 +1122,7 @@ const AddAssetForm = ({ userRole }) => {
         {/* Accounting Details Section */}
         <div className="mb-6">
           <button type="button" onClick={() => toggleSection('accounting')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
-            <span>Accounting Details</span>
+            <span>{t('assets.accountingDetails')}</span>
             {collapsedSections.accounting ? (
               <MdKeyboardArrowRight size={24} />
             ) : (
@@ -1127,7 +1132,7 @@ const AddAssetForm = ({ userRole }) => {
           {!collapsedSections.accounting && (
             <div className="grid grid-cols-4 gap-6 mb-4">
               <div>
-                <label className="block text-sm mb-1 font-medium">Salvage Value</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.salvageValue')}</label>
                 <input 
                   name="salvageValue" 
                   type="number" 
@@ -1139,7 +1144,7 @@ const AddAssetForm = ({ userRole }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Useful Life (Years)</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.usefulLifeYears')}</label>
                 <input 
                   name="usefulLifeYears" 
                   type="number" 
@@ -1157,7 +1162,7 @@ const AddAssetForm = ({ userRole }) => {
         {/* Vendor Details */}
         <div className="mb-6">
           <button type="button" onClick={() => toggleSection('vendor')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
-            <span>Vendor Details</span>
+            <span>{t('assets.vendorDetails')}</span>
             {collapsedSections.vendor ? (
               <MdKeyboardArrowRight size={24} />
             ) : (
@@ -1168,7 +1173,7 @@ const AddAssetForm = ({ userRole }) => {
             <div className="grid grid-cols-6 gap-6 mb-4">
                 {/* Product Vendor Dropdown */}
                 <div>
-                <label className="block text-sm mb-1 font-medium">Product Vendor</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')}</label>
                 <div className="relative w-full">
                   <button
                     type="button"
@@ -1225,7 +1230,7 @@ const AddAssetForm = ({ userRole }) => {
 
               {/* Service Vendor Dropdown */}
               <div>
-                <label className="block text-sm mb-1 font-medium">Service Vendor</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.serviceVendor')}</label>
                 <div className="relative w-full">
                   <button
                     type="button"
@@ -1280,10 +1285,10 @@ const AddAssetForm = ({ userRole }) => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm mb-1 font-medium">Vendor Id</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.vendorId')}</label>
                 <input
                   name="vendorId"
-                  placeholder="Enter Vendor ID"
+                  placeholder={t('assets.enterVendorId')}
                   onChange={handleChange}
                   value={form.vendorId}
                   className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9"
@@ -1293,7 +1298,7 @@ const AddAssetForm = ({ userRole }) => {
 
               {/* Purchase By Dropdown */}
               <div>
-                <label className="block text-sm mb-1 font-medium">Purchase By</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.purchaseBy')}</label>
                 <div className="relative w-full">
                   <button
                     type="button"
@@ -1347,7 +1352,7 @@ const AddAssetForm = ({ userRole }) => {
 
               {/* Brand Dropdown */}
               <div>
-                <label className="block text-sm mb-1 font-medium">Brand</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.brand')}</label>
                 <div className="relative w-full">
                   <button
                     type="button"
@@ -1395,7 +1400,7 @@ const AddAssetForm = ({ userRole }) => {
 
               {/* Model Dropdown */}
               <div>
-                <label className="block text-sm mb-1 font-medium">Model</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.model')}</label>
                 <div className="relative w-full">
                   <button
                     type="button"
@@ -1523,14 +1528,14 @@ const AddAssetForm = ({ userRole }) => {
             className="bg-gray-300 text-gray-700 px-8 py-2 rounded text-base font-medium hover:bg-gray-400 transition"
             disabled={isSubmitting}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="submit"
             className="bg-[#002F5F] text-white px-8 py-2 rounded text-base font-medium hover:bg-[#0E2F4B] transition"
             disabled={isSubmitting}
           >
-            Save
+            {t('common.save')}
           </button>
         </div>
       </form>
@@ -1542,7 +1547,7 @@ const AddAssetForm = ({ userRole }) => {
             <div></div>
           </div>
           <div className="mb-4 flex items-center justify-between">
-            <div className="text-lg font-semibold">Attachments</div>
+            <div className="text-lg font-semibold">{t('assets.attachments')}</div>
             <button 
               type="button" 
               onClick={addAttachmentRow} 
@@ -1551,11 +1556,11 @@ const AddAssetForm = ({ userRole }) => {
               <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Add File
+              {t('assets.addFile')}
             </button>
           </div>
           <div className="text-sm text-gray-600 mb-3">
-            Document types are loaded from the system configuration
+            {t('assets.documentTypesLoaded')}
             {form.assetId && (
               <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
                 Asset ID: {form.assetId}
@@ -1571,12 +1576,12 @@ const AddAssetForm = ({ userRole }) => {
                   {/* First row: Document Type and Custom Name */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium mb-1">Document Type</label>
+                      <label className="block text-xs font-medium mb-1">{t('assets.documentType')}</label>
                       <SearchableDropdown
                         options={documentTypes}
                         value={att.type}
                         onChange={(value) => updateAttachment(att.id, { type: value })}
-                        placeholder="Select type"
+                        placeholder={t('assets.selectType')}
                         searchPlaceholder="Search types..."
                         className="w-full"
                         displayKey="text"
@@ -1603,7 +1608,7 @@ const AddAssetForm = ({ userRole }) => {
                   
                   {/* Second row: File input and buttons */}
                   <div>
-                    <label className="block text-xs font-medium mb-1">File</label>
+                    <label className="block text-xs font-medium mb-1">{t('assets.file')}</label>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative flex-1">
                         <input
@@ -1620,7 +1625,7 @@ const AddAssetForm = ({ userRole }) => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                           </svg>
                           <span className="truncate">
-                            {att.file ? att.file.name : 'Choose file'}
+                            {att.file ? att.file.name : t('assets.chooseFile')}
                           </span>
                         </label>
                       </div>
@@ -1637,7 +1642,7 @@ const AddAssetForm = ({ userRole }) => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
-                            Preview
+                            {t('common.preview')}
                           </a>
                         )}
                         <button 
@@ -1648,7 +1653,7 @@ const AddAssetForm = ({ userRole }) => {
                           <svg className="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
-                          Remove
+                          {t('assets.remove')}
                         </button>
                       </div>
                     </div>
@@ -1684,7 +1689,7 @@ const AddAssetForm = ({ userRole }) => {
                     <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
-                    {form.assetId ? 'Upload All Files' : 'Save Asset First'}
+                    {form.assetId ? t('assets.uploadAllFiles') : t('assets.saveAssetFirst')}
                   </>
                 )}
               </button>
