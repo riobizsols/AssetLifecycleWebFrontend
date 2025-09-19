@@ -55,7 +55,9 @@ const DepartmentsAdmin = () => {
       console.log("Fetching all users...");
       const res = await API.get("/users/get-users");
       console.log("Users fetched:", res.data);
-      setUsersToAdd(res.data);
+      // Handle the new API response format with success/data structure
+      const usersData = res.data?.data || res.data || [];
+      setUsersToAdd(usersData);
     } catch (err) {
       console.error("Failed to fetch users to add", err);
       toast.error("Failed to fetch users list");

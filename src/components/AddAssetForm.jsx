@@ -294,11 +294,13 @@ const AddAssetForm = ({ userRole }) => {
       const res = await API.get('/users/get-users');
       console.log('Users response:', res.data);
 
-      if (res.data && Array.isArray(res.data)) {
+      // Handle the new API response format with success/data structure
+      const usersData = res.data?.data || res.data || [];
+      if (Array.isArray(usersData)) {
         // Transform API data to dropdown format
         const users = [
           { value: '', label: 'Select' },
-          ...res.data.map(user => ({
+          ...usersData.map(user => ({
             value: user.user_id,
             label: user.full_name
           }))

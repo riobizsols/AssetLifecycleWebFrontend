@@ -17,6 +17,7 @@ import ContentBox from '../../components/ContentBox';
 import CustomTable from '../../components/CustomTable';
 import PrintLabelScreen from '../../components/PrintLabelScreen';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
+import { labelTemplates, assetTypeTemplateMapping } from '../../templates/labelTemplates';
 
 const SerialNumberPrint = () => {
   const navigate = useNavigate();
@@ -112,514 +113,10 @@ const SerialNumberPrint = () => {
     }
   ];
 
-  // Comprehensive Label Templates System
-  const labelTemplates = {
-    // Standard Templates
-    'standard-small': {
-      id: 'standard-small',
-      name: 'Standard Small Label',
-      dimensions: { width: 2, height: 1, unit: 'inch' },
-      paperType: 'Paper',
-      paperQuality: 'Normal',
-      printerTypes: ['Laser', 'Inkjet', 'Multifunction'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced small label with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 8, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '20%',
-          height: '30%'
-        },
-        companyName: { 
-          fontSize: 6, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '75%',
-          height: '15%'
-        },
-        serialNumber: { 
-          fontSize: 14, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '25%'
-        },
-        barcode: { 
-          fontSize: 8, 
-          position: 'bottom',
-          width: '100%',
-          height: '30%'
-        }
-      }
-    },
-    'standard-medium': {
-      id: 'standard-medium',
-      name: 'Standard Medium Label',
-      dimensions: { width: 3, height: 1.5, unit: 'inch' },
-      paperType: 'Paper',
-      paperQuality: 'High',
-      printerTypes: ['Laser', 'Inkjet', 'Multifunction'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced medium label with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 10, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '20%',
-          height: '25%'
-        },
-        companyName: { 
-          fontSize: 8, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '75%',
-          height: '12%'
-        },
-        serialNumber: { 
-          fontSize: 16, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '30%'
-        },
-        barcode: { 
-          fontSize: 10, 
-          position: 'bottom',
-          width: '100%',
-          height: '33%'
-        }
-      }
-    },
-    'standard-large': {
-      id: 'standard-large',
-      name: 'Standard Large Label',
-      dimensions: { width: 4, height: 2, unit: 'inch' },
-      paperType: 'Paper',
-      paperQuality: 'High',
-      printerTypes: ['Laser', 'Inkjet', 'Multifunction'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced large label with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 12, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '20%',
-          height: '20%'
-        },
-        companyName: { 
-          fontSize: 10, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '75%',
-          height: '10%'
-        },
-        serialNumber: { 
-          fontSize: 18, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '25%'
-        },
-        barcode: { 
-          fontSize: 12, 
-          position: 'bottom',
-          width: '100%',
-          height: '45%'
-        }
-      }
-    },
-
-    // Vinyl Templates
-    'vinyl-small': {
-      id: 'vinyl-small',
-      name: 'Vinyl Small Label',
-      dimensions: { width: 1.5, height: 0.75, unit: 'inch' },
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      printerTypes: ['Label'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced small vinyl label with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 6, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '25%',
-          height: '40%'
-        },
-        companyName: { 
-          fontSize: 4, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '70%',
-          height: '20%'
-        },
-        serialNumber: { 
-          fontSize: 8, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '20%'
-        },
-        barcode: { 
-          fontSize: 6, 
-          position: 'bottom',
-          width: '100%',
-          height: '20%'
-        }
-      }
-    },
-    'vinyl-medium': {
-      id: 'vinyl-medium',
-      name: 'Vinyl Medium Label',
-      dimensions: { width: 3, height: 1, unit: 'inch' },
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      printerTypes: ['Label'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced medium vinyl label with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 8, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '20%',
-          height: '30%'
-        },
-        companyName: { 
-          fontSize: 6, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '75%',
-          height: '15%'
-        },
-        serialNumber: { 
-          fontSize: 14, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '25%'
-        },
-        barcode: { 
-          fontSize: 8, 
-          position: 'bottom',
-          width: '100%',
-          height: '30%'
-        }
-      }
-    },
-    'vinyl-large': {
-      id: 'vinyl-large',
-      name: 'Vinyl Large Label',
-      dimensions: { width: 4, height: 2, unit: 'inch' },
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      printerTypes: ['Label'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced large vinyl label with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 10, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '20%',
-          height: '20%'
-        },
-        companyName: { 
-          fontSize: 8, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '75%',
-          height: '10%'
-        },
-        serialNumber: { 
-          fontSize: 16, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '25%'
-        },
-        barcode: { 
-          fontSize: 10, 
-          position: 'bottom',
-          width: '100%',
-          height: '45%'
-        }
-      }
-    },
-
-    // Industrial Templates
-    'industrial-small': {
-      id: 'industrial-small',
-      name: 'Industrial Small Label',
-      dimensions: { width: 2, height: 1, unit: 'inch' },
-      paperType: 'Metal',
-      paperQuality: 'High',
-      printerTypes: ['Industrial'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced small metal label with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 8, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '20%',
-          height: '30%'
-        },
-        companyName: { 
-          fontSize: 6, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '75%',
-          height: '15%'
-        },
-        serialNumber: { 
-          fontSize: 12, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '25%'
-        },
-        barcode: { 
-          fontSize: 8, 
-          position: 'bottom',
-          width: '100%',
-          height: '30%'
-        }
-      }
-    },
-    'industrial-medium': {
-      id: 'industrial-medium',
-      name: 'Industrial Medium Label',
-      dimensions: { width: 3, height: 1.5, unit: 'inch' },
-      paperType: 'Metal',
-      paperQuality: 'High',
-      printerTypes: ['Industrial'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced medium metal label with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 10, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '20%',
-          height: '25%'
-        },
-        companyName: { 
-          fontSize: 8, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '75%',
-          height: '12%'
-        },
-        serialNumber: { 
-          fontSize: 14, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '30%'
-        },
-        barcode: { 
-          fontSize: 10, 
-          position: 'bottom',
-          width: '100%',
-          height: '33%'
-        }
-      }
-    },
-    'industrial-large': {
-      id: 'industrial-large',
-      name: 'Industrial Large Label',
-      dimensions: { width: 4, height: 2, unit: 'inch' },
-      paperType: 'Metal',
-      paperQuality: 'High',
-      printerTypes: ['Industrial'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced large metal label with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 12, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '20%',
-          height: '20%'
-        },
-        companyName: { 
-          fontSize: 10, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '75%',
-          height: '10%'
-        },
-        serialNumber: { 
-          fontSize: 16, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '25%'
-        },
-        barcode: { 
-          fontSize: 12, 
-          position: 'bottom',
-          width: '100%',
-          height: '45%'
-        }
-      }
-    },
-
-    // Specialized Templates
-    'network-equipment': {
-      id: 'network-equipment',
-      name: 'Network Equipment Label',
-      dimensions: { width: 1.5, height: 0.75, unit: 'inch' },
-      paperType: 'Vinyl',
-      paperQuality: 'High',
-      printerTypes: ['Label'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced small vinyl label for network equipment with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 6, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '25%',
-          height: '40%'
-        },
-        companyName: { 
-          fontSize: 4, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '70%',
-          height: '20%'
-        },
-        serialNumber: { 
-          fontSize: 7, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '20%'
-        },
-        barcode: { 
-          fontSize: 6, 
-          position: 'bottom',
-          width: '100%',
-          height: '20%'
-        }
-      }
-    },
-    'cable-label': {
-      id: 'cable-label',
-      name: 'Cable Label',
-      dimensions: { width: 1, height: 0.5, unit: 'inch' },
-      paperType: 'Paper',
-      paperQuality: 'Normal',
-      printerTypes: ['Label'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced very small label for cable identification with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 4, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '30%',
-          height: '50%'
-        },
-        companyName: { 
-          fontSize: 3, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '65%',
-          height: '25%'
-        },
-        serialNumber: { 
-          fontSize: 6, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '25%'
-        },
-        barcode: { 
-          fontSize: 4, 
-          position: 'bottom',
-          width: '100%',
-          height: '0%'
-        }
-      }
-    },
-    'asset-tag': {
-      id: 'asset-tag',
-      name: 'Asset Tag',
-      dimensions: { width: 2.5, height: 1.5, unit: 'inch' },
-      paperType: 'Paper',
-      paperQuality: 'High',
-      printerTypes: ['Laser', 'Inkjet'],
-      format: 'barcode-enhanced',
-      description: 'Enhanced standard asset tag with company logo, name, serial number and barcode',
-      layout: {
-        companyLogo: { 
-          fontSize: 10, 
-          fontWeight: 'bold', 
-          position: 'top-left',
-          width: '20%',
-          height: '25%'
-        },
-        companyName: { 
-          fontSize: 8, 
-          fontWeight: 'bold', 
-          position: 'top-right',
-          width: '75%',
-          height: '12%'
-        },
-        serialNumber: { 
-          fontSize: 14, 
-          fontWeight: 'bold', 
-          position: 'center',
-          width: '100%',
-          height: '30%'
-        },
-        barcode: { 
-          fontSize: 10, 
-          position: 'bottom',
-          width: '100%',
-          height: '33%'
-        }
-      }
-    }
-  };
-
-  // Asset type to template mapping (recommended templates for each asset type)
-  const assetTypeTemplateMapping = {
-    'Laptop': ['standard-small', 'standard-medium', 'asset-tag'],
-    'Desktop Computer': ['standard-small', 'standard-medium', 'asset-tag'],
-    'Printer': ['standard-small', 'standard-medium'],
-    'Scanner': ['standard-small', 'standard-medium'],
-    'Monitor': ['standard-small', 'standard-medium'],
-    'Server': ['industrial-large', 'asset-tag'],
-    'Router': ['network-equipment', 'vinyl-small'],
-    'Switch': ['network-equipment', 'vinyl-small'],
-    'Projector': ['standard-small', 'standard-medium'],
-    'Camera': ['standard-small', 'standard-medium'],
-    'Keyboard': ['standard-small', 'vinyl-small'],
-    'Mouse': ['standard-small', 'vinyl-small'],
-    'Tablet': ['standard-small', 'standard-medium'],
-    'Phone': ['standard-small', 'standard-medium'],
-    'Headset': ['standard-small', 'vinyl-small'],
-    'External Drive': ['vinyl-medium', 'standard-medium'],
-    'UPS': ['industrial-medium', 'asset-tag'],
-    'Firewall': ['industrial-medium', 'asset-tag'],
-    'Access Point': ['network-equipment', 'vinyl-small'],
-    'Cable': ['cable-label'],
-    'Adapter': ['cable-label', 'vinyl-small']
-  };
 
   // Print settings state
   const [printSettings, setPrintSettings] = useState({
     printerId: '',
-    printerType: '',
     template: ''
   });
 
@@ -683,13 +180,34 @@ const SerialNumberPrint = () => {
 
   const fetchPrinters = async () => {
     try {
-      console.log('Loading mock printers...');
-      // Use mock data for local development
-      setPrinters(mockPrinters);
-      console.log('Mock printers loaded:', mockPrinters.length);
+      console.log('Fetching printers from assets using organization settings...');
+      const res = await API.get('/assets/printers');
+      const assets = res.data?.data || [];
+      
+      // Map assets to printer-like objects expected by UI
+      const mapped = assets.map((asset, idx) => ({
+        id: asset.asset_id || `printer_${idx + 1}`,
+        printer_id: asset.asset_id,
+        name: asset.text || asset.description || `Printer ${idx + 1}`,
+        location: asset.branch_id || 'Unknown',
+        ip_address: 'N/A', // Not available in asset data
+        status: asset.current_status || 'Online',
+        type: 'Label', // Default type for printers
+        paper_size: 'A4',
+        paper_type: 'Paper',
+        paper_quality: 'High',
+        description: asset.description || '',
+        serial_number: asset.serial_number,
+        purchased_cost: asset.purchased_cost,
+        warranty_period: asset.warranty_period
+      }));
+      
+      setPrinters(mapped);
+      console.log('Printers loaded from assets:', mapped.length);
     } catch (error) {
-      console.error('Error loading mock printers:', error);
-      setPrinters([]);
+      console.error('Error loading printers from organization settings, falling back to mock:', error);
+      // Fallback to mock to avoid empty UI
+      setPrinters(mockPrinters);
     }
   };
 
@@ -801,17 +319,30 @@ const SerialNumberPrint = () => {
     }));
   };
 
-  const handleSelectItem = (item) => {
+  const handleSelectItem = async (item) => {
     setSelectedItem(item);
-    // Auto-select recommended printer and template
-    const recommendedPrinter = getRecommendedPrinter(item);
+    
+    // Fetch asset properties
+    try {
+      const response = await API.get(`/assets/${item.asset_id}`);
+      if (response.data && response.data.properties) {
+        setSelectedItem(prev => ({
+          ...prev,
+          properties: response.data.properties
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching asset properties:', error);
+      // Continue without properties if fetch fails
+    }
+    
+    // Auto-select recommended template only (no printer selection)
     const recommendedTemplateIds = assetTypeTemplateMapping[item.asset_type_name] || ['standard-small'];
     const primaryTemplate = recommendedTemplateIds.length > 0 ? recommendedTemplateIds[0] : 'standard-small';
     
-    // Set print settings with fallbacks
+    // Set print settings with template only
     setPrintSettings({
-      printerId: recommendedPrinter?.id?.toString() || '',
-      printerType: recommendedPrinter?.type || '',
+      printerId: '',
       template: primaryTemplate
     });
     setShowPrintPage(true);
@@ -825,20 +356,20 @@ const SerialNumberPrint = () => {
   const handleBackToList = () => {
     setShowPrintPage(false);
     setSelectedItem(null);
-    setPrintSettings({ printerId: '', printerType: '', template: '' });
+    setPrintSettings({ printerId: '', template: '' });
   };
 
   const handlePreview = () => {
-    if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.template) {
-      toast.error('Please select printer name, type, and template');
+    if (!selectedItem || !printSettings.printerId || !printSettings.template) {
+      toast.error('Please select printer name and template');
       return;
     }
     setShowPreviewModal(true);
   };
 
   const handlePrint = async () => {
-    if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.template) {
-      toast.error('Please select printer name, type, and template');
+    if (!selectedItem || !printSettings.printerId || !printSettings.template) {
+      toast.error('Please select printer name and template');
       return;
     }
 
@@ -953,33 +484,6 @@ const SerialNumberPrint = () => {
     return printers.find(p => p.status === 'Online') || printers[0] || null;
   };
 
-  // Get available printer types based on selected template
-  const getAvailablePrinterTypes = (asset) => {
-    // If a template is selected, get its supported printer types
-    if (printSettings.template) {
-      const selectedTemplate = getAvailableTemplates(asset).find(t => t.id === printSettings.template);
-      if (selectedTemplate) {
-        return selectedTemplate.printerTypes;
-      }
-    }
-    
-    // If no template selected, get printer types from recommended templates
-    const recommendedTemplateIds = assetTypeTemplateMapping[asset.asset_type_name] || [];
-    const allPrinterTypes = new Set();
-    
-    recommendedTemplateIds.forEach(templateId => {
-      if (labelTemplates[templateId]) {
-        labelTemplates[templateId].printerTypes.forEach(type => allPrinterTypes.add(type));
-      }
-    });
-    
-    // Fallback to all available printer types
-    if (allPrinterTypes.size === 0) {
-      return ['Laser', 'Inkjet', 'Label', 'Industrial', 'Multifunction'];
-    }
-    
-    return Array.from(allPrinterTypes);
-  };
 
   // Get available templates based on asset type
   const getAvailableTemplates = (asset) => {
@@ -1034,54 +538,14 @@ const SerialNumberPrint = () => {
     return templates;
   };
 
-  // Get filtered printers based on selected type and template
+  // Get all available printers (no filtering)
   const getFilteredPrinters = () => {
-    console.log('getFilteredPrinters called with:', {
-      selectedItem: selectedItem?.asset_type_name,
-      printerType: printSettings.printerType,
-      template: printSettings.template,
-      totalPrinters: printers.length
-    });
-    
-    if (!selectedItem) {
-      console.log('No selected item, returning all printers');
-      return printers;
-    }
-    
-    let filtered = [...printers];
-    console.log('Starting with', filtered.length, 'printers');
-    
-    // Filter by printer type if selected
-    if (printSettings.printerType) {
-      filtered = filtered.filter(printer => printer.type === printSettings.printerType);
-      console.log('After printer type filter:', filtered.length, 'printers');
-    }
-    
-    // Filter by template requirements if template is selected
-    if (printSettings.template) {
-      const selectedTemplate = labelTemplates[printSettings.template];
-      console.log('Selected template:', selectedTemplate);
-      if (selectedTemplate && selectedTemplate.printerTypes) {
-        console.log('Template printer types:', selectedTemplate.printerTypes);
-        // Filter printers that support the template's printer types
-        filtered = filtered.filter(printer => 
-          selectedTemplate.printerTypes.includes(printer.type)
-        );
-        console.log('After template filter:', filtered.length, 'printers');
-      }
-    }
-    
-    // Debug logging
-    console.log('Final filtered printers:', {
+    console.log('getFilteredPrinters called - returning all printers:', {
       totalPrinters: printers.length,
-      printerType: printSettings.printerType,
-      template: printSettings.template,
-      selectedItem: selectedItem?.asset_type_name,
-      filteredCount: filtered.length,
-      filteredPrinters: filtered.map(p => ({ id: p.id, name: p.name, type: p.type }))
+      printers: printers.map(p => ({ id: p.id, name: p.name, type: p.type }))
     });
     
-    return filtered;
+    return printers;
   };
 
   // Generate preview content for the label
@@ -1227,7 +691,6 @@ const SerialNumberPrint = () => {
         printSettings={printSettings}
         setPrintSettings={setPrintSettings}
         getRecommendedPrinter={getRecommendedPrinter}
-        getAvailablePrinterTypes={getAvailablePrinterTypes}
         getAvailableTemplates={getAvailableTemplates}
         getFilteredPrinters={getFilteredPrinters}
         getStatusBadgeColor={getStatusBadgeColor}

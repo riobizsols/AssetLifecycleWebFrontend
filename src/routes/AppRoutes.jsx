@@ -6,7 +6,8 @@ import MainLayout from "../layouts/MainLayout";
 import ForgotPassword from "../pages/auth/ForgetPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import Assets from "../pages/Assets";
-import Users from "../pages/masterData/Users";
+import UserRoles from "../pages/masterData/UserRoles";
+import AssignRoles from "../components/AssignRoles";
 import Departments from "../pages/masterData/Departments";
 import Branches from "../pages/masterData/Branches";
 import AddBranch from "../components/AddBranch";
@@ -64,6 +65,7 @@ import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
 import BreakdownHistory from "../pages/reports/BreakdownHistory";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
 import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
+import BulkUpload from "../pages/masterData/BulkUpload";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -341,16 +343,16 @@ export default function AppRoutes() {
           }
         />
 
-        {/* <Route
-          path="/master-data/roles"
+        <Route
+          path="/master-data/uploads"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
-                <Roles />
+                <BulkUpload />
               </MainLayout>
             </ProtectedRoute>
           }
-        /> */}
+        />
 
 
 
@@ -505,11 +507,21 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="/master-data/users"
+          path="/master-data/user-roles"
           element={
             <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
               <MainLayout>
-                <Users />
+                <UserRoles />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/assign-roles"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+              <MainLayout>
+                <AssignRoles />
               </MainLayout>
             </ProtectedRoute>
           }

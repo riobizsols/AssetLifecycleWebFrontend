@@ -13,7 +13,8 @@ export const useAuthStore = create(
                     isAuthenticated: true,
                     user: data,
                     token: data.token,
-                    job_role_id: data.job_role_id,
+                    job_role_id: data.job_role_id, // Keep for backward compatibility
+                    roles: data.roles || [], // New roles array from tblUserJobRoles
                 }),
 
             logout: () =>
@@ -22,6 +23,7 @@ export const useAuthStore = create(
                     user: null,
                     token: null,
                     job_role_id: null,
+                    roles: [],
                 }),
         }),
         {

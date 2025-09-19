@@ -15,6 +15,11 @@ import PrintPreviewModal from './PrintPreviewModal';
 import SearchableDropdown from './ui/SearchableDropdown';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
+import API from '../lib/axios';
+import { getOrgData } from '../templates/labelTemplates';
+import { useAuthStore } from '../store/useAuthStore';
 
 const PrintLabelScreen = ({ 
   selectedItem, 
@@ -28,14 +33,22 @@ const PrintLabelScreen = ({
   printSettings,
   setPrintSettings,
   getRecommendedPrinter,
-  getAvailablePrinterTypes,
   getAvailableTemplates,
   getFilteredPrinters,
   getStatusBadgeColor,
   showPreviewModal,
   setShowPreviewModal
 }) => {
+  const { user } = useAuthStore();
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [selectedPrinterProperties, setSelectedPrinterProperties] = useState(null);
+  const [orgData, setOrgData] = useState({
+    name: 'Organization',
+    logo: null,
+    address: 'City, State',
+    phone: '+1 (555) 123-4567',
+    website: 'www.organization.com'
+  });
   const dropdownRef = useRef(null);
   
   const statusOptions = [
@@ -43,6 +56,23 @@ const PrintLabelScreen = ({
     { value: 'Cancelled', label: 'Cancelled', color: 'text-red-600' },
     { value: 'In-progress', label: 'In-progress', color: 'text-blue-600' }
   ];
+
+  // Fetch organization data on component mount
+  useEffect(() => {
+    const fetchOrgData = async () => {
+      try {
+        const orgId = user?.org_id || 'ORG001'; // Use user's org_id or fallback
+        const orgData = await getOrgData(orgId);
+        setOrgData(orgData);
+      } catch (error) {
+        console.error('Error fetching organization data:', error);
+      }
+    };
+
+    if (user?.org_id) {
+      fetchOrgData();
+    }
+  }, [user?.org_id]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -57,14 +87,6 @@ const PrintLabelScreen = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-  const handlePrinterTypeChange = (e) => {
-    setPrintSettings(prev => ({ 
-      ...prev, 
-      printerType: e.target.value,
-      printerId: '', // Reset printer selection when type changes
-      template: '' // Reset template when type changes
-    }));
-  };
 
   const handleTemplateChange = (e) => {
     setPrintSettings(prev => ({ 
@@ -74,9 +96,30 @@ const PrintLabelScreen = ({
     }));
   };
 
-  const handlePrinterIdChange = (e) => {
-    setPrintSettings(prev => ({ ...prev, printerId: e.target.value }));
+  // Fetch printer properties when printer is selected
+  const fetchPrinterProperties = async (printerId) => {
+    try {
+      const response = await API.get(`/assets/${printerId}`);
+      if (response.data && response.data.properties) {
+        setSelectedPrinterProperties(response.data.properties);
+      } else {
+        setSelectedPrinterProperties(null);
+      }
+    } catch (error) {
+      console.error('Error fetching printer properties:', error);
+      setSelectedPrinterProperties(null);
+    }
   };
+
+  const handlePrinterChange = (printerId) => {
+    setPrintSettings(prev => ({ ...prev, printerId }));
+    if (printerId) {
+      fetchPrinterProperties(printerId);
+    } else {
+      setSelectedPrinterProperties(null);
+    }
+  };
+
 
   const handleStatusChange = (status) => {
     console.log('Status changed to:', status);
@@ -86,387 +129,204 @@ const PrintLabelScreen = ({
   };
 
   const generatePDF = async () => {
-    if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.template) {
-      toast.error('Please select printer name, type, and template');
+    if (!selectedItem || !printSettings.printerId || !printSettings.template) {
+      toast.error('Please select printer name and template');
       return;
     }
 
     try {
       toast.loading('Generating PDF...', { duration: 2000 });
       
-       // Create a temporary div to render the label
+      // Get selected template
+      const templateData = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
+      const template = templateData || { 
+        format: 'barcode-enhanced', 
+        dimensions: { width: 2, height: 1, unit: 'inch' },
+        layout: {}
+      };
+
+      // Create a temporary div for the label with exact template dimensions
        const labelDiv = document.createElement('div');
-       labelDiv.style.position = 'fixed';
+      labelDiv.style.position = 'absolute';
        labelDiv.style.left = '-9999px';
-       labelDiv.style.top = '0';
-       labelDiv.style.width = '280px';
-       labelDiv.style.height = 'auto';
+      labelDiv.style.top = '-9999px';
+      labelDiv.style.width = `${template.dimensions.width}in`;
+      labelDiv.style.height = `${template.dimensions.height}in`;
+      labelDiv.style.border = '1px solid #000';
        labelDiv.style.backgroundColor = 'white';
-       labelDiv.style.padding = '20px';
-       labelDiv.style.border = '1px solid #e5e7eb';
-       labelDiv.style.borderRadius = '4px';
+      labelDiv.style.padding = '4px';
        labelDiv.style.fontFamily = 'Arial, sans-serif';
-       labelDiv.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+      labelDiv.style.zIndex = '9999';
+      labelDiv.style.boxSizing = 'border-box';
        labelDiv.style.overflow = 'hidden';
-       labelDiv.style.zIndex = '9999';
       
       document.body.appendChild(labelDiv);
 
-      // Get selected template
-      const templateData = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
-      const template = templateData || { format: 'text-only', layout: {} };
-      const format = template.format;
-
-       // Generate the label content based on template format
-       if (format === 'barcode-enhanced') {
-         // Create the enhanced label structure with company logo, name, and barcode
+      // Create the label container
          const labelContainer = document.createElement('div');
+      labelContainer.style.width = '100%';
+      labelContainer.style.height = '100%';
          labelContainer.style.position = 'relative';
-         
-         // Set dimensions based on template
-         const width = template.dimensions?.width || 2;
-         const height = template.dimensions?.height || 1;
-         const unit = template.dimensions?.unit || 'inch';
-         
-         // Convert inches to pixels (assuming 96 DPI)
-         const widthPx = Math.round(width * 96);
-         const heightPx = Math.round(height * 96);
-         
-         labelContainer.style.width = `${widthPx}px`;
-         labelContainer.style.height = `${heightPx}px`;
-         labelContainer.style.border = '2px dashed #ccc';
-         labelContainer.style.fontFamily = 'Arial, sans-serif';
-         labelContainer.style.padding = '4px';
-         labelDiv.appendChild(labelContainer);
+      labelContainer.style.display = 'flex';
+      labelContainer.style.flexDirection = 'column';
+      labelContainer.style.justifyContent = 'space-between';
+      labelDiv.appendChild(labelContainer);
 
-         // Company Logo - Top Left
-         const logoDiv = document.createElement('div');
-         logoDiv.style.position = 'absolute';
-         logoDiv.style.top = '4px';
-         logoDiv.style.left = '4px';
-         logoDiv.style.width = '32px';
-         logoDiv.style.height = '24px';
-         logoDiv.style.backgroundColor = '#dbeafe';
-         logoDiv.style.borderRadius = '4px';
-         logoDiv.style.display = 'flex';
-         logoDiv.style.alignItems = 'center';
-         logoDiv.style.justifyContent = 'center';
-         logoDiv.style.fontSize = '8px';
-         logoDiv.style.fontWeight = 'bold';
-         logoDiv.style.color = '#1e40af';
-         logoDiv.textContent = 'LOGO';
-         labelContainer.appendChild(logoDiv);
+      // Organization Logo and Name (Top Section)
+      const topSection = document.createElement('div');
+      topSection.style.display = 'flex';
+      topSection.style.alignItems = 'center';
+      topSection.style.justifyContent = 'space-between';
+      topSection.style.height = '20%';
+      topSection.style.marginBottom = '2px';
+      
+      // Logo circle with first letter
+      const logoCircle = document.createElement('div');
+      logoCircle.style.width = '16px';
+      logoCircle.style.height = '16px';
+      logoCircle.style.borderRadius = '50%';
+      logoCircle.style.backgroundColor = '#003366';
+      logoCircle.style.color = 'white';
+      logoCircle.style.display = 'flex';
+      logoCircle.style.alignItems = 'center';
+      logoCircle.style.justifyContent = 'center';
+      logoCircle.style.fontSize = '8px';
+      logoCircle.style.fontWeight = 'bold';
+      logoCircle.style.flexShrink = '0';
+      logoCircle.style.lineHeight = '1';
+      logoCircle.style.textAlign = 'center';
+      logoCircle.style.padding = '0';
+      logoCircle.style.margin = '0';
+      logoCircle.style.boxSizing = 'border-box';
+      logoCircle.style.position = 'relative';
+      logoCircle.style.fontFamily = 'Arial, sans-serif';
+      logoCircle.style.overflow = 'hidden';
+      
+      // Create a span for the text to better control positioning
+      const logoText = document.createElement('span');
+      logoText.style.display = 'block';
+      logoText.style.lineHeight = '1';
+      logoText.style.textAlign = 'center';
+      logoText.style.verticalAlign = 'middle';
+      logoText.style.fontSize = '8px';
+      logoText.style.fontWeight = 'bold';
+      logoText.style.fontFamily = 'Arial, sans-serif';
+      logoText.style.transform = 'translateY(-3px)'; // Fine-tune vertical position
+      logoText.textContent = orgData.name.charAt(0).toUpperCase();
+      
+      logoCircle.appendChild(logoText);
+      
+      // Organization name
+      const orgName = document.createElement('div');
+      orgName.style.fontSize = '6px';
+      orgName.style.fontWeight = 'bold';
+      orgName.style.color = '#003366';
+      orgName.style.textAlign = 'right';
+      orgName.style.flex = '1';
+      orgName.style.marginLeft = '4px';
+      orgName.textContent = orgData.name;
+      
+      topSection.appendChild(logoCircle);
+      topSection.appendChild(orgName);
+      labelContainer.appendChild(topSection);
 
-         // Company Name - Top Right
-         const companyDiv = document.createElement('div');
-         companyDiv.style.position = 'absolute';
-         companyDiv.style.top = '4px';
-         companyDiv.style.right = '4px';
-         companyDiv.style.fontSize = '8px';
-         companyDiv.style.fontWeight = 'bold';
-         companyDiv.style.color = '#374151';
-         companyDiv.textContent = 'AssetLife';
-         labelContainer.appendChild(companyDiv);
-
-         // Serial Number - Center
-         const serialContainer = document.createElement('div');
-         serialContainer.style.position = 'absolute';
-         serialContainer.style.top = '50%';
-         serialContainer.style.left = '50%';
-         serialContainer.style.transform = 'translate(-50%, -50%)';
-         serialContainer.style.textAlign = 'center';
-         labelContainer.appendChild(serialContainer);
-
-         const serialTitle = document.createElement('div');
-         serialTitle.style.fontSize = '8px';
-         serialTitle.style.color = '#666';
-         serialTitle.style.marginBottom = '2px';
-         serialTitle.textContent = 'SERIAL NUMBER';
-         serialContainer.appendChild(serialTitle);
+      // Serial Number (Center Section)
+      const centerSection = document.createElement('div');
+      centerSection.style.flex = '1';
+      centerSection.style.display = 'flex';
+      centerSection.style.flexDirection = 'column';
+      centerSection.style.alignItems = 'center';
+      centerSection.style.justifyContent = 'center';
+      centerSection.style.textAlign = 'center';
+      
+      const serialLabel = document.createElement('div');
+      serialLabel.style.fontSize = '5px';
+      serialLabel.style.color = '#666';
+      serialLabel.style.marginBottom = '2px';
+      serialLabel.style.fontWeight = 'bold';
+      serialLabel.textContent = 'SERIAL NUMBER';
 
          const serialNumber = document.createElement('div');
-         serialNumber.style.fontSize = '12px';
+      serialNumber.style.fontSize = '10px';
          serialNumber.style.fontWeight = 'bold';
-         serialNumber.style.color = '#111';
          serialNumber.style.fontFamily = 'monospace';
+      serialNumber.style.color = '#000';
+      serialNumber.style.letterSpacing = '0.5px';
          serialNumber.textContent = selectedItem.serial_number;
-         serialContainer.appendChild(serialNumber);
+      
+      centerSection.appendChild(serialLabel);
+      centerSection.appendChild(serialNumber);
+      labelContainer.appendChild(centerSection);
 
-         // Barcode - Bottom
-         const barcodeContainer = document.createElement('div');
-         barcodeContainer.style.position = 'absolute';
-         barcodeContainer.style.bottom = '4px';
-         barcodeContainer.style.left = '4px';
-         barcodeContainer.style.right = '4px';
-         barcodeContainer.style.textAlign = 'center';
-         labelContainer.appendChild(barcodeContainer);
-
-         const barcodeTitle = document.createElement('div');
-         barcodeTitle.style.fontSize = '6px';
-         barcodeTitle.style.color = '#666';
-         barcodeTitle.style.marginBottom = '2px';
-         barcodeTitle.textContent = 'BARCODE';
-         barcodeContainer.appendChild(barcodeTitle);
-
-         const barcodeDiv = document.createElement('div');
-         barcodeDiv.style.fontSize = '8px';
-         barcodeDiv.style.backgroundColor = '#000';
-         barcodeDiv.style.color = '#fff';
-         barcodeDiv.style.padding = '2px 4px';
-         barcodeDiv.style.borderRadius = '2px';
-         barcodeDiv.style.fontFamily = 'monospace';
-         barcodeDiv.textContent = '||| ||| ||| ||| ||| ||| ||| |||';
-         barcodeContainer.appendChild(barcodeDiv);
-
-       } else if (format === 'barcode-only' || format === 'text-with-barcode') {
-         // Create the complete label structure
-         const labelContainer = document.createElement('div');
-         labelContainer.style.textAlign = 'center';
-         labelContainer.style.fontFamily = 'Arial, sans-serif';
-         labelDiv.appendChild(labelContainer);
-
-         // Add "SERIAL NUMBER" title
-         const titleDiv = document.createElement('div');
-         titleDiv.style.fontSize = '14px';
-         titleDiv.style.color = '#666';
-         titleDiv.style.marginBottom = '8px';
-         titleDiv.textContent = 'SERIAL NUMBER';
-         labelContainer.appendChild(titleDiv);
-
-         // Add serial number
-         const serialDiv = document.createElement('div');
-         serialDiv.style.fontSize = '18px';
-         serialDiv.style.fontWeight = 'bold';
-         serialDiv.style.fontFamily = 'monospace';
-         serialDiv.style.marginBottom = '10px';
-         serialDiv.textContent = selectedItem.serial_number;
-         labelContainer.appendChild(serialDiv);
-
-         // Create barcode container
-         const barcodeContainer = document.createElement('div');
-         barcodeContainer.style.border = '1px solid #e5e7eb';
-         barcodeContainer.style.borderRadius = '3px';
-         barcodeContainer.style.padding = '10px';
-         barcodeContainer.style.marginBottom = '8px';
-         barcodeContainer.style.backgroundColor = 'white';
-         barcodeContainer.style.overflow = 'hidden';
-         barcodeContainer.style.maxWidth = '100%';
-         labelContainer.appendChild(barcodeContainer);
-
-         // Create barcode using JsBarcode
-         const canvas = document.createElement('canvas');
-         canvas.style.maxWidth = '100%';
-         canvas.style.height = 'auto';
-         canvas.style.display = 'block';
-         canvas.style.margin = '0 auto';
-         barcodeContainer.appendChild(canvas);
-         
-         // Import JsBarcode dynamically
-         const JsBarcode = (await import('jsbarcode')).default;
-         
-         try {
-           JsBarcode(canvas, selectedItem.serial_number, {
+      // Barcode (Bottom Section)
+      const bottomSection = document.createElement('div');
+      bottomSection.style.height = '30%';
+      bottomSection.style.display = 'flex';
+      bottomSection.style.flexDirection = 'column';
+      bottomSection.style.alignItems = 'center';
+      bottomSection.style.justifyContent = 'center';
+      
+      // Create barcode canvas
+      const barcodeCanvas = document.createElement('canvas');
+      barcodeCanvas.id = 'barcode-canvas';
+      barcodeCanvas.style.maxWidth = '100%';
+      barcodeCanvas.style.height = 'auto';
+      barcodeCanvas.style.display = 'block';
+      bottomSection.appendChild(barcodeCanvas);
+      
+      // Generate barcode
+      try {
+        JsBarcode(barcodeCanvas, selectedItem.serial_number, {
              format: "CODE128",
-             width: 2,
-             height: 50,
+          width: 1,
+          height: 20,
              displayValue: false,
-             margin: 5,
-             background: "#ffffff",
-             lineColor: "#000000",
-             valid: function(valid) {
-               console.log('Barcode valid:', valid);
-               if (valid) {
-                 console.log('Barcode rendered successfully');
-               }
-             }
+          margin: 0,
+          background: '#ffffff',
+          lineColor: '#000000'
            });
          } catch (error) {
            console.error('Barcode generation error:', error);
            // Fallback: create a simple text representation
-           canvas.getContext('2d').fillText('BARCODE: ' + selectedItem.serial_number, 10, 30);
-         }
-
-         // Add scan instruction
-         const scanDiv = document.createElement('div');
-         scanDiv.style.fontSize = '12px';
-         scanDiv.style.color = '#666';
-         scanDiv.textContent = 'Scan with any barcode scanner app';
-         labelContainer.appendChild(scanDiv);
-
-      } else if (format === 'text-with-qr') {
-        // Create the complete label structure
-        const labelContainer = document.createElement('div');
-        labelContainer.style.textAlign = 'center';
-        labelContainer.style.fontFamily = 'Arial, sans-serif';
-        labelDiv.appendChild(labelContainer);
-
-        // Add "SERIAL NUMBER" title
-        const titleDiv = document.createElement('div');
-        titleDiv.style.fontSize = '14px';
-        titleDiv.style.color = '#666';
-        titleDiv.style.marginBottom = '8px';
-        titleDiv.textContent = 'SERIAL NUMBER';
-        labelContainer.appendChild(titleDiv);
-
-        // Add serial number
-        const serialDiv = document.createElement('div');
-        serialDiv.style.fontSize = '18px';
-        serialDiv.style.fontWeight = 'bold';
-        serialDiv.style.fontFamily = 'monospace';
-        serialDiv.style.marginBottom = '10px';
-        serialDiv.textContent = selectedItem.serial_number;
-        labelContainer.appendChild(serialDiv);
-
-         // Create QR code container
-         const qrContainer = document.createElement('div');
-         qrContainer.style.border = '1px solid #e5e7eb';
-         qrContainer.style.borderRadius = '3px';
-         qrContainer.style.padding = '10px';
-         qrContainer.style.marginBottom = '8px';
-         qrContainer.style.backgroundColor = 'white';
-         qrContainer.style.overflow = 'hidden';
-         qrContainer.style.maxWidth = '100%';
-         qrContainer.style.textAlign = 'center';
-         labelContainer.appendChild(qrContainer);
-
-         // Create QR code
-         const QRCode = (await import('react-qr-code')).default;
-         const React = (await import('react')).default;
-         const ReactDOM = (await import('react-dom/client')).default;
-         
-         const qrDiv = document.createElement('div');
-         qrDiv.style.maxWidth = '100%';
-         qrDiv.style.overflow = 'hidden';
-         qrContainer.appendChild(qrDiv);
-         
-         try {
-           const root = ReactDOM.createRoot(qrDiv);
-           root.render(React.createElement(QRCode, {
-             value: selectedItem.serial_number,
-             size: 80,
-             style: { height: "auto", maxWidth: "100%", width: "100%" }
-           }));
-         } catch (error) {
-           console.error('QR code generation error:', error);
-           // Fallback: create a simple text representation
-           qrDiv.innerHTML = `<div style="text-align: center; padding: 20px; border: 1px solid #ccc;">QR: ${selectedItem.serial_number}</div>`;
-         }
-
-        // Add scan instruction
-        const scanDiv = document.createElement('div');
-        scanDiv.style.fontSize = '12px';
-        scanDiv.style.color = '#666';
-        scanDiv.textContent = 'Scan with any QR code scanner app';
-        labelContainer.appendChild(scanDiv);
-
-      } else {
-        // Text only format
-        const labelContainer = document.createElement('div');
-        labelContainer.style.textAlign = 'center';
-        labelContainer.style.fontFamily = 'Arial, sans-serif';
-        labelDiv.appendChild(labelContainer);
-
-        // Add "SERIAL NUMBER" title
-        const titleDiv = document.createElement('div');
-        titleDiv.style.fontSize = '14px';
-        titleDiv.style.color = '#666';
-        titleDiv.style.marginBottom = '8px';
-        titleDiv.textContent = 'SERIAL NUMBER';
-        labelContainer.appendChild(titleDiv);
-
-        // Add serial number
-        const serialDiv = document.createElement('div');
-        serialDiv.style.fontSize = '18px';
-        serialDiv.style.fontWeight = 'bold';
-        serialDiv.style.fontFamily = 'monospace';
-        serialDiv.style.marginBottom = '10px';
-        serialDiv.textContent = selectedItem.serial_number;
-        labelContainer.appendChild(serialDiv);
-
-        // Add asset details
-        const detailsDiv = document.createElement('div');
-        detailsDiv.style.fontSize = '12px';
-        detailsDiv.style.color = '#666';
-        detailsDiv.style.lineHeight = '1.4';
-        detailsDiv.innerHTML = `
-          <div style="margin-bottom: 3px;">${selectedItem.asset_type_name}</div>
-          <div style="margin-bottom: 3px;">${selectedItem.asset_name}</div>
-        `;
-        labelContainer.appendChild(detailsDiv);
+        const ctx = barcodeCanvas.getContext('2d');
+        barcodeCanvas.width = 100;
+        barcodeCanvas.height = 20;
+        ctx.fillStyle = '#000';
+        ctx.font = '8px monospace';
+        ctx.fillText('BARCODE', 10, 15);
       }
 
-       // Wait for rendering - longer wait for barcode/QR code generation
-       await new Promise(resolve => setTimeout(resolve, 2000));
+      labelContainer.appendChild(bottomSection);
 
-       // Force a reflow to ensure all content is rendered
-       labelDiv.offsetHeight;
-
-       // Debug: Check if content is visible
-       console.log('Label div content:', labelDiv.innerHTML);
-       console.log('Label div dimensions:', labelDiv.offsetWidth, 'x', labelDiv.offsetHeight);
+      // Wait for barcode to render
+      await new Promise(resolve => setTimeout(resolve, 500));
 
        // Convert to canvas
        const canvas = await html2canvas(labelDiv, {
-         backgroundColor: '#ffffff',
-         scale: 1,
+        scale: 3,
          useCORS: true,
          allowTaint: true,
-         logging: true,
+        backgroundColor: '#ffffff',
          width: labelDiv.offsetWidth,
          height: labelDiv.offsetHeight
        });
 
-      // Debug: Check canvas
-      console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
-      console.log('Canvas data URL length:', canvas.toDataURL('image/png').length);
-
-      // Get template dimensions
-      const templateInfo = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
-      const templateDimension = templateInfo ? `${templateInfo.dimensions.width}x${templateInfo.dimensions.height}` : 'a4';
-      
-      // Create PDF
-      const imgData = canvas.toDataURL('image/png');
+      // Create PDF with exact label dimensions
       const pdf = new jsPDF({
-        orientation: templateDimension.includes('A') ? 'portrait' : 'landscape',
-        unit: 'mm',
-        format: templateDimension.includes('A') ? templateDimension : 'a4'
+        orientation: template.dimensions.width > template.dimensions.height ? 'landscape' : 'portrait',
+        unit: 'in',
+        format: [template.dimensions.width, template.dimensions.height]
       });
 
-       // Calculate dimensions
-       const imgWidth = canvas.width;
-       const imgHeight = canvas.height;
-       const pdfWidth = pdf.internal.pageSize.getWidth();
-       const pdfHeight = pdf.internal.pageSize.getHeight();
-       
-       // Calculate scaling to fit the page nicely
-       const maxWidth = pdfWidth - 20; // 10mm margin on each side
-       const maxHeight = pdfHeight - 20; // 10mm margin on top and bottom
-       
-       let scale = 1;
-       if (imgWidth > maxWidth) {
-         scale = Math.min(scale, maxWidth / imgWidth);
-       }
-       if (imgHeight > maxHeight) {
-         scale = Math.min(scale, maxHeight / imgHeight);
-       }
-       
-       // Ensure minimum readable size
-       scale = Math.max(scale, 0.5);
-       
-       const scaledWidth = imgWidth * scale;
-       const scaledHeight = imgHeight * scale;
-       
-       // Center the image
-       const x = (pdfWidth - scaledWidth) / 2;
-       const y = (pdfHeight - scaledHeight) / 2;
-
-       pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
+      // Add image to PDF
+      const imgData = canvas.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', 0, 0, template.dimensions.width, template.dimensions.height);
       
       // Clean up
       document.body.removeChild(labelDiv);
 
       // Download PDF
-      const fileName = `label_${selectedItem.serial_number}_${format.toLowerCase().replace(' ', '_')}.pdf`;
+      const fileName = `label_${selectedItem.serial_number}_${template.id}.pdf`;
       pdf.save(fileName);
       
       toast.success('PDF generated successfully!');
@@ -555,51 +415,27 @@ const PrintLabelScreen = ({
               </span>
             </div>
           </div>
+          
+          {/* Asset Properties */}
+          {selectedItem.properties && Object.keys(selectedItem.properties).length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <h4 className="text-md font-semibold mb-3 text-gray-700">Properties</h4>
+              <div className="space-y-2">
+                {Object.entries(selectedItem.properties).map(([key, value]) => (
+                  <div key={key} className="flex justify-between">
+                    <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</span>
+                    <span className="font-medium text-gray-900">{value || 'N/A'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Printer Selection */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold mb-4">Printer Selection</h3>
           <div className="space-y-4">
-            {/* Printer Type Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Printer Type <span className="text-red-500">*</span>
-              </label>
-              <SearchableDropdown
-                options={getAvailablePrinterTypes(selectedItem).map(type => ({
-                  id: type,
-                  text: type
-                }))}
-                value={printSettings.printerType}
-                onChange={(value) => setPrintSettings(prev => ({ 
-                  ...prev, 
-                  printerType: value,
-                  printerId: '', // Reset printer selection when type changes
-                  dimension: '' // Reset dimension when type changes
-                }))}
-                placeholder="Select printer type..."
-                className="w-full"
-              />
-              {printSettings.printerType && (
-                <div className="mt-1 text-xs text-gray-600">
-                  {(() => {
-                    // Get recommended templates for this asset type
-                    const recommendedTemplateIds = assetTypeTemplateMapping[selectedItem.asset_type_name] || [];
-                    const primaryTemplate = recommendedTemplateIds.length > 0 ? labelTemplates[recommendedTemplateIds[0]] : null;
-                    
-                    if (!primaryTemplate) return null;
-                    
-                    const isRecommended = primaryTemplate.printerTypes.includes(printSettings.printerType);
-                    return isRecommended ? (
-                      <span className="text-green-600">✅ Recommended type for {primaryTemplate.paperType} labels</span>
-                    ) : (
-                      <span className="text-yellow-600">⚠️ May not be optimal for {primaryTemplate.paperType} labels</span>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
 
             {/* Template Selection */}
             <div>
@@ -620,33 +456,6 @@ const PrintLabelScreen = ({
                 placeholder="Select template..."
                 className="w-full"
               />
-              {printSettings.template && (
-                <div className="mt-2 space-y-1">
-                  {(() => {
-                    const selectedTemplate = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
-                    if (!selectedTemplate) return null;
-                    
-                    return (
-                      <div className="text-xs text-gray-600 space-y-1">
-                        <div className="flex items-center gap-2">
-                          {selectedTemplate.isRecommended ? (
-                            <span className="text-green-600">✅ Recommended</span>
-                          ) : (
-                            <span className="text-yellow-600">⚠️ Custom</span>
-                          )}
-                          <span>• {selectedTemplate.dimensions.width}"×{selectedTemplate.dimensions.height}" • {selectedTemplate.paperType}</span>
-                        </div>
-                        <div className="text-gray-500">{selectedTemplate.description}</div>
-                        <div className="text-gray-500">
-                          Format: {selectedTemplate.format.replace('-', ' ').toUpperCase()} • 
-                          Quality: {selectedTemplate.paperQuality} • 
-                          Printers: {selectedTemplate.printerTypes.join(', ')}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
             </div>
 
             {/* Printer Name Selection */}
@@ -656,40 +465,37 @@ const PrintLabelScreen = ({
               </label>
               <SearchableDropdown
                 options={getFilteredPrinters().map(printer => {
-                  const isRecommended = getRecommendedPrinter(selectedItem).id === printer.id;
                   return {
                     id: printer.id.toString(),
-                    text: `${isRecommended ? '⭐ ' : ''}${printer.name} - ${printer.location} (${printer.ip_address}) - ${printer.status}`
+                    text: `${printer.name} (${printer.id})`
                   };
                 })}
                 value={printSettings.printerId}
-                onChange={(value) => setPrintSettings(prev => ({ ...prev, printerId: value }))}
+                onChange={handlePrinterChange}
                 placeholder="Select a printer..."
                 className="w-full"
-                disabled={!printSettings.printerType || !printSettings.template}
               />
-              {!printSettings.printerType || !printSettings.template ? (
-                <div className="mt-1 text-xs text-gray-500">
-                  Please select printer type and template first
-                </div>
-              ) : getFilteredPrinters().length === 0 ? (
+              {getFilteredPrinters().length === 0 ? (
                 <div className="mt-1 text-xs text-red-600">
-                  No printers available with selected type and template
-                </div>
-              ) : printSettings.printerId ? (
-                <div className="mt-1 text-xs text-gray-600">
-                  {(() => {
-                    const selectedPrinter = printers.find(p => p.id === parseInt(printSettings.printerId));
-                    const isRecommended = getRecommendedPrinter(selectedItem).id === selectedPrinter?.id;
-                    return isRecommended ? (
-                      <span className="text-green-600">⭐ Recommended printer for this asset type and location</span>
-                    ) : (
-                      <span className="text-yellow-600">⚠️ This printer may not be optimal for this asset type</span>
-                    );
-                  })()}
+                  No printers available
                 </div>
               ) : null}
             </div>
+            
+            {/* Printer Properties */}
+            {selectedPrinterProperties && Object.keys(selectedPrinterProperties).length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-md font-semibold mb-3 text-gray-700">Printer Properties</h4>
+                <div className="space-y-2">
+                  {Object.entries(selectedPrinterProperties).map(([key, value]) => (
+                    <div key={key} className="flex justify-between">
+                      <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</span>
+                      <span className="font-medium text-gray-900">{value || 'N/A'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -699,11 +505,11 @@ const PrintLabelScreen = ({
          <button
            onClick={(e) => {
              console.log('🖱️ Button click event triggered');
-             console.log('Button disabled state:', !printSettings.printerId || !printSettings.printerType || !printSettings.template);
+             console.log('Button disabled state:', !printSettings.printerId || !printSettings.template);
              e.preventDefault();
              onPreview();
            }}
-           disabled={!printSettings.printerId || !printSettings.printerType || !printSettings.template}
+           disabled={!printSettings.printerId || !printSettings.template}
            className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
          >
            <Eye className="w-5 h-5" />
@@ -711,7 +517,7 @@ const PrintLabelScreen = ({
          </button>
         <button
           onClick={generatePDF}
-          disabled={!printSettings.printerId || !printSettings.printerType || !printSettings.dimension}
+          disabled={!printSettings.printerId || !printSettings.template}
           className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <Download className="w-5 h-5" />
@@ -723,7 +529,7 @@ const PrintLabelScreen = ({
              console.log('Print Label clicked for:', selectedItem);
              onPrint();
            }}
-           disabled={!printSettings.printerId || !printSettings.printerType || !printSettings.template}
+           disabled={!printSettings.printerId || !printSettings.template}
            className="px-8 py-3 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
            style={{ backgroundColor: '#143d65' }}
            onMouseEnter={(e) => !e.target.disabled && (e.target.style.backgroundColor = '#0f2d4a')}
@@ -735,11 +541,11 @@ const PrintLabelScreen = ({
       </div>
       
       {/* Validation Status */}
-      {(!printSettings.printerId || !printSettings.printerType || !printSettings.template) && (
+      {(!printSettings.printerId || !printSettings.template) && (
         <div className="mt-4 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
             <AlertCircle className="w-4 h-4" />
-            Please select printer name, type, and template to proceed with printing
+            Please select printer name and template to proceed with printing
           </div>
         </div>
       )}
@@ -759,3 +565,4 @@ const PrintLabelScreen = ({
 };
 
 export default PrintLabelScreen;
+

@@ -1,4 +1,4 @@
-import { Pencil, Eye } from "lucide-react";
+import { Pencil, Eye, Plus } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 
 const CustomTable = ({
@@ -9,12 +9,16 @@ const CustomTable = ({
   onEdit,
   onDelete,
   onView,
+  onAdd,
   rowKey = "id",
   showActions = true,
+  showCheckbox = true,
   renderCell,
   onRowClick,
   onRowAction,
   actionLabel = "Action",
+  showAddButton = false,
+  addButtonTitle = "Add",
 }) => {
   const visible = visibleColumns.filter((col) => col.visible);
 
@@ -79,7 +83,7 @@ const CustomTable = ({
             <td key={colIndex} className="border text-xs px-4 py-2">
               {colIndex === 0 ? (
                 <div className="flex items-center gap-2">
-                  {showActions && (
+                  {showActions && showCheckbox && (
                     <input
                       type="checkbox"
                       checked={selectedRows.includes(row[rowKey])}
@@ -109,7 +113,31 @@ const CustomTable = ({
                   <Eye size={16} />
                 </button>
               )} */}
-              {onEdit && (
+              {showAddButton && onAdd && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAdd(row);
+                  }} 
+                  className="text-[#003366] hover:text-[#002347]"
+                  title={addButtonTitle}
+                >
+                  <Plus size={16} />
+                </button>
+              )}
+              {onRowAction && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRowAction(row);
+                  }} 
+                  className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                  title={actionLabel}
+                >
+                  {actionLabel}
+                </button>
+              )}
+              {onEdit && !onRowAction && (
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
