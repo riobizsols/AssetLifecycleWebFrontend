@@ -7,11 +7,13 @@ import { toast } from "react-hot-toast";
 import useAuditLog from "../../hooks/useAuditLog";
 import { DEPT_ASSIGNMENT_APP_ID } from "../../constants/deptAssignmentAuditEvents";
 import { EMP_ASSIGNMENT_APP_ID } from "../../constants/empAssignmentAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
  
 
 const AssetSelection = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { entityId, entityIntId, entityType, departmentId } =
     location.state || {};
 
@@ -64,7 +66,7 @@ const AssetSelection = () => {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      toast.error("Could not access camera. Please check permissions.");
+      toast.error(t('assets.couldNotAccessCamera'));
       setShowScanner(false);
     }
   };
@@ -80,7 +82,7 @@ const AssetSelection = () => {
     }
     setScannedAssetId(decodedText);
     setShowScanner(false);
-    toast.success(`Asset ID scanned successfully`);
+    toast.success(t('assets.assetIdScannedSuccessfully'));
   };
 
   const onScanError = (error) => {
@@ -100,7 +102,7 @@ const AssetSelection = () => {
     // Debug: print entityIntId on mount
     console.log("entityIntId on mount:", entityIntId);
     if (!entityId || !entityType) {
-      toast.error("Invalid navigation. Please select an entity first.");
+      toast.error(t('assets.invalidNavigation'));
       navigate(-1);
       return;
     }
@@ -156,7 +158,7 @@ const AssetSelection = () => {
       setAssetTypes(filtered);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
-      toast.error("Failed to fetch asset types");
+      toast.error(t('assets.failedToFetchAssetTypes'));
       setAssetTypes([]);
     }
   };
@@ -172,7 +174,7 @@ const AssetSelection = () => {
       setAssets(res.data);
     } catch (err) {
       console.error("Failed to fetch available assets", err);
-      toast.error("Failed to fetch available assets");
+      toast.error(t('assets.failedToFetchAvailableAssets'));
     }
   };
 
@@ -195,7 +197,7 @@ const AssetSelection = () => {
       );
     } catch (err) {
       console.error("Failed to fetch inactive assets", err);
-      toast.error("Failed to fetch inactive assets");
+      toast.error(t('assets.failedToFetchInactiveAssets'));
       setInactiveAssets([]);
     }
   };
@@ -205,12 +207,12 @@ const AssetSelection = () => {
 
   const handleAssignAsset = async (asset) => {
     if (!asset) {
-      toast.error("Please select an asset from the list");
+      toast.error(t('assets.pleaseSelectAssetFromList'));
       return;
     }
   
     if (!asset.asset_type_id) {
-      toast.error("Asset type information is missing");
+      toast.error(t('assets.assetTypeInformationMissing'));
       return;
     }
   
@@ -220,18 +222,18 @@ const AssetSelection = () => {
       const assetType = typeRes.data;
   
       if (!assetType) {
-        toast.error("Failed to validate asset type");
+        toast.error(t('assets.failedToValidateAssetType'));
         return;
       }
   
       if (entityType === "employee") {
         // Logic for Employee Assignment
         if (assetType.assignment_type !== "user") {
-          toast.error("This asset type can only be assigned to departments");
+          toast.error(t('assets.assetTypeCanOnlyBeAssignedToDepartments'));
           return;
         }
         if (!entityIntId) {
-          toast.error("Employee internal ID is missing");
+          toast.error(t('assets.employeeInternalIdMissing'));
           return;
         }
   
@@ -254,17 +256,17 @@ const AssetSelection = () => {
           action: 'Asset Assigned to Employee'
         });
         
-        toast.success("Asset assigned to employee successfully");
+        toast.success(t('assets.assetAssignedToEmployeeSuccessfully'));
   
       } else if (entityType === "department") {
         // Logic for Department Assignment
         // CORRECTED: Check for 'department' assignment type
         if (assetType.assignment_type !== "department") {
-          toast.error("This asset type can only be assigned to users");
+          toast.error(t('assets.assetTypeCanOnlyBeAssignedToUsers'));
           return;
         }
         if (!entityId && !departmentId) {
-          toast.error("Department ID missing");
+          toast.error(t('assets.departmentIdMissing'));
           return;
         }
   
@@ -285,7 +287,7 @@ const AssetSelection = () => {
           action: 'Asset Assigned to Department'
         });
         
-        toast.success("Asset assigned to department successfully");
+        toast.success(t('assets.assetAssignedToDepartmentSuccessfully'));
       }
       
       // Redirect after successful assignment
@@ -295,7 +297,7 @@ const AssetSelection = () => {
       console.error("Failed to assign asset", err);
       const errorMessage =
         err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`Failed to assign asset: ${errorMessage}`);
+      toast.error(`${t('assets.failedToAssignAsset')}: ${errorMessage}`);
     }
   };
 
@@ -400,13 +402,13 @@ const AssetSelection = () => {
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
-      toast.error("Please enter an asset ID");
+      toast.error(t('assets.pleaseEnterAssetId'));
       return;
     }
     // Find the asset in inactiveAssets by asset_id
     const asset = inactiveAssets.find((a) => a.asset_id === scannedAssetId);
     if (!asset) {
-      toast.error("Asset not found or not available for assignment");
+      toast.error(t('assets.assetNotFoundOrNotAvailable'));
       return;
     }
     handleAssignAsset(asset);
@@ -416,7 +418,7 @@ const AssetSelection = () => {
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="bg-white rounded shadow mb-4">
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          Asset Selection
+          {t('assets.assetSelection')}
         </div>
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
@@ -428,7 +430,7 @@ const AssetSelection = () => {
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              Select Asset
+              {t('assets.selectAsset')}
             </button>
             <button
               onClick={() => setActiveTab("scan")}
@@ -438,7 +440,7 @@ const AssetSelection = () => {
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              Scan Asset
+              {t('assets.scanAsset')}
             </button>
           </nav>
         </div>
@@ -449,14 +451,14 @@ const AssetSelection = () => {
             <div className="flex gap-4 items-end">
               <div className="w-64">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Asset Type
+                  {t('assets.assetType')}
                 </label>
                 <select
                   className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
                   value={selectedAssetType || ""}
                   onChange={handleAssetTypeChange}
                 >
-                  <option value="">All Asset Types</option>
+                  <option value="">{t('assets.allAssetTypes')}</option>
                   {assetTypes.map((type) => (
                     <option key={type.asset_type_id} value={type.asset_type_id}>
                       {type.text}
@@ -470,7 +472,7 @@ const AssetSelection = () => {
                   className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
                   onClick={() => navigate(-1)}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
@@ -479,13 +481,13 @@ const AssetSelection = () => {
             <form onSubmit={handleScanSubmit} className="flex gap-4 items-end">
               <div className="w-64">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Asset ID
+                  {t('assets.assetId')}
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
-                    placeholder="Scan or enter asset ID"
+                    placeholder={t('assets.scanOrEnterAssetId')}
                     value={scannedAssetId}
                     onChange={(e) => setScannedAssetId(e.target.value)}
                   />
@@ -505,14 +507,14 @@ const AssetSelection = () => {
                   className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
                   onClick={() => navigate(-1)}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
                   disabled={!scannedAssetId}
                 >
-                  Assign
+                  {t('employees.assignAsset')}
                 </button>
               </div>
             </form>
@@ -529,7 +531,7 @@ const AssetSelection = () => {
         >
           <div className="bg-white rounded shadow">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-              Available Assets
+              {t('assets.availableAssets')}
               <button onClick={() => setIsMaximized((prev) => !prev)}>
                 {isMaximized ? (
                   <Minimize className="text-[#0E2F4B]" size={18} />
@@ -545,12 +547,12 @@ const AssetSelection = () => {
                   className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400`}
                   style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}
                 >
-                  <div>Asset Type ID</div>
-                  <div>Asset ID</div>
-                  <div>Asset Type Name</div>
-                  <div>Asset Name</div>
-                  <div>Product/Service ID</div>
-                  <div className="flex justify-center">Actions</div>
+                  <div>{t('assets.assetTypeId')}</div>
+                  <div>{t('assets.assetId')}</div>
+                  <div>{t('employees.assetTypeName')}</div>
+                  <div>{t('assets.assetName')}</div>
+                  <div>{t('assets.productServiceId')}</div>
+                  <div className="flex justify-center">{t('common.actions')}</div>
                 </div>
               )}
 
@@ -598,14 +600,14 @@ const AssetSelection = () => {
                         onClick={() => handleAssignAsset(asset)}
                         className="bg-[#0E2F4B] text-white px-3 py-1 rounded text-sm hover:bg-[#1a4971] transition-colors"
                       >
-                        Assign
+                        {t('employees.assignAsset')}
                       </button>
                     </div>
                   </div>
                 ))}
                 {inactiveAssets.length === 0 && (
                   <div className="px-4 py-6 text-center text-gray-500 col-span-4 bg-white rounded-b">
-                    No inactive assets found for this type.
+                    {t('assets.noInactiveAssetsFound')}
                   </div>
                 )}
               </div>
@@ -620,7 +622,7 @@ const AssetSelection = () => {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
-                Scan Barcode
+                {t('assets.scanBarcode')}
               </h3>
               <button
                 onClick={stopScanner}
@@ -641,7 +643,7 @@ const AssetSelection = () => {
 
             <div className="p-4 text-center">
               <p className="text-sm text-gray-600">
-                Position the barcode within the scanning area
+                {t('assets.positionBarcodeInScanningArea')}
               </p>
             </div>
 
@@ -650,7 +652,7 @@ const AssetSelection = () => {
                 onClick={stopScanner}
                 className="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-300"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>

@@ -10,6 +10,7 @@ import UpdateAssetTypeModal from "../components/UpdateAssetTypeModal";
 import { useNavigation } from "../hooks/useNavigation";
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const AssetType = () => {
   const navigate = useNavigate();
@@ -31,26 +32,30 @@ const AssetType = () => {
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSET_TYPES_APP_ID);
   
+  // Language context
+  const { t } = useLanguage();
+  
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAssetType, setSelectedAssetType] = useState(null);
 
-  const [columns] = useState([
-    { label: "Asset Type ID", name: "asset_type_id", visible: true },
-    { label: "Asset Type Name", name: "text", visible: true },
-    { label: "Status", name: "int_status", visible: true },
-    { label: "Maintenance Schedule", name: "maintenance_schedule", visible: true },
-    { label: "Assignment Type", name: "assignment_type", visible: true },
-    { label: "Inspection Required", name: "inspection_required", visible: true },
-    { label: "Group Required", name: "group_required", visible: true },
-    { label: "Type", name: "type", visible: true },
-    { label: "Parent Asset Type", name: "parent_asset_type", visible: true },
-    { label: "Created By", name: "created_by", visible: true },
-    { label: "Created On", name: "created_on", visible: true },
-    { label: "Changed By", name: "changed_by", visible: true },
-    { label: "Changed On", name: "changed_on", visible: true },
-    { label: "Organization ID", name: "org_id", visible: false },
-    { label: "External ID", name: "ext_id", visible: false }
-  ]);
+  // Create columns with translations
+  const columns = [
+    { label: t('assetTypes.assetTypeId'), name: "asset_type_id", visible: true },
+    { label: t('assetTypes.assetTypeName'), name: "text", visible: true },
+    { label: t('assetTypes.status'), name: "int_status", visible: true },
+    { label: t('assetTypes.maintenanceSchedule'), name: "maintenance_schedule", visible: true },
+    { label: t('assetTypes.assignmentType'), name: "assignment_type", visible: true },
+    { label: t('assetTypes.inspectionRequired'), name: "inspection_required", visible: true },
+    { label: t('assetTypes.groupRequired'), name: "group_required", visible: true },
+    { label: t('assetTypes.type'), name: "type", visible: true },
+    { label: t('assetTypes.parentAssetType'), name: "parent_asset_type", visible: true },
+    { label: t('assetTypes.createdBy'), name: "created_by", visible: true },
+    { label: t('assetTypes.createdOn'), name: "created_on", visible: true },
+    { label: t('assetTypes.changedBy'), name: "changed_by", visible: true },
+    { label: t('assetTypes.changedOn'), name: "changed_on", visible: true },
+    { label: t('common.organizationId'), name: "org_id", visible: false },
+    { label: t('assetTypes.externalId'), name: "ext_id", visible: false }
+  ];
 
   const fetchAssetTypes = async () => {
     try {
@@ -83,7 +88,7 @@ const AssetType = () => {
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch asset types:", err);
-      toast.error("Failed to fetch asset types");
+      toast.error(t('assetTypes.failedToFetchAssetTypes'));
     }
   };
 
@@ -184,20 +189,20 @@ const AssetType = () => {
 
           if (error.response?.status === 400) {
             // Handle case where asset type is in use
-            errorMessage = error.response.data.error || 'Cannot delete this asset type';
+            errorMessage = error.response.data.error || t('assetTypes.cannotDeleteAssetType');
             errorDetails = error.response.data.details || '';
             errorHint = error.response.data.hint || '';
           } else if (error.response?.status === 404) {
             // Handle case where asset type was not found
-            errorMessage = 'Asset type not found';
-            errorDetails = `The asset type "${assetType.text}" no longer exists. The list will be refreshed.`;
+            errorMessage = t('assetTypes.assetTypeNotFound');
+            errorDetails = t('assetTypes.assetTypeNoLongerExists', { name: assetType.text });
           } else if (error.response?.status === 403) {
             // Handle permission errors
-            errorMessage = 'Permission denied';
-            errorDetails = 'You do not have permission to delete this asset type.';
+            errorMessage = t('assetTypes.permissionDenied');
+            errorDetails = t('assetTypes.noPermissionToDelete');
           } else {
             // Handle unexpected errors
-            errorMessage = 'An unexpected error occurred';
+            errorMessage = t('assetTypes.unexpectedError');
             errorDetails = error.response?.data?.error || error.message;
           }
 
@@ -226,7 +231,7 @@ const AssetType = () => {
 
         if (successful.length === 1) {
           toast(
-            `Successfully deleted asset type "${successful[0].name}"`,
+            t('assetTypes.assetTypeDeletedSuccessfully', { name: successful[0].name }),
             {
               icon: '✅',
               style: {
@@ -238,7 +243,7 @@ const AssetType = () => {
           );
         } else {
           toast(
-            `Successfully deleted ${successful.length} asset types`,
+            t('assetTypes.assetTypesDeletedSuccessfully', { count: successful.length }),
             {
               icon: '✅',
               style: {
@@ -253,7 +258,7 @@ const AssetType = () => {
 
       if (failed.length > 0) {
         failed.forEach(failure => {
-          let errorMessage = `Failed to delete "${failure.name}"`;
+          let errorMessage = t('assetTypes.failedToDeleteAssetType', { name: failure.name });
           if (failure.error) errorMessage += `\n${failure.error}`;
           if (failure.details) errorMessage += `\n${failure.details}`;
           if (failure.hint) errorMessage += `\n\nHint: ${failure.hint}`;
@@ -278,7 +283,7 @@ const AssetType = () => {
       return true; // Return success for ContentBox
     } catch (error) {
       console.error("Error in delete operation:", error);
-      toast.error("An unexpected error occurred while deleting asset types. Please try again.");
+      toast.error(t('assetTypes.unexpectedDeleteError'));
       return false; // Return failure for ContentBox
     }
   };
@@ -312,7 +317,7 @@ const AssetType = () => {
         });
         
         toast(
-          'Asset types exported successfully',
+          t('assetTypes.assetTypesExportedSuccessfully'),
           {
             icon: '✅',
             style: {
@@ -323,12 +328,12 @@ const AssetType = () => {
           }
         );
       } else {
-        throw new Error('Export failed');
+        throw new Error(t('assetTypes.exportFailed'));
       }
     } catch (error) {
       console.error('Error exporting data:', error);
       toast(
-        'Failed to export asset types',
+        t('assetTypes.failedToExportAssetTypes'),
         {
           icon: '❌',
           style: {
@@ -345,14 +350,14 @@ const AssetType = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'int_status' ? [
-      { label: "Active", value: "Active" },
-      { label: "Inactive", value: "Inactive" }
+      { label: t('assetTypes.active'), value: 'Active' },
+      { label: t('assetTypes.inactive'), value: 'Inactive' }
     ] : col.name === 'maintenance_schedule' || col.name === 'inspection_required' || col.name === 'group_required' ? [
-      { label: "Yes", value: "Yes" },
-      { label: "No", value: "No" }
+      { label: t('assetTypes.yes'), value: 'Yes' },
+      { label: t('assetTypes.no'), value: 'No' }
     ] : col.name === 'assignment_type' ? [
-      { label: "User-wise", value: "User-wise" },
-      { label: "Department-wise", value: "Department-wise" }
+      { label: t('assetTypes.userWise'), value: 'User-wise' },
+      { label: t('assetTypes.departmentWise'), value: 'Department-wise' }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));

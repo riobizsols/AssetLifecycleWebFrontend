@@ -6,6 +6,7 @@ import SearchableDropdown from "./ui/SearchableDropdown";
 import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
   const [assetType, setAssetType] = useState("");
@@ -13,6 +14,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSET_TYPES_APP_ID);
+  
+  // Language context
+  const { t } = useLanguage();
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
   const [requireMaintenance, setRequireMaintenance] = useState(false);
@@ -178,7 +182,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
         });
         
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
-          toast.success(`Document ${archiveStatus ? 'archived' : 'unarchived'} successfully`);
+          toast.success(archiveStatus ? t('assetTypes.documentArchivedSuccessfully') : t('assetTypes.documentUnarchivedSuccessfully'));
           console.log('🔄 Refreshing documents after archive action...');
           // Refresh the documents list
           fetchChecklist();
@@ -349,7 +353,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       console.log('Add property response:', res.data);
       
       if (res.data && res.data.success) {
-        toast.success('Property added successfully');
+        toast.success(t('assetTypes.propertyAddedSuccessfully'));
         // Clear the selected property
         setSelectedProperties([]);
         // Refresh existing properties
@@ -374,7 +378,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       const res = await API.delete(`/asset-types/properties/${assetTypePropId}`);
       
       if (res.data && res.data.success) {
-        toast.success('Property removed successfully');
+        toast.success(t('assetTypes.propertyRemovedSuccessfully'));
         // Refresh existing properties
         fetchExistingProperties();
       } else {
@@ -470,7 +474,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       });
 
       toast(
-        `Asset type "${assetType}" updated successfully`,
+        t('assetTypes.assetTypeUpdatedSuccessfully', { name: assetType }),
         {
           icon: '✅',
           style: {
@@ -557,9 +561,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files uploaded successfully');
+          toast.success(t('assetTypes.allFilesUploadedSuccessfully'));
         } else {
-          toast.success(`${successCount} files uploaded, ${failCount} failed`);
+          toast.success(t('assetTypes.filesUploadedWithFailures', { successCount, failCount }));
         }
         setUploadRows([]); // Clear all attachments after upload
         // Refresh the checklist
@@ -569,7 +573,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
       }
     } catch (err) {
       console.error('Upload process error:', err);
-      toast.error('Upload process failed');
+      toast.error(t('assetTypes.uploadProcessFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -581,7 +585,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Update Asset Type</h2>
+          <h2 className="text-xl font-semibold">{t('assetTypes.editAssetType')}</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -596,20 +600,20 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
             {/* Asset Type Input */}
             <div>
               <label className="block text-sm font-medium mb-1">
-                Asset Type <span className="text-red-500">*</span>
+                {t('assets.assetType')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={assetType}
                 onChange={(e) => setAssetType(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter asset type name"
+                placeholder={t('assetTypes.enterAssetTypeName')}
               />
             </div>
 
             {/* Assignment Type Radio Buttons */}
             <div>
-              <label className="block text-sm font-medium mb-1">Assignment Type</label>
+              <label className="block text-sm font-medium mb-1">{t('assetTypes.assignmentType')}</label>
               <div className="space-y-2 mt-2">
                 <label className="flex items-center">
                   <input
@@ -619,7 +623,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                     onChange={(e) => setAssignmentType(e.target.value)}
                     className="form-radio text-blue-500"
                   />
-                  <span className="ml-2">User - wise</span>
+                  <span className="ml-2">{t('assetTypes.userWise')}</span>
                 </label>
                 <label className="flex items-center">
                   <input
@@ -629,16 +633,16 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                     onChange={(e) => setAssignmentType(e.target.value)}
                     className="form-radio text-blue-500"
                   />
-                  <span className="ml-2">Department - wise</span>
+                  <span className="ml-2">{t('assetTypes.departmentWise')}</span>
                 </label>
               </div>
             </div>
 
             {/* Status Toggle */}
             <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
+              <label className="block text-sm font-medium mb-1">{t('assetTypes.status')}</label>
               <div className="flex items-center space-x-2 mt-2">
-                <span className={`text-sm ${!isActive ? 'text-gray-900' : 'text-gray-500'}`}>Inactive</span>
+                <span className={`text-sm ${!isActive ? 'text-gray-900' : 'text-gray-500'}`}>{t('assetTypes.inactive')}</span>
                 <button
                   type="button"
                   onClick={() => setIsActive(!isActive)}
@@ -652,18 +656,18 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                     }`}
                   />
                 </button>
-                <span className={`text-sm ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>Active</span>
+                <span className={`text-sm ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>{t('assetTypes.active')}</span>
               </div>
             </div>
           </div>
 
           {/* Properties Management Section */}
           <div className="mb-6">
-            <div className="text-md font-medium text-gray-900 mb-4">Properties Management</div>
+            <div className="text-md font-medium text-gray-900 mb-4">{t('assetTypes.propertiesManagement')}</div>
             
             {/* Add New Property */}
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Add Property</label>
+              <label className="block text-sm font-medium mb-2">{t('assetTypes.addProperty')}</label>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <SearchableDropdown
@@ -676,8 +680,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                         setSelectedProperties([value]);
                       }
                     }}
-                    placeholder="Select property to add"
-                    searchPlaceholder="Search properties..."
+                    placeholder={t('assetTypes.selectPropertyToAdd')}
+                    searchPlaceholder={t('assetTypes.searchProperties')}
                     displayKey="text"
                     valueKey="id"
                     className="w-full"
@@ -694,18 +698,18 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                   disabled={selectedProperties.length === 0}
                   className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Add
+                  {t('common.add')}
                 </button>
               </div>
             </div>
 
             {/* Existing Properties */}
             <div>
-              <label className="block text-sm font-medium mb-2">Current Properties</label>
+              <label className="block text-sm font-medium mb-2">{t('assetTypes.currentProperties')}</label>
               {isLoadingProperties ? (
-                <div className="text-sm text-gray-500">Loading properties...</div>
+                <div className="text-sm text-gray-500">{t('assetTypes.loadingProperties')}</div>
               ) : existingProperties.length === 0 ? (
-                <div className="text-sm text-gray-500">No properties assigned</div>
+                <div className="text-sm text-gray-500">{t('assetTypes.noPropertiesAssigned')}</div>
               ) : (
                 <div className="space-y-2">
                   {existingProperties.map((prop) => (
@@ -718,7 +722,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                         type="button"
                         onClick={() => handleRemoveProperty(prop.asset_type_prop_id)}
                         className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-                        title="Remove property"
+                        title={t('assetTypes.removeProperty')}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -740,7 +744,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 onChange={(e) => setGroupRequired(e.target.checked)}
                 className="form-checkbox text-blue-500 rounded"
               />
-              <span>Group Required</span>
+              <span>{t('assetTypes.groupRequired')}</span>
             </label>
 
             <label className="flex items-center space-x-2">
@@ -750,7 +754,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 onChange={(e) => setRequireInspection(e.target.checked)}
                 className="form-checkbox text-blue-500 rounded"
               />
-              <span>Require Inspection</span>
+              <span>{t('assetTypes.requireInspection')}</span>
             </label>
 
             <label className="flex items-center space-x-2">
@@ -760,7 +764,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 onChange={(e) => setRequireMaintenance(e.target.checked)}
                 className="form-checkbox text-blue-500 rounded"
               />
-              <span>Require Maintenance</span>
+              <span>{t('assetTypes.requireMaintenance')}</span>
             </label>
           </div>
 
@@ -770,14 +774,14 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
               {/* Maintenance Type Dropdown */}
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Select Maint Type <span className="text-red-500">*</span>
+                  {t('assetTypes.selectMaintenanceType')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedMaintenanceType}
                   onChange={(e) => setSelectedMaintenanceType(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select maintenance type</option>
+                  <option value="">{t('assetTypes.selectMaintenanceTypeOption')}</option>
                   {maintenanceTypes.map((type) => (
                     <option key={type.maint_type_id} value={type.maint_type_id}>
                       {type.text}
@@ -789,14 +793,14 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
               {/* Maintenance Lead Type Input */}
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Maintenance Lead Type
+                  {t('assetTypes.maintenanceLeadType')}
                 </label>
                 <input
                   type="text"
                   value={maintenanceLeadType}
                   onChange={(e) => setMaintenanceLeadType(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter maintenance lead type"
+                  placeholder={t('assetTypes.enterMaintenanceLeadType')}
                 />
               </div>
             </div>
@@ -804,20 +808,20 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
 
           {/* Document Management Section - Always Visible */}
           <div className="mt-6">
-            <div className="text-md font-medium text-gray-900 mb-2">Asset Type Documents</div>
+            <div className="text-md font-medium text-gray-900 mb-2">{t('assetTypes.assetTypeDocuments')}</div>
             <div className="border rounded-lg overflow-hidden bg-white mb-6">
               {checklistLoading ? (
                 <div className="p-4 text-sm text-gray-500">Loading documents...</div>
               ) : checklist.length === 0 ? (
-                <div className="p-4 text-sm text-gray-500">No documents uploaded.</div>
+                <div className="p-4 text-sm text-gray-500">{t('assetTypes.noDocumentsUploaded')}</div>
               ) : (
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="text-left px-3 py-2">Type</th>
-                      <th className="text-left px-3 py-2">File Name</th>
-                      <th className="text-left px-3 py-2">Status</th>
-                      <th className="text-left px-3 py-2">Actions</th>
+                      <th className="text-left px-3 py-2">{t('assetTypes.type')}</th>
+                      <th className="text-left px-3 py-2">{t('assetTypes.fileName')}</th>
+                      <th className="text-left px-3 py-2">{t('assetTypes.status')}</th>
+                      <th className="text-left px-3 py-2">{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -846,7 +850,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                                 ? 'bg-gray-100 text-gray-800' 
                                 : 'bg-green-100 text-green-800'
                             }`}>
-                              {doc.is_archived === true || doc.is_archived === 'true' ? 'Archived' : 'Active'}
+                              {doc.is_archived === true || doc.is_archived === 'true' ? t('assetTypes.archived') : t('assetTypes.active')}
                             </span>
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
@@ -874,7 +878,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
             {/* Upload New Documents */}
             <div className="border-t pt-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-md font-medium text-gray-900">Upload New Documents</h3>
+                <h3 className="text-md font-medium text-gray-900">{t('assetTypes.uploadNewDocuments')}</h3>
                 <button 
                   type="button" 
                   className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
@@ -883,12 +887,12 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                   <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Add Document
+                  {t('assetTypes.addDocument')}
                 </button>
               </div>
               
               <div className="space-y-3">
-                {uploadRows.length === 0 && <div className="text-sm text-gray-500">No new files added.</div>}
+                {uploadRows.length === 0 && <div className="text-sm text-gray-500">{t('assetTypes.noNewFilesAdded')}</div>}
                 {uploadRows.map(r => (
                   <div key={r.id} className="grid grid-cols-12 gap-3 items-start bg-white border rounded p-3">
                     <div className="col-span-3">
@@ -1018,13 +1022,13 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
             {/* Archived Documents Section */}
             <div className="mt-6 border-t pt-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-md font-medium text-gray-900">Archived Documents</h3>
+                <h3 className="text-md font-medium text-gray-900">{t('assetTypes.archivedDocuments')}</h3>
                 <button
                   type="button"
                   onClick={() => setShowArchived(!showArchived)}
                   className="px-4 py-2 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 transition-colors"
                 >
-                  {showArchived ? 'Hide Archived' : 'Show Archived'} ({archivedDocs.length})
+                  {showArchived ? t('assetTypes.hideArchived') : t('assetTypes.showArchived')} ({archivedDocs.length})
                 </button>
               </div>
                 
@@ -1038,10 +1042,10 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                     <table className="w-full text-sm">
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="text-left px-3 py-2">Type</th>
-                          <th className="text-left px-3 py-2">File Name</th>
-                          <th className="text-left px-3 py-2">Status</th>
-                          <th className="text-left px-3 py-2">Actions</th>
+                          <th className="text-left px-3 py-2">{t('assetTypes.type')}</th>
+                          <th className="text-left px-3 py-2">{t('assetTypes.fileName')}</th>
+                          <th className="text-left px-3 py-2">{t('assetTypes.status')}</th>
+                          <th className="text-left px-3 py-2">{t('common.actions')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1066,7 +1070,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  Archived
+                                  {t('assetTypes.archived')}
                                 </span>
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">
@@ -1098,14 +1102,14 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
           <div className="mt-6">
             <div className="flex gap-6">
               <div className="max-w-xs">
-                <label className="block text-sm font-medium mb-1">Parent / Child</label>
+                <label className="block text-sm font-medium mb-1">{t('assetTypes.parentChild')}</label>
                 <select
                   value={parentChild}
                   onChange={(e) => setParentChild(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="parent">Parent</option>
-                  <option value="child">Child</option>
+                  <option value="parent">{t('assetTypes.parent')}</option>
+                  <option value="child">{t('assetTypes.child')}</option>
                 </select>
               </div>
 
@@ -1140,14 +1144,14 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
               className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               disabled={isSubmitting}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Updating..." : "Update"}
+              {isSubmitting ? t('assetTypes.updating') : t('common.update')}
             </button>
           </div>
         </form>
@@ -1185,7 +1189,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
-                    {viewLoading ? 'Loading...' : 'View'}
+                    {viewLoading ? t('common.loading') : t('assetTypes.view')}
                   </button>
                   
                   <button
@@ -1196,7 +1200,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    {downloadLoading ? 'Loading...' : 'Download'}
+                    {downloadLoading ? t('common.loading') : t('assetTypes.download')}
                   </button>
                   
                   {isArchived ? (
@@ -1208,7 +1212,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
-                      {unarchiveLoading ? 'Loading...' : 'Unarchive'}
+                      {unarchiveLoading ? t('common.loading') : t('assetTypes.unarchive')}
                     </button>
                   ) : (
                     <button

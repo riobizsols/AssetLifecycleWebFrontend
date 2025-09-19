@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { ORGANIZATIONS_APP_ID } from "../../constants/organizationsAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const Organization = () => {
   const [orgs, setOrgs] = useState([]);
@@ -24,6 +25,9 @@ const Organization = () => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ORGANIZATIONS_APP_ID);
+  
+  // Language context
+  const { t } = useLanguage();
 
   const toggleMaximize = () => setIsMaximized((p) => !p);
 
@@ -62,15 +66,15 @@ const Organization = () => {
     setSubmitAttempted(true);
     // Validation
     if (!formName.trim()) {
-      toast.error("Organization name is required");
+      toast.error(t('organizations.organizationNameRequired'));
       return;
     }
     if (!formCode.trim()) {
-      toast.error("Organization code is required");
+      toast.error(t('organizations.organizationCodeRequired'));
       return;
     }
     if (!formCity.trim()) {
-      toast.error("Organization city is required");
+      toast.error(t('organizations.organizationCityRequired'));
       return;
     }
 
@@ -93,7 +97,7 @@ const Organization = () => {
           action: 'Organization Updated'
         });
         
-        toast.success(`Organization "${formName}" updated successfully`);
+        toast.success(t('organizations.organizationUpdatedSuccessfully', { name: formName }));
       } else {
         // Add
         const response = await API.post("/orgs", {
@@ -111,14 +115,14 @@ const Organization = () => {
           action: 'Organization Created'
         });
         
-        toast.success(`Organization "${formName}" created successfully`);
+        toast.success(t('organizations.organizationCreatedSuccessfully', { name: formName }));
       }
       resetForm();
       fetchOrgs();
     } catch (err) {
       console.error("Error:", err);
       const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-      toast.error(`Failed to ${selectedOrg ? 'update' : 'create'} organization: ${errorMessage}`);
+      toast.error(`${t('organizations.failedToCreateOrganization', { action: selectedOrg ? t('common.update') : t('common.create') })}: ${errorMessage}`);
     }
   };
 
@@ -149,7 +153,7 @@ const Organization = () => {
       setShowDeleteModal(false);
       resetForm();
       fetchOrgs();
-      toast.success(`Organization "${selectedOrg.org_name || selectedOrg.name || selectedOrg.text}" deleted successfully`);
+      toast.success(t('organizations.organizationDeletedSuccessfully', { name: selectedOrg.org_name || selectedOrg.name || selectedOrg.text }));
     } catch (err) {
       console.error("Delete error:", err);
       
@@ -157,7 +161,7 @@ const Organization = () => {
       if (err.response?.data?.error === "Cannot delete organization") {
         const hint = err.response?.data?.hint || "";
         toast.error(
-          `${err.response?.data?.message || "Cannot delete organization"}. ${hint}`,
+          `${err.response?.data?.message || t('organizations.cannotDeleteOrganization')}. ${hint}`,
           {
             duration: 6000,
             style: {
@@ -169,7 +173,7 @@ const Organization = () => {
         );
       } else {
         const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-        toast.error(`Failed to delete organization: ${errorMessage}`);
+        toast.error(`${t('organizations.failedToDeleteOrganization')}: ${errorMessage}`);
       }
     }
   };
@@ -181,38 +185,38 @@ const Organization = () => {
         {canEdit && (
           <div className="bg-white rounded shadow mb-6">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-              Add Organization
+              {t('organizations.addOrganization')}
             </div>
           <div className="p-4 flex gap-4">
             <div className="flex flex-col">
               <label className="text-sm font-medium mb-1">
-                Organization Name <span className="text-red-500">*</span>
+                {t('organizations.organizationName')} <span className="text-red-500">*</span>
               </label>
               <input
                 className={`border px-3 py-2 rounded w-64 text-sm ${isFieldInvalid(formName) ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Organization Name"
+                placeholder={t('organizations.organizationName')}
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
             </div>
             <div className="flex flex-col">
               <label className="text-sm font-medium mb-1">
-                Organization Code <span className="text-red-500">*</span>
+                {t('organizations.organizationCode')} <span className="text-red-500">*</span>
               </label>
               <input
                 className={`border px-3 py-2 rounded w-64 text-sm ${isFieldInvalid(formCode) ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Organization Code"
+                placeholder={t('organizations.organizationCode')}
                 value={formCode}
                 onChange={(e) => setFormCode(e.target.value)}
               />
             </div>
             <div className="flex flex-col">
               <label className="text-sm font-medium mb-1">
-                Organization City <span className="text-red-500">*</span>
+                {t('organizations.organizationCity')} <span className="text-red-500">*</span>
               </label>
               <input
                 className={`border px-3 py-2 rounded w-64 text-sm ${isFieldInvalid(formCity) ? 'border-red-500' : 'border-gray-300'}`}
-                placeholder="Organization City"
+                placeholder={t('organizations.organizationCity')}
                 value={formCity}
                 onChange={(e) => setFormCity(e.target.value)}
               />
@@ -224,7 +228,7 @@ const Organization = () => {
                 resetForm();
               }}
             >
-              Add
+              {t('common.add')}
             </button>
           </div>
         </div>
@@ -238,7 +242,7 @@ const Organization = () => {
         >
           <div className="bg-white rounded shadow">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-              Organization List
+              {t('organizations.organizationList')}
               <button onClick={toggleMaximize}>
                 {isMaximized ? (
                   <Minimize className="text-[#0E2F4B]" size={18} />
@@ -250,10 +254,10 @@ const Organization = () => {
 
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
               <div className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400 ${canEdit ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                <div>Name</div>
-                <div>Code</div>
-                <div>City</div>
-                {canEdit && <div className="text-center">Actions</div>}
+                <div>{t('organizations.name')}</div>
+                <div>{t('organizations.code')}</div>
+                <div>{t('organizations.city')}</div>
+                {canEdit && <div className="text-center">{t('common.actions')}</div>}
               </div>
               <div
                 className={`${
@@ -292,7 +296,7 @@ const Organization = () => {
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white w-[500px] rounded shadow-lg">
               <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-                <span>Update Organization</span>
+                <span>{t('organizations.updateOrganization')}</span>
                 <button
                   onClick={() => {
                     setShowEditModal(false);
@@ -306,7 +310,7 @@ const Organization = () => {
               <div className="h-[3px] bg-yellow-400" />
               <div className="px-6 py-6 space-y-4">
                 <div>
-                  <label className="text-sm font-medium">Organization ID</label>
+                  <label className="text-sm font-medium">{t('organizations.organizationId')}</label>
                   <input
                     value={selectedOrg?.org_id}
                     className="border px-3 py-2 rounded w-full mt-1 bg-gray-100"
@@ -315,7 +319,7 @@ const Organization = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1">
-                    Organization Name <span className="text-red-500">*</span>
+                    {t('organizations.organizationName')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     value={formName}
@@ -325,7 +329,7 @@ const Organization = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1">
-                    Organization Code <span className="text-red-500">*</span>
+                    {t('organizations.organizationCode')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     value={formCode}
@@ -335,7 +339,7 @@ const Organization = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1">
-                    Organization City <span className="text-red-500">*</span>
+                    {t('organizations.organizationCity')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     value={formCity}
@@ -351,7 +355,7 @@ const Organization = () => {
                       resetForm();
                     }}
                   >
-                    Close
+                    {t('common.close')}
                   </button>
                   <button
                     className="bg-yellow-400 px-4 py-1 rounded"
@@ -361,7 +365,7 @@ const Organization = () => {
                       resetForm();
                     }}
                   >
-                    Update
+                    {t('common.update')}
                   </button>
                 </div>
               </div>
@@ -373,7 +377,7 @@ const Organization = () => {
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white w-[500px] rounded shadow-lg">
               <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-                <span>Confirm Delete</span>
+                <span>{t('organizations.confirmDelete')}</span>
                 <button
                   onClick={() => setShowDeleteModal(false)}
                   className="text-yellow-400 text-xl font-bold"
@@ -383,20 +387,20 @@ const Organization = () => {
               </div>
               <div className="h-[3px] bg-yellow-400" />
               <div className="px-6 py-6 text-center text-gray-800 text-sm">
-                Delete organization <strong>“{selectedOrg.org_name || selectedOrg.name || selectedOrg.text}”</strong>?
+                {t('organizations.deleteOrganizationConfirm')} <strong>"{selectedOrg.org_name || selectedOrg.name || selectedOrg.text}"</strong>?
               </div>
               <div className="flex justify-end gap-3 px-6 pb-6">
                 <button
                   className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
                   onClick={() => setShowDeleteModal(false)}
                 >
-                  Close
+                  {t('common.close')}
                 </button>
                 <button
                   className="bg-yellow-400 hover:bg-yellow-500 text-white text-sm font-medium py-1.5 px-5 rounded"
                   onClick={confirmDelete}
                 >
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             </div>

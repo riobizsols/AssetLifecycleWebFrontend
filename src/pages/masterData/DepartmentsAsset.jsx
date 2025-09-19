@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import useAuditLog from "../../hooks/useAuditLog";
 import { DEPARTMENTS_ASSET_APP_ID } from "../../constants/departmentsAssetAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const DepartmentsAsset = () => {
   const [departments, setDepartments] = useState([]);
@@ -28,6 +29,9 @@ const DepartmentsAsset = () => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(DEPARTMENTS_ASSET_APP_ID);
+  
+  // Language context
+  const { t } = useLanguage();
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
 
@@ -72,7 +76,7 @@ const DepartmentsAsset = () => {
   const handleAdd = async () => {
     setSubmitAttempted(true);
     if (!selectedDeptId || !selectedAssetTypeId) {
-      toast.error("Please select both department and asset type");
+      toast.error(t('departments.pleaseSelectBothDepartmentAndAssetType'));
       return;
     }
     
@@ -97,11 +101,11 @@ const DepartmentsAsset = () => {
       
       setSelectedAssetTypeId("");
       fetchDeptAssets();
-      toast.success(`"${selectedAssetTypeName}" added to "${selectedDeptName}" department`);
+      toast.success(t('departments.assetMappingAddedSuccessfully', { assetTypeName: selectedAssetTypeName, deptName: selectedDeptName }));
     } catch (err) {
       console.error("Failed to add asset", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`Failed to add asset: ${errorMessage}`);
+      toast.error(`${t('departments.failedToAddAsset')}: ${errorMessage}`);
     }
   };
 
@@ -138,11 +142,11 @@ const DepartmentsAsset = () => {
       
       setShowDeleteModal(false);
       fetchDeptAssets();
-      toast.success("Asset mapping removed successfully");
+      toast.success(t('departments.assetMappingRemovedSuccessfully'));
     } catch (err) {
       console.error("Failed to delete", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`Failed to remove asset mapping: ${errorMessage}`);
+      toast.error(`${t('departments.failedToRemoveAssetMapping')}: ${errorMessage}`);
     }
   };
 
@@ -160,19 +164,19 @@ const DepartmentsAsset = () => {
       {/* Department Dropdown */}
       <div className="bg-white rounded shadow mb-4">
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          Department Selection
+          {t('departments.departmentSelection')}
         </div>
         <div className="p-4 flex gap-4 items-center">
           <div className="flex flex-col">
             <label className="text-sm font-medium mb-1">
-              Department <span className="text-red-500">*</span>
+              {t('common.department')} <span className="text-red-500">*</span>
             </label>
             <select
               className={`border px-3 py-2 text-sm w-64 bg-white text-black focus:outline-none ${isFieldInvalid(selectedDeptId) ? 'border-red-500' : 'border-gray-300'}`}
               value={selectedDeptId}
               onChange={(e) => setSelectedDeptId(e.target.value)}
             >
-              <option value="">Select Department</option>
+              <option value="">{t('departments.selectDepartment')}</option>
               {departments.map((dept) => (
                 <option key={dept.dept_id} value={dept.dept_id}>
                   {dept.text}
@@ -185,12 +189,12 @@ const DepartmentsAsset = () => {
       {/* Add asset type Section */}
       <div className="bg-white rounded shadow mb-4">
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          Add Asset
+          {t('departments.addAsset')}
         </div>
         <div className="p-4 flex gap-4 items-center">
           <div className="flex flex-col w-64">
             <label className="text-sm font-medium mb-1">
-              Asset Type <span className="text-red-500">*</span>
+              {t('departments.assetType')} <span className="text-red-500">*</span>
             </label>
             {/* Custom Dropdown */}
             <div className="relative w-full">
@@ -203,10 +207,10 @@ const DepartmentsAsset = () => {
                 type="button"
               >
                 {selectedAssetTypeId
-                  ? assetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.text || "Select Asset Type"
+                  ? assetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.text || t('departments.selectAssetType')
                   : selectedDeptId
-                  ? "Select Asset Type"
-                  : "Select Department First"}
+                  ? t('departments.selectAssetType')
+                  : t('departments.selectDepartmentFirst')}
                 <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
               </button>
               {/* Dropdown List */}
@@ -220,7 +224,7 @@ const DepartmentsAsset = () => {
                   <input
                     type="text"
                     className="w-full border px-2 py-1 rounded text-sm"
-                    placeholder="Search Asset Types..."
+                    placeholder={t('departments.searchAssetTypes')}
                     value={searchAssetType}
                     onChange={e => setSearchAssetType(e.target.value)}
                     autoFocus
@@ -247,7 +251,7 @@ const DepartmentsAsset = () => {
                   dropdownRef.current.classList.add("hidden");
                   navigate("/master-data/asset-types");
                 }}>
-                  + Create New
+                  + {t('departments.createNew')}
                 </div>
               </div>
             </div>
@@ -257,7 +261,7 @@ const DepartmentsAsset = () => {
             onClick={handleAdd}
             disabled={!selectedDeptId || !selectedAssetTypeId}
           >
-            Add
+            {t('common.add')}
           </button>
         </div>
       </div>
@@ -269,7 +273,7 @@ const DepartmentsAsset = () => {
       >
         <div className="bg-white rounded shadow">
           <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-            Department–Asset Mappings
+            {t('departments.departmentAssetMappings')}
             <button onClick={toggleMaximize}>
               {isMaximized ? (
                 <Minimize className="text-[#0E2F4B]" size={18} />
@@ -280,10 +284,10 @@ const DepartmentsAsset = () => {
           </div>
           <div className="bg-[#0E2F4B] text-white text-sm">
             <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-              <div>ID</div>
-              <div>Department</div>
-              <div>Asset Type</div>
-              <div className="text-center">Actions</div>
+              <div>{t('departments.id')}</div>
+              <div>{t('common.department')}</div>
+              <div>{t('departments.assetType')}</div>
+              <div className="text-center">{t('common.actions')}</div>
             </div>
 
             <div
@@ -320,7 +324,7 @@ const DepartmentsAsset = () => {
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white w-[500px] rounded shadow-lg">
             <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-              <span>Confirm Delete</span>
+              <span>{t('departments.confirmDelete')}</span>
               <button
                 onClick={() => setShowDeleteModal(false)}
                 className="text-yellow-400 text-xl font-bold"
@@ -330,20 +334,20 @@ const DepartmentsAsset = () => {
             </div>
             <div className="h-[3px] bg-yellow-400" />
             <div className="px-6 py-6 text-center text-gray-800 text-sm">
-              Do you want to delete mapping <strong>{deleteId}</strong>?
+              {t('departments.doYouWantToDeleteMapping', { id: deleteId })}
             </div>
             <div className="flex justify-end gap-3 px-6 pb-6">
               <button
                 className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
                 onClick={() => setShowDeleteModal(false)}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 className="bg-yellow-400 hover:bg-yellow-500 text-white text-sm font-medium py-1.5 px-5 rounded"
                 onClick={handleDelete}
               >
-                Delete
+                {t('common.delete')}
               </button>
             </div>
           </div>

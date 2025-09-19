@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import useAuditLog from '../../hooks/useAuditLog';
 import { PRODSERV_APP_ID } from '../../constants/prodServAuditEvents';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 // Debug log to confirm component loaded
 console.log('DeleteConfirmModal imported:', DeleteConfirmModal);
@@ -30,6 +31,7 @@ const _borderBottom = 'border-b-2 border-[#FFC107]';
 
 export default function ProdServ() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [tab, setTab] = useState('product');
 
   // Initialize audit logging
@@ -228,10 +230,10 @@ export default function ProdServ() {
       // Update local state based on type
       if (itemToDelete.type === 'product') {
         setProducts(prev => prev.filter(p => (p.prod_serv_id || p.id) !== itemId));
-        toast.success('Product deleted successfully');
+        toast.success(t('prodServ.productDeletedSuccessfully'));
       } else {
         setServices(prev => prev.filter(s => (s.prod_serv_id || s.id) !== itemId));
-        toast.success('Service deleted successfully');
+        toast.success(t('prodServ.serviceDeletedSuccessfully'));
       }
 
       // Refresh the data after deletion
@@ -242,16 +244,16 @@ export default function ProdServ() {
 
     } catch (err) {
       console.error('Error deleting item:', err);
-      let errorMessage = 'Failed to delete item';
+      let errorMessage = t('prodServ.failedToDeleteItem');
       
       // Handle specific error cases
       if (err.response?.data?.code === '23503') {
         // Foreign key constraint error
-        errorMessage = `This ${itemToDelete.type} cannot be deleted because it is being used by other records.`;
+        errorMessage = t('prodServ.cannotDeleteBeingUsedByOtherRecords', { type: itemToDelete.type });
       } else if (err.response?.status === 404) {
-        errorMessage = `${itemToDelete.type === 'product' ? 'Product' : 'Service'} not found.`;
+        errorMessage = t('prodServ.itemNotFound', { type: itemToDelete.type === 'product' ? 'Product' : 'Service' });
       } else if (err.response?.status === 403) {
-        errorMessage = 'You do not have permission to delete this item.';
+        errorMessage = t('prodServ.noPermissionToDelete');
       } else {
         errorMessage = err.response?.data?.message || err.response?.data?.error || errorMessage;
       }
@@ -280,7 +282,7 @@ export default function ProdServ() {
       <div className='p-3'>
         <div className="max-w-7xl mx-auto bg-white rounded shadow-lg">
           <div className="bg-[#0E2F4B] text-white text-base font-semibold py-3 px-6 rounded-t flex items-center justify-center border-b-4 border-[#FFC107]">
-            {/* Product / Service */}
+            {t('prodServ.title')}
           </div>
           <div className="px-6 pt-6">
             {/* Tabs */}
@@ -289,13 +291,13 @@ export default function ProdServ() {
                 className={`${tabStyles.base} ${tab === 'product' ? tabStyles.active : tabStyles.inactive}`}
                 onClick={() => setTab('product')}
               >
-                Product Details
+                {t('prodServ.productDetails')}
               </div>
               <div
                 className={`${tabStyles.base} ${tab === 'service' ? tabStyles.active : tabStyles.inactive}`}
                 onClick={() => setTab('service')}
               >
-                Service Details
+                {t('prodServ.serviceDetails')}
               </div>
             </div>
 
@@ -306,7 +308,7 @@ export default function ProdServ() {
                 <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
                     <label className="text-xs mb-1">
-                      Asset Type <span className="text-red-500">*</span>
+                      {t('prodServ.assetType')} <span className="text-red-500">*</span>
                     </label>
                     {/* Product Form Asset Type Dropdown */}
                     <div className="relative w-64">
@@ -316,8 +318,8 @@ export default function ProdServ() {
                         onClick={() => setShowDropdownProduct((prev) => !prev)}
                       >
                         {productForm.assetType
-                          ? assetTypes.find((at) => at.asset_type_id === productForm.assetType)?.text || 'Select Asset Type'
-                          : 'Select Asset Type'}
+                          ? assetTypes.find((at) => at.asset_type_id === productForm.assetType)?.text || t('prodServ.selectAssetType')
+                          : t('prodServ.selectAssetType')}
                         <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
                       </button>
                       {showDropdownProduct && (
@@ -329,7 +331,7 @@ export default function ProdServ() {
                             <input
                               type="text"
                               className="w-full border px-2 py-1 rounded text-xs"
-                              placeholder="Search Asset Types..."
+                              placeholder={t('prodServ.searchAssetTypes')}
                               value={searchAssetTypeProduct}
                               onChange={e => setSearchAssetTypeProduct(e.target.value)}
                               autoFocus
@@ -356,26 +358,26 @@ export default function ProdServ() {
                   </div>
                   <div className="flex flex-col min-w-[140px]">
                     <label className="text-xs mb-1">
-                      Brand <span className="text-red-500">*</span>
+                      {t('prodServ.brand')} <span className="text-red-500">*</span>
                     </label>
                     {/* Product Form Brand Dropdown */}
                     <input 
                       className={`border rounded px-2 py-1 w-full ${isProductFieldInvalid(productForm.brand) ? 'border-red-500' : 'border-gray-300'}`}
                       value={productForm.brand} 
                       onChange={e => setProductForm(f => ({ ...f, brand: e.target.value }))} 
-                      placeholder="Enter Brand" 
+                      placeholder={t('prodServ.enterBrand')} 
                     />
                   </div>
                   <div className="flex flex-col min-w-[140px]">
                     <label className="text-xs mb-1">
-                      Model <span className="text-red-500">*</span>
+                      {t('prodServ.model')} <span className="text-red-500">*</span>
                     </label>
                     {/* Product Form Model Dropdown */}
                     <input 
                       className={`border rounded px-2 py-1 w-full ${isProductFieldInvalid(productForm.model) ? 'border-red-500' : 'border-gray-300'}`}
                       value={productForm.model} 
                       onChange={e => setProductForm(f => ({ ...f, model: e.target.value }))} 
-                      placeholder="Enter Model" 
+                      placeholder={t('prodServ.enterModel')} 
                     />
                   </div>
                   <button
@@ -383,7 +385,7 @@ export default function ProdServ() {
                     onClick={handleProductAdd}
                     type="button"
                   >
-                    Add
+                    {t('prodServ.add')}
                   </button>
                 </div>
                 {/* Product List */}
@@ -391,7 +393,7 @@ export default function ProdServ() {
                   className={`bg-white rounded shadow mb-8 transition-all duration-300 ${isProductTableMaximized ? 'fixed inset-0 z-50 p-6 m-6 overflow-auto' : ''}`}
                 >
                   <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-                    Product List
+                    {t('prodServ.productList')}
                     <button onClick={() => setIsProductTableMaximized((prev) => !prev)}>
                       {isProductTableMaximized ? (
                         <Minimize className="text-[#0E2F4B]" size={18} />
@@ -402,7 +404,7 @@ export default function ProdServ() {
                   </div>
                   <div className="p-4">
                     <div className="flex items-center mb-2">
-                      <label className="text-xs mr-2">Asset Type</label>
+                      <label className="text-xs mr-2">{t('prodServ.assetType')}</label>
                       {/* Product Filter Asset Type Dropdown */}
                       <div className="relative w-64">
                         <button
@@ -411,8 +413,8 @@ export default function ProdServ() {
                           onClick={() => setShowDropdownProductFilter((prev) => !prev)}
                         >
                           {productFilter
-                            ? assetTypes.find((at) => at.asset_type_id === productFilter)?.text || 'All Asset Types'
-                            : 'All Asset Types'}
+                            ? assetTypes.find((at) => at.asset_type_id === productFilter)?.text || t('prodServ.allAssetTypes')
+                            : t('prodServ.allAssetTypes')}
                           <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
                         </button>
                         {showDropdownProductFilter && (
@@ -424,7 +426,7 @@ export default function ProdServ() {
                               <input
                                 type="text"
                                 className="w-full border px-2 py-1 rounded text-xs"
-                                placeholder="Search Asset Types..."
+                                placeholder={t('prodServ.searchAssetTypes')}
                                 value={searchAssetTypeProductFilter}
                                 onChange={e => setSearchAssetTypeProductFilter(e.target.value)}
                                 autoFocus
@@ -451,10 +453,10 @@ export default function ProdServ() {
                     </div>
                     <div className="bg-[#0E2F4B] text-white text-sm">
                       <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-                        <div>Asset Type</div>
-                        <div>Brand</div>
-                        <div>Model</div>
-                        <div className="text-center">Actions</div>
+                        <div>{t('prodServ.assetType')}</div>
+                        <div>{t('prodServ.brand')}</div>
+                        <div>{t('prodServ.model')}</div>
+                        <div className="text-center">{t('prodServ.actions')}</div>
                       </div>
                       <div>
                         {products
@@ -495,7 +497,7 @@ export default function ProdServ() {
                 <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
                     <label className="text-xs mb-1">
-                      Asset Type <span className="text-red-500">*</span>
+                      {t('prodServ.assetType')} <span className="text-red-500">*</span>
                     </label>
                     {/* Service Form Asset Type Dropdown */}
                     <div className="relative w-64">
@@ -505,8 +507,8 @@ export default function ProdServ() {
                         onClick={() => setShowDropdownService((prev) => !prev)}
                       >
                         {serviceForm.assetType
-                          ? assetTypes.find((at) => at.asset_type_id === serviceForm.assetType)?.text || 'Select Asset Type'
-                          : 'Select Asset Type'}
+                          ? assetTypes.find((at) => at.asset_type_id === serviceForm.assetType)?.text || t('prodServ.selectAssetType')
+                          : t('prodServ.selectAssetType')}
                         <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
                       </button>
                       {showDropdownService && (
@@ -518,7 +520,7 @@ export default function ProdServ() {
                             <input
                               type="text"
                               className="w-full border px-2 py-1 rounded text-xs"
-                              placeholder="Search Asset Types..."
+                              placeholder={t('prodServ.searchAssetTypes')}
                               value={searchAssetTypeService}
                               onChange={e => setSearchAssetTypeService(e.target.value)}
                               autoFocus
@@ -545,13 +547,13 @@ export default function ProdServ() {
                   </div>
                   <div className="flex flex-col min-w-[140px]">
                     <label className="text-xs mb-1">
-                      Description <span className="text-red-500">*</span>
+                      {t('prodServ.description')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       className={`border rounded px-2 py-1 w-full ${isServiceFieldInvalid(serviceForm.description) ? 'border-red-500' : 'border-gray-300'}`}
                       value={serviceForm.description}
                       onChange={e => setServiceForm(f => ({ ...f, description: e.target.value }))}
-                      placeholder="Enter Description"
+                      placeholder={t('prodServ.enterDescription')}
                     />
                   </div>
                   <button
@@ -559,7 +561,7 @@ export default function ProdServ() {
                     onClick={handleServiceAdd}
                     type="button"
                   >
-                    Add
+                    {t('prodServ.add')}
                   </button>
                 </div>
                 {/* Service List */}
@@ -567,7 +569,7 @@ export default function ProdServ() {
                   className={`bg-white rounded shadow mb-8 transition-all duration-300 ${isServiceTableMaximized ? 'fixed inset-0 z-50 p-6 m-6 overflow-auto' : ''}`}
                 >
                   <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-                    Service List
+                    {t('prodServ.serviceList')}
                     <button onClick={() => setIsServiceTableMaximized((prev) => !prev)}>
                       {isServiceTableMaximized ? (
                         <Minimize className="text-[#0E2F4B]" size={18} />
@@ -578,7 +580,7 @@ export default function ProdServ() {
                   </div>
                   <div className="p-4">
                     <div className="flex items-center mb-2">
-                      <label className="text-xs mr-2">Asset Type</label>
+                      <label className="text-xs mr-2">{t('prodServ.assetType')}</label>
                       {/* Service Filter Asset Type Dropdown */}
                       <div className="relative w-64">
                         <button
@@ -587,8 +589,8 @@ export default function ProdServ() {
                           onClick={() => setShowDropdownServiceFilter((prev) => !prev)}
                         >
                           {serviceFilter
-                            ? assetTypes.find((at) => at.asset_type_id === serviceFilter)?.text || 'All Asset Types'
-                            : 'All Asset Types'}
+                            ? assetTypes.find((at) => at.asset_type_id === serviceFilter)?.text || t('prodServ.allAssetTypes')
+                            : t('prodServ.allAssetTypes')}
                           <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
                         </button>
                         {showDropdownServiceFilter && (
@@ -600,7 +602,7 @@ export default function ProdServ() {
                               <input
                                 type="text"
                                 className="w-full border px-2 py-1 rounded text-xs"
-                                placeholder="Search Asset Types..."
+                                placeholder={t('prodServ.searchAssetTypes')}
                                 value={searchAssetTypeServiceFilter}
                                 onChange={e => setSearchAssetTypeServiceFilter(e.target.value)}
                                 autoFocus
@@ -627,9 +629,9 @@ export default function ProdServ() {
                     </div>
                     <div className="bg-[#0E2F4B] text-white text-sm">
                       <div className="grid grid-cols-3 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-                        <div>Asset Type</div>
-                        <div>Description</div>
-                        <div className="text-center">Actions</div>
+                        <div>{t('prodServ.assetType')}</div>
+                        <div>{t('prodServ.description')}</div>
+                        <div className="text-center">{t('prodServ.actions')}</div>
                       </div>
                       <div>
                         {services
@@ -673,8 +675,8 @@ export default function ProdServ() {
         onConfirm={handleDeleteConfirm}
         message={
           itemToDelete?.type === 'product'
-            ? `Are you sure you want to delete product: ${itemToDelete?.brand} ${itemToDelete?.model}?`
-            : `Are you sure you want to delete service: ${itemToDelete?.description}?`
+            ? t('prodServ.areYouSureDeleteProduct', { brand: itemToDelete?.brand, model: itemToDelete?.model })
+            : t('prodServ.areYouSureDeleteService', { description: itemToDelete?.description })
         }
       />
 
@@ -684,7 +686,7 @@ export default function ProdServ() {
           <div className="bg-white w-[600px] rounded shadow-lg">
             {/* Header */}
             <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-              <span>Cannot Delete - Dependencies Found</span>
+              <span>{t('prodServ.cannotDeleteDependenciesFound')}</span>
               <button
                 onClick={() => {
                   setShowDependencyModal(false);
@@ -704,7 +706,7 @@ export default function ProdServ() {
             <div className="px-6 py-4">
               <div className="mb-4">
                 <p className="text-red-600 font-medium mb-2">
-                  This {itemToDelete?.type} cannot be deleted because it is being used by:
+                  {t('prodServ.cannotDeleteBeingUsed', { type: itemToDelete?.type })}
                 </p>
                 <ul className="list-disc pl-5 text-gray-700">
                   {dependencies?.vendors.map((vendor, index) => (
@@ -715,11 +717,11 @@ export default function ProdServ() {
 
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
                 <p className="text-sm text-yellow-700">
-                  <span className="font-bold">Options:</span>
+                  <span className="font-bold">{t('prodServ.options')}:</span>
                   <br />
-                  1. Remove this {itemToDelete?.type} from all vendors first and then delete
+                  1. {t('prodServ.removeFromVendorsFirst', { type: itemToDelete?.type })}
                   <br />
-                  2. View the vendors using this {itemToDelete?.type} and manage their assignments
+                  2. {t('prodServ.viewVendorsManageAssignments', { type: itemToDelete?.type })}
                 </p>
               </div>
 
@@ -734,7 +736,7 @@ export default function ProdServ() {
                       await navigate('/master-data/vendors');
                       
                       // Show toast after navigation
-                      toast(`Please remove the ${itemToDelete?.type} from the listed vendors first`, {
+                      toast(t('prodServ.pleaseRemoveFromVendorsFirst', { type: itemToDelete?.type }), {
                         duration: 5000,
                         icon: 'ℹ️'
                       });
@@ -742,13 +744,13 @@ export default function ProdServ() {
                       console.log('Navigation completed');
                     } catch (error) {
                       console.error('Navigation error:', error);
-                      toast.error('Failed to navigate to vendors page. Please try again.');
+                      toast.error(t('prodServ.failedToNavigateToVendors'));
                     }
                   }}
                   className="w-full text-left px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded flex items-center gap-2"
                 >
-                  <span>➡️ Go to Vendor Management</span>
-                  <span className="text-sm text-blue-600">(to remove associations)</span>
+                  <span>➡️ {t('prodServ.goToVendorManagement')}</span>
+                  <span className="text-sm text-blue-600">{t('prodServ.toRemoveAssociations')}</span>
                 </button>
               </div>
             </div>
@@ -763,7 +765,7 @@ export default function ProdServ() {
                   _setDeleteOption('');
                 }}
               >
-                Close
+                {t('prodServ.close')}
               </button>
             </div>
           </div>

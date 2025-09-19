@@ -5,6 +5,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -14,6 +15,7 @@ export default function Login() {
 
   const navigate = useNavigate();
   const { isAuthenticated, login } = useAuthStore();
+  const { t } = useLanguage();
   
   // Audit logging for login
   const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.LOGIN);
@@ -71,7 +73,7 @@ export default function Login() {
       <div className="w-full md:w-1/2 flex items-center justify-center p-6">
         <div className="w-full max-w-md bg-white p-8 rounded-lg shadow">
           <h2 className="text-2xl font-semibold mb-6 text-black">
-            Welcome back !
+            {t('auth.welcomeBack')}
           </h2>
 
           {error && <p className="text-red-600 mb-4">{error}</p>}
@@ -82,14 +84,14 @@ export default function Login() {
                 htmlFor="email"
                 className="block text-sm font-semibold text-gray-700"
               >
-                Email<span className="text-red-600">*</span>
+                {t('auth.email')}<span className="text-red-600">*</span>
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 required
-                placeholder="Enter your mail address"
+                placeholder={t('auth.email')}
                 value={form.email}
                 onChange={handleChange}
                 className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]"
@@ -101,7 +103,7 @@ export default function Login() {
                 htmlFor="password"
                 className="block text-sm font-semibold text-gray-700"
               >
-                Password<span className="text-red-600"> *</span>
+                {t('auth.password')}<span className="text-red-600"> *</span>
               </label>
 
               <div className="relative">
@@ -110,7 +112,7 @@ export default function Login() {
                   name="password"
                   type={show ? "text" : "password"}
                   required
-                  placeholder="Enter password"
+                  placeholder={t('auth.password')}
                   value={form.password}
                   onChange={handleChange}
                   className="mt-1 w-full px-3 py-2 pr-10 border rounded-md shadow-sm border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]"
@@ -130,7 +132,7 @@ export default function Login() {
               onClick={() => navigate("/forgot-password")}
             >
               <button type="button" className="text-[#0E2F4B] hover:underline">
-                Forgot your password ?
+                {t('auth.forgotPassword')}
               </button>
             </div>
 
@@ -139,7 +141,7 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-[#0E2F4B] text-white py-2 rounded-md hover:bg-[#123b5d] transition"
             >
-              {loading ? "Logging in..." : "Log In"}
+              {loading ? t('common.loading') : t('auth.login')}
             </button>
           </form>
         </div>

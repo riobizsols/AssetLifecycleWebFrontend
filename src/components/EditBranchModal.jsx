@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
+  const { t } = useLanguage();
+  
   const [formData, setFormData] = useState({
     text: '',
     city: '',
@@ -31,7 +34,7 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
     
     // Validate
     if (!formData.text || !formData.city || !formData.branch_code) {
-      toast.error('All fields are required');
+      toast.error(t('branches.allFieldsRequired'));
       return;
     }
 
@@ -45,7 +48,7 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
       <div className="bg-white w-[500px] rounded shadow-lg">
         {/* Header */}
         <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-          <span>Edit Branch</span>
+          <span>{t('branches.editBranch')}</span>
           <button
             onClick={onClose}
             className="text-yellow-400 text-xl font-bold"
@@ -62,7 +65,7 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Branch Name
+                {t('branches.branchName')}
               </label>
               <input
                 type="text"
@@ -70,13 +73,13 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
                 value={formData.text}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border rounded text-sm"
-                placeholder="Enter branch name"
+                placeholder={t('branches.enterBranchName')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                City
+                {t('branches.city')}
               </label>
               <input
                 type="text"
@@ -84,13 +87,13 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
                 value={formData.city}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border rounded text-sm"
-                placeholder="Enter city"
+                placeholder={t('branches.enterCity')}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Branch Code
+                {t('branches.branchCode')}
               </label>
               <input
                 type="text"
@@ -98,7 +101,7 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
                 value={formData.branch_code}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border rounded text-sm"
-                placeholder="Enter branch code"
+                placeholder={t('branches.enterBranchCode')}
               />
             </div>
           </div>
@@ -110,13 +113,13 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
               onClick={onClose}
               className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="bg-[#ffc107] hover:bg-[#e0a800] text-white text-sm font-medium py-1.5 px-5 rounded"
             >
-              Update
+              {t('common.update')}
             </button>
           </div>
         </form>

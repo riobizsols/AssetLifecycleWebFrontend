@@ -3,8 +3,10 @@ import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import AssetAssignmentList from "../components/assetAssignment/AssetAssignmentList";
 import AssetAssignmentHistory from "../components/assetAssignment/AssetAssignmentHistory";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const EmployeeWiseAssetAssignment = () => {
+  const { t } = useLanguage();
   const [departments, setDepartments] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -24,7 +26,7 @@ const EmployeeWiseAssetAssignment = () => {
       setDepartments(formattedDepts);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error("Failed to fetch departments");
+      toast.error(t('departments.failedToFetchDepartments'));
     }
   };
 
@@ -48,7 +50,7 @@ const EmployeeWiseAssetAssignment = () => {
       setSelectedEmployee(null); // Reset selected employee when department changes
     } catch (err) {
       console.error("Failed to fetch employees", err);
-      toast.error("Failed to fetch employees");
+      toast.error(t('employees.failedToFetchEmployees'));
       setEmployees([]);
       setSelectedEmployee(null);
     }
@@ -67,7 +69,7 @@ const EmployeeWiseAssetAssignment = () => {
       }
     } catch (err) {
       console.error("Failed to fetch assignments", err);
-      toast.error("Failed to fetch asset list");
+      toast.error(t('departments.failedToFetchAssetList'));
     }
   };
                   
@@ -117,7 +119,7 @@ const EmployeeWiseAssetAssignment = () => {
   return (
       <div className="bg-white rounded shadow mb-4">
         <AssetAssignmentList
-          title="Employee Assets List"
+          title={t('employees.employeeAssetsList')}
           entityType="employee"
           entities={employees}
           selectedEntity={selectedEmployee}

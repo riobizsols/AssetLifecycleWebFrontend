@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { VENDORS_APP_ID } from "../../constants/vendorsAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const Vendors = () => {
   const navigate = useNavigate();
@@ -33,30 +34,34 @@ const Vendors = () => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(VENDORS_APP_ID);
+  
+  // Language context
+  const { t } = useLanguage();
 
-  const [columns] = useState([
-    { label: "Vendor ID", name: "vendor_id", visible: true },
-    { label: "Vendor Name", name: "vendor_name", visible: true },
-    { label: "Company", name: "company_name", visible: true },
-    { label: "GST Number", name: "gst_number", visible: true },
-    { label: "CIN Number", name: "cin_number", visible: true },
-    { label: "Company Email", name: "company_email", visible: true },
-    { label: "Contact Person", name: "contact_person_name", visible: true },
-    { label: "Contact Email", name: "contact_person_email", visible: true },
-    { label: "Contact Number", name: "contact_person_number", visible: true },
-    { label: "Address Line 1", name: "address_line1", visible: false },
-    { label: "Address Line 2", name: "address_line2", visible: false },
-    { label: "City", name: "city", visible: false },
-    { label: "State", name: "state", visible: false },
-    { label: "Pincode", name: "pincode", visible: false },
-    { label: "Ext ID", name: "ext_id", visible: false },
-    { label: "Organization ID", name: "org_id", visible: false },
-    { label: "Is Active", name: "int_status", visible: true },
-    { label: "Created By", name: "created_by", visible: false },
-    { label: "Created On", name: "created_on", visible: false },
-    { label: "Changed By", name: "changed_by", visible: false },
-    { label: "Changed On", name: "changed_on", visible: false },
-  ]);
+  // Create columns with translations
+  const columns = [
+    { label: t('vendors.vendorId'), name: "vendor_id", visible: true },
+    { label: t('vendors.vendorName'), name: "vendor_name", visible: true },
+    { label: t('vendors.company'), name: "company_name", visible: true },
+    { label: t('vendors.gstNumber'), name: "gst_number", visible: true },
+    { label: t('vendors.cinNumber'), name: "cin_number", visible: true },
+    { label: t('vendors.companyEmail'), name: "company_email", visible: true },
+    { label: t('vendors.contactPerson'), name: "contact_person_name", visible: true },
+    { label: t('vendors.contactEmail'), name: "contact_person_email", visible: true },
+    { label: t('vendors.contactNumber'), name: "contact_person_number", visible: true },
+    { label: t('vendors.addressLine1'), name: "address_line1", visible: false },
+    { label: t('vendors.addressLine2'), name: "address_line2", visible: false },
+    { label: t('vendors.city'), name: "city", visible: false },
+    { label: t('vendors.state'), name: "state", visible: false },
+    { label: t('vendors.pincode'), name: "pincode", visible: false },
+    { label: t('vendors.extId'), name: "ext_id", visible: false },
+    { label: t('vendors.organizationId'), name: "org_id", visible: false },
+    { label: t('vendors.isActive'), name: "int_status", visible: true },
+    { label: t('vendors.createdBy'), name: "created_by", visible: false },
+    { label: t('vendors.createdOn'), name: "created_on", visible: false },
+    { label: t('vendors.changedBy'), name: "changed_by", visible: false },
+    { label: t('vendors.changedOn'), name: "changed_on", visible: false },
+  ];
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -71,7 +76,7 @@ const Vendors = () => {
         setData(formattedData);
       } catch (error) {
         console.error("Error fetching vendors:", error);
-        toast.error("Failed to fetch vendors");
+        toast.error(t('vendors.failedToFetchVendors'));
       }
     };
 
@@ -172,11 +177,11 @@ const Vendors = () => {
         prev.filter((vendor) => !selectedRows.includes(vendor.vendor_id))
       );
       setSelectedRows([]);
-      toast.success(`${selectedRows.length} vendor(s) deleted successfully`);
+      toast.success(t('vendors.vendorsDeletedSuccessfully', { count: selectedRows.length }));
       return true; // Return true to indicate successful deletion
     } catch (error) {
       console.error("Error deleting vendors:", error);
-      const errorMessage = error.response?.data?.message || "Failed to delete vendors";
+      const errorMessage = error.response?.data?.message || t('vendors.failedToDeleteVendors');
       
       // If there are constraint violation details, show them
       if (error.response?.data?.details) {
@@ -240,10 +245,10 @@ const Vendors = () => {
       
       setShowEditModal(false);
       setEditingVendor(null);
-      toast.success("Vendor updated successfully");
+      toast.success(t('vendors.vendorUpdatedSuccessfully'));
     } catch (error) {
       console.error("Error updating vendor:", error);
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || "Failed to update vendor";
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || t('vendors.failedToUpdateVendor');
       toast.error(errorMessage);
     }
   };
@@ -260,13 +265,13 @@ const Vendors = () => {
           action: 'Vendors Data Downloaded'
         });
         
-        toast('Vendors exported successfully', { icon: '✅' });
+        toast(t('vendors.vendorsExportedSuccessfully'), { icon: '✅' });
       } else {
-        throw new Error('Export failed');
+        throw new Error(t('vendors.exportFailed'));
       }
     } catch (error) {
       console.error('Error downloading vendors:', error);
-      toast('Failed to export vendors', { icon: '❌' });
+      toast(t('vendors.failedToExportVendors'), { icon: '❌' });
     }
   };
 
@@ -274,8 +279,8 @@ const Vendors = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'int_status' ? [
-      { label: "Active", value: "Active" },
-      { label: "Inactive", value: "Inactive" }
+      { label: t('vendors.active'), value: "Active" },
+      { label: t('vendors.inactive'), value: "Inactive" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));

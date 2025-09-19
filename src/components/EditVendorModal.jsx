@@ -3,8 +3,11 @@ import { createPortal } from 'react-dom';
 import { toast } from 'react-hot-toast';
 import API from '../lib/axios';
 import { generateUUID } from '../utils/uuid';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
+  const { t } = useLanguage();
+  
   const [formData, setFormData] = useState({
     vendor_name: '',
     company_name: '',
@@ -119,7 +122,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
+      toast.error(t('vendors.failedToLoadDocumentTypes'));
       setDocumentTypes([]);
     }
   };
@@ -138,30 +141,30 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
     
     // Validate required fields
     if (!formData.vendor_name || !formData.company_name || !formData.company_email) {
-      toast.error('Vendor name, company name and company email are required');
+      toast.error(t('vendors.vendorNameCompanyNameEmailRequired'));
       return;
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.company_email)) {
-      toast.error('Please enter a valid company email');
+      toast.error(t('vendors.pleaseEnterValidCompanyEmail'));
       return;
     }
     if (formData.contact_person_email && !emailRegex.test(formData.contact_person_email)) {
-      toast.error('Please enter a valid contact person email');
+      toast.error(t('vendors.pleaseEnterValidContactPersonEmail'));
       return;
     }
 
     // Validate phone number format
     if (formData.contact_person_number && !/^\d{10}$/.test(formData.contact_person_number)) {
-      toast.error('Contact number should be 10 digits');
+      toast.error(t('vendors.contactNumberShouldBe10Digits'));
       return;
     }
 
     // Validate pincode format
     if (formData.pincode && !/^\d{6}$/.test(formData.pincode)) {
-      toast.error('Pincode should be 6 digits');
+      toast.error(t('vendors.pincodeShouldBe6Digits'));
       return;
     }
 
@@ -171,20 +174,20 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
   // Handle document uploads
   const handleUploadDocuments = async () => {
     if (uploadRows.length === 0) {
-      toast.error('Add at least one file');
+      toast.error(t('vendors.addAtLeastOneFile'));
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error('Select document type and choose a file for all rows');
+        toast.error(t('vendors.selectDocumentTypeAndFile'));
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+        toast.error(t('vendors.enterCustomNameForDocuments', { type: selectedDocType.text }));
         return;
       }
     }
@@ -225,11 +228,11 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
         const arr = Array.isArray(res.data?.documents) ? res.data.documents : [];
         setDocs(arr);
       } else {
-        toast.error('Failed to upload any files');
+        toast.error(t('vendors.failedToUploadAnyFiles'));
       }
     } catch (err) {
       console.error('Upload process error:', err);
-      toast.error('Upload process failed');
+      toast.error(t('vendors.uploadProcessFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -303,7 +306,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
       }
     } catch (err) {
       console.error(`Failed to ${action} document:`, err);
-      toast.error(`Failed to ${action} document`);
+      toast.error(t('vendors.failedToActionDocument', { action }));
     }
     setActiveDropdown(null);
   };
@@ -315,7 +318,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
       <div className="bg-white w-[1000px] rounded shadow-lg max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t sticky top-0">
-          <span>Edit Vendor</span>
+          <span>{t('vendors.editVendor')}</span>
           <button
             onClick={onClose}
             className="text-yellow-400 text-xl font-bold"
@@ -334,7 +337,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Vendor Name <span className="text-red-500">*</span>
+                  {t('vendors.vendorName')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -348,7 +351,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Name <span className="text-red-500">*</span>
+                  {t('vendors.company')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -362,7 +365,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Company Email <span className="text-red-500">*</span>
+                  {t('vendors.companyEmail')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -376,7 +379,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  GST Number
+                  {t('vendors.gstNumber')}
                 </label>
                 <input
                   type="text"
@@ -389,7 +392,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  CIN Number
+                  {t('vendors.cinNumber')}
                 </label>
                 <input
                   type="text"
@@ -402,7 +405,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
+                  {t('vendors.status')}
                 </label>
                 <select
                   name="int_status"
@@ -417,7 +420,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pincode
+                  {t('vendors.pincode')}
                 </label>
                 <input
                   type="text"
@@ -433,7 +436,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Person Name (Optional)
+                  {t('vendors.contactPersonNameOptional')}
                 </label>
                 <input
                   type="text"
@@ -446,7 +449,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Person Email (Optional)
+                  {t('vendors.contactPersonEmailOptional')}
                 </label>
                 <input
                   type="email"
@@ -459,7 +462,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Number (Optional)
+                  {t('vendors.contactNumberOptional')}
                 </label>
                 <input
                   type="text"
@@ -472,7 +475,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address Line 1
+                  {t('vendors.addressLine1')}
                 </label>
                 <input
                   type="text"
@@ -485,7 +488,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address Line 2
+                  {t('vendors.addressLine2')}
                 </label>
                 <input
                   type="text"
@@ -498,7 +501,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  City
+                  {t('vendors.city')}
                 </label>
                 <input
                   type="text"
@@ -511,7 +514,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  State
+                  {t('vendors.state')}
                 </label>
                 <input
                   type="text"
@@ -533,38 +536,38 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
               onClick={onClose}
               className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="bg-[#ffc107] hover:bg-[#e0a800] text-white text-sm font-medium py-1.5 px-5 rounded"
             >
-              Update
+              {t('common.update')}
             </button>
           </div>
         </form>
 
         {/* Document Management Section - Outside Form */}
         <div className="border-t pt-6 px-6 pb-6">
-          <div className="text-md font-medium text-gray-900 mb-4">Vendor Documents</div>
+          <div className="text-md font-medium text-gray-900 mb-4">{t('vendors.vendorDocuments')}</div>
           
           {/* Active Documents */}
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Active Documents</h3>
+            <h3 className="text-sm font-medium text-gray-900 mb-3">{t('vendors.activeDocuments')}</h3>
             <div className="border rounded-lg overflow-hidden bg-white">
               {docsLoading ? (
                 <div className="p-4 text-sm text-gray-500 text-center">Loading documents...</div>
               ) : docs.length === 0 ? (
-                <div className="p-4 text-sm text-gray-500 text-center">No active documents found.</div>
+                <div className="p-4 text-sm text-gray-500 text-center">{t('vendors.noActiveDocumentsFound')}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left font-medium text-gray-900">Type</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-900">File Name</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-900">Status</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-900">Actions</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">{t('vendors.type')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">{t('vendors.fileName')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">{t('vendors.status')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-gray-900">{t('vendors.actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -608,7 +611,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
           {/* Upload New Documents */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-medium text-gray-900">Upload New Documents</h3>
+              <h3 className="text-sm font-medium text-gray-900">{t('vendors.uploadNewDocuments')}</h3>
               <button 
                 type="button" 
                 className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
@@ -617,22 +620,22 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                 <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Add Document
+                {t('vendors.addDocument')}
               </button>
             </div>
             
             <div className="space-y-3">
-              {uploadRows.length === 0 && <div className="text-sm text-gray-500">No new files added.</div>}
+              {uploadRows.length === 0 && <div className="text-sm text-gray-500">{t('vendors.noNewFilesAdded')}</div>}
               {uploadRows.map(r => (
                 <div key={r.id} className="grid grid-cols-12 gap-3 items-start bg-white border rounded p-3">
                   <div className="col-span-3">
-                    <label className="block text-xs font-medium mb-1">Document Type</label>
+                    <label className="block text-xs font-medium mb-1">{t('vendors.documentType')}</label>
                     <select 
                       className="w-full border rounded h-[38px] px-2 text-sm" 
                       value={r.type} 
                       onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:e.target.value}:x))}
                     >
-                      <option value="">Select type</option>
+                      <option value="">{t('vendors.selectType')}</option>
                       {documentTypes.map(docType => (
                         <option key={docType.id} value={docType.id}>
                           {docType.text}
@@ -660,7 +663,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                     const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName ? 'col-span-4' : 'col-span-7';
                   })()}>
-                    <label className="block text-xs font-medium mb-1">File (Max 15MB)</label>
+                    <label className="block text-xs font-medium mb-1">{t('vendors.fileMax15MB')}</label>
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
                         <input
@@ -669,7 +672,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                           onChange={e => {
                             const f = e.target.files?.[0] || null;
                             if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                              toast.error('File size exceeds 15MB limit');
+                              toast.error(t('vendors.fileSizeExceeds15MB'));
                               e.target.value = '';
                               return;
                             }
@@ -686,7 +689,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                           </svg>
                           <span className="truncate max-w-[200px] inline-block">
-                            {r.file ? r.file.name : 'Choose file'}
+                            {r.file ? r.file.name : t('vendors.chooseFile')}
                           </span>
                         </label>
                       </div>
@@ -705,7 +708,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                         onClick={() => setUploadRows(prev => prev.filter(x => x.id!==r.id))}
                         className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                       >
-                        Remove
+                        {t('vendors.remove')}
                       </button>
                     </div>
                   </div>
@@ -740,7 +743,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                       <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      Upload All Files
+                      {t('vendors.uploadAllFiles')}
                     </>
                   )}
                 </button>
@@ -751,13 +754,13 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
           {/* Archived Documents Section */}
           <div className="mt-6 border-t pt-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-900">Archived Documents</h3>
+              <h3 className="text-sm font-medium text-gray-900">{t('vendors.archivedDocuments')}</h3>
               <button
                 type="button"
                 onClick={() => setShowArchived(!showArchived)}
                 className="px-4 py-2 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 transition-colors"
               >
-                {showArchived ? 'Hide Archived' : 'Show Archived'} ({archivedDocs.length})
+                {showArchived ? t('vendors.hideArchived') : t('vendors.showArchived')} ({archivedDocs.length})
               </button>
             </div>
             {showArchived && (
@@ -771,10 +774,10 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                     <table className="w-full text-sm">
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium text-gray-900">Type</th>
-                          <th className="px-4 py-3 text-left font-medium text-gray-900">File Name</th>
-                          <th className="px-4 py-3 text-left font-medium text-gray-900">Status</th>
-                          <th className="px-4 py-3 text-left font-medium text-gray-900">Actions</th>
+                          <th className="px-4 py-3 text-left font-medium text-gray-900">{t('vendors.type')}</th>
+                          <th className="px-4 py-3 text-left font-medium text-gray-900">{t('vendors.fileName')}</th>
+                          <th className="px-4 py-3 text-left font-medium text-gray-900">{t('vendors.status')}</th>
+                          <th className="px-4 py-3 text-left font-medium text-gray-900">{t('vendors.actions')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -791,7 +794,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                             <td className="px-4 py-3 text-gray-900">{doc.file_name || 'document'}</td>
                             <td className="px-4 py-3">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                Archived
+                                {t('vendors.archived')}
                               </span>
                             </td>
                             <td className="px-4 py-3">
@@ -843,7 +846,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
-                      View
+                      {t('vendors.view')}
                     </button>
                     <button
                       onClick={() => handleDocumentAction(doc, 'download')}
@@ -852,7 +855,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                       <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      Download
+                      {t('vendors.download')}
                     </button>
                     {isArchived ? (
                       <button
@@ -862,7 +865,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                         <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        Unarchive
+                        {t('vendors.unarchive')}
                       </button>
                     ) : (
                       <button

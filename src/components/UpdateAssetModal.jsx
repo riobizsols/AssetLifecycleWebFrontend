@@ -8,10 +8,26 @@ import useAuditLog from '../hooks/useAuditLog';
 import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
 import { generateUUID } from '../utils/uuid';
 import { useAppData } from '../contexts/AppDataContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
+  const { t } = useLanguage();
+  
+  // Translate property names
+  const translatePropertyName = (propertyName) => {
+    const propertyMap = {
+      'Brand': t('assets.brand'),
+      'Printer Type': t('assets.printerType'),
+      'Ram Size': t('assets.ramSize'),
+      'Template': t('assets.template'),
+      'Connectivity': t('assets.connectivity'),
+      'Type': t('assets.type'),
+      'IP_ADDRESS': 'IP_ADDRESS', // Keep technical terms as-is
+    };
+    return propertyMap[propertyName] || propertyName;
+  };
   
   const { user } = useAuthStore();
   const { 
@@ -147,7 +163,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   useEffect(() => {
     if (users.length > 0) {
       const userOptions = [
-        { value: '', label: 'Select User' },
+        { value: '', label: t('assets.selectUser') },
         ...users.map(user => ({
           value: user.user_id,
           label: user.full_name || user.email || `User ${user.user_id}`
@@ -502,7 +518,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         action: 'Asset Updated Successfully'
       });
       
-      toast.success('Asset updated successfully');
+      toast.success(t('assets.assetUpdatedSuccessfully'));
       onClose(true);
     } catch (err) {
       console.error('Error updating asset:', err);
@@ -601,14 +617,14 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-visible">
         <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
-          <h1 className="text-2xl font-semibold">Update Asset</h1>
+          <h1 className="text-2xl font-semibold">{t('assets.editAsset')}</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-visible">
           <div className="grid grid-cols-3 gap-6 mb-6">
             {/* Asset Type Dropdown */}
             <div>
-              <label className="block text-sm font-medium mb-1">Asset Type</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.assetType')}</label>
               <div className="relative w-full">
                 <button
                   type="button"
@@ -632,7 +648,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                       <input
                         type="text"
                         className="w-full border px-2 py-1 rounded text-xs"
-                        placeholder="Search by name or ID..."
+                        placeholder={t('assets.searchByNameOrId')}
                         value={searchAssetType}
                         onChange={e => setSearchAssetType(e.target.value)}
                         autoFocus
@@ -657,7 +673,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                             <span>{at.text}</span>
                             <span className="text-gray-500">
                               {at.asset_type_id} 
-                              {at.is_child ? ' (Child)' : ' (Parent)'}
+                              {at.is_child ? ` (${t('assets.child')})` : ` (${t('assets.parent')})`}
                             </span>
                           </div>
                         </div>
@@ -669,20 +685,20 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
             {/* Serial Number */}
             <div>
-              <label className="block text-sm font-medium mb-1">Serial Number</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.serialNumber')}</label>
               <input
                 type="text"
                 value={form.serialNumber}
                 onChange={(e) => setForm(prev => ({ ...prev, serialNumber: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter serial number"
+                placeholder={t('assets.enterSerialNumber')}
                 required
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.description')}</label>
               <input
                 type="text"
                 value={form.description}
@@ -694,7 +710,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
             {/* Purchase Cost */}
             <div>
-              <label className="block text-sm font-medium mb-1">Purchase Cost</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.purchaseCost')}</label>
               <input
                 type="number"
                 step="0.01"
@@ -708,7 +724,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
             {/* Purchase Date */}
             <div>
-              <label className="block text-sm font-medium mb-1">Purchase Date</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.purchaseDate')}</label>
               <input
                 type="date"
                 value={form.purchaseDate}
@@ -720,7 +736,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
             {/* Expiry Date */}
             <div>
-              <label className="block text-sm font-medium mb-1">Expiry Date</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.expiryDate')}</label>
               <input
                 type="date"
                 value={form.expiryDate}
@@ -731,7 +747,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
             {/* Warranty Period */}
             <div>
-              <label className="block text-sm font-medium mb-1">Warranty Period</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.warrantyPeriod')}</label>
               <input
                 type="text"
                 value={form.warrantyPeriod}
@@ -743,13 +759,13 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
             {/* Purchase By */}
             <div>
-              <label className="block text-sm font-medium mb-1">Purchase By</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.purchaseBy')}</label>
               <select
                 value={form.purchaseBy}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseBy: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Select User</option>
+                <option value="">{t('assets.selectUser')}</option>
                 {purchaseByOptions.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -760,7 +776,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
             {/* Purchase Supply */}
             <div>
-              <label className="block text-sm font-medium mb-1">Purchase Supply</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.purchaseSupply')}</label>
               <select
                 value={form.purchaseSupply}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseSupply: e.target.value, vendorId: e.target.value }))}
@@ -777,7 +793,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
             {/* Service Supply */}
             <div>
-              <label className="block text-sm font-medium mb-1">Service Supply</label>
+              <label className="block text-sm font-medium mb-1">{t('assets.serviceSupply')}</label>
               <select
                 value={form.serviceSupply}
                 onChange={(e) => setForm(prev => ({ ...prev, serviceSupply: e.target.value }))}
@@ -798,7 +814,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
             <div className="mt-6">
               <div className="border-b flex gap-8 mb-4">
                 <button type="button" className="text-base font-semibold border-b-2 border-[#0E2F4B] text-[#0E2F4B] px-4 py-2 bg-transparent">
-                  Asset Properties
+                  {t('assets.assetProperties')}
                 </button>
               </div>
               <div className="grid grid-cols-3 gap-6">
@@ -816,7 +832,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                   
                   return (
                     <div key={property.prop_id}>
-                      <label className="block text-sm mb-1 font-medium">{property.property}</label>
+                      <label className="block text-sm mb-1 font-medium">{translatePropertyName(property.property)}</label>
                       {hasValidValues ? (
                         // Show dropdown if there are valid values
                         <select
@@ -825,7 +841,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                           onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
                           className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown"
                         >
-                          <option value="">Select {property.property}</option>
+                          <option value="">{t('assets.select')} {translatePropertyName(property.property)}</option>
                           {property.values.map((value) => (
                             <option key={value.aplv_id} value={value.value}>
                               {value.value}
@@ -839,7 +855,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                           name={`property_${property.prop_id}`}
                           value={currentValue}
                           onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
-                          placeholder={`Enter ${property.property}`}
+                          placeholder={`${t('assets.enter')} ${translatePropertyName(property.property)}`}
                           className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9"
                         />
                       )}
@@ -852,21 +868,21 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
           {/* Attached Documents */}
           <div className="mt-4">
-            <div className="text-md font-semibold mb-2">Documents</div>
+            <div className="text-md font-semibold mb-2">{t('assets.documents')}</div>
             <div className="border rounded-lg bg-white mb-6 overflow-visible">
               {docsLoading ? (
                 <div className="p-4 text-sm text-gray-500">Loading documents…</div>
               ) : docs.length === 0 ? (
-                <div className="p-4 text-sm text-gray-500">No documents uploaded.</div>
+                <div className="p-4 text-sm text-gray-500">{t('assets.noDocumentsUploaded')}</div>
               ) : (
                 <div className="overflow-x-auto overflow-y-visible">
                   <table className="w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="text-left px-3 py-2">Type</th>
-                      <th className="text-left px-3 py-2">Name</th>
-                      <th className="text-left px-3 py-2">Status</th>
-                      <th className="text-left px-3 py-2">Actions</th>
+                      <th className="text-left px-3 py-2">{t('assets.type')}</th>
+                      <th className="text-left px-3 py-2">{t('assets.name')}</th>
+                      <th className="text-left px-3 py-2">{t('assets.status')}</th>
+                      <th className="text-left px-3 py-2">{t('common.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -926,13 +942,13 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
             {archivedDocs.length > 0 && (
               <div className="mt-6 border-t pt-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-md font-semibold text-gray-700">Archived Documents ({archivedDocs.length})</h3>
+                  <h3 className="text-md font-semibold text-gray-700">{t('assets.archivedDocuments')} ({archivedDocs.length})</h3>
                   <button
                     type="button"
                     onClick={() => setShowArchived(!showArchived)}
                     className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200 transition-colors flex items-center gap-2"
                   >
-                    {showArchived ? 'Hide' : 'Show'} Archived
+                    {showArchived ? t('common.hide') : t('common.show')} {t('common.archived')}
                     <svg className={`w-4 h-4 transition-transform ${showArchived ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -944,10 +960,10 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                     <table className="w-full text-sm">
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className="text-left px-3 py-2">Type</th>
-                          <th className="text-left px-3 py-2">Name</th>
-                          <th className="text-left px-3 py-2">Status</th>
-                          <th className="text-left px-3 py-2">Actions</th>
+                          <th className="text-left px-3 py-2">{t('assets.type')}</th>
+                          <th className="text-left px-3 py-2">{t('assets.name')}</th>
+                          <th className="text-left px-3 py-2">{t('assets.status')}</th>
+                          <th className="text-left px-3 py-2">{t('common.actions')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1002,7 +1018,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
             {/* Upload New Documents */}
             <div className="border-t pt-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-md font-medium text-gray-900">Upload New Documents</h3>
+                <h3 className="text-md font-medium text-gray-900">{t('assets.uploadNewDocuments')}</h3>
                 <button 
                   type="button" 
                   className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
@@ -1011,22 +1027,22 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                   <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Add Document
+                  {t('assets.addDocument')}
                 </button>
               </div>
               
               <div className="space-y-3">
-                {uploadRows.length === 0 && <div className="text-sm text-gray-500">No new files added.</div>}
+                {uploadRows.length === 0 && <div className="text-sm text-gray-500">{t('assets.noNewFilesAdded')}</div>}
                 {uploadRows.map(r => (
                   <div key={r.id} className="grid grid-cols-12 gap-3 items-start bg-white border rounded p-3">
                     <div className="col-span-3">
-                      <label className="block text-xs font-medium mb-1">Document Type</label>
+                      <label className="block text-xs font-medium mb-1">{t('assets.documentType')}</label>
                       <select 
                         className="w-full border rounded h-[38px] px-2 text-sm" 
                         value={r.type} 
                         onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:e.target.value}:x))}
                       >
-                        <option value="">Select type</option>
+                        <option value="">{t('assets.selectType')}</option>
                         {documentTypes.map(docType => (
                           <option key={docType.id} value={docType.id}>
                             {docType.text}
@@ -1054,7 +1070,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                       const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
                       return needsCustomName ? 'col-span-4' : 'col-span-7';
                     })()}>
-                      <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
+                      <label className="block text-xs font-medium mb-1">{t('assets.file')} ({t('assets.maxFileSize')})</label>
                       <div className="flex items-center gap-2">
                         <div className="relative flex-1">
                           <input
@@ -1080,7 +1096,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                             </svg>
                             <span className="truncate max-w-[200px] inline-block">
-                              {r.file ? r.file.name : 'Choose file'}
+                              {r.file ? r.file.name : t('assets.chooseFile')}
                             </span>
                           </label>
                         </div>
@@ -1099,7 +1115,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                           onClick={() => setUploadRows(prev => prev.filter(x => x.id!==r.id))}
                           className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                         >
-                          Remove
+                          {t('assets.remove')}
                         </button>
                       </div>
                     </div>
@@ -1134,7 +1150,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                         <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>
-                        Upload All Files
+                        {t('assets.uploadAllFiles')}
                       </>
                     )}
                   </button>
@@ -1158,7 +1174,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
-              QSN Print
+              {t('assets.qsnPrint')}
             </button>
             
             <div className="flex gap-3">
@@ -1168,14 +1184,14 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 disabled={isSubmitting}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? "Saving..." : "Save"}
+                {isSubmitting ? t('common.loading') : t('common.save')}
               </button>
             </div>
           </div>
@@ -1264,7 +1280,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">QSN Print</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('assets.qsnPrint')}</h3>
               <button
                 onClick={() => {
                   setShowQSNPrintModal(false);
@@ -1280,18 +1296,18 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
             <div className="mb-4">
               <div className="p-3 bg-gray-50 rounded-lg mb-4">
-                <span className="text-sm font-medium text-gray-700">Asset Serial Number:</span>
+                <span className="text-sm font-medium text-gray-700">{t('assets.assetSerialNumber')}</span>
                 <div className="text-lg font-mono text-gray-900 mt-1">{form.serialNumber}</div>
               </div>
               
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for QSN Print <span className="text-red-500">*</span>
+                {t('assets.reasonForQsnPrint')} <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={qsnPrintReason}
                 onChange={(e) => setQsnPrintReason(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
-                placeholder="Enter reason for printing QSN label..."
+                placeholder={t('assets.enterReasonForPrinting')}
                 rows={4}
                 required
               />
@@ -1306,7 +1322,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -1314,7 +1330,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                   if (isQSNPrintLoading) return; // Prevent multiple clicks
                   
                   if (!qsnPrintReason.trim()) {
-                    toast.error('Please enter a reason for QSN print');
+                    toast.error(t('assets.pleaseEnterReasonForQsn'));
                     return;
                   }
                   
@@ -1378,7 +1394,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                     Processing...
                   </span>
                 ) : (
-                  'Print QSN'
+                  t('assets.printQsn')
                 )}
               </button>
             </div>

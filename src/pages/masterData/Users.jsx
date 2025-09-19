@@ -10,6 +10,7 @@ import DeleteConfirmModal from "../../components/DeleteConfirmModal";
 import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { USERS_APP_ID } from "../../constants/usersAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const Users = () => {
   const navigate = useNavigate();
@@ -31,6 +32,9 @@ const Users = () => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(USERS_APP_ID);
+  
+  // Language context
+  const { t } = useLanguage();
   
   // State for edit modal
   const [showEditModal, setShowEditModal] = useState(false);
@@ -66,7 +70,7 @@ const Users = () => {
       setDepartments(res.data);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error("Failed to fetch departments");
+      toast.error(t('users.failedToFetchDepartments'));
     }
   };
 
@@ -85,7 +89,7 @@ const Users = () => {
         setData(formattedData);
       } catch (error) {
         console.error("Error fetching users:", error);
-        toast.error("Failed to fetch users");
+        toast.error(t('users.failedToFetchUsers'));
       }
     };
     fetchUsers();
@@ -174,7 +178,7 @@ const Users = () => {
 
   const handleDelete = async () => {
     if (selectedRows.length === 0) {
-      toast.error("Please select users to delete", {
+      toast.error(t('users.pleaseSelectUsersToDelete'), {
         duration: 3000,
         style: { backgroundColor: '#FEE2E2', color: '#DC2626' }
       });

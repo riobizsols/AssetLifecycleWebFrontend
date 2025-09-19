@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employee' }) => {
+  const { t } = useLanguage();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -46,14 +48,14 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employ
         setHistory(merged);
       })
       .catch(err => {
-        toast.error(`Failed to fetch ${type} assignment history`);
+        toast.error(t('employees.failedToFetchAssignmentHistory', { type }));
         setHistory([]);
       })
       .finally(() => setLoading(false));
   }, [employeeIntId, deptId, type]);
 
   const getTitle = () => {
-    return type === 'department' ? 'Department Asset Assignment History' : 'Asset Assignment History';
+    return type === 'department' ? t('employees.departmentAssetAssignmentHistory') : t('employees.assetAssignmentHistory');
   };
 
   return (
@@ -71,9 +73,9 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employ
         </div>
         <div style={{ maxHeight: '70vh', overflowY: 'auto' }} className="p-8 space-y-4">
             {loading ? (
-              <div className="text-center text-gray-500 py-8">Loading history...</div>
+              <div className="text-center text-gray-500 py-8">{t('employees.loadingHistory')}</div>
             ) : history.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">No assignment history found.</div>
+              <div className="text-center text-gray-500 py-8">{t('employees.noAssignmentHistoryFound')}</div>
             ) : (
               history.map((item, idx) => (
                 <div

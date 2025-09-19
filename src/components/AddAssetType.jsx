@@ -7,6 +7,7 @@ import SearchableDropdown from './ui/SearchableDropdown';
 import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const AddAssetType = () => {
   const navigate = useNavigate();
@@ -14,6 +15,9 @@ const AddAssetType = () => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSET_TYPES_APP_ID);
+  
+  // Language context
+  const { t } = useLanguage();
   const [assignmentType, setAssignmentType] = useState("user"); // "user" or "department"
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
@@ -65,7 +69,7 @@ const AddAssetType = () => {
       setParentAssetTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching parent asset types:', err);
-      toast.error('Failed to fetch parent asset types');
+      toast.error(t('assetTypes.failedToFetchParentAssetTypes'));
       setParentAssetTypes([]);
     }
   };
@@ -76,7 +80,7 @@ const AddAssetType = () => {
       setMaintenanceTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching maintenance types:', err);
-      toast.error('Failed to fetch maintenance types');
+      toast.error(t('assetTypes.failedToFetchMaintenanceTypes'));
       setMaintenanceTypes([]);
     }
   };
@@ -102,7 +106,7 @@ const AddAssetType = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
+      toast.error(t('assetTypes.failedToLoadDocumentTypes'));
       setDocumentTypes([]);
     }
   };
@@ -128,7 +132,7 @@ const AddAssetType = () => {
       }
     } catch (err) {
       console.error('Error fetching properties:', err);
-      toast.error('Failed to load properties');
+      toast.error(t('assetTypes.failedToLoadProperties'));
       setProperties([]);
     }
   };
@@ -164,7 +168,7 @@ const AddAssetType = () => {
     // Validate form
     if (!assetType.trim()) {
       toast(
-        "Asset type name is required",
+        t('assetTypes.assetTypeNameRequired'),
         {
           icon: '❌',
           style: {
@@ -180,7 +184,7 @@ const AddAssetType = () => {
     // Validate parent selection for child asset types
     if (parentChild === "child" && !selectedParentType) {
       toast(
-        "Please select a parent asset type",
+        t('assetTypes.pleaseSelectParentAssetType'),
         {
           icon: '❌',
           style: {
@@ -196,7 +200,7 @@ const AddAssetType = () => {
     // Validate maintenance fields when maintenance is required
     if (requireMaintenance && !selectedMaintenanceType) {
       toast(
-        "Please select a maintenance type when maintenance is required",
+        t('assetTypes.pleaseSelectMaintenanceType'),
         {
           icon: '❌',
           style: {
@@ -214,7 +218,7 @@ const AddAssetType = () => {
       for (const upload of checklistUploads) {
         if (!upload.type || !upload.file) {
           toast(
-            "Please select document type and choose a file for all documents",
+            t('assetTypes.pleaseSelectDocumentType'),
             {
               icon: '❌',
               style: {
@@ -231,7 +235,7 @@ const AddAssetType = () => {
         const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
         if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !upload.docTypeName?.trim()) {
           toast(
-            `Please enter a custom name for ${selectedDocType.text} documents`,
+            t('assetTypes.pleaseEnterCustomName', { type: selectedDocType.text }),
             {
               icon: '❌',
               style: {
@@ -286,7 +290,7 @@ const AddAssetType = () => {
       });
 
       toast(
-        `Asset type "${assetType}" created successfully`,
+        t('assetTypes.assetTypeCreatedSuccessfully', { name: assetType }),
         {
           icon: '✅',
           style: {
@@ -319,7 +323,7 @@ const AddAssetType = () => {
             } catch (upErr) {
               console.error('Checklist upload failed', upErr);
               console.error('Upload error details:', upErr.response?.data);
-              toast.error(`Failed to upload ${upload.file.name}: ${upErr.response?.data?.message || upErr.message}`);
+                toast.error(`${t('assetTypes.failedToUploadFile', { fileName: upload.file.name })}: ${upErr.response?.data?.message || upErr.message}`);
             }
           }
         }
@@ -370,20 +374,20 @@ const AddAssetType = () => {
           {/* Asset Type Input */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              Asset Type <span className="text-red-500">*</span>
+              {t('assets.assetType')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={assetType}
               onChange={(e) => setAssetType(e.target.value)}
               className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isFieldInvalid(assetType) ? 'border-red-500' : 'border-gray-300'}`}
-              placeholder="Enter asset type name"
+              placeholder={t('assetTypes.enterAssetTypeName')}
             />
           </div>
 
           {/* Assignment Type Radio Buttons */}
           <div>
-            <label className="block text-sm font-medium mb-1">Assignment Type</label>
+            <label className="block text-sm font-medium mb-1">{t('assetTypes.assignmentType')}</label>
             <div className="space-y-2 mt-2">
               <label className="flex items-center">
                 <input
@@ -393,7 +397,7 @@ const AddAssetType = () => {
                   onChange={(e) => setAssignmentType(e.target.value)}
                   className="form-radio text-blue-500"
                 />
-                <span className="ml-2">User - wise</span>
+                <span className="ml-2">{t('assetTypes.userWise')}</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -403,16 +407,16 @@ const AddAssetType = () => {
                   onChange={(e) => setAssignmentType(e.target.value)}
                   className="form-radio text-blue-500"
                 />
-                <span className="ml-2">Department - wise</span>
+                <span className="ml-2">{t('assetTypes.departmentWise')}</span>
               </label>
             </div>
           </div>
 
           {/* Status Toggle */}
           <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
+            <label className="block text-sm font-medium mb-1">{t('assetTypes.status')}</label>
             <div className="flex items-center space-x-2 mt-2">
-              <span className={`text-sm ${!isActive ? 'text-gray-900' : 'text-gray-500'}`}>Inactive</span>
+              <span className={`text-sm ${!isActive ? 'text-gray-900' : 'text-gray-500'}`}>{t('assetTypes.inactive')}</span>
               <button
                 type="button"
                 onClick={() => setIsActive(!isActive)}
@@ -426,38 +430,38 @@ const AddAssetType = () => {
                   }`}
                 />
               </button>
-              <span className={`text-sm ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>Active</span>
+              <span className={`text-sm ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>{t('assetTypes.active')}</span>
             </div>
           </div>
 
           {/* Depreciation Method Dropdown */}
           <div>
-            <label className="block text-sm font-medium mb-1">Depreciation Method</label>
+            <label className="block text-sm font-medium mb-1">{t('common.depreciationMethod')}</label>
             <select
               value={depreciationType}
               onChange={(e) => setDepreciationType(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="ND">No Depreciation (ND)</option>
-              <option value="SL">Straight Line (SL)</option>
-              <option value="RB">Reducing Balance (RB)</option>
-              <option value="DD">Double Decline (DD)</option>
+              <option value="ND">{t('assetTypes.noDepreciation')}</option>
+              <option value="SL">{t('assetTypes.straightLine')}</option>
+              <option value="RB">{t('assetTypes.reducingBalance')}</option>
+              <option value="DD">{t('assetTypes.doubleDecline')}</option>
             </select>
           </div>
         </div>
 
         {/* Properties Selection - Enhanced UI */}
         <div className="mb-6">
-          <label className="block text-sm font-medium mb-3">Properties</label>
+          <label className="block text-sm font-medium mb-3">{t('assetTypes.properties')}</label>
           {properties.length === 0 ? (
-            <div className="text-sm text-gray-500">Loading properties...</div>
+            <div className="text-sm text-gray-500">{t('assetTypes.loadingProperties')}</div>
           ) : (
             <div className="space-y-4">
               {/* Selected Properties - Shown at top */}
               {selectedProperties.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-gray-700">
-                    Selected Properties ({selectedProperties.length})
+                    {t('assetTypes.selectedProperties')} ({selectedProperties.length})
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {selectedProperties.map((propId) => {
@@ -493,7 +497,7 @@ const AddAssetType = () => {
               {/* Available Properties */}
               <div className="space-y-2">
                 <div className="text-sm font-medium text-gray-700">
-                  Available Properties ({properties.filter(prop => !selectedProperties.includes(prop.id)).length})
+                  {t('assetTypes.availableProperties')} ({properties.filter(prop => !selectedProperties.includes(prop.id)).length})
                 </div>
                 <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
                   {properties
@@ -529,7 +533,7 @@ const AddAssetType = () => {
               onChange={(e) => setGroupRequired(e.target.checked)}
               className="form-checkbox text-blue-500 rounded"
             />
-            <span>Group Required</span>
+            <span>{t('assetTypes.groupRequired')}</span>
           </label>
 
           <label className="flex items-center space-x-2">
@@ -539,7 +543,7 @@ const AddAssetType = () => {
               onChange={(e) => setRequireInspection(e.target.checked)}
               className="form-checkbox text-blue-500 rounded"
             />
-            <span>Require Inspection</span>
+            <span>{t('assetTypes.requireInspection')}</span>
           </label>
 
           <label className="flex items-center space-x-2">
@@ -549,7 +553,7 @@ const AddAssetType = () => {
               onChange={(e) => setRequireMaintenance(e.target.checked)}
               className="form-checkbox text-blue-500 rounded"
             />
-            <span>Require Maintenance</span>
+            <span>{t('assetTypes.requireMaintenance')}</span>
           </label>
         </div>
 
@@ -559,14 +563,14 @@ const AddAssetType = () => {
             {/* Maintenance Type Dropdown */}
             <div>
               <label className="block text-sm font-medium mb-1">
-                Select Maint Type <span className="text-red-500">*</span>
+                {t('assetTypes.selectMaintenanceType')} <span className="text-red-500">*</span>
               </label>
               <select
                 value={selectedMaintenanceType}
                 onChange={(e) => setSelectedMaintenanceType(e.target.value)}
                 className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${submitAttempted && requireMaintenance && !selectedMaintenanceType ? 'border-red-500' : 'border-gray-300'}`}
               >
-                <option value="">Select maintenance type</option>
+                <option value="">{t('assetTypes.selectMaintenanceTypeOption')}</option>
                 {maintenanceTypes.map((type) => (
                   <option key={type.maint_type_id} value={type.maint_type_id}>
                     {type.text}
@@ -578,20 +582,20 @@ const AddAssetType = () => {
             {/* Maintenance Lead Type Input */}
             <div>
               <label className="block text-sm font-medium mb-1">
-                Maintenance Lead Type
+                {t('assetTypes.maintenanceLeadType')}
               </label>
               <input
                 type="text"
                 value={maintenanceLeadType}
                 onChange={(e) => setMaintenanceLeadType(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter maintenance lead type"
+                placeholder={t('assetTypes.enterMaintenanceLeadType')}
               />
             </div>
             {/* Checklist upload with improved UI */}
             <div className="col-span-2 mt-4">
               <div className="flex items-center justify-between mb-4">
-                <label className="text-sm font-medium text-gray-900">Doc Upload</label>
+                <label className="text-sm font-medium text-gray-900">{t('assetTypes.docUpload')}</label>
                 <button 
                   type="button" 
                   className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
@@ -600,24 +604,24 @@ const AddAssetType = () => {
                   <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Add Document
+                  {t('assetTypes.addDocument')}
                 </button>
               </div>
               
               <div className="space-y-3">
-                {checklistUploads.length === 0 && <div className="text-sm text-gray-500">No checklist documents added.</div>}
+                {checklistUploads.length === 0 && <div className="text-sm text-gray-500">{t('assetTypes.noChecklistDocuments')}</div>}
                 {checklistUploads.map(upload => (
                   <div key={upload.id} className="bg-white border rounded p-3 space-y-3">
                     {/* First row: Document Type and Custom Name */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium mb-1">Document Type</label>
+                        <label className="block text-xs font-medium mb-1">{t('assetTypes.documentType')}</label>
                         <select 
                           className="w-full border rounded h-[38px] px-2 text-sm" 
                           value={upload.type} 
                           onChange={e => updateChecklistUpload(upload.id, { type: e.target.value })}
                         >
-                          <option value="">Select type</option>
+                          <option value="">{t('assetTypes.selectType')}</option>
                           {documentTypes.map(docType => (
                             <option key={docType.id} value={docType.id}>
                               {docType.text}
@@ -630,12 +634,12 @@ const AddAssetType = () => {
                         const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                         return needsCustomName && (
                           <div>
-                            <label className="block text-xs font-medium mb-1">Custom Name</label>
+                            <label className="block text-xs font-medium mb-1">{t('assetTypes.customName')}</label>
                             <input 
                               className="w-full border rounded h-[38px] px-2 text-sm" 
                               value={upload.docTypeName} 
                               onChange={e => updateChecklistUpload(upload.id, { docTypeName: e.target.value })} 
-                              placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                              placeholder={t('assetTypes.enterCustomName', { type: selectedDocType?.text })}
                             />
                           </div>
                         );
@@ -644,7 +648,7 @@ const AddAssetType = () => {
                     
                     {/* Second row: File input and buttons */}
                     <div>
-                      <label className="block text-xs font-medium mb-1">File (Max 15MB)</label>
+                      <label className="block text-xs font-medium mb-1">{t('assetTypes.fileMaxSize')}</label>
                       <div className="flex flex-col sm:flex-row gap-2">
                         <div className="relative flex-1">
                           <input
@@ -653,7 +657,7 @@ const AddAssetType = () => {
                             onChange={e => {
                               const f = e.target.files?.[0] || null;
                               if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                toast.error('File size exceeds 15MB limit');
+                                toast.error(t('assetTypes.fileSizeExceeds'));
                                 e.target.value = '';
                                 return;
                               }
@@ -670,7 +674,7 @@ const AddAssetType = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                             </svg>
                             <span className="truncate">
-                              {upload.file ? upload.file.name : 'Choose file'}
+                              {upload.file ? upload.file.name : t('assetTypes.chooseFile')}
                             </span>
                           </label>
                         </div>
@@ -683,7 +687,7 @@ const AddAssetType = () => {
                               rel="noreferrer" 
                               className="h-[38px] inline-flex items-center px-3 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors whitespace-nowrap"
                             >
-                              Preview
+                              {t('assetTypes.preview')}
                             </a>
                           )}
                           <button 
@@ -691,7 +695,7 @@ const AddAssetType = () => {
                             onClick={() => removeChecklistUpload(upload.id)}
                             className="h-[38px] inline-flex items-center px-3 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors whitespace-nowrap"
                           >
-                            Remove
+                            {t('assetTypes.remove')}
                           </button>
                         </div>
                       </div>
@@ -701,7 +705,7 @@ const AddAssetType = () => {
               </div>
 
               <div className="mt-2 text-xs text-gray-500">
-                Upload maintenance checklist documents. These will be available when performing maintenance on assets of this type.
+                {t('assetTypes.uploadMaintenanceDocuments')}
               </div>
             </div>
           </div>
@@ -711,14 +715,14 @@ const AddAssetType = () => {
         <div className="mt-6">
           <div className="flex gap-6">
             <div className="max-w-xs">
-              <label className="block text-sm font-medium mb-1">Parent / Child</label>
+              <label className="block text-sm font-medium mb-1">{t('assetTypes.parentChild')}</label>
               <select
                 value={parentChild}
                 onChange={(e) => setParentChild(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="parent">Parent</option>
-                <option value="child">Child</option>
+                <option value="parent">{t('assetTypes.parent')}</option>
+                <option value="child">{t('assetTypes.child')}</option>
               </select>
             </div>
 
@@ -726,7 +730,7 @@ const AddAssetType = () => {
             {parentChild === "child" && (
               <div className="max-w-xs w-full">
                 <label className="block text-sm font-medium mb-1">
-                  Parent Asset Type <span className="text-red-500">*</span>
+                  {t('assetTypes.parentAssetType')} <span className="text-red-500">*</span>
                 </label>
                 <SearchableDropdown
                   options={parentAssetTypes.map(type => ({
@@ -735,8 +739,8 @@ const AddAssetType = () => {
                   }))}
                   value={selectedParentType}
                   onChange={setSelectedParentType}
-                  placeholder="Select parent asset type"
-                  searchPlaceholder="Search parent types..."
+                  placeholder={t('assetTypes.selectParentAssetType')}
+                  searchPlaceholder={t('assetTypes.searchParentTypes')}
                   className={isFieldInvalid(selectedParentType) ? 'border-red-500' : ''}
                   displayKey="text"
                   valueKey="id"
@@ -754,14 +758,14 @@ const AddAssetType = () => {
             className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             disabled={isSubmitting}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="submit"
             className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Saving..." : "Save"}
+            {isSubmitting ? t('assetTypes.saving') : t('common.save')}
           </button>
         </div>
       </form>

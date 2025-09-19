@@ -3,9 +3,11 @@ import { Clock, Play, AlertCircle, CheckCircle, Loader2, ArrowRight } from "luci
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import API from "../../lib/axios";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const CronJobMonitor = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [cronStatus, setCronStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isTriggering, setIsTriggering] = useState(false);
@@ -80,7 +82,7 @@ const CronJobMonitor = () => {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <Clock className="w-5 h-5" />
-          Cron Job Monitor
+          {t('dashboard.cronJobMonitor')}
         </CardTitle>
         <div className="flex items-center gap-2">
           {getStatusIcon()}
@@ -100,27 +102,27 @@ const CronJobMonitor = () => {
         {cronStatus && (
           <div className="space-y-3">
                          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-               <h4 className="font-medium text-blue-900 mb-2">Maintenance Schedule Generation</h4>
+               <h4 className="font-medium text-blue-900 mb-2">{t('dashboard.maintenanceScheduleGeneration')}</h4>
                <div className="space-y-1 text-sm">
                  <div className="flex justify-between">
-                   <span className="text-blue-700">Schedule:</span>
+                   <span className="text-blue-700">{t('dashboard.schedule')}:</span>
                    <span className="font-mono text-blue-900">0 0 * * *</span>
                  </div>
                  <div className="flex justify-between">
-                   <span className="text-blue-700">Timezone:</span>
+                   <span className="text-blue-700">{t('dashboard.timezone')}:</span>
                    <span className="text-blue-900">Asia/Kolkata (IST)</span>
                  </div>
                  <div className="flex justify-between">
-                   <span className="text-blue-700">Next Run:</span>
+                   <span className="text-blue-700">{t('dashboard.nextRun')}:</span>
                    <span className="text-blue-900">{getNextRunTime()}</span>
                  </div>
                  <div className="flex justify-between">
-                   <span className="text-blue-700">Status:</span>
-                   <span className="text-green-600 font-medium">Active</span>
+                   <span className="text-blue-700">{t('dashboard.status')}:</span>
+                   <span className="text-green-600 font-medium">{t('dashboard.active')}</span>
                  </div>
                </div>
                <div className="mt-2 text-xs text-blue-600 flex items-center gap-1">
-                 <span>Click to view detailed management</span>
+                 <span>{t('dashboard.clickToViewDetailed')}</span>
                </div>
              </div>
 
@@ -136,12 +138,12 @@ const CronJobMonitor = () => {
                  {isTriggering ? (
                    <>
                      <Loader2 className="w-4 h-4 animate-spin" />
-                     Triggering...
+                     {t('common.loading')}
                    </>
                  ) : (
                    <>
                      <Play className="w-4 h-4" />
-                     Trigger Now
+                     {t('dashboard.triggerNow')}
                    </>
                  )}
                </button>
@@ -156,7 +158,7 @@ const CronJobMonitor = () => {
                  {isLoading ? (
                    <Loader2 className="w-4 h-4 animate-spin" />
                  ) : (
-                   "Refresh"
+                   t('dashboard.refresh')
                  )}
                </button>
              </div>
