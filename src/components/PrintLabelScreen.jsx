@@ -15,6 +15,7 @@ import PrintPreviewModal from './PrintPreviewModal';
 import SearchableDropdown from './ui/SearchableDropdown';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const PrintLabelScreen = ({ 
   selectedItem, 
@@ -37,11 +38,12 @@ const PrintLabelScreen = ({
 }) => {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const { t } = useLanguage();
   
   const statusOptions = [
-    { value: 'Completed', label: 'Completed', color: 'text-green-600' },
-    { value: 'Cancelled', label: 'Cancelled', color: 'text-red-600' },
-    { value: 'In-progress', label: 'In-progress', color: 'text-blue-600' }
+    { value: 'Completed', label: t('serialNumberPrint.completed'), color: 'text-green-600' },
+    { value: 'Cancelled', label: t('serialNumberPrint.cancelled'), color: 'text-red-600' },
+    { value: 'In-progress', label: t('serialNumberPrint.inProgress'), color: 'text-blue-600' }
   ];
 
   // Close dropdown when clicking outside
@@ -82,17 +84,17 @@ const PrintLabelScreen = ({
     console.log('Status changed to:', status);
     onStatusUpdate(selectedItem, status);
     setShowStatusDropdown(false);
-    toast.success(`Status updated to ${status}`);
+    toast.success(t('serialNumberPrint.statusUpdatedTo', { status }));
   };
 
   const generatePDF = async () => {
     if (!selectedItem || !printSettings.printerId || !printSettings.printerType || !printSettings.template) {
-      toast.error('Please select printer name, type, and template');
+      toast.error(t('serialNumberPrint.pleaseSelectPrinterAndTemplate'));
       return;
     }
 
     try {
-      toast.loading('Generating PDF...', { duration: 2000 });
+      toast.loading(t('serialNumberPrint.generatingPDF'), { duration: 2000 });
       
        // Create a temporary div to render the label
        const labelDiv = document.createElement('div');
@@ -469,11 +471,11 @@ const PrintLabelScreen = ({
       const fileName = `label_${selectedItem.serial_number}_${format.toLowerCase().replace(' ', '_')}.pdf`;
       pdf.save(fileName);
       
-      toast.success('PDF generated successfully!');
+      toast.success(t('serialNumberPrint.pdfGeneratedSuccessfully'));
       
     } catch (error) {
       console.error('Error generating PDF:', error);
-      toast.error('Failed to generate PDF');
+      toast.error(t('serialNumberPrint.failedToGeneratePDF'));
     }
   };
 
@@ -486,13 +488,13 @@ const PrintLabelScreen = ({
              <button
                onClick={onBackToList}
                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-               title="Back to List"
+               title={t('serialNumberPrint.backToList')}
              >
                <ArrowLeft className="w-5 h-5 text-gray-600" />
              </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Print Serial Number Label</h1>
-              <p className="text-gray-600 mt-1">Print label for {selectedItem.asset_name}</p>
+              <h1 className="text-3xl font-bold text-gray-900">{t('serialNumberPrint.printSerialNumberLabel')}</h1>
+              <p className="text-gray-600 mt-1">{t('serialNumberPrint.printLabelFor')} {selectedItem.asset_name}</p>
             </div>
           </div>
            <div className="flex items-center gap-3">
@@ -503,27 +505,27 @@ const PrintLabelScreen = ({
                    text: option.label
                  }))}
                  value=""
-                 onChange={(value) => handleStatusChange(value)}
-                 placeholder="Update Status"
-                 className="w-full"
-                 customButtonStyle={{
-                   backgroundColor: '#143d65',
-                   color: 'white',
-                   border: 'none',
-                   padding: '8px 16px',
-                   borderRadius: '8px',
-                   display: 'flex',
-                   alignItems: 'center',
-                   gap: '8px',
-                   cursor: 'pointer'
-                 }}
-                 customButtonContent={
-                   <>
-                     <Edit className="w-4 h-4" />
-                     Update Status
-                     <ChevronDown className="w-4 h-4" />
-                   </>
-                 }
+                onChange={(value) => handleStatusChange(value)}
+                placeholder={t('serialNumberPrint.updateStatus')}
+                className="w-full"
+                customButtonStyle={{
+                  backgroundColor: '#143d65',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer'
+                }}
+                customButtonContent={
+                  <>
+                    <Edit className="w-4 h-4" />
+                    {t('serialNumberPrint.updateStatus')}
+                    <ChevronDown className="w-4 h-4" />
+                  </>
+                }
                />
              </div>
            </div>
@@ -534,22 +536,22 @@ const PrintLabelScreen = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Asset Details */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Asset Details</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('serialNumberPrint.assetDetails')}</h3>
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-600">Serial Number:</span>
+              <span className="text-gray-600">{t('serialNumberPrint.serialNumber')}:</span>
               <span className="font-mono font-medium">{selectedItem.serial_number}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Asset Type:</span>
+              <span className="text-gray-600">{t('serialNumberPrint.assetType')}:</span>
               <span className="font-medium">{selectedItem.asset_type_name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Asset Name:</span>
+              <span className="text-gray-600">{t('serialNumberPrint.assetName')}:</span>
               <span className="font-medium">{selectedItem.asset_name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Status:</span>
+              <span className="text-gray-600">{t('serialNumberPrint.status')}:</span>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(selectedItem.status)}`}>
                 {selectedItem.status}
               </span>
@@ -559,12 +561,12 @@ const PrintLabelScreen = ({
 
         {/* Printer Selection */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Printer Selection</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('serialNumberPrint.printerSelection')}</h3>
           <div className="space-y-4">
             {/* Printer Type Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Printer Type <span className="text-red-500">*</span>
+                {t('serialNumberPrint.printerType')} <span className="text-red-500">*</span>
               </label>
               <SearchableDropdown
                 options={getAvailablePrinterTypes(selectedItem).map(type => ({
@@ -578,7 +580,7 @@ const PrintLabelScreen = ({
                   printerId: '', // Reset printer selection when type changes
                   dimension: '' // Reset dimension when type changes
                 }))}
-                placeholder="Select printer type..."
+                placeholder={t('serialNumberPrint.selectPrinterType')}
                 className="w-full"
               />
               {printSettings.printerType && (
@@ -592,9 +594,9 @@ const PrintLabelScreen = ({
                     
                     const isRecommended = primaryTemplate.printerTypes.includes(printSettings.printerType);
                     return isRecommended ? (
-                      <span className="text-green-600">✅ Recommended type for {primaryTemplate.paperType} labels</span>
+                      <span className="text-green-600">✅ {t('serialNumberPrint.recommendedType', { paperType: primaryTemplate.paperType })}</span>
                     ) : (
-                      <span className="text-yellow-600">⚠️ May not be optimal for {primaryTemplate.paperType} labels</span>
+                      <span className="text-yellow-600">⚠️ {t('serialNumberPrint.notOptimalType', { paperType: primaryTemplate.paperType })}</span>
                     );
                   })()}
                 </div>
@@ -604,7 +606,7 @@ const PrintLabelScreen = ({
             {/* Template Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Template <span className="text-red-500">*</span>
+                {t('serialNumberPrint.template')} <span className="text-red-500">*</span>
               </label>
               <SearchableDropdown
                 options={getAvailableTemplates(selectedItem).map(template => ({
@@ -617,7 +619,7 @@ const PrintLabelScreen = ({
                   template: value,
                   printerId: '' // Reset printer selection when template changes
                 }))}
-                placeholder="Select template..."
+                placeholder={t('serialNumberPrint.selectTemplate')}
                 className="w-full"
               />
               {printSettings.template && (
@@ -630,17 +632,17 @@ const PrintLabelScreen = ({
                       <div className="text-xs text-gray-600 space-y-1">
                         <div className="flex items-center gap-2">
                           {selectedTemplate.isRecommended ? (
-                            <span className="text-green-600">✅ Recommended</span>
+                            <span className="text-green-600">✅ {t('serialNumberPrint.recommended')}</span>
                           ) : (
-                            <span className="text-yellow-600">⚠️ Custom</span>
+                            <span className="text-yellow-600">⚠️ {t('serialNumberPrint.custom')}</span>
                           )}
                           <span>• {selectedTemplate.dimensions.width}"×{selectedTemplate.dimensions.height}" • {selectedTemplate.paperType}</span>
                         </div>
                         <div className="text-gray-500">{selectedTemplate.description}</div>
                         <div className="text-gray-500">
-                          Format: {selectedTemplate.format.replace('-', ' ').toUpperCase()} • 
-                          Quality: {selectedTemplate.paperQuality} • 
-                          Printers: {selectedTemplate.printerTypes.join(', ')}
+                          {t('serialNumberPrint.format')}: {selectedTemplate.format.replace('-', ' ').toUpperCase()} • 
+                          {t('serialNumberPrint.quality')}: {selectedTemplate.paperQuality} • 
+                          {t('serialNumberPrint.printers')}: {selectedTemplate.printerTypes.join(', ')}
                         </div>
                       </div>
                     );
@@ -652,7 +654,7 @@ const PrintLabelScreen = ({
             {/* Printer Name Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Printer Name <span className="text-red-500">*</span>
+                {t('serialNumberPrint.printerName')} <span className="text-red-500">*</span>
               </label>
               <SearchableDropdown
                 options={getFilteredPrinters().map(printer => {
@@ -664,17 +666,17 @@ const PrintLabelScreen = ({
                 })}
                 value={printSettings.printerId}
                 onChange={(value) => setPrintSettings(prev => ({ ...prev, printerId: value }))}
-                placeholder="Select a printer..."
+                placeholder={t('serialNumberPrint.selectPrinter')}
                 className="w-full"
                 disabled={!printSettings.printerType || !printSettings.template}
               />
               {!printSettings.printerType || !printSettings.template ? (
                 <div className="mt-1 text-xs text-gray-500">
-                  Please select printer type and template first
+                  {t('serialNumberPrint.pleaseSelectorFirst')}
                 </div>
               ) : getFilteredPrinters().length === 0 ? (
                 <div className="mt-1 text-xs text-red-600">
-                  No printers available with selected type and template
+                  {t('serialNumberPrint.noPrintersAvailable')}
                 </div>
               ) : printSettings.printerId ? (
                 <div className="mt-1 text-xs text-gray-600">
@@ -682,9 +684,9 @@ const PrintLabelScreen = ({
                     const selectedPrinter = printers.find(p => p.id === parseInt(printSettings.printerId));
                     const isRecommended = getRecommendedPrinter(selectedItem).id === selectedPrinter?.id;
                     return isRecommended ? (
-                      <span className="text-green-600">⭐ Recommended printer for this asset type and location</span>
+                      <span className="text-green-600">⭐ {t('serialNumberPrint.recommendedPrinter')}</span>
                     ) : (
-                      <span className="text-yellow-600">⚠️ This printer may not be optimal for this asset type</span>
+                      <span className="text-yellow-600">⚠️ {t('serialNumberPrint.notOptimalPrinter')}</span>
                     );
                   })()}
                 </div>
@@ -707,7 +709,7 @@ const PrintLabelScreen = ({
            className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
          >
            <Eye className="w-5 h-5" />
-           Preview
+           {t('serialNumberPrint.preview')}
          </button>
         <button
           onClick={generatePDF}
@@ -715,7 +717,7 @@ const PrintLabelScreen = ({
           className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <Download className="w-5 h-5" />
-          Generate PDF
+          {t('serialNumberPrint.generatePDF')}
         </button>
          <button
            onClick={(e) => {
@@ -730,7 +732,7 @@ const PrintLabelScreen = ({
            onMouseLeave={(e) => !e.target.disabled && (e.target.style.backgroundColor = '#143d65')}
          >
            <Printer className="w-5 h-5" />
-           Print Label
+           {t('serialNumberPrint.printLabel')}
          </button>
       </div>
       
@@ -739,7 +741,7 @@ const PrintLabelScreen = ({
         <div className="mt-4 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
             <AlertCircle className="w-4 h-4" />
-            Please select printer name, type, and template to proceed with printing
+            {t('serialNumberPrint.pleaseSelectPrinterAndTemplateToProcess')}
           </div>
         </div>
       )}

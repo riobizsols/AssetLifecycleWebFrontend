@@ -4,9 +4,12 @@ import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
+import { useLanguage } from "../contexts/LanguageContext";
+import { toast } from "react-hot-toast";
 
 const WorkorderManagement = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -17,13 +20,13 @@ const WorkorderManagement = () => {
     toDate: "",
   });
   const [columns] = useState([
-    { label: "Work Order ID", name: "ams_id", visible: true },
-    { label: "Asset ID", name: "asset_id", visible: true },
-    { label: "Description", name: "description", visible: true },
-    { label: "Maintenance Type", name: "maintenance_type_name", visible: true },
-    { label: "Start Date", name: "act_maint_st_date", visible: true },
-    { label: "Status", name: "status", visible: true },
-    { label: "Asset Type", name: "asset_type_name", visible: true },
+    { label: t('workorderManagement.workOrderID'), name: "ams_id", visible: true },
+    { label: t('workorderManagement.assetID'), name: "asset_id", visible: true },
+    { label: t('workorderManagement.description'), name: "description", visible: true },
+    { label: t('workorderManagement.maintenanceType'), name: "maintenance_type_name", visible: true },
+    { label: t('workorderManagement.startDate'), name: "act_maint_st_date", visible: true },
+    { label: t('workorderManagement.status'), name: "status", visible: true },
+    { label: t('workorderManagement.assetType'), name: "asset_type_name", visible: true },
   ]);
 
   useEffect(() => {
@@ -38,9 +41,9 @@ const WorkorderManagement = () => {
           : [];
         const formatted = raw.map((wo) => ({
           ...wo,
-          asset_id: wo.asset?.asset_id || 'N/A',
-          description: wo.asset?.description || 'N/A',
-          asset_type_name: wo.asset_type?.asset_type_name || 'N/A',
+          asset_id: wo.asset?.asset_id || t('workorderManagement.notAvailable'),
+          description: wo.asset?.description || t('workorderManagement.notAvailable'),
+          asset_type_name: wo.asset_type?.asset_type_name || t('workorderManagement.notAvailable'),
           act_maint_st_date: wo.act_maint_st_date
             ? new Date(wo.act_maint_st_date).toLocaleDateString()
             : "",
@@ -48,13 +51,14 @@ const WorkorderManagement = () => {
         setData(formatted);
       } catch (err) {
         console.error("Failed to fetch work orders", err);
+        toast.error(t('workorderManagement.failedToFetchWorkOrders'));
         setData([]);
       } finally {
         setIsLoading(false);
       }
     };
     fetchWorkOrders();
-  }, []);
+  }, [t]);
 
   const handleSort = (column) => {
     setSortConfig((prevConfig) => {

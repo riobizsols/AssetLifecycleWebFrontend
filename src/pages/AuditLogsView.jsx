@@ -24,9 +24,11 @@ import API from '../lib/axios';
 import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
 import SearchableDropdown from '../components/ui/SearchableDropdown';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const AuditLogsView = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   
   // State management
   const [auditLogs, setAuditLogs] = useState([]);
@@ -53,16 +55,16 @@ const AuditLogsView = () => {
 
   // Table columns
   const columns = [
-    { name: 'timestamp', label: 'Timestamp', visible: true },
-    { name: 'user_id', label: 'User ID', visible: true },
-    { name: 'user_name', label: 'User Name', visible: true },
-    { name: 'application', label: 'Application', visible: true },
-    { name: 'event', label: 'Event', visible: true },
-    { name: 'description', label: 'Description', visible: true },
-    { name: 'entity_type', label: 'Entity Type', visible: false },
-    { name: 'entity_id', label: 'Entity ID', visible: false },
-    { name: 'ip_address', label: 'IP Address', visible: false },
-    { name: 'user_agent', label: 'User Agent', visible: false }
+    { name: 'timestamp', label: t('auditLogs.timestamp'), visible: true },
+    { name: 'user_id', label: t('auditLogs.userID'), visible: true },
+    { name: 'user_name', label: t('auditLogs.userName'), visible: true },
+    { name: 'application', label: t('auditLogs.application'), visible: true },
+    { name: 'event', label: t('auditLogs.event'), visible: true },
+    { name: 'description', label: t('auditLogs.description'), visible: true },
+    { name: 'entity_type', label: t('auditLogs.entityType'), visible: false },
+    { name: 'entity_id', label: t('auditLogs.entityID'), visible: false },
+    { name: 'ip_address', label: t('auditLogs.ipAddress'), visible: false },
+    { name: 'user_agent', label: t('auditLogs.userAgent'), visible: false }
   ];
 
   // Format timestamp to human-readable format
@@ -89,17 +91,17 @@ const AuditLogsView = () => {
       // Add relative time
       let relativeTime = '';
       if (diffMinutes < 1) {
-        relativeTime = 'Just now';
+        relativeTime = t('auditLogs.justNow');
       } else if (diffMinutes < 60) {
-        relativeTime = `${diffMinutes}m ago`;
+        relativeTime = t('auditLogs.minutesAgo', { minutes: diffMinutes });
       } else if (diffHours < 24) {
-        relativeTime = `${diffHours}h ago`;
+        relativeTime = t('auditLogs.hoursAgo', { hours: diffHours });
       } else if (diffDays === 1) {
-        relativeTime = 'Yesterday';
+        relativeTime = t('auditLogs.yesterday');
       } else if (diffDays < 7) {
-        relativeTime = `${diffDays}d ago`;
+        relativeTime = t('auditLogs.daysAgo', { days: diffDays });
       } else {
-        relativeTime = `${Math.floor(diffDays / 7)}w ago`;
+        relativeTime = t('auditLogs.weeksAgo', { weeks: Math.floor(diffDays / 7) });
       }
 
       return {
@@ -108,7 +110,7 @@ const AuditLogsView = () => {
       };
     } catch (error) {
       console.error('Error formatting timestamp:', error);
-      return { formatted: timestamp, relative: 'Unknown' };
+      return { formatted: timestamp, relative: t('auditLogs.unknown') };
     }
   };
 
@@ -266,7 +268,7 @@ const AuditLogsView = () => {
       }
     } catch (error) {
       console.error('Error fetching audit logs:', error);
-      toast.error('Failed to fetch audit logs');
+      toast.error(t('auditLogs.failedToFetchAuditLogs'));
       setAuditLogs([]);
       setTotalRecords(0);
       setTotalPages(1);
@@ -321,7 +323,7 @@ const AuditLogsView = () => {
   const handleExport = () => {
     const csvContent = generateCSV(auditLogs);
     downloadCSV(csvContent, 'audit_logs.csv');
-    toast.success('Audit logs exported successfully');
+    toast.success(t('auditLogs.auditLogsExportedSuccessfully'));
   };
 
   const generateCSV = (data) => {
@@ -459,14 +461,14 @@ const AuditLogsView = () => {
               className="flex items-center gap-2 px-4 py-2 bg-[#0E2F4B] text-white rounded-lg hover:bg-[#143d65] transition-colors"
             >
               <Settings className="w-4 h-4 text-[#FFC107]" />
-              Config
+              {t('auditLogs.config')}
             </button>
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Filter className="w-4 h-4" />
-              Filters
+              {t('auditLogs.filters')}
               <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
           </div>
@@ -481,14 +483,14 @@ const AuditLogsView = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <User className="w-4 h-4 inline mr-1" />
-                Users
+                {t('auditLogs.users')}
               </label>
               <SearchableDropdown
                 options={users}
                 value={filters.users.length > 0 ? filters.users[0] : ''}
                 onChange={(value) => handleFilterChange('users', value ? [value] : [])}
-                placeholder="Select User"
-                searchPlaceholder="Search users..."
+                placeholder={t('auditLogs.selectUser')}
+                searchPlaceholder={t('auditLogs.searchUsers')}
                 displayKey="text"
                 valueKey="id"
                 className="w-full"
@@ -499,7 +501,7 @@ const AuditLogsView = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Calendar className="w-4 h-4 inline mr-1" />
-                Start Date *
+                {t('auditLogs.startDate')} *
               </label>
               <input
                 type="date"
@@ -514,7 +516,7 @@ const AuditLogsView = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Calendar className="w-4 h-4 inline mr-1" />
-                End Date *
+                {t('auditLogs.endDate')} *
               </label>
               <input
                 type="date"
@@ -529,14 +531,14 @@ const AuditLogsView = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Database className="w-4 h-4 inline mr-1" />
-                Application
+                {t('auditLogs.application')}
               </label>
               <SearchableDropdown
-                options={[{ id: '', text: 'All Applications' }, ...applications]}
+                options={[{ id: '', text: t('auditLogs.allApplications') }, ...applications]}
                 value={filters.application}
                 onChange={(value) => handleFilterChange('application', value)}
-                placeholder="Select Application"
-                searchPlaceholder="Search applications..."
+                placeholder={t('auditLogs.selectApplication')}
+                searchPlaceholder={t('auditLogs.searchApplications')}
                 displayKey="text"
                 valueKey="id"
                 className="w-full"
@@ -547,14 +549,14 @@ const AuditLogsView = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Activity className="w-4 h-4 inline mr-1" />
-                Event
+                {t('auditLogs.event')}
               </label>
               <SearchableDropdown
-                options={[{ id: '', text: 'All Events' }, ...events]}
+                options={[{ id: '', text: t('auditLogs.allEvents') }, ...events]}
                 value={filters.event}
                 onChange={(value) => handleFilterChange('event', value)}
-                placeholder="Select Event"
-                searchPlaceholder="Search events..."
+                placeholder={t('auditLogs.selectEvent')}
+                searchPlaceholder={t('auditLogs.searchEvents')}
                 displayKey="text"
                 valueKey="id"
                 className="w-full"
@@ -567,7 +569,7 @@ const AuditLogsView = () => {
             <div className="flex items-center gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Max Rows *
+                  {t('auditLogs.maxRows')} *
                 </label>
                 <select
                   value={filters.maxRows}
@@ -582,14 +584,14 @@ const AuditLogsView = () => {
                 </select>
               </div>
               <div className="text-sm text-gray-500 mt-6">
-                Showing {auditLogs.length} of {totalRecords} records
+                {t('auditLogs.showing')} {auditLogs.length} {t('auditLogs.of')} {totalRecords} {t('auditLogs.results')}
               </div>
             </div>
             <button
               onClick={resetFilters}
               className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Reset Filters
+              {t('auditLogs.resetFilters')}
             </button>
           </div>
         </div>
@@ -600,22 +602,22 @@ const AuditLogsView = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="text-sm">
-              <span className="text-gray-600">Total Records:</span>
+              <span className="text-gray-600">{t('auditLogs.totalRecords')}</span>
               <span className="font-semibold ml-1">{totalRecords.toLocaleString()}</span>
             </div>
             <div className="text-sm">
-              <span className="text-gray-600">Filtered:</span>
+              <span className="text-gray-600">{t('auditLogs.filtered')}</span>
               <span className="font-semibold ml-1">{auditLogs.length.toLocaleString()}</span>
             </div>
             <div className="text-sm">
-              <span className="text-gray-600">Page:</span>
-              <span className="font-semibold ml-1">{currentPage} of {totalPages}</span>
+              <span className="text-gray-600">{t('auditLogs.page')}</span>
+              <span className="font-semibold ml-1">{currentPage} {t('auditLogs.of')} {totalPages}</span>
             </div>
           </div>
           {isLoading && (
             <div className="flex items-center gap-2 text-blue-600">
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Loading...</span>
+              <span className="text-sm">{t('auditLogs.loading')}</span>
             </div>
           )}
         </div>
@@ -660,28 +662,28 @@ const AuditLogsView = () => {
               disabled={currentPage === 1 || totalPages <= 1}
               className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Previous
+              {t('auditLogs.previous')}
             </button>
             <button
               onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
               disabled={currentPage === totalPages || totalPages <= 1}
               className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Next
+              {t('auditLogs.next')}
             </button>
           </div>
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-gray-700">
-                Showing{' '}
+                {t('auditLogs.showing')}{' '}
                 <span className="font-medium">{(currentPage - 1) * filters.maxRows + 1}</span>
-                {' '}to{' '}
+                {' '}{t('auditLogs.to')}{' '}
                 <span className="font-medium">
                   {Math.min(currentPage * filters.maxRows, totalRecords)}
                 </span>
-                {' '}of{' '}
+                {' '}{t('auditLogs.of')}{' '}
                 <span className="font-medium">{totalRecords}</span>
-                {' '}results
+                {' '}{t('auditLogs.results')}
               </p>
             </div>
             <div>
@@ -691,7 +693,7 @@ const AuditLogsView = () => {
                   disabled={currentPage === 1 || totalPages <= 1}
                   className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Previous
+                  {t('auditLogs.previous')}
                 </button>
                 
                 {/* Page numbers */}
@@ -717,7 +719,7 @@ const AuditLogsView = () => {
                   disabled={currentPage === totalPages || totalPages <= 1}
                   className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next
+                  {t('auditLogs.next')}
                 </button>
               </nav>
             </div>
@@ -729,9 +731,9 @@ const AuditLogsView = () => {
       {!isLoading && auditLogs.length === 0 && (
         <div className="text-center py-12">
           <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No audit logs found</h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">{t('auditLogs.noAuditLogsFound')}</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Try adjusting your filters or date range to see more results.
+            {t('auditLogs.tryAdjustingFilters')}
           </p>
         </div>
       )}

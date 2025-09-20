@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { X, Printer, Eye } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import JsBarcode from 'jsbarcode';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const PrintPreviewModal = ({ 
   show, 
@@ -12,6 +13,8 @@ const PrintPreviewModal = ({
   labelTemplates = {},
   assetTypeTemplateMapping = {}
 }) => {
+  const { t } = useLanguage();
+  
   if (!show) return null;
 
   const selectedPrinter = printers.find(p => p.id === parseInt(printSettings.printerId));
@@ -32,13 +35,13 @@ const PrintPreviewModal = ({
     switch (template.format) {
       case 'barcode-only':
       case 'text-with-barcode':
-        return 'Barcode';
+        return t('serialNumberPrint.barcode');
       case 'text-with-qr':
-        return 'QR Code';
+        return t('serialNumberPrint.qrCode');
       case 'text-only':
-        return 'Text Only';
+        return t('serialNumberPrint.textOnly');
       default:
-        return 'Text Only';
+        return t('serialNumberPrint.textOnly');
     }
   };
 
@@ -115,7 +118,7 @@ const PrintPreviewModal = ({
       } catch (error) {
         console.error('Error generating barcode:', error);
         // Fallback: show error message
-        barcodeRef.current.innerHTML = '<div class="text-red-500 text-xs">Barcode generation failed</div>';
+        barcodeRef.current.innerHTML = `<div class="text-red-500 text-xs">${t('serialNumberPrint.barcodeGenerationFailed')}</div>`;
       }
     }
   }, [selectedItem?.serial_number, template.dimensions]);
@@ -128,7 +131,7 @@ const PrintPreviewModal = ({
       case 'Barcode':
         return (
           <div className="text-center">
-            <div className="text-xs text-gray-500 mb-1">SERIAL NUMBER</div>
+            <div className="text-xs text-gray-500 mb-1">{t('serialNumberPrint.serialNumber')}</div>
             <div className="font-mono text-lg font-bold text-gray-900 mb-3">
               {selectedItem?.serial_number}
             </div>
@@ -149,7 +152,7 @@ const PrintPreviewModal = ({
                 ></div>
               </div>
               <div className="text-xs text-gray-500 mt-1 text-center">
-                Scan with any barcode scanner app
+                {t('serialNumberPrint.scanWithBarcodeScanner')}
               </div>
             </div>
           </div>
@@ -158,7 +161,7 @@ const PrintPreviewModal = ({
       case 'QR Code':
         return (
           <div className="text-center">
-            <div className="text-xs text-gray-500 mb-1">SERIAL NUMBER</div>
+            <div className="text-xs text-gray-500 mb-1">{t('serialNumberPrint.serialNumber')}</div>
             <div className="font-mono text-lg font-bold text-gray-900 mb-3">
               {selectedItem?.serial_number}
             </div>
@@ -224,7 +227,7 @@ const PrintPreviewModal = ({
             
             {/* Serial Number - Center */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-xs text-gray-500 mb-1">SERIAL NUMBER</div>
+              <div className="text-xs text-gray-500 mb-1">{t('serialNumberPrint.serialNumber')}</div>
               <div className="font-mono text-sm font-bold text-gray-900">
                 {selectedItem?.serial_number}
               </div>
@@ -232,7 +235,7 @@ const PrintPreviewModal = ({
             
             {/* Barcode - Bottom */}
             <div className="absolute bottom-1 left-1 right-1 text-center">
-              <div className="text-xs text-gray-500 mb-1">BARCODE</div>
+              <div className="text-xs text-gray-500 mb-1">{t('serialNumberPrint.barcode')}</div>
               <div className="font-mono text-xs bg-black text-white px-1 py-0.5 rounded">
                 ||| ||| ||| ||| ||| ||| ||| |||
               </div>
@@ -243,7 +246,7 @@ const PrintPreviewModal = ({
       case 'Text Only':
         return (
           <div className="text-center">
-            <div className="text-xs text-gray-500 mb-1">SERIAL NUMBER</div>
+            <div className="text-xs text-gray-500 mb-1">{t('serialNumberPrint.serialNumber')}</div>
             <div className="font-mono text-lg font-bold text-gray-900 mb-2">
               {selectedItem?.serial_number}
             </div>
@@ -255,7 +258,7 @@ const PrintPreviewModal = ({
       default:
         return (
           <div className="text-center">
-            <div className="text-xs text-gray-500 mb-1">SERIAL NUMBER</div>
+            <div className="text-xs text-gray-500 mb-1">{t('serialNumberPrint.serialNumber')}</div>
             <div className="font-mono text-lg font-bold text-gray-900">
               {selectedItem?.serial_number}
             </div>
@@ -271,7 +274,7 @@ const PrintPreviewModal = ({
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Eye className="w-6 h-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Print Preview</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{t('serialNumberPrint.printPreview')}</h2>
           </div>
           <button
             onClick={onClose}
@@ -284,13 +287,13 @@ const PrintPreviewModal = ({
         {/* Label Preview Only */}
         <div className="flex justify-center">
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 text-center">Label Preview</h3>
+            <h3 className="text-lg font-semibold text-gray-900 text-center">{t('serialNumberPrint.labelPreview')}</h3>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 bg-gray-50">
             <div className="text-center">
               <div className="text-sm text-gray-500 mb-2">
-                Label Size: {template.dimensions?.width}"×{template.dimensions?.height}" | 
-                Paper: {template.paperType} | 
-                Quality: {template.paperQuality}
+                {t('serialNumberPrint.labelSize')}: {template.dimensions?.width}"×{template.dimensions?.height}" | 
+                {t('serialNumberPrint.paper')}: {template.paperType} | 
+                {t('serialNumberPrint.quality')}: {template.paperQuality}
               </div>
               <div 
                 className="bg-white border border-gray-200 rounded p-4 mx-auto overflow-hidden" 
@@ -302,7 +305,7 @@ const PrintPreviewModal = ({
                 {renderLabelFormat(selectedItem, template)}
               </div>
               <div className="text-xs text-gray-500 mt-2">
-                Template: {template?.name || 'Default'} | Format: {getLabelFormat(template)}
+                {t('serialNumberPrint.template')}: {template?.name || 'Default'} | {t('serialNumberPrint.format')}: {getLabelFormat(template)}
               </div>
             </div>
             </div>
@@ -315,7 +318,7 @@ const PrintPreviewModal = ({
             onClick={onClose}
             className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Close
+            {t('serialNumberPrint.close')}
           </button>
         </div>
       </div>
