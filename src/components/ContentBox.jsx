@@ -8,6 +8,7 @@ import {
   Minus,
   ChevronRight,
   RefreshCw,
+  Search,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DeleteConfirmModal from "./DeleteConfirmModal";
@@ -28,9 +29,12 @@ const ContentBox = ({
   onRefresh, // Add onRefresh prop
   children,
   showAddButton = true, // <-- Add this line
+  showDeleteButton = true, // Add this line
   showActions = true, // <-- Add this line
+  showHeaderCheckbox = true, // Add this line
   showFilterButton = true, // Add this line
   onAdd, // Add onAdd prop
+  customHeaderActions, // Custom header actions
 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -43,6 +47,7 @@ const ContentBox = ({
   const [showColumnsDropdown, setShowColumnsDropdown] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Handle refresh with animation
   const handleRefresh = async () => {
@@ -105,7 +110,7 @@ const ContentBox = ({
     onFilterChange("columnFilters", validFilters); // Update parent's filter state
   };
 
-  const availableFilterTypes = ["date", "search"];
+  const availableFilterTypes = ["date", "search", "simpleSearch"];
   const selectedTypes = activeFilters.map((f) => f.type);
   const nextAvailableFilters = availableFilterTypes.filter(
     (type) => !selectedTypes.includes(type)
@@ -122,6 +127,7 @@ const ContentBox = ({
     if (type === "search" && columnFilters.length === 0) {
       setColumnFilters([{ column: "", value: "" }]);
     }
+    setFilterMenuOpen(false);
   };
 
   const handleRemoveFilter = (index) => {
@@ -133,6 +139,11 @@ const ContentBox = ({
     if (removed.type === "search") {
       setColumnFilters([]); // Clear all column filters
       onFilterChange("columnFilters", []); // Notify parent to clear column filters
+    }
+    
+    if (removed.type === "simpleSearch") {
+      setSearchTerm(""); // Clear search term
+      onFilterChange("search", ""); // Notify parent to clear search
     }
 
     if (removed.type === "date") {
@@ -194,6 +205,7 @@ const ContentBox = ({
 
       <div className="flex flex-wrap items-start justify-between gap-2 p-2 bg-gray-100 border-b">
         <div className="flex flex-wrap items-center gap-2">
+
           {showFilterButton && (
             <button
               className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
@@ -311,6 +323,37 @@ const ContentBox = ({
                 </div>
               )}
 
+              {filter.type === "simpleSearch" && (
+                <div className="flex items-center gap-2 ml-2">
+                  <span>{filter.label}</span>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search employees..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        onFilterChange && onFilterChange('search', e.target.value);
+                      }}
+                      className="border border-gray-300 rounded pl-7 pr-6 py-1 text-sm w-40 focus:outline-none focus:ring-1 focus:ring-[#FFC107] focus:border-transparent"
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => {
+                          setSearchTerm("");
+                          onFilterChange && onFilterChange('search', "");
+                        }}
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm leading-none"
+                        title="Clear search"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {filter.type === "date" && (
                 <div className="flex items-center gap-2 ml-2">
                   <span>{filter.label}</span>
@@ -372,7 +415,13 @@ const ContentBox = ({
             </button>
           )}
 
-          {showActions && (
+          {customHeaderActions && (
+            <div className="flex gap-2">
+              {customHeaderActions}
+            </div>
+          )}
+
+          {showActions && showDeleteButton && (
             <button
               onClick={() => {
                 if (selectedRows.length === 0) {
@@ -434,7 +483,7 @@ const ContentBox = ({
                         className="flex items-center gap-2 cursor-pointer flex-grow"
                         onClick={() => onSort(filter.name)}
                       >
-                        {index === 0 && showActions && (
+                        {index === 0 && showActions && showHeaderCheckbox && (
                           <input
                             type="checkbox"
                             className="accent-yellow-400"

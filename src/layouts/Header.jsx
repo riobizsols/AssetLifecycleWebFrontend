@@ -7,7 +7,7 @@ import { AUTH_APP_IDS } from "../constants/authAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 
 export default function Header() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, roles } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -90,6 +90,9 @@ export default function Header() {
       title: t('auditLogs.config'),
       subtitle: t('auditLogs.configSubtitle'),
     },
+    "/master-data/roles": {
+      title: "Role Management",
+    },
 
     // Add more routes as needed
   };
@@ -111,7 +114,12 @@ export default function Header() {
 
   const fullName = user?.full_name || "User Name";
   const email = user?.email || "user@example.com";
-  const jobRole = user?.job_role_id || "Role";
+  
+  // Get role information from tblUserJobRoles
+  const userRoles = roles || [];
+  const roleNames = userRoles.map(role => role.job_role_name).join(", ");
+  const jobRole = roleNames || user?.job_role_id || "Role";
+  
   const profileImage = user?.profile_img;
   const initials = fullName
     .split(" ")
@@ -171,9 +179,14 @@ export default function Header() {
               <div>
                 <p className="font-semibold text-[#0E2F4B]">{fullName}</p>
                 <p className="text-xs text-gray-500 capitalize">
-                  {jobRole.replace("_", " ")}
+                  {jobRole.replace(/_/g, " ")}
                 </p>
                 <p className="text-xs text-gray-400">{email}</p>
+                {userRoles.length > 1 && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    {userRoles.length} roles assigned
+                  </p>
+                )}
               </div>
             </div>
             <button
