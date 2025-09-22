@@ -33,6 +33,44 @@ const clearStorage = () => {
   }
 };
 
+// Error Display Component
+const ErrorDisplay = ({ errors, onClear }) => {
+  if (!errors || errors.length === 0) return null;
+
+  return (
+    <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <h4 className="font-semibold text-red-800 text-sm">Validation Errors:</h4>
+            <div className="mt-2 space-y-1">
+              {errors.slice(0, 10).map((error, index) => (
+                <div key={index} className="text-sm text-red-700">
+                  • {error}
+                </div>
+              ))}
+              {errors.length > 10 && (
+                <div className="text-sm text-red-600 font-medium">
+                  ... and {errors.length - 10} more errors
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        {onClear && (
+          <button
+            onClick={onClear}
+            className="text-red-600 hover:text-red-800 text-sm font-medium ml-4"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Roles = () => {
   const [activeTab, setActiveTab] = useState(loadFromStorage('activeTab', 'assets'));
   const [uploadStatus, setUploadStatus] = useState(loadFromStorage('uploadStatus', {}));
@@ -41,6 +79,8 @@ const Roles = () => {
   const [validationProgress, setValidationProgress] = useState(0);
   const [existingRecords, setExistingRecords] = useState({});
   const [file, setFile] = useState(null);
+  const [uploadErrors, setUploadErrors] = useState({});
+  const [trialErrors, setTrialErrors] = useState({});
 
   // Clear trial results on component mount to start fresh
   useEffect(() => {
@@ -1288,21 +1328,31 @@ const Roles = () => {
     // Set the file state
     setFile(file);
     
-    // Clear previous trial results for this type
+    // Clear previous trial results and errors for this type
     setTrialResults(prev => ({
       ...prev,
       [type]: {}
     }));
+    setUploadErrors(prev => ({
+      ...prev,
+      [type]: []
+    }));
     
     // Validate file type
     if (!file.name.toLowerCase().endsWith('.csv')) {
-      alert('Please select a CSV file');
+      setUploadErrors(prev => ({
+        ...prev,
+        [type]: ['Please select a CSV file']
+      }));
       return;
     }
     
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      setUploadErrors(prev => ({
+        ...prev,
+        [type]: ['File size must be less than 10MB']
+      }));
       return;
     }
     
@@ -1315,14 +1365,26 @@ const Roles = () => {
         // Basic validation first (without API calls)
         const lines = csvContent.split('\n').filter(line => line.trim());
         if (lines.length < 2) {
-          alert('CSV file must have at least a header row and one data row');
+          setUploadErrors(prev => ({
+            ...prev,
+            [type]: ['CSV file must have at least a header row and one data row']
+          }));
           return;
         }
         
         if (lines.length > 10000) {
-          alert('CSV file cannot exceed 10,000 rows');
+          setUploadErrors(prev => ({
+            ...prev,
+            [type]: ['CSV file cannot exceed 10,000 rows']
+          }));
           return;
         }
+        
+        // Clear any previous errors since basic validation passed
+        setUploadErrors(prev => ({
+          ...prev,
+          [type]: []
+        }));
         
         // Set basic upload status first
         setUploadStatus(prev => ({
@@ -1354,14 +1416,20 @@ const Roles = () => {
           }));
           
           if (!validationResult.isValid) {
-            showValidationErrors(type, validationResult.errors);
+            setUploadErrors(prev => ({
+              ...prev,
+              [type]: validationResult.errors
+            }));
           }
         } catch (validationError) {
           console.warn('Full validation failed, using basic validation:', validationError);
           // Keep the basic validation result
         }
       } catch (error) {
-        alert('Error reading CSV file: ' + error.message);
+        setUploadErrors(prev => ({
+          ...prev,
+          [type]: ['Error reading CSV file: ' + error.message]
+        }));
       }
     };
     reader.readAsText(file);
@@ -1370,17 +1438,29 @@ const Roles = () => {
   const handleTrialUpload = async (type) => {
     console.log(`Running trial upload for ${type}`);
     
+    // Clear previous trial errors
+    setTrialErrors(prev => ({
+      ...prev,
+      [type]: []
+    }));
+    
     // Check if file is uploaded and validated
     const uploadStatusForType = uploadStatus[type];
     if (!uploadStatusForType || !uploadStatusForType.validationResult) {
-      alert('Please upload and validate a CSV file first');
+      setTrialErrors(prev => ({
+        ...prev,
+        [type]: ['Please upload and validate a CSV file first']
+      }));
       return;
     }
 
     // Check if validation passed
     if (!uploadStatusForType.validationResult.isValid) {
       console.error('Validation failed with errors:', uploadStatusForType.validationResult.errors);
-      alert(`Please fix validation errors before running trial upload:\n\n${uploadStatusForType.validationResult.errors.slice(0, 5).join('\n')}${uploadStatusForType.validationResult.errors.length > 5 ? '\n... and more errors' : ''}`);
+      setTrialErrors(prev => ({
+        ...prev,
+        [type]: [`Please fix validation errors before running trial upload:\n\n${uploadStatusForType.validationResult.errors.slice(0, 5).join('\n')}${uploadStatusForType.validationResult.errors.length > 5 ? '\n... and more errors' : ''}`]
+      }));
       return;
     }
 
@@ -1431,14 +1511,23 @@ const Roles = () => {
                 } 
               }));
             } else {
-              alert('Trial upload failed: ' + (response.data.error || 'Unknown error'));
+              setTrialErrors(prev => ({
+                ...prev,
+                [type]: ['Trial upload failed: ' + (response.data.error || 'Unknown error')]
+              }));
             }
           } catch (error) {
             console.error('Trial upload error:', error);
             if (error.response?.status === 401) {
-              alert('Session expired. Please refresh the page and try again.');
+              setTrialErrors(prev => ({
+                ...prev,
+                [type]: ['Session expired. Please refresh the page and try again.']
+              }));
             } else {
-              alert('Trial upload failed: ' + (error.response?.data?.error || error.message));
+              setTrialErrors(prev => ({
+                ...prev,
+                [type]: ['Trial upload failed: ' + (error.response?.data?.error || error.message)]
+              }));
             }
           }
           setIsValidating(false);
@@ -1446,7 +1535,10 @@ const Roles = () => {
           break;
         case 'assetTypes':
           // TODO: Implement when asset types bulk upload is ready
-          alert('Asset Types trial upload not yet implemented');
+          setTrialErrors(prev => ({
+            ...prev,
+            [type]: ['Asset Types trial upload not yet implemented']
+          }));
           setIsValidating(false);
           setValidationProgress(0);
           return;
@@ -1473,27 +1565,39 @@ const Roles = () => {
                 } 
               }));
             } else {
-              alert('Trial upload failed: ' + (response.data.error || 'Unknown error'));
+              setTrialErrors(prev => ({
+                ...prev,
+                [type]: ['Trial upload failed: ' + (response.data.error || 'Unknown error')]
+              }));
             }
           } catch (error) {
             console.error('Trial upload error:', error);
             if (error.response?.status === 401) {
-              alert('Session expired. Please refresh the page and try again.');
+              setTrialErrors(prev => ({
+                ...prev,
+                [type]: ['Session expired. Please refresh the page and try again.']
+              }));
             } else {
-              alert('Trial upload failed: ' + (error.response?.data?.error || error.message));
+              setTrialErrors(prev => ({
+                ...prev,
+                [type]: ['Trial upload failed: ' + (error.response?.data?.error || error.message)]
+              }));
             }
           }
           setIsValidating(false);
           setValidationProgress(0);
           return;
         default:
-          alert('Unknown table type');
+          setTrialErrors(prev => ({
+            ...prev,
+            [type]: ['Unknown table type']
+          }));
           setIsValidating(false);
           setValidationProgress(0);
           return;
       }
 
-      if (response.data.success) {
+      if (response && response.data && response.data.success) {
         setTrialResults(prev => ({
           ...prev,
           [type]: response.data.trialResults
@@ -1506,21 +1610,34 @@ const Roles = () => {
           `- Errors: ${results.errors}\n` +
           `- Total Processed: ${results.totalProcessed}`;
         
-        alert(message);
-      } else {
-        alert('Trial upload failed: ' + response.data.error);
+        // Clear trial errors on success
+        setTrialErrors(prev => ({
+          ...prev,
+          [type]: []
+        }));
+      } else if (response && response.data) {
+        setTrialErrors(prev => ({
+          ...prev,
+          [type]: ['Trial upload failed: ' + response.data.error]
+        }));
       }
     } catch (error) {
       console.error('Trial upload error:', error);
       
       // Handle authentication errors specifically
       if (error.response?.status === 401) {
-        alert('Session expired. Please log in again.');
+        setTrialErrors(prev => ({
+          ...prev,
+          [type]: ['Session expired. Please log in again.']
+        }));
         // The axios interceptor will handle the logout and redirect
         return;
       }
       
-      alert('Trial upload failed: ' + (error.response?.data?.error || error.message));
+      setTrialErrors(prev => ({
+        ...prev,
+        [type]: ['Trial upload failed: ' + (error.response?.data?.error || error.message)]
+      }));
     } finally {
       setIsValidating(false);
       setValidationProgress(0);
@@ -1647,6 +1764,10 @@ const Roles = () => {
           onCommit={() => handleCommit('assets')}
           uploadStatus={uploadStatus.assets}
           trialResults={trialResults.assets}
+          uploadErrors={uploadErrors.assets}
+          trialErrors={trialErrors.assets}
+          onClearErrors={() => setUploadErrors(prev => ({ ...prev, assets: [] }))}
+          onClearTrialErrors={() => setTrialErrors(prev => ({ ...prev, assets: [] }))}
         />;
       case 'assetTypes':
         return <AssetTypesTab 
@@ -1656,6 +1777,10 @@ const Roles = () => {
           onCommit={() => handleCommit('assetTypes')}
           uploadStatus={uploadStatus.assetTypes}
           trialResults={trialResults.assetTypes}
+          uploadErrors={uploadErrors.assetTypes}
+          trialErrors={trialErrors.assetTypes}
+          onClearErrors={() => setUploadErrors(prev => ({ ...prev, assetTypes: [] }))}
+          onClearTrialErrors={() => setTrialErrors(prev => ({ ...prev, assetTypes: [] }))}
         />;
       case 'employees':
         return <EmployeesTab 
@@ -1665,6 +1790,10 @@ const Roles = () => {
           onCommit={() => handleCommit('employees')}
           uploadStatus={uploadStatus.employees}
           trialResults={trialResults.employees}
+          uploadErrors={uploadErrors.employees}
+          trialErrors={trialErrors.employees}
+          onClearErrors={() => setUploadErrors(prev => ({ ...prev, employees: [] }))}
+          onClearTrialErrors={() => setTrialErrors(prev => ({ ...prev, employees: [] }))}
         />;
       default:
         return null;
@@ -1737,7 +1866,7 @@ const Roles = () => {
 };
 
 // Assets Tab Component
-const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults }) => {
+const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, onClearErrors, onClearTrialErrors }) => {
   const [selectedFile, setSelectedFile] = useState(null);
 
   const handleFileChange = (e) => {
@@ -1808,6 +1937,9 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
             </div>
           )}
         </div>
+        
+        {/* Error Display */}
+        <ErrorDisplay errors={uploadErrors} onClear={onClearErrors} />
       </div>
 
       {/* Step 3: Trial Upload */}
@@ -1852,6 +1984,9 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
             </div>
           </div>
         )}
+        
+        {/* Trial Error Display */}
+        <ErrorDisplay errors={trialErrors} onClear={onClearTrialErrors} />
       </div>
 
       {/* Step 4: Commit */}
@@ -1877,7 +2012,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
 };
 
 // Asset Types Tab Component
-const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults }) => {
+const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, onClearErrors, onClearTrialErrors }) => {
   const [selectedFile, setSelectedFile] = useState(null);
 
   const handleFileChange = (e) => {
@@ -1948,6 +2083,9 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
             </div>
           )}
         </div>
+        
+        {/* Error Display */}
+        <ErrorDisplay errors={uploadErrors} onClear={onClearErrors} />
       </div>
 
       {/* Step 3: Trial Upload */}
@@ -1992,6 +2130,9 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
             </div>
           </div>
         )}
+        
+        {/* Trial Error Display */}
+        <ErrorDisplay errors={trialErrors} onClear={onClearTrialErrors} />
       </div>
 
       {/* Step 4: Commit */}
@@ -2017,7 +2158,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
 };
 
 // Employees Tab Component
-const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults }) => {
+const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, onClearErrors, onClearTrialErrors }) => {
   const [selectedFile, setSelectedFile] = useState(null);
 
   const handleFileChange = (e) => {
@@ -2088,6 +2229,9 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
             </div>
           )}
         </div>
+        
+        {/* Error Display */}
+        <ErrorDisplay errors={uploadErrors} onClear={onClearErrors} />
       </div>
 
       {/* Step 3: Trial Upload */}
@@ -2132,6 +2276,9 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
             </div>
           </div>
         )}
+        
+        {/* Trial Error Display */}
+        <ErrorDisplay errors={trialErrors} onClear={onClearTrialErrors} />
       </div>
 
       {/* Step 4: Commit */}
