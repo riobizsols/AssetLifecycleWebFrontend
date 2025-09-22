@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { X, Printer, Eye } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import JsBarcode from 'jsbarcode';
+import { useLanguage } from '../contexts/LanguageContext';
 import { getOrgData } from '../templates/labelTemplates';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -14,6 +15,8 @@ const PrintPreviewModal = ({
   labelTemplates = {},
   assetTypeTemplateMapping = {}
 }) => {
+  const { t } = useLanguage();
+  
   if (!show) return null;
 
   const selectedPrinter = printers.find(p => p.id === parseInt(printSettings.printerId));
@@ -34,13 +37,13 @@ const PrintPreviewModal = ({
     switch (template.format) {
       case 'barcode-only':
       case 'text-with-barcode':
-        return 'Barcode';
+        return t('serialNumberPrint.barcode');
       case 'text-with-qr':
-        return 'QR Code';
+        return t('serialNumberPrint.qrCode');
       case 'text-only':
-        return 'Text Only';
+        return t('serialNumberPrint.textOnly');
       default:
-        return 'Text Only';
+        return t('serialNumberPrint.textOnly');
     }
   };
 
@@ -142,7 +145,7 @@ const PrintPreviewModal = ({
       } catch (error) {
         console.error('Error generating barcode:', error);
         // Fallback: show error message
-        barcodeRef.current.innerHTML = '<div class="text-red-500 text-xs">Barcode generation failed</div>';
+        barcodeRef.current.innerHTML = `<div class="text-red-500 text-xs">${t('serialNumberPrint.barcodeGenerationFailed')}</div>`;
       }
     }
   }, [selectedItem?.serial_number, template.dimensions]);
@@ -205,7 +208,7 @@ const PrintPreviewModal = ({
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <Eye className="w-6 h-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Print Preview</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{t('serialNumberPrint.printPreview')}</h2>
           </div>
           <button
             onClick={onClose}
@@ -251,7 +254,7 @@ const PrintPreviewModal = ({
             onClick={onClose}
             className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Close
+            {t('serialNumberPrint.close')}
           </button>
         </div>
       </div>

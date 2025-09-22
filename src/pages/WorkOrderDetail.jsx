@@ -6,6 +6,7 @@ import API from "../lib/axios";
 import StatusBadge from "../components/StatusBadge";
 import { Card } from "../components/ui/card";
 import toast from "react-hot-toast";
+import { useLanguage } from "../contexts/LanguageContext";
 import { 
   UserGroupIcon, 
   DocumentTextIcon, 
@@ -21,6 +22,7 @@ const WorkOrderDetail = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const printRef = useRef();
   const exportRef = useRef();
   
@@ -49,7 +51,7 @@ const WorkOrderDetail = () => {
       }
       
       if (!workOrderData) {
-        toast.error("Work order not found");
+        toast.error(t('workorderManagement.workOrderNotFound'));
         navigate("/workorder-management");
         return;
       }
@@ -78,7 +80,7 @@ const WorkOrderDetail = () => {
 
     } catch (error) {
       console.error("Error fetching work order details:", error);
-      toast.error("Failed to fetch work order details");
+      toast.error(t('workorderManagement.failedToFetchWorkOrderDetails'));
       navigate("/workorder-management");
     } finally {
       setIsLoading(false);
@@ -157,10 +159,10 @@ const WorkOrderDetail = () => {
       pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
       pdf.save(`WorkOrder_${workOrder?.ams_id || id}_${new Date().toISOString().split('T')[0]}.pdf`);
       
-      toast.success("PDF exported successfully");
+      toast.success(t('workorderManagement.pdfExportedSuccessfully'));
     } catch (error) {
       console.error("Error exporting PDF:", error);
-      toast.error(`Failed to export PDF: ${error.message}`);
+      toast.error(t('workorderManagement.failedToExportPDF') + `: ${error.message}`);
     } finally {
       setIsExporting(false);
     }
@@ -184,12 +186,12 @@ const WorkOrderDetail = () => {
     return (
       <div className="p-4">
         <div className="text-center">
-          <p>Work order not found</p>
+          <p>{t('workorderManagement.workOrderNotFound')}</p>
           <button 
             onClick={() => navigate("/workorder-management")}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
-            Back to Work Orders
+            {t('workorderManagement.backToWorkOrders')}
           </button>
         </div>
       </div>
@@ -227,7 +229,7 @@ const WorkOrderDetail = () => {
         <div className="flex items-center gap-3">
           <WrenchScrewdriverIcon className="h-4 w-4" />
           <span className="cursor-pointer hover:text-blue-600" onClick={() => navigate("/workorder-management")}>
-            Work Orders
+            {t('workorderManagement.workOrders')}
           </span>
           <span>/</span>
           <span className="text-gray-900 font-bold">{workOrder.ams_id}</span>
@@ -246,7 +248,7 @@ const WorkOrderDetail = () => {
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <span className="flex items-center gap-1">
               <WrenchIcon className="w-4 h-4" />
-              {workOrder.maintenance_type_name || 'Maintenance'}
+              {workOrder.maintenance_type_name || t('workorderManagement.maintenance')}
             </span>
             <span className="flex items-center gap-1">
               <DocumentTextIcon className="w-4 h-4" />
@@ -260,7 +262,7 @@ const WorkOrderDetail = () => {
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
           >
             <PrinterIcon className="w-4 h-4" />
-            Print
+            {t('workorderManagement.print')}
           </button>
           <button
             onClick={handleExportPDF}
@@ -268,7 +270,7 @@ const WorkOrderDetail = () => {
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-[#0E2F4B] text-white rounded-md disabled:opacity-50"
           >
             <DocumentTextIcon className="w-4 h-4" />
-            {isExporting ? "Exporting..." : "Export PDF"}
+            {isExporting ? t('workorderManagement.exporting') : t('workorderManagement.exportPDF')}
           </button>
         </div>
       </div>
@@ -285,7 +287,7 @@ const WorkOrderDetail = () => {
             }`}
           >
             <DocumentTextIcon className="w-5 h-5 inline mr-2" />
-            Overview
+            {t('workorderManagement.overview')}
           </button>
 
           <button 
@@ -297,7 +299,7 @@ const WorkOrderDetail = () => {
             }`}
           >
             <BuildingOffice2Icon className="w-5 h-5 inline mr-2" />
-            Vendor
+            {t('workorderManagement.vendor')}
           </button>
                     <button
             onClick={() => setActiveTab('checklist')}
@@ -308,7 +310,7 @@ const WorkOrderDetail = () => {
             }`}
           >
             <ClipboardDocumentListIcon className="w-5 h-5 inline mr-2" />
-            Checklist
+            {t('workorderManagement.checklist')}
           </button>
           <button 
             onClick={() => setActiveTab('activity')}
@@ -319,7 +321,7 @@ const WorkOrderDetail = () => {
             }`}
           >
             <CalendarIcon className="w-5 h-5 inline mr-2" />
-            History
+            {t('workorderManagement.history')}
           </button>
         </nav>
       </div>
@@ -334,7 +336,7 @@ const WorkOrderDetail = () => {
           <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
             <span className="flex items-center gap-1">
               <WrenchIcon className="w-4 h-4" />
-              {workOrder.maintenance_type_name || 'Maintenance'}
+              {workOrder.maintenance_type_name || t('workorderManagement.maintenance')}
             </span>
             <span className="flex items-center gap-1">
               <DocumentTextIcon className="w-4 h-4" />
@@ -352,57 +354,57 @@ const WorkOrderDetail = () => {
             
             {/* Asset Details */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-4">Asset Information</h3>
+              <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.assetInformation')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Asset ID</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetID')}</label>
                   <p className="text-gray-900">{workOrder.asset_id}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
-                  <p className="text-gray-900">{assetDetails?.serial_number || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.serialNumber')}</label>
+                  <p className="text-gray-900">{assetDetails?.serial_number || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
-                  <p className="text-gray-900">{assetDetails?.asset_type_name || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetType')}</label>
+                  <p className="text-gray-900">{assetDetails?.asset_type_name || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                  <p className="text-gray-900">{assetDetails?.branch_name || assetDetails?.department_name || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.location')}</label>
+                  <p className="text-gray-900">{assetDetails?.branch_name || assetDetails?.department_name || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Date</label>
-                  <p className="text-gray-900">{workOrder.created_at ? new Date(workOrder.created_at).toLocaleDateString() : 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceDate')}</label>
+                  <p className="text-gray-900">{workOrder.created_at ? new Date(workOrder.created_at).toLocaleDateString() : t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Condition</label>
-                  <p className="text-gray-900">{assetDetails?.condition || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.currentCondition')}</label>
+                  <p className="text-gray-900">{assetDetails?.condition || t('workorderManagement.notAvailable')}</p>
                 </div>
               </div>
             </div>
 
-            {/* Additional Issues */}
+            {/* {t('workorderManagement.additionalIssues')} */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-4">Additional Issues</h3>
+              <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.additionalIssues')}</h3>
               <div className="border p-3 rounded">
                 <p className="text-gray-600 text-sm">Document any additional issues found during maintenance that require rectification...</p>
               </div>
             </div>
 
-            {/* Approval Information */}
+            {/* {t('workorderManagement.approvalInformation')} */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-4">Approval Information</h3>
+              <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.approvalInformation')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Final Approver's Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
                   <p className="text-gray-900">_____________________</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Supervisor</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
                   <p className="text-gray-900">_____________________</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Approval Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
                   <p className="text-gray-900">_____________________</p>
                 </div>
               </div>
@@ -411,15 +413,15 @@ const WorkOrderDetail = () => {
 
           {/* Vendor Section */}
           <section className="page-break">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Vendor Information</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">{t('workorderManagement.vendorInformation')}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
-                <p className="text-gray-900">{assetDetails?.vendor_name || 'Not Assigned'}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
+                <p className="text-gray-900">{assetDetails?.vendor_name || t('workorderManagement.notAssigned')}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Contract</label>
-                <p className="text-gray-900">{workOrder.atbrrc_id || 'N/A'}</p>
+                <p className="text-gray-900">{workOrder.atbrrc_id || t('workorderManagement.notAvailable')}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">SLA</label>
@@ -427,22 +429,22 @@ const WorkOrderDetail = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Contact Information</label>
-                <p className="text-gray-900">{assetDetails?.vendor_contact || 'N/A'}</p>
+                <p className="text-gray-900">{assetDetails?.vendor_contact || t('workorderManagement.notAvailable')}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <p className="text-gray-900">{assetDetails?.vendor_email || 'N/A'}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
+                <p className="text-gray-900">{assetDetails?.vendor_email || t('workorderManagement.notAvailable')}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                <p className="text-gray-900">{assetDetails?.vendor_address || 'N/A'}</p>
+                <p className="text-gray-900">{assetDetails?.vendor_address || t('workorderManagement.notAvailable')}</p>
               </div>
             </div>
           </section>
 
           {/* Checklist Section */}
           <section className="page-break">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Maintenance Checklist</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">{t('workorderManagement.maintenanceChecklist')}</h2>
             {checklist.length > 0 ? (
               <div className="space-y-3">
                 {checklist.map((item, index) => (
@@ -453,7 +455,7 @@ const WorkOrderDetail = () => {
                         {item.task_description || item.description || `Task ${index + 1}`}
                       </div>
                       {item.is_mandatory && (
-                        <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded mt-2 inline-block">Required</span>
+                        <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded mt-2 inline-block">{t('workorderManagement.required')}</span>
                       )}
                     </div>
                   </div>
@@ -487,7 +489,7 @@ const WorkOrderDetail = () => {
 
           {/* Activity/History Section */}
           <section className="page-break">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Previous 5 Maintenance Records</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">{t('workorderManagement.previous5MaintenanceRecords')}</h2>
             {maintenanceHistory.length > 0 ? (
               <div className="space-y-4">
                 {maintenanceHistory.map((record, index) => (
@@ -498,9 +500,9 @@ const WorkOrderDetail = () => {
                           <WrenchIcon className="w-4 h-4 text-blue-600" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-sm">{record.maint_type_name || 'Maintenance Activity'}</h3>
+                          <h3 className="font-medium text-sm">{record.maint_type_name || t('workorderManagement.maintenanceActivity')}</h3>
                           <p className="text-xs text-gray-500">
-                            {record.act_maint_st_date ? new Date(record.act_maint_st_date).toLocaleDateString() : 'N/A'}
+                            {record.act_maint_st_date ? new Date(record.act_maint_st_date).toLocaleDateString() : t('workorderManagement.notAvailable')}
                           </p>
                         </div>
                       </div>
@@ -508,14 +510,14 @@ const WorkOrderDetail = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm mt-3">
                       <div>
-                        <span className="text-gray-500">Vendor:</span> {record.vendor_name || 'N/A'}
+                        <span className="text-gray-500">{t('workorderManagement.vendorLabel')}</span> {record.vendor_name || t('workorderManagement.notAvailable')}
                       </div>
                       <div>
-                        <span className="text-gray-500">Maintenance ID:</span> {record.ams_id || 'N/A'}
+                        <span className="text-gray-500">{t('workorderManagement.maintenanceIDLabel')}</span> {record.ams_id || t('workorderManagement.notAvailable')}
                       </div>
                       {record.act_maint_end_date && (
                         <div>
-                          <span className="text-gray-500">Completed:</span> {new Date(record.act_maint_end_date).toLocaleDateString()}
+                          <span className="text-gray-500">{t('workorderManagement.completed')}:</span> {new Date(record.act_maint_end_date).toLocaleDateString()}
                         </div>
                       )}
                     </div>
@@ -543,7 +545,7 @@ const WorkOrderDetail = () => {
           <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
             <span className="flex items-center gap-1">
               <WrenchIcon className="w-4 h-4" />
-              {workOrder.maintenance_type_name || 'Maintenance'}
+              {workOrder.maintenance_type_name || t('workorderManagement.maintenance')}
             </span>
             <span className="flex items-center gap-1">
               <DocumentTextIcon className="w-4 h-4" />
@@ -560,57 +562,57 @@ const WorkOrderDetail = () => {
               
               {/* Asset Details */}
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">Asset Information</h3>
+                <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.assetInformation')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Asset ID</label>
-                    <p className="text-gray-900">{workOrder.asset?.asset_id || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetID')}</label>
+                    <p className="text-gray-900">{workOrder.asset?.asset_id || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
-                    <p className="text-gray-900">{workOrder.asset?.serial_number || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.serialNumber')}</label>
+                    <p className="text-gray-900">{workOrder.asset?.serial_number || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
-                    <p className="text-gray-900">{workOrder.asset_type?.asset_type_name || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetType')}</label>
+                    <p className="text-gray-900">{workOrder.asset_type?.asset_type_name || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <p className="text-gray-900">{workOrder.asset?.branch_name || workOrder.asset?.department_name || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.location')}</label>
+                    <p className="text-gray-900">{workOrder.asset?.branch_name || workOrder.asset?.department_name || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Date</label>
-                    <p className="text-gray-900">{workOrder.act_maint_st_date ? new Date(workOrder.act_maint_st_date).toLocaleDateString() : 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceDate')}</label>
+                    <p className="text-gray-900">{workOrder.act_maint_st_date ? new Date(workOrder.act_maint_st_date).toLocaleDateString() : t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Condition</label>
-                    <p className="text-gray-900">{workOrder.asset?.condition || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.currentCondition')}</label>
+                    <p className="text-gray-900">{workOrder.asset?.condition || t('workorderManagement.notAvailable')}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Additional Issues */}
+              {/* {t('workorderManagement.additionalIssues')} */}
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">Additional Issues</h3>
+                <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.additionalIssues')}</h3>
                 <div className="border p-3 rounded">
                   <p className="text-gray-600 text-sm">Document any additional issues found during maintenance that require rectification...</p>
                 </div>
               </div>
 
-              {/* Approval Information */}
+              {/* {t('workorderManagement.approvalInformation')} */}
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">Approval Information</h3>
+                <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.approvalInformation')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Final Approver's Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
                     <p className="text-gray-900">_____________________</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Supervisor</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
                     <p className="text-gray-900">_____________________</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Approval Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
                     <p className="text-gray-900">_____________________</p>
                   </div>
                 </div>
@@ -620,31 +622,31 @@ const WorkOrderDetail = () => {
 
           {activeTab === 'vendor' && (
             <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Vendor Information</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">{t('workorderManagement.vendorInformation')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
-                  <p className="text-gray-900">{workOrder.vendor?.vendor_name || 'Not Assigned'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
+                  <p className="text-gray-900">{workOrder.vendor?.vendor_name || t('workorderManagement.notAssigned')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
-                  <p className="text-gray-900">{workOrder.vendor?.contact_person || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.contactPerson')}</label>
+                  <p className="text-gray-900">{workOrder.vendor?.contact_person || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <p className="text-gray-900">{workOrder.vendor?.email || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
+                  <p className="text-gray-900">{workOrder.vendor?.email || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <p className="text-gray-900">{workOrder.vendor?.phone || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
+                  <p className="text-gray-900">{workOrder.vendor?.phone || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
-                  <p className="text-gray-900">{workOrder.maintenance_type_name || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceType')}</label>
+                  <p className="text-gray-900">{workOrder.maintenance_type_name || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <p className="text-gray-900">{workOrder.status || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.status')}</label>
+                  <p className="text-gray-900">{workOrder.status || t('workorderManagement.notAvailable')}</p>
                 </div>
               </div>
             </section>
@@ -652,7 +654,7 @@ const WorkOrderDetail = () => {
 
           {activeTab === 'checklist' && (
             <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Maintenance Checklist</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">{t('workorderManagement.maintenanceChecklist')}</h2>
               {checklist.length > 0 ? (
                 <div className="space-y-3">
                   {checklist.map((item, index) => (
@@ -663,7 +665,7 @@ const WorkOrderDetail = () => {
                           {item.text || item.task_description || item.description || `Task ${index + 1}`}
                         </div>
                         {item.is_mandatory && (
-                          <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded mt-2 inline-block">Required</span>
+                          <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded mt-2 inline-block">{t('workorderManagement.required')}</span>
                         )}
                       </div>
                     </div>
@@ -698,7 +700,7 @@ const WorkOrderDetail = () => {
 
           {activeTab === 'activity' && (
             <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">Previous 5 Maintenance Records</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b">{t('workorderManagement.previous5MaintenanceRecords')}</h2>
               {maintenanceHistory.length > 0 ? (
                 <div className="space-y-4">
                   {maintenanceHistory.map((record, index) => (
@@ -711,7 +713,7 @@ const WorkOrderDetail = () => {
                           <div>
                             <h3 className="font-medium text-sm">{record.status || 'Activity'}</h3>
                             <p className="text-xs text-gray-500">
-                              {record.act_maint_st_date ? new Date(record.act_maint_st_date).toLocaleDateString() : 'N/A'}
+                              {record.act_maint_st_date ? new Date(record.act_maint_st_date).toLocaleDateString() : t('workorderManagement.notAvailable')}
                             </p>
                           </div>
                         </div>
@@ -719,14 +721,14 @@ const WorkOrderDetail = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm mt-3">
                         <div>
-                          <span className="text-gray-500">Notes:</span> {record.notes || 'N/A'}
+                          <span className="text-gray-500">{t('workorderManagement.notes')}:</span> {record.notes || t('workorderManagement.notAvailable')}
                         </div>
                         <div>
-                          <span className="text-gray-500">Work Order ID:</span> {record.wo_id || record.ams_id || 'N/A'}
+                          <span className="text-gray-500">{t('workorderManagement.workOrderID')}:</span> {record.wo_id || record.ams_id || t('workorderManagement.notAvailable')}
                         </div>
                         {record.act_main_end_date && (
                           <div>
-                            <span className="text-gray-500">Completed:</span> {new Date(record.act_main_end_date).toLocaleDateString()}
+                            <span className="text-gray-500">{t('workorderManagement.completed')}:</span> {new Date(record.act_main_end_date).toLocaleDateString()}
                           </div>
                         )}
                       </div>
@@ -753,61 +755,61 @@ const WorkOrderDetail = () => {
 
               {/* Asset Details */}
               <Card className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Asset Information</h2>
+                <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.assetInformation')}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Asset ID</label>
-                    <p className="text-gray-900">{workOrder.asset?.asset_id || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetID')}</label>
+                    <p className="text-gray-900">{workOrder.asset?.asset_id || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
-                    <p className="text-gray-900">{workOrder.asset?.serial_number || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.serialNumber')}</label>
+                    <p className="text-gray-900">{workOrder.asset?.serial_number || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
-                    <p className="text-gray-900">{workOrder.asset_type?.asset_type_name || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetType')}</label>
+                    <p className="text-gray-900">{workOrder.asset_type?.asset_type_name || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <p className="text-gray-900">{workOrder.asset?.branch_name || workOrder.asset?.department_name || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.location')}</label>
+                    <p className="text-gray-900">{workOrder.asset?.branch_name || workOrder.asset?.department_name || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Date</label>
-                    <p className="text-gray-900">{workOrder.act_maint_st_date ? new Date(workOrder.act_maint_st_date).toLocaleDateString() : 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceDate')}</label>
+                    <p className="text-gray-900">{workOrder.act_maint_st_date ? new Date(workOrder.act_maint_st_date).toLocaleDateString() : t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Condition</label>
-                    <p className="text-gray-900">{workOrder.asset?.condition || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.currentCondition')}</label>
+                    <p className="text-gray-900">{workOrder.asset?.condition || t('workorderManagement.notAvailable')}</p>
                   </div>
                 </div>
               </Card>
 
-              {/* Additional Issues */}
+              {/* {t('workorderManagement.additionalIssues')} */}
               <Card className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Additional Issues</h2>
+                <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.additionalIssues')}</h2>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Additional Issues Identified</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('workorderManagement.additionalIssues')} Identified</label>
                   <div className="w-full p-3 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[96px] whitespace-pre-line">
-                    {workOrder.notes || 'N/A'}
+                    {workOrder.notes || t('workorderManagement.notAvailable')}
                   </div>
                 </div>
               </Card>
 
               {/* Approval Section */}
               <Card className="p-6">
-                <h2 className="text-lg font-semibold mb-4">Approval Information</h2>
+                <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.approvalInformation')}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Final Approver's Name</label>
-                    <p className="text-gray-900">{workOrder.final_approver_name || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
+                    <p className="text-gray-900">{workOrder.final_approver_name || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Supervisor</label>
-                    <p className="text-gray-900">{workOrder.technician_name || 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
+                    <p className="text-gray-900">{workOrder.technician_name || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Approval Date</label>
-                    <p className="text-gray-900">{workOrder.approval_date ? new Date(workOrder.approval_date).toLocaleDateString('en-GB').replaceAll('/', '-') : 'N/A'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
+                    <p className="text-gray-900">{workOrder.approval_date ? new Date(workOrder.approval_date).toLocaleDateString('en-GB').replaceAll('/', '-') : t('workorderManagement.notAvailable')}</p>
                   </div>
                 </div>
               </Card>
@@ -819,31 +821,31 @@ const WorkOrderDetail = () => {
           {/* Vendor Tab Content */}
           {activeTab === 'vendor' && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Vendor Information</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.vendorInformation')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
-                  <p className="text-gray-900">{workOrder.vendor?.vendor_name || 'Not Assigned'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
+                  <p className="text-gray-900">{workOrder.vendor?.vendor_name || t('workorderManagement.notAssigned')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
-                  <p className="text-gray-900">{workOrder.vendor?.contact_person || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.contactPerson')}</label>
+                  <p className="text-gray-900">{workOrder.vendor?.contact_person || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <p className="text-gray-900">{workOrder.vendor?.email || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
+                  <p className="text-gray-900">{workOrder.vendor?.email || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <p className="text-gray-900">{workOrder.vendor?.phone || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
+                  <p className="text-gray-900">{workOrder.vendor?.phone || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
-                  <p className="text-gray-900">{workOrder.maintenance_type_name || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceType')}</label>
+                  <p className="text-gray-900">{workOrder.maintenance_type_name || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <p className="text-gray-900">{workOrder.status || 'N/A'}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.status')}</label>
+                  <p className="text-gray-900">{workOrder.status || t('workorderManagement.notAvailable')}</p>
                 </div>
               </div>
             </Card>
@@ -852,7 +854,7 @@ const WorkOrderDetail = () => {
           {/* Checklist Tab Content */}
           {activeTab === 'checklist' && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Maintenance Checklist</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.maintenanceChecklist')}</h2>
               {checklist.length > 0 ? (
                 <div className="space-y-3">
                   {checklist.map((item, index) => (
@@ -861,7 +863,7 @@ const WorkOrderDetail = () => {
                         {item.text || item.task_description || item.description || `Task ${index + 1}`}
                       </div>
                       {item.is_mandatory && (
-                        <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded mt-2 inline-block">Required</span>
+                        <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded mt-2 inline-block">{t('workorderManagement.required')}</span>
                       )}
                     </div>
                   ))}
@@ -891,7 +893,7 @@ const WorkOrderDetail = () => {
           {/* Activity Tab Content */}
           {activeTab === 'activity' && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Previous 5 Maintenance Records</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.previous5MaintenanceRecords')}</h2>
               {maintenanceHistory.length > 0 ? (
                 <div className="space-y-4">
                   {maintenanceHistory.map((record, index) => (
@@ -902,9 +904,9 @@ const WorkOrderDetail = () => {
                             <WrenchIcon className="w-4 h-4 text-blue-600" />
                           </div>
                           <div>
-                            <h3 className="font-medium text-sm">{record.maint_type_name || 'Maintenance Activity'}</h3>
+                            <h3 className="font-medium text-sm">{record.maint_type_name || t('workorderManagement.maintenanceActivity')}</h3>
                             <p className="text-xs text-gray-500">
-                              {record.act_maint_st_date ? new Date(record.act_maint_st_date).toLocaleDateString() : 'N/A'}
+                              {record.act_maint_st_date ? new Date(record.act_maint_st_date).toLocaleDateString() : t('workorderManagement.notAvailable')}
                             </p>
                           </div>
                         </div>
@@ -912,14 +914,14 @@ const WorkOrderDetail = () => {
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm mt-3">
                         <div>
-                          <span className="text-gray-500">Vendor:</span> {workOrder.vendor?.vendor_name || 'N/A'}
+                          <span className="text-gray-500">{t('workorderManagement.vendorLabel')}</span> {workOrder.vendor?.vendor_name || t('workorderManagement.notAvailable')}
                         </div>
                         <div>
-                          <span className="text-gray-500">Maintenance ID:</span> {record.ams_id || 'N/A'}
+                          <span className="text-gray-500">{t('workorderManagement.maintenanceIDLabel')}</span> {record.ams_id || t('workorderManagement.notAvailable')}
                         </div>
                         {record.act_maint_end_date && (
                           <div>
-                            <span className="text-gray-500">Completed:</span> {new Date(record.act_maint_end_date).toLocaleDateString()}
+                            <span className="text-gray-500">{t('workorderManagement.completed')}:</span> {new Date(record.act_maint_end_date).toLocaleDateString()}
                           </div>
                         )}
                       </div>

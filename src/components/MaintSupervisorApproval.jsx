@@ -7,10 +7,12 @@ import API from "../lib/axios";
 import ChecklistModal from "./ChecklistModal";
 import SearchableDropdown from "./ui/SearchableDropdown";
 import { generateUUID } from '../utils/uuid';
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function MaintSupervisorApproval() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [maintenanceData, setMaintenanceData] = useState(null);
   const [checklist, setChecklist] = useState([]);
   const [loadingChecklist, setLoadingChecklist] = useState(true);
@@ -86,11 +88,11 @@ export default function MaintSupervisorApproval() {
           technician_phno: res.data.data.technician_phno || ""
         });
       } else {
-        toast.error(res.data.message || "Failed to fetch maintenance data");
+        toast.error(res.data.message || t('maintenanceSupervisor.failedToFetchMaintenanceData'));
       }
     } catch (err) {
       console.error("Failed to fetch maintenance data:", err);
-      toast.error("Failed to fetch maintenance data");
+      toast.error(t('maintenanceSupervisor.failedToFetchMaintenanceData'));
     } finally {
       setLoadingData(false);
     }
@@ -115,6 +117,7 @@ export default function MaintSupervisorApproval() {
       }
     } catch (err) {
       console.error("Failed to fetch checklist:", err);
+      toast.error(t('maintenanceSupervisor.failedToFetchChecklist'));
       setChecklist([]);
     } finally {
       setLoadingChecklist(false);
@@ -169,7 +172,7 @@ export default function MaintSupervisorApproval() {
       
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
+      toast.error(t('maintenanceSupervisor.failedToLoadDocumentTypes'));
       setMaintenanceDocTypes([]);
       setPhotoDocTypes([]);
     }
@@ -312,6 +315,7 @@ export default function MaintSupervisorApproval() {
     } catch (err) {
       console.error("Failed to fetch documents:", err);
       console.error("Error details:", err.response?.data);
+      toast.error(t('maintenanceSupervisor.failedToFetchDocuments'));
       setMaintenanceDocs([]);
       setArchivedDocs([]);
       setManualDocs([]);
@@ -373,11 +377,11 @@ export default function MaintSupervisorApproval() {
         });
         
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
-          toast.success('Document archived successfully');
+          toast.success(t('maintenanceSupervisor.documentArchivedSuccessfully'));
           // Refresh documents
           fetchMaintenanceDocuments();
         } else {
-          toast.error('Failed to archive document');
+          toast.error(t('maintenanceSupervisor.failedToArchiveDocument'));
         }
       } else if (action === 'unarchive') {
         const res = await API.put(`/asset-docs/${docId}/archive-status`, {
@@ -385,16 +389,16 @@ export default function MaintSupervisorApproval() {
         });
         
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
-          toast.success('Document unarchived successfully');
+          toast.success(t('maintenanceSupervisor.documentUnarchivedSuccessfully'));
           // Refresh documents
           fetchMaintenanceDocuments();
         } else {
-          toast.error('Failed to unarchive document');
+          toast.error(t('maintenanceSupervisor.failedToUnarchiveDocument'));
         }
       }
     } catch (err) {
       console.error(`Failed to ${action} document:`, err);
-      toast.error(`Failed to ${action} document`);
+      toast.error(t('maintenanceSupervisor.failedToActionDocument', { action }));
     }
     
     setActiveDropdown(null);
@@ -464,20 +468,20 @@ export default function MaintSupervisorApproval() {
 
   const handleInvoiceUpload = async () => {
     if (invoiceUploads.length === 0) {
-      toast.error('Add at least one invoice file');
+      toast.error(t('maintenanceSupervisor.addAtLeastOneInvoiceFile'));
       return;
     }
 
     // Validate all uploads
     for (const upload of invoiceUploads) {
       if (!upload.type || !upload.file) {
-        toast.error('Select document type and choose a file for all rows');
+        toast.error(t('maintenanceSupervisor.selectDocumentTypeAndChooseFile'));
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !upload.docTypeName?.trim()) {
-        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+        toast.error(t('maintenanceSupervisor.enterCustomNameForDocument', { docType: selectedDocType.text }));
         return;
       }
     }
@@ -511,19 +515,19 @@ export default function MaintSupervisorApproval() {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All invoice files uploaded successfully');
+          toast.success(t('maintenanceSupervisor.allInvoiceFilesUploadedSuccessfully'));
         } else {
-          toast.success(`${successCount} files uploaded, ${failCount} failed`);
+          toast.success(t('maintenanceSupervisor.filesUploadedFailed', { successCount, failCount }));
         }
         setInvoiceUploads([]); // Clear uploads after successful upload
         // Refresh maintenance documents
         fetchMaintenanceDocuments();
       } else {
-        toast.error('Failed to upload any files');
+        toast.error(t('maintenanceSupervisor.failedToUploadAnyFiles'));
       }
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error('Upload failed');
+      toast.error(t('maintenanceSupervisor.uploadFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -531,20 +535,20 @@ export default function MaintSupervisorApproval() {
 
   const handleBeforeAfterUpload = async () => {
     if (beforeAfterUploads.length === 0) {
-      toast.error('Add at least one image file');
+      toast.error(t('maintenanceSupervisor.addAtLeastOneImageFile'));
       return;
     }
 
     // Validate all uploads
     for (const upload of beforeAfterUploads) {
       if (!upload.type || !upload.file) {
-        toast.error('Select image type and choose a file for all rows');
+        toast.error(t('maintenanceSupervisor.selectImageTypeAndChooseFile'));
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = photoDocTypes.find(dt => dt.id === upload.type);
       if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !upload.docTypeName?.trim()) {
-        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+        toast.error(t('maintenanceSupervisor.enterCustomNameForImage', { docType: selectedDocType.text }));
         return;
       }
     }
@@ -578,19 +582,19 @@ export default function MaintSupervisorApproval() {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All images uploaded successfully');
+          toast.success(t('maintenanceSupervisor.allImagesUploadedSuccessfully'));
         } else {
-          toast.success(`${successCount} images uploaded, ${failCount} failed`);
+          toast.success(t('maintenanceSupervisor.imagesUploadedFailed', { successCount, failCount }));
         }
         setBeforeAfterUploads([]); // Clear uploads after successful upload
         // Refresh maintenance documents
         fetchMaintenanceDocuments();
       } else {
-        toast.error('Failed to upload any images');
+        toast.error(t('maintenanceSupervisor.failedToUploadAnyImages'));
       }
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error('Upload failed');
+      toast.error(t('maintenanceSupervisor.uploadFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -602,7 +606,7 @@ export default function MaintSupervisorApproval() {
     
     // Validation
     if (!formData.status) {
-      toast.error("Status is required");
+      toast.error(t('maintenanceSupervisor.statusIsRequired'));
       return;
     }
     
@@ -614,21 +618,21 @@ export default function MaintSupervisorApproval() {
       const res = await API.put(`/maintenance-schedules/${id}`, updateData);
       
       if (res.data.success) {
-        toast.success("Maintenance schedule updated successfully!");
+        toast.success(t('maintenanceSupervisor.maintenanceScheduleUpdatedSuccessfully'));
         navigate("/supervisor-approval");
       } else {
-        toast.error(res.data.message || "Failed to update maintenance schedule");
+        toast.error(res.data.message || t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'));
       }
     } catch (err) {
       console.error("Failed to update maintenance schedule:", err);
-      toast.error("Failed to update maintenance schedule");
+      toast.error(t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'));
     }
   };
 
   if (loadingData) {
     return (
       <div className="max-w-7xl mx-auto min-h-[600px] overflow-y-auto p-8 bg-white md:rounded shadow-lg mt-155">
-        <div className="text-center text-gray-500">Loading maintenance data...</div>
+        <div className="text-center text-gray-500">{t('maintenanceSupervisor.loadingMaintenanceData')}</div>
       </div>
     );
   }
@@ -636,7 +640,7 @@ export default function MaintSupervisorApproval() {
   if (!maintenanceData) {
     return (
       <div className="max-w-7xl mx-auto min-h-[600px] overflow-y-auto p-8 bg-white md:rounded shadow-lg mt-155">
-        <div className="text-center text-red-500">Maintenance record not found</div>
+        <div className="text-center text-red-500">{t('maintenanceSupervisor.maintenanceRecordNotFound')}</div>
       </div>
     );
   }
@@ -650,7 +654,7 @@ export default function MaintSupervisorApproval() {
           className="flex items-center gap-2 text-[#0E2F4B] hover:text-blue-700"
         >
           <ArrowLeft size={20} />
-          Back to Supervisor Approvals
+          {t('maintenanceSupervisor.backToSupervisorApprovals')}
         </button>
       </div>
 
@@ -659,7 +663,7 @@ export default function MaintSupervisorApproval() {
         {/* Checklist Section - At the Top */}
         <div className="p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">Maintenance Checklist</h2>
+            <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.maintenanceChecklist')}</h2>
             <button
               type="button"
               onClick={() => setShowChecklist(true)}
@@ -668,7 +672,7 @@ export default function MaintSupervisorApproval() {
               title="View and complete the asset maintenance checklist"
             >
               <ClipboardCheck className="w-4 h-4" />
-              {loadingChecklist ? "Loading..." : "View Checklist"}
+              {loadingChecklist ? t('maintenanceSupervisor.loading') : t('maintenanceSupervisor.viewChecklist')}
             </button>
           </div>
         </div>
@@ -676,7 +680,7 @@ export default function MaintSupervisorApproval() {
         {/* View Manual Section */}
         <div className="p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">Technical Manual</h2>
+            <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.technicalManual')}</h2>
             <div className="relative">
               <button
                 type="button"
@@ -700,7 +704,7 @@ export default function MaintSupervisorApproval() {
                 title="View technical specifications and manuals"
               >
                 <FileText className="w-4 h-4" />
-                {loadingMaintenanceDocs ? "Loading..." : `View Manual ${manualDocs.length > 0 ? `(${manualDocs.length})` : ''}`}
+                {loadingMaintenanceDocs ? t('maintenanceSupervisor.loading') : `${t('maintenanceSupervisor.viewManual')} ${manualDocs.length > 0 ? `(${manualDocs.length})` : ''}`}
                 <MoreVertical className="w-4 h-4" />
               </button>
               
@@ -729,7 +733,7 @@ export default function MaintSupervisorApproval() {
                         className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                       >
                         <Eye className="w-4 h-4 mr-2" />
-                        View
+                        {t('maintenanceSupervisor.view')}
                       </button>
                       <button
                         onClick={(e) => {
@@ -741,7 +745,7 @@ export default function MaintSupervisorApproval() {
                         className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        Download
+                        {t('maintenanceSupervisor.download')}
                       </button>
                     </div>
                   ))}
@@ -753,7 +757,7 @@ export default function MaintSupervisorApproval() {
           
           {manualDocs.length > 0 && (
             <div className="text-sm text-gray-600">
-              {manualDocs.length} technical manual document(s) available
+              {t('maintenanceSupervisor.technicalManualDocumentsAvailable', { count: manualDocs.length })}
             </div>
           )}
           
@@ -770,35 +774,35 @@ export default function MaintSupervisorApproval() {
 
         {/* Doc Upload Section */}
         <div className="p-6 rounded-lg border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Doc Upload</h2>
-          <div className="text-sm text-gray-600 mb-3">Upload maintenance documents (Work Order, Invoice, etc.)</div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.docUpload')}</h2>
+          <div className="text-sm text-gray-600 mb-3">{t('maintenanceSupervisor.uploadMaintenanceDocuments')}</div>
           
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm font-medium text-gray-700">Upload Documents</div>
+            <div className="text-sm font-medium text-gray-700">{t('maintenanceSupervisor.uploadDocuments')}</div>
             <button 
               type="button" 
               onClick={addInvoiceUpload} 
               className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
             >
               <Plus size={16} className="mr-2" />
-              Add Document
+              {t('maintenanceSupervisor.addDocument')}
             </button>
           </div>
           
           {invoiceUploads.length === 0 ? (
-            <div className="text-sm text-gray-500">No documents added.</div>
+            <div className="text-sm text-gray-500">{t('maintenanceSupervisor.noDocumentsAdded')}</div>
           ) : (
             <div className="space-y-3">
               {invoiceUploads.map(upload => (
                 <div key={upload.id} className="grid grid-cols-12 gap-3 items-start bg-white border border-gray-200 rounded p-3">
                   <div className="col-span-3">
-                    <label className="block text-xs font-medium mb-1">Document Type</label>
+                    <label className="block text-xs font-medium mb-1">{t('maintenanceSupervisor.documentType')}</label>
                     <SearchableDropdown
                       options={maintenanceDocTypes}
                       value={upload.type}
                       onChange={(value) => updateInvoiceUpload(upload.id, { type: value })}
-                      placeholder="Select type"
-                      searchPlaceholder="Search types..."
+                      placeholder={t('maintenanceSupervisor.selectType')}
+                      searchPlaceholder={t('maintenanceSupervisor.searchTypes')}
                       className="w-full"
                       displayKey="text"
                       valueKey="id"
@@ -810,13 +814,13 @@ export default function MaintSupervisorApproval() {
                     const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName && (
                       <div className="col-span-3">
-                        <label className="block text-xs font-medium mb-1">Custom Name</label>
+                        <label className="block text-xs font-medium mb-1">{t('maintenanceSupervisor.customName')}</label>
                         <input
                           type="text"
                           className="w-full border rounded px-2 py-2 text-sm h-[38px] bg-white"
                           value={upload.docTypeName}
                           onChange={(e) => updateInvoiceUpload(upload.id, { docTypeName: e.target.value })}
-                          placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                          placeholder={t('maintenanceSupervisor.enterCustomNameFor', { docType: selectedDocType?.text })}
                         />
                       </div>
                     );
@@ -827,7 +831,7 @@ export default function MaintSupervisorApproval() {
                     const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName ? 'col-span-4' : 'col-span-7';
                   })()}>
-                    <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
+                    <label className="block text-xs font-medium mb-1">{t('maintenanceSupervisor.fileMax10MB')}</label>
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1 max-w-md">
                         <input
@@ -843,7 +847,7 @@ export default function MaintSupervisorApproval() {
                         >
                           <Upload className="w-4 h-4 mr-2" />
                           <span className="truncate max-w-[200px] inline-block">
-                            {upload.file ? upload.file.name : 'Choose file'}
+                            {upload.file ? upload.file.name : t('maintenanceSupervisor.chooseFile')}
                           </span>
                         </label>
                       </div>
@@ -856,7 +860,7 @@ export default function MaintSupervisorApproval() {
                           className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
                         >
                           <Eye className="w-4 h-4 mr-2" />
-                          Preview
+                          {t('maintenanceSupervisor.preview')}
                         </a>
                       )}
                       <button 
@@ -865,7 +869,7 @@ export default function MaintSupervisorApproval() {
                         className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                       >
                         <X className="w-4 h-4 mr-2" />
-                        Remove
+                        {t('maintenanceSupervisor.remove')}
                       </button>
                     </div>
                   </div>
@@ -894,12 +898,12 @@ export default function MaintSupervisorApproval() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Uploading...
+                    {t('maintenanceSupervisor.uploading')}
                   </span>
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Upload All Invoices
+                    {t('maintenanceSupervisor.uploadAllInvoices')}
                   </>
                 )}
               </button>
@@ -909,35 +913,35 @@ export default function MaintSupervisorApproval() {
 
         {/* Before/After Images Upload Section */}
         <div className="p-6 rounded-lg border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Before & After Images</h2>
-          <div className="text-sm text-gray-600 mb-3">Upload images showing asset condition before and after maintenance (Optional)</div>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.beforeAfterImages')}</h2>
+          <div className="text-sm text-gray-600 mb-3">{t('maintenanceSupervisor.uploadImagesBeforeAfter')}</div>
           
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm font-medium text-gray-700">Upload Images</div>
+            <div className="text-sm font-medium text-gray-700">{t('maintenanceSupervisor.uploadImages')}</div>
             <button 
               type="button" 
               onClick={addBeforeAfterUpload} 
               className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
             >
               <Plus size={16} className="mr-2" />
-              Add Image
+              {t('maintenanceSupervisor.addImage')}
             </button>
           </div>
           
           {beforeAfterUploads.length === 0 ? (
-            <div className="text-sm text-gray-500">No images added.</div>
+            <div className="text-sm text-gray-500">{t('maintenanceSupervisor.noImagesAdded')}</div>
           ) : (
             <div className="space-y-3">
               {beforeAfterUploads.map(upload => (
                 <div key={upload.id} className="grid grid-cols-12 gap-3 items-start bg-white border border-gray-200 rounded p-3">
                   <div className="col-span-3">
-                    <label className="block text-xs font-medium mb-1">Image Type</label>
+                    <label className="block text-xs font-medium mb-1">{t('maintenanceSupervisor.imageType')}</label>
                     <SearchableDropdown
                       options={photoDocTypes}
                       value={upload.type}
                       onChange={(value) => updateBeforeAfterUpload(upload.id, { type: value })}
-                      placeholder="Select type"
-                      searchPlaceholder="Search types..."
+                      placeholder={t('maintenanceSupervisor.selectType')}
+                      searchPlaceholder={t('maintenanceSupervisor.searchTypes')}
                       className="w-full"
                       displayKey="text"
                       valueKey="id"
@@ -949,13 +953,13 @@ export default function MaintSupervisorApproval() {
                     const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName && (
                       <div className="col-span-3">
-                        <label className="block text-xs font-medium mb-1">Custom Name</label>
+                        <label className="block text-xs font-medium mb-1">{t('maintenanceSupervisor.customName')}</label>
                         <input
                           type="text"
                           className="w-full border rounded px-2 py-2 text-sm h-[38px] bg-white"
                           value={upload.docTypeName}
                           onChange={(e) => updateBeforeAfterUpload(upload.id, { docTypeName: e.target.value })}
-                          placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                          placeholder={t('maintenanceSupervisor.enterCustomNameFor', { docType: selectedDocType?.text })}
                         />
                       </div>
                     );
@@ -966,7 +970,7 @@ export default function MaintSupervisorApproval() {
                     const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName ? 'col-span-6' : 'col-span-9';
                   })()}>
-                    <label className="block text-xs font-medium mb-1">Image File (Max 10MB)</label>
+                    <label className="block text-xs font-medium mb-1">{t('maintenanceSupervisor.imageFileMax10MB')}</label>
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1 max-w-md">
                         <input
@@ -982,7 +986,7 @@ export default function MaintSupervisorApproval() {
                         >
                           <Upload className="w-4 h-4 mr-2" />
                           <span className="truncate max-w-[200px] inline-block">
-                            {upload.file ? upload.file.name : 'Choose image'}
+                            {upload.file ? upload.file.name : t('maintenanceSupervisor.chooseImage')}
                           </span>
                         </label>
                       </div>
@@ -995,7 +999,7 @@ export default function MaintSupervisorApproval() {
                           className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
                         >
                           <Eye className="w-4 h-4 mr-2" />
-                          Preview
+                          {t('maintenanceSupervisor.preview')}
                         </a>
                       )}
                       <button 
@@ -1004,7 +1008,7 @@ export default function MaintSupervisorApproval() {
                         className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                       >
                         <X className="w-4 h-4 mr-2" />
-                        Remove
+                        {t('maintenanceSupervisor.remove')}
                       </button>
                     </div>
                   </div>
@@ -1033,12 +1037,12 @@ export default function MaintSupervisorApproval() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Uploading...
+                    {t('maintenanceSupervisor.uploading')}
                   </span>
                 ) : (
                   <>
                     <Upload className="w-4 h-4 mr-2" />
-                    Upload All Images
+                    {t('maintenanceSupervisor.uploadAllImages')}
                   </>
                 )}
               </button>
@@ -1048,27 +1052,27 @@ export default function MaintSupervisorApproval() {
 
         {/* Maintenance Documents Display Section */}
         <div className="p-6 rounded-lg border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Uploaded Maintenance Documents</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.uploadedMaintenanceDocuments')}</h2>
           
           {loadingMaintenanceDocs ? (
-            <div className="text-center text-gray-500 py-4">Loading documents...</div>
+            <div className="text-center text-gray-500 py-4">{t('maintenanceSupervisor.loadingDocuments')}</div>
           ) : maintenanceDocs.length === 0 && archivedDocs.length === 0 ? (
-            <div className="text-center text-gray-500 py-4">No maintenance documents uploaded yet.</div>
+            <div className="text-center text-gray-500 py-4">{t('maintenanceSupervisor.noMaintenanceDocumentsYet')}</div>
           ) : (
             <div className="space-y-6">
               {/* Active Documents */}
               {maintenanceDocs.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-medium text-gray-700 mb-3">Active Documents ({maintenanceDocs.length})</h3>
+                  <h3 className="text-lg font-medium text-gray-700 mb-3">{t('maintenanceSupervisor.activeDocuments')} ({maintenanceDocs.length})</h3>
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document Type</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('maintenanceSupervisor.documentTypeColumn')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('maintenanceSupervisor.fileName')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('maintenanceSupervisor.uploadedDate')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('maintenanceSupervisor.status')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('common.actions')}</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -1085,7 +1089,7 @@ export default function MaintSupervisorApproval() {
                             </td>
                             <td className="px-4 py-3 text-sm">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Active
+                                {t('maintenanceSupervisor.active')}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-500">
@@ -1116,7 +1120,7 @@ export default function MaintSupervisorApproval() {
                                       className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
                                     >
                                       <Eye className="w-3 h-3 mr-2" />
-                                      View
+                                      {t('maintenanceSupervisor.view')}
                                     </button>
                                     <button
                                       onClick={(e) => {
@@ -1127,7 +1131,7 @@ export default function MaintSupervisorApproval() {
                                       className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
                                     >
                                       <Download className="w-3 h-3 mr-2" />
-                                      Download
+                                      {t('maintenanceSupervisor.download')}
                                     </button>
                                     <button
                                       onClick={(e) => {
@@ -1138,7 +1142,7 @@ export default function MaintSupervisorApproval() {
                                       className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
                                     >
                                       <Archive className="w-3 h-3 mr-2" />
-                                      Archive
+                                      {t('maintenanceSupervisor.archive')}
                                     </button>
                                   </div>,
                                   document.body
@@ -1157,12 +1161,12 @@ export default function MaintSupervisorApproval() {
               {archivedDocs.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-medium text-gray-700">Archived Documents ({archivedDocs.length})</h3>
+                    <h3 className="text-lg font-medium text-gray-700">{t('maintenanceSupervisor.archivedDocuments')} ({archivedDocs.length})</h3>
                     <button
                       onClick={() => setShowArchived(!showArchived)}
                       className="text-sm text-[#0E2F4B] hover:text-[#1a4971] font-medium"
                     >
-                      {showArchived ? 'Hide Archived' : 'Show Archived'}
+                      {showArchived ? t('maintenanceSupervisor.hideArchived') : t('maintenanceSupervisor.showArchived')}
                     </button>
                   </div>
                   
@@ -1171,11 +1175,11 @@ export default function MaintSupervisorApproval() {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document Type</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Archived Date</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('maintenanceSupervisor.documentTypeColumn')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('maintenanceSupervisor.fileName')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('maintenanceSupervisor.archivedDate')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('maintenanceSupervisor.status')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('common.actions')}</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -1192,7 +1196,7 @@ export default function MaintSupervisorApproval() {
                               </td>
                               <td className="px-4 py-3 text-sm">
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                  Archived
+                                  {t('maintenanceSupervisor.archived')}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-500">
@@ -1223,7 +1227,7 @@ export default function MaintSupervisorApproval() {
                                         className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
                                       >
                                         <Eye className="w-3 h-3 mr-2" />
-                                        View
+                                        {t('maintenanceSupervisor.view')}
                                       </button>
                                       <button
                                         onClick={(e) => {
@@ -1234,7 +1238,7 @@ export default function MaintSupervisorApproval() {
                                         className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
                                       >
                                         <Download className="w-3 h-3 mr-2" />
-                                        Download
+                                        {t('maintenanceSupervisor.download')}
                                       </button>
                                       <button
                                         onClick={(e) => {
@@ -1245,7 +1249,7 @@ export default function MaintSupervisorApproval() {
                                         className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-100 flex items-center"
                                       >
                                         <ArchiveRestore className="w-3 h-3 mr-2" />
-                                        Unarchive
+                                        {t('maintenanceSupervisor.unarchive')}
                                       </button>
                                     </div>,
                                     document.body
@@ -1266,35 +1270,35 @@ export default function MaintSupervisorApproval() {
 
         {/* Update Form - Only Fields That Need to be Updated */}
         <div className="bg-gray-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Update Maintenance Schedule</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.updateMaintenanceSchedule')}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.name')}</label>
                 <input
                   type="text"
                   name="technician_name"
                   value={formData.technician_name}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter technician name"
+                  placeholder={t('maintenanceSupervisor.enterTechnicianName')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.phone')}</label>
                 <input
                   type="tel"
                   name="technician_phno"
                   value={formData.technician_phno}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter technician phone"
+                  placeholder={t('maintenanceSupervisor.enterTechnicianPhone')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.status')}</label>
                 <select
                   name="status"
                   value={formData.status}
@@ -1302,60 +1306,60 @@ export default function MaintSupervisorApproval() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
-                  <option value="">Select status</option>
-                  <option value="IN">Initiated</option>
-                  <option value="IP">In Progress</option>
-                  <option value="CO">Completed</option>
-                  <option value="CA">Cancelled</option>
+                  <option value="">{t('maintenanceSupervisor.selectStatus')}</option>
+                  <option value="IN">{t('maintenanceSupervisor.initiated')}</option>
+                  <option value="IP">{t('maintenanceSupervisor.inProgress')}</option>
+                  <option value="CO">{t('maintenanceSupervisor.completed')}</option>
+                  <option value="CA">{t('maintenanceSupervisor.cancelled')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PO Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')}</label>
                 <input
                   type="text"
                   name="po_number"
                   value={formData.po_number}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter PO number"
+                  placeholder={t('maintenanceSupervisor.enterPONumber')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Invoice</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')}</label>
                 <input
                   type="text"
                   name="invoice"
                   value={formData.invoice}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter invoice number"
+                  placeholder={t('maintenanceSupervisor.enterInvoiceNumber')}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')}</label>
                 <input
                   type="email"
                   name="technician_email"
                   value={formData.technician_email}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter technician email"
+                  placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')}</label>
               <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleInputChange}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter any additional notes..."
+                placeholder={t('maintenanceSupervisor.enterAdditionalNotes')}
               />
             </div>
 
@@ -1365,13 +1369,13 @@ export default function MaintSupervisorApproval() {
                 onClick={() => navigate("/supervisor-approval")}
                 className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Cancel
+                {t('maintenanceSupervisor.cancel')}
               </button>
               <button
                 type="submit"
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#0E2F4B] hover:bg-[#14395c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Submit
+                {t('maintenanceSupervisor.submit')}
               </button>
             </div>
           </form>

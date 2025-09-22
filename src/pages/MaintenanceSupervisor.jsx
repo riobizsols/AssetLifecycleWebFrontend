@@ -8,9 +8,11 @@ import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const MaintenanceSupervisor = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [data, setData] = useState([]);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
@@ -26,18 +28,18 @@ const MaintenanceSupervisor = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [columns] = useState([
-    { label: "ID", name: "ams_id", visible: true },
-    { label: "Asset ID", name: "asset_id", visible: true },
-    { label: "Asset Type", name: "asset_type_name", visible: true },
-    { label: "Serial Number", name: "serial_number", visible: true },
-    { label: "Description", name: "asset_description", visible: true },
-    { label: "Maintenance Type", name: "maintenance_type_name", visible: true },
-    { label: "Vendor", name: "vendor_name", visible: true },
-    { label: "Schedule Date", name: "act_maint_st_date", visible: true },
-    { label: "Status", name: "status", visible: true },
-    { label: "Days Until Due", name: "days_until_due", visible: true },
-    { label: "Created On", name: "created_on", visible: true },
-    { label: "Created By", name: "created_by", visible: true },
+    { label: t('maintenanceSupervisor.id'), name: "ams_id", visible: true },
+    { label: t('maintenanceSupervisor.assetID'), name: "asset_id", visible: true },
+    { label: t('maintenanceSupervisor.assetType'), name: "asset_type_name", visible: true },
+    { label: t('maintenanceSupervisor.serialNumber'), name: "serial_number", visible: true },
+    { label: t('maintenanceSupervisor.description'), name: "asset_description", visible: true },
+    { label: t('maintenanceSupervisor.maintenanceType'), name: "maintenance_type_name", visible: true },
+    { label: t('maintenanceSupervisor.vendor'), name: "vendor_name", visible: true },
+    { label: t('maintenanceSupervisor.scheduleDate'), name: "act_maint_st_date", visible: true },
+    { label: t('maintenanceSupervisor.status'), name: "status", visible: true },
+    { label: t('maintenanceSupervisor.daysUntilDue'), name: "days_until_due", visible: true },
+    { label: t('maintenanceSupervisor.createdOn'), name: "created_on", visible: true },
+    { label: t('maintenanceSupervisor.createdBy'), name: "created_by", visible: true },
   ]);
 
   useEffect(() => {
@@ -66,8 +68,8 @@ const MaintenanceSupervisor = () => {
           act_maint_st_date: formatDate(item.act_maint_st_date),
           created_on: formatDate(item.created_on),
           changed_on: formatDate(item.changed_on),
-          days_until_due: item.days_until_due > 0 ? `${item.days_until_due} days` : 
-                         item.days_until_due === 0 ? 'Due today' : 'Overdue',
+          days_until_due: item.days_until_due > 0 ? `${item.days_until_due} ${t('maintenanceSupervisor.days')}` : 
+                         item.days_until_due === 0 ? t('maintenanceSupervisor.dueToday') : t('maintenanceSupervisor.overdue'),
           // Add urgency styling for days until due
           urgency_class: item.days_until_due <= 2 ? 'text-red-600 font-semibold' : 
                         item.days_until_due <= 5 ? 'text-orange-600 font-semibold' : 
@@ -79,7 +81,7 @@ const MaintenanceSupervisor = () => {
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch maintenance schedules", err);
-      toast.error("Failed to fetch maintenance schedules");
+      toast.error(t('maintenanceSupervisor.failedToFetchMaintenanceSchedules'));
     }
   };
 
@@ -117,17 +119,17 @@ const MaintenanceSupervisor = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error("Please select maintenance records to delete");
+      toast.error(t('maintenanceSupervisor.pleaseSelectMaintenanceRecords'));
       return false;
     }
 
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAssetMaintSch
-      toast.error("Delete functionality not yet implemented for maintenance schedules");
+      toast.error(t('maintenanceSupervisor.deleteNotImplemented'));
       return false;
     } catch (err) {
       console.error("Failed to delete maintenance records", err);
-      toast.error(err.response?.data?.message || "Failed to delete maintenance records");
+      toast.error(err.response?.data?.message || t('maintenanceSupervisor.failedToDeleteMaintenanceRecords'));
       return false;
     }
   };
@@ -135,10 +137,10 @@ const MaintenanceSupervisor = () => {
   const handleDelete = async (row) => {
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAssetMaintSch
-      toast.error("Delete functionality not yet implemented for maintenance schedules");
+      toast.error(t('maintenanceSupervisor.deleteNotImplemented'));
     } catch (err) {
       console.error("Failed to delete maintenance record", err);
-      toast.error(err.response?.data?.message || "Failed to delete maintenance record");
+      toast.error(err.response?.data?.message || t('maintenanceSupervisor.failedToDeleteMaintenanceRecord'));
     }
   };
 
@@ -171,7 +173,7 @@ const MaintenanceSupervisor = () => {
 
       if (success) {
         toast(
-          'Maintenance schedules exported successfully',
+          t('maintenanceSupervisor.maintenanceSchedulesExportedSuccessfully'),
           {
             icon: '✅',
             style: {
@@ -187,7 +189,7 @@ const MaintenanceSupervisor = () => {
     } catch (error) {
       console.error('Error exporting data:', error);
       toast(
-        'Failed to export maintenance schedules',
+        t('maintenanceSupervisor.failedToExportMaintenanceSchedules'),
         {
           icon: '❌',
           style: {
@@ -219,10 +221,10 @@ const MaintenanceSupervisor = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'status' ? [
-      { label: "Initiated", value: "IN" },
-      { label: "In Progress", value: "IP" },
-      { label: "Completed", value: "CO" },
-      { label: "Cancelled", value: "CA" }
+      { label: t('maintenanceSupervisor.initiated'), value: "IN" },
+      { label: t('maintenanceSupervisor.inProgress'), value: "IP" },
+      { label: t('maintenanceSupervisor.completed'), value: "CO" },
+      { label: t('maintenanceSupervisor.cancelled'), value: "CA" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));

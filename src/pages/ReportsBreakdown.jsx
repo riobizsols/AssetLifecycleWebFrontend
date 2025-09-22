@@ -4,9 +4,11 @@ import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const ReportsBreakdown = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -16,15 +18,16 @@ const ReportsBreakdown = () => {
     fromDate: "",
     toDate: "",
   });
-  const [columns] = useState([
-    { label: "Breakdown ID", name: "abr_id", visible: true },
-    { label: "Asset ID", name: "asset_id", visible: true },
-    { label: "Breakdown Code", name: "atbrrc_id", visible: true },
-    { label: "Reported By", name: "reported_by", visible: true },
-    { label: "Status", name: "status", visible: true },
-    { label: "Description", name: "description", visible: true },
-    { label: "Org ID", name: "org_id", visible: true },
-  ]);
+  // Create columns with translations
+  const columns = [
+    { label: t('reportsBreakdown.breakdownId'), name: "abr_id", visible: true },
+    { label: t('reportsBreakdown.assetId'), name: "asset_id", visible: true },
+    { label: t('reportsBreakdown.breakdownCode'), name: "atbrrc_id", visible: true },
+    { label: t('reportsBreakdown.reportedBy'), name: "reported_by", visible: true },
+    { label: t('reportsBreakdown.status'), name: "status", visible: true },
+    { label: t('reportsBreakdown.description'), name: "description", visible: true },
+    { label: t('reportsBreakdown.orgId'), name: "org_id", visible: true },
+  ];
 
   const handleEdit = (breakdown) => {
     navigate("/edit-breakdown", { state: { breakdown } });
@@ -48,14 +51,14 @@ const ReportsBreakdown = () => {
         }));
         setData(formatted);
       } catch (err) {
-        console.error("Failed to fetch breakdowns", err);
+        console.error(t('reportsBreakdown.failedToFetchBreakdowns'), err);
         setData([]);
       } finally {
         setIsLoading(false);
       }
     };
     fetchBreakdowns();
-  }, []);
+  }, [t]);
 
   const handleSort = (column) => {
     setSortConfig((prevConfig) => {

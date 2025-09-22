@@ -8,9 +8,11 @@ import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const MaintenanceApprovalDetail = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [data, setData] = useState([]);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
@@ -26,16 +28,16 @@ const MaintenanceApprovalDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [columns] = useState([
-    { label: "Asset Type", name: "asset_type_name", visible: true },
-    { label: "Asset ID", name: "asset_id", visible: true },
-    { label: "Serial Number", name: "serial_number", visible: true },
-    { label: "Scheduled Date", name: "scheduled_date", visible: true },
-    { label: "Vendor", name: "vendor", visible: true },
-    { label: "Department", name: "department", visible: true },
-    { label: "Employee", name: "employee", visible: true },
-    { label: "Maintenance Type", name: "maintenance_type", visible: true },
-    { label: "Status", name: "status", visible: true },
-    { label: "Days Until Due", name: "days_until_due", visible: true },
+    { label: t('maintenanceApproval.assetType'), name: "asset_type_name", visible: true },
+    { label: t('maintenanceApproval.assetID'), name: "asset_id", visible: true },
+    { label: t('maintenanceApproval.serialNumber'), name: "serial_number", visible: true },
+    { label: t('maintenanceApproval.scheduledDate'), name: "scheduled_date", visible: true },
+    { label: t('maintenanceApproval.vendor'), name: "vendor", visible: true },
+    { label: t('maintenanceApproval.department'), name: "department", visible: true },
+    { label: t('maintenanceApproval.employee'), name: "employee", visible: true },
+    { label: t('maintenanceApproval.maintenanceType'), name: "maintenance_type", visible: true },
+    { label: t('maintenanceApproval.status'), name: "status", visible: true },
+    { label: t('maintenanceApproval.daysUntilDue'), name: "days_until_due", visible: true },
   ]);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ const MaintenanceApprovalDetail = () => {
           actual_date: formatDate(item.actual_date),
           maintenance_created_on: formatDate(item.maintenance_created_on),
           maintenance_changed_on: formatDate(item.maintenance_changed_on),
-          days_until_due: item.days_until_due ? `${item.days_until_due} days` : '-',
+          days_until_due: item.days_until_due ? `${item.days_until_due} ${t('maintenanceApproval.days')}` : '-',
           // Add urgency styling for days until due
           urgency_class: item.days_until_due <= 2 ? 'text-red-600 font-semibold' : 
                         item.days_until_due <= 5 ? 'text-orange-600 font-semibold' : 
@@ -75,7 +77,7 @@ const MaintenanceApprovalDetail = () => {
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch maintenance approvals", err);
-      toast.error("Failed to fetch maintenance approvals");
+      toast.error(t('maintenanceApproval.failedToFetchMaintenanceApprovals'));
     }
   };
 
@@ -113,19 +115,19 @@ const MaintenanceApprovalDetail = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error("Please select maintenance records to delete");
+      toast.error(t('maintenanceApproval.pleaseSelectMaintenanceRecords'));
       return false;
     }
 
     try {
       await API.post("/maintenance-approval/delete", { wfamsh_ids: selectedRows });
-      toast.success(`${selectedRows.length} maintenance record(s) deleted successfully`);
+      toast.success(t('maintenanceApproval.maintenanceRecordsDeletedSuccessfully', { count: selectedRows.length }));
       setSelectedRows([]);
       fetchMaintenanceApprovals();
       return true;
     } catch (err) {
       console.error("Failed to delete maintenance records", err);
-      toast.error(err.response?.data?.message || "Failed to delete maintenance records");
+      toast.error(err.response?.data?.message || t('maintenanceApproval.failedToDeleteMaintenanceRecords'));
       return false;
     }
   };
@@ -133,11 +135,11 @@ const MaintenanceApprovalDetail = () => {
   const handleDelete = async (row) => {
     try {
       await API.delete(`/maintenance-approval/${row.wfamsh_id}`);
-      toast.success("Maintenance record deleted successfully");
+      toast.success(t('maintenanceApproval.maintenanceRecordDeletedSuccessfully'));
       fetchMaintenanceApprovals();
     } catch (err) {
       console.error("Failed to delete maintenance record", err);
-      toast.error(err.response?.data?.message || "Failed to delete maintenance record");
+      toast.error(err.response?.data?.message || t('maintenanceApproval.failedToDeleteMaintenanceRecord'));
     }
   };
 
@@ -170,7 +172,7 @@ const MaintenanceApprovalDetail = () => {
 
       if (success) {
         toast(
-          'Maintenance approvals exported successfully',
+          t('maintenanceApproval.maintenanceApprovalsExportedSuccessfully'),
           {
             icon: '✅',
             style: {
@@ -186,7 +188,7 @@ const MaintenanceApprovalDetail = () => {
     } catch (error) {
       console.error('Error exporting data:', error);
       toast(
-        'Failed to export maintenance approvals',
+        t('maintenanceApproval.failedToExportMaintenanceApprovals'),
         {
           icon: '❌',
           style: {
@@ -218,10 +220,10 @@ const MaintenanceApprovalDetail = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'status' ? [
-      { label: "Initiated", value: "IN" },
-      { label: "In Progress", value: "IP" },
-      { label: "Completed", value: "CO" },
-      { label: "Cancelled", value: "CA" }
+      { label: t('maintenanceApproval.initiated'), value: "IN" },
+      { label: t('maintenanceApproval.inProgress'), value: "IP" },
+      { label: t('maintenanceApproval.completed'), value: "CO" },
+      { label: t('maintenanceApproval.cancelled'), value: "CA" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));

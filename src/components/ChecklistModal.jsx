@@ -1,8 +1,20 @@
 import React from "react";
 import { CheckCircle, X } from "lucide-react";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function ChecklistModal({ assetType, open, onClose, checklist = [] }) {
+  const { t } = useLanguage();
   if (!open) return null;
+
+  // Function to translate common checklist items
+  const translateChecklistItem = (itemText) => {
+    const translations = {
+      'Battery health check': t('maintenanceApproval.batteryHealthCheck'),
+      'OS & software installed': t('maintenanceApproval.osAndSoftwareInstalled'),
+      'Physical damage inspection': t('maintenanceApproval.physicalDamageInspection'),
+    };
+    return translations[itemText] || itemText;
+  };
 
   console.log('ChecklistModal received checklist:', checklist);
   console.log('Checklist type:', typeof checklist);
@@ -16,9 +28,9 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
           <div className="flex items-center gap-3">
             <CheckCircle className="text-[#0E2F4B] w-7 h-7" />
             <div>
-              <h3 className="text-xl font-bold">Asset Maintenance Checklist</h3>
+              <h3 className="text-xl font-bold">{t('maintenanceApproval.assetMaintenanceChecklist')}</h3>
               <div className="text-xs text-gray-500">
-                Asset Type: <span className="font-semibold">{assetType}</span>
+                {t('maintenanceApproval.assetType')}: <span className="font-semibold">{assetType}</span>
               </div>
             </div>
           </div>
@@ -43,12 +55,12 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
                 
                 return (
                   <li key={checklistItem.id || checklistItem.checklist_id || idx} className="mb-1 text-gray-800">
-                    {itemText}
+                    {translateChecklistItem(itemText)}
                   </li>
                 );
               })
             ) : (
-              <li className="text-gray-400 italic">No checklist items found.</li>
+              <li className="text-gray-400 italic">{t('maintenanceApproval.noChecklistItemsFound')}</li>
             )}
           </ul>
         </div>
@@ -59,7 +71,7 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
             onClick={onClose}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-medium"
           >
-            Close
+            {t('maintenanceApproval.close')}
           </button>
         </div>
       </div>

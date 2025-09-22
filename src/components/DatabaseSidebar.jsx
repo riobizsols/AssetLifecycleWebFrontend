@@ -68,6 +68,8 @@ const DatabaseSidebar = () => {
       'Products/Services': t('navigation.productsServices'),
       'Roles': t('navigation.roles'),
       'Users': t('navigation.users'),
+      'User Roles': t('navigation.userRoles'),
+      'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
       'Department Assignment': t('navigation.departmentAssignment'),
       'Employee Assignment': t('navigation.employeeAssignment'),
