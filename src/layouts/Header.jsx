@@ -150,8 +150,9 @@ export default function Header() {
         )}
       </div>
       
-      {/* User Menu */}
-      <div className="relative" ref={dropdownRef}>
+      {/* Language Switcher and User Menu */}
+      <div className="flex items-center gap-4">
+        <div className="relative" ref={dropdownRef}>
         {/* Avatar Button */}
         <button
           onClick={() => setOpen((prev) => !prev)}
@@ -196,6 +197,7 @@ export default function Header() {
             </button>
           </div>
         )}
+        </div>
       </div>
     </header>
   );

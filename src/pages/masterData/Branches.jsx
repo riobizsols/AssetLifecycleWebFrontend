@@ -255,7 +255,7 @@ const Branches = () => {
           await recordActionByNameWithFetch('Create', {
             action: 'Add Branch Form Opened'
           });
-          navigate("/master-data/add-branch");
+          navigate("/master-data/branches/add");
         } : null}
         onDeleteSelected={canEdit ? handleDeleteSelected : null}
         onDownload={handleDownload}

@@ -72,9 +72,11 @@ export default function Login() {
       {/* Right section */}
       <div className="w-full md:w-1/2 flex items-center justify-center p-6">
         <div className="w-full max-w-md bg-white p-8 rounded-lg shadow">
-          <h2 className="text-2xl font-semibold mb-6 text-black">
-            {t('auth.welcomeBack')}
-          </h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold text-black">
+              {t('auth.welcomeBack')}
+            </h2>
+          </div>
 
           {error && <p className="text-red-600 mb-4">{error}</p>}
 
