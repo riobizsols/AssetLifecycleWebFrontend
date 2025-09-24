@@ -461,12 +461,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     }
   };
 
-  const handlePropChange = (propName, value) => {
+  const handlePropChange = (propertyName, value) => {
     setForm(prev => ({
       ...prev,
       properties: {
         ...prev.properties,
-        [propName]: value
+        [propertyName]: value
       }
     }));
   };
@@ -821,7 +821,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 {dynamicProperties.map((property) => {
                   const hasValues = property.values && property.values.length > 0;
                   const hasValidValues = hasValues && property.values.some(v => v.value && v.value.trim() !== '');
-                  const currentValue = form.properties[property.prop_id] || '';
+                  const currentValue = form.properties[property.property] || '';
                   
                   console.log(`Property ${property.property} (${property.prop_id}):`, {
                     currentValue,
@@ -838,7 +838,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                         <select
                           name={`property_${property.prop_id}`}
                           value={currentValue}
-                          onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
+                          onChange={(e) => handlePropChange(property.property, e.target.value)}
                           className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown"
                         >
                           <option value="">{t('assets.select')} {translatePropertyName(property.property)}</option>
@@ -854,7 +854,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                           type="text"
                           name={`property_${property.prop_id}`}
                           value={currentValue}
-                          onChange={(e) => handlePropChange(property.prop_id, e.target.value)}
+                          onChange={(e) => handlePropChange(property.property, e.target.value)}
                           placeholder={`${t('assets.enter')} ${translatePropertyName(property.property)}`}
                           className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9"
                         />
