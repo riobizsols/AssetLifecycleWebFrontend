@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, CheckCircle, AlertCircle, FileText, Users, Package, ChevronDown, XCircle } from 'lucide-react';
+import { Download, Upload, CheckCircle, AlertCircle, FileText, Users, Package, ChevronDown, XCircle, AlertTriangle, Info } from 'lucide-react';
 import API from '../../lib/axios';
 
 // Helper functions for localStorage
@@ -1808,15 +1808,6 @@ const Roles = () => {
       [type]: []
     }));
     
-    // DEMO ERROR: Prevent trial upload for Asset Types to show error handling
-    if (type === 'assetTypes') {
-      setTrialErrors(prev => ({
-        ...prev,
-        [type]: ['🚫Status column not found in table.']
-      }));
-      return;
-    }
-    
     // Check if file is uploaded and validated
     const uploadStatusForType = uploadStatus[type];
     if (!uploadStatusForType || !uploadStatusForType.validationResult) {
@@ -1898,7 +1889,9 @@ const Roles = () => {
                 newRecords: results.newRecords || 0,
                 updatedRecords: results.updatedRecords || 0,
                 errors: results.errors || 0,
-                validationErrors: results.validationErrors || []
+                validationErrors: results.validationErrors || [],
+                warningMessages: results.warningMessages || [],
+                infoMessages: results.infoMessages || []
               };
               setTrialResults(prev => {
                 const newResults = {
@@ -1948,7 +1941,9 @@ const Roles = () => {
                 newRecords: results.newRecords || 0,
                 updatedRecords: results.updatedRecords || 0,
                 errors: results.errors || 0,
-                validationErrors: results.validationErrors || []
+                validationErrors: results.validationErrors || [],
+                warningMessages: results.warningMessages || [],
+                infoMessages: results.infoMessages || []
               };
               setTrialResults(prev => {
                 const newResults = {
@@ -1999,7 +1994,10 @@ const Roles = () => {
                 totalRows: results.totalRows || 0,
                 newRecords: results.newRecords || 0,
                 updatedRecords: results.updatedRecords || 0,
-                errors: results.errors || 0
+                errors: results.errors || 0,
+                validationErrors: results.validationErrors || [],
+                warningMessages: results.warningMessages || [],
+                infoMessages: results.infoMessages || []
               };
               console.log('Setting trial results for employees:', trialData);
               setTrialResults(prev => {
@@ -2494,6 +2492,40 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
                 </div>
               </div>
             )}
+
+            {/* Show warning messages if any */}
+            {trialResults.warningMessages && trialResults.warningMessages.length > 0 && (
+              <div className="mt-4">
+                <h6 className="font-semibold text-yellow-600 mb-2">Warnings:</h6>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <div className="space-y-1 text-sm text-yellow-700">
+                    {trialResults.warningMessages.map((warning, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                        <span>{warning}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show info messages if any */}
+            {trialResults.infoMessages && trialResults.infoMessages.length > 0 && (
+              <div className="mt-4">
+                <h6 className="font-semibold text-blue-600 mb-2">Information:</h6>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="space-y-1 text-sm text-blue-700">
+                    {trialResults.infoMessages.map((info, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <span>{info}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         
@@ -2709,6 +2741,40 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
                 </div>
               </div>
             )}
+
+            {/* Show warning messages if any */}
+            {trialResults.warningMessages && trialResults.warningMessages.length > 0 && (
+              <div className="mt-4">
+                <h6 className="font-semibold text-yellow-600 mb-2">Warnings:</h6>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <div className="space-y-1 text-sm text-yellow-700">
+                    {trialResults.warningMessages.map((warning, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                        <span>{warning}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show info messages if any */}
+            {trialResults.infoMessages && trialResults.infoMessages.length > 0 && (
+              <div className="mt-4">
+                <h6 className="font-semibold text-blue-600 mb-2">Information:</h6>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="space-y-1 text-sm text-blue-700">
+                    {trialResults.infoMessages.map((info, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <span>{info}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         
@@ -2906,6 +2972,40 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
                       <div key={index} className="flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
                         <span>{error}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show warning messages if any */}
+            {trialResults.warningMessages && trialResults.warningMessages.length > 0 && (
+              <div className="mt-4">
+                <h6 className="font-semibold text-yellow-600 mb-2">Warnings:</h6>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <div className="space-y-1 text-sm text-yellow-700">
+                    {trialResults.warningMessages.map((warning, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                        <span>{warning}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show info messages if any */}
+            {trialResults.infoMessages && trialResults.infoMessages.length > 0 && (
+              <div className="mt-4">
+                <h6 className="font-semibold text-blue-600 mb-2">Information:</h6>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="space-y-1 text-sm text-blue-700">
+                    {trialResults.infoMessages.map((info, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <span>{info}</span>
                       </div>
                     ))}
                   </div>
