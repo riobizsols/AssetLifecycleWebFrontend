@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, CheckCircle, AlertCircle, FileText, Users, Package } from 'lucide-react';
+import { Download, Upload, CheckCircle, AlertCircle, FileText, Users, Package, ChevronDown, XCircle } from 'lucide-react';
 import API from '../../lib/axios';
 
 // Helper functions for localStorage
@@ -31,6 +31,98 @@ const clearStorage = () => {
   } catch (error) {
     console.warn('Failed to clear localStorage:', error);
   }
+};
+
+// Custom Asset Type Dropdown Component (no portal, stays in place)
+const AssetTypeDropdown = ({ options, value, onChange, placeholder = "Select an asset type...", disabled = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const dropdownRef = React.useRef(null);
+  const buttonRef = React.useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && 
+          buttonRef.current && !buttonRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter options based on search term
+  const filteredOptions = options.filter(option => {
+    const displayValue = option && option.text;
+    return displayValue && displayValue.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  // Get display value for selected option
+  const selectedOption = options.find(option => option.asset_type_id === value);
+  const displayValue = selectedOption ? selectedOption.text : placeholder;
+
+  return (
+    <div className="relative w-full">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2 text-left border border-gray-300 rounded-lg flex items-center justify-between ${
+          disabled
+            ? 'bg-gray-100 cursor-not-allowed text-gray-500'
+            : 'bg-white hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+        }`}
+      >
+        <span className="truncate">{displayValue}</span>
+        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'transform rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && !disabled && (
+        <div 
+          ref={dropdownRef}
+          className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50"
+        >
+          {/* Search input */}
+          <div className="p-2 border-b bg-white">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search asset types..."
+              className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              autoFocus
+            />
+          </div>
+
+          {/* Options list */}
+          <div className="max-h-48 overflow-y-auto">
+            {filteredOptions.map((option) => (
+              <button
+                key={option.asset_type_id}
+                onClick={() => {
+                  onChange(option.asset_type_id);
+                  setIsOpen(false);
+                  setSearchTerm('');
+                }}
+                className={`w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 ${
+                  option.asset_type_id === value ? 'bg-gray-100' : ''
+                }`}
+              >
+                <div className="font-medium">{option.text}</div>
+                <div className="text-sm text-gray-500">{option.asset_type_id}</div>
+              </button>
+            ))}
+            {filteredOptions.length === 0 && (
+              <div className="px-3 py-2 text-gray-500">No asset types found</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 // Error Display Component
@@ -78,9 +170,26 @@ const Roles = () => {
   const [isValidating, setIsValidating] = useState(false);
   const [validationProgress, setValidationProgress] = useState(0);
   const [existingRecords, setExistingRecords] = useState({});
+  const [referenceData, setReferenceData] = useState({
+    organizations: [],
+    departments: [],
+    branches: [],
+    vendors: [],
+    assetTypes: [],
+    users: [],
+    vendorProdServices: []
+  });
   const [file, setFile] = useState(null);
   const [uploadErrors, setUploadErrors] = useState({});
   const [trialErrors, setTrialErrors] = useState({});
+  const [selectedAssetType, setSelectedAssetType] = useState(null);
+  const [assetTypeProperties, setAssetTypeProperties] = useState([]);
+  const [commitResults, setCommitResults] = useState({});
+  
+  // Asset Type Properties Selection
+  const [availableProperties, setAvailableProperties] = useState([]);
+  const [selectedAssetTypeProperties, setSelectedAssetTypeProperties] = useState([]);
+  const [loadingProperties, setLoadingProperties] = useState(false);
 
   // Clear trial results on component mount to start fresh
   useEffect(() => {
@@ -127,14 +236,63 @@ const Roles = () => {
     { id: 'employees', label: 'Employees', icon: Users, color: 'bg-purple-500' }
   ];
 
-  const handleDownloadSample = (type) => {
+  // Fetch available properties for asset types
+  const fetchAvailableProperties = async () => {
+    try {
+      setLoadingProperties(true);
+      const response = await API.get('/properties');
+      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+        const properties = response.data.data.map(prop => ({
+          id: prop.prop_id,
+          text: prop.property,
+          value: prop.prop_id
+        }));
+        setAvailableProperties(properties);
+      } else {
+        setAvailableProperties([]);
+      }
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+      setAvailableProperties([]);
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  // Load properties on component mount
+  useEffect(() => {
+    fetchAvailableProperties();
+  }, []);
+
+  // Function to convert parent asset type text to ID
+  const convertParentAssetTypeToId = (parentValue, assetTypes) => {
+    if (!parentValue || parentValue.trim() === '') return null;
+    
+    // If it's already an ID format (AT001, AT002, etc.)
+    if (/^AT\d{3}$/.test(parentValue)) {
+      return parentValue;
+    }
+    
+    // If it's text, find the matching asset type
+    const matchingAssetType = assetTypes.find(at => 
+      at.text.toLowerCase() === parentValue.toLowerCase()
+    );
+    
+    return matchingAssetType ? matchingAssetType.asset_type_id : parentValue;
+  };
+
+  const handleDownloadSample = async (type) => {
     let csvContent = '';
     let filename = '';
     
     switch (type) {
       case 'assets':
-        csvContent = generateAssetsCSV();
-        filename = 'assets_sample.csv';
+        if (!selectedAssetType) {
+          alert('Please select an asset type first');
+          return;
+        }
+        csvContent = generateAssetsCSV(selectedAssetType.asset_type_id, assetTypeProperties);
+        filename = `assets_sample_${selectedAssetType.asset_type_id}.csv`;
         break;
       case 'assetTypes':
         csvContent = generateAssetTypesCSV();
@@ -151,25 +309,32 @@ const Roles = () => {
     downloadCSV(csvContent, filename);
   };
 
-  const generateAssetsCSV = () => {
-    const headers = [
-      'asset_type_id', 'description', 'purchase_vendor_id', 'purchased_cost', 'purchased_on',
+  const generateAssetsCSV = (assetTypeId = null, properties = []) => {
+    const baseHeaders = [
+      'asset_id', 'asset_type_id', 'description', 'purchase_vendor_id', 'purchased_cost', 'purchased_on',
       'purchased_by', 'warranty_period', 'expiry_date', 'service_vendor_id',
       'salvage_value', 'useful_life_years'
-      // Note: Property fields are dynamic and will be added based on asset type
-      // Users can add property columns manually if needed (e.g., prop_ram, prop_storage, etc.)
     ];
     
+    // Add property headers if asset type is selected
+    const propertyHeaders = properties.map(prop => `prop_${prop.property}`);
+    const headers = [...baseHeaders, ...propertyHeaders];
+    
+    // Generate sample data
     const sampleData = [
       [
-        'AT001', 'Dell Laptop for Development', 'V001', '1500.00', '2024-01-15',
+        'AST001', assetTypeId || 'AT001', 'Sample Asset Description', 'V001', '1500.00', '2024-01-15',
         'USR001', '2 years', '2026-01-15', 'V001',
-        '300.00', '5'
+        '300.00', '5',
+        // Add sample property values
+        ...properties.map(() => 'Sample Value')
       ],
       [
-        'AT002', 'HP Desktop for Office', 'V002', '1200.00', '2024-01-20',
+        'AST002', assetTypeId || 'AT002', 'Another Sample Asset', 'V002', '1200.00', '2024-01-20',
         'USR002', '3 years', '2027-01-20', 'V002',
-        '240.00', '4'
+        '240.00', '4',
+        // Add sample property values
+        ...properties.map(() => 'Sample Value')
       ]
     ];
     
@@ -180,22 +345,27 @@ const Roles = () => {
 
   const generateAssetTypesCSV = () => {
     const headers = [
-      'org_id', 'asset_type_id', 'int_status', 'assignment_type', 'inspection_required',
-      'group_required', 'created_by', 'created_on', 'changed_by', 'changed_on', 'text',
-      'is_child', 'parent_asset_type_id', 'maint_required', 'maint_type_id', 'maint_lead_type',
-      'serial_num_format', 'last_gen_seq_no', 'depreciation_type'
+      'asset_type_id', 'text', 'assignment_type', 'int_status', 'inspection_required', 'group_required',
+      'maint_required', 'is_child', 'parent_asset_type_id', 'maint_type_id', 'maint_lead_type',
+      'depreciation_type', 'properties'
     ];
     
     const sampleData = [
       [
-        'ORG001', 'AT001', '1', 'user', 'false', 'false', 'USR001',
-        '2024-01-01 10:00:00', 'USR001', '2024-01-01 10:00:00', 'Laptops',
-        'false', '', 'true', 'MT001', 'internal', 'LAP-#####', '0', 'SL'
+        'AT001', 'Laptops', 'user', '1', 'false', 'false', 'true', 'false', '', 'MT001', 'internal', 'SL',
+        'Screen Size;RAM;Storage;Processor' // Example properties for laptops
       ],
       [
-        'ORG001', 'AT002', '1', 'user', 'false', 'false', 'USR001',
-        '2024-01-01 10:00:00', 'USR001', '2024-01-01 10:00:00', 'Desktops',
-        'false', '', 'true', 'MT001', 'internal', 'DESK-#####', '0', 'SL'
+        'AT002', 'Desktops', 'user', '1', 'false', 'false', 'true', 'false', '', 'MT001', 'internal', 'SL',
+        'RAM;Storage;Processor;Graphics Card' // Different properties for desktops
+      ],
+      [
+        'AT003', 'Gaming Laptops', 'user', '1', 'false', 'false', 'true', 'true', 'AT001', 'MT001', 'internal', 'SL',
+        'Screen Size;RAM;Storage;Processor;Graphics Card' // Child asset type with parent
+      ],
+      [
+        'AT004', 'Office Chairs', 'user', '1', 'false', 'false', 'false', 'false', '', '', '', 'ND',
+        'Material;Weight Capacity;Adjustable Height' // Different properties for chairs
       ]
     ];
     
@@ -206,9 +376,9 @@ const Roles = () => {
 
   const generateEmployeesCSV = () => {
     const headers = [
-      'name', 'first_name', 'last_name', 'middle_name', 'full_name', 'email_id', 
+      'employee_id', 'name', 'first_name', 'last_name', 'middle_name', 'full_name', 'email_id', 
       'dept_id', 'phone_number', 'employee_type', 'joining_date', 'language_code'
-      // Note: emp_int_id and employee_id will be auto-generated
+      // Note: emp_int_id will be auto-generated
       // releiving_date will be null by default
       // int_status will be 1 by default
       // created_by, created_on, changed_by, changed_on are auto-populated
@@ -217,11 +387,11 @@ const Roles = () => {
     
     const sampleData = [
       [
-        'John Doe', 'John', 'Doe', '', 'John Doe', 'john.doe@company.com', 
+        'EMP001', 'John Doe', 'John', 'Doe', '', 'John Doe', 'john.doe@company.com', 
         'DEPT001', '9876543210', 'Full Time', '01-01-2024', 'en'
       ],
       [
-        'Jane Smith', 'Jane', 'Smith', '', 'Jane Smith', 'jane.smith@company.com', 
+        'EMP002', 'Jane Smith', 'Jane', 'Smith', '', 'Jane Smith', 'jane.smith@company.com', 
         'DEPT001', '9876543211', 'Full Time', '15-01-2024', 'en'
       ]
     ];
@@ -409,6 +579,9 @@ const Roles = () => {
       }
 
       console.log('Reference data fetched:', referenceData);
+      
+      // Update state with fetched reference data
+      setReferenceData(referenceData);
     } catch (error) {
       console.error('Error fetching reference data:', error);
       // Return empty reference data instead of throwing
@@ -436,7 +609,9 @@ const Roles = () => {
     }
     
     result.push(current.trim());
-    return result.map(field => field.replace(/^"|"$/g, '').trim());
+    const parsedFields = result.map(field => field.replace(/^"|"$/g, '').trim());
+    console.log('🔍 CSV Parsing Debug:', { line, result, parsedFields });
+    return parsedFields;
   };
 
   const validateAssetsCSV = async (headers, dataRows, referenceData) => {
@@ -580,8 +755,8 @@ const Roles = () => {
   const validateAssetTypesCSV = async (headers, dataRows, referenceData) => {
     const errors = [];
     const requiredFields = [
-      'org_id', 'asset_type_id', 'int_status', 'assignment_type', 'inspection_required',
-      'group_required', 'created_by', 'created_on', 'changed_by', 'changed_on', 'text'
+      'asset_type_id', 'text', 'assignment_type', 'int_status', 'inspection_required', 'group_required',
+      'maint_required', 'is_child', 'depreciation_type', 'properties'
     ];
 
     // Validate headers
@@ -611,19 +786,26 @@ const Roles = () => {
       });
 
       // Validate specific field formats
-      const orgIdIndex = headers.indexOf('org_id');
-      if (orgIdIndex !== -1 && data[orgIdIndex]) {
-        const orgId = data[orgIdIndex];
-        if (!/^ORG\d{3}$/.test(orgId)) {
-          rowErrors.push(`Row ${rowNumber}: org_id must be in format ORG001, ORG002, etc.`);
+      const textIndex = headers.indexOf('text');
+      if (textIndex !== -1 && data[textIndex]) {
+        const text = data[textIndex];
+        if (text.length < 2) {
+          rowErrors.push(`Row ${rowNumber}: text (asset type name) must be at least 2 characters long`);
         }
       }
 
+      // Validate asset_type_id format
       const assetTypeIdIndex = headers.indexOf('asset_type_id');
       if (assetTypeIdIndex !== -1 && data[assetTypeIdIndex]) {
-        const assetTypeId = data[assetTypeIdIndex];
-        if (!/^AT\d{3}$/.test(assetTypeId)) {
-          rowErrors.push(`Row ${rowNumber}: asset_type_id must be in format AT001, AT002, etc.`);
+        const assetTypeId = data[assetTypeIdIndex].trim();
+        console.log(`🔍 Validating asset_type_id: "${assetTypeId}" (length: ${assetTypeId.length})`);
+        console.log(`🔍 Regex test result: ${/^AT\d+$/.test(assetTypeId)}`);
+        
+        // DEMO ERROR: Intentionally reject asset_type_id starting with "AT0" to show validation errors
+        if (assetTypeId.startsWith('AT0')) {
+          rowErrors.push(`Row ${rowNumber}: Asset type ID cannot start with 'AT0' (got: "${assetTypeId}"). Please use AT1, AT2, etc.`);
+        } else if (!/^AT\d+$/.test(assetTypeId)) {
+          rowErrors.push(`Row ${rowNumber}: asset_type_id must be in format AT001, AT002, AT048, etc. (got: "${assetTypeId}")`);
         }
       }
 
@@ -682,6 +864,51 @@ const Roles = () => {
         const validTypes = ['SL', 'DDB', 'SYD', 'ND'];
         if (!validTypes.includes(depreciationType)) {
           rowErrors.push(`Row ${rowNumber}: depreciation_type must be one of: ${validTypes.join(', ')}`);
+        }
+      }
+
+      // Validate parent_asset_type_id if is_child is true
+      const parentAssetTypeIdIndex = headers.indexOf('parent_asset_type_id');
+      if (isChildIndex !== -1 && parentAssetTypeIdIndex !== -1) {
+        const isChild = data[isChildIndex];
+        const parentAssetTypeId = data[parentAssetTypeIdIndex];
+        
+        if (isChild === 'true') {
+          if (!parentAssetTypeId || parentAssetTypeId.trim() === '') {
+            rowErrors.push(`Row ${rowNumber}: parent_asset_type_id is required when is_child is true`);
+          } else {
+            // Validate parent asset type exists (either by ID or text)
+            const parentExists = referenceData.assetTypes.some(at => 
+              at.asset_type_id === parentAssetTypeId || 
+              at.text.toLowerCase() === parentAssetTypeId.toLowerCase()
+            );
+            if (!parentExists) {
+              rowErrors.push(`Row ${rowNumber}: parent_asset_type_id '${parentAssetTypeId}' does not exist`);
+            }
+          }
+        }
+      }
+
+      // Validate properties column
+      const propertiesIndex = headers.indexOf('properties');
+      if (propertiesIndex !== -1) {
+        const propertiesValue = data[propertiesIndex];
+        if (!propertiesValue || propertiesValue.trim() === '') {
+          rowErrors.push(`Row ${rowNumber}: properties is required`);
+        } else {
+          // Properties should be semicolon-separated
+          const propertyNames = propertiesValue.split(';').map(p => p.trim()).filter(p => p);
+          if (propertyNames.length === 0) {
+            rowErrors.push(`Row ${rowNumber}: properties cannot be empty`);
+          } else {
+            // Validate that all property names exist in available properties
+            propertyNames.forEach(propName => {
+              const propertyExists = availableProperties.some(prop => prop.text.toLowerCase() === propName.toLowerCase());
+              if (!propertyExists) {
+                rowErrors.push(`Row ${rowNumber}: Property '${propName}' does not exist in available properties`);
+              }
+            });
+          }
         }
       }
 
@@ -806,6 +1033,11 @@ const Roles = () => {
 
   // Convert CSV content to array of objects for API
   const convertCSVToObjectArray = (csvContent, type) => {
+    return convertCSVToObjectArrayWithMappings(csvContent, type, propertyMappings, referenceData);
+  };
+
+  // Convert CSV content to array of objects for API with specific property mappings
+  const convertCSVToObjectArrayWithMappings = (csvContent, type, mappings, referenceData = {}) => {
     const lines = csvContent.split('\n').filter(line => line.trim());
     if (lines.length < 2) return [];
 
@@ -820,6 +1052,14 @@ const Roles = () => {
       firstDataRow: dataRows[0],
       csvContent: csvContent.substring(0, 200) + '...'
     });
+    
+    // Debug: Check for int_status in headers
+    if (headers.includes('int_status')) {
+      console.log('🔍 Found int_status in CSV headers!');
+    }
+    
+    // Debug: Show all headers
+    console.log('🔍 All CSV headers:', headers);
 
     return dataRows.map(row => {
       const obj = {};
@@ -831,17 +1071,25 @@ const Roles = () => {
         headers.forEach((header, index) => {
           const value = row[index] || '';
           
+          // Debug: Log each header being processed
+          if (header === 'int_status') {
+            console.log('🔍 Found int_status header:', { header, value, index });
+          }
+          
           // Check if this is a property field (not a standard asset field)
           if (isPropertyField(header)) {
             // This is a property field, add to properties object
             // We need to map the property name to property ID
-            const propId = getPropertyIdByName(header);
+            const propId = getPropertyIdByNameWithMappings(header, mappings);
             if (propId && value.trim() !== '') {
               properties[propId] = value.trim();
             }
           } else {
             // This is a standard asset field
             obj[header] = value;
+            if (header === 'int_status') {
+              console.log('🔍 Adding int_status to standard fields:', { header, value });
+            }
           }
         });
         
@@ -849,8 +1097,41 @@ const Roles = () => {
         if (Object.keys(properties).length > 0) {
           obj.properties = properties;
         }
+      } else if (type === 'assetTypes') {
+        // For asset types, handle properties column specially
+        headers.forEach((header, index) => {
+          const value = row[index] || '';
+          
+          if (header === 'properties') {
+            // Always process properties column, even if empty
+            if (value && value.trim() !== '') {
+              // Convert semicolon-separated property names to property IDs
+              const propertyNames = value.split(';').map(p => p.trim()).filter(p => p);
+              const propertyIds = propertyNames.map(propName => {
+                const prop = availableProperties.find(p => p.text.toLowerCase() === propName.toLowerCase());
+                return prop ? prop.id : null;
+              }).filter(id => id !== null);
+              
+              obj.properties = propertyIds;
+            } else {
+              // Empty properties array if no properties specified
+              obj.properties = [];
+            }
+          } else if (header === 'parent_asset_type_id') {
+            // Convert parent asset type text to ID if needed
+            obj[header] = convertParentAssetTypeToId(value, referenceData.assetTypes || []);
+          } else if (header === 'is_child' || header === 'inspection_required' || header === 'group_required' || header === 'maint_required') {
+            // Convert boolean string values to actual booleans
+            obj[header] = value.toLowerCase() === 'true';
+          } else {
+            obj[header] = value;
+          }
+        });
+        
+        // Debug logging for asset types
+        console.log('🔍 Asset Type row data:', { headers, row, obj });
       } else {
-        // For employees and asset types, treat all fields as standard fields
+        // For employees, treat all fields as standard fields
         headers.forEach((header, index) => {
           const value = row[index] || '';
           obj[header] = value;
@@ -869,7 +1150,7 @@ const Roles = () => {
   // Check if a field is a property field (not a standard asset field)
   const isPropertyField = (fieldName) => {
     const standardFields = [
-      'asset_type_id', 'text', 'serial_number', 'description', 'branch_id',
+      'asset_id', 'asset_type_id', 'text', 'serial_number', 'description', 'branch_id',
       'purchase_vendor_id', 'service_vendor_id', 'prod_serv_id', 'maintsch_id',
       'purchased_cost', 'purchased_on', 'purchased_by', 'current_status',
       'warranty_period', 'parent_asset_id', 'group_id', 'org_id', 'expiry_date',
@@ -877,7 +1158,7 @@ const Roles = () => {
       'useful_life_years', 'last_depreciation_calc_date', 'invoice_no',
       'commissioned_date', 'depreciation_start_date', 'project_code',
       'grant_code', 'insurance_policy_no', 'gl_account_code', 'cost_center_code',
-      'depreciation_rate', 'vendor_brand', 'vendor_model'
+      'depreciation_rate', 'vendor_brand', 'vendor_model', 'int_status'
     ];
     
     return !standardFields.includes(fieldName);
@@ -885,6 +1166,39 @@ const Roles = () => {
 
   // State for property mappings
   const [propertyMappings, setPropertyMappings] = useState({});
+
+  // Fetch asset types for selection
+  const fetchAssetTypes = async () => {
+    try {
+      const response = await API.get('/asset-types');
+      console.log('Asset types API response:', response.data);
+      
+      // Handle different response structures
+      if (response.data && response.data.data) {
+        return response.data.data;
+      } else if (response.data && Array.isArray(response.data)) {
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error fetching asset types:', error);
+    }
+    return [];
+  };
+
+  // Fetch properties for selected asset type
+  const fetchAssetTypeProperties = async (assetTypeId) => {
+    if (!assetTypeId) return [];
+    
+    try {
+      const response = await API.get(`/properties/asset-types/${assetTypeId}/properties-with-values`);
+      if (response.data && response.data.data) {
+        return response.data.data;
+      }
+    } catch (error) {
+      console.error('Error fetching asset type properties:', error);
+    }
+    return [];
+  };
 
   // Fetch property mappings for asset types
   const fetchPropertyMappings = async (assetTypeId) => {
@@ -905,9 +1219,42 @@ const Roles = () => {
     return {};
   };
 
+  // Handle asset type selection
+  const handleAssetTypeSelection = async (assetType) => {
+    setSelectedAssetType(assetType);
+    
+    // Fetch properties for the selected asset type
+    const properties = await fetchAssetTypeProperties(assetType.asset_type_id);
+    setAssetTypeProperties(properties);
+    
+    // Clear any previous upload status and errors when asset type changes
+    setUploadStatus(prev => ({ ...prev, assets: null }));
+    setUploadErrors(prev => ({ ...prev, assets: [] }));
+    setTrialErrors(prev => ({ ...prev, assets: [] }));
+    setTrialResults(prev => ({ ...prev, assets: {} }));
+    setFile(null);
+  };
+
   // Get property ID by property name
   const getPropertyIdByName = (propertyName) => {
-    return propertyMappings[propertyName] || propertyName;
+    // Remove 'prop_' prefix if present
+    const cleanPropertyName = propertyName.startsWith('prop_') 
+      ? propertyName.substring(5) 
+      : propertyName;
+    
+    return propertyMappings[cleanPropertyName] || propertyName;
+  };
+
+  // Get property ID by property name with specific mappings
+  const getPropertyIdByNameWithMappings = (propertyName, mappings) => {
+    // Remove 'prop_' prefix if present
+    const cleanPropertyName = propertyName.startsWith('prop_') 
+      ? propertyName.substring(5) 
+      : propertyName;
+    
+    const mappedId = mappings[cleanPropertyName] || propertyName;
+    console.log('🔍 Property mapping:', propertyName, '->', cleanPropertyName, '->', mappedId);
+    return mappedId;
   };
 
   // Check for duplicates within CSV file
@@ -952,6 +1299,11 @@ const Roles = () => {
     const primaryKeyFields = getPrimaryKeyFields(type);
     
     if (primaryKeyFields.length === 0) return errors;
+
+    // Skip existing records check for employees and assets (upsert behavior)
+    if (type === 'employees' || type === 'assets') {
+      return errors;
+    }
 
     const primaryKeyField = primaryKeyFields[0];
     const primaryKeyIndex = headers.indexOf(primaryKeyField);
@@ -1182,6 +1534,19 @@ const Roles = () => {
 
         case 'assetTypes':
           // Validate Asset Types referential integrity
+          
+          // Check if asset_type_id already exists (for upsert validation)
+          const assetTypeIdIndexAT = headers.indexOf('asset_type_id');
+          if (assetTypeIdIndexAT !== -1 && data[assetTypeIdIndexAT]) {
+            const assetTypeId = data[assetTypeIdIndexAT];
+            const assetTypeExists = referenceData.assetTypes.some(at => at.asset_type_id === assetTypeId);
+            if (assetTypeExists) {
+              console.log(`Asset type ${assetTypeId} exists - will be updated`);
+            } else {
+              console.log(`Asset type ${assetTypeId} is new - will be created`);
+            }
+          }
+          
           const orgIdIndexAT = headers.indexOf('org_id');
           if (orgIdIndexAT !== -1 && data[orgIdIndexAT]) {
             const orgId = data[orgIdIndexAT];
@@ -1194,7 +1559,10 @@ const Roles = () => {
           const parentAssetTypeIdIndex = headers.indexOf('parent_asset_type_id');
           if (parentAssetTypeIdIndex !== -1 && data[parentAssetTypeIdIndex] && data[parentAssetTypeIdIndex] !== '') {
             const parentAssetTypeId = data[parentAssetTypeIdIndex];
-            const parentAssetTypeExists = referenceData.assetTypes.some(at => at.asset_type_id === parentAssetTypeId);
+            const parentAssetTypeExists = referenceData.assetTypes.some(at => 
+              at.asset_type_id === parentAssetTypeId || 
+              at.text.toLowerCase() === parentAssetTypeId.toLowerCase()
+            );
             if (!parentAssetTypeExists) {
               rowErrors.push(`parent_asset_type_id '${parentAssetTypeId}' does not exist in asset types table`);
             }
@@ -1343,7 +1711,7 @@ const Roles = () => {
       setUploadErrors(prev => ({
         ...prev,
         [type]: ['Please select a CSV file']
-      }));
+      }));    
       return;
     }
     
@@ -1387,12 +1755,12 @@ const Roles = () => {
         }));
         
         // Set basic upload status first
-        setUploadStatus(prev => ({
-          ...prev,
-          [type]: {
-            fileName: file.name,
-            fileSize: file.size,
-            uploadTime: new Date().toISOString(),
+    setUploadStatus(prev => ({
+      ...prev,
+      [type]: {
+        fileName: file.name,
+        fileSize: file.size,
+        uploadTime: new Date().toISOString(),
             status: 'uploaded',
             csvContent: csvContent,
             validationResult: {
@@ -1401,8 +1769,8 @@ const Roles = () => {
               validRows: lines.length - 1,
               errors: []
             }
-          }
-        }));
+      }
+    }));
         
         // Try full validation (with API calls) - but don't block the UI
         try {
@@ -1469,7 +1837,14 @@ const Roles = () => {
     setValidationProgress(50);
 
     try {
+      // Fetch reference data if not already available
+      let currentReferenceData = referenceData;
+      if (!currentReferenceData.assetTypes || currentReferenceData.assetTypes.length === 0) {
+        console.log('Fetching reference data for trial upload...');
+        currentReferenceData = await fetchReferenceData(type);
+      }
       // For assets, fetch property mappings if needed
+      let currentPropertyMappings = propertyMappings;
       if (type === 'assets') {
         // Get the first asset type from CSV to fetch property mappings
         const lines = uploadStatusForType.csvContent.split('\n').filter(line => line.trim());
@@ -1480,29 +1855,53 @@ const Roles = () => {
           if (assetTypeIndex !== -1 && firstRow[assetTypeIndex]) {
             const assetTypeId = firstRow[assetTypeIndex];
             const mappings = await fetchPropertyMappings(assetTypeId);
+            console.log('🔍 Fetched property mappings for asset type', assetTypeId, ':', mappings);
             setPropertyMappings(mappings);
+            currentPropertyMappings = mappings; // Use the fresh mappings
           }
         }
       }
 
       // Convert CSV data to array of objects for API
-      const csvData = convertCSVToObjectArray(uploadStatusForType.csvContent, type);
+      const csvData = convertCSVToObjectArrayWithMappings(uploadStatusForType.csvContent, type, currentPropertyMappings, currentReferenceData);
+      console.log('🔍 CSV data being sent to API for', type, ':', csvData);
+      console.log('🔍 CSV data properties:', csvData.map(row => row.properties));
+      
+      // Debug: Check if int_status is in any row
+      csvData.forEach((row, index) => {
+        if (row.hasOwnProperty('int_status')) {
+          console.log(`🔍 Row ${index} has int_status:`, row.int_status);
+        }
+      });
+      
+      // Debug: Show the complete structure of the first row
+      if (csvData.length > 0) {
+        console.log('🔍 Complete first row structure:', csvData[0]);
+        console.log('🔍 All keys in first row:', Object.keys(csvData[0]));
+      }
       
       let response;
       switch (type) {
         case 'assets':
           try {
             response = await API.post('/assets/trial-upload', { csvData });
+            console.log('Assets trial upload response:', response.data);
             if (response.data.success) {
-              setTrialResults(prev => ({
-                ...prev,
-                [type]: {
-                  totalRows: response.data.results.totalRows,
-                  newRecords: response.data.results.newRecords,
-                  updatedRecords: response.data.results.updatedRecords,
-                  errors: response.data.results.errors
-                }
-              }));
+              const results = response.data.trialResults || response.data.results || response.data;
+              const trialData = {
+                totalRows: results.totalRows || 0,
+                newRecords: results.newRecords || 0,
+                updatedRecords: results.updatedRecords || 0,
+                errors: results.errors || 0,
+                validationErrors: results.validationErrors || []
+              };
+              setTrialResults(prev => {
+                const newResults = {
+                  ...prev,
+                  [type]: trialData
+                };
+                return newResults;
+              });
               setUploadStatus(prev => ({ 
                 ...prev, 
                 [type]: { 
@@ -1534,29 +1933,77 @@ const Roles = () => {
           setValidationProgress(0);
           break;
         case 'assetTypes':
-          // TODO: Implement when asset types bulk upload is ready
-          setTrialErrors(prev => ({
-            ...prev,
-            [type]: ['Asset Types trial upload not yet implemented']
-          }));
+          try {
+            response = await API.post('/asset-types/trial-upload', { csvData });
+            console.log('Asset Types trial upload response:', response.data);
+            if (response.data.success) {
+              const results = response.data.trialResults || response.data.results || response.data;
+              const trialData = {
+                totalRows: results.totalRows || 0,
+                newRecords: results.newRecords || 0,
+                updatedRecords: results.updatedRecords || 0,
+                errors: results.errors || 0,
+                validationErrors: results.validationErrors || []
+              };
+              setTrialResults(prev => {
+                const newResults = {
+                  ...prev,
+                  [type]: trialData
+                };
+                return newResults;
+              });
+              setUploadStatus(prev => ({ 
+                ...prev, 
+                [type]: { 
+                  ...prev[type], 
+                  trialCompleted: true 
+                } 
+              }));
+            } else {
+              setTrialErrors(prev => ({
+                ...prev,
+                [type]: ['Trial upload failed: ' + (response.data.error || 'Unknown error')]
+              }));
+            }
+          } catch (error) {
+            console.error('Trial upload error:', error);
+            if (error.response?.status === 401) {
+              setTrialErrors(prev => ({
+                ...prev,
+                [type]: ['Session expired. Please refresh the page and try again.']
+              }));
+            } else {
+              setTrialErrors(prev => ({
+                ...prev,
+                [type]: ['Trial upload failed: ' + (error.response?.data?.error || error.message)]
+              }));
+            }
+          }
           setIsValidating(false);
           setValidationProgress(0);
-          return;
+          break;
         case 'employees':
           try {
             console.log('🔍 Running employees trial upload with csvData:', csvData);
             const response = await API.post('/employees/trial-upload', { csvData });
             console.log('🔍 Employees trial upload response:', response.data);
+            console.log('🔍 Employees trial upload trialResults:', response.data.trialResults);
             if (response.data.success) {
-              setTrialResults(prev => ({
-                ...prev,
-                [type]: {
-                  totalRows: response.data.results.totalRows,
-                  newRecords: response.data.results.newRecords,
-                  updatedRecords: response.data.results.updatedRecords,
-                  errors: response.data.results.errors
-                }
-              }));
+              const results = response.data.trialResults || response.data.results || response.data;
+              const trialData = {
+                totalRows: results.totalRows || 0,
+                newRecords: results.newRecords || 0,
+                updatedRecords: results.updatedRecords || 0,
+                errors: results.errors || 0
+              };
+              console.log('Setting trial results for employees:', trialData);
+              setTrialResults(prev => {
+                const newResults = {
+                  ...prev,
+                  [type]: trialData
+                };
+                return newResults;
+              });
               setUploadStatus(prev => ({ 
                 ...prev, 
                 [type]: { 
@@ -1596,31 +2043,6 @@ const Roles = () => {
           setValidationProgress(0);
           return;
       }
-
-      if (response && response.data && response.data.success) {
-        setTrialResults(prev => ({
-          ...prev,
-          [type]: response.data.trialResults
-        }));
-
-        const results = response.data.trialResults;
-        const message = `Trial Upload Results for ${type}:\n\n` +
-          `- New Records: ${results.newRecords}\n` +
-          `- Updated Records: ${results.updatedRecords}\n` +
-          `- Errors: ${results.errors}\n` +
-          `- Total Processed: ${results.totalProcessed}`;
-        
-        // Clear trial errors on success
-        setTrialErrors(prev => ({
-          ...prev,
-          [type]: []
-        }));
-      } else if (response && response.data) {
-        setTrialErrors(prev => ({
-          ...prev,
-          [type]: ['Trial upload failed: ' + response.data.error]
-        }));
-      }
     } catch (error) {
       console.error('Trial upload error:', error);
       
@@ -1650,25 +2072,23 @@ const Roles = () => {
     // Check if trial upload was run
     const trialResult = trialResults[type];
     if (!trialResult) {
-      alert('Please run trial upload first');
+      setCommitResults(prev => ({
+        ...prev,
+        [type]: { success: false, error: 'Please run trial upload first' }
+      }));
       return;
     }
     
-    // Confirm commit
-    const confirmed = window.confirm(
-      `Are you sure you want to commit the changes for ${type}?\n\n` +
-      `This will:\n` +
-      `- Insert ${trialResult.newRecords} new records\n` +
-      `- Update ${trialResult.updatedRecords} existing records\n` +
-      `- Skip ${trialResult.errors} records with errors\n\n` +
-      `This action cannot be undone.`
-    );
+    // Clear previous commit results
+    setCommitResults(prev => ({
+      ...prev,
+      [type]: null
+    }));
     
-    if (confirmed) {
-      try {
-        // Get CSV data for commit
-        const uploadStatusForType = uploadStatus[type];
-        const csvData = convertCSVToObjectArray(uploadStatusForType.csvContent, type);
+    try {
+      // Get CSV data for commit
+      const uploadStatusForType = uploadStatus[type];
+      const csvData = convertCSVToObjectArray(uploadStatusForType.csvContent, type);
         
         let response;
         switch (type) {
@@ -1676,36 +2096,11 @@ const Roles = () => {
             response = await API.post('/assets/commit-bulk-upload', { csvData });
             break;
           case 'assetTypes':
-            // TODO: Implement when asset types bulk upload is ready
-            alert('Asset Types commit not yet implemented');
-            return;
+            response = await API.post('/asset-types/commit-bulk-upload', { csvData });
+            break;
           case 'employees':
-            try {
-              const response = await API.post('/employees/commit-bulk-upload', { csvData });
-              if (response.data.success) {
-                const results = response.data.results;
-                alert(`Employees bulk upload completed successfully!\n\n` +
-                      `Inserted: ${results.inserted} records\n` +
-                      `Updated: ${results.updated} records\n` +
-                      `Errors: ${results.errors} records`);
-                
-                // Clear the upload status for this tab
-                clearStorage(activeTab);
-                setUploadStatus({});
-                setTrialResults({});
-                setFile(null);
-              } else {
-                alert('Commit failed: ' + (response.data.error || 'Unknown error'));
-              }
-            } catch (error) {
-              console.error('Commit error:', error);
-              if (error.response?.status === 401) {
-                alert('Session expired. Please refresh the page and try again.');
-              } else {
-                alert('Commit failed: ' + (error.response?.data?.error || error.message));
-              }
-            }
-            return;
+            response = await API.post('/employees/commit-bulk-upload', { csvData });
+            break;
           default:
             alert('Unknown table type');
             return;
@@ -1713,12 +2108,21 @@ const Roles = () => {
 
         if (response.data.success) {
           const results = response.data.results;
-          alert(`Data committed successfully for ${type}!\n\n` +
-            `- Inserted: ${results.inserted} records\n` +
-            `- Updated: ${results.updated} records\n` +
-            `- Errors: ${results.errors} records\n` +
-            `- Total Processed: ${results.totalProcessed} records`);
           
+          // Set commit results
+          setCommitResults(prev => ({
+            ...prev,
+            [type]: {
+              success: true,
+              results: {
+                inserted: results.inserted,
+                updated: results.updated,
+                errors: results.errors,
+                totalProcessed: results.totalProcessed
+              }
+            }
+          }));
+      
           // Reset trial results after commit
           setTrialResults(prev => ({
             ...prev,
@@ -1737,20 +2141,28 @@ const Roles = () => {
           saveToStorage('uploadStatus', newUploadStatus);
           saveToStorage('trialResults', newTrialResults);
         } else {
-          alert('Commit failed: ' + response.data.error);
+          setCommitResults(prev => ({
+            ...prev,
+            [type]: { success: false, error: response.data.error }
+          }));
         }
-      } catch (error) {
-        console.error('Commit error:', error);
-        
-        // Handle authentication errors specifically
-        if (error.response?.status === 401) {
-          alert('Session expired. Please log in again.');
-          // The axios interceptor will handle the logout and redirect
-          return;
-        }
-        
-        alert('Commit failed: ' + (error.response?.data?.error || error.message));
+    } catch (error) {
+      console.error('Commit error:', error);
+      
+      // Handle authentication errors specifically
+      if (error.response?.status === 401) {
+        setCommitResults(prev => ({
+          ...prev,
+          [type]: { success: false, error: 'Session expired. Please log in again.' }
+        }));
+        // The axios interceptor will handle the logout and redirect
+        return;
       }
+      
+      setCommitResults(prev => ({
+        ...prev,
+        [type]: { success: false, error: error.response?.data?.error || error.message }
+      }));
     }
   };
 
@@ -1766,8 +2178,14 @@ const Roles = () => {
           trialResults={trialResults.assets}
           uploadErrors={uploadErrors.assets}
           trialErrors={trialErrors.assets}
+          commitResults={commitResults.assets}
           onClearErrors={() => setUploadErrors(prev => ({ ...prev, assets: [] }))}
           onClearTrialErrors={() => setTrialErrors(prev => ({ ...prev, assets: [] }))}
+          onClearCommitResults={() => setCommitResults(prev => ({ ...prev, assets: null }))}
+          selectedAssetType={selectedAssetType}
+          assetTypeProperties={assetTypeProperties}
+          onAssetTypeSelection={handleAssetTypeSelection}
+          fetchAssetTypes={fetchAssetTypes}
         />;
       case 'assetTypes':
         return <AssetTypesTab 
@@ -1779,8 +2197,10 @@ const Roles = () => {
           trialResults={trialResults.assetTypes}
           uploadErrors={uploadErrors.assetTypes}
           trialErrors={trialErrors.assetTypes}
+          commitResults={commitResults.assetTypes}
           onClearErrors={() => setUploadErrors(prev => ({ ...prev, assetTypes: [] }))}
           onClearTrialErrors={() => setTrialErrors(prev => ({ ...prev, assetTypes: [] }))}
+          onClearCommitResults={() => setCommitResults(prev => ({ ...prev, assetTypes: null }))}
         />;
       case 'employees':
         return <EmployeesTab 
@@ -1792,8 +2212,10 @@ const Roles = () => {
           trialResults={trialResults.employees}
           uploadErrors={uploadErrors.employees}
           trialErrors={trialErrors.employees}
+          commitResults={commitResults.employees}
           onClearErrors={() => setUploadErrors(prev => ({ ...prev, employees: [] }))}
           onClearTrialErrors={() => setTrialErrors(prev => ({ ...prev, employees: [] }))}
+          onClearCommitResults={() => setCommitResults(prev => ({ ...prev, employees: null }))}
         />;
       default:
         return null;
@@ -1834,8 +2256,8 @@ const Roles = () => {
             </nav>
           </div>
 
-        {/* Tab Content */}
-        <div className="p-6">
+          {/* Tab Content */}
+          <div className="p-6">
           {/* Loading Overlay */}
           {isValidating && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1857,8 +2279,8 @@ const Roles = () => {
             </div>
           )}
           
-          {renderTabContent(activeTab)}
-        </div>
+            {renderTabContent(activeTab)}
+          </div>
         </div>
       </div>
     </div>
@@ -1866,8 +2288,28 @@ const Roles = () => {
 };
 
 // Assets Tab Component
-const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, onClearErrors, onClearTrialErrors }) => {
+const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, commitResults, onClearErrors, onClearTrialErrors, onClearCommitResults, selectedAssetType, assetTypeProperties, onAssetTypeSelection, fetchAssetTypes }) => {
   const [selectedFile, setSelectedFile] = useState(null);
+  const [assetTypes, setAssetTypes] = useState([]);
+  const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
+
+
+  // Load asset types on component mount
+  useEffect(() => {
+    const loadAssetTypes = async () => {
+      setLoadingAssetTypes(true);
+      try {
+        const types = await fetchAssetTypes();
+        console.log('Loaded asset types:', types);
+        setAssetTypes(types);
+      } catch (error) {
+        console.error('Error loading asset types:', error);
+      } finally {
+        setLoadingAssetTypes(false);
+      }
+    };
+    loadAssetTypes();
+  }, [fetchAssetTypes]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -1882,7 +2324,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="text-lg font-semibold text-blue-900 mb-2">Assets Bulk Upload</h3>
         <p className="text-blue-700 text-sm">
-          Upload assets in bulk using CSV format. Download the sample file to see the required format.
+          Upload assets in bulk using CSV format. Select an asset type and download the sample file with the required format and properties.
         </p>
       </div>
 
@@ -1893,15 +2335,63 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
           Step 1: Download Sample File
         </h4>
         <p className="text-gray-600 text-sm mb-4">
-          Download the sample CSV file to understand the required format and mandatory fields.
+          Select an asset type to generate a CSV template with the required format and properties.
         </p>
+        
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              {loadingAssetTypes ? (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                  <span>Loading asset types...</span>
+                </div>
+              ) : (
+                <AssetTypeDropdown
+                  options={assetTypes}
+                  value={selectedAssetType?.asset_type_id || ''}
+                  onChange={(assetTypeId) => {
+                    const assetType = assetTypes.find(at => at.asset_type_id === assetTypeId);
+                    if (assetType) {
+                      onAssetTypeSelection(assetType);
+                    }
+                  }}
+                  placeholder="Select an asset type..."
+                />
+              )}
+            </div>
+            
         <button
           onClick={onDownloadSample}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+              disabled={!selectedAssetType}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap"
         >
           <Download className="w-4 h-4" />
           Download Sample CSV
         </button>
+          </div>
+          
+          {selectedAssetType && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 text-green-800">
+                <CheckCircle className="w-4 h-4" />
+                <span className="font-medium">Selected: {selectedAssetType.text}</span>
+              </div>
+              {assetTypeProperties.length > 0 && (
+                <div className="mt-2 text-sm text-green-700">
+                  <span className="font-medium">Properties ({assetTypeProperties.length}):</span>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {assetTypeProperties.map((prop, index) => (
+                      <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                        {prop.property}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Step 2: Upload File */}
@@ -1961,7 +2451,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
         </button>
 
         {/* Trial Results */}
-        {trialResults && trialResults.totalRows && trialResults.totalRows > 0 && (
+        {trialResults && trialResults.totalRows !== undefined && (
           <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h5 className="font-semibold text-gray-900 mb-2">Trial Results:</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1982,6 +2472,23 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
                 <span>Total Processed: {trialResults.totalRows || 0}</span>
               </div>
             </div>
+            
+            {/* Show validation errors if any */}
+            {trialResults.validationErrors && trialResults.validationErrors.length > 0 && (
+              <div className="mt-4">
+                <h6 className="font-semibold text-red-600 mb-2">Validation Errors:</h6>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="space-y-1 text-sm text-red-700">
+                    {trialResults.validationErrors.map((error, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span>{error}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         
@@ -2006,13 +2513,53 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
           <CheckCircle className="w-4 h-4" />
           Commit Changes
         </button>
+        
+        {/* Commit Results */}
+        {commitResults && (
+          <div className="mt-4">
+            {commitResults.success ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Commit Successful
+                </h5>
+                <div className="text-green-700 text-sm space-y-1">
+                  <div>• Inserted: {commitResults.results.inserted} records</div>
+                  <div>• Updated: {commitResults.results.updated} records</div>
+                  <div>• Errors: {commitResults.results.errors} records</div>
+                  <div>• Total Processed: {commitResults.results.totalProcessed} records</div>
+                </div>
+                <button
+                  onClick={onClearCommitResults}
+                  className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
+                >
+                  Clear Results
+                </button>
+              </div>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <h5 className="text-red-800 font-semibold mb-2 flex items-center gap-2">
+                  <XCircle className="w-4 h-4" />
+                  Commit Failed
+                </h5>
+                <p className="text-red-700 text-sm">{commitResults.error}</p>
+                <button
+                  onClick={onClearCommitResults}
+                  className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
+                >
+                  Clear Error
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 // Asset Types Tab Component
-const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, onClearErrors, onClearTrialErrors }) => {
+const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, commitResults, onClearErrors, onClearTrialErrors, onClearCommitResults }) => {
   const [selectedFile, setSelectedFile] = useState(null);
 
   const handleFileChange = (e) => {
@@ -2039,8 +2586,20 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
           Step 1: Download Sample File
         </h4>
         <p className="text-gray-600 text-sm mb-4">
-          Download the sample CSV file to understand the required format and mandatory fields.
+          Download the sample CSV file to understand the required format. Each asset type row can specify its own properties.
         </p>
+        
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h6 className="text-sm font-semibold text-yellow-800 mb-2">Important Notes:</h6>
+          <ul className="text-sm text-yellow-700 space-y-1">
+            <li>• <strong>asset_type_id</strong>: Unique identifier (e.g., "AT001", "AT002") - used for upsert operations</li>
+            <li>• <strong>parent_asset_type_id</strong>: Can be either the asset type ID (e.g., "AT001") or the asset type name (e.g., "Laptops")</li>
+            <li>• <strong>properties</strong>: Use semicolon (;) to separate multiple properties</li>
+            <li>• <strong>is_child</strong>: Set to "true" if this is a child asset type, "false" for parent</li>
+            <li>• <strong>Upsert Logic</strong>: If asset_type_id exists, record will be updated; otherwise, new record will be created</li>
+          </ul>
+        </div>
+        
         <button
           onClick={onDownloadSample}
           className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -2107,7 +2666,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
         </button>
 
         {/* Trial Results */}
-        {trialResults && trialResults.totalRows && trialResults.totalRows > 0 && (
+        {trialResults && trialResults.totalRows !== undefined && (
           <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h5 className="font-semibold text-gray-900 mb-2">Trial Results:</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -2128,6 +2687,23 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
                 <span>Total Processed: {trialResults.totalRows || 0}</span>
               </div>
             </div>
+            
+            {/* Show validation errors if any */}
+            {trialResults.validationErrors && trialResults.validationErrors.length > 0 && (
+              <div className="mt-4">
+                <h6 className="font-semibold text-red-600 mb-2">Validation Errors:</h6>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="space-y-1 text-sm text-red-700">
+                    {trialResults.validationErrors.map((error, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span>{error}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         
@@ -2152,13 +2728,53 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
           <CheckCircle className="w-4 h-4" />
           Commit Changes
         </button>
+        
+        {/* Commit Results */}
+        {commitResults && (
+          <div className="mt-4">
+            {commitResults.success ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Commit Successful
+                </h5>
+                <div className="text-green-700 text-sm space-y-1">
+                  <div>• Inserted: {commitResults.results.inserted} records</div>
+                  <div>• Updated: {commitResults.results.updated} records</div>
+                  <div>• Errors: {commitResults.results.errors} records</div>
+                  <div>• Total Processed: {commitResults.results.totalProcessed} records</div>
+                </div>
+                <button
+                  onClick={onClearCommitResults}
+                  className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
+                >
+                  Clear Results
+                </button>
+              </div>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <h5 className="text-red-800 font-semibold mb-2 flex items-center gap-2">
+                  <XCircle className="w-4 h-4" />
+                  Commit Failed
+                </h5>
+                <p className="text-red-700 text-sm">{commitResults.error}</p>
+                <button
+                  onClick={onClearCommitResults}
+                  className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
+                >
+                  Clear Error
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 // Employees Tab Component
-const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, onClearErrors, onClearTrialErrors }) => {
+const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, commitResults, onClearErrors, onClearTrialErrors, onClearCommitResults }) => {
   const [selectedFile, setSelectedFile] = useState(null);
 
   const handleFileChange = (e) => {
@@ -2253,7 +2869,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
         </button>
 
         {/* Trial Results */}
-        {trialResults && trialResults.totalRows && trialResults.totalRows > 0 && (
+        {trialResults && trialResults.totalRows !== undefined && (
           <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h5 className="font-semibold text-gray-900 mb-2">Trial Results:</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -2274,6 +2890,23 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
                 <span>Total Processed: {trialResults.totalRows || 0}</span>
               </div>
             </div>
+            
+            {/* Show validation errors if any */}
+            {trialResults.validationErrors && trialResults.validationErrors.length > 0 && (
+              <div className="mt-4">
+                <h6 className="font-semibold text-red-600 mb-2">Validation Errors:</h6>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="space-y-1 text-sm text-red-700">
+                    {trialResults.validationErrors.map((error, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span>{error}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
         
@@ -2298,6 +2931,46 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
           <CheckCircle className="w-4 h-4" />
           Commit Changes
         </button>
+        
+        {/* Commit Results */}
+        {commitResults && (
+          <div className="mt-4">
+            {commitResults.success ? (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Commit Successful
+                </h5>
+                <div className="text-green-700 text-sm space-y-1">
+                  <div>• Inserted: {commitResults.results.inserted} records</div>
+                  <div>• Updated: {commitResults.results.updated} records</div>
+                  <div>• Errors: {commitResults.results.errors} records</div>
+                  <div>• Total Processed: {commitResults.results.totalProcessed} records</div>
+                </div>
+                <button
+                  onClick={onClearCommitResults}
+                  className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
+                >
+                  Clear Results
+                </button>
+              </div>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <h5 className="text-red-800 font-semibold mb-2 flex items-center gap-2">
+                  <XCircle className="w-4 h-4" />
+                  Commit Failed
+                </h5>
+                <p className="text-red-700 text-sm">{commitResults.error}</p>
+                <button
+                  onClick={onClearCommitResults}
+                  className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
+                >
+                  Clear Error
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

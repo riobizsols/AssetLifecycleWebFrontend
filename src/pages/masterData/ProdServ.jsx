@@ -130,6 +130,21 @@ export default function ProdServ() {
       const res = await API.get('/prodserv');
       const all = Array.isArray(res.data) ? res.data : [];
       setProducts(all.filter(p => p.ps_type === 'product'));
+      
+      // Check if user came from assets add screen and navigate back
+      const savedFormData = sessionStorage.getItem('assetFormData');
+      if (savedFormData) {
+        try {
+          const parsedData = JSON.parse(savedFormData);
+          if (parsedData.navigationSource === 'assets-add') {
+            // Navigate back to assets add screen
+            navigate('/assets/add');
+            return;
+          }
+        } catch (error) {
+          console.error('Error parsing saved form data:', error);
+        }
+      }
     } catch {
       // Optionally handle error
     }

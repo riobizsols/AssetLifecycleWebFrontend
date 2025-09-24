@@ -1,16 +1,16 @@
 // AssetFormPage.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import API from '../lib/axios';
+import API from '../../lib/axios';
 import toast from 'react-hot-toast';
 import { MdKeyboardArrowRight, MdKeyboardArrowDown } from 'react-icons/md';
-import SearchableDropdown from './ui/SearchableDropdown';
-import { useAuthStore } from '../store/useAuthStore';
+import SearchableDropdown from '../ui/SearchableDropdown';
+import { useAuthStore } from '../../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
-import useAuditLog from '../hooks/useAuditLog';
-import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
-import { generateUUID } from '../utils/uuid';
-import { useAppData } from '../contexts/AppDataContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import useAuditLog from '../../hooks/useAuditLog';
+import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
+import { generateUUID } from '../../utils/uuid';
+import { useAppData } from '../../contexts/AppDataContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const initialForm = {
   assetType: '',
@@ -26,7 +26,6 @@ const initialForm = {
   vendorModel: '',
   purchaseSupply: '',
   serviceSupply: '',
-  vendorId: '',
   parentAsset: '', // Add parent asset field
   assetId: '', // Add asset ID field for document uploads
   // Accounting fields that users need to enter
@@ -144,6 +143,31 @@ const AddAssetForm = ({ userRole }) => {
     fetchProdServs();
     fetchVendors();
     fetchDocumentTypes();
+    
+    // Check if returning from product service screen
+    const savedFormData = sessionStorage.getItem('assetFormData');
+    if (savedFormData) {
+      try {
+        const parsedData = JSON.parse(savedFormData);
+        if (parsedData.navigationSource === 'assets-add') {
+          // Restore form data
+          setForm(prev => ({
+            ...prev,
+            ...parsedData,
+            navigationSource: undefined, // Remove navigation metadata
+            createType: undefined
+          }));
+          
+          // Clear the stored data
+          sessionStorage.removeItem('assetFormData');
+          
+          console.log('Form data restored from product service screen');
+        }
+      } catch (error) {
+        console.error('Error parsing saved form data:', error);
+        sessionStorage.removeItem('assetFormData');
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -274,9 +298,6 @@ const AddAssetForm = ({ userRole }) => {
   // Helper function to handle option selection
   const handleOptionSelect = (name, value, label) => {
     setForm(prev => ({ ...prev, [name]: value }));
-    if (name === 'purchaseSupply') {
-      setForm(prev => ({ ...prev, vendorId: value }));
-    }
     setDropdownStates(prev => ({ ...prev, [name]: false }));
     updateSearch(name, '');
   };
@@ -450,10 +471,6 @@ const AddAssetForm = ({ userRole }) => {
     console.log('🔍 handleChange called:', { name, value });
     setForm((prev) => {
       const newForm = { ...prev, [name]: value };
-      // If purchaseSupply is changed, also update vendorId
-      if (name === 'purchaseSupply') {
-        newForm.vendorId = value;
-      }
       // If serviceSupply is changed, just update it
       if (name === 'serviceSupply') {
         newForm[name] = value;
@@ -504,87 +521,6 @@ const AddAssetForm = ({ userRole }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleBatchUpload = async () => {
-    if (attachments.length === 0) {
-      toast.error('Add at least one file');
-      return;
-    }
-
-    // Validate all attachments
-    for (const a of attachments) {
-      if (!a.type || !a.file) {
-        toast.error('Select document type and choose a file for all rows');
-        return;
-      }
-      // Check if the selected document type requires a custom name (like OT - Others)
-      const selectedDocType = documentTypes.find(dt => dt.id === a.type);
-      if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !a.docTypeName?.trim()) {
-        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
-        return;
-      }
-    }
-
-    // Check if asset is already created
-    if (!form.assetId) {
-      toast.error('Please save the asset first before uploading documents');
-      return;
-    }
-
-    setIsUploading(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    try {
-      for (const a of attachments) {
-        try {
-          const fd = new FormData();
-          fd.append('file', a.file);
-          fd.append('dto_id', a.type);  // Send dto_id instead of doc_type
-          if (a.type && a.docTypeName?.trim()) {
-            fd.append('doc_type_name', a.docTypeName);
-          }
-          
-          // Get org_id from auth store
-          const user = useAuthStore.getState().user;
-          if (user?.org_id) {
-            fd.append('org_id', user.org_id);
-          }
-          
-          // Upload to the asset documents API
-          await API.post(`/assets/${form.assetId}/docs/upload`, fd, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
-          successCount++;
-          
-          // Log document upload
-          await recordActionByNameWithFetch('Add Document', { 
-            assetId: form.assetId,
-            docTypeId: a.type
-          });
-        } catch (err) {
-          console.error('Failed to upload file:', a.file.name, err);
-          console.error('Error details:', err.response?.data);
-          failCount++;
-        }
-      }
-
-      if (successCount > 0) {
-        if (failCount === 0) {
-          toast.success('All files uploaded successfully');
-          setAttachments([]); // Clear attachments after successful upload
-        } else {
-          toast.success(`${successCount} files uploaded, ${failCount} failed`);
-        }
-      } else {
-        toast.error('Failed to upload any files');
-      }
-    } catch (err) {
-      console.error('Upload process error:', err);
-      toast.error('Upload process failed');
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const handlePropChange = (propName, value) => {
     setForm(prev => ({
@@ -696,9 +632,10 @@ const AddAssetForm = ({ userRole }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('🚀 Starting asset submission...');
+    console.log('🚀 Starting unified asset submission...');
     setSubmitAttempted(true);
-    // Validate required fields
+    
+    // Validate required fields for configuration tab
     if (!form.assetType || !form.serialNumber || !form.purchaseDate || !form.purchaseCost) {
       toast.error(t('assets.requiredFieldsMissing'));
       return;
@@ -805,22 +742,78 @@ const AddAssetForm = ({ userRole }) => {
             reason: null
           });
           console.log('✅ Serial number added to print queue:', printQueueResponse.data);
-          toast.success('Asset created and added to print queue successfully! You can now upload documents.');
         } catch (printError) {
           console.error('❌ Error adding to print queue:', printError);
-          
-          // Handle specific cases
-          if (printError.response?.status === 409) {
-            // Serial number already exists in print queue
-            toast.success('Asset created successfully! (Serial number already in print queue)');
-          } else {
-            // Other errors
-            toast.success('Asset created successfully! (Print queue addition failed - you can add manually later)');
-          }
         }
         
-        // Switch to Attachments tab to allow document upload
-        setActiveTab('Attachments');
+        // Now handle attachments if any
+        if (attachments.length > 0) {
+          console.log('📎 Processing attachments...');
+          let successCount = 0;
+          let failCount = 0;
+
+          // Validate all attachments
+          for (const a of attachments) {
+            if (!a.type || !a.file) {
+              toast.error('Select document type and choose a file for all rows');
+              return;
+            }
+            // Check if the selected document type requires a custom name (like OT - Others)
+            const selectedDocType = documentTypes.find(dt => dt.id === a.type);
+            if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !a.docTypeName?.trim()) {
+              toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+              return;
+            }
+          }
+
+          setIsUploading(true);
+          try {
+            for (const a of attachments) {
+              try {
+                const fd = new FormData();
+                fd.append('file', a.file);
+                fd.append('dto_id', a.type);  // Send dto_id instead of doc_type
+                if (a.type && a.docTypeName?.trim()) {
+                  fd.append('doc_type_name', a.docTypeName);
+                }
+                
+                // Get org_id from auth store
+                const user = useAuthStore.getState().user;
+                if (user?.org_id) {
+                  fd.append('org_id', user.org_id);
+                }
+                
+                // Upload to the asset documents API
+                await API.post(`/assets/${createdAssetId}/docs/upload`, fd, {
+                  headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                successCount++;
+              } catch (uploadErr) {
+                console.error(`❌ Failed to upload ${a.file.name}:`, uploadErr);
+                failCount++;
+              }
+            }
+
+            // Show upload results
+            if (successCount > 0 && failCount === 0) {
+              toast.success(`Asset and ${successCount} document(s) saved successfully!`);
+            } else if (successCount > 0 && failCount > 0) {
+              toast.success(`Asset saved and ${successCount} document(s) uploaded successfully. ${failCount} document(s) failed to upload.`);
+            } else {
+              toast.success('Asset saved successfully, but document uploads failed.');
+            }
+          } catch (err) {
+            console.error('❌ Error uploading documents:', err);
+            toast.success('Asset saved successfully, but document uploads failed.');
+          } finally {
+            setIsUploading(false);
+          }
+        } else {
+          toast.success('Asset created successfully!');
+        }
+        
+        // Navigate to assets list after successful save
+        navigate('/assets');
       } else {
         console.error('No asset ID returned from server:', response.data);
         toast.error('Asset created but no ID returned. Please refresh and try again.');
@@ -831,12 +824,26 @@ const AddAssetForm = ({ userRole }) => {
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
-      console.log('🏁 Asset submission completed');
+      console.log('🏁 Unified asset submission completed');
     }
   };
 
   const toggleSection = (section) => {
     setCollapsedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // Handle create brand/model navigation
+  const handleCreateBrandModel = (type) => {
+    // Store current form data in sessionStorage to preserve it
+    const formData = {
+      ...form,
+      navigationSource: 'assets-add',
+      createType: type // 'brand' or 'model'
+    };
+    sessionStorage.setItem('assetFormData', JSON.stringify(formData));
+    
+    // Navigate to product service screen
+    navigate('/master-data/prod-serv');
   };
 
   // UI
@@ -1119,46 +1126,6 @@ const AddAssetForm = ({ userRole }) => {
           )}
         </div>
 
-        {/* Accounting Details Section */}
-        <div className="mb-6">
-          <button type="button" onClick={() => toggleSection('accounting')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
-            <span>{t('assets.accountingDetails')}</span>
-            {collapsedSections.accounting ? (
-              <MdKeyboardArrowRight size={24} />
-            ) : (
-              <MdKeyboardArrowDown size={24} />
-            )}
-          </button>
-          {!collapsedSections.accounting && (
-            <div className="grid grid-cols-4 gap-6 mb-4">
-              <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.salvageValue')}</label>
-                <input 
-                  name="salvageValue" 
-                  type="number" 
-                  step="0.01" 
-                  placeholder="0.00" 
-                  onChange={handleChange} 
-                  value={form.salvageValue || ''} 
-                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.usefulLifeYears')}</label>
-                <input 
-                  name="usefulLifeYears" 
-                  type="number" 
-                  min="1" 
-                  placeholder="5" 
-                  onChange={handleChange} 
-                  value={form.usefulLifeYears || '5'} 
-                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Vendor Details */}
         <div className="mb-6">
           <button type="button" onClick={() => toggleSection('vendor')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
@@ -1284,17 +1251,6 @@ const AddAssetForm = ({ userRole }) => {
                   )}
                 </div>
               </div>
-              <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.vendorId')}</label>
-                <input
-                  name="vendorId"
-                  placeholder={t('assets.enterVendorId')}
-                  onChange={handleChange}
-                  value={form.vendorId}
-                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9"
-                  readOnly
-                />
-              </div>
 
               {/* Purchase By Dropdown */}
               <div>
@@ -1393,6 +1349,12 @@ const AddAssetForm = ({ userRole }) => {
                             {opt.label}
                           </div>
                         ))}
+                      <div 
+                        className="sticky bottom-0 bg-white border-t px-4 py-2 cursor-pointer text-blue-600 font-semibold hover:bg-blue-50 text-xs"
+                        onClick={() => handleCreateBrandModel('brand')}
+                      >
+                        + Create New Brand
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1441,12 +1403,58 @@ const AddAssetForm = ({ userRole }) => {
                             {opt.label}
                           </div>
                         ))}
+                      <div 
+                        className="sticky bottom-0 bg-white border-t px-4 py-2 cursor-pointer text-blue-600 font-semibold hover:bg-blue-50 text-xs"
+                        onClick={() => handleCreateBrandModel('model')}
+                      >
+                        + Create New Model
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
 
             
+            </div>
+          )}
+        </div>
+
+        {/* Accounting Details Section */}
+        <div className="mb-6">
+          <button type="button" onClick={() => toggleSection('accounting')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
+            <span>{t('assets.accountingDetails')}</span>
+            {collapsedSections.accounting ? (
+              <MdKeyboardArrowRight size={24} />
+            ) : (
+              <MdKeyboardArrowDown size={24} />
+            )}
+          </button>
+          {!collapsedSections.accounting && (
+            <div className="grid grid-cols-4 gap-6 mb-4">
+              <div>
+                <label className="block text-sm mb-1 font-medium">{t('assets.salvageValue')}</label>
+                <input 
+                  name="salvageValue" 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="0.00" 
+                  onChange={handleChange} 
+                  value={form.salvageValue || ''} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 font-medium">{t('assets.usefulLifeYears')}</label>
+                <input 
+                  name="usefulLifeYears" 
+                  type="number" 
+                  min="1" 
+                  placeholder="5" 
+                  onChange={handleChange} 
+                  value={form.usefulLifeYears || '5'} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
+                />
+              </div>
             </div>
           )}
         </div>
@@ -1520,24 +1528,6 @@ const AddAssetForm = ({ userRole }) => {
             )}
           </div>
         )}
-        {/* Buttons */}
-        <div className="flex justify-end gap-3 pb-4">
-          <button
-            type="button"
-            onClick={() => navigate('/assets')}
-            className="bg-gray-300 text-gray-700 px-8 py-2 rounded text-base font-medium hover:bg-gray-400 transition"
-            disabled={isSubmitting}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            type="submit"
-            className="bg-[#002F5F] text-white px-8 py-2 rounded text-base font-medium hover:bg-[#0E2F4B] transition"
-            disabled={isSubmitting}
-          >
-            {t('common.save')}
-          </button>
-        </div>
       </form>
       )}
       {activeTab === 'Attachments' && (
@@ -1662,41 +1652,40 @@ const AddAssetForm = ({ userRole }) => {
               ))}
             </div>
           )}
-          {/* Upload Button */}
-          {attachments.length > 0 && (
-            <div className="mt-6 flex justify-end">
-              <button
-                type="button"
-                onClick={handleBatchUpload}
-                disabled={isUploading || !form.assetId || attachments.some(a => {
-                  if (!a.type || !a.file) return true;
-                  const selectedDocType = documentTypes.find(dt => dt.id === a.type);
-                  const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
-                  return needsCustomName && !a.docTypeName?.trim();
-                })}
-                className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isUploading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Uploading...
-                  </span>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    {form.assetId ? t('assets.uploadAllFiles') : t('assets.saveAssetFirst')}
-                  </>
-                )}
-              </button>
-            </div>
-          )}
         </div>
       )}
+      
+      {/* Unified Save and Cancel Buttons */}
+      <div className="px-8 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/assets')}
+            className="bg-gray-300 text-gray-700 px-8 py-2 rounded text-base font-medium hover:bg-gray-400 transition"
+            disabled={isSubmitting || isUploading}
+          >
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="bg-[#002F5F] text-white px-8 py-2 rounded text-base font-medium hover:bg-[#0E2F4B] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting || isUploading}
+          >
+            {isSubmitting || isUploading ? (
+              <span className="flex items-center">
+                <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {isSubmitting ? 'Saving...' : 'Uploading...'}
+              </span>
+            ) : (
+              t('common.save')
+            )}
+          </button>
+        </div>
+      </div>
       <style>{`
         .scrollable-dropdown {
           max-height: 180px;

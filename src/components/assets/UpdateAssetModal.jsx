@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import API from '../lib/axios';
+import API from '../../lib/axios';
 import toast from 'react-hot-toast';
 import { MdKeyboardArrowDown } from 'react-icons/md';
-import { useAuthStore } from '../store/useAuthStore';
-import useAuditLog from '../hooks/useAuditLog';
-import { ASSETS_APP_ID } from '../constants/assetsAuditEvents';
-import { generateUUID } from '../utils/uuid';
-import { useAppData } from '../contexts/AppDataContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useAuthStore } from '../../store/useAuthStore';
+import useAuditLog from '../../hooks/useAuditLog';
+import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
+import { generateUUID } from '../../utils/uuid';
+import { useAppData } from '../../contexts/AppDataContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Initialize audit logging

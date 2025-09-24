@@ -6,7 +6,7 @@ import { exportToExcel } from "../utils/exportToExcel";
 import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
-import UpdateAssetModal from "../components/UpdateAssetModal";
+import UpdateAssetModal from "../components/assets/UpdateAssetModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSETS_APP_ID } from "../constants/assetsAuditEvents";

@@ -17,7 +17,7 @@ import Organization from "../pages/masterData/Organization";
 import Vendors from "../pages/masterData/Vendors";
 import AddEntityForm from "../components/AddEntityForm";
 import ProdServ from "../pages/masterData/ProdServ";
-import AddAssetForm from "../components/AddAssetForm";
+import AddAssetForm from "../components/assets/AddAssetForm";
 import AddAssetType from "../components/AddAssetType";
 import AssetType from "../pages/AssetType";
 import DepartmentWiseAssetAssignment from "../pages/DepartmentWiseAssetAssignment";
