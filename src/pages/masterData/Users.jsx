@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
 import { filterData } from "../../utils/filterData";
@@ -41,30 +41,30 @@ const Users = () => {
   const [editingUser, setEditingUser] = useState(null);
 
   const [columns] = useState([
-    { label: t('users.userID'), name: "user_id", visible: true },
-    { label: t('users.fullName'), name: "full_name", visible: true },
-    { label: t('users.email'), name: "email", visible: true },
-    { label: t('users.mobileNumber'), name: "phone", visible: true },
-    { label: t('users.department'), name: "dept_name", visible: true },
-    { label: t('users.role'), name: "job_role_id", visible: true },
-    { label: t('users.isActive'), name: "int_status", visible: true },
-    { label: t('users.lastAccessed'), name: "last_accessed", visible: true },
-    { label: t('users.timeZone'), name: "time_zone", visible: false },
-    { label: t('users.dateFormat'), name: "date_format", visible: false },
-    { label: t('users.language'), name: "language_code", visible: false },
-    { label: t('users.extID'), name: "ext_id", visible: false },
-    { label: t('users.organizationID'), name: "org_id", visible: false },
-    { label: t('users.password'), name: "password", visible: false },
-    { label: t('users.createdBy'), name: "created_by", visible: false },
-    { label: t('users.createdOn'), name: "created_on", visible: false },
-    { label: t('users.changedBy'), name: "changed_by", visible: false },
-    { label: t('users.changedOn'), name: "changed_on", visible: false },
-    { label: t('users.resetToken'), name: "reset_token", visible: false },
-    { label: t('users.resetTokenExpiry'), name: "reset_token_expiry", visible: false }
+    { label: "User ID", name: "user_id", visible: true },
+    { label: "Full Name", name: "full_name", visible: true },
+    { label: "Email", name: "email", visible: true },
+    { label: "Mobile Number", name: "phone", visible: true },
+    { label: "Department", name: "dept_name", visible: true },
+    { label: "Role", name: "job_role_id", visible: true },
+    { label: "Is Active", name: "int_status", visible: true },
+    { label: "Last Accessed", name: "last_accessed", visible: true },
+    { label: "Time Zone", name: "time_zone", visible: false },
+    { label: "Date Format", name: "date_format", visible: false },
+    { label: "Language", name: "language_code", visible: false },
+    { label: "Ext ID", name: "ext_id", visible: false },
+    { label: "Organization ID", name: "org_id", visible: false },
+    { label: "Password", name: "password", visible: false },
+    { label: "Created By", name: "created_by", visible: false },
+    { label: "Created On", name: "created_on", visible: false },
+    { label: "Changed By", name: "changed_by", visible: false },
+    { label: "Changed On", name: "changed_on", visible: false },
+    { label: "Reset Token", name: "reset_token", visible: false },
+    { label: "Reset Token Expiry", name: "reset_token_expiry", visible: false }
   ]);
 
   // Fetch departments
-  const fetchDepartments = useCallback(async () => {
+  const fetchDepartments = async () => {
     try {
       const res = await API.get("/admin/departments");
       setDepartments(res.data);
@@ -72,7 +72,7 @@ const Users = () => {
       console.error("Failed to fetch departments", err);
       toast.error(t('users.failedToFetchDepartments'));
     }
-  }, [t]);
+  };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -80,11 +80,11 @@ const Users = () => {
         const response = await API.get("/users/get-users");
         const formattedData = response.data.map(item => ({
           ...item,
-          int_status: item.int_status === 1 ? t('users.active') : t('users.inactive'),
+          int_status: item.int_status === 1 ? 'Active' : 'Inactive',
           created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
           changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
           last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : '',
-          dept_name: departments.find(d => d.dept_id === item.dept_id)?.text || t('users.notAssigned')
+          dept_name: departments.find(d => d.dept_id === item.dept_id)?.text || 'Not Assigned'
         }));
         setData(formattedData);
       } catch (error) {
@@ -93,11 +93,11 @@ const Users = () => {
       }
     };
     fetchUsers();
-  }, [departments, t]);
+  }, [departments]);
 
   useEffect(() => {
     fetchDepartments();
-  }, [fetchDepartments]);
+  }, []);
 
   const handleSort = (column) => {
     setSortConfig(prevConfig => {
@@ -186,7 +186,7 @@ const Users = () => {
     }
 
     // Show loading toast
-    const loadingToast = toast.loading(t('users.deletingSelectedUsers'));
+    const loadingToast = toast.loading("Deleting selected users...");
 
     try {
             const response = await API.delete("/users/delete-users", {
@@ -209,61 +209,61 @@ const Users = () => {
               switch(table) {
                 case 'tblDeptAdmins':
                   dependencies.push({
-                    role: t('users.departmentAdministrator'),
-                    location: t('users.departmentManagement'),
-                    action: t('users.goToDepartmentSettings'),
-                    impact: t('users.currentlyManagingDepartment'),
-                    severity: t('users.critical'),
+                    role: "Department Administrator",
+                    location: "Department Management",
+                    action: "1. Go to Department Settings\n2. Remove admin privileges",
+                    impact: "Currently managing department operations",
+                    severity: "Critical",
                     icon: "🔐"
                   });
                   break;
                 case 'tblAssets':
                   dependencies.push({
-                    role: t('users.assetOwnerCustodian'),
-                    location: t('users.assetManagement'),
-                    action: t('users.goToAssetsReassign'),
-                    impact: t('users.responsibleForAssets'),
-                    severity: t('users.high'),
+                    role: "Asset Owner/Custodian",
+                    location: "Asset Management",
+                    action: "1. Go to Assets\n2. Reassign assets to another user",
+                    impact: "Responsible for company assets",
+                    severity: "High",
                     icon: "📦"
                   });
                   break;
                 case 'tblDeptAssets':
                   dependencies.push({
-                    role: t('users.departmentAssetManager'),
-                    location: t('users.departmentAssets'),
-                    action: t('users.accessDepartmentAssets'),
-                    impact: t('users.managingDepartmentalAssets'),
-                    severity: t('users.high'),
+                    role: "Department Asset Manager",
+                    location: "Department Assets",
+                    action: "1. Access Department Assets\n2. Transfer management rights",
+                    impact: "Managing departmental asset inventory",
+                    severity: "High",
                     icon: "📋"
                   });
                   break;
                 case 'tblVendors':
                   dependencies.push({
-                    role: t('users.vendorPointOfContact'),
-                    location: t('users.vendorManagement'),
-                    action: t('users.openVendorDetails'),
-                    impact: t('users.listedAsVendorContact'),
-                    severity: t('users.medium'),
+                    role: "Vendor Point of Contact",
+                    location: "Vendor Management",
+                    action: "1. Open Vendor Details\n2. Update contact information",
+                    impact: "Listed as vendor contact person",
+                    severity: "Medium",
                     icon: "🤝"
                   });
                   break;
                 default:
                   dependencies.push({
-                    role: t('users.systemReferenceIn', { table }),
-                    location: t('users.systemSettings'),
-                    action: t('users.contactSystemAdmin'),
-                    impact: t('users.hasActiveSystemDependencies'),
-                    severity: t('users.unknown'),
+                    role: `System Reference in ${table}`,
+                    location: "System Settings",
+                    action: "Contact system administrator",
+                    impact: "Has active system dependencies",
+                    severity: "Unknown",
                     icon: "⚠️"
                   });
               }
 
               toast.dismiss(loadingToast);
               toast.error(
-                  <div className="space-y-3">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between border-b border-red-200 pb-2">
                     <div className="font-semibold text-red-800">
-                      {t('users.cannotDeleteUser')}
+                      Cannot Delete User
                     </div>
                     <div className="text-sm text-red-600">
                       ID: {userId}
@@ -275,7 +275,7 @@ const Users = () => {
                   </div>
 
                   <div className="text-sm text-red-800">
-                    {t('users.thisUserHasActiveRoles')}
+                    This user has active roles that prevent deletion:
                   </div>
 
                   {dependencies.map((dep, index) => (
@@ -289,24 +289,24 @@ const Users = () => {
                         </div>
                       </div>
                       <div className="text-sm text-red-600">
-                        {t('users.impact')} {dep.impact}
+                        Impact: {dep.impact}
                       </div>
                       <div className="text-sm">
-                        <span className="font-medium text-red-700">{t('users.requiredSteps')}:</span>
+                        <span className="font-medium text-red-700">Required Steps:</span>
                         <div className="pl-4 text-red-600 whitespace-pre-line">
                           {dep.action}
                         </div>
                       </div>
                       <div className="text-xs text-red-500">
-                        {t('users.location')} {dep.location}
+                        Location: {dep.location}
                       </div>
                     </div>
                   ))}
 
                   <div className="text-xs bg-red-100 p-2 rounded mt-2 text-red-700">
-                    {t('users.completeTheseActions')}
+                    ⚠️ Complete these actions before attempting to delete this user again.
                     <br />
-                    {t('users.deletionWillPermanentlyRemove')}
+                    Note: Deletion will permanently remove all user access and history.
                   </div>
                 </div>,
                 {
@@ -334,11 +334,11 @@ const Users = () => {
         if (Array.isArray(refreshResponse.data)) {
           const formattedData = refreshResponse.data.map(item => ({
             ...item,
-            int_status: item.int_status === 1 ? t('users.active') : t('users.inactive'),
+            int_status: item.int_status === 1 ? 'Active' : 'Inactive',
             created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
             changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
             last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : '',
-            dept_name: departments.find(d => d.dept_id === item.dept_id)?.text || t('users.notAssigned')
+            dept_name: departments.find(d => d.dept_id === item.dept_id)?.text || 'Not Assigned'
           }));
           setData(formattedData);
         }
@@ -347,12 +347,12 @@ const Users = () => {
         await recordActionByNameWithFetch('Delete', {
           userIds: selectedRows,
           count: selectedRows.length,
-          action: t('users.usersDeleted', { count: selectedRows.length })
+          action: `${selectedRows.length} User(s) Deleted`
         });
 
         // Show success message
         toast.dismiss(loadingToast);
-        toast.success(t('users.successfullyDeletedUsers', { count: selectedRows.length }), {
+        toast.success(`Successfully deleted ${selectedRows.length} user(s)`, {
           duration: 3000,
           style: {
             backgroundColor: '#DCFCE7',
@@ -391,21 +391,21 @@ const Users = () => {
         toast.error(
           <div className="space-y-2">
             <div className="font-semibold text-red-800 border-b border-red-200 pb-2">
-              {t('users.cannotDeleteUserDependencies', { userName })}
+              Cannot Delete User: {userName}
             </div>
             <div className="text-sm text-red-700">
-              {t('users.thisUserHasActiveDependencies', { table })}
+              This user has active dependencies in: {table}
             </div>
             <div className="bg-white bg-opacity-50 rounded p-2 mt-2">
               <div className="font-medium text-red-700 flex items-center gap-2">
-                <span>{t('users.requiredAction')}</span>
+                <span>⚠️ Required Action</span>
               </div>
               <div className="text-sm text-red-600 mt-1">
-                {t('users.removeOrReassignUserRoles')}
+                Please remove or reassign this user's roles and responsibilities before deleting.
               </div>
             </div>
             <div className="text-xs bg-red-100 p-2 rounded mt-2">
-              {t('users.handleAllUserDependencies')}
+              Note: You must handle all user dependencies before deletion is possible.
             </div>
           </div>,
           {
@@ -430,21 +430,21 @@ const Users = () => {
 
         switch(true) {
           case error.response?.status === 404:
-            errorMessage = t('users.usersNoLongerExist');
+            errorMessage = "One or more selected users no longer exist. Please refresh the page.";
             break;
           case error.response?.status === 403:
-            errorMessage = t('users.noPermissionToDeleteUsers');
+            errorMessage = "You don't have permission to delete these users. Please contact an administrator.";
             duration = 5000;
             break;
           case error.message === 'Network Error':
-            errorMessage = t('users.unableToConnectToServer');
+            errorMessage = "Unable to connect to the server. Please check your internet connection.";
             style.backgroundColor = '#FEF3C7';
             style.color = '#92400E';
             break;
           default:
             errorMessage = error.response?.data?.message || 
                           error.response?.data?.error || 
-                          t('users.unexpectedErrorOccurred');
+                          "An unexpected error occurred. Please try again or contact support.";
         }
 
         toast.error(errorMessage, { duration, style });
@@ -467,24 +467,24 @@ const Users = () => {
           phone: updatedData.phone,
           deptId: updatedData.dept_id,
           deptName: departments.find(d => d.dept_id === updatedData.dept_id)?.text,
-          status: updatedData.int_status === 1 ? t('users.active') : t('users.inactive'),
-          action: t('users.userUpdated')
+          status: updatedData.int_status === 1 ? 'Active' : 'Inactive',
+          action: 'User Updated'
         });
 
         setData(prev => prev.map(user => 
           user.user_id === userId ? { 
             ...user, 
             ...response.data,
-            dept_name: departments.find(d => d.dept_id === response.data.dept_id)?.text || t('users.notAssigned')
+            dept_name: departments.find(d => d.dept_id === response.data.dept_id)?.text || 'Not Assigned'
           } : user
         ));
-        toast.success(t('users.userUpdatedSuccessfully'));
+        toast.success("User updated successfully");
         setShowEditModal(false);
         setEditingUser(null);
       }
     } catch (error) {
       console.error("Error updating user:", error);
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || t('users.failedToUpdateUser');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || "Failed to update user";
       toast.error(errorMessage);
     }
   };
@@ -498,16 +498,16 @@ const Users = () => {
         // Log download action
         await recordActionByNameWithFetch('Download', {
           count: sortedData.length,
-          action: t('users.usersDataDownloaded')
+          action: 'Users Data Downloaded'
         });
         
-        toast(t('users.usersExportedSuccessfully'), { icon: '✅' });
+        toast('Users exported successfully', { icon: '✅' });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
       console.error('Error downloading users:', error);
-      toast(t('users.failedToExportUsers'), { icon: '❌' });
+      toast('Failed to export users', { icon: '❌' });
     }
   };
 
@@ -515,8 +515,8 @@ const Users = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'int_status' ? [
-      { label: t('users.active'), value: t('users.active') },
-      { label: t('users.inactive'), value: t('users.inactive') }
+      { label: "Active", value: "Active" },
+      { label: "Inactive", value: "Inactive" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
@@ -531,7 +531,7 @@ const Users = () => {
         onAdd={canEdit ? async () => {
           // Log create action when Add button is clicked
           await recordActionByNameWithFetch('Create', {
-            action: t('users.addUserFormOpened')
+            action: 'Add User Form Opened'
           });
           navigate("/master-data/add-user");
         } : null}
@@ -579,7 +579,7 @@ const Users = () => {
         <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white w-[500px] rounded shadow-lg">
             <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
-              <span>{t('users.editUser')}</span>
+              <span>Edit User</span>
               <button
                 onClick={() => {
                   setShowEditModal(false);
@@ -594,7 +594,7 @@ const Users = () => {
             <div className="p-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('users.fullName')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                   <input
                     type="text"
                     value={editingUser.full_name}
@@ -603,7 +603,7 @@ const Users = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('users.email')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input
                     type="email"
                     value={editingUser.email}
@@ -612,7 +612,7 @@ const Users = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('users.phone')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                   <input
                     type="text"
                     value={editingUser.phone}
@@ -621,13 +621,13 @@ const Users = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('users.department')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                   <select
                     value={editingUser.dept_id || ""}
                     onChange={(e) => setEditingUser({ ...editingUser, dept_id: e.target.value })}
                     className="w-full border rounded px-3 py-2"
                   >
-                    <option value="">{t('users.selectDepartment')}</option>
+                    <option value="">Select Department</option>
                     {departments.map((dept) => (
                       <option key={dept.dept_id} value={dept.dept_id}>
                         {dept.text}
@@ -636,14 +636,14 @@ const Users = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('users.status')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
                     value={editingUser.int_status}
                     onChange={(e) => setEditingUser({ ...editingUser, int_status: e.target.value })}
                     className="w-full border rounded px-3 py-2"
                   >
-                    <option value={t('users.active')}>{t('users.active')}</option>
-                    <option value={t('users.inactive')}>{t('users.inactive')}</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
                   </select>
                 </div>
               </div>
@@ -656,7 +656,7 @@ const Users = () => {
                 }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
               >
-                {t('common.cancel')}
+                Cancel
               </button>
               <button
                 onClick={() => handleUpdateUser(editingUser.user_id, {
@@ -664,11 +664,11 @@ const Users = () => {
                   email: editingUser.email,
                   phone: editingUser.phone,
                   dept_id: editingUser.dept_id,
-                  int_status: editingUser.int_status === t('users.active') ? 1 : 0
+                  int_status: editingUser.int_status === 'Active' ? 1 : 0
                 })}
                 className="px-4 py-2 bg-[#003366] text-white rounded hover:bg-[#002347]"
               >
-                {t('users.saveChanges')}
+                Save Changes
               </button>
             </div>
           </div>
