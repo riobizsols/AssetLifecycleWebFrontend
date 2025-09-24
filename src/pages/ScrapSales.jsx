@@ -6,11 +6,13 @@ import { toast } from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
+import { useLanguage } from '../contexts/LanguageContext';
 
 
 const ScrapSales = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const [scrapSales, setScrapSales] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,8 +60,8 @@ const ScrapSales = () => {
 
       setScrapSales(normalized);
     } catch (error) {
-      console.error('Error fetching scrap sales:', error);
-      toast.error('Failed to load scrap sales');
+      console.error(t('scrapSales.failedToFetchScrapSales'), error);
+      toast.error(t('scrapSales.failedToLoadScrapSales'));
       setScrapSales([]);
     } finally {
       setLoading(false);
@@ -68,22 +70,22 @@ const ScrapSales = () => {
 
   useEffect(() => {
     fetchScrapSales();
-  }, []);
+  }, [t]);
 
   const columns = [
-    { key: 'ssh_id', name: 'ssh_id', label: 'Sale ID', sortable: true, visible: true },
-    { key: 'text', name: 'text', label: 'Sale Title', sortable: true, visible: true },
-    { key: 'buyer_name', name: 'buyer_name', label: 'Buyer Name', sortable: true, visible: true },
-    { key: 'buyer_company', name: 'buyer_company', label: 'Buyer Company', sortable: true, visible: true },
-    { key: 'buyer_phone', name: 'buyer_phone', label: 'Buyer Phone', sortable: true, visible: true },
-    { key: 'sale_date', name: 'sale_date', label: 'Sale Date', sortable: true, visible: true },
-    { key: 'collection_date', name: 'collection_date', label: 'Collection Date', sortable: true, visible: true },
-    { key: 'invoice_no', name: 'invoice_no', label: 'Invoice No', sortable: true, visible: true },
-    { key: 'po_no', name: 'po_no', label: 'PO No', sortable: true, visible: true },
-    { key: 'total_assets', name: 'total_assets', label: 'Total Assets', sortable: true, visible: true },
-    { key: 'total_sale_value', name: 'total_sale_value', label: 'Total Sale Value', sortable: true, visible: true },
-    { key: 'created_by', name: 'created_by', label: 'Created By', sortable: true, visible: true },
-    { key: 'created_on', name: 'created_on', label: 'Created On', sortable: true, visible: true }
+    { key: 'ssh_id', name: 'ssh_id', label: t('scrapSales.saleId'), sortable: true, visible: true },
+    { key: 'text', name: 'text', label: t('scrapSales.saleTitle'), sortable: true, visible: true },
+    { key: 'buyer_name', name: 'buyer_name', label: t('scrapSales.buyerName'), sortable: true, visible: true },
+    { key: 'buyer_company', name: 'buyer_company', label: t('scrapSales.buyerCompany'), sortable: true, visible: true },
+    { key: 'buyer_phone', name: 'buyer_phone', label: t('scrapSales.buyerPhone'), sortable: true, visible: true },
+    { key: 'sale_date', name: 'sale_date', label: t('scrapSales.saleDate'), sortable: true, visible: true },
+    { key: 'collection_date', name: 'collection_date', label: t('scrapSales.collectionDate'), sortable: true, visible: true },
+    { key: 'invoice_no', name: 'invoice_no', label: t('scrapSales.invoiceNo'), sortable: true, visible: true },
+    { key: 'po_no', name: 'po_no', label: t('scrapSales.poNo'), sortable: true, visible: true },
+    { key: 'total_assets', name: 'total_assets', label: t('scrapSales.totalAssets'), sortable: true, visible: true },
+    { key: 'total_sale_value', name: 'total_sale_value', label: t('scrapSales.totalSaleValue'), sortable: true, visible: true },
+    { key: 'created_by', name: 'created_by', label: t('scrapSales.createdBy'), sortable: true, visible: true },
+    { key: 'created_on', name: 'created_on', label: t('scrapSales.createdOn'), sortable: true, visible: true }
   ];
 
   const handleAddScrapSale = () => {
@@ -135,8 +137,8 @@ const ScrapSales = () => {
 
   const handleDelete = (row) => {
     // Implement delete functionality
-    console.log('Delete scrap sale:', row);
-    toast.info('Delete functionality to be implemented');
+    console.log(t('scrapSales.deleteScrapSale'), row);
+    toast.info(t('scrapSales.deleteFunctionalityToBeImplemented'));
   };
 
 
@@ -190,9 +192,9 @@ const ScrapSales = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'status' ? [
-      { label: "Completed", value: "Completed" },
-      { label: "Pending", value: "Pending" },
-      { label: "Cancelled", value: "Cancelled" }
+      { label: t('scrapSales.completed'), value: "Completed" },
+      { label: t('scrapSales.pending'), value: "Pending" },
+      { label: t('scrapSales.cancelled'), value: "Cancelled" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));

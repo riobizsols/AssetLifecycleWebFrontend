@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import API from '../../lib/axios';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const initialForm = {
   assetType: '',
@@ -32,6 +33,7 @@ const statusOptions = [
 
 const AssetsDetail = ({ userRole }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [assetDetails, setAssetDetails] = useState(null);
   // Get asset_id from URL params
   const { asset_id } = useParams();
@@ -41,9 +43,40 @@ const AssetsDetail = ({ userRole }) => {
   // Helper to generate a unique assignment ID
   const generateUniqueId = () => `AA${Date.now()}`;
 
+  // Helper function to translate field names
+  const translateFieldName = (key) => {
+    const fieldMap = {
+      'asset_type_id': t('assetsDetail.assetTypeId'),
+      'asset_id': t('assetsDetail.assetId'),
+      'text': t('assetsDetail.text'),
+      'serial_number': t('assetsDetail.serialNumber'),
+      'description': t('assetsDetail.description'),
+      'branch_id': t('assetsDetail.branchId'),
+      'purchase_vendor_id': t('assetsDetail.purchaseVendorId'),
+      'service_vendor_id': t('assetsDetail.serviceVendorId'),
+      'prod_serv_id': t('assetsDetail.prodServId'),
+      'maintsch_id': t('assetsDetail.maintschId'),
+      'purchased_cost': t('assetsDetail.purchasedCost'),
+      'purchased_on': t('assetsDetail.purchasedOn'),
+      'purchased_by': t('assetsDetail.purchasedBy'),
+      'expiry_date': t('assetsDetail.expiryDate'),
+      'current_status': t('assetsDetail.currentStatus'),
+      'warranty_period': t('assetsDetail.warrantyPeriod'),
+      'parent_asset_id': t('assetsDetail.parentAssetId'),
+      'group_id': t('assetsDetail.groupId'),
+      'org_id': t('assetsDetail.orgId'),
+      'created_by': t('assetsDetail.createdBy'),
+      'created_on': t('assetsDetail.createdOn'),
+      'changed_by': t('assetsDetail.changedBy'),
+      'changed_on': t('assetsDetail.changedOn'),
+      'asset_type_name': t('assetsDetail.assetTypeName')
+    };
+    return fieldMap[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   const handleAssignAsset = async () => {
     if (!assetDetails || !employee_int_id || !dept_id || !org_id) {
-      toast.error('Missing assignment details');
+      toast.error(t('assetsDetail.missingAssignmentDetails'));
       return;
     }
     try {
@@ -57,12 +90,12 @@ const AssetsDetail = ({ userRole }) => {
         action: 'A'
       };
       await API.post('/asset-assignments', payload);
-      toast.success('Asset assigned successfully');
+      toast.success(t('assetsDetail.assetAssignedSuccessfully'));
       navigate(-1);
     } catch (err) {
-      console.error('Failed to assign asset', err);
+      console.error(t('assetsDetail.failedToAssignAsset'), err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'An error occurred';
-      toast.error(`Failed to assign asset: ${errorMessage}`);
+      toast.error(`${t('assetsDetail.failedToAssignAsset')}: ${errorMessage}`);
     }
   };
 
@@ -70,14 +103,14 @@ const AssetsDetail = ({ userRole }) => {
     if (asset_id) {
       API.get(`/assets/${asset_id}`)
         .then(res => setAssetDetails(res.data))
-        .catch(() => toast.error('Failed to fetch asset details'));
+        .catch(() => toast.error(t('assetsDetail.failedToFetchAssetDetails')));
     }
-  }, [asset_id]);
+  }, [asset_id, t]);
 
   return (
     <div className="max-w-7xl mx-auto mt-8 bg-[#F5F8FA] rounded-xl shadow">
       <div className="bg-[#0E2F4B] text-white py-4 px-8 rounded-t-xl border-b-4 border-[#FFC107] flex justify-center items-center">
-        <span className="text-2xl font-semibold text-center w-full">Asset Details</span>
+        <span className="text-2xl font-semibold text-center w-full">{t('assetsDetail.title')}</span>
       </div>
       
       <form className="p-8">
@@ -85,9 +118,9 @@ const AssetsDetail = ({ userRole }) => {
         <div className="grid grid-cols-4 gap-6 mb-6">
             {Object.entries(assetDetails).map(([key, value]) => (
               <div key={key} className="col-span-1">
-                <label className="block text-sm mb-1 font-medium">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</label>
+                <label className="block text-sm mb-1 font-medium">{translateFieldName(key)}</label>
                     <input
-                  value={value === null ? 'Not set' : value}
+                  value={value === null ? t('assetsDetail.notSet') : value}
               readOnly
                   className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-sm h-9"
                 />
@@ -107,7 +140,7 @@ const AssetsDetail = ({ userRole }) => {
             }}
             className="bg-gray-300 text-gray-700 px-8 py-2 rounded-lg text-base font-semibold hover:bg-gray-400 transition shadow-sm"
           >
-            Cancel
+            {t('assetsDetail.cancel')}
           </button>
           {!hideAssign && (
             <button
@@ -116,7 +149,7 @@ const AssetsDetail = ({ userRole }) => {
               className="bg-[#0E2F4B] text-white px-8 py-2 rounded-lg text-base font-semibold hover:bg-[#1a4971] transition shadow_sm"
               disabled={!assetDetails || !employee_int_id || !dept_id || !org_id}
             >
-              Assign
+              {t('assetsDetail.assign')}
             </button>
           )}
         </div>

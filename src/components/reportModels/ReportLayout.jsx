@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FaShareAlt } from "react-icons/fa";
@@ -19,6 +20,7 @@ import {
   showToast
 } from "./ReportComponents";
 import { generateComprehensiveReport } from "../../utils/reportGenerator";
+import { useTranslatedReport, getTranslatedColumnHeader } from "../../utils/reportTranslations";
 import ReportDisplay from "./ReportDisplay";
 
 export default function ReportLayout({ 
@@ -43,13 +45,16 @@ export default function ReportLayout({
   onGenerateReport,
   onExportReport
 }) {
+  const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
   const [viewName, setViewName] = useState("");
   const saveInputRef = useRef(null);
   const [generatedReport, setGeneratedReport] = useState(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-  const cols = columns || report.defaultColumns;
+  // Get translated report configuration
+  const translatedReport = useTranslatedReport(report);
+  const cols = columns || translatedReport.defaultColumns;
 
   const hasFilters = useMemo(() => {
     const quickHasFilters = Object.values(quick).some((v) => (Array.isArray(v) ? v.length > 0 : !!v));
@@ -142,7 +147,7 @@ export default function ReportLayout({
 
   const activeChips = useMemo(() => {
     const chips = [];
-    report.quickFields.forEach((f) => {
+    translatedReport.quickFields.forEach((f) => {
       const v = quick[f.key];
       if (!v || (Array.isArray(v) && v.length === 0)) return;
       
@@ -179,7 +184,7 @@ export default function ReportLayout({
     });
     (advanced || []).forEach((r, idx) => {
       if (!r.field) return;
-      const field = report.fields.find(f => f.key === r.field);
+      const field = translatedReport.fields.find(f => f.key === r.field);
       const label = field ? field.label : r.field;
       const val = Array.isArray(r.val) ? r.val.join(", ") || "–" : r.val ?? "–";
       chips.push(`${label} ${r.op} ${val}`);
@@ -197,7 +202,7 @@ export default function ReportLayout({
   const handlePreviewReport = async () => {
     try {
       const reportData = generateComprehensiveReport({
-        report,
+        report: translatedReport,
         filteredRows,
         quick,
         advanced,
@@ -207,7 +212,7 @@ export default function ReportLayout({
       setGeneratedReport(reportData);
     } catch (error) {
       console.error('Error generating report preview:', error);
-      showToast("Error generating report preview. Please try again.", "error");
+      showToast(t('reports.errorGeneratingReportPreview'), "error");
     }
   };
 
@@ -220,14 +225,14 @@ export default function ReportLayout({
       }
 
       // For asset-valuation report, use the comprehensive export functionality
-      if (report.id === 'asset-valuation') {
+      if (translatedReport.id === 'asset-valuation') {
         await handleAssetValuationExport(format);
         return;
       }
 
       // For other reports, use the existing PDF generation
       const reportData = generateComprehensiveReport({
-        report,
+        report: translatedReport,
         filteredRows,
         quick,
         advanced,
@@ -244,7 +249,7 @@ export default function ReportLayout({
       
     } catch (error) {
       console.error('Error generating report:', error);
-      showToast("Error generating report. Please try again.", "error");
+      showToast(t('reports.errorGeneratingReport'), "error");
     } finally {
       setIsGeneratingReport(false);
     }
@@ -320,11 +325,11 @@ export default function ReportLayout({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      showToast(`Asset Valuation report exported successfully as ${format.toUpperCase()}!`, "success");
+      showToast(t('reports.reportExportedSuccessfully', { format: format.toUpperCase() }), "success");
       
     } catch (error) {
       console.error('Error exporting asset valuation report:', error);
-      showToast(`Error exporting ${format.toUpperCase()} report. Please try again.`, "error");
+      showToast(t('reports.errorExportingReport', { format: format.toUpperCase() }), "error");
     }
   };
 
@@ -334,7 +339,7 @@ export default function ReportLayout({
 
   const saveView = () => {
     if (!viewName.trim()) return;
-    setViews([...views, { id: generateUUID(), name: viewName, reportId: report.id, quick, advanced, columns: cols }]);
+    setViews([...views, { id: generateUUID(), name: viewName, reportId: translatedReport.id, quick, advanced, columns: cols }]);
     setIsSaving(false);
     setViewName("");
   };
@@ -384,7 +389,7 @@ export default function ReportLayout({
     let csvContent = [];
     
     // Add report header
-    csvContent.push(`${report.name} Report`);
+    csvContent.push(`${translatedReport.name} Report`);
     csvContent.push(`Generated on: ${new Date().toLocaleString()}`);
     csvContent.push(''); // Empty line for spacing
     
@@ -404,7 +409,7 @@ export default function ReportLayout({
     }
     
     // Add table headers
-    csvContent.push(cols.join(","));
+    csvContent.push(cols.map(col => getTranslatedColumnHeader(col)).join(","));
     
     // Add table data
     filteredRows.forEach(row => {
@@ -416,7 +421,7 @@ export default function ReportLayout({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${report.name.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${translatedReport.name.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -439,7 +444,7 @@ export default function ReportLayout({
     // Report Header
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
-    doc.text(`${report.name} Report`, pageWidth / 2, yPosition, { align: "center" });
+    doc.text(`${translatedReport.name} Report`, pageWidth / 2, yPosition, { align: "center" });
     yPosition += 30;
     
     doc.setFontSize(12);
@@ -501,7 +506,7 @@ export default function ReportLayout({
     doc.text("DETAILED ASSET DATA", margin, yPosition);
     yPosition += 25;
     
-    const tableColumn = cols;
+    const tableColumn = cols.map(col => getTranslatedColumnHeader(col));
     const tableRows = filteredRows.map((r) => cols.map((c) => r[c] ?? ""));
     
     autoTable(doc, {
@@ -540,12 +545,12 @@ export default function ReportLayout({
     });
     
     // Save the PDF
-    doc.save(`${report.name.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`${translatedReport.name.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   const exportOptions = [
-    { label: "Export as CSV", action: () => exportCSV() }, 
-    { label: "Export as PDF", action: () => exportPDF(false) } // Don't skip audit log for explicit export
+    { label: t('reports.exportAsCSV'), action: () => exportCSV() }, 
+    { label: t('reports.exportAsPDF'), action: () => exportPDF(false) } // Don't skip audit log for explicit export
   ];
 
   // Mock users for sharing (this should come from props or context in real app)
@@ -557,14 +562,14 @@ export default function ReportLayout({
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
-            <p className="text-slate-500 text-sm">Build, filter, preview, export & schedule your ALM reports.</p>
+            <h1 className="text-2xl font-bold tracking-tight">{t('reports.title')}</h1>
+            <p className="text-slate-500 text-sm">{t('reports.subtitle')}</p>
           </div>
           <div className="flex items-center gap-2"> 
             {filteredViews.length > 0 && (
               <div className="relative" ref={savedRef}>
                 <button onClick={() => setIsSavedOpen(!isSavedOpen)} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm">
-                  Saved views
+                  {t('reports.savedViews')}
                 </button>
                 {isSavedOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-300 rounded-xl shadow-lg z-20">
@@ -573,8 +578,8 @@ export default function ReportLayout({
                         <div key={v.id} className="flex items-center justify-between gap-2 border border-slate-200 rounded-lg px-2 py-1">
                           <span className="text-sm truncate" title={v.name}>{v.name}</span>
                           <div className="flex items-center gap-1">
-                            <button onClick={() => { applyView(v); setIsSavedOpen(false); }} className="px-2 py-1 text-xs rounded-md bg-[#143d65] text-white">Load</button>
-                            <button onClick={() => { setShareTargetView(v); setIsShareOpen(true); }} title="Share" className="px-2 py-1 text-xs rounded-md border border-slate-300"><FaShareAlt /></button>
+                            <button onClick={() => { applyView(v); setIsSavedOpen(false); }} className="px-2 py-1 text-xs rounded-md bg-[#143d65] text-white">{t('reports.load')}</button>
+                            <button onClick={() => { setShareTargetView(v); setIsShareOpen(true); }} title={t('reports.share')} className="px-2 py-1 text-xs rounded-md border border-slate-300"><FaShareAlt /></button>
                           </div>
                         </div>
                       ))}
@@ -595,7 +600,7 @@ export default function ReportLayout({
                 <Input
                   value={viewName}
                   onChange={setViewName}
-                  placeholder="View name"
+                  placeholder={t('reports.viewName')}
                   className="w-40"
                   autoFocus
                 />
@@ -604,7 +609,7 @@ export default function ReportLayout({
                   className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm"
                   disabled={!viewName.trim()}
                 >
-                  Save
+                  {t('reports.save')}
                 </button>
               </form>
             ) : (
@@ -613,15 +618,15 @@ export default function ReportLayout({
                 className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!hasFilters}
               >
-                Save View
+                {t('reports.saveView')}
               </button>
             )}
             {hasFilters && (
               <button onClick={clearAll} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm">
-                Clear
+                {t('reports.clear')}
               </button>
             )}
-            <DropdownMenu label="Export" options={exportOptions} />
+            <DropdownMenu label={t('reports.export')} options={exportOptions} />
           </div>
         </div>
         
@@ -629,8 +634,8 @@ export default function ReportLayout({
         {totals && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4">
             <div className="mb-3">
-              <h3 className="text-lg font-semibold text-slate-900">Asset Valuation Summary</h3>
-              <p className="text-sm text-slate-600">Current market values based on applied filters</p>
+              <h3 className="text-lg font-semibold text-slate-900">{t('reports.assetValuationSummary')}</h3>
+              <p className="text-sm text-slate-600">{t('reports.currentMarketValues')}</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -641,9 +646,9 @@ export default function ReportLayout({
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-green-800">In-Use Assets Value</p>
+                    <p className="text-sm font-medium text-green-800">{t('reports.inUseAssetsValue')}</p>
                     <p className="text-lg font-semibold text-green-900">₹{totals.inUse.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                    <p className="text-xs text-green-600">{totals.inUseCount} active assets</p>
+                    <p className="text-xs text-green-600">{totals.inUseCount} {t('reports.activeAssets')}</p>
                   </div>
                 </div>
               </div>
@@ -656,9 +661,9 @@ export default function ReportLayout({
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-red-800">Scrap Assets Value</p>
+                    <p className="text-sm font-medium text-red-800">{t('reports.scrapAssetsValue')}</p>
                     <p className="text-lg font-semibold text-red-900">₹{totals.scrap.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                    <p className="text-xs text-red-600">{totals.scrapCount} disposed assets</p>
+                    <p className="text-xs text-red-600">{totals.scrapCount} {t('reports.disposedAssets')}</p>
                   </div>
                 </div>
               </div>
@@ -671,9 +676,9 @@ export default function ReportLayout({
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-blue-800">Total Portfolio Value</p>
+                    <p className="text-sm font-medium text-blue-800">{t('reports.totalPortfolioValue')}</p>
                     <p className="text-lg font-semibold text-blue-900">₹{totals.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                    <p className="text-xs text-blue-600">{totals.totalCount} total assets</p>
+                    <p className="text-xs text-blue-600">{totals.totalCount} {t('reports.totalAssets')}</p>
                   </div>
                 </div>
               </div>
@@ -686,9 +691,9 @@ export default function ReportLayout({
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-800">Average Asset Value</p>
+                    <p className="text-sm font-medium text-gray-800">{t('reports.averageAssetValue')}</p>
                     <p className="text-lg font-semibold text-gray-900">₹{totals.totalCount > 0 ? (totals.total / totals.totalCount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</p>
-                    <p className="text-xs text-gray-600">per asset</p>
+                    <p className="text-xs text-gray-600">{t('reports.perAsset')}</p>
                   </div>
                 </div>
               </div>
@@ -701,7 +706,7 @@ export default function ReportLayout({
           <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-              <span className="text-blue-700 font-medium">Loading asset valuation data...</span>
+              <span className="text-blue-700 font-medium">{t('reports.loadingData')}</span>
             </div>
           </div>
         )}
@@ -712,7 +717,7 @@ export default function ReportLayout({
             <div className="flex items-center gap-3">
               <div className="text-red-600">⚠️</div>
               <div>
-                <span className="text-red-700 font-medium">Error loading data:</span>
+                <span className="text-red-700 font-medium">{t('reports.errorLoadingData')}</span>
                 <p className="text-red-600 text-sm mt-1">{apiData?.error || error}</p>
               </div>
             </div>
@@ -727,17 +732,17 @@ export default function ReportLayout({
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-lg font-semibold">{report.name}</div>
-                  <div className="text-sm text-slate-500">{report.description}</div>
+                  <div className="text-lg font-semibold">{translatedReport.name}</div>
+                  <div className="text-sm text-slate-500">{translatedReport.description}</div>
                 </div>
                 <div>
-                  <button onClick={() => showToast("In-app, a schedule with current filters would be configured.")} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm whitespace-nowrap">
-                    Schedule…
+                  <button onClick={() => showToast(t('reports.scheduleWithCurrentFilters'))} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm whitespace-nowrap">
+                    {t('reports.schedule')}
                   </button>
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-12 gap-4">
-                {report.quickFields.map((f) => (
+                {translatedReport.quickFields.map((f) => (
                   <div key={f.key} className="col-span-12 md:col-span-6 xl:col-span-3">
                     <div className="text-xs font-medium text-slate-600 mb-1">{f.label}</div>
                     {f.type === "daterange" && <DateRange value={quick[f.key]} onChange={(v) => setQuickField(f.key, v)} preset={f.preset} />}
@@ -780,13 +785,13 @@ export default function ReportLayout({
 
               {/* Advanced */}
               <div className="mt-4">
-                <AdvancedBuilder fields={report.fields} value={advanced} onChange={setAdvanced} />
+                <AdvancedBuilder fields={translatedReport.fields} value={advanced} onChange={setAdvanced} />
               </div>
               {/* Active Chips */}
               <div className="mt-3">
-                <SectionTitle>Active Filters</SectionTitle>
+                <SectionTitle>{t('reports.activeFilters')}</SectionTitle>
                 <div className="flex flex-wrap">
-                  {activeChips.length === 0 && <span className="text-sm text-slate-500">None</span>}
+                  {activeChips.length === 0 && <span className="text-sm text-slate-500">{t('reports.none')}</span>}
                   {activeChips.map((c, idx) => (
                     <Chip key={idx} label={c} />
                   ))}
@@ -798,28 +803,28 @@ export default function ReportLayout({
                   onClick={handlePreviewReport}
                   className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm hover:bg-gray-50"
                 >
-                  Preview
+                  {t('reports.preview')}
                 </button>
                 
                 {/* Generate Report Button - Show dropdown for asset-valuation */}
-                {report.id === 'asset-valuation' ? (
+                {translatedReport.id === 'asset-valuation' ? (
                   <DropdownMenu
-                    label={isGeneratingReport ? 'Generating...' : 'Generate Report'}
+                    label={isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
                     options={[
                       {
-                        label: 'PDF Report',
+                        label: t('reports.pdfReport'),
                         action: () => handleGenerateReport('pdf')
                       },
                       {
-                        label: 'Excel Report',
+                        label: t('reports.excelReport'),
                         action: () => handleGenerateReport('excel')
                       },
                       {
-                        label: 'CSV Report',
+                        label: t('reports.csvReport'),
                         action: () => handleGenerateReport('csv')
                       },
                       {
-                        label: 'JSON Report',
+                        label: t('reports.jsonReport'),
                         action: () => handleGenerateReport('json')
                       }
                     ]}
@@ -830,7 +835,7 @@ export default function ReportLayout({
                     disabled={isGeneratingReport}
                     className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1e5a8a]"
                   >
-                    {isGeneratingReport ? 'Generating...' : 'Generate Report'}
+                    {isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
                   </button>
                 )}
               </div>
@@ -839,21 +844,27 @@ export default function ReportLayout({
             {/* Preview Table */}
             <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-3 border-b border-slate-200 flex items-center justify-between">
-                <div className="text-sm text-slate-600">Preview • {filteredRows.length} rows</div>
+                <div className="text-sm text-slate-600">{t('reports.previewTable')} • {filteredRows.length} {t('reports.rows')}</div>
                 {/* Column chooser (add/remove) */}
                 <div className="flex items-center gap-2">
                   <SearchableSelect
                     onChange={(c) => setColumns([...cols, c])}
-                    options={Object.values(report.allColumns || {}).flat().filter(c => !cols.includes(c))}
-                    placeholder="Add column…"
+                    options={Object.values(translatedReport.allColumns || {}).flat().filter(c => !cols.includes(c)).map(col => ({
+                      value: col,
+                      label: getTranslatedColumnHeader(col)
+                    }))}
+                    placeholder={t('reports.addColumn')}
                   />
                   <SearchableSelect
                     onChange={(c) => setColumns(cols.filter((col) => col !== c))}
-                    options={cols}
-                    placeholder="Remove column…"
+                    options={cols.map(col => ({
+                      value: col,
+                      label: getTranslatedColumnHeader(col)
+                    }))}
+                    placeholder={t('reports.removeColumn')}
                   />
-                  <button onClick={() => setColumns(report.defaultColumns)} className="text-sm px-3 py-1 rounded-lg bg-white border border-slate-300">
-                    Reset
+                  <button onClick={() => setColumns(translatedReport.defaultColumns)} className="text-sm px-3 py-1 rounded-lg bg-white border border-slate-300">
+                    {t('reports.reset')}
                   </button>
                 </div>
               </div>
@@ -864,10 +875,10 @@ export default function ReportLayout({
                       {cols.map((col) => (
                         <th key={col} className="text-left font-medium text-slate-600 px-3 py-2 border-b border-slate-200 whitespace-nowrap">
                           <span className="inline-flex items-center gap-2">
-                            {col}
+                            {getTranslatedColumnHeader(col)}
                             <button
                               type="button"
-                              title="Remove column"
+                              title={t('reports.removeColumnTooltip')}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setColumns((prev) => (prev || cols).filter((c) => c !== col));
@@ -903,15 +914,15 @@ export default function ReportLayout({
       {isShareOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200 w-[360px] p-4">
-            <div className="text-lg font-semibold mb-2">Share View</div>
+            <div className="text-lg font-semibold mb-2">{t('reports.shareView')}</div>
             <div className="text-sm text-slate-600 mb-3 truncate">{shareTargetView?.name}</div>
             <div className="mb-3">
-              <div className="text-xs font-medium text-slate-600 mb-1">Select user</div>
+              <div className="text-xs font-medium text-slate-600 mb-1">{t('reports.selectUser')}</div>
               <Select value={shareUser} onChange={setShareUser} options={USERS} />
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setIsShareOpen(false)} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm">Cancel</button>
-              <button onClick={() => { /* integrate share */ setIsShareOpen(false); }} className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm" disabled={!shareUser.trim()}>Share</button>
+              <button onClick={() => setIsShareOpen(false)} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm">{t('reports.cancel')}</button>
+              <button onClick={() => { /* integrate share */ setIsShareOpen(false); }} className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm" disabled={!shareUser.trim()}>{t('reports.share')}</button>
             </div>
           </div>
         </div>

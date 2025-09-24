@@ -4,6 +4,7 @@ import { toast } from "react-hot-toast";
 import { useAuthStore } from "../../store/useAuthStore";
 import API from "../../lib/axios";
 import EnhancedDropdown from "../ui/EnhancedDropdown";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 
 
@@ -11,6 +12,7 @@ const BreakdownDetails = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const selectedAsset = state?.asset;
   const existingBreakdown = state?.breakdown;
 
@@ -46,13 +48,13 @@ const BreakdownDetails = () => {
         const response = await API.get(`/asset-types/${assetTypeId}`);
         const typeDetails = response.data;
         if (!typeDetails?.assignment_type) {
-          throw new Error("No assignment type found for this asset type");
+          throw new Error(t('breakdownDetails.noAssignmentTypeFound'));
         }
         setAssetTypeDetails(typeDetails);
         setReportedByType(typeDetails.assignment_type);
       } catch (err) {
-        console.error("Failed to fetch asset type details:", err);
-        toast.error(err.message || "Failed to fetch asset type details");
+        console.error(t('breakdownDetails.failedToFetchAssetTypeDetails'), err);
+        toast.error(err.message || t('breakdownDetails.failedToFetchAssetTypeDetails'));
         navigate(-1); // Go back if we can't get the required assignment type
       }
     };
@@ -107,7 +109,7 @@ const BreakdownDetails = () => {
           : [];
         setReasonCodes(arr);
       } catch (err) {
-        console.warn("Failed to fetch reason codes");
+        console.warn(t('breakdownDetails.failedToFetchReasonCodes'));
         setReasonCodes([]);
       }
     };
@@ -129,7 +131,7 @@ const BreakdownDetails = () => {
           setUpcomingMaintenanceDate(`${yyyy}-${mm}-${dd}`);
         }
       } catch (err) {
-        console.warn("Failed to fetch upcoming maintenance date:", err);
+        console.warn(t('breakdownDetails.failedToFetchUpcomingMaintenanceDate'), err);
       }
     };
     fetchUpcomingMaintenance();
@@ -156,53 +158,53 @@ const BreakdownDetails = () => {
     
     // Validate required fields
     if (!assetId) {
-      toast.error("Asset ID is required");
+      toast.error(t('breakdownDetails.assetIdRequired'));
       return;
     }
     if (!assetTypeId) {
-      toast.error("Asset type ID is required");
+      toast.error(t('breakdownDetails.assetTypeIdRequired'));
       return;
     }
     if (!user?.org_id) {
-      toast.error("Organization ID is required");
+      toast.error(t('breakdownDetails.organizationIdRequired'));
       return;
     }
     if (reasonCodes.length === 0) {
-      toast.error("No breakdown reason codes available");
+      toast.error(t('breakdownDetails.noBreakdownReasonCodesAvailable'));
       return;
     }
     if (!brCode) {
-      toast.error("Please select a breakdown code");
+      toast.error(t('breakdownDetails.pleaseSelectBreakdownCode'));
       return;
     }
     if (!description.trim()) {
-      toast.error("Please enter a description");
+      toast.error(t('breakdownDetails.pleaseEnterDescription'));
       return;
     }
     if (description.trim().length > 50) {
-      toast.error("Description cannot exceed 50 characters");
+      toast.error(t('breakdownDetails.descriptionCannotExceed50Characters'));
       return;
     }
     if (!decisionCode) {
-      toast.error("Please select a decision code");
+      toast.error(t('breakdownDetails.pleaseSelectDecisionCode'));
       return;
     }
     if (!priority) {
-      toast.error("Please select a priority");
+      toast.error(t('breakdownDetails.pleaseSelectPriority'));
       return;
     }
 
     // Validate breakdown code exists in reason codes
     const selectedReasonCode = reasonCodes.find(rc => rc.id === brCode || rc.atbrrc_id === brCode);
     if (!selectedReasonCode) {
-      toast.error("Selected breakdown code is invalid");
+      toast.error(t('breakdownDetails.selectedBreakdownCodeInvalid'));
       return;
     }
 
     // Validate decision code is valid
     const validDecisionCodes = ['BF01', 'BF02', 'BF03'];
     if (!validDecisionCodes.includes(decisionCode)) {
-      toast.error("Invalid decision code");
+      toast.error(t('breakdownDetails.invalidDecisionCode'));
       return;
     }
 
@@ -214,7 +216,7 @@ const BreakdownDetails = () => {
     };
     
     if (!validPriorities[decisionCode].includes(priority)) {
-      toast.error(`Invalid priority for decision code ${decisionCode}`);
+      toast.error(t('breakdownDetails.invalidPriorityForDecisionCode', { decisionCode }));
       return;
     }
 
@@ -223,7 +225,7 @@ const BreakdownDetails = () => {
     try {
       // Validate asset type details are loaded
       if (!assetTypeDetails) {
-        toast.error("Asset type details not loaded");
+        toast.error(t('breakdownDetails.assetTypeDetailsNotLoaded'));
         return;
       }
 
@@ -233,27 +235,27 @@ const BreakdownDetails = () => {
       if (assetTypeDetails?.assignment_type === 'User') {
         reportedBy = reportedByUserId || user?.user_id || user?.emp_int_id || 'SYSTEM';
         if (!reportedByUserId && !user?.user_id && !user?.emp_int_id) {
-          toast.error("User ID is required for User assignment type");
+          toast.error(t('breakdownDetails.userIdRequiredForUserAssignment'));
           return;
         }
       } else if (assetTypeDetails?.assignment_type === 'Department') {
         reportedBy = reportedByDeptId || user?.dept_id || 'SYSTEM';
         if (!reportedByDeptId && !user?.dept_id) {
-          toast.error("Department ID is required for Department assignment type");
+          toast.error(t('breakdownDetails.departmentIdRequiredForDepartmentAssignment'));
           return;
         }
       } else {
         // Default to current user
         reportedBy = user?.user_id || user?.emp_int_id || 'SYSTEM';
         if (!user?.user_id && !user?.emp_int_id) {
-          toast.error("User ID is required");
+          toast.error(t('breakdownDetails.userIdRequired'));
           return;
         }
       }
 
       // Validate reported_by field is not empty
       if (!reportedBy || reportedBy === 'SYSTEM') {
-        toast.error("Reported by field is required");
+        toast.error(t('breakdownDetails.reportedByFieldRequired'));
         return;
       }
 
@@ -267,7 +269,7 @@ const BreakdownDetails = () => {
 
       // Validate payload structure
       if (!payload.asset_id || !payload.atbrrc_id || !payload.reported_by || !payload.description || !payload.decision_code) {
-        toast.error("Invalid payload structure");
+        toast.error(t('breakdownDetails.invalidPayloadStructure'));
         console.error("Invalid payload:", payload);
         return;
       }
@@ -300,7 +302,7 @@ const BreakdownDetails = () => {
       }
       
       if (response.data.success) {
-        toast.success("Breakdown report created successfully");
+        toast.success(t('breakdownDetails.breakdownReportCreatedSuccessfully'));
         resetForm(); // Reset the form
         try {
           navigate("/report-breakdown");
@@ -310,7 +312,7 @@ const BreakdownDetails = () => {
           navigate("/reports");
         }
       } else {
-        toast.error(response.data.message || "Failed to create breakdown report");
+        toast.error(response.data.message || t('breakdownDetails.failedToCreateBreakdownReport'));
       }
     } catch (error) {
       console.error("Error creating breakdown report:", error);
@@ -319,19 +321,19 @@ const BreakdownDetails = () => {
       console.error("Error data:", error.response?.data);
       
       if (error.message === 'Request timeout') {
-        toast.error("Request timeout - Please try again");
+        toast.error(t('breakdownDetails.requestTimeout'));
         resetForm(); // Reset form on timeout
       } else if (error.response?.status === 400) {
-        toast.error(error.response.data.error || "Invalid request data");
+        toast.error(error.response.data.error || t('breakdownDetails.invalidRequestData'));
         resetForm(); // Reset form on validation error
       } else if (error.response?.status === 401) {
-        toast.error("Unauthorized - Please log in again");
+        toast.error(t('breakdownDetails.unauthorized'));
         resetForm(); // Reset form on unauthorized error
       } else if (error.response?.status === 500) {
-        toast.error("Server error - Please try again later");
+        toast.error(t('breakdownDetails.serverError'));
         resetForm(); // Reset form on server error
       } else {
-        toast.error(error.response?.data?.error || "Failed to create breakdown report");
+        toast.error(error.response?.data?.error || t('breakdownDetails.failedToCreateBreakdownReport'));
         resetForm(); // Reset form on other errors
       }
     } finally {
@@ -342,14 +344,14 @@ const BreakdownDetails = () => {
   return (
     <div className="p-6">
       <div className="bg-[#0E2F4B] text-white py-4 px-8 rounded-t-xl border-b-4 border-[#FFC107] flex justify-center items-center">
-        {/* <span className="text-2xl font-semibold text-center w-full">Add Asset</span> */}
+        <span className="text-2xl font-semibold text-center w-full">{t('breakdownDetails.title')}</span>
       </div>
       <div className="bg-white rounded-b-lg shadow p-6">
         {(selectedAsset || existingBreakdown) && (
           <div className="mb-8 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#0E2F4B]">
-                Asset Details
+                {t('breakdownDetails.assetDetails')}
               </h2>
               <div className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
                 ID: {assetId}
@@ -358,7 +360,7 @@ const BreakdownDetails = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Asset Type
+                  {t('breakdownDetails.assetType')}
                 </div>
                 <div className="text-base font-medium text-gray-900">
                   {selectedAsset?.text ||
@@ -368,7 +370,7 @@ const BreakdownDetails = () => {
               </div>
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Asset Name
+                  {t('breakdownDetails.assetName')}
                 </div>
                 <div className="text-base font-medium text-gray-900">
                   {selectedAsset?.description ||
@@ -378,7 +380,7 @@ const BreakdownDetails = () => {
               </div>
               <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  Asset ID
+                  {t('breakdownDetails.assetId')}
                 </div>
                 <div className="text-base font-medium text-gray-900">
                   {selectedAsset?.asset_id ||
@@ -393,13 +395,13 @@ const BreakdownDetails = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-[#0E2F4B] mb-4">
-              Breakdown Information
+              {t('breakdownDetails.breakdownInformation')}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Breakdown Code (BR Code)
+                  {t('breakdownDetails.breakdownCode')} *
                 </label>
                 <EnhancedDropdown
                   options={reasonCodes.map((c) => ({
@@ -409,30 +411,30 @@ const BreakdownDetails = () => {
                   }))}
                   value={brCode}
                   onChange={setBrCode}
-                  placeholder="Select Breakdown Code"
+                  placeholder={t('breakdownDetails.selectBreakdownCode')}
                   disabled={isReadOnly}
                   required
                 />
                 {reasonCodes.length === 0 && (
                   <p className="text-xs text-red-500">
-                    No breakdown reason codes available for this asset type
+                    {t('breakdownDetails.noBreakdownReasonCodes')}
                   </p>
                 )}
               </div>
 
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Reported By
+                  {t('breakdownDetails.reportedBy')}
                 </label>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-                  <div className="text-xs text-gray-500 mb-1">Type: <span className="text-gray-800">{assetTypeDetails?.assignment_type || 'Loading...'}</span></div>
+                  <div className="text-xs text-gray-500 mb-1">{t('breakdownDetails.type')}: <span className="text-gray-800">{assetTypeDetails?.assignment_type || t('breakdownDetails.loading')}</span></div>
                   {assetTypeDetails?.assignment_type === 'User' && (
                     <input
                       type="text"
                       value={reportedByUserId}
                       onChange={(e) => setReportedByUserId(e.target.value)}
                       className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all"
-                      placeholder="Enter user ID or leave empty for current user"
+                      placeholder={t('breakdownDetails.enterUserId')}
                       disabled={isReadOnly}
                     />
                   )}
@@ -442,15 +444,15 @@ const BreakdownDetails = () => {
                       value={reportedByDeptId}
                       onChange={(e) => setReportedByDeptId(e.target.value)}
                       className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all"
-                      placeholder="Enter department ID or leave empty for current department"
+                      placeholder={t('breakdownDetails.enterDepartmentId')}
                       disabled={isReadOnly}
                     />
                   )}
                   {assetTypeDetails?.assignment_type === 'User' && (
-                    <p className="mt-1 text-xs text-gray-500">Leave empty to use your current user ID: {user?.user_id || user?.emp_int_id || 'Not available'}</p>
+                    <p className="mt-1 text-xs text-gray-500">{t('breakdownDetails.leaveEmptyForCurrentUser', { userId: user?.user_id || user?.emp_int_id || t('breakdownDetails.notAvailable') })}</p>
                   )}
                   {assetTypeDetails?.assignment_type === 'Department' && (
-                    <p className="mt-1 text-xs text-gray-500">Leave empty to use your current department ID: {user?.dept_id || 'Not available'}</p>
+                    <p className="mt-1 text-xs text-gray-500">{t('breakdownDetails.leaveEmptyForCurrentDepartment', { deptId: user?.dept_id || t('breakdownDetails.notAvailable') })}</p>
                   )}
                 </div>
               </div>
@@ -458,94 +460,94 @@ const BreakdownDetails = () => {
 
             <div className="mt-6">
               <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Description
+                {t('breakdownDetails.description')} *
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value.slice(0, 50))}
                 maxLength={50}
                 className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all min-h-[120px]"
-                placeholder="Max 50 characters..."
+                placeholder={t('breakdownDetails.maxCharacters')}
                 disabled={isReadOnly}
                 required
               />
               <p className="text-xs text-gray-500">
-                Max 50 characters. Provide concise details about the breakdown.
+                {t('breakdownDetails.maxCharactersDescription')}
               </p>
             </div>
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-[#0E2F4B] mb-4">
-              Maintenance Planning
+              {t('breakdownDetails.maintenancePlanning')}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                              <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Decision Code
+                  {t('breakdownDetails.decisionCode')} *
                 </label>
                                                  <EnhancedDropdown
                   options={[
                     {
                       value: "BF01",
-                      label: "BF01 – Maintenance Request & Breakdown Fix",
-                      description: "Create maintenance request along with breakdown fix"
+                      label: t('breakdownDetails.bf01Label'),
+                      description: t('breakdownDetails.bf01Description')
                     },
                     {
                       value: "BF02", 
-                      label: "BF02 - Create Breakdown fix only",
-                      description: "Create Breakdown fix only"
+                      label: t('breakdownDetails.bf02Label'),
+                      description: t('breakdownDetails.bf02Description')
                     },
                     {
                       value: "BF03",
-                      label: "BF03 - Postpone fix to next maintenance", 
-                      description: "Postpone breakdown fix until next maintenance"
+                      label: t('breakdownDetails.bf03Label'), 
+                      description: t('breakdownDetails.bf03Description')
                     }
                   ]}
                   value={decisionCode}
                   onChange={handleDecisionCodeChange}
-                  placeholder="Select Decision Code"
+                  placeholder={t('breakdownDetails.selectDecisionCode')}
                   disabled={isReadOnly}
                   required
                 />
                 <p className="text-xs text-gray-500">
-                  Choose how to handle this breakdown: immediate fix, create maintenance request, or postpone
+                  {t('breakdownDetails.decisionCodeDescription')}
                 </p>
               </div>
 
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Priority
+                  {t('breakdownDetails.priority')} *
                 </label>
                                                                   <EnhancedDropdown
                   options={
                     (decisionCode === "BF01" || decisionCode === "BF02") 
                       ? [
-                          { value: "High", label: "High", description: "High priority breakdown fix" },
-                          { value: "Very High", label: "Very High", description: "Very high priority breakdown fix" }
+                          { value: "High", label: t('breakdownDetails.highPriority'), description: t('breakdownDetails.highPriorityDescription') },
+                          { value: "Very High", label: t('breakdownDetails.veryHighPriority'), description: t('breakdownDetails.veryHighPriorityDescription') }
                         ]
                       : decisionCode === "BF03"
                       ? [
-                          { value: "Medium", label: "Medium", description: "Medium priority - can wait until maintenance" },
-                          { value: "Low", label: "Low", description: "Low priority - can wait until maintenance" }
+                          { value: "Medium", label: t('breakdownDetails.mediumPriority'), description: t('breakdownDetails.mediumPriorityDescription') },
+                          { value: "Low", label: t('breakdownDetails.lowPriority'), description: t('breakdownDetails.lowPriorityDescription') }
                         ]
                       : []
                   }
                   value={priority}
                   onChange={setPriority}
-                  placeholder={!decisionCode ? "Select Decision Code First" : "Select Priority"}
+                  placeholder={!decisionCode ? t('breakdownDetails.selectDecisionCodeFirst') : t('breakdownDetails.selectPriority')}
                   disabled={isReadOnly || !decisionCode}
                   required
                 />
                 <p className="text-xs text-gray-500">
-                  Priority depends on decision code: High/Very High for immediate fixes, Medium/Low for postponed fixes
+                  {t('breakdownDetails.priorityDescription')}
                 </p>
               </div>
 
               <div className="space-y-1">
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Upcoming Maintenance Date
+                  {t('breakdownDetails.upcomingMaintenanceDate')}
                 </label>
                 {upcomingMaintenanceDate ? (
                   <input
@@ -557,11 +559,11 @@ const BreakdownDetails = () => {
                   />
                 ) : (
                   <div className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-500">
-                    No maintenance scheduled
+                    {t('breakdownDetails.noMaintenanceScheduled')}
                   </div>
                 )}
                 <p className="text-xs text-gray-500">
-                  This date is automatically fetched from the asset's maintenance schedule
+                  {t('breakdownDetails.upcomingMaintenanceDescription')}
                 </p>
               </div>
             </div>
@@ -575,7 +577,7 @@ const BreakdownDetails = () => {
               onClick={() => navigate(-1)}
               className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all focus:outline-none focus:ring-2 focus:ring-gray-200"
             >
-              Cancel
+              {t('breakdownDetails.cancel')}
             </button>
             {!isReadOnly && (
               <>
@@ -585,14 +587,14 @@ const BreakdownDetails = () => {
                   disabled={isSubmitting}
                   className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Reset
+                  {t('breakdownDetails.reset')}
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
                   className="px-6 py-2.5 rounded-lg bg-[#0E2F4B] text-white font-medium hover:bg-[#1a4a76] transition-all focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? "Submitting..." : "Report Breakdown"}
+                  {isSubmitting ? t('breakdownDetails.submitting') : t('breakdownDetails.reportBreakdown')}
                 </button>
               </>
             )}

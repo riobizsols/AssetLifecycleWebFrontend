@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
 import { toast } from "react-hot-toast";
 import { generateUUID } from '../../utils/uuid';
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   ArrowRight,
   ArrowLeft,
@@ -22,6 +23,7 @@ import SearchableDropdown from '../ui/SearchableDropdown';
 const CreateScrapSales = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [selectedAssetTypes, setSelectedAssetTypes] = useState([]); // Multi-select
   const [availableAssets, setAvailableAssets] = useState([]);
@@ -344,9 +346,9 @@ const CreateScrapSales = () => {
   };
 
   const getDropdownDisplayText = () => {
-    if (selectedAssetTypes.length === 0) return "Select Asset Type";
+    if (selectedAssetTypes.length === 0) return t('scrapSales.selectAssetType');
     if (selectedAssetTypes.length === 1) return getSelectedAssetTypeNames()[0];
-    return `${selectedAssetTypes.length} Asset Types Selected`;
+    return `${selectedAssetTypes.length} ${t('scrapSales.assetTypesSelected')}`;
   };
 
   const handleIndividualValueChange = (assetId, value) => {
@@ -513,10 +515,10 @@ const CreateScrapSales = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Create Scrap Sale
+                {t('scrapSales.createScrapSale')}
               </h1>
               <p className="text-sm text-gray-600">
-                Select assets and configure scrap sale details
+                {t('scrapSales.selectAssetsAndConfigureDetails')}
               </p>
             </div>
           </div>
@@ -526,11 +528,11 @@ const CreateScrapSales = () => {
         {/* Asset Type Selection */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Asset Type
+            {t('scrapSales.assetType')}
           </h2>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <label className="text-sm font-medium text-gray-700 min-w-[80px] sm:min-w-[100px]">
-              Asset Type:
+              {t('scrapSales.assetType')}:
             </label>
             <div className="relative flex-1">
               <button
@@ -563,7 +565,7 @@ const CreateScrapSales = () => {
                         <button
                           onClick={() => handleRemoveAssetType(typeId)}
                           className="ml-1 text-blue-600 hover:text-blue-800"
-                          title="Remove asset type"
+                          title={t('scrapSales.removeAssetType')}
                         >
                           <X size={12} />
                         </button>
@@ -583,7 +585,7 @@ const CreateScrapSales = () => {
                       />
                       <input
                         type="text"
-                        placeholder="Search asset types..."
+                        placeholder={t('scrapSales.searchAssetTypes')}
                         value={dropdownSearchTerm}
                         onChange={(e) => setDropdownSearchTerm(e.target.value)}
                         className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -702,7 +704,7 @@ const CreateScrapSales = () => {
                         >
                           <div className="flex items-center justify-center gap-2">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                            Loading assets...
+                            {t('scrapSales.loadingAssets')}
                           </div>
                         </td>
                       </tr>
@@ -744,7 +746,7 @@ const CreateScrapSales = () => {
                           colSpan="4"
                           className="text-center py-4 text-gray-500"
                         >
-                          No assets found for the selected asset types.
+                          {t('scrapSales.noAssetsFoundForSelectedTypes')}
                         </td>
                       </tr>
                     )}
@@ -758,17 +760,17 @@ const CreateScrapSales = () => {
                   onClick={handleSelectAll}
                   disabled={filteredAvailableAssets.length === 0}
                   className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-300 rounded"
-                  title="Add all assets"
+                  title={t('scrapSales.addAllAssets')}
                 >
-                  Add All
+                  {t('scrapSales.addAll')}
                 </button>
                 <button
                   onClick={handleDeselectAll}
                   disabled={filteredSelectedAssets.length === 0}
                   className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-300 rounded"
-                  title="Remove all assets"
+                  title={t('scrapSales.removeAllAssets')}
                 >
-                  Remove All
+                  {t('scrapSales.removeAll')}
                 </button>
               </div>
             </div>
@@ -781,7 +783,7 @@ const CreateScrapSales = () => {
                   onClick={() => handleSelectAsset(filteredAvailableAssets[0])}
                   disabled={filteredAvailableAssets.length === 0}
                   className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Add one asset"
+                  title={t('scrapSales.addOneAsset')}
                 >
                   <span className="text-lg font-bold">→</span>
                 </button>
@@ -789,7 +791,7 @@ const CreateScrapSales = () => {
                   onClick={handleSelectAll}
                   disabled={filteredAvailableAssets.length === 0}
                   className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Add all assets"
+                  title={t('scrapSales.addAllAssets')}
                 >
                   <span className="text-lg font-bold">{">>"}</span>
                 </button>
@@ -797,7 +799,7 @@ const CreateScrapSales = () => {
                   onClick={() => handleDeselectAsset(filteredSelectedAssets[0])}
                   disabled={filteredSelectedAssets.length === 0}
                   className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Remove one asset"
+                  title={t('scrapSales.removeOneAsset')}
                 >
                   <span className="text-lg font-bold">←</span>
                 </button>
@@ -805,7 +807,7 @@ const CreateScrapSales = () => {
                   onClick={handleDeselectAll}
                   disabled={filteredSelectedAssets.length === 0}
                   className="p-1 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Remove all assets"
+                  title={t('scrapSales.removeAllAssets')}
                 >
                   <span className="text-lg font-bold">{"<<"}</span>
                 </button>
@@ -816,7 +818,7 @@ const CreateScrapSales = () => {
             <div className="flex-1">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-md font-medium text-gray-900">
-                  Selected Scrap Assets
+                  {t('scrapSales.selectedScrapAssets')}
                 </h3>
                 <div className="flex items-center gap-2">
                   <div className="relative">
@@ -826,7 +828,7 @@ const CreateScrapSales = () => {
                     />
                     <input
                       type="text"
-                      placeholder="Search selected assets..."
+                      placeholder={t('scrapSales.searchSelectedAssetsPlaceholder')}
                       value={filterTerm}
                       onChange={(e) => setFilterTerm(e.target.value)}
                       className="pl-8 pr-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -841,16 +843,16 @@ const CreateScrapSales = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Asset ID
+                        {t('scrapSales.assetId')}
                       </th>
                       <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
+                        {t('scrapSales.name')}
                       </th>
                       <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Serial Number
+                        {t('scrapSales.serialNumber')}
                       </th>
                       <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Value (₹)
+                        {t('scrapSales.value')}
                       </th>
                     </tr>
                   </thead>
@@ -907,13 +909,13 @@ const CreateScrapSales = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm text-gray-600">
-                  Total Assets Selected:{" "}
+                  {t('scrapSales.totalAssetsSelected')}:{" "}
                   <span className="font-semibold text-gray-900">
                     {selectedAssets.length}
                   </span>
                 </p>
                 <p className="text-sm text-gray-600">
-                  Total Individual Values:{" "}
+                  {t('scrapSales.totalIndividualValues')}:{" "}
                   <span className="font-semibold text-gray-900">
                     ₹{totalIndividualValues.toFixed(2)}
                   </span>
@@ -926,27 +928,27 @@ const CreateScrapSales = () => {
         {/* Scrap Value Configuration */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Scrap Value Configuration
+            {t('scrapSales.scrapValueConfiguration')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Group Name
+                {t('scrapSales.groupName')}
               </label>
               <input
                 type="text"
-                placeholder="e.g. Old Electronics"
+                placeholder={t('scrapSales.groupNamePlaceholder')}
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Optional: Provide a name for this scrap sale group
+                {t('scrapSales.groupNameOptional')}
               </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Collection Date *
+                {t('scrapSales.collectionDateRequired')}
               </label>
               <input
                 type="date"
@@ -957,16 +959,16 @@ const CreateScrapSales = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <p className="text-xs text-gray-500 mt-1">
-                When will the buyer collect these assets?
+                {t('scrapSales.collectionDateHelp')}
               </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Total Scrap Value (₹)
+                {t('scrapSales.totalScrapValue')}
               </label>
               <input
                 type="number"
-                placeholder="Enter total scrap value"
+                placeholder={t('scrapSales.enterTotalScrapValue')}
                 value={totalScrapValue}
                 onChange={(e) => {
                   const newValue = e.target.value;
@@ -1013,16 +1015,14 @@ const CreateScrapSales = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Leave empty if using individual values. If no individual values
-                are set, the total will be divided equally among all selected
-                assets.
+                {t('scrapSales.totalScrapValueHelp')}
               </p>
             </div>
           </div>
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <div className="text-sm text-gray-600">
               <p>
-                Individual Values Total: ₹{totalIndividualValues.toFixed(2)}
+                {t('scrapSales.individualValuesTotal')}: ₹{totalIndividualValues.toFixed(2)}
               </p>
               {totalScrapValue && (
                 <p
@@ -1047,16 +1047,16 @@ const CreateScrapSales = () => {
         {/* Buyer Information */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Buyer Information
+            {t('scrapSales.buyerInformation')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Buyer Name *
+                {t('scrapSales.buyerNameRequired')}
               </label>
               <input
                 type="text"
-                placeholder="Full Name"
+                placeholder={t('scrapSales.fullName')}
                 value={buyerDetails.buyer_name}
                 onChange={(e) =>
                   handleBuyerDetailChange("buyer_name", e.target.value)
@@ -1066,11 +1066,11 @@ const CreateScrapSales = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email *
+                {t('scrapSales.emailRequired')}
               </label>
               <input
                 type="email"
-                placeholder="email@example.com"
+                placeholder={t('scrapSales.emailPlaceholder')}
                 value={buyerDetails.buyer_email}
                 onChange={(e) =>
                   handleBuyerDetailChange("buyer_email", e.target.value)
@@ -1080,11 +1080,11 @@ const CreateScrapSales = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contact Number *
+                {t('scrapSales.contactNumberRequired')}
               </label>
               <input
                 type="tel"
-                placeholder="+91 98765 43210"
+                placeholder={t('scrapSales.contactNumberPlaceholder')}
                 value={buyerDetails.buyer_contact}
                 onChange={(e) =>
                   handleBuyerDetailChange("buyer_contact", e.target.value)
@@ -1094,11 +1094,11 @@ const CreateScrapSales = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Company Name
+                {t('scrapSales.companyName')}
               </label>
               <input
                 type="text"
-                placeholder="Company Name"
+                placeholder={t('scrapSales.companyNamePlaceholder')}
                 value={buyerDetails.company_name}
                 onChange={(e) =>
                   handleBuyerDetailChange("company_name", e.target.value)
@@ -1111,8 +1111,8 @@ const CreateScrapSales = () => {
 
         {/* Documents Section */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Documents</h2>
-          <div className="text-sm text-gray-600 mb-3">Document types are loaded from the system configuration</div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('scrapSales.documents')}</h2>
+          <div className="text-sm text-gray-600 mb-3">{t('scrapSales.documentTypesLoadedFromSystem')}</div>
           <div className="flex justify-end mb-3">
             <button 
               type="button" 
@@ -1120,21 +1120,21 @@ const CreateScrapSales = () => {
               onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
             >
               <Plus size={16} />
-              Add Document
+              {t('scrapSales.addDocument')}
             </button>
           </div>
           <div className="space-y-3">
-            {uploadRows.length === 0 && <div className="text-sm text-gray-500">No files added.</div>}
+            {uploadRows.length === 0 && <div className="text-sm text-gray-500">{t('scrapSales.noFilesAdded')}</div>}
             {uploadRows.map(r => (
               <div key={r.id} className="grid grid-cols-12 gap-3 items-start bg-white border rounded p-3">
                 <div className="col-span-3">
-                  <label className="block text-xs font-medium mb-1">Document Type</label>
+                  <label className="block text-xs font-medium mb-1">{t('scrapSales.documentType')}</label>
                   <SearchableDropdown
                     options={documentTypes}
                     value={r.type}
                     onChange={(value) => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:value}:x))}
-                    placeholder="Select type"
-                    searchPlaceholder="Search document types..."
+                    placeholder={t('scrapSales.selectType')}
+                    searchPlaceholder={t('scrapSales.searchDocumentTypes')}
                     className="w-full"
                     displayKey="text"
                     valueKey="id"
@@ -1145,12 +1145,12 @@ const CreateScrapSales = () => {
                   const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
                   return needsCustomName && (
                     <div className="col-span-3">
-                      <label className="block text-xs font-medium mb-1">Custom Name</label>
+                      <label className="block text-xs font-medium mb-1">{t('scrapSales.customName')}</label>
                       <input 
                         className="w-full border rounded h-[38px] px-2 text-sm" 
                         value={r.docTypeName} 
                         onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))} 
-                        placeholder={`Enter custom name for ${selectedDocType?.text}`}
+                        placeholder={t('scrapSales.enterCustomNameFor', { docType: selectedDocType?.text })}
                       />
                     </div>
                   );
@@ -1160,7 +1160,7 @@ const CreateScrapSales = () => {
                   const needsCustomName = selectedDocType && selectedDocType.text.toLowerCase().includes('other');
                   return needsCustomName ? 'col-span-4' : 'col-span-7';
                 })()}>
-                  <label className="block text-xs font-medium mb-1">File (Max 10MB)</label>
+                  <label className="block text-xs font-medium mb-1">{t('scrapSales.fileMaxSize')}</label>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <input
@@ -1197,7 +1197,7 @@ const CreateScrapSales = () => {
                         rel="noreferrer" 
                         className="h-[38px] inline-flex items-center px-4 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors"
                       >
-                        Preview
+                        {t('scrapSales.preview')}
                       </a>
                     )}
                     <button 
@@ -1205,7 +1205,7 @@ const CreateScrapSales = () => {
                       onClick={() => setUploadRows(prev => prev.filter(x => x.id!==r.id))}
                       className="h-[38px] inline-flex items-center px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                     >
-                      Remove
+                      {t('scrapSales.remove')}
                     </button>
                   </div>
                 </div>
@@ -1220,7 +1220,7 @@ const CreateScrapSales = () => {
             onClick={handleCancel}
             className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
           >
-            Cancel
+            {t('scrapSales.cancel')}
           </button>
           <button
             onClick={handleSave}
@@ -1230,12 +1230,12 @@ const CreateScrapSales = () => {
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Saving...
+                {t('scrapSales.saving')}
               </>
             ) : (
               <>
                 <Save size={16} />
-                Save Scrap Sale
+                {t('scrapSales.saveScrapSale')}
               </>
             )}
           </button>

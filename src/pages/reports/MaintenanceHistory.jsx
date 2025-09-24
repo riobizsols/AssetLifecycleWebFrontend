@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import ReportLayout from "../../components/reportModels/ReportLayout";
 import { useReportState } from "../../components/reportModels/useReportState";
 import { REPORTS } from "../../components/reportModels/ReportConfig";
@@ -7,6 +8,7 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import { REPORTS_APP_IDS } from "../../constants/reportsAuditEvents";
 
 export default function MaintenanceHistory() {
+  const { t } = useTranslation();
   const selectedReportId = "maintenance-history";
   const report = useMemo(() => REPORTS.find((r) => r.id === selectedReportId), []);
   
@@ -22,10 +24,8 @@ export default function MaintenanceHistory() {
     setColumns,
     views,
     setViews,
-    cols,
     allRows,
     filteredRows,
-    hasFilters,
     setQuickField,
     loading,
     error,
@@ -34,18 +34,18 @@ export default function MaintenanceHistory() {
 
   // Audit logging handlers
   const handleGenerateReport = async () => {
-    await recordActionByNameWithFetch('Generate Report', { 
-      reportType: 'Maintenance History',
-      action: 'Report Generated Successfully',
+    await recordActionByNameWithFetch(t('reports.auditActions.generateReport'), { 
+      reportType: t('reports.maintenanceHistoryReport.name'),
+      action: t('reports.auditActions.reportGenerated'),
       filterCount: Object.keys(quick).filter(key => quick[key] && quick[key] !== '').length
     });
   };
 
   const handleExportReport = async (exportType = 'pdf') => {
-    await recordActionByNameWithFetch('Export Report', { 
-      reportType: 'Maintenance History',
+    await recordActionByNameWithFetch(t('reports.auditActions.exportReport'), { 
+      reportType: t('reports.maintenanceHistoryReport.name'),
       exportFormat: exportType,
-      action: `Report Exported as ${exportType.toUpperCase()}`,
+      action: t('reports.auditActions.reportExported', { format: exportType.toUpperCase() }),
       filterCount: Object.keys(quick).filter(key => quick[key] && quick[key] !== '').length
     });
   };
