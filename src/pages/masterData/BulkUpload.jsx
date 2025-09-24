@@ -800,11 +800,7 @@ const Roles = () => {
         const assetTypeId = data[assetTypeIdIndex].trim();
         console.log(`🔍 Validating asset_type_id: "${assetTypeId}" (length: ${assetTypeId.length})`);
         console.log(`🔍 Regex test result: ${/^AT\d+$/.test(assetTypeId)}`);
-        
-        // DEMO ERROR: Intentionally reject asset_type_id starting with "AT0" to show validation errors
-        if (assetTypeId.startsWith('AT0')) {
-          rowErrors.push(`Row ${rowNumber}: Asset type ID cannot start with 'AT0' (got: "${assetTypeId}"). Please use AT1, AT2, etc.`);
-        } else if (!/^AT\d+$/.test(assetTypeId)) {
+        if (!/^AT\d+$/.test(assetTypeId)) {
           rowErrors.push(`Row ${rowNumber}: asset_type_id must be in format AT001, AT002, AT048, etc. (got: "${assetTypeId}")`);
         }
       }
@@ -1811,6 +1807,15 @@ const Roles = () => {
       ...prev,
       [type]: []
     }));
+    
+    // DEMO ERROR: Prevent trial upload for Asset Types to show error handling
+    if (type === 'assetTypes') {
+      setTrialErrors(prev => ({
+        ...prev,
+        [type]: ['🚫Status column not found in table.']
+      }));
+      return;
+    }
     
     // Check if file is uploaded and validated
     const uploadStatusForType = uploadStatus[type];
