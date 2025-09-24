@@ -93,6 +93,7 @@ const DatabaseSidebar = () => {
       'Asset Report': t('navigation.assetReport'),
       'Maintenance History': t('navigation.maintenanceHistory'),
       'Maintenance Histo...': t('navigation.maintenanceHistory'),
+      'Maintenance History of Asset': t('navigation.maintenanceHistoryOfAsset'),
       'Asset Valuation': t('navigation.assetValuation'),
       'Asset Workflow History': t('navigation.assetWorkflowHistory'),
       'Asset Workflow Hi...': t('navigation.assetWorkflowHistory'),

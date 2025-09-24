@@ -8,10 +8,12 @@ import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
 import { useAuditLog } from '../hooks/useAuditLog';
 import { GROUP_ASSETS_APP_ID } from '../constants/groupAssetsAuditEvents';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const GroupAsset = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const [groupAssets, setGroupAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -49,11 +51,11 @@ const GroupAsset = () => {
         setGroupAssets(transformedData);
       } else {
         setGroupAssets([]);
-        toast.error('Failed to fetch asset groups');
+        toast.error(t('groupAssets.failedToFetchAssetGroups'));
       }
     } catch (error) {
       console.error('Error fetching asset groups:', error);
-      toast.error('Failed to fetch asset groups');
+      toast.error(t('groupAssets.failedToFetchAssetGroups'));
       setGroupAssets([]);
     } finally {
       setLoading(false);
@@ -62,18 +64,18 @@ const GroupAsset = () => {
 
   useEffect(() => {
     fetchAssetGroups();
-  }, []);
+  }, [t]);
 
   const columns = [
-    { key: 'group_id', name: 'group_id', label: 'Group ID', sortable: true, visible: true },
-    { key: 'group_name', name: 'group_name', label: 'Group Name', sortable: true, visible: true },
-    { key: 'org_id', name: 'org_id', label: 'Organization', sortable: true, visible: true },
-    { key: 'asset_count', name: 'asset_count', label: 'Asset Count', sortable: true, visible: true },
-    { key: 'created_by', name: 'created_by', label: 'Created By', sortable: true, visible: true },
-    { key: 'created_date', name: 'created_date', label: 'Created Date', sortable: true, visible: true },
-    { key: 'changed_by', name: 'changed_by', label: 'Modified By', sortable: true, visible: true },
-    { key: 'changed_date', name: 'changed_date', label: 'Modified Date', sortable: true, visible: true },
-    { key: 'status', name: 'status', label: 'Status', sortable: true, visible: true }
+    { key: 'group_id', name: 'group_id', label: t('groupAssets.groupId'), sortable: true, visible: true },
+    { key: 'group_name', name: 'group_name', label: t('groupAssets.groupName'), sortable: true, visible: true },
+    { key: 'org_id', name: 'org_id', label: t('groupAssets.organization'), sortable: true, visible: true },
+    { key: 'asset_count', name: 'asset_count', label: t('groupAssets.assetCount'), sortable: true, visible: true },
+    { key: 'created_by', name: 'created_by', label: t('groupAssets.createdBy'), sortable: true, visible: true },
+    { key: 'created_date', name: 'created_date', label: t('groupAssets.createdDate'), sortable: true, visible: true },
+    { key: 'changed_by', name: 'changed_by', label: t('groupAssets.modifiedBy'), sortable: true, visible: true },
+    { key: 'changed_date', name: 'changed_date', label: t('groupAssets.modifiedDate'), sortable: true, visible: true },
+    { key: 'status', name: 'status', label: t('groupAssets.status'), sortable: true, visible: true }
   ];
 
   const handleAddGroupAsset = async () => {
@@ -110,18 +112,18 @@ const GroupAsset = () => {
         action: 'Group Asset Deleted Successfully'
       });
       
-      toast.success('Asset group deleted successfully');
+      toast.success(t('groupAssets.assetGroupDeletedSuccessfully'));
       // Refresh the data
       fetchAssetGroups();
     } catch (error) {
       console.error('Error deleting asset group:', error);
-      toast.error('Failed to delete asset group');
+      toast.error(t('groupAssets.failedToDeleteAssetGroup'));
     }
   };
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error('Please select asset groups to delete');
+      toast.error(t('groupAssets.pleaseSelectAssetGroupsToDelete'));
       return;
     }
 
@@ -140,14 +142,14 @@ const GroupAsset = () => {
         action: 'Multiple Group Assets Deleted Successfully'
       });
       
-      toast.success(`${selectedRows.length} asset group(s) deleted successfully`);
+      toast.success(t('groupAssets.assetGroupsDeletedSuccessfully', { count: selectedRows.length }));
       
       // Clear selection and refresh data
       setSelectedRows([]);
       fetchAssetGroups();
     } catch (error) {
       console.error('Error deleting selected asset groups:', error);
-      toast.error('Failed to delete some asset groups');
+      toast.error(t('groupAssets.failedToDeleteSomeAssetGroups'));
     }
   };
 
@@ -201,8 +203,8 @@ const GroupAsset = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'status' ? [
-      { label: "Active", value: "Active" },
-      { label: "Inactive", value: "Inactive" }
+      { label: t('groupAssets.active'), value: "Active" },
+      { label: t('groupAssets.inactive'), value: "Inactive" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
@@ -213,7 +215,7 @@ const GroupAsset = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading asset groups...</p>
+            <p className="text-gray-600">{t('groupAssets.loadingAssetGroups')}</p>
           </div>
         </div>
       ) : (
@@ -227,7 +229,7 @@ const GroupAsset = () => {
           data={groupAssets}
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
-          subtitle={`${groupAssets.length} asset group(s) found`}
+          subtitle={t('groupAssets.assetGroupsFound', { count: groupAssets.length })}
         >
           {({ visibleColumns }) => {
             const filteredData = filterData(groupAssets, filterValues, visibleColumns);
@@ -236,12 +238,12 @@ const GroupAsset = () => {
             if (filteredData.length === 0 && Object.keys(filterValues).some(key => filterValues[key])) {
               return (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">No asset groups match the current filters.</p>
+                  <p className="text-gray-500">{t('groupAssets.noAssetGroupsMatchFilters')}</p>
                   <button
                     onClick={() => setFilterValues({})}
                     className="mt-2 text-blue-600 hover:text-blue-800 underline"
                   >
-                    Clear all filters
+                    {t('groupAssets.clearAllFilters')}
                   </button>
                 </div>
               );
@@ -250,12 +252,12 @@ const GroupAsset = () => {
             if (sortedData.length === 0) {
               return (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">No asset groups found.</p>
+                  <p className="text-gray-500">{t('groupAssets.noAssetGroupsFound')}</p>
                   <button
                     onClick={handleAddGroupAsset}
                     className="mt-2 text-blue-600 hover:text-blue-800 underline"
                   >
-                    Create your first asset group
+                    {t('groupAssets.createYourFirstAssetGroup')}
                   </button>
                 </div>
               );

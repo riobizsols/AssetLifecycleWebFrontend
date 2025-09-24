@@ -4,10 +4,12 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Maximize, Minimize, QrCode, X } from "lucide-react";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const BreakdownSelection = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
 
   const [assetTypes, setAssetTypes] = useState([]);
   const [selectedAssetType, setSelectedAssetType] = useState(null);
@@ -44,8 +46,8 @@ const BreakdownSelection = () => {
       const res = await API.get("/dept-assets/asset-types");
       setAssetTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error("Failed to fetch asset types", err);
-      toast.error("Failed to fetch asset types");
+      console.error(t('breakdownSelection.failedToFetchAssetTypes'), err);
+      toast.error(t('breakdownSelection.failedToFetchAssetTypes'));
       setAssetTypes([]);
     }
   };
@@ -60,8 +62,8 @@ const BreakdownSelection = () => {
         : [];
       setInactiveAssets(assetsArr);
     } catch (err) {
-      console.error("Failed to fetch inactive assets", err);
-      toast.error("Failed to fetch inactive assets");
+      console.error(t('breakdownSelection.failedToFetchInactiveAssets'), err);
+      toast.error(t('breakdownSelection.failedToFetchInactiveAssets'));
       setInactiveAssets([]);
     }
   };
@@ -86,14 +88,14 @@ const BreakdownSelection = () => {
             }
             setScannedAssetId(decodedText);
             setShowScanner(false);
-            toast.success("Asset ID scanned successfully");
+            toast.success(t('breakdownSelection.assetIdScannedSuccessfully'));
           },
           (err) => console.warn("Scan error", err)
         );
       }
     } catch (err) {
       console.error("Error starting scanner", err);
-      toast.error("Could not access camera. Please check permissions.");
+      toast.error(t('breakdownSelection.couldNotAccessCamera'));
       setShowScanner(false);
     }
   };
@@ -113,12 +115,12 @@ const BreakdownSelection = () => {
   const handleScanSubmit = (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
-      toast.error("Please enter an asset ID");
+      toast.error(t('breakdownSelection.pleaseEnterAssetId'));
       return;
     }
     const asset = inactiveAssets.find((a) => a.asset_id === scannedAssetId);
     if (!asset) {
-      toast.error("Asset not found or not available");
+      toast.error(t('breakdownSelection.assetNotFoundOrNotAvailable'));
       return;
     }
     goToBreakdownDetails(asset);
@@ -128,7 +130,7 @@ const BreakdownSelection = () => {
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="bg-white rounded shadow mb-4">
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          Breakdown Selection
+          {t('breakdownSelection.title')}
         </div>
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
@@ -140,7 +142,7 @@ const BreakdownSelection = () => {
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              Select Asset
+              {t('breakdownSelection.selectAsset')}
             </button>
             <button
               onClick={() => setActiveTab("scan")}
@@ -150,7 +152,7 @@ const BreakdownSelection = () => {
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              Scan Asset
+              {t('breakdownSelection.scanAsset')}
             </button>
           </nav>
         </div>
@@ -160,14 +162,14 @@ const BreakdownSelection = () => {
             <div className="flex gap-4 items-end">
               <div className="w-64">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Asset Type
+                  {t('breakdownSelection.assetType')}
                 </label>
                 <select
                   className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
                   value={selectedAssetType || ""}
                   onChange={handleAssetTypeChange}
                 >
-                  <option value="">All Asset Types</option>
+                  <option value="">{t('breakdownSelection.allAssetTypes')}</option>
                   {assetTypes.map((type) => (
                     <option key={type.asset_type_id} value={type.asset_type_id}>
                       {type.text}
@@ -181,7 +183,7 @@ const BreakdownSelection = () => {
                   className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
                   onClick={() => navigate(-1)}
                 >
-                  Cancel
+                  {t('breakdownSelection.cancel')}
                 </button>
               </div>
             </div>
@@ -189,13 +191,13 @@ const BreakdownSelection = () => {
             <form onSubmit={handleScanSubmit} className="flex gap-4 items-end">
               <div className="w-64">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Asset ID
+                  {t('breakdownSelection.assetId')}
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     className="border px-3 py-2 text_sm w-full bg-white text-black focus:outline-none rounded"
-                    placeholder="Scan or enter asset ID"
+                    placeholder={t('breakdownSelection.scanOrEnterAssetId')}
                     value={scannedAssetId}
                     onChange={(e) => setScannedAssetId(e.target.value)}
                   />
@@ -215,14 +217,14 @@ const BreakdownSelection = () => {
                   className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text_sm"
                   onClick={() => navigate(-1)}
                 >
-                  Cancel
+                  {t('breakdownSelection.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="bg-[#0E2F4B] text-white px-4 py-2 rounded text_sm disabled:opacity-50"
                   disabled={!scannedAssetId}
                 >
-                  Create Breakdown
+                  {t('breakdownSelection.createBreakdown')}
                 </button>
               </div>
             </form>
@@ -238,7 +240,7 @@ const BreakdownSelection = () => {
         >
           <div className="bg-white rounded shadow">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-              Available Assets
+              {t('breakdownSelection.availableAssets')}
               <button onClick={() => setIsMaximized((prev) => !prev)}>
                 {isMaximized ? (
                   <Minimize className="text-[#0E2F4B]" size={18} />
@@ -253,13 +255,13 @@ const BreakdownSelection = () => {
                   className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400`}
                   style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
                 >
-                  <div>Asset Type ID</div>
-                  <div>Asset ID</div>
-                  <div>Asset Type Name</div>
-                  <div>Asset Name</div>
-                  <div>Service Vendor ID</div>
-                  <div>Product/Service ID</div>
-                  <div className="flex justify-center">Actions</div>
+                  <div>{t('breakdownSelection.assetTypeId')}</div>
+                  <div>{t('breakdownSelection.assetId')}</div>
+                  <div>{t('breakdownSelection.assetTypeName')}</div>
+                  <div>{t('breakdownSelection.assetName')}</div>
+                  <div>{t('breakdownSelection.serviceVendorId')}</div>
+                  <div>{t('breakdownSelection.productServiceId')}</div>
+                  <div className="flex justify-center">{t('breakdownSelection.actions')}</div>
                 </div>
               )}
 
@@ -306,14 +308,14 @@ const BreakdownSelection = () => {
                         onClick={() => goToBreakdownDetails(asset)}
                         className="bg-[#0E2F4B] text-white px-3 py-1 rounded text_sm hover:bg-[#1a4971] transition-colors"
                       >
-                        Create Breakdown
+                        {t('breakdownSelection.createBreakdown')}
                       </button>
                     </div>
                   </div>
                 ))}
                 {inactiveAssets.length === 0 && (
                   <div className="px-4 py-6 text-center text-gray-500 col-span-4 bg-white rounded-b">
-                    No inactive assets found for this type.
+                    {t('breakdownSelection.noInactiveAssetsFound')}
                   </div>
                 )}
               </div>
@@ -327,7 +329,7 @@ const BreakdownSelection = () => {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
-                Scan Barcode
+                {t('breakdownSelection.scanBarcode')}
               </h3>
               <button
                 onClick={stopScanner}
@@ -347,7 +349,7 @@ const BreakdownSelection = () => {
 
             <div className="p-4 text-center">
               <p className="text-sm text-gray-600">
-                Position the barcode within the scanning area
+                {t('breakdownSelection.positionBarcodeInScanningArea')}
               </p>
             </div>
 
@@ -356,7 +358,7 @@ const BreakdownSelection = () => {
                 onClick={stopScanner}
                 className="bg-gray-200 text-gray-800 px-4 py-2 rounded text_sm hover:bg-gray-300"
               >
-                Cancel
+                {t('breakdownSelection.cancel')}
               </button>
             </div>
           </div>

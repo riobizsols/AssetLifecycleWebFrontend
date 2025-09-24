@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, FileText, BarChart3, Filter, Calendar, User, Building2 } from 'lucide-react';
 
 /**
@@ -6,19 +7,20 @@ import { Download, FileText, BarChart3, Filter, Calendar, User, Building2 } from
  * Shows the generated report with header, filters, summary, and detailed data
  */
 export default function ReportDisplay({ reportData, onClose }) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('summary');
 
   if (!reportData) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-          <h3 className="text-lg font-semibold mb-4">No Report Data</h3>
-          <p className="text-gray-600 mb-4">No report data available to display.</p>
+          <h3 className="text-lg font-semibold mb-4">{t('reports.noReportData')}</h3>
+          <p className="text-gray-600 mb-4">{t('reports.noReportDataAvailable')}</p>
           <button
             onClick={onClose}
             className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
           >
-            Close
+            {t('reports.close')}
           </button>
         </div>
       </div>
@@ -66,9 +68,9 @@ export default function ReportDisplay({ reportData, onClose }) {
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8 px-6">
             {[
-              { id: 'summary', label: 'Summary', icon: BarChart3 },
-              { id: 'filters', label: 'Applied Filters', icon: Filter },
-              { id: 'data', label: 'Detailed Data', icon: FileText }
+              { id: 'summary', label: t('reports.modal.summary'), icon: BarChart3 },
+              { id: 'filters', label: t('reports.modal.appliedFilters'), icon: Filter },
+              { id: 'data', label: t('reports.modal.detailedData'), icon: FileText }
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -100,8 +102,8 @@ export default function ReportDisplay({ reportData, onClose }) {
         <div className="border-t border-gray-200 p-4 bg-gray-50">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
-              Total Records: {header.generationInfo.totalRecords} | 
-              Generated: {header.generationInfo.date}
+              {t('reports.modal.totalRecords')}: {header.generationInfo.totalRecords} | 
+              {t('reports.modal.generated')}: {header.generationInfo.date}
             </div>
           </div>
         </div>
@@ -114,6 +116,7 @@ export default function ReportDisplay({ reportData, onClose }) {
  * Summary Tab Component
  */
 function SummaryTab({ summary, header }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
@@ -122,7 +125,7 @@ function SummaryTab({ summary, header }) {
           <div className="flex items-center">
             <BarChart3 className="w-8 h-8 text-blue-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-blue-600">Total Records</p>
+              <p className="text-sm font-medium text-blue-600">{t('reports.modal.totalRecords')}</p>
               <p className="text-2xl font-bold text-blue-900">{summary.totalRecords}</p>
             </div>
           </div>
@@ -225,13 +228,14 @@ function SummaryTab({ summary, header }) {
  * Filters Tab Component
  */
 function FiltersTab({ filters }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       {!filters.hasFilters ? (
         <div className="text-center py-12">
           <Filter className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Filters Applied</h3>
-          <p className="text-gray-600">This report shows all available data without any filters.</p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('reports.modal.noFiltersApplied')}</h3>
+          <p className="text-gray-600">{t('reports.modal.noFiltersAppliedDescription')}</p>
         </div>
       ) : (
         <>
@@ -300,6 +304,7 @@ function FiltersTab({ filters }) {
  * Data Tab Component
  */
 function DataTab({ data }) {
+  const { t } = useTranslation();
   if (!data.rows || data.rows.length === 0) {
     return (
       <div className="text-center py-12">
@@ -313,7 +318,7 @@ function DataTab({ data }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Detailed Data ({data.totalRows} records)</h3>
+        <h3 className="text-lg font-semibold">{t('reports.modal.detailedData')} ({data.totalRows} {t('reports.rows')})</h3>
       </div>
 
       <div className="overflow-x-auto">

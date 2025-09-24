@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
@@ -8,12 +8,13 @@ import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 import { Html5Qrcode } from "html5-qrcode";
 import SearchableDropdown from '../ui/SearchableDropdown';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const CreateScrapAsset = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const [scrapAssets, setScrapAssets] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [notes, setNotes] = useState('');
@@ -28,21 +29,22 @@ const CreateScrapAsset = () => {
   const [showScanner, setShowScanner] = useState(false);
   const scannerRef = useRef(null);
 
-  // Initialize scanner when modal opens
-  useEffect(() => {
-    if (showScanner && !scannerRef.current) {
-      initializeScanner();
+  const onScanSuccess = useCallback((decodedText) => {
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(console.error);
+      scannerRef.current = null;
     }
+    setScannedAssetId(decodedText);
+    setShowScanner(false);
+    toast.success(t('createScrapAsset.assetIdScannedSuccessfully'));
+  }, [t]);
 
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(console.error);
-        scannerRef.current = null;
-      }
-    };
-  }, [showScanner]);
+  const onScanError = useCallback((error) => {
+    // Handle scan error silently
+    console.warn("Scan error:", error);
+  }, []);
 
-  const initializeScanner = async () => {
+  const initializeScanner = useCallback(async () => {
     try {
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
@@ -59,28 +61,27 @@ const CreateScrapAsset = () => {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      toast.error("Could not access camera. Please check permissions.");
+      toast.error(t('createScrapAsset.couldNotAccessCamera'));
       setShowScanner(false);
     }
-  };
+  }, [t, onScanSuccess, onScanError]);
+
+  // Initialize scanner when modal opens
+  useEffect(() => {
+    if (showScanner && !scannerRef.current) {
+      initializeScanner();
+    }
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(console.error);
+        scannerRef.current = null;
+      }
+    };
+  }, [showScanner, initializeScanner]);
 
   const startScanner = () => {
     setShowScanner(true);
-  };
-
-  const onScanSuccess = (decodedText) => {
-    if (scannerRef.current) {
-      scannerRef.current.stop().catch(console.error);
-      scannerRef.current = null;
-    }
-    setScannedAssetId(decodedText);
-    setShowScanner(false);
-    toast.success(`Asset ID scanned successfully`);
-  };
-
-  const onScanError = (error) => {
-    // Handle scan error silently
-    console.warn("Scan error:", error);
   };
 
   const stopScanner = () => {
@@ -99,7 +100,6 @@ const CreateScrapAsset = () => {
       return;
     }
     try {
-      setLoading(true);
       const res = await API.get(`/scrap-assets/available-by-type/${assetTypeId}`);
       const apiAssets = Array.isArray(res.data?.assets)
         ? res.data.assets
@@ -140,17 +140,14 @@ const CreateScrapAsset = () => {
       }
     } catch (error) {
       console.error('Error fetching available assets by type:', error);
-      toast.error('Failed to load assets for selected type');
+      toast.error(t('createScrapAsset.failedToLoadAssetsForSelectedType'));
       setScrapAssets([]);
       setColumns([]);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
     // Initial: load asset types; assets loaded on asset type selection
-    setLoading(false);
     fetchAssetTypes();
   }, []);
 
@@ -174,7 +171,7 @@ const CreateScrapAsset = () => {
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
-      toast.error("Please enter an asset ID");
+      toast.error(t('createScrapAsset.pleaseEnterAssetId'));
       return;
     }
 
@@ -182,7 +179,7 @@ const CreateScrapAsset = () => {
       // Fetch the asset by ID
       const assetResp = await API.get(`/assets/${encodeURIComponent(scannedAssetId)}`);
       if (!assetResp || !assetResp.data) {
-        toast.error('Asset not found');
+        toast.error(t('createScrapAsset.assetNotFound'));
         return;
       }
 
@@ -190,7 +187,7 @@ const CreateScrapAsset = () => {
       const data = assetResp.data;
       const asset = Array.isArray(data?.rows) ? data.rows[0] : (data.asset || data);
       if (!asset) {
-        toast.error('Asset not found');
+        toast.error(t('createScrapAsset.assetNotFound'));
         return;
       }
 
@@ -198,7 +195,7 @@ const CreateScrapAsset = () => {
         asset.asset_type_id || asset.asset_type || asset.asset_type_fk || asset.assetTypeId || ''
       );
       if (!typeId) {
-        toast.error('Asset type not found for this asset');
+        toast.error(t('createScrapAsset.assetTypeNotFoundForThisAsset'));
         return;
       }
 
@@ -229,10 +226,10 @@ const CreateScrapAsset = () => {
       const actionCol = { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true };
       setColumns([...derived, actionCol]);
       setScannedAssetId('');
-      toast.success('Asset found and displayed');
+      toast.success(t('createScrapAsset.assetFoundAndDisplayed'));
     } catch (error) {
       console.error('Error finding asset by scan:', error);
-      toast.error('Failed to find asset');
+      toast.error(t('createScrapAsset.failedToFindAsset'));
     }
   };
 
@@ -264,25 +261,6 @@ const CreateScrapAsset = () => {
 
   // Removed scroll behavior
 
-  // Function to calculate days/months until expiry
-  const calculateExpiryStatus = (expiryDate) => {
-    const today = new Date();
-    const expiry = new Date(expiryDate);
-    const diffTime = expiry - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) {
-      return { text: 'Expired', color: 'bg-red-100 text-red-800' };
-    } else if (diffDays <= 30) {
-      return { text: `${diffDays} days`, color: 'bg-yellow-100 text-yellow-800' };
-    } else if (diffDays <= 365) {
-      const months = Math.ceil(diffDays / 30);
-      return { text: `${months} months`, color: 'bg-blue-100 text-blue-800' };
-    } else {
-      const years = Math.ceil(diffDays / 365);
-      return { text: `${years} years`, color: 'bg-green-100 text-green-800' };
-    }
-  };
 
   // Columns are derived dynamically from API responses
 
@@ -297,7 +275,7 @@ const CreateScrapAsset = () => {
       
       // Validate that user has emp_int_id
       if (!user?.emp_int_id) {
-        toast.error('User employee ID not found. Please contact administrator.');
+        toast.error(t('createScrapAsset.userEmployeeIdNotFound'));
         return;
       }
       
@@ -317,7 +295,7 @@ const CreateScrapAsset = () => {
       const response = await API.post('/scrap-assets', scrapData);
       
       if (response.data.success) {
-        toast.success(`Asset ${selectedAsset.asset_name} successfully marked for scrapping!`);
+        toast.success(t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }));
         
         // Remove the asset from the list since it's now scrapped
         setScrapAssets(prev => prev.filter(asset => asset.asset_id !== selectedAsset.asset_id));
@@ -327,7 +305,7 @@ const CreateScrapAsset = () => {
         setSelectedAsset(null);
         setNotes('');
       } else {
-        toast.error('Failed to mark asset for scrapping');
+        toast.error(t('createScrapAsset.failedToMarkAssetForScrapping'));
       }
     } catch (error) {
       console.error('❌ Error submitting scrap asset:', error);
@@ -337,16 +315,16 @@ const CreateScrapAsset = () => {
         console.error('Response data:', error.response.data);
         
         if (error.response.status === 400) {
-          toast.error(`Validation error: ${error.response.data.error}`);
+          toast.error(t('createScrapAsset.validationError', { error: error.response.data.error }));
         } else if (error.response.status === 401) {
-          toast.error('Unauthorized. Please log in again.');
+          toast.error(t('createScrapAsset.unauthorizedPleaseLogInAgain'));
         } else if (error.response.status === 500) {
-          toast.error('Server error. Please try again later.');
+          toast.error(t('createScrapAsset.serverErrorPleaseTryAgainLater'));
         } else {
-          toast.error(`Error: ${error.response.data.error || 'Failed to mark asset for scrapping'}`);
+          toast.error(t('createScrapAsset.error', { error: error.response.data.error || t('createScrapAsset.failedToMarkAssetForScrapping') }));
         }
       } else {
-        toast.error('Network error. Please check your connection.');
+        toast.error(t('createScrapAsset.networkErrorPleaseCheckConnection'));
       }
     }
   };
@@ -384,7 +362,7 @@ const CreateScrapAsset = () => {
       });
     };
 
-    const filterData = (data, filters, visibleColumns) => {
+    const filterData = (data, filters) => {
       return data.filter(item => {
         // Handle column-specific filters
         if (filters.columnFilters && filters.columnFilters.length > 0) {
@@ -439,9 +417,6 @@ const CreateScrapAsset = () => {
     }));
   };
 
-  const visibleColumns = columns.filter(col => col.visible);
-  const filteredData = filterData(getFilteredAssets(), filterValues, visibleColumns);
-  const sortedData = sortData(filteredData);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -467,8 +442,8 @@ const CreateScrapAsset = () => {
               <Plus className="w-6 h-6" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Create Scrap Asset</h1>
-              <p className="text-sm text-gray-600">Select assets to mark for scrapping</p>
+              <h1 className="text-2xl font-bold text-gray-900">{t('createScrapAsset.createScrapAsset')}</h1>
+              <p className="text-sm text-gray-600">{t('createScrapAsset.selectAssetsToMarkForScrapping')}</p>
             </div>
           </div>
         </div>
@@ -478,7 +453,7 @@ const CreateScrapAsset = () => {
       {showAssetSelection && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 mx-6">
           <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm mb-4">
-            Asset Selection
+{t('createScrapAsset.assetSelection')}
           </div>
           
           <div className="border-b border-gray-200 mb-4"> 
@@ -491,7 +466,7 @@ const CreateScrapAsset = () => {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Select Asset Type
+{t('createScrapAsset.selectAssetType')}
               </button>
               <button
                 onClick={() => setActiveTab('scan')}
@@ -501,7 +476,7 @@ const CreateScrapAsset = () => {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Scan Asset
+{t('createScrapAsset.scanAsset')}
               </button>
             </nav>
           </div>
@@ -512,13 +487,13 @@ const CreateScrapAsset = () => {
               <div className="space-y-4">
                 <div className="flex gap-4 items-end">
                   <div className="w-64">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('createScrapAsset.assetType')} *</label>
                     <SearchableDropdown
                       options={assetTypes}
                       value={selectedAssetType || ""}
                       onChange={(value) => handleAssetTypeChange({ target: { value } })}
-                      placeholder="Select an asset type..."
-                      searchPlaceholder="Search asset types..."
+                      placeholder={t('createScrapAsset.selectAnAssetType')}
+                      searchPlaceholder={t('createScrapAsset.searchAssetTypes')}
                       className="h-10"
                       displayKey="text"
                       valueKey="asset_type_id"
@@ -532,7 +507,7 @@ const CreateScrapAsset = () => {
                         setSelectedAssetType('');
                       }}
                     >
-                      Clear Selection
+{t('createScrapAsset.clearSelection')}
                     </button>
                   </div>
                 </div>
@@ -544,12 +519,12 @@ const CreateScrapAsset = () => {
               <div className="space-y-4">
                 <form onSubmit={handleScanSubmit} className="flex gap-4 items-end">
                   <div className="w-64">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Asset ID</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('createScrapAsset.assetId')}</label>
                     <div className="relative">
                       <input
                         type="text"
                         className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
-                        placeholder="Scan or enter asset ID"
+                        placeholder={t('createScrapAsset.scanOrEnterAssetId')}
                         value={scannedAssetId}
                         onChange={(e) => setScannedAssetId(e.target.value)}
                       />
@@ -569,13 +544,13 @@ const CreateScrapAsset = () => {
                       className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
                       disabled={!scannedAssetId}
                     >
-                      Find Asset
+{t('createScrapAsset.findAsset')}
                     </button>
                   </div>
                 </form>
                 
                 <p className="text-sm text-blue-600 bg-blue-50 p-3 rounded-md">
-                      💡 <strong>Tip:</strong> Scan or enter an asset ID to find and display that specific asset in the table below.
+                      💡 <strong>{t('createScrapAsset.tip')}:</strong> {t('createScrapAsset.scanOrEnterAssetIdTip')}
                 </p>
               </div>
             )}
@@ -600,7 +575,7 @@ const CreateScrapAsset = () => {
             showActions={false}
           >
             {({ visibleColumns, showActions }) => {
-              const filteredData = filterData(getFilteredAssets(), filterValues, visibleColumns);
+              const filteredData = filterData(getFilteredAssets(), filterValues);
               const sortedData = sortData(filteredData);
 
               return (
@@ -611,7 +586,7 @@ const CreateScrapAsset = () => {
                   setSelectedRows={() => {}}
                   showActions={showActions}
                   onRowAction={handleScrap}
-                  actionLabel="Create Scrap"
+                  actionLabel={t('createScrapAsset.createScrap')}
                   rowKey="asset_id"
                 />
               );
@@ -628,12 +603,12 @@ const CreateScrapAsset = () => {
               </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {!showAssetSelection ? "Click the Plus Icon to Start" : "Select Asset Type to Continue"}
+              {!showAssetSelection ? t('createScrapAsset.clickPlusIconToStart') : t('createScrapAsset.selectAssetTypeToContinue')}
             </h3>
             <p className="text-gray-500">
               {!showAssetSelection 
-                ? "Click on the Plus icon above to open the asset selection interface and choose an asset type to view available assets for scrapping."
-                : "Please select an asset type from the dropdown above to view available assets for scrapping."
+                ? t('createScrapAsset.clickPlusIconToOpenAssetSelection')
+                : t('createScrapAsset.pleaseSelectAssetTypeFromDropdown')
               }
             </p>
           </div>
@@ -645,7 +620,7 @@ const CreateScrapAsset = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Scan Barcode</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('createScrapAsset.scanBarcode')}</h3>
               <button
                 onClick={stopScanner}
                 className="text-gray-400 hover:text-gray-600"
@@ -665,7 +640,7 @@ const CreateScrapAsset = () => {
 
             <div className="p-4 text-center">
               <p className="text-sm text-gray-600">
-                Position the barcode within the scanning area
+{t('createScrapAsset.positionBarcodeWithinScanningArea')}
               </p>
             </div>
 
@@ -674,7 +649,7 @@ const CreateScrapAsset = () => {
                 onClick={stopScanner}
                 className="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-300"
               >
-                Cancel
+                {t('createScrapAsset.cancel')}
               </button>
             </div>
           </div>
@@ -686,7 +661,7 @@ const CreateScrapAsset = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Create Scrap Asset</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('createScrapAsset.createScrapAsset')}</h3>
               <button
                 onClick={handleCloseModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -697,20 +672,20 @@ const CreateScrapAsset = () => {
             
             <div className="p-6">
               <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Asset: <span className="font-medium text-gray-900">{selectedAsset?.asset_name}</span></p>
-                <p className="text-sm text-gray-600">Serial: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
-                <p className="text-sm text-gray-600">Category: <span className="font-medium text-gray-900">{selectedAsset?.category}</span></p>
+                <p className="text-sm text-gray-600 mb-2">{t('createScrapAsset.asset')}: <span className="font-medium text-gray-900">{selectedAsset?.asset_name}</span></p>
+                <p className="text-sm text-gray-600">{t('createScrapAsset.serial')}: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
+                <p className="text-sm text-gray-600">{t('createScrapAsset.category')}: <span className="font-medium text-gray-900">{selectedAsset?.category}</span></p>
               </div>
               
               <div className="mb-6">
                 <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes (Optional)
+{t('createScrapAsset.notesOptional')}
                 </label>
                 <textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Enter any additional notes about this scrap asset..."
+                  placeholder={t('createScrapAsset.enterAdditionalNotesAboutScrapAsset')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                   rows="3"
                 />
@@ -721,13 +696,13 @@ const CreateScrapAsset = () => {
                   onClick={handleCloseModal}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
                 >
-                  Cancel
+{t('createScrapAsset.cancel')}
                 </button>
                 <button
                   onClick={handleSubmitScrap}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Submit
+{t('createScrapAsset.submit')}
                 </button>
                 </div>
             </div>

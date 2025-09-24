@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import { TrendingUp, AlertTriangle, XCircle, BarChart3, PieChart, Plus } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -16,6 +17,7 @@ import {
 const ScrapAssets = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalAssets: 0,
@@ -25,9 +27,9 @@ const ScrapAssets = () => {
 
   const [chartData, setChartData] = useState({
     expiryDistribution: [
-      { name: 'Active', value: 0, color: '#10B981' },
-      { name: 'Nearing Expiry', value: 0, color: '#F59E0B' },
-      { name: 'Expired', value: 0, color: '#EF4444' }
+      { name: t('scrapAssets.active'), value: 0, color: '#10B981' },
+      { name: t('scrapAssets.nearingExpiry'), value: 0, color: '#F59E0B' },
+      { name: t('scrapAssets.expired'), value: 0, color: '#EF4444' }
     ],
     expiringByCategory: []
   });
@@ -51,7 +53,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error('Failed to fetch total assets count');
+      toast.error(t('scrapAssets.failedToFetchTotalAssetsCount'));
       return 0;
     }
   };
@@ -75,7 +77,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error('Failed to fetch nearing expiry count');
+      toast.error(t('scrapAssets.failedToFetchNearingExpiryCount'));
       return 0;
     }
   };
@@ -99,7 +101,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error('Failed to fetch expired assets count');
+      toast.error(t('scrapAssets.failedToFetchExpiredAssetsCount'));
       return 0;
     }
   };
@@ -127,7 +129,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error('Failed to fetch expiring assets data');
+      toast.error(t('scrapAssets.failedToFetchExpiringAssetsData'));
       return [];
     }
   };
@@ -167,9 +169,9 @@ const ScrapAssets = () => {
         // Update chart data with real counts
         const updatedChartData = {
           expiryDistribution: [
-            { name: 'Active', value: Math.max(0, totalAssetsCount - nearingExpiryCount - expiredCount), color: '#10B981' },
-            { name: 'Nearing Expiry', value: nearingExpiryCount, color: '#F59E0B' },
-            { name: 'Expired', value: expiredCount, color: '#EF4444' }
+            { name: t('scrapAssets.active'), value: Math.max(0, totalAssetsCount - nearingExpiryCount - expiredCount), color: '#10B981' },
+            { name: t('scrapAssets.nearingExpiry'), value: nearingExpiryCount, color: '#F59E0B' },
+            { name: t('scrapAssets.expired'), value: expiredCount, color: '#EF4444' }
           ],
           expiringByCategory: expiringByCategoryData
         };
@@ -182,9 +184,9 @@ const ScrapAssets = () => {
         setStats({ totalAssets: 0, nearingExpiry: 0, expired: 0 });
         setChartData({
           expiryDistribution: [
-            { name: 'Active', value: 0, color: '#10B981' },
-            { name: 'Nearing Expiry', value: 0, color: '#F59E0B' },
-            { name: 'Expired', value: 0, color: '#EF4444' }
+            { name: t('scrapAssets.active'), value: 0, color: '#10B981' },
+            { name: t('scrapAssets.nearingExpiry'), value: 0, color: '#F59E0B' },
+            { name: t('scrapAssets.expired'), value: 0, color: '#EF4444' }
           ],
           expiringByCategory: []
         });
@@ -195,7 +197,7 @@ const ScrapAssets = () => {
     };
 
     fetchData();
-  }, []);
+  }, [t]);
 
   const handleCardClick = (type) => {
     switch (type) {
@@ -253,7 +255,7 @@ const ScrapAssets = () => {
           <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
           <div className="text-center text-gray-500 py-8">
             <BarChart3 className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <p>No asset data available</p>
+            <p>{t('scrapAssets.noAssetDataAvailable')}</p>
           </div>
         </div>
       );
@@ -342,8 +344,8 @@ const ScrapAssets = () => {
           <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
           <div className="text-center text-gray-500 py-8">
             <AlertTriangle className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p>No assets expiring within 30 days</p>
-            <p className="text-sm text-gray-400 mt-1">All assets are up to date</p>
+            <p>{t('scrapAssets.noAssetsExpiringWithin30Days')}</p>
+            <p className="text-sm text-gray-400 mt-1">{t('scrapAssets.allAssetsAreUpToDate')}</p>
           </div>
         </div>
       );
@@ -374,7 +376,7 @@ const ScrapAssets = () => {
               onClick={handleViewAll}
               className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
             >
-              View All ({data.length})
+{t('scrapAssets.viewAll')} ({data.length})
             </button>
           )}
         </div>
@@ -406,7 +408,7 @@ const ScrapAssets = () => {
               onClick={handleViewAll}
               className="w-full py-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors hover:bg-blue-50 rounded"
             >
-              +{data.length - 3} more categories
++{data.length - 3} {t('scrapAssets.moreCategories')}
             </button>
           </div>
         )}
@@ -416,14 +418,14 @@ const ScrapAssets = () => {
               onClick={handleViewAll}
               className="w-full py-2 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors hover:bg-blue-50 rounded"
             >
-              View All Categories
+{t('scrapAssets.viewAllCategories')}
             </button>
           </div>
         )}
         <div className="mt-4 text-center">
           <div className="flex items-center justify-center">
             <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-            <span className="text-sm text-gray-600">Expiring Soon</span>
+            <span className="text-sm text-gray-600">{t('scrapAssets.expiringSoon')}</span>
           </div>
         </div>
       </div>
@@ -454,19 +456,23 @@ const ScrapAssets = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">{t('scrapAssets.title')}</h1>
+        <p className="mt-2 text-lg text-gray-600">{t('scrapAssets.subtitle')}</p>
+      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard
-          title="Total Assets"
+          title={t('scrapAssets.totalAssets')}
           value={stats.totalAssets}
           color="text-gray-900"
           icon={BarChart3}
           loading={loading}
         />
         <StatCard
-          title="Nearing Expiry"
+          title={t('scrapAssets.nearingExpiry')}
           value={stats.nearingExpiry}
           color="text-orange-500"
           icon={AlertTriangle}
@@ -474,7 +480,7 @@ const ScrapAssets = () => {
           loading={loading}
         />
         <StatCard
-          title="Expired"
+          title={t('scrapAssets.expired')}
           value={stats.expired}
           color="text-red-500"
           icon={XCircle}
@@ -487,11 +493,11 @@ const ScrapAssets = () => {
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
          <DonutChart 
            data={chartData.expiryDistribution} 
-           title="Asset Expiry Distribution" 
+           title={t('scrapAssets.assetExpiryDistribution')} 
          />
          <BarChart 
            data={chartData.expiringByCategory} 
-           title="Expiring Assets by Category" 
+           title={t('scrapAssets.expiringAssetsByCategory')} 
          />
        </div>
 
@@ -502,7 +508,7 @@ const ScrapAssets = () => {
            className="px-6 py-3 bg-[#0E2F4B] text-white rounded-lg hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg"
          >
            <Plus size={20} />
-           <span className="text-lg font-semibold">Add Scrap Asset</span>
+           <span className="text-lg font-semibold">{t('scrapAssets.addScrapAsset')}</span>
          </button>
        </div>
      </div>

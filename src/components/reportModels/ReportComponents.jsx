@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 // Common UI Components
 export const SectionTitle = ({ children }) => (
@@ -34,9 +35,12 @@ export function Input({ value, onChange, placeholder, type = "text", min, classN
   );
 }
 
-export function Select({ value, onChange, options, placeholder = "Select" }) {
+export function Select({ value, onChange, options, placeholder }) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  
+  const defaultPlaceholder = placeholder || t('reports.filterOptions.select');
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -55,7 +59,7 @@ export function Select({ value, onChange, options, placeholder = "Select" }) {
         onClick={() => setIsOpen(!isOpen)}
         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-left bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center justify-between"
       >
-        <span className="truncate pr-2">{value || placeholder}</span>
+        <span className="truncate pr-2">{value || defaultPlaceholder}</span>
         <span className="text-slate-500">▼</span>
       </button>
       {isOpen && (
@@ -203,7 +207,7 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
           <div className="p-2 border-b border-slate-200">
             <input
               type="text"
-              placeholder="Search..."
+              placeholder={t('reports.filterOptions.search')}
               className="w-full text-sm rounded-md border border-slate-300 px-2 py-1"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -212,7 +216,7 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
           </div>
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
             {filteredOptions.length === 0 ? (
-              <div className="text-sm text-slate-500 p-2">No matches found.</div>
+              <div className="text-sm text-slate-500 p-2">{t('reports.filterOptions.noOptionsFound')}</div>
             ) : (
               filteredOptions.map((opt, index) => {
                 const optValue = typeof opt === 'object' ? opt.value : opt;
@@ -380,11 +384,14 @@ export function GroupedField({ field, value, onChange, onSubFieldChange }) {
   );
 }
 
-export function SearchableSelect({ onChange, options, placeholder = "Select...", value }) {
+export function SearchableSelect({ onChange, options, placeholder, value }) {
+  const { t } = useTranslation();
   // Force rebuild - React error fix applied
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
+  
+  const defaultPlaceholder = placeholder || t('reports.filterOptions.searchPlaceholder');
 
   // Debug logging
   console.log('🔍 [SearchableSelect] Options received:', options);
@@ -453,7 +460,7 @@ export function SearchableSelect({ onChange, options, placeholder = "Select...",
               );
               return typeof option === 'object' && option.label ? option.label : String(value || '');
             }
-            return placeholder;
+            return defaultPlaceholder;
           })()}
         </span>
         <span className="text-slate-500">▼</span>
@@ -463,7 +470,7 @@ export function SearchableSelect({ onChange, options, placeholder = "Select...",
           <div className="p-2 border-b border-slate-200">
             <input
               type="text"
-              placeholder="Search..."
+              placeholder={t('reports.filterOptions.search')}
               className="w-full text-sm rounded-md border border-slate-300 px-2 py-1"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -472,7 +479,7 @@ export function SearchableSelect({ onChange, options, placeholder = "Select...",
           </div>
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
             {filteredOptions.length === 0 ? (
-              <div className="text-sm text-slate-500 p-2">No matches found.</div>
+              <div className="text-sm text-slate-500 p-2">{t('reports.filterOptions.noOptionsFound')}</div>
             ) : (
               filteredOptions.map((opt, index) => (
                 <div key={typeof opt === 'object' ? opt.value || index : opt || index} onClick={() => handleSelect(opt)} className="text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer">
@@ -497,6 +504,7 @@ export const OP_MAP = {
 };
 
 export function AdvancedBuilder({ fields, value, onChange }) {
+  const { t } = useTranslation();
   const rows = value || [];
   const add = () => {
     const defaultField = fields[0];
@@ -515,12 +523,12 @@ export function AdvancedBuilder({ fields, value, onChange }) {
   return (
     <div className="border border-slate-200 rounded-2xl p-3">
       <div className="flex items-center justify-between mb-2">
-        <SectionTitle>Advanced Conditions</SectionTitle>
+        <SectionTitle>{t('reports.advancedConditions.title')}</SectionTitle>
         <button onClick={add} className="text-sm px-3 py-1 rounded-lg bg-[#143d65] text-white">
-          + Add
+          + {t('reports.advancedConditions.addButton')}
         </button>
       </div>
-      {rows?.length === 0 && <div className="text-sm text-slate-500">No advanced conditions yet.</div>}
+      {rows?.length === 0 && <div className="text-sm text-slate-500">{t('reports.advancedConditions.noConditions')}</div>}
       <div className="space-y-3">
         {rows?.map((r, i) => {
           const field = fieldByKey(r.field);
