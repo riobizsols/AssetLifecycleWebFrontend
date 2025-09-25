@@ -7,7 +7,7 @@ import SearchableDropdown from "./ui/SearchableDropdown";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 
-const ServiceSupplyForm = ({ vendorId, orgId }) => {
+const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger, onTabSaved }) => {
   // Debug logs
   console.log('ServiceSupplyForm render:', { vendorId, orgId });
   const { t } = useLanguage();
@@ -17,6 +17,7 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
   const [maximized, setMaximized] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [allServiceDescriptions, setAllServiceDescriptions] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchAssetTypes();
@@ -25,6 +26,13 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
     const stored = sessionStorage.getItem('services');
     if (stored) setServices(JSON.parse(stored));
   }, []);
+
+  // Listen for save trigger from parent
+  useEffect(() => {
+    if (onSaveTrigger === 'Service Details') {
+      handleDone();
+    }
+  }, [onSaveTrigger]);
 
   
 
@@ -164,11 +172,19 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
   // Done button logic
   const handleDone = async () => {
     try {
+      // Check vendor dependency
+      if (!vendorSaved) {
+        toast.error(t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving services.');
+        return;
+      }
+      
       // Validate required data
       if (!vendorId || !orgId) {
         toast.error(t('vendors.pleaseCreateVendorFirst'));
         return;
       }
+
+      setIsSaving(true);
 
       if (!services.length) {
         toast.error(t('vendors.pleaseAddAtLeastOneService') || 'Please add at least one service');
@@ -253,14 +269,20 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
         // Clear form and storage
         setServices([]);
         sessionStorage.removeItem('services');
+        // Mark tab as saved
+        if (onTabSaved) onTabSaved('Service Details');
       } else if (successCount > 0) {
         toast.success(`${successCount} out of ${prodServIds.length} services linked successfully`);
+        // Mark tab as saved even if partial success
+        if (onTabSaved) onTabSaved('Service Details');
       } else {
         toast.error(t('vendors.failedToLinkAnyServices') || 'Failed to link any services');
       }
     } catch (err) {
       console.error('Unexpected error:', err);
       toast.error(t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -320,18 +342,6 @@ const ServiceSupplyForm = ({ vendorId, orgId }) => {
         </div>
       ) : (
         tableCard
-      )}
-      {/* Done button below the table */}
-      {vendorId && orgId && services.length > 0 && (
-        <div className="flex justify-end mt-8">
-          <button
-            type="button"
-            className="bg-green-600 text-white px-8 py-2 rounded text-base font-medium hover:bg-green-700 transition"
-            onClick={handleDone}
-          >
-            Done
-          </button>
-        </div>
       )}
     </div>
   );

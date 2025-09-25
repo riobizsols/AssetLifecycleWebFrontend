@@ -145,7 +145,7 @@ const MaintenanceApprovalDetail = () => {
   console.log("User from auth store:", user);
   const [maintenance, setMaintenance] = useState(null);
   const [steps, setSteps] = useState([]);
-  const [currentUserId, setCurrentUserId] = useState(""); // Will be set from auth
+  const [currentUserEmpId, setCurrentUserEmpId] = useState(""); // Will be set from auth
   const [activeTab, setActiveTab] = useState("approval");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -162,8 +162,8 @@ const MaintenanceApprovalDetail = () => {
 
   // Set current user from auth store
   useEffect(() => {
-    if (user && user.user_id) {
-      setCurrentUserId(user.user_id);
+    if (user && user.emp_int_id) {
+      setCurrentUserEmpId(user.emp_int_id);
     }
   }, [user]);
 
@@ -229,7 +229,7 @@ const MaintenanceApprovalDetail = () => {
 
   // Find the current step and user
   const currentStep = steps.find((step) => step.status === "current");
-  const isCurrentApprover = currentStep && currentStep.user.id === currentUserId;
+  const isCurrentApprover = currentStep && currentStep.user.id === currentUserEmpId;
   const isRejected = steps.some((step) => step.status === "rejected");
 
   // Find the user with AP status (current action pending user)
@@ -254,12 +254,12 @@ const MaintenanceApprovalDetail = () => {
   
   // Check if current user is the one with AP status
   const isCurrentActionUser = currentActionStep && (
-    currentActionStep.user.id === currentUserId || 
+    currentActionStep.user.id === currentUserEmpId || 
     currentActionStep.user.name === user?.full_name
   );
   
   // Debug logging
-  console.log("Current user ID:", currentUserId);
+  console.log("Current user Emp ID:", currentUserEmpId);
   console.log("Current user from auth:", user);
   console.log("All steps:", steps);
   console.log("Steps details:", steps.map(step => ({
@@ -287,9 +287,9 @@ const MaintenanceApprovalDetail = () => {
     if (!approveNote.trim()) return;
     setIsSubmitting(true);
     try {
-      console.log("Approving maintenance for asset:", id, "by user:", currentUserId);
+      console.log("Approving maintenance for asset:", id, "by emp:", currentUserEmpId);
       const response = await API.post(`/approval-detail/${id}/approve`, {
-        userId: currentUserId,
+        empIntId: currentUserEmpId,
         note: approveNote
       });
       
@@ -315,9 +315,9 @@ const MaintenanceApprovalDetail = () => {
     if (!rejectNote.trim()) return;
     setIsSubmitting(true);
     try {
-      console.log("Rejecting maintenance for asset:", id, "by user:", currentUserId);
+      console.log("Rejecting maintenance for asset:", id, "by emp:", currentUserEmpId);
       const response = await API.post(`/approval-detail/${id}/reject`, {
-        userId: currentUserId,
+        empIntId: currentUserEmpId,
         reason: rejectNote
       });
       

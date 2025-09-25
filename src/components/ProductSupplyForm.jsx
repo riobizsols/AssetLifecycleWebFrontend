@@ -7,7 +7,7 @@ import SearchableDropdown from "./ui/SearchableDropdown";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 
-const ProductSupplyForm = ({ vendorId, orgId }) => {
+const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger, onTabSaved }) => {
   // Debug logs
   console.log('ProductSupplyForm render:', { vendorId, orgId });
   const { t } = useLanguage();
@@ -19,6 +19,7 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
   const [form, setForm] = useState({ assetType: "", brand: "", model: "", description: "" });
   const [maximized, setMaximized] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,6 +63,13 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
     const stored = sessionStorage.getItem('products');
     if (stored) setProducts(JSON.parse(stored));
   }, []);
+
+  // Listen for save trigger from parent
+  useEffect(() => {
+    if (onSaveTrigger === 'Product Details') {
+      handleDone();
+    }
+  }, [onSaveTrigger]);
 
   const fetchAssetTypes = async () => {
     try {
@@ -192,11 +200,20 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
   // Done button logic
   const handleDone = async () => {
     try {
-      console.log('handleDone called', { vendorId, orgId, products });
+      console.log('handleDone called', { vendorId, orgId, products, vendorSaved });
+      
+      // Check vendor dependency
+      if (!vendorSaved) {
+        toast.error(t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving products.');
+        return;
+      }
+      
       if (!vendorId || !orgId) {
         toast.error(t('vendors.vendorMustBeCreatedFirst') || 'Vendor must be created first.');
         return;
       }
+
+      setIsSaving(true);
       let productsFromStorage;
       try {
         productsFromStorage = JSON.parse(sessionStorage.getItem('products') || '[]');
@@ -257,14 +274,20 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
         // Clear form and storage
         setProducts([]);
         sessionStorage.removeItem('products');
+        // Mark tab as saved
+        if (onTabSaved) onTabSaved('Product Details');
       } else if (successCount > 0) {
         toast.success(`${successCount} out of ${prodServIds.length} products linked successfully`);
+        // Mark tab as saved even if partial success
+        if (onTabSaved) onTabSaved('Product Details');
       } else {
         toast.error(t('vendors.failedToLinkAnyProducts') || 'Failed to link any products');
       }
     } catch (err) {
       console.error('Unexpected error in handleDone:', err);
       toast.error(t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -347,17 +370,6 @@ const ProductSupplyForm = ({ vendorId, orgId }) => {
       {/* Remove the <pre> block that displays debug info in the UI. */}
       {/* Just keep the console.log for debugging. */}
       {/* Do not render the <pre> block in the return statement. */}
-      {vendorId && orgId && products.length > 0 && (
-        <div className="flex justify-end mt-8">
-          <button
-            type="button"
-            className="bg-green-600 text-white px-8 py-2 rounded text-base font-medium hover:bg-green-700 transition"
-            onClick={handleDone}
-          >
-            Done
-          </button>
-        </div>
-      )}
     </div>
   );
 };

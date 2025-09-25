@@ -38,6 +38,7 @@ import AdminSettingsView from "../pages/AdminSettingsView";
 import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
 import AuditLogsView from "../pages/AuditLogsView";
 import AuditLogConfig from "../components/AuditLogConfig";
+import AuditLogConfigPage from "../pages/AuditLogConfigPage";
 import InspectionView from "../pages/InspectionView";
 import GroupAsset from "../pages/GroupAsset";
 import CreateGroupAsset from "../components/groupAsset/CreateGroupAsset";
@@ -386,6 +387,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <AuditLogConfig />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/audit-log-config"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AuditLogConfigPage />
               </MainLayout>
             </ProtectedRoute>
           }

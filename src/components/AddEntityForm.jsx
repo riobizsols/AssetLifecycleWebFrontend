@@ -5,6 +5,7 @@ import ProductSupplyForm from "./ProductSupplyForm";
 import ServiceSupplyForm from "./ServiceSupplyForm";
 import { useAuthStore } from "../store/useAuthStore";
 import { v4 as uuidv4 } from "uuid";
+import { generateUUID } from '../utils/uuid';
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 
@@ -44,6 +45,9 @@ const AddEntityForm = () => {
   const [activeTab, setActiveTab] = useState("Vendor Details");
   const [createdVendorId, setCreatedVendorId] = useState(""); // Store generated vendor_id
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [vendorSaved, setVendorSaved] = useState(false); // Track if vendor has been saved
+  const [savingTab, setSavingTab] = useState(""); // Track which tab is currently saving
+  const [savedTabs, setSavedTabs] = useState(new Set()); // Track which tabs have been saved
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
   const [isUploading, setIsUploading] = useState(false);
   const [documentTypes, setDocumentTypes] = useState([]);
@@ -106,9 +110,12 @@ const AddEntityForm = () => {
     setSubmitAttempted(true);
     try {
       setLoading(true);
+      setSavingTab("Vendor Details");
       const response = await API.post("/create-vendor", form); // Backend adds ext_id, created_on, org_id
       const vendorId = response.data?.data?.vendor_id;
       setCreatedVendorId(vendorId || "");
+      setVendorSaved(true); // Mark vendor as saved
+      setSavedTabs(prev => new Set([...prev, "Vendor Details"])); // Mark vendor tab as saved
       toast.success(t('vendors.vendorCreatedSuccessfully'));
       // Optionally: navigate("/master-data/vendors");
     } catch (error) {
@@ -117,7 +124,55 @@ const AddEntityForm = () => {
       toast.error(errorMessage);
     } finally {
       setLoading(false);
+      setSavingTab("");
     }
+  };
+
+  // Unified save function for all tabs
+  const handleUnifiedSave = async () => {
+    if (!vendorSaved && activeTab !== "Vendor Details") {
+      toast.error(t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving other tabs');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      if (activeTab === "Vendor Details") {
+        // Save vendor details
+        await handleSubmit({ preventDefault: () => {} });
+      } else if (activeTab === "Product Details") {
+        // Trigger product save
+        setSavingTab("Product Details");
+        // The ProductSupplyForm will handle its own save logic via useEffect
+        setTimeout(() => setSavingTab(""), 100); // Reset after trigger
+      } else if (activeTab === "Service Details") {
+        // Trigger service save
+        setSavingTab("Service Details");
+        // The ServiceSupplyForm will handle its own save logic via useEffect
+        setTimeout(() => setSavingTab(""), 100); // Reset after trigger
+      } else if (activeTab === "Attachments") {
+        // Save attachments
+        setSavingTab("Attachments");
+        await handleBatchUpload();
+      }
+    } catch (error) {
+      console.error('Error in unified save:', error);
+      toast.error(t('vendors.saveFailed') || 'Save failed');
+    } finally {
+      setLoading(false);
+      setSavingTab("");
+    }
+  };
+
+  // Unified cancel function
+  const handleUnifiedCancel = () => {
+    navigate("/master-data/vendors");
+  };
+
+  // Callback to mark tabs as saved
+  const markTabAsSaved = (tabName) => {
+    setSavedTabs(prev => new Set([...prev, tabName]));
   };
 
   const tabs = ["Vendor Details"];
@@ -195,6 +250,7 @@ const AddEntityForm = () => {
       if (successCount > 0) {
         if (failCount === 0) {
           toast.success(t('vendors.allFilesUploadedSuccessfully'));
+          markTabAsSaved("Attachments"); // Mark attachments tab as saved
         } else {
           toast.success(t('vendors.filesUploadedWithFailures', { successCount, failCount }));
         }
@@ -223,7 +279,7 @@ const AddEntityForm = () => {
           {tabs.map((tab) => (
             <button
               key={tab}
-              className={`px-6 py-2 -mb-px font-semibold text-base border-b-2 focus:outline-none transition-all ${
+              className={`px-6 py-2 -mb-px font-semibold text-base border-b-2 focus:outline-none transition-all relative ${
                 activeTab === tab
                   ? "border-[#0E2F4B] text-[#0E2F4B] bg-white"
                   : "border-transparent text-gray-500 bg-transparent"
@@ -231,7 +287,14 @@ const AddEntityForm = () => {
               onClick={() => setActiveTab(tab)}
               type="button"
             >
-              {translateTab(tab)}
+              <span className="flex items-center">
+                {translateTab(tab)}
+                {savedTabs.has(tab) && (
+                  <svg className="w-4 h-4 ml-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </span>
             </button>
           ))}
         </div>
@@ -271,29 +334,11 @@ const AddEntityForm = () => {
               <FormCheckbox label={t('vendors.serviceSupply')} name="service_supply" checked={form.service_supply} onChange={handleInputChange} />
             </div>
 
-            {/* Buttons */}
-            <div className="flex justify-end gap-3 pb-8">
-              <button
-                type="button"
-                onClick={() => navigate("/master-data/vendors")}
-                className="bg-gray-300 text-gray-700 px-8 py-2 rounded text-base font-medium hover:bg-gray-400 transition"
-                disabled={loading}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="submit"
-                className="bg-[#002F5F] text-white px-8 py-2 rounded text-base font-medium hover:bg-[#0E2F4B] transition"
-                disabled={loading}
-              >
-                {loading ? t('vendors.saving') : t('common.save')}
-              </button>
-            </div>
           </form>
         )}
 
-        {activeTab === "Product Details" && <ProductSupplyForm vendorId={createdVendorId} orgId={org_id} />}
-        {activeTab === "Service Details" && <ServiceSupplyForm vendorId={createdVendorId} orgId={org_id} />}
+        {activeTab === "Product Details" && <ProductSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />}
+        {activeTab === "Service Details" && <ServiceSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />}
         {activeTab === "Attachments" && (
           <div className="pb-8">
             {/* Header row: Add File button */}
@@ -428,39 +473,48 @@ const AddEntityForm = () => {
               </div>
             )}
 
-            {/* Upload Button */}
-            {uploadRows.length > 0 && (
-              <div className="mt-6 flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleBatchUpload}
-                  disabled={isUploading || !createdVendorId || uploadRows.some(r => {
-                    if (!r.type || !r.file) return true;
-                    const selectedDocType = documentTypes.find(dt => dt.id === r.type);
-                    const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
-                    return needsCustomName && !r.docTypeName?.trim();
-                  })}
-                  className="h-[38px] inline-flex items-center px-6 bg-[#0E2F4B] text-white rounded-md shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isUploading ? (
-                    <span className="flex items-center">
-                      <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {t('vendors.uploading')}
-                    </span>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                      </svg>
-                      {t('vendors.uploadAllFiles')}
-                    </>
-                  )}
-                </button>
-              </div>
+          </div>
+        )}
+      </div>
+
+      {/* Unified Save and Cancel Buttons */}
+      <div className="px-8 pb-8">
+        <div className="flex justify-end gap-3 border-t border-gray-200 pt-6">
+          <button
+            type="button"
+            onClick={handleUnifiedCancel}
+            className="bg-gray-300 text-gray-700 px-8 py-2 rounded text-base font-medium hover:bg-gray-400 transition"
+            disabled={loading}
+          >
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={handleUnifiedSave}
+            className="bg-[#002F5F] text-white px-8 py-2 rounded text-base font-medium hover:bg-[#0E2F4B] transition"
+            disabled={loading || (activeTab !== "Vendor Details" && !vendorSaved)}
+          >
+            {loading ? (
+              <span className="flex items-center">
+                <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {savingTab ? `Saving ${savingTab}...` : t('vendors.saving')}
+              </span>
+            ) : (
+              t('common.save')
             )}
+          </button>
+        </div>
+        
+        {/* Status indicator */}
+        {vendorSaved && (
+          <div className="mt-2 text-sm text-green-600 flex items-center">
+            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            Vendor details saved successfully
           </div>
         )}
       </div>

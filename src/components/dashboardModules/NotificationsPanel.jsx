@@ -46,15 +46,15 @@ const NotificationsPanel = () => {
   }, [user]);
 
   const fetchNotifications = async () => {
-    if (!user || !user.user_id) {
-      console.log("No user or user_id found:", user);
+    if (!user || !user.emp_int_id) {
+      console.log("No user or emp_int_id found:", user);
       setAlerts([]);
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
-      const url = `/notifications/user/${user.user_id}`;
+      const url = `/notifications/user/${user.emp_int_id}`;
       console.log("Fetching notifications from:", url);
       console.log("Current user:", user);
       const response = await API.get(url);
@@ -101,7 +101,7 @@ const NotificationsPanel = () => {
   useEffect(() => {
     fetchNotifications();
     // eslint-disable-next-line
-  }, [user && user.user_id]);
+  }, [user && user.emp_int_id]);
 
   return (
     <div>

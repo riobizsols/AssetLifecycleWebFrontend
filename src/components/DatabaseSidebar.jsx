@@ -167,6 +167,7 @@ const DatabaseSidebar = () => {
     USERS: "/master-data/user-roles",
     MAINTENANCESCHEDULE: "/maintenance-schedule-view", // Unique route
     AUDITLOGS: "/audit-logs-view", // Unique route
+    AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
@@ -209,6 +210,7 @@ const DatabaseSidebar = () => {
       USERS: Users,
       MAINTENANCESCHEDULE: Calendar,
       AUDITLOGS: History,
+      AUDITLOGCONFIG: Settings,
       GROUPASSET: Package,
       SCRAPSALES: Package,
       SCRAPASSETS: Package,
