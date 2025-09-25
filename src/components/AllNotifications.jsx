@@ -5,37 +5,21 @@ import {
   CalendarIcon,
   UserIcon,
   ClockIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
-import API from "../../lib/axios";
-import { useAuthStore } from "../../store/useAuthStore";
-
-const mockAlerts = [
-  {
-    alertType: "Regular Maintenance",
-    alertText: "Laptop Maintenance",
-    dueOn: "2024-07-25",
-    actionBy: "John Doe",
-    cutoffDate: "2024-07-30",
-    isUrgent: false,
-  },
-  {
-    alertType: "Regular Maintenance",
-    alertText: "Printer Maintenance",
-    dueOn: "2024-07-22",
-    actionBy: "Jane Smith",
-    cutoffDate: "2024-07-24",
-    isUrgent: true,
-  },
-];
+import API from "../lib/axios";
+import { useAuthStore } from "../store/useAuthStore";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
   Urgent: "bg-red-100 text-red-800",
 };
 
-const NotificationsPanel = () => {
+const AllNotifications = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -80,7 +64,7 @@ const NotificationsPanel = () => {
     } catch (err) {
       console.error("Error fetching notifications:", err);
       setError("Failed to load notifications");
-      setAlerts(mockAlerts);
+      setAlerts([]);
     } finally {
       setLoading(false);
     }
@@ -104,40 +88,50 @@ const NotificationsPanel = () => {
   }, [user && user.emp_int_id]);
 
   return (
-    <div>
-      {/* Notification List */}
+    <div className="p-6">
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <BellIcon className="w-8 h-8 text-blue-600" />
+          <h1 className="text-2xl font-bold text-gray-900">All Notifications</h1>
+        </div>
+        <p className="text-gray-600">
+          View and manage all your maintenance notifications
+        </p>
+      </div>
+
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2].map((i) => (
-            <div key={i} className="animate-pulse h-16 bg-gray-100 rounded-lg" />
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="animate-pulse h-20 bg-gray-100 rounded-lg" />
           ))}
         </div>
       ) : alerts.length === 0 ? (
-        <div className="flex flex-col items-center text-gray-400 py-8">
-          <ExclamationTriangleIcon className="w-8 h-8 mb-2" />
-          <span className="text-sm">No upcoming maintenance alerts.</span>
+        <div className="flex flex-col items-center text-gray-400 py-12">
+          <BellIcon className="w-16 h-16 mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No Notifications</h3>
+          <span className="text-sm">You don't have any maintenance notifications at the moment.</span>
         </div>
       ) : (
-        <div className="space-y-3">
-          {alerts.slice(0, 2).map((alert, idx) => (
+        <div className="space-y-4">
+          {alerts.map((alert, idx) => (
             <div
               key={alert.id || idx}
-              className={`p-4 rounded-lg border flex flex-col gap-2 shadow-sm transition-colors duration-200 cursor-pointer
+              className={`p-6 rounded-lg border flex flex-col gap-3 shadow-sm transition-colors duration-200 cursor-pointer
                 ${alert.isUrgent ? "border-red-500 bg-red-50" : "border-gray-200 hover:bg-gray-50"}
               `}
               title={alert.isUrgent ? `Urgent: Only ${alert.daysUntilCutoff} days until cutoff!` : ""}
               onClick={() => handleAlertClick(alert)}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {alert.isUrgent && (
-                  <ExclamationTriangleIcon className="w-5 h-5 text-red-500 mr-1" />
+                  <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
                 )}
-                <span className={`text-xs font-bold px-2 py-1 rounded ${badgeColors[alert.alertType] || "bg-gray-100 text-gray-800"}`}>
+                <span className={`text-sm font-bold px-3 py-1 rounded-full ${badgeColors[alert.alertType] || "bg-gray-100 text-gray-800"}`}>
                   {alert.alertType}
                 </span>
-                <span className="font-semibold text-gray-800">{alert.alertText}</span>
+                <span className="font-semibold text-gray-800 text-lg">{alert.alertText}</span>
                 {alert.daysUntilCutoff !== undefined && (
-                  <span className={`text-xs px-2 py-1 rounded ml-auto ${
+                  <span className={`text-sm px-3 py-1 rounded-full ml-auto ${
                     alert.isUrgent 
                       ? "bg-red-100 text-red-700 font-semibold" 
                       : "bg-gray-100 text-gray-600"
@@ -149,37 +143,33 @@ const NotificationsPanel = () => {
                   </span>
                 )}
               </div>
-              <div className="flex flex-wrap gap-4 text-xs text-gray-600 items-center">
-                <span className="flex items-center gap-1">
-                  <CalendarIcon className="w-4 h-4" />
-                  Due On: <b>{alert.dueOn}</b>
+              <div className="flex flex-wrap gap-6 text-sm text-gray-600 items-center">
+                <span className="flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5" />
+                  <span>Due On: <b className="text-gray-800">{alert.dueOn}</b></span>
                 </span>
-                <span className="flex items-center gap-1">
-                  <UserIcon className="w-4 h-4" />
-                  Action By: <b>{alert.actionBy}</b>
+                <span className="flex items-center gap-2">
+                  <UserIcon className="w-5 h-5" />
+                  <span>Action By: <b className="text-gray-800">{alert.actionBy}</b></span>
                 </span>
-                <span className="flex items-center gap-1">
-                  <ClockIcon className={`w-4 h-4 ${alert.isUrgent ? "text-red-500" : ""}`} />
-                  Cut-off Date: {" "}
-                  <b className={alert.isUrgent ? "text-red-600" : ""}>{alert.cutoffDate}</b>
+                <span className="flex items-center gap-2">
+                  <ClockIcon className={`w-5 h-5 ${alert.isUrgent ? "text-red-500" : ""}`} />
+                  <span>Cut-off Date: <b className={alert.isUrgent ? "text-red-600" : "text-gray-800"}>{alert.cutoffDate}</b></span>
                 </span>
               </div>
             </div>
           ))}
-          {alerts.length > 2 && (
-            <div className="text-center pt-2">
-              <span className="text-sm text-gray-500">
-                +{alerts.length - 2} more notifications
-              </span>
-            </div>
-          )}
         </div>
       )}
+      
       {error && (
-        <div className="text-xs text-red-500 mt-2">{error}</div>
+        <div className="text-center py-8">
+          <div className="text-red-500 mb-2">⚠️ Error</div>
+          <div className="text-sm text-gray-600">{error}</div>
+        </div>
       )}
     </div>
   );
 };
 
-export default NotificationsPanel;
+export default AllNotifications;

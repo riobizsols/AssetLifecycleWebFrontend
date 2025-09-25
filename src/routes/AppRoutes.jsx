@@ -26,6 +26,7 @@ import AssetSelection from "../components/assetAssignment/AssetSelection";
 import AssetsDetail from "../components/assetAssignment/AssetsDetail";
 import MaintenanceApproval from "../pages/MaintenanceApproval";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
+import AllNotifications from "../components/AllNotifications";
 import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
 import CronJobManagement from "../pages/CronJobManagement";
@@ -92,7 +93,7 @@ export default function AppRoutes() {
           element={
             <ProtectedRoute>
               <MainLayout>
-                <NotificationsPanel />
+                <AllNotifications />
               </MainLayout>
             </ProtectedRoute>
           }
