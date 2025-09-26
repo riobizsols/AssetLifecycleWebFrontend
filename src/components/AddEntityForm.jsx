@@ -90,6 +90,11 @@ const AddEntityForm = () => {
       [name]: type === "checkbox" ? checked : value,
     }));
 
+    // Reset submit attempted state when user starts typing
+    if (submitAttempted) {
+      setSubmitAttempted(false);
+    }
+
     // Uncheck disables tab
     if (
       type === "checkbox" &&
@@ -128,34 +133,133 @@ const AddEntityForm = () => {
     }
   };
 
-  // Unified save function for all tabs
-  const handleUnifiedSave = async () => {
-    if (!vendorSaved && activeTab !== "Vendor Details") {
-      toast.error(t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving other tabs');
-      return;
+  // Validation function for required fields based on database constraints
+  const validateRequiredFields = () => {
+    // Based on typical vendor table constraints and business logic
+    const requiredFields = [
+      { name: 'vendor_name', label: 'Vendor Name' },
+      { name: 'company_name', label: 'Company Name' },
+      { name: 'company_email', label: 'Company Email' },
+      { name: 'contact_person_name', label: 'Contact Person Name' },
+      { name: 'contact_person_number', label: 'Contact Number' }
+    ];
+
+    const errors = [];
+    
+    requiredFields.forEach(field => {
+      if (!form[field.name] || !form[field.name].trim()) {
+        errors.push(`${field.label} is required`);
+      }
+    });
+
+    // Email validation
+    if (form.company_email && form.company_email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.company_email.trim())) {
+        errors.push('Please enter a valid email address');
+      }
     }
 
+    // Contact person email validation (if provided)
+    if (form.contact_person_email && form.contact_person_email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.contact_person_email.trim())) {
+        errors.push('Please enter a valid contact person email address');
+      }
+    }
+
+    // Phone number validation (basic format check)
+    if (form.contact_person_number && form.contact_person_number.trim()) {
+      const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
+      if (!phoneRegex.test(form.contact_person_number.trim())) {
+        errors.push('Please enter a valid contact number (at least 10 digits)');
+      }
+    }
+
+    return errors;
+  };
+
+  // Unified save function - saves all applicable tabs
+  const handleUnifiedSave = async () => {
     try {
       setLoading(true);
       
-      if (activeTab === "Vendor Details") {
-        // Save vendor details
-        await handleSubmit({ preventDefault: () => {} });
-      } else if (activeTab === "Product Details") {
-        // Trigger product save
-        setSavingTab("Product Details");
-        // The ProductSupplyForm will handle its own save logic via useEffect
-        setTimeout(() => setSavingTab(""), 100); // Reset after trigger
-      } else if (activeTab === "Service Details") {
-        // Trigger service save
-        setSavingTab("Service Details");
-        // The ServiceSupplyForm will handle its own save logic via useEffect
-        setTimeout(() => setSavingTab(""), 100); // Reset after trigger
-      } else if (activeTab === "Attachments") {
-        // Save attachments
-        setSavingTab("Attachments");
-        await handleBatchUpload();
+      // Always try to save vendor details first if not already saved
+      let vendorSaveSuccess = vendorSaved;
+      if (!vendorSaved) {
+        // Validate required fields before saving
+        const validationErrors = validateRequiredFields();
+        if (validationErrors.length > 0) {
+          setSubmitAttempted(true); // Trigger field highlighting
+          toast.error(`Please fill required fields: ${validationErrors.join(', ')}`);
+          setLoading(false); // Reset loading state
+          return;
+        }
+        
+        setSavingTab("Vendor Details");
+        try {
+          await handleSubmit({ preventDefault: () => {} });
+          vendorSaveSuccess = true; // Mark as successful if no error thrown
+        } catch (error) {
+          vendorSaveSuccess = false;
+          throw error; // Re-throw to be caught by outer catch
+        }
       }
+      
+      // Only proceed with other tabs if vendor was successfully saved
+      if (!vendorSaveSuccess) {
+        setLoading(false);
+        return;
+      }
+      
+      // Now save other tabs if they have data and vendor is saved
+      const tabsToSave = [];
+      
+      // Check Product Details tab
+      if (form.product_supply && !savedTabs.has("Product Details")) {
+        const productsFromStorage = JSON.parse(sessionStorage.getItem('products') || '[]');
+        if (Array.isArray(productsFromStorage) && productsFromStorage.length > 0) {
+          tabsToSave.push("Product Details");
+        }
+      }
+      
+      // Check Service Details tab
+      if (form.service_supply && !savedTabs.has("Service Details")) {
+        const servicesFromStorage = JSON.parse(sessionStorage.getItem('services') || '[]');
+        if (Array.isArray(servicesFromStorage) && servicesFromStorage.length > 0) {
+          tabsToSave.push("Service Details");
+        }
+      }
+      
+      // Check Attachments tab
+      if (!savedTabs.has("Attachments") && uploadRows.length > 0) {
+        tabsToSave.push("Attachments");
+      }
+      
+      // Save each tab that has data
+      for (const tabName of tabsToSave) {
+        if (tabName === "Product Details") {
+          setSavingTab("Product Details");
+          // Trigger the save in ProductSupplyForm
+          // Wait for the save operation to complete
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        } else if (tabName === "Service Details") {
+          setSavingTab("Service Details");
+          // Trigger the save in ServiceSupplyForm
+          // Wait for the save operation to complete
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        } else if (tabName === "Attachments") {
+          setSavingTab("Attachments");
+          await handleBatchUpload();
+        }
+      }
+      
+      // Show success message only if we actually saved something
+      if (vendorSaveSuccess || tabsToSave.length > 0) {
+        const savedTabsList = tabsToSave.length > 0 ? tabsToSave.join(", ") : "Vendor Details";
+        toast.success(`Successfully saved: ${savedTabsList}`);
+      }
+      
     } catch (error) {
       console.error('Error in unified save:', error);
       toast.error(t('vendors.saveFailed') || 'Save failed');
@@ -192,7 +296,7 @@ const AddEntityForm = () => {
   };
 
   // Helper for invalid field
-  const isFieldInvalid = (val) => submitAttempted && !val.trim();
+  const isFieldInvalid = (val) => submitAttempted && (!val || !val.trim());
 
   // Handle batch upload for vendor documents
   const handleBatchUpload = async () => {
@@ -324,8 +428,8 @@ const AddEntityForm = () => {
 
             <div className="grid grid-cols-3 gap-6 mb-6">
               <FormInput label={t('vendors.pincode')} name="pincode" value={form.pincode} onChange={handleInputChange} placeholder={t('vendors.enterPincode')} />
-              <FormInput label={t('vendors.contactPerson')} name="contact_person_name" value={form.contact_person_name} onChange={handleInputChange} placeholder={t('vendors.enterContactPersonName')} />
-              <FormInput label={t('vendors.contactEmail')} name="contact_person_email" value={form.contact_person_email} onChange={handleInputChange} placeholder={t('vendors.enterContactPersonEmail')} />
+              <FormInput label={t('vendors.contactPerson')} name="contact_person_name" value={form.contact_person_name} onChange={handleInputChange} required isInvalid={isFieldInvalid(form.contact_person_name)} placeholder={t('vendors.enterContactPersonName')} />
+              <FormInput label={t('vendors.contactEmail')} name="contact_person_email" value={form.contact_person_email} onChange={handleInputChange} type="email" placeholder={t('vendors.enterContactPersonEmail')} />
             </div>
 
             {/* Checkboxes */}
@@ -339,6 +443,18 @@ const AddEntityForm = () => {
 
         {activeTab === "Product Details" && <ProductSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />}
         {activeTab === "Service Details" && <ServiceSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />}
+        
+        {/* Hidden components for save operations - rendered but not visible */}
+        {activeTab !== "Product Details" && form.product_supply && JSON.parse(sessionStorage.getItem('products') || '[]').length > 0 && (
+          <div style={{ display: 'none' }}>
+            <ProductSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />
+          </div>
+        )}
+        {activeTab !== "Service Details" && form.service_supply && JSON.parse(sessionStorage.getItem('services') || '[]').length > 0 && (
+          <div style={{ display: 'none' }}>
+            <ServiceSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />
+          </div>
+        )}
         {activeTab === "Attachments" && (
           <div className="pb-8">
             {/* Header row: Add File button */}
@@ -486,13 +602,13 @@ const AddEntityForm = () => {
             className="bg-gray-300 text-gray-700 px-8 py-2 rounded text-base font-medium hover:bg-gray-400 transition"
             disabled={loading}
           >
-            {t('common.cancel')}
+            Cancel
           </button>
           <button
             type="button"
             onClick={handleUnifiedSave}
             className="bg-[#002F5F] text-white px-8 py-2 rounded text-base font-medium hover:bg-[#0E2F4B] transition"
-            disabled={loading || (activeTab !== "Vendor Details" && !vendorSaved)}
+            disabled={loading}
           >
             {loading ? (
               <span className="flex items-center">
@@ -500,10 +616,10 @@ const AddEntityForm = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {savingTab ? `Saving ${savingTab}...` : t('vendors.saving')}
+                {savingTab ? `Saving ${savingTab}...` : 'Saving...'}
               </span>
             ) : (
-              t('common.save')
+              'Save All'
             )}
           </button>
         </div>

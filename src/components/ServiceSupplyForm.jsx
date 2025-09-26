@@ -109,11 +109,18 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       setServices(newServices);
       sessionStorage.setItem('services', JSON.stringify(newServices));
       setForm({ assetType: '', description: '' });
-      toast.success("Service added successfully");
+      toast.success("Service added to list");
     } catch (err) {
       console.error("Error adding service:", err);
       toast.error(t('vendors.failedToAddService') || 'Failed to add service');
     }
+  };
+
+  // Handle delete from local state
+  const handleDelete = (idx) => {
+    const newServices = services.filter((_, i) => i !== idx);
+    setServices(newServices);
+    sessionStorage.setItem('services', JSON.stringify(newServices));
   };
 
   // Helper for invalid field
@@ -149,12 +156,11 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
           <tbody className="bg-white divide-y divide-gray-200">
             {services.map((p, idx) => (
               <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                <td className="px-6 py-2 text-sm text-gray-900">{p.asset_type_id}</td>
+                <td className="px-6 py-2 text-sm text-gray-900">{p.asset_type_text || p.asset_type_id}</td>
                 <td className="px-6 py-2 text-sm text-gray-900">{p.description}</td>
                 <td className="px-6 py-2 text-center">
-                  {/* Delete button could call backend if needed */}
                   <button 
-                    onClick={() => toast.info('Delete from backend not implemented')} 
+                    onClick={() => handleDelete(idx)} 
                     className="text-yellow-500 hover:text-red-600 transition-colors"
                     title="Delete"
                   >
@@ -245,6 +251,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
 
       // Link services to vendor
       let successCount = 0;
+      let duplicateCount = 0;
       for (const prod_serv_id of prodServIds) {
         try {
           await API.post('/vendor-prod-services', {
@@ -255,8 +262,14 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
           successCount++;
         } catch (postErr) {
           console.error('Error linking service:', postErr);
-          const errorMessage = postErr.response?.data?.message || postErr.response?.data?.error || "Error linking service";
-          toast.error(errorMessage);
+          // Check if it's a duplicate entry (409 Conflict)
+          if (postErr.response?.status === 409) {
+            duplicateCount++;
+            console.log('Service already linked to vendor:', prod_serv_id);
+          } else {
+            const errorMessage = postErr.response?.data?.message || postErr.response?.data?.error || "Error linking service";
+            toast.error(errorMessage);
+          }
         }
       }
 
@@ -264,15 +277,22 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       toast.dismiss(loadingToast);
 
       // Show final status
-      if (successCount === prodServIds.length) {
-        toast.success('All services linked successfully');
+      const totalProcessed = successCount + duplicateCount;
+      if (totalProcessed === prodServIds.length) {
+        if (duplicateCount > 0 && successCount > 0) {
+          toast.success(`${successCount} services linked successfully, ${duplicateCount} were already linked`);
+        } else if (duplicateCount > 0 && successCount === 0) {
+          toast.success(`All ${duplicateCount} services were already linked to this vendor`);
+        } else {
+          toast.success('All services linked successfully');
+        }
         // Clear form and storage
         setServices([]);
         sessionStorage.removeItem('services');
         // Mark tab as saved
         if (onTabSaved) onTabSaved('Service Details');
-      } else if (successCount > 0) {
-        toast.success(`${successCount} out of ${prodServIds.length} services linked successfully`);
+      } else if (totalProcessed > 0) {
+        toast.success(`${totalProcessed} out of ${prodServIds.length} services processed successfully`);
         // Mark tab as saved even if partial success
         if (onTabSaved) onTabSaved('Service Details');
       } else {

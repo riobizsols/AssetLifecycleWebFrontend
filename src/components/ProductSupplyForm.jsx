@@ -120,10 +120,17 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     });
 
     try {
-      const newProducts = [...products, { assetType: selectedAsset.asset_type_id, brand: form.brand, model: form.model, description: form.description || form.brand }];
+      const newProducts = [...products, { 
+        assetType: selectedAsset.asset_type_id, 
+        assetTypeText: selectedAsset.text,
+        brand: form.brand, 
+        model: form.model, 
+        description: form.description || form.brand 
+      }];
       setProducts(newProducts);
       sessionStorage.setItem('products', JSON.stringify(newProducts));
       setForm({ assetType: "", brand: "", model: "", description: "" });
+      toast.success("Product added to list");
     } catch (err) {
       toast.error(t('vendors.failedToAddProductSupply') + ': ' + (err.response?.data?.error || err.message) || 'Failed to add product supply: ' + (err.response?.data?.error || err.message));
     }
@@ -173,7 +180,7 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             {products.map((p, idx) => (
               <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                 <td className="px-6 py-2 text-sm text-gray-900">
-                  {p.assetType}
+                  {p.assetTypeText || p.assetType}
                 </td>
 
                 <td className="px-6 py-2 text-sm text-gray-900">{p.brand}</td>
@@ -253,6 +260,7 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
 
       // Link products to vendor
       let successCount = 0;
+      let duplicateCount = 0;
       for (const prod_serv_id of prodServIds) {
         try {
           await API.post('/vendor-prod-services', {
@@ -263,21 +271,34 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
           successCount++;
         } catch (postErr) {
           console.error('Error linking product:', postErr);
-          const errorMessage = postErr.response?.data?.message || postErr.response?.data?.error || "Error linking product";
-          toast.error(errorMessage);
+          // Check if it's a duplicate entry (409 Conflict)
+          if (postErr.response?.status === 409) {
+            duplicateCount++;
+            console.log('Product already linked to vendor:', prod_serv_id);
+          } else {
+            const errorMessage = postErr.response?.data?.message || postErr.response?.data?.error || "Error linking product";
+            toast.error(errorMessage);
+          }
         }
       }
 
       // Show final status
-      if (successCount === prodServIds.length) {
-        toast.success('All products linked successfully');
+      const totalProcessed = successCount + duplicateCount;
+      if (totalProcessed === prodServIds.length) {
+        if (duplicateCount > 0 && successCount > 0) {
+          toast.success(`${successCount} products linked successfully, ${duplicateCount} were already linked`);
+        } else if (duplicateCount > 0 && successCount === 0) {
+          toast.success(`All ${duplicateCount} products were already linked to this vendor`);
+        } else {
+          toast.success('All products linked successfully');
+        }
         // Clear form and storage
         setProducts([]);
         sessionStorage.removeItem('products');
         // Mark tab as saved
         if (onTabSaved) onTabSaved('Product Details');
-      } else if (successCount > 0) {
-        toast.success(`${successCount} out of ${prodServIds.length} products linked successfully`);
+      } else if (totalProcessed > 0) {
+        toast.success(`${totalProcessed} out of ${prodServIds.length} products processed successfully`);
         // Mark tab as saved even if partial success
         if (onTabSaved) onTabSaved('Product Details');
       } else {
