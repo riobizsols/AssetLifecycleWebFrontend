@@ -121,13 +121,27 @@ const CreateScrapSales = () => {
         const responses = await Promise.all(fetchPromises);
 
         // Correctly access the 'scrap_assets' array from each response
-        const newAssets = responses.flatMap(
-          (response) => response.data.scrap_assets
+        const allAssets = responses.flatMap(
+          (response) => response.data.scrap_assets || []
         );
 
-        console.log("Fetched assets for selected types:", newAssets);
+        // Remove duplicates based on asset_id to prevent the same asset from appearing multiple times
+        const uniqueAssets = allAssets.filter((asset, index, self) => 
+          index === self.findIndex(a => a.asset_id === asset.asset_id)
+        );
 
-        setAvailableAssets(newAssets);
+        // Exclude assets that are already selected to prevent them from appearing in available list
+        const selectedAssetIds = selectedAssets.map(asset => asset.asset_id);
+        const availableOnlyAssets = uniqueAssets.filter(asset => 
+          !selectedAssetIds.includes(asset.asset_id)
+        );
+
+        console.log("Fetched assets for selected types:", uniqueAssets);
+        console.log("Removed duplicates:", allAssets.length - uniqueAssets.length);
+        console.log("Excluded already selected assets:", uniqueAssets.length - availableOnlyAssets.length);
+        console.log("Selected asset IDs:", selectedAssetIds);
+
+        setAvailableAssets(availableOnlyAssets);
         setLoading(false);
       } catch (err) {
         console.error("Failed to fetch assets:", err);
@@ -137,7 +151,7 @@ const CreateScrapSales = () => {
     };
 
     fetchAvailableAssets();
-  }, [selectedAssetTypes]);
+  }, [selectedAssetTypes, selectedAssets]);
 
   const filteredAvailableAssets = availableAssets.filter(
     (asset) =>
@@ -188,6 +202,12 @@ const CreateScrapSales = () => {
   };
 
   const handleSelectAsset = (asset) => {
+    // Check if asset is already selected to prevent duplicates
+    if (selectedAssets.some(selected => selected.asset_id === asset.asset_id)) {
+      console.warn(`Asset ${asset.asset_id} is already selected`);
+      return;
+    }
+
     const newSelectedAssets = [...selectedAssets, asset];
     setSelectedAssets(newSelectedAssets);
     setAvailableAssets((prev) =>
@@ -242,12 +262,17 @@ const CreateScrapSales = () => {
   };
 
   const handleSelectAll = () => {
-    const newSelectedAssets = [...selectedAssets, ...filteredAvailableAssets];
+    // Filter out assets that are already selected to prevent duplicates
+    const newAssets = filteredAvailableAssets.filter(asset => 
+      !selectedAssets.some(selected => selected.asset_id === asset.asset_id)
+    );
+    
+    const newSelectedAssets = [...selectedAssets, ...newAssets];
     setSelectedAssets(newSelectedAssets);
     setAvailableAssets((prev) =>
       prev.filter(
         (asset) =>
-          !filteredAvailableAssets.some(
+          !newAssets.some(
             (selected) => selected.asset_id === asset.asset_id
           )
       )
@@ -255,7 +280,7 @@ const CreateScrapSales = () => {
     // Initialize individual values for all selected assets and recalculate equal distribution if needed
     setIndividualValues((prev) => {
       const newValues = { ...prev };
-      filteredAvailableAssets.forEach((asset) => {
+      newAssets.forEach((asset) => {
         newValues[asset.asset_id] = "";
       });
       if (

@@ -388,11 +388,11 @@ const Roles = () => {
     const sampleData = [
       [
         'EMP001', 'John Doe', 'John', 'Doe', '', 'John Doe', 'john.doe@company.com', 
-        'DEPT001', '9876543210', 'Full Time', '01-01-2024', 'en'
+        'DPT201', '9876543210', 'P', '01-01-2024', 'en'
       ],
       [
         'EMP002', 'Jane Smith', 'Jane', 'Smith', '', 'Jane Smith', 'jane.smith@company.com', 
-        'DEPT001', '9876543211', 'Full Time', '15-01-2024', 'en'
+        'DPT301', '9876543211', 'C', '15-01-2024', 'en'
       ]
     ];
     
@@ -521,7 +521,7 @@ const Roles = () => {
         Promise.race([API.get('/organizations'), timeoutPromise]),
         Promise.race([API.get('/admin/departments'), timeoutPromise]),
         Promise.race([API.get('/branches'), timeoutPromise]),
-        Promise.race([API.get('/vendors'), timeoutPromise]),
+        Promise.race([API.get('/get-vendors'), timeoutPromise]),
         Promise.race([API.get('/asset-types'), timeoutPromise]),
         Promise.race([API.get('/employees'), timeoutPromise]),
         Promise.race([API.get('/users/get-users'), timeoutPromise]),
@@ -550,8 +550,11 @@ const Roles = () => {
       if (vendorsRes.status === 'fulfilled') {
         referenceData.vendors = vendorsRes.value.data?.data || vendorsRes.value.data || [];
         console.log('Vendors fetched:', referenceData.vendors.length, 'items');
+        console.log('Vendor data structure:', vendorsRes.value.data);
+        console.log('First few vendors:', referenceData.vendors.slice(0, 3));
       } else {
         console.warn('Failed to fetch vendors:', vendorsRes.reason?.response?.data?.message || vendorsRes.reason?.message);
+        console.error('Vendors fetch error details:', vendorsRes.reason);
       }
       if (assetTypesRes.status === 'fulfilled') {
         referenceData.assetTypes = assetTypesRes.value.data?.data || assetTypesRes.value.data || [];
@@ -682,6 +685,14 @@ const Roles = () => {
         const vendorId = data[vendorIdIndex];
         if (!/^V\d{3}$/.test(vendorId)) {
           rowErrors.push(`Row ${rowNumber}: purchase_vendor_id must be in format V001, V002, etc.`);
+        }
+      }
+
+      const serviceVendorIdIndex = headers.indexOf('service_vendor_id');
+      if (serviceVendorIdIndex !== -1 && data[serviceVendorIdIndex]) {
+        const serviceVendorId = data[serviceVendorIdIndex];
+        if (!/^V\d{3}$/.test(serviceVendorId)) {
+          rowErrors.push(`Row ${rowNumber}: service_vendor_id must be in format V001, V002, etc.`);
         }
       }
 
@@ -1476,10 +1487,17 @@ const Roles = () => {
           const purchaseVendorIdIndex = headers.indexOf('purchase_vendor_id');
           if (purchaseVendorIdIndex !== -1 && data[purchaseVendorIdIndex]) {
             const vendorId = data[purchaseVendorIdIndex];
+            console.log('🔍 Validating purchase_vendor_id:', vendorId);
+            console.log('🔍 Available vendors:', referenceData.vendors.length, 'vendors');
+            console.log('🔍 Vendor IDs:', referenceData.vendors.map(v => v.vendor_id));
+            
             if (referenceData.vendors.length > 0) {
               const vendorExists = referenceData.vendors.some(vendor => vendor.vendor_id === vendorId);
+              console.log('🔍 Vendor exists check:', vendorExists);
               if (!vendorExists) {
-                rowErrors.push(`purchase_vendor_id '${vendorId}' does not exist in vendors table`);
+                const errorMsg = `purchase_vendor_id '${vendorId}' does not exist in vendors table`;
+                console.log('🔍 Adding error:', errorMsg);
+                rowErrors.push(errorMsg);
               }
             } else {
               console.warn('Cannot validate purchase_vendor_id - vendors data not available');
@@ -1489,10 +1507,17 @@ const Roles = () => {
           const serviceVendorIdIndex = headers.indexOf('service_vendor_id');
           if (serviceVendorIdIndex !== -1 && data[serviceVendorIdIndex]) {
             const serviceVendorId = data[serviceVendorIdIndex];
+            console.log('🔍 Validating service_vendor_id:', serviceVendorId);
+            console.log('🔍 Available vendors:', referenceData.vendors.length, 'vendors');
+            console.log('🔍 Vendor IDs:', referenceData.vendors.map(v => v.vendor_id));
+            
             if (referenceData.vendors.length > 0) {
               const serviceVendorExists = referenceData.vendors.some(vendor => vendor.vendor_id === serviceVendorId);
+              console.log('🔍 Service vendor exists check:', serviceVendorExists);
               if (!serviceVendorExists) {
-                rowErrors.push(`service_vendor_id '${serviceVendorId}' does not exist in vendors table`);
+                const errorMsg = `service_vendor_id '${serviceVendorId}' does not exist in vendors table`;
+                console.log('🔍 Adding error:', errorMsg);
+                rowErrors.push(errorMsg);
               }
             } else {
               console.warn('Cannot validate service_vendor_id - vendors data not available');

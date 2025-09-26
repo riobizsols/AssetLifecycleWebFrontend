@@ -70,6 +70,11 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    
+    // Reset validation state when user starts typing
+    if (submitAttempted) {
+      setSubmitAttempted(false);
+    }
   };
 
   // Remove fetchServices and handleAdd API calls for create/fetch. Use local state for services.
@@ -77,13 +82,14 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
   // Table renders from services state only.
   // Keep dropdown API logic for asset types and for fetching all service descriptions.
   const handleAdd = () => {
-    setSubmitAttempted(true);
-    // Validate required fields
+    // Validate required fields first
     if (!form.assetType) {
+      setSubmitAttempted(true);
       toast.error(t('vendors.pleaseSelectAnAssetType'));
       return;
     }
     if (!form.description) {
+      setSubmitAttempted(true);
       toast.error(t('vendors.descriptionRequired'));
       return;
     }
@@ -109,6 +115,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       setServices(newServices);
       sessionStorage.setItem('services', JSON.stringify(newServices));
       setForm({ assetType: '', description: '' });
+      setSubmitAttempted(false); // Reset validation state after successful add
       toast.success("Service added to list");
     } catch (err) {
       console.error("Error adding service:", err);

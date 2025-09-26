@@ -1531,7 +1531,9 @@
       "createdOn": "Erstellt am",
       "changedBy": "Geändert von",
       "changedOn": "Geändert am",
-      "assetTypeName": "Anlagentyp-Name"
+      "assetTypeName": "Anlagentyp-Name",
+      "properties": "Eigenschaften",
+      "noProperties": "Keine Eigenschaften"
     },
     "breakdownDetails": {
       "title": "Störungsbericht bearbeiten",

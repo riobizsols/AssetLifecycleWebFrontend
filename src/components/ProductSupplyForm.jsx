@@ -24,6 +24,11 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    
+    // Reset validation state when user starts typing
+    if (submitAttempted) {
+      setSubmitAttempted(false);
+    }
   };
 
   // Fetch brands when assetType changes
@@ -96,8 +101,11 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
 
   // In handleAdd, after updating products, also update sessionStorage
   const handleAdd = () => {
-    setSubmitAttempted(true);
-    if (!form.assetType || !form.brand || !form.model) return;
+    // Check if required fields are filled before setting submitAttempted
+    if (!form.assetType || !form.brand || !form.model) {
+      setSubmitAttempted(true);
+      return;
+    }
 
     // Debug: log selected assetType and assetTypes
     console.log("form.assetType:", form.assetType);
@@ -130,6 +138,7 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       setProducts(newProducts);
       sessionStorage.setItem('products', JSON.stringify(newProducts));
       setForm({ assetType: "", brand: "", model: "", description: "" });
+      setSubmitAttempted(false); // Reset validation state after successful add
       toast.success("Product added to list");
     } catch (err) {
       toast.error(t('vendors.failedToAddProductSupply') + ': ' + (err.response?.data?.error || err.message) || 'Failed to add product supply: ' + (err.response?.data?.error || err.message));

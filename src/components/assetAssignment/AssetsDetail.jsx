@@ -1,37 +1,10 @@
-// AssetFormPage.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import API from '../../lib/axios';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const initialForm = {
-  assetType: '',
-  serialNumber: '',
-  description: '',
-  maintenanceSchedule: '',
-  expiryDate: '',
-  warrantyPeriod: '',
-  purchaseDate: '',
-  purchaseCost: '',
-  properties: {},
-  purchaseBy: '',
-  vendorBrand: '',
-  vendorModel: '',
-  purchaseSupply: '',
-  serviceSupply: '',
-  vendorId: '',
-  parentAsset: '',
-  status: 'Active'
-};
-
-const statusOptions = [
-  { value: 'Active', label: 'Active' },
-  { value: 'Inactive', label: 'Inactive' },
-  { value: 'Disposed', label: 'Disposed' }
-];
-
-const AssetsDetail = ({ userRole }) => {
+const AssetsDetail = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [assetDetails, setAssetDetails] = useState(null);
@@ -51,25 +24,18 @@ const AssetsDetail = ({ userRole }) => {
       'text': t('assetsDetail.text'),
       'serial_number': t('assetsDetail.serialNumber'),
       'description': t('assetsDetail.description'),
-      'branch_id': t('assetsDetail.branchId'),
       'purchase_vendor_id': t('assetsDetail.purchaseVendorId'),
       'service_vendor_id': t('assetsDetail.serviceVendorId'),
-      'prod_serv_id': t('assetsDetail.prodServId'),
       'maintsch_id': t('assetsDetail.maintschId'),
       'purchased_cost': t('assetsDetail.purchasedCost'),
       'purchased_on': t('assetsDetail.purchasedOn'),
       'purchased_by': t('assetsDetail.purchasedBy'),
       'expiry_date': t('assetsDetail.expiryDate'),
-      'current_status': t('assetsDetail.currentStatus'),
       'warranty_period': t('assetsDetail.warrantyPeriod'),
       'parent_asset_id': t('assetsDetail.parentAssetId'),
       'group_id': t('assetsDetail.groupId'),
-      'org_id': t('assetsDetail.orgId'),
-      'created_by': t('assetsDetail.createdBy'),
-      'created_on': t('assetsDetail.createdOn'),
-      'changed_by': t('assetsDetail.changedBy'),
-      'changed_on': t('assetsDetail.changedOn'),
-      'asset_type_name': t('assetsDetail.assetTypeName')
+      'asset_type_name': t('assetsDetail.assetTypeName'),
+      'properties': t('assetsDetail.properties')
     };
     return fieldMap[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
@@ -116,16 +82,71 @@ const AssetsDetail = ({ userRole }) => {
       <form className="p-8">
         {assetDetails && (
         <div className="grid grid-cols-4 gap-6 mb-6">
-            {Object.entries(assetDetails).map(([key, value]) => (
-              <div key={key} className="col-span-1">
-                <label className="block text-sm mb-1 font-medium">{translateFieldName(key)}</label>
+            {Object.entries(assetDetails)
+              .filter(([key]) => {
+                // Hide these columns from the UI
+                const hiddenColumns = [
+                  'branch_id', 
+                  'prod_serv_id', 
+                  'current_status', 
+                  'org_id', 
+                  'created_by', 
+                  'created_on', 
+                  'changed_by', 
+                  'changed_on',
+                  'group_id',
+                  'maintsch_id',
+                  'parent_asset_type_name',
+                  'parent_asset_type_id',
+                  'prod_serv_name'
+                ];
+                return !hiddenColumns.includes(key);
+              })
+              .map(([key, value]) => {
+                // Handle different value types
+                let displayValue;
+                if (value === null || value === undefined) {
+                  displayValue = t('assetsDetail.notSet');
+                } else if (typeof value === 'object') {
+                  // For objects (like properties), display as key-value pairs
+                  if (Object.keys(value).length === 0) {
+                    displayValue = t('assetsDetail.noProperties');
+                  } else {
+                    displayValue = Object.entries(value)
+                      .map(([propKey, propValue]) => `${propKey}: ${propValue}`)
+                      .join(', ');
+                  }
+                } else if (key === 'purchased_on' || key === 'expiry_date') {
+                  // Format date fields to human readable format
+                  try {
+                    const date = new Date(value);
+                    if (!isNaN(date.getTime())) {
+                      displayValue = date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      });
+                    } else {
+                      displayValue = value;
+                    }
+                  } catch (error) {
+                    displayValue = value;
+                  }
+                } else {
+                  displayValue = value;
+                }
+
+                return (
+                  <div key={key} className="col-span-1">
+                    <label className="block text-sm mb-1 font-medium">{translateFieldName(key)}</label>
                     <input
-                  value={value === null ? t('assetsDetail.notSet') : value}
-              readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-sm h-9"
-                />
-                </div>
-              ))}
+                      value={displayValue}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-sm h-9"
+                    />
+                  </div>
+                );
+              })}
           </div>
         )}
         <div className="flex justify-end gap-3">

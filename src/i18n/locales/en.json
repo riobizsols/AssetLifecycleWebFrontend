@@ -1533,7 +1533,9 @@
       "createdOn": "Created On",
       "changedBy": "Changed By",
       "changedOn": "Changed On",
-      "assetTypeName": "Asset Type Name"
+      "assetTypeName": "Asset Type Name",
+      "properties": "Properties",
+      "noProperties": "No Properties"
     },
     "breakdownDetails": {
       "title": "Edit Breakdown Report",
