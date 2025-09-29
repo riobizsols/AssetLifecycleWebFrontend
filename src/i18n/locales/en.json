@@ -1349,6 +1349,7 @@
     "enterAdditionalNotes": "Enter any additional notes...",
     "cancel": "Cancel",
     "submit": "Submit",
+    "email": "Email",
     "loadingMaintenanceData": "Loading maintenance data...",
     "maintenanceRecordNotFound": "Maintenance record not found",
     "failedToFetchMaintenanceData": "Failed to fetch maintenance data",
@@ -1375,7 +1376,14 @@
     "failedToUploadAnyImages": "Failed to upload any images",
     "statusIsRequired": "Status is required",
     "maintenanceScheduleUpdatedSuccessfully": "Maintenance schedule updated successfully!",
-    "failedToUpdateMaintenanceSchedule": "Failed to update maintenance schedule"
+    "failedToUpdateMaintenanceSchedule": "Failed to update maintenance schedule",
+    "pleaseFillAllRequiredFields": "Please fill all required fields",
+    "nameIsRequired": "Technician name is required",
+    "phoneIsRequired": "Phone number is required",
+    "poNumberIsRequired": "PO number is required",
+    "invoiceIsRequired": "Invoice number is required",
+    "emailIsRequired": "Email is required",
+    "invalidEmailFormat": "Please enter a valid email address"
   },
     "serialNumberPrint": {
       "title": "Serial Number Print",
@@ -1538,7 +1546,7 @@
       "noProperties": "No Properties"
     },
     "breakdownDetails": {
-      "title": "Edit Breakdown Report",
+      "title": "Breakdown Report",
       "cancel": "Cancel",
       "reset": "Reset",
       "reportBreakdown": "Report Breakdown",
@@ -1549,8 +1557,8 @@
       "assetId": "Asset ID",
       "breakdownId": "Breakdown ID",
       "breakdownInformation": "Breakdown Details",
-      "breakdownCode": "Breakdown Code",
-      "selectBreakdownCode": "Select Breakdown Code",
+      "breakdownCode": "Breakdown Reason",
+      "selectBreakdownCode": "Select Breakdown Reason",
       "reportedBy": "Reported By",
       "type": "Type",
       "loading": "Loading...",
