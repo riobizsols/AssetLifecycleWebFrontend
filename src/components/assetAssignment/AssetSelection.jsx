@@ -8,14 +8,12 @@ import useAuditLog from "../../hooks/useAuditLog";
 import { DEPT_ASSIGNMENT_APP_ID } from "../../constants/deptAssignmentAuditEvents";
 import { EMP_ASSIGNMENT_APP_ID } from "../../constants/empAssignmentAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { useAuthStore } from "../../store/useAuthStore";
  
 
 const AssetSelection = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { dept_id: userDeptId } = useAuthStore(); // Get user's department ID
   const { entityId, entityIntId, entityType, departmentId } =
     location.state || {};
 
@@ -101,13 +99,8 @@ const AssetSelection = () => {
   };
 
   useEffect(() => {
-    // Debug: print entityIntId and department info on mount
+    // Debug: print entityIntId on mount
     console.log("entityIntId on mount:", entityIntId);
-    console.log("entityType:", entityType);
-    console.log("departmentId from location.state:", departmentId);
-    console.log("userDeptId from auth store:", userDeptId);
-    console.log("Final department ID to use:", departmentId || userDeptId);
-    
     if (!entityId || !entityType) {
       toast.error(t('assets.invalidNavigation'));
       navigate(-1);
@@ -115,7 +108,7 @@ const AssetSelection = () => {
     }
 
     fetchAssetTypes();
-  }, [entityId, entityType, departmentId, userDeptId, t]);
+  }, [entityId, entityType]);
 
   useEffect(() => {
     if (selectedAssetType) {
@@ -135,29 +128,8 @@ const AssetSelection = () => {
 
   const fetchAssetTypes = async () => {
     try {
-      let endpoint;
-      let incoming;
-
-      if (entityType === "department") {
-        // For department assignment, use department-specific API
-        const targetDeptId = departmentId || userDeptId;
-        if (!targetDeptId) {
-          toast.error(t('assets.departmentIdMissing'));
-          setAssetTypes([]);
-          return;
-        }
-        endpoint = `/dept-assets/department/${targetDeptId}/asset-types`;
-        console.log(`Fetching asset types for department ${targetDeptId} from:`, endpoint);
-      } else {
-        // For employee assignment, use the existing API
-        endpoint = "/dept-assets/asset-types";
-        console.log(`Fetching asset types for employee from:`, endpoint);
-      }
-
-      const res = await API.get(endpoint);
-      console.log("API Response:", res.data);
-      incoming = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : []);
-      console.log("Processed incoming data:", incoming);
+      const res = await API.get("/dept-assets/asset-types");
+      const incoming = Array.isArray(res.data) ? res.data : [];
 
       // Determine target assignment type based on context
       const targetAssignment = entityType === "department" ? "department" : "user";
@@ -183,7 +155,6 @@ const AssetSelection = () => {
         }
       }
 
-      console.log(`Filtered asset types for ${entityType}:`, filtered);
       setAssetTypes(filtered);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
@@ -490,7 +461,7 @@ const AssetSelection = () => {
                   <option value="">{t('assets.allAssetTypes')}</option>
                   {assetTypes.map((type) => (
                     <option key={type.asset_type_id} value={type.asset_type_id}>
-                      {type.asset_type_name || type.text}
+                      {type.text}
                     </option>
                   ))}
                 </select>
@@ -617,7 +588,7 @@ const AssetSelection = () => {
                         {asset.asset_id}
                       </button>
                     </div>
-                    <div>{asset.asset_type_name || asset.text}</div>
+                    <div>{asset.text}</div>
                     <div title={asset.description}>
                       {asset.description && asset.description.length > 15
                         ? asset.description.slice(0, 15) + "..."

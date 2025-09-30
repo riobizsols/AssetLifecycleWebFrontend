@@ -212,7 +212,15 @@
     "searchByNameOrId": "Search by name or ID...",
     "enterSerialNumber": "Enter serial number",
     "child": "Child",
-    "parent": "Parent"
+    "parent": "Parent",
+    "pleaseFillAllRequiredFields": "Please fill all required fields",
+    "assetTypeIsRequired": "Asset type is required",
+    "serialNumberIsRequired": "Serial number is required",
+    "purchaseDateIsRequired": "Purchase date is required",
+    "purchaseCostIsRequired": "Purchase cost is required",
+    "parentAssetIsRequired": "Parent asset is required",
+    "purchaseByIsRequired": "Purchase by is required",
+    "expiryDateIsRequired": "Expiry date is required"
   },
   "assetTypes": {
     "title": "Asset Types",
