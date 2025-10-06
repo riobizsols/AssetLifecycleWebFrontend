@@ -76,9 +76,15 @@ const AllNotifications = () => {
   };
 
   const handleAlertClick = (alert) => {
-    // Navigate to approval detail page with asset ID
-    console.log("Navigating to approval detail for asset:", alert.assetId);
-    navigate(`/approval-detail/${alert.assetId}`);
+    // Navigate to approval detail page with wfamshId (specific workflow)
+    console.log("Navigating to approval detail for wfamshId:", alert.wfamshId);
+    console.log("Alert data:", alert);
+    if (alert.wfamshId) {
+      navigate(`/approval-detail/${alert.wfamshId}`);
+    } else {
+      console.warn("No wfamshId found in alert, falling back to assetId:", alert.assetId);
+      navigate(`/approval-detail/${alert.assetId}`);
+    }
   };
 
   // Fetch notifications when user changes
@@ -88,40 +94,49 @@ const AllNotifications = () => {
   }, [user && user.emp_int_id]);
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <BellIcon className="w-8 h-8 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-900">All Notifications</h1>
+    <div className="min-h-screen bg-white">
+      
+      <div className="relative p-6">
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <BellIcon className="w-8 h-8 text-blue-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">All Notifications</h1>
+          </div>
+          <p className="text-gray-600">
+            View and manage all your maintenance notifications
+          </p>
         </div>
-        <p className="text-gray-600">
-          View and manage all your maintenance notifications
-        </p>
-      </div>
 
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="animate-pulse h-20 bg-gray-100 rounded-lg" />
-          ))}
-        </div>
-      ) : alerts.length === 0 ? (
-        <div className="flex flex-col items-center text-gray-400 py-12">
-          <BellIcon className="w-16 h-16 mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Notifications</h3>
-          <span className="text-sm">You don't have any maintenance notifications at the moment.</span>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {alerts.map((alert, idx) => (
-            <div
-              key={alert.id || idx}
-              className={`p-6 rounded-lg border flex flex-col gap-3 shadow-sm transition-colors duration-200 cursor-pointer
-                ${alert.isUrgent ? "border-red-500 bg-red-50" : "border-gray-200 hover:bg-gray-50"}
-              `}
-              title={alert.isUrgent ? `Urgent: Only ${alert.daysUntilCutoff} days until cutoff!` : ""}
-              onClick={() => handleAlertClick(alert)}
-            >
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-pulse h-20 bg-gray-100 rounded-xl shadow-sm border border-gray-200" />
+            ))}
+          </div>
+        ) : alerts.length === 0 ? (
+          <div className="flex flex-col items-center text-gray-400 py-12 bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="p-4 bg-blue-100 rounded-full mb-4">
+              <BellIcon className="w-16 h-16 text-blue-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-600">No Notifications</h3>
+            <span className="text-sm text-gray-500">You don't have any maintenance notifications at the moment.</span>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {alerts.map((alert, idx) => (
+              <div
+                key={alert.id || idx}
+                className={`p-6 rounded-xl border flex flex-col gap-3 shadow-lg transition-all duration-300 cursor-pointer
+                  ${alert.isUrgent 
+                    ? "border-red-300 bg-gradient-to-r from-red-50 to-pink-50 hover:shadow-red-200/50 hover:shadow-xl" 
+                    : "border-gray-200 bg-white hover:bg-gray-50 hover:shadow-xl"
+                  }
+                `}
+                title={alert.isUrgent ? `Urgent: Only ${alert.daysUntilCutoff} days until cutoff!` : ""}
+                onClick={() => handleAlertClick(alert)}
+              >
               <div className="flex items-center gap-3">
                 {alert.isUrgent && (
                   <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
@@ -162,12 +177,13 @@ const AllNotifications = () => {
         </div>
       )}
       
-      {error && (
-        <div className="text-center py-8">
-          <div className="text-red-500 mb-2">⚠️ Error</div>
-          <div className="text-sm text-gray-600">{error}</div>
-        </div>
-      )}
+        {error && (
+          <div className="text-center py-8 bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="text-red-500 mb-2">⚠️ Error</div>
+            <div className="text-sm text-gray-600">{error}</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

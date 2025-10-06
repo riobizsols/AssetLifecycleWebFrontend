@@ -45,73 +45,73 @@ const SerialNumberPrint = () => {
   const [loading, setLoading] = useState(true);
 
   // Mock printers data for local development
-  const mockPrinters = [
-    {
-      id: 1,
-      printer_id: 'PRT001',
-      name: 'Main Office Laser Printer',
-      location: 'Main Office - Floor 1',
-      ip_address: '192.168.1.100',
-      status: 'Online',
-      type: 'Laser',
-      paper_size: 'A4',
-      paper_type: 'Paper',
-      paper_quality: 'High',
-      description: 'High-quality laser printer for standard labels'
-    },
-    {
-      id: 2,
-      printer_id: 'PRT002',
-      name: 'Warehouse Label Printer',
-      location: 'Warehouse A - Storage',
-      ip_address: '192.168.1.101',
-      status: 'Online',
-      type: 'Label',
-      paper_size: '4x6',
-      paper_type: 'Vinyl',
-      paper_quality: 'High',
-      description: 'Industrial label printer for vinyl labels'
-    },
-    {
-      id: 3,
-      printer_id: 'PRT003',
-      name: 'Small Label Printer',
-      location: 'Production Floor - Line 1',
-      ip_address: '192.168.1.102',
-      status: 'Online',
-      type: 'Label',
-      paper_size: '2x1',
-      paper_type: 'Paper',
-      paper_quality: 'High',
-      description: 'Specialized printer for small labels'
-    },
-    {
-      id: 4,
-      printer_id: 'PRT004',
-      name: 'Admin Office Printer',
-      location: 'Admin Office - HR',
-      ip_address: '192.168.1.103',
-      status: 'Online',
-      type: 'Multifunction',
-      paper_size: 'A4',
-      paper_type: 'Paper',
-      paper_quality: 'Normal',
-      description: 'Multifunction printer for various document types'
-    },
-    {
-      id: 5,
-      printer_id: 'PRT005',
-      name: 'IT Department Printer',
-      location: 'Admin Office - IT',
-      ip_address: '192.168.1.104',
-      status: 'Online',
-      type: 'Laser',
-      paper_size: 'A4',
-      paper_type: 'Paper',
-      paper_quality: 'High',
-      description: 'IT department laser printer'
-    }
-  ];
+  // const mockPrinters = [
+  //   {
+  //     id: '1', // Ensure all IDs are strings for consistency
+  //     printer_id: 'PRT001',
+  //     name: 'Main Office Laser Printer',
+  //     location: 'Main Office - Floor 1',
+  //     ip_address: '192.168.1.100',
+  //     status: 'Online',
+  //     type: 'Laser',
+  //     paper_size: 'A4',
+  //     paper_type: 'Paper',
+  //     paper_quality: 'High',
+  //     description: 'High-quality laser printer for standard labels'
+  //   },
+  //   {
+  //     id: '2',
+  //     printer_id: 'PRT002',
+  //     name: 'Warehouse Label Printer',
+  //     location: 'Warehouse A - Storage',
+  //     ip_address: '192.168.1.101',
+  //     status: 'Online',
+  //     type: 'Label',
+  //     paper_size: '4x6',
+  //     paper_type: 'Vinyl',
+  //     paper_quality: 'High',
+  //     description: 'Industrial label printer for vinyl labels'
+  //   },
+  //   {
+  //     id: '3',
+  //     printer_id: 'PRT003',
+  //     name: 'Small Label Printer',
+  //     location: 'Production Floor - Line 1',
+  //     ip_address: '192.168.1.102',
+  //     status: 'Online',
+  //     type: 'Label',
+  //     paper_size: '2x1',
+  //     paper_type: 'Paper',
+  //     paper_quality: 'High',
+  //     description: 'Specialized printer for small labels'
+  //   },
+  //   {
+  //     id: '4',
+  //     printer_id: 'PRT004',
+  //     name: 'Admin Office Printer',
+  //     location: 'Admin Office - HR',
+  //     ip_address: '192.168.1.103',
+  //     status: 'Online',
+  //     type: 'Multifunction',
+  //     paper_size: 'A4',
+  //     paper_type: 'Paper',
+  //     paper_quality: 'Normal',
+  //     description: 'Multifunction printer for various document types'
+  //   },
+  //   {
+  //     id: '5',
+  //     printer_id: 'PRT005',
+  //     name: 'IT Department Printer',
+  //     location: 'Admin Office - IT',
+  //     ip_address: '192.168.1.104',
+  //     status: 'Online',
+  //     type: 'Laser',
+  //     paper_size: 'A4',
+  //     paper_type: 'Paper',
+  //     paper_quality: 'High',
+  //     description: 'IT department laser printer'
+  //   }
+  // ];
 
 
   // Print settings state
@@ -182,11 +182,13 @@ const SerialNumberPrint = () => {
     try {
       console.log('Fetching printers from assets using organization settings...');
       const res = await API.get('/assets/printers');
+      console.log('API response:', res.data);
       const assets = res.data?.data || [];
+      console.log('Assets from API:', assets);
       
       // Map assets to printer-like objects expected by UI
       const mapped = assets.map((asset, idx) => ({
-        id: asset.asset_id || `printer_${idx + 1}`,
+        id: String(asset.asset_id || `printer_${idx + 1}`), // Ensure ID is always a string
         printer_id: asset.asset_id,
         name: asset.text || asset.description || `Printer ${idx + 1}`,
         location: asset.branch_id || 'Unknown',
@@ -203,11 +205,11 @@ const SerialNumberPrint = () => {
       }));
       
       setPrinters(mapped);
-      console.log('Printers loaded from assets:', mapped.length);
+      console.log('Printers loaded from assets:', mapped.length, mapped);
     } catch (error) {
-      console.error('Error loading printers from organization settings, falling back to mock:', error);
-      // Fallback to mock to avoid empty UI
-      setPrinters(mockPrinters);
+      console.error('Error loading printers from organization settings:', error);
+      console.log('Setting empty printers array since mock is commented out');
+      setPrinters([]); // Set empty array instead of mockPrinters
     }
   };
 
@@ -348,9 +350,36 @@ const SerialNumberPrint = () => {
     setShowPrintPage(true);
   };
 
-  const handleStatusUpdate = (item) => {
-    setSelectedItem(item);
-    setShowStatusModal(true);
+  const handleStatusUpdate = async (item, status = null) => {
+    if (status) {
+      // Direct status update from PrintLabelScreen
+      try {
+        const success = await updateItemStatus(item.psnq_id, status);
+        if (success) {
+          // Update local state
+          setPrintQueue(prev => 
+            prev.map(queueItem => 
+              queueItem.psnq_id === item.psnq_id ? { ...queueItem, status } : queueItem
+            )
+          );
+          setFilteredQueue(prev => 
+            prev.map(queueItem => 
+              queueItem.psnq_id === item.psnq_id ? { ...queueItem, status } : queueItem
+            )
+          );
+          // Update selectedItem if it's the same item
+          if (selectedItem && selectedItem.psnq_id === item.psnq_id) {
+            setSelectedItem(prev => ({ ...prev, status }));
+          }
+        }
+      } catch (error) {
+        console.error('Error updating status:', error);
+      }
+    } else {
+      // Open modal for status selection
+      setSelectedItem(item);
+      setShowStatusModal(true);
+    }
   };
 
   const handleBackToList = () => {
@@ -374,9 +403,14 @@ const SerialNumberPrint = () => {
     }
 
     try {
-      // Get selected printer
-      const selectedPrinter = printers.find(p => p.id === parseInt(printSettings.printerId));
+      // Get selected printer - ensure consistent string comparison
+      const selectedPrinter = printers.find(p => String(p.id) === String(printSettings.printerId));
       if (!selectedPrinter) {
+        console.error('Printer lookup failed:', {
+          printSettingsPrinterId: printSettings.printerId,
+          printSettingsPrinterIdType: typeof printSettings.printerId,
+          availablePrinters: printers.map(p => ({ id: p.id, idType: typeof p.id, name: p.name }))
+        });
         toast.error('Selected printer not found');
         return;
       }
@@ -388,8 +422,11 @@ const SerialNumberPrint = () => {
       // Simulate print process
       toast.loading('Generating PDF and sending to printer...', { duration: 3000 });
       
-      // Update status to In-progress
-      await updateItemStatus(selectedItem.psnq_id, 'In-progress');
+      // Try to update status to Completed (continue even if this fails)
+      const statusUpdated = await updateItemStatus(selectedItem.psnq_id, 'Completed');
+      if (!statusUpdated) {
+        console.warn('Status update failed, but continuing with print process');
+      }
       
       // Generate PDF with asset-specific template
       await generatePDF(selectedItem, template, selectedPrinter);
@@ -417,7 +454,7 @@ const SerialNumberPrint = () => {
 
     const labelFormat = getLabelFormat(printSettings.printerType, template.paperType);
     
-    console.log('Generating PDF with template:', template.template);
+    console.log('Generating PDF with template:', template.name || template.id || 'default');
     console.log('Label format:', labelFormat);
     console.log('Asset details:', {
       serialNumber: asset.serial_number,
@@ -552,7 +589,7 @@ const SerialNumberPrint = () => {
   const generatePreviewContent = () => {
     if (!selectedItem || !printSettings.printerId) return null;
     
-    const selectedPrinter = printers.find(p => p.id === parseInt(printSettings.printerId));
+    const selectedPrinter = printers.find(p => String(p.id) === String(printSettings.printerId));
     const selectedTemplate = getAvailableTemplates(selectedItem).find(t => t.id === printSettings.template);
     const template = selectedTemplate || { format: 'text-only', layout: {} };
     
@@ -579,9 +616,11 @@ const SerialNumberPrint = () => {
       );
       
       toast.success(`Status updated to ${status}`);
+      return true; // Success
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
+      return false; // Failure
     }
   };
 

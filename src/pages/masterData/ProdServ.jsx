@@ -447,6 +447,17 @@ export default function ProdServ() {
                                 autoFocus
                               />
                             </div>
+                            {/* ALL option */}
+                            <div
+                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs font-medium ${productFilter === '' ? 'bg-gray-200' : ''}`}
+                              onClick={() => {
+                                setProductFilter('');
+                                setShowDropdownProductFilter(false);
+                                setSearchAssetTypeProductFilter('');
+                              }}
+                            >
+                              {t('prodServ.allAssetTypes')}
+                            </div>
                             {assetTypes
                               .filter(at => at.text.toLowerCase().includes(searchAssetTypeProductFilter.toLowerCase()))
                               .map((at) => (
@@ -622,6 +633,17 @@ export default function ProdServ() {
                                 onChange={e => setSearchAssetTypeServiceFilter(e.target.value)}
                                 autoFocus
                               />
+                            </div>
+                            {/* ALL option */}
+                            <div
+                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs font-medium ${serviceFilter === '' ? 'bg-gray-200' : ''}`}
+                              onClick={() => {
+                                setServiceFilter('');
+                                setShowDropdownServiceFilter(false);
+                                setSearchAssetTypeServiceFilter('');
+                              }}
+                            >
+                              {t('prodServ.allAssetTypes')}
                             </div>
                             {assetTypes
                               .filter(at => at.text.toLowerCase().includes(searchAssetTypeServiceFilter.toLowerCase()))

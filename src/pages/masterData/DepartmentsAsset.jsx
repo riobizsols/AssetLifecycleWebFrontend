@@ -15,6 +15,7 @@ const DepartmentsAsset = () => {
   const [selectedDeptId, setSelectedDeptId] = useState("");
   const [selectedAssetTypeId, setSelectedAssetTypeId] = useState("");
   const [searchAssetType, setSearchAssetType] = useState("");
+  const [searchDept, setSearchDept] = useState("");
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -24,6 +25,7 @@ const DepartmentsAsset = () => {
   const [_showCreateAssetType, _setShowCreateAssetType] = useState(false);
   const [newAssetTypeName, setNewAssetTypeName] = useState("");
   const dropdownRef = useRef(null);
+  const dropdownDeptRef = useRef(null);
 
   const navigate = useNavigate();
 
@@ -159,6 +161,25 @@ const DepartmentsAsset = () => {
     fetchDeptAssets();
   }, []);
 
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        dropdownRef.current.classList.add("hidden");
+        setSearchAssetType("");
+      }
+      if (dropdownDeptRef.current && !dropdownDeptRef.current.contains(event.target)) {
+        dropdownDeptRef.current.classList.add("hidden");
+        setSearchDept("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       {/* Department Dropdown */}
@@ -167,22 +188,62 @@ const DepartmentsAsset = () => {
           {t('departments.departmentSelection')}
         </div>
         <div className="p-4 flex gap-4 items-center">
-          <div className="flex flex-col">
+          <div className="flex flex-col w-64">
             <label className="text-sm font-medium mb-1">
               {t('common.department')} <span className="text-red-500">*</span>
             </label>
-            <select
-              className={`border px-3 py-2 text-sm w-64 bg-white text-black focus:outline-none ${isFieldInvalid(selectedDeptId) ? 'border-red-500' : 'border-gray-300'}`}
-              value={selectedDeptId}
-              onChange={(e) => setSelectedDeptId(e.target.value)}
-            >
-              <option value="">{t('departments.selectDepartment')}</option>
-              {departments.map((dept) => (
-                <option key={dept.dept_id} value={dept.dept_id}>
-                  {dept.text}
-                </option>
-              ))}
-            </select>
+            <div className="relative w-full">
+              <button
+                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedDeptId) ? 'border-red-500' : 'border-gray-300'}`}
+                onClick={() => {
+                  dropdownDeptRef.current.classList.toggle("hidden");
+                }}
+                type="button"
+              >
+                {selectedDeptId
+                  ? departments.find((d) => d.dept_id === selectedDeptId)?.text || t('departments.selectDepartment')
+                  : t('departments.selectDepartment')}
+                <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
+              </button>
+              {/* Dropdown List */}
+              <div
+                ref={dropdownDeptRef}
+                className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-64 overflow-y-auto z-10 hidden"
+                style={{ minWidth: "100%" }}
+              >
+                {/* Sticky Search Input */}
+                <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
+                  <input
+                    type="text"
+                    className="w-full border px-2 py-1 rounded text-sm"
+                    placeholder={t('departments.searchDepartments')}
+                    value={searchDept}
+                    onChange={e => setSearchDept(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {/* Filtered Departments */}
+                {departments
+                  .filter(d => 
+                    d.text.toLowerCase().includes(searchDept.toLowerCase()) ||
+                    d.dept_id.toLowerCase().includes(searchDept.toLowerCase())
+                  )
+                  .map((dept) => (
+                    <div
+                      key={dept.dept_id}
+                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedDeptId === dept.dept_id ? "bg-gray-200" : ""}`}
+                      onClick={() => {
+                        setSelectedDeptId(dept.dept_id);
+                        dropdownDeptRef.current.classList.add("hidden");
+                        setSearchDept("");
+                      }}
+                    >
+                      <div className="font-medium">{dept.text}</div>
+                      <div className="text-xs text-gray-500">ID: {dept.dept_id}</div>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -191,7 +252,7 @@ const DepartmentsAsset = () => {
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
           {t('departments.addAsset')}
         </div>
-        <div className="p-4 flex gap-4 items-center">
+        <div className="p-4 flex gap-4 items-end">
           <div className="flex flex-col w-64">
             <label className="text-sm font-medium mb-1">
               {t('departments.assetType')} <span className="text-red-500">*</span>

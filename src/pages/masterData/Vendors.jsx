@@ -239,7 +239,12 @@ const Vendors = () => {
       // Update the data state with the updated vendor
       setData(prev => prev.map(vendor => 
         vendor.vendor_id === editingVendor.vendor_id 
-          ? { ...vendor, ...response.data.vendor }
+          ? { 
+              ...vendor, 
+              ...response.data.vendor,
+              int_status: response.data.vendor.int_status === 1 ? 'Active' : 'Inactive',
+              changed_on: response.data.vendor.changed_on ? new Date(response.data.vendor.changed_on).toLocaleString() : vendor.changed_on
+            }
           : vendor
       ));
       

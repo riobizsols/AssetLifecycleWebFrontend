@@ -828,15 +828,6 @@ export default function MaintSupervisorApproval() {
             </div>
           )}
           
-          {/* Debug info */}
-          <div className="mt-2 text-xs text-gray-400">
-            Debug: technicalManualDocs.length = {manualDocs.length}, totalDocs.length = {maintenanceDocs.length + archivedDocs.length}
-            {maintenanceDocs.length > 0 && (
-              <div className="mt-1">
-                Available docs: {maintenanceDocs.map(doc => `${doc.doc_type_name || doc.doc_type_text || doc.doc_type} (${doc.file_name})`).join(', ')}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Doc Upload Section */}

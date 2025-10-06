@@ -125,7 +125,7 @@ const PrintLabelScreen = ({
     console.log('Status changed to:', status);
     onStatusUpdate(selectedItem, status);
     setShowStatusDropdown(false);
-    toast.success(`Status updated to ${status}`);
+    // Don't show toast here - let the parent component handle it
   };
 
   const generatePDF = async () => {
@@ -524,10 +524,8 @@ const PrintLabelScreen = ({
           Generate PDF
         </button>
          <button
-           onClick={(e) => {
-             e.preventDefault();
-             console.log('Print Label clicked for:', selectedItem);
-             onPrint();
+           onClick={() => {
+             onPrint && onPrint();
            }}
            disabled={!printSettings.printerId || !printSettings.template}
            className="px-8 py-3 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"

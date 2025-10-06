@@ -22,7 +22,9 @@ const DepartmentsAdmin = () => {
     const toggleMaximize = () => setIsMaximized((prev) => !prev);
 
   const [searchUser, setSearchUser] = useState("");
+  const [searchDept, setSearchDept] = useState("");
   const dropdownUserRef = React.useRef(null);
+  const dropdownDeptRef = React.useRef(null);
   const navigate = useNavigate();
 
   // Initialize audit logging
@@ -144,6 +146,25 @@ const DepartmentsAdmin = () => {
   // Helper for invalid field
   const isFieldInvalid = (val) => submitAttempted && !val;
 
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownUserRef.current && !dropdownUserRef.current.contains(event.target)) {
+        dropdownUserRef.current.classList.add("hidden");
+        setSearchUser("");
+      }
+      if (dropdownDeptRef.current && !dropdownDeptRef.current.contains(event.target)) {
+        dropdownDeptRef.current.classList.add("hidden");
+        setSearchDept("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       {/* Department Dropdown */}
@@ -152,22 +173,62 @@ const DepartmentsAdmin = () => {
           {t('departments.departmentSelection')}
         </div>
         <div className="p-4 flex gap-4 items-center">
-          <div className="flex flex-col">
+          <div className="flex flex-col w-64">
             <label className="text-sm font-medium mb-1">
               {t('common.department')} <span className="text-red-500">*</span>
             </label>
-            <select
-              className={`border px-3 py-2 text-sm w-64 bg-white text-black focus:outline-none ${isFieldInvalid(selectedDept) ? 'border-red-500' : 'border-gray-300'}`}
-              value={selectedDept || ""}
-              onChange={(e) => setSelectedDept(e.target.value)}
-            >
-              <option value="">{t('departments.selectDepartment')}</option>
-              {departments.map((dept) => (
-                <option key={dept.dept_id} value={dept.dept_id}>
-                  {dept.text}
-                </option>
-              ))}
-            </select>
+            <div className="relative w-full">
+              <button
+                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedDept) ? 'border-red-500' : 'border-gray-300'}`}
+                onClick={() => {
+                  dropdownDeptRef.current.classList.toggle("hidden");
+                }}
+                type="button"
+              >
+                {selectedDept
+                  ? departments.find((d) => d.dept_id === selectedDept)?.text || t('departments.selectDepartment')
+                  : t('departments.selectDepartment')}
+                <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
+              </button>
+              {/* Dropdown List */}
+              <div
+                ref={dropdownDeptRef}
+                className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-64 overflow-y-auto z-10 hidden"
+                style={{ minWidth: "100%" }}
+              >
+                {/* Sticky Search Input */}
+                <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
+                  <input
+                    type="text"
+                    className="w-full border px-2 py-1 rounded text-sm"
+                    placeholder={t('departments.searchDepartments')}
+                    value={searchDept}
+                    onChange={e => setSearchDept(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {/* Filtered Departments */}
+                {departments
+                  .filter(d => 
+                    d.text.toLowerCase().includes(searchDept.toLowerCase()) ||
+                    d.dept_id.toLowerCase().includes(searchDept.toLowerCase())
+                  )
+                  .map((dept) => (
+                    <div
+                      key={dept.dept_id}
+                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedDept === dept.dept_id ? "bg-gray-200" : ""}`}
+                      onClick={() => {
+                        setSelectedDept(dept.dept_id);
+                        dropdownDeptRef.current.classList.add("hidden");
+                        setSearchDept("");
+                      }}
+                    >
+                      <div className="font-medium">{dept.text}</div>
+                      <div className="text-xs text-gray-500">ID: {dept.dept_id}</div>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -176,7 +237,7 @@ const DepartmentsAdmin = () => {
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
           {t('departments.addAdmin')}
         </div>
-        <div className="p-4 flex gap-4 items-center">
+        <div className="p-4 flex gap-4 items-end">
           {/* Custom Searchable Dropdown for Users */}
           <div className="flex flex-col w-64">
             <label className="text-sm font-medium mb-1">

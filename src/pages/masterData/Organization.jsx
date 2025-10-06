@@ -61,6 +61,11 @@ const Organization = () => {
     setSubmitAttempted(false); // Reset submit attempt
   };
 
+  // Validation helper function
+  const isFieldInvalid = (value) => {
+    return submitAttempted && !value.trim();
+  };
+
   // Add or update organization
   const handleCreateOrUpdate = async () => {
     setSubmitAttempted(true);
@@ -98,6 +103,7 @@ const Organization = () => {
         });
         
         toast.success(t('organizations.organizationUpdatedSuccessfully', { name: formName }));
+        setShowEditModal(false);
       } else {
         // Add
         const response = await API.post("/orgs", {
@@ -125,9 +131,6 @@ const Organization = () => {
       toast.error(`${t('organizations.failedToCreateOrganization', { action: selectedOrg ? t('common.update') : t('common.create') })}: ${errorMessage}`);
     }
   };
-
-  // Helper for invalid field
-  const isFieldInvalid = (val) => submitAttempted && !val.trim();
 
   // Edit handler
   const handleEdit = (org) => {
@@ -223,10 +226,7 @@ const Organization = () => {
             </div>
             <button
               className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm self-end"
-              onClick={() => {
-                handleCreateOrUpdate();
-                resetForm();
-              }}
+              onClick={handleCreateOrUpdate}
             >
               {t('common.add')}
             </button>
@@ -359,11 +359,7 @@ const Organization = () => {
                   </button>
                   <button
                     className="bg-yellow-400 px-4 py-1 rounded"
-                    onClick={() => {
-                      handleCreateOrUpdate();
-                      setShowEditModal(false);
-                      resetForm();
-                    }}
+                    onClick={handleCreateOrUpdate}
                   >
                     {t('common.update')}
                   </button>

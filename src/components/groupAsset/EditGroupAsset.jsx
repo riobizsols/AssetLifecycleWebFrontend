@@ -600,7 +600,7 @@ const EditGroupAsset = () => {
           <button
             onClick={handleUpdate}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-[#143d65] 143d65 text-white rounded-md hover:bg-[#0E2F4B] disabled:opacity-50"
           >
             {loading ? t('editGroupAsset.updating') : t('editGroupAsset.updateGroup')}
           </button>

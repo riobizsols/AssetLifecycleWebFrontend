@@ -69,13 +69,15 @@ const getStepColor = (status, title) => {
   
   switch (status) {
     case 'completed':
-      return 'bg-[#8BC34A]'; // Green for current action user (In Progress)
+      return 'bg-[#8BC34A]'; // Green for completed
     case 'approved':
-      return 'bg-[#2196F3]'; // Blue for approved ({t('maintenanceApproval.approved')})
+      return 'bg-[#2196F3]'; // Blue for approved
+    case 'current':
+      return 'bg-[#8BC34A]'; // Green for approval pending (AP)
     case 'rejected':
-      return 'bg-red-500'; // Red for rejected (Rejected)
+      return 'bg-red-500'; // Red for rejected
     case 'pending':
-      return 'bg-gray-400'; // Gray for awaiting (Awaiting)
+      return 'bg-gray-400'; // Gray for awaiting
     default:
       return 'bg-gray-400';
   }
@@ -140,9 +142,7 @@ const MaintenanceApprovalDetail = () => {
   const { user } = useAuthStore();
   const { t } = useLanguage();
   
-  console.log("MaintenanceApprovalDetail component mounted");
-  console.log("Asset ID from URL params:", id);
-  console.log("User from auth store:", user);
+  
   const [maintenance, setMaintenance] = useState(null);
   const [steps, setSteps] = useState([]);
   const [currentUserEmpId, setCurrentUserEmpId] = useState(""); // Will be set from auth
@@ -170,32 +170,53 @@ const MaintenanceApprovalDetail = () => {
   // Fetch approval details from API
   useEffect(() => {
     const fetchApprovalDetails = async () => {
-      if (!id) {
-        console.log("No asset ID found in URL params");
-        return;
-      }
+      if (!id) { return; }
       
       setLoadingApprovalDetails(true);
       try {
-        console.log("Fetching approval details for asset ID:", id);
-        console.log("Full API URL:", `/approval-detail/${id}`);
-        const response = await API.get(`/approval-detail/${id}`);
-        console.log("Approval details API response:", response.data);
+        
+        const response = await API.get(`/approval-detail/workflow/${id}`);
+        
         
         if (response.data.success) {
-          console.log('Full approval details response:', response.data.data);
-          console.log('All keys in response:', Object.keys(response.data.data));
-          console.log('Vendor details in response:', response.data.data?.vendorDetails);
-          console.log('Checklist in response:', response.data.data?.checklist);
-          console.log('Response data type:', typeof response.data.data);
-          setApprovalDetails(response.data.data);
-          // Set workflow steps from API data
-          setSteps(response.data.data.workflowSteps || []);
+          
+          
+          const workflowData = response.data.data;
+            
+          // Transform the workflow data to match the expected format
+          const transformedData = {
+            wfamsdId: workflowData.workflowDetails?.[0]?.wfamsd_id || workflowData.wfamshId,
+            wfamshId: workflowData.wfamshId,
+            assetId: workflowData.assetId,
+            assetTypeId: workflowData.assetTypeId,
+            assetTypeName: workflowData.assetTypeName,
+            vendorId: workflowData.vendorId,
+            vendorName: workflowData.vendorName,
+            maintenanceType: workflowData.maintenanceType,
+            dueDate: workflowData.dueDate,
+            cutoffDate: workflowData.cutoffDate,
+            actionBy: workflowData.workflowDetails?.[0]?.user_name || 'Unassigned',
+            userId: workflowData.workflowDetails?.[0]?.user_id,
+            userEmail: workflowData.workflowDetails?.[0]?.email,
+            status: workflowData.workflowDetails?.[0]?.detail_status,
+            sequence: workflowData.workflowDetails?.[0]?.sequence,
+            daysUntilDue: workflowData.daysUntilDue,
+            daysUntilCutoff: workflowData.daysUntilCutoff,
+            isUrgent: workflowData.isUrgent,
+            isOverdue: workflowData.isOverdue,
+            notes: workflowData.notes,
+            checklist: workflowData.checklist,
+            vendorDetails: workflowData.vendorDetails,
+            workflowSteps: workflowData.workflowSteps
+          };
+            
+          setApprovalDetails(transformedData);
+          setSteps(workflowData.workflowSteps || []);
         } else {
-          console.error("Failed to fetch approval details:", response.data.message);
+          console.error("Failed to fetch maintenance workflow:", response.data.message);
         }
       } catch (error) {
-        console.error("Error fetching approval details:", error);
+        console.error("Error fetching maintenance workflow:", error);
         // Fallback to mock data if API fails
         setApprovalDetails({
           alertType: "Maintenance Alert",
@@ -234,21 +255,11 @@ const MaintenanceApprovalDetail = () => {
 
   // Find the user with AP status (current action pending user)
   const currentActionStep = steps.find((step) => {
-    console.log("Checking step:", step);
-    console.log("Step title:", step.title);
-    console.log("Step status:", step.status);
-    console.log("Step description:", step.description);
-    console.log("Is not System:", step.title !== 'System');
-    console.log("Is completed:", step.status === 'completed');
-    console.log("Has Action pending:", step.description.includes('Action pending by'));
-    
     // Look for the step that should be the current action user
-    // It should be the one with 'completed' status and 'Action pending by' description
+    // It should be the one with 'current' status and 'Action pending by' description
     const isCurrentAction = step.title !== 'System' && 
-           step.status === 'completed' && 
+           step.status === 'current' && 
            step.description.includes('Action pending by');
-    
-    console.log("Is current action step:", isCurrentAction);
     return isCurrentAction;
   });
   
@@ -258,29 +269,7 @@ const MaintenanceApprovalDetail = () => {
     currentActionStep.user.name === user?.full_name
   );
   
-  // Debug logging
-  console.log("Current user Emp ID:", currentUserEmpId);
-  console.log("Current user from auth:", user);
-  console.log("All steps:", steps);
-  console.log("Steps details:", steps.map(step => ({
-    id: step.id,
-    title: step.title,
-    status: step.status,
-    description: step.description,
-    user: step.user
-  })));
-  console.log("Current action step:", currentActionStep);
-  console.log("Is current action user:", isCurrentActionUser);
-  console.log("Current action step user ID:", currentActionStep?.user.id);
-  console.log("Current action step user name:", currentActionStep?.user.name);
   
-  // Additional debug: Check if any step has 'completed' status
-  const completedSteps = steps.filter(step => step.status === 'completed');
-  console.log("Steps with 'completed' status:", completedSteps);
-  
-  // Additional debug: Check if any step has 'Action pending by' in description
-  const actionPendingSteps = steps.filter(step => step.description.includes('Action pending by'));
-  console.log("Steps with 'Action pending by' in description:", actionPendingSteps);
 
   // Approve handler
   const handleApprove = async () => {
@@ -370,15 +359,15 @@ const MaintenanceApprovalDetail = () => {
   // Fetch workflow history when approval details are loaded
   useEffect(() => {
     const fetchWorkflowHistory = async () => {
-      if (!approvalDetails?.assetId) {
-        console.log("No asset ID available to fetch workflow history");
+      if (!approvalDetails?.wfamshId) {
+        console.log("No wfamsh_id available to fetch workflow history");
         return;
       }
       
       setLoadingHistory(true);
       try {
-        console.log("Fetching workflow history for asset ID:", approvalDetails.assetId);
-        const response = await API.get(`/approval-detail/history/${approvalDetails.assetId}`);
+        console.log("Fetching workflow history for wfamsh_id:", approvalDetails.wfamshId);
+        const response = await API.get(`/approval-detail/workflow-history/${approvalDetails.wfamshId}`);
         console.log("Workflow history API response:", response.data);
         
         if (response.data.success) {
@@ -394,7 +383,7 @@ const MaintenanceApprovalDetail = () => {
     };
 
     fetchWorkflowHistory();
-  }, [approvalDetails?.assetId]);
+  }, [approvalDetails?.wfamshId]);
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -473,6 +462,7 @@ const MaintenanceApprovalDetail = () => {
             <div className="mt-6">
               {activeTab === 'approval' && (
                 <>
+
                   {/* Approval Details Section */}
                   <div className="bg-white rounded shadow p-6 mb-8">
                     {loadingApprovalDetails ? (
@@ -511,14 +501,18 @@ const MaintenanceApprovalDetail = () => {
                           label={t('maintenanceApproval.assetType')} 
                           value={approvalDetails?.assetTypeName || "-"} 
                         />
-                        <ReadOnlyInput 
-                          label={t('maintenanceApproval.assetID')} 
-                          value={approvalDetails?.assetId || "-"} 
-                        />
-                        <ReadOnlyInput 
-                          label={t('maintenanceApproval.notes')} 
-                          value={approvalDetails?.notes || "-"} 
-                        />
+                         <ReadOnlyInput 
+                           label={t('maintenanceApproval.assetID')} 
+                           value={approvalDetails?.assetId || "-"} 
+                         />
+                         <ReadOnlyInput 
+                           label="Workflow ID" 
+                           value={approvalDetails?.wfamshId || "-"} 
+                         />
+                         <ReadOnlyInput 
+                           label={t('maintenanceApproval.notes')} 
+                           value={approvalDetails?.notes || "-"} 
+                         />
                         <div className="flex flex-col justify-end">
                           <label className="block text-sm font-medium mb-1 text-gray-700">{t('maintenanceApproval.checklist')}</label>
                           <button
@@ -667,7 +661,7 @@ const MaintenanceApprovalDetail = () => {
                           {workflowHistory.map((row, idx) => (
                             <tr key={row.id || idx} className="bg-white border border-gray-200 rounded-md shadow-sm">
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.date}</td>
-                              <td className={`px-6 py-3 text-sm whitespace-nowrap ${getActionColor(row.actionType)}`}>{row.action}</td>
+                              <td className={`px-6 py-3 text-sm whitespace-nowrap font-medium ${row.actionColor || 'text-gray-600'}`}>{row.action}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.user}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.jobRole || "-"}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.department || "-"}</td>

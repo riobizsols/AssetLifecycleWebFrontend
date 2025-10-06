@@ -92,9 +92,15 @@ const NotificationsPanel = () => {
   };
 
   const handleAlertClick = (alert) => {
-    // Navigate to approval detail page with asset ID
-    console.log("Navigating to approval detail for asset:", alert.assetId);
-    navigate(`/approval-detail/${alert.assetId}`);
+    // Navigate to approval detail page with wfamshId (specific workflow)
+    console.log("Navigating to approval detail for wfamshId:", alert.wfamshId);
+    console.log("Alert data:", alert);
+    if (alert.wfamshId) {
+      navigate(`/approval-detail/${alert.wfamshId}`);
+    } else {
+      console.warn("No wfamshId found in alert, falling back to assetId:", alert.assetId);
+      navigate(`/approval-detail/${alert.assetId}`);
+    }
   };
 
   // Fetch notifications when user changes

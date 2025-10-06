@@ -229,7 +229,7 @@ const MaintenanceApprovalDetail = () => {
   }));
 
   const handleRowClick = (row) => {
-    navigate(`/approval-detail/${row.asset_id}`);
+    navigate(`/approval-detail/${row.wfamsh_id}`);
   };
 
   return (

@@ -456,11 +456,6 @@ const ScrapAssets = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">{t('scrapAssets.title')}</h1>
-        <p className="mt-2 text-lg text-gray-600">{t('scrapAssets.subtitle')}</p>
-      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
