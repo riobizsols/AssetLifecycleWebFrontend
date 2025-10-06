@@ -19,6 +19,9 @@ export default function MaintSupervisorApproval() {
   const [loadingData, setLoadingData] = useState(true);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+
+  // NULL VALIDATION
+  const [empty, setEmpty] = useState(false);
   
   // New states for documents and images
   const [selectedManual, setSelectedManual] = useState(null);
@@ -53,6 +56,16 @@ export default function MaintSupervisorApproval() {
     technician_name: "",
     technician_email: "",
     technician_phno: ""
+  });
+
+  // Validation state for each field
+  const [validationErrors, setValidationErrors] = useState({
+    status: false,
+    po_number: false,
+    invoice: false,
+    technician_name: false,
+    technician_email: false,
+    technician_phno: false
   });
 
   useEffect(() => {
@@ -417,6 +430,14 @@ export default function MaintSupervisorApproval() {
       ...prev,
       [name]: value
     }));
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: false
+      }));
+    }
   };
 
   // Document upload handlers
@@ -604,9 +625,55 @@ export default function MaintSupervisorApproval() {
     e.preventDefault();
     setSubmitAttempted(true);
     
-    // Validation
-    if (!formData.status) {
-      toast.error(t('maintenanceSupervisor.statusIsRequired'));
+    // Comprehensive validation
+    const errors = {};
+    let hasErrors = false;
+    
+    // Required fields validation
+    if (!formData.status || formData.status.trim() === '') {
+      errors.status = true;
+      hasErrors = true;
+    }
+    
+    if (!formData.po_number || formData.po_number.trim() === '') {
+      errors.po_number = true;
+      hasErrors = true;
+    }
+    
+    if (!formData.invoice || formData.invoice.trim() === '') {
+      errors.invoice = true;
+      hasErrors = true;
+    }
+    
+    if (!formData.technician_name || formData.technician_name.trim() === '') {
+      errors.technician_name = true;
+      hasErrors = true;
+    }
+    
+    if (!formData.technician_email || formData.technician_email.trim() === '') {
+      errors.technician_email = true;
+      hasErrors = true;
+    }
+    
+    if (!formData.technician_phno || formData.technician_phno.trim() === '') {
+      errors.technician_phno = true;
+      hasErrors = true;
+    }
+    
+    // Email format validation
+    if (formData.technician_email && formData.technician_email.trim() !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.technician_email)) {
+        errors.technician_email = true;
+        hasErrors = true;
+      }
+    }
+    
+    // Set validation errors
+    setValidationErrors(errors);
+    
+    if (hasErrors) {
+      toast.error(t('maintenanceSupervisor.pleaseFillAllRequiredFields'));
       return;
     }
     
@@ -1280,9 +1347,12 @@ export default function MaintSupervisorApproval() {
                   name="technician_name"
                   value={formData.technician_name}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-3 py-2 border ${validationErrors.technician_name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   placeholder={t('maintenanceSupervisor.enterTechnicianName')}
                 />
+                {validationErrors.technician_name && (
+                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.nameIsRequired')}</p>
+                )}
               </div>
 
               <div>
@@ -1292,9 +1362,12 @@ export default function MaintSupervisorApproval() {
                   name="technician_phno"
                   value={formData.technician_phno}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-3 py-2 border ${validationErrors.technician_phno ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   placeholder={t('maintenanceSupervisor.enterTechnicianPhone')}
                 />
+                {validationErrors.technician_phno && (
+                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.phoneIsRequired')}</p>
+                )}
               </div>
 
               <div>
@@ -1303,7 +1376,7 @@ export default function MaintSupervisorApproval() {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-3 py-2 border ${validationErrors.status ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   required
                 >
                   <option value="">{t('maintenanceSupervisor.selectStatus')}</option>
@@ -1312,6 +1385,9 @@ export default function MaintSupervisorApproval() {
                   <option value="CO">{t('maintenanceSupervisor.completed')}</option>
                   <option value="CA">{t('maintenanceSupervisor.cancelled')}</option>
                 </select>
+                {validationErrors.status && (
+                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.statusIsRequired')}</p>
+                )}
               </div>
 
               <div>
@@ -1321,9 +1397,12 @@ export default function MaintSupervisorApproval() {
                   name="po_number"
                   value={formData.po_number}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-3 py-2 border ${validationErrors.po_number ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   placeholder={t('maintenanceSupervisor.enterPONumber')}
                 />
+                {validationErrors.po_number && (
+                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.poNumberIsRequired')}</p>
+                )}
               </div>
 
               <div>
@@ -1333,9 +1412,12 @@ export default function MaintSupervisorApproval() {
                   name="invoice"
                   value={formData.invoice}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-3 py-2 border ${validationErrors.invoice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   placeholder={t('maintenanceSupervisor.enterInvoiceNumber')}
                 />
+                {validationErrors.invoice && (
+                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.invoiceIsRequired')}</p>
+                )}
               </div>
 
               <div>
@@ -1345,9 +1427,18 @@ export default function MaintSupervisorApproval() {
                   name="technician_email"
                   value={formData.technician_email}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
+                  required
                 />
+                {validationErrors.technician_email && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {formData.technician_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.technician_email) 
+                      ? t('maintenanceSupervisor.invalidEmailFormat')
+                      : t('maintenanceSupervisor.emailIsRequired')
+                    }
+                  </p>
+                )}
               </div>
             </div>
 

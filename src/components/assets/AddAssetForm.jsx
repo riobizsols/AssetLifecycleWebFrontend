@@ -33,6 +33,9 @@ const initialForm = {
   usefulLifeYears: '5',
 };
 
+
+
+
 // Status options will be created dynamically with translations
 
 // Remove all dummy data arrays and fallback logic for vendors, brands, models, users, and maintenance schedules
@@ -68,6 +71,15 @@ const AddAssetForm = ({ userRole }) => {
   // Add validation state
   const [touched, setTouched] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({
+    assetType: false,
+    serialNumber: false,
+    purchaseDate: false,
+    purchaseCost: false,
+    parentAsset: false,
+    purchaseBy: false,
+    expiryDate: false
+  });
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
@@ -124,11 +136,47 @@ const AddAssetForm = ({ userRole }) => {
 
   // Add state for serial number generation
   const [isGeneratingSerial, setIsGeneratingSerial] = useState(false);
+  
+  // Add state for fetched prod_serv_id
+  const [fetchedProdServId, setFetchedProdServId] = useState(null);
+  
+  // Add state to store all prodServ data for filtering
+  const [allProdServData, setAllProdServData] = useState([]);
 
   // Add useEffect to log form state changes
   useEffect(() => {
     console.log('🔍 Form state changed:', form);
   }, [form]);
+
+  // Add useEffect to filter models when brand changes
+  useEffect(() => {
+    if (allProdServData.length > 0) {
+      filterModelsByBrand(form.vendorBrand);
+      
+      // Clear model selection if it's not valid for the selected brand
+      if (form.vendorBrand && form.vendorModel) {
+        const validModels = allProdServData
+          .filter(item => item.brand === form.vendorBrand)
+          .map(item => item.model)
+          .filter(Boolean);
+        
+        if (!validModels.includes(form.vendorModel)) {
+          console.log('🔄 Clearing invalid model selection:', form.vendorModel);
+          setForm(prev => ({ ...prev, vendorModel: '' }));
+        }
+      }
+    }
+  }, [form.vendorBrand, allProdServData]);
+
+  // Add useEffect to fetch prod_serv_id when brand and model are selected
+  useEffect(() => {
+    if (form.vendorBrand && form.vendorModel) {
+      console.log('🔄 Brand and model selected, fetching prod_serv_id...');
+      fetchProdServId(form.vendorBrand, form.vendorModel);
+    } else {
+      setFetchedProdServId(null);
+    }
+  }, [form.vendorBrand, form.vendorModel]);
 
   // Add useEffect to log initial form state
   useEffect(() => {
@@ -359,7 +407,10 @@ const AddAssetForm = ({ userRole }) => {
         ];
         setVendorBrandOptions(brandOptions);
 
-        // Extract unique models
+        // Store all prodServ data for filtering
+        setAllProdServData(res.data);
+        
+        // Initially show all models (will be filtered when brand is selected)
         const uniqueModels = [...new Set(res.data.map(item => item.model).filter(Boolean))];
         const modelOptions = [
           { value: '', label: 'Select' },
@@ -434,6 +485,74 @@ const AddAssetForm = ({ userRole }) => {
     }
   };
 
+  // Function to filter models based on selected brand
+  const filterModelsByBrand = (selectedBrand) => {
+    if (!selectedBrand || !allProdServData.length) {
+      // If no brand selected or no data, show all models
+      const uniqueModels = [...new Set(allProdServData.map(item => item.model).filter(Boolean))];
+      const modelOptions = [
+        { value: '', label: 'Select' },
+        ...uniqueModels.map(model => ({
+          value: model,
+          label: model
+        }))
+      ];
+      setVendorModelOptions(modelOptions);
+      return;
+    }
+
+    // Filter models for the selected brand
+    const brandModels = allProdServData
+      .filter(item => item.brand === selectedBrand)
+      .map(item => item.model)
+      .filter(Boolean);
+    
+    const uniqueModels = [...new Set(brandModels)];
+    const modelOptions = [
+      { value: '', label: 'Select' },
+      ...uniqueModels.map(model => ({
+        value: model,
+        label: model
+      }))
+    ];
+    
+    console.log('🔍 Filtered models for brand:', selectedBrand, 'models:', uniqueModels);
+    setVendorModelOptions(modelOptions);
+  };
+
+  // Function to fetch prod_serv_id based on brand and model
+  const fetchProdServId = async (brand, model) => {
+    if (!brand || !model) {
+      setFetchedProdServId(null);
+      return;
+    }
+
+    try {
+      console.log('🔍 Fetching prod_serv_id for brand:', brand, 'model:', model);
+      const res = await API.get('/find-by-brand-model', {
+        params: {
+          brand: brand,
+          model: model
+        }
+      });
+      
+      console.log('📦 ProdServ response:', res.data);
+      
+      if (res.data && res.data.success && res.data.data) {
+        const prodServId = res.data.data.prod_serv_id;
+        setFetchedProdServId(prodServId);
+        console.log('✅ Found prod_serv_id:', prodServId);
+      } else {
+        setFetchedProdServId(null);
+        console.log('❌ No matching prod_serv_id found for brand:', brand, 'model:', model);
+      }
+    } catch (err) {
+      console.error('❌ Error fetching prod_serv_id:', err);
+      setFetchedProdServId(null);
+      toast.error('Failed to fetch product service ID');
+    }
+  };
+
   const fetchDynamicProperties = async (assetTypeId) => {
     if (!assetTypeId) {
       setDynamicProperties([]);
@@ -479,6 +598,14 @@ const AddAssetForm = ({ userRole }) => {
       return newForm;
     });
     setTouched((prev) => ({ ...prev, [name]: true }));
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: false
+      }));
+    }
   };
 
   // Attachments tab helpers - document types are now fetched from API
@@ -635,15 +762,54 @@ const AddAssetForm = ({ userRole }) => {
     console.log('🚀 Starting unified asset submission...');
     setSubmitAttempted(true);
     
-    // Validate required fields for configuration tab
-    if (!form.assetType || !form.serialNumber || !form.purchaseDate || !form.purchaseCost) {
-      toast.error(t('assets.requiredFieldsMissing'));
-      return;
+    // Comprehensive validation
+    const errors = {};
+    let hasErrors = false;
+    
+    // Required fields validation
+    if (!form.assetType || form.assetType.trim() === '') {
+      errors.assetType = true;
+      hasErrors = true;
     }
+    
+    if (!form.serialNumber || form.serialNumber.trim() === '') {
+      errors.serialNumber = true;
+      hasErrors = true;
+    }
+    
+    if (!form.purchaseDate || form.purchaseDate.trim() === '') {
+      errors.purchaseDate = true;
+      hasErrors = true;
+    }
+    
+    if (!form.purchaseCost || form.purchaseCost.trim() === '') {
+      errors.purchaseCost = true;
+      hasErrors = true;
+    }
+    
+    if (!form.purchaseBy || form.purchaseBy.trim() === '') {
+      errors.purchaseBy = true;
+      hasErrors = true;
+    }
+    
+    if (!form.expiryDate || form.expiryDate.trim() === '') {
+      errors.expiryDate = true;
+      hasErrors = true;
+    }
+    
+    // Parent asset validation for child asset types
     const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
     const isChild = (selectedType?.is_child === true || selectedType?.is_child === 'true') && !!selectedType?.parent_asset_type_id;
-    if (isChild && !form.parentAsset) {
-      toast.error(t('assets.parentAssetRequired'));
+    if (isChild && (!form.parentAsset || form.parentAsset.trim() === '')) {
+      errors.parentAsset = true;
+      hasErrors = true;
+    }
+    
+    // Set validation errors
+    setValidationErrors(errors);
+    
+    if (hasErrors) {
+      toast.error(t('assets.pleaseFillAllRequiredFields'));
       return;
     }
 
@@ -672,7 +838,7 @@ const AddAssetForm = ({ userRole }) => {
         branch_id: getUserBranchId(user?.user_id), // Auto-populate user's branch
         purchase_vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
         service_vendor_id: form.serviceSupply || null, // Set from Service Vendor dropdown
-        prod_serv_id: form.serviceSupply || null, // Set from Service Vendor dropdown
+        prod_serv_id: fetchedProdServId || null, // Use fetched prod_serv_id from brand/model selection
         maintsch_id: null, // Always set to null
         purchased_cost: form.purchaseCost,
         purchased_on: form.purchaseDate,
@@ -706,6 +872,8 @@ const AddAssetForm = ({ userRole }) => {
       console.log('  depreciation_start_date:', assetData.depreciation_start_date);
 
       console.log('📦 Submitting asset data:', assetData);
+      console.log('🔍 Fetched prod_serv_id:', fetchedProdServId);
+      console.log('🔍 Brand:', form.vendorBrand, 'Model:', form.vendorModel);
       const response = await API.post('/assets/add', assetData);
       console.log('✅ Asset created successfully:', response.data);
       
@@ -890,7 +1058,7 @@ const AddAssetForm = ({ userRole }) => {
                 <div className="relative w-full">
                   <button
                     type="button"
-                    className={`border px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${isFieldInvalid('assetType') ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`border px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.assetType ? 'border-red-500' : 'border-gray-300'}`}
                     onClick={() => setAssetTypeDropdownOpen((open) => !open)}
                   >
                     <span className="text-xs truncate">
@@ -956,6 +1124,9 @@ const AddAssetForm = ({ userRole }) => {
                     </div>
                   )}
                 </div>
+                {validationErrors.assetType && (
+                  <p className="mt-1 text-sm text-red-600">{t('assets.assetTypeIsRequired')}</p>
+                )}
               </div>
 
               {/* Show message if asset type can have children */}
@@ -991,7 +1162,7 @@ const AddAssetForm = ({ userRole }) => {
                   <div className="relative w-full">
                     <button
                       type="button"
-                      className={`border px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${isFieldInvalid('parentAsset') ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`border px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.parentAsset ? 'border-red-500' : 'border-gray-300'}`}
                       onClick={() => {
                         console.log('🖱️ Parent Asset Dropdown Clicked');
                         console.log('🖱️ Current dropdown state:', parentAssetDropdownOpen);
@@ -1065,6 +1236,9 @@ const AddAssetForm = ({ userRole }) => {
                       </div>
                     )}
                   </div>
+                  {validationErrors.parentAsset && (
+                    <p className="mt-1 text-sm text-red-600">{t('assets.parentAssetIsRequired')}</p>
+                  )}
                 </div>
               )}
 
@@ -1073,7 +1247,7 @@ const AddAssetForm = ({ userRole }) => {
                   {t('assets.serialNumber')} <span className="text-red-500">*</span>
                 </label>
                               <div className="flex items-center">
-                <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${isFieldInvalid('serialNumber') ? 'border-red-500' : 'border-gray-300'}`} />
+                <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${validationErrors.serialNumber ? 'border-red-500' : 'border-gray-300'}`} />
                 <button
                   type="button"
                   onClick={() => {
@@ -1086,6 +1260,9 @@ const AddAssetForm = ({ userRole }) => {
                   {isGeneratingSerial ? t('common.loading') : t('assets.generate')}
                 </button>
               </div>
+              {validationErrors.serialNumber && (
+                <p className="mt-1 text-sm text-red-600">{t('assets.serialNumberIsRequired')}</p>
+              )}
               </div>
               <div className="col-span-4">
                 <label className="block text-sm mb-1 font-medium">{t('assets.assetName')}</label>
@@ -1105,24 +1282,92 @@ const AddAssetForm = ({ userRole }) => {
             )}
           </button>
           {!collapsedSections.purchase && (
-            <div className="grid grid-cols-4 gap-6 mb-4">
-              <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.expiryDate')}</label>
-                <input name="expiryDate" type="date" onChange={handleChange} value={form.expiryDate} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+            <>
+              <div className="grid grid-cols-4 gap-6 mb-4">
+                <div>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.expiryDate')} <span className="text-red-500">*</span></label>
+                  <input name="expiryDate" type="date" onChange={handleChange} value={form.expiryDate} className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.expiryDate ? 'border-red-500' : 'border-gray-300'}`} />
+                  {validationErrors.expiryDate && (
+                    <p className="mt-1 text-sm text-red-600">{t('assets.expiryDateIsRequired')}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
+                  <input name="warrantyPeriod" type="text" placeholder="e.g., 2 years" onChange={handleChange} value={form.warrantyPeriod} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseDate')} <span className="text-red-500">*</span></label>
+                  <input name="purchaseDate" type="date" onChange={handleChange} value={form.purchaseDate} className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseDate ? 'border-red-500' : 'border-gray-300'}`} />
+                  {validationErrors.purchaseDate && (
+                    <p className="mt-1 text-sm text-red-600">{t('assets.purchaseDateIsRequired')}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseCost')} <span className="text-red-500">*</span></label>
+                  <input name="purchaseCost" type="number" step="0.01" placeholder="0.00" onChange={handleChange} value={form.purchaseCost} className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseCost ? 'border-red-500' : 'border-gray-300'}`} />
+                  {validationErrors.purchaseCost && (
+                    <p className="mt-1 text-sm text-red-600">{t('assets.purchaseCostIsRequired')}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
-                <input name="warrantyPeriod" type="text" placeholder="e.g., 2 years" onChange={handleChange} value={form.warrantyPeriod} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+              <div className="grid grid-cols-4 gap-6 mb-4">
+                <div>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseBy')} <span className="text-red-500">*</span></label>
+                  <div className="relative w-full">
+                    <button
+                      type="button"
+                      className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.purchaseBy ? 'border-red-500' : 'border-gray-300'}`}
+                      onClick={() => toggleDropdown('purchaseBy')}
+                    >
+                      <span className="text-xs truncate">
+                        {form.purchaseBy
+                          ? purchaseByOptions.find(opt => opt.value === form.purchaseBy)?.label || "Select"
+                          : "Select"}
+                      </span>
+                      <MdKeyboardArrowDown className="ml-2 w-4 h-4 text-gray-500" />
+                    </button>
+                    {dropdownStates.purchaseBy && (
+                      <div
+                        ref={dropdownRefs.purchaseBy}
+                        className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10"
+                        style={{ minWidth: "100%" }}
+                      >
+                        <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
+                          <input
+                            type="text"
+                            className="w-full border px-2 py-1 rounded text-xs"
+                            placeholder="Search by name or ID..."
+                            value={searchStates.purchaseBy}
+                            onChange={e => updateSearch('purchaseBy', e.target.value)}
+                            autoFocus
+                          />
+                        </div>
+                        {purchaseByOptions
+                          .filter(opt => opt.value && (
+                            opt.label.toLowerCase().includes(searchStates.purchaseBy.toLowerCase()) ||
+                            opt.value.toLowerCase().includes(searchStates.purchaseBy.toLowerCase())
+                          ))
+                          .map(opt => (
+                            <div
+                              key={opt.value}
+                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${form.purchaseBy === opt.value ? "bg-gray-200" : ""}`}
+                              onClick={() => handleOptionSelect('purchaseBy', opt.value, opt.label)}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span>{opt.label}</span>
+                                <span className="text-gray-500">{opt.value}</span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                  {validationErrors.purchaseBy && (
+                    <p className="mt-1 text-sm text-red-600">{t('assets.purchaseByIsRequired')}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.purchaseDate')}</label>
-                <input name="purchaseDate" type="date" onChange={handleChange} value={form.purchaseDate} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
-              </div>
-              <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.purchaseCost')}</label>
-                <input name="purchaseCost" type="number" step="0.01" placeholder="0.00" onChange={handleChange} value={form.purchaseCost} className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${isFieldInvalid('purchaseCost') ? 'border-red-500' : 'border-gray-300'}`} />
-              </div>
-            </div>
+            </>
           )}
         </div>
 
@@ -1137,7 +1382,7 @@ const AddAssetForm = ({ userRole }) => {
             )}
           </button>
           {!collapsedSections.vendor && (
-            <div className="grid grid-cols-6 gap-6 mb-4">
+            <div className="grid grid-cols-5 gap-6 mb-4">
                 {/* Product Vendor Dropdown */}
                 <div>
                 <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')}</label>
@@ -1252,59 +1497,6 @@ const AddAssetForm = ({ userRole }) => {
                 </div>
               </div>
 
-              {/* Purchase By Dropdown */}
-              <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.purchaseBy')}</label>
-                <div className="relative w-full">
-                  <button
-                    type="button"
-                    className="border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9"
-                    onClick={() => toggleDropdown('purchaseBy')}
-                  >
-                    <span className="text-xs truncate">
-                      {form.purchaseBy
-                        ? purchaseByOptions.find(opt => opt.value === form.purchaseBy)?.label || "Select"
-                        : "Select"}
-                    </span>
-                    <MdKeyboardArrowDown className="ml-2 w-4 h-4 text-gray-500" />
-                  </button>
-                  {dropdownStates.purchaseBy && (
-                    <div
-                      ref={dropdownRefs.purchaseBy}
-                      className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10"
-                      style={{ minWidth: "100%" }}
-                    >
-                      <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
-                        <input
-                          type="text"
-                          className="w-full border px-2 py-1 rounded text-xs"
-                          placeholder="Search by name or ID..."
-                          value={searchStates.purchaseBy}
-                          onChange={e => updateSearch('purchaseBy', e.target.value)}
-                          autoFocus
-                        />
-                      </div>
-                      {purchaseByOptions
-                        .filter(opt => opt.value && (
-                          opt.label.toLowerCase().includes(searchStates.purchaseBy.toLowerCase()) ||
-                          opt.value.toLowerCase().includes(searchStates.purchaseBy.toLowerCase())
-                        ))
-                        .map(opt => (
-                          <div
-                            key={opt.value}
-                            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${form.purchaseBy === opt.value ? "bg-gray-200" : ""}`}
-                            onClick={() => handleOptionSelect('purchaseBy', opt.value, opt.label)}
-                          >
-                            <div className="flex justify-between items-center">
-                              <span>{opt.label}</span>
-                              <span className="text-gray-500">{opt.value}</span>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              </div>
 
               {/* Brand Dropdown */}
               <div>
@@ -1344,7 +1536,11 @@ const AddAssetForm = ({ userRole }) => {
                           <div
                             key={opt.value}
                             className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${form.vendorBrand === opt.value ? "bg-gray-200" : ""}`}
-                            onClick={() => handleOptionSelect('vendorBrand', opt.value, opt.label)}
+                            onClick={() => {
+                              handleOptionSelect('vendorBrand', opt.value, opt.label);
+                              // Clear model selection when brand changes
+                              setForm(prev => ({ ...prev, vendorModel: '' }));
+                            }}
                           >
                             {opt.label}
                           </div>

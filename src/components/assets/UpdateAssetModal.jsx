@@ -622,77 +622,30 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
         <form onSubmit={handleSubmit} className="p-6 overflow-visible">
           <div className="grid grid-cols-3 gap-6 mb-6">
-            {/* Asset Type Dropdown */}
+            {/* Asset Type Dropdown - Read Only */}
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.assetType')}</label>
               <div className="relative w-full">
-                <button
-                  type="button"
-                  className="border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9"
-                  onClick={() => setAssetTypeDropdownOpen((open) => !open)}
-                >
+                <div className="border text-gray-600 px-3 py-2 text-xs w-full bg-gray-50 rounded flex justify-between items-center h-9">
                   <span className="text-xs truncate">
                     {form.assetType
                       ? assetTypes.find((at) => at.asset_type_id === form.assetType)?.text || "Select"
                       : "Select"}
                   </span>
-                  <MdKeyboardArrowDown className="ml-2 w-4 h-4 text-gray-500" />
-                </button>
-                {assetTypeDropdownOpen && (
-                  <div
-                    ref={assetTypeDropdownRef}
-                    className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10"
-                    style={{ minWidth: "100%" }}
-                  >
-                    <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
-                      <input
-                        type="text"
-                        className="w-full border px-2 py-1 rounded text-xs"
-                        placeholder={t('assets.searchByNameOrId')}
-                        value={searchAssetType}
-                        onChange={e => setSearchAssetType(e.target.value)}
-                        autoFocus
-                      />
-                    </div>
-                    {assetTypes
-                      .filter(at => 
-                        at.text?.toLowerCase().includes(searchAssetType.toLowerCase()) ||
-                        at.asset_type_id?.toLowerCase().includes(searchAssetType.toLowerCase())
-                      )
-                      .map((at) => (
-                        <div
-                          key={at.asset_type_id}
-                          className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${form.assetType === at.asset_type_id ? "bg-gray-200" : ""}`}
-                          onClick={() => {
-                            setForm((prev) => ({ ...prev, assetType: at.asset_type_id }));
-                            setAssetTypeDropdownOpen(false);
-                            setSearchAssetType("");
-                          }}
-                        >
-                          <div className="flex justify-between items-center">
-                            <span>{at.text}</span>
-                            <span className="text-gray-500">
-                              {at.asset_type_id} 
-                              {at.is_child ? ` (${t('assets.child')})` : ` (${t('assets.parent')})`}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
+                  <span className="text-xs text-gray-400">(Read Only)</span>
+                </div>
               </div>
             </div>
 
-            {/* Serial Number */}
+            {/* Serial Number - Read Only */}
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.serialNumber')}</label>
               <input
                 type="text"
                 value={form.serialNumber}
-                onChange={(e) => setForm(prev => ({ ...prev, serialNumber: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 text-gray-600 cursor-not-allowed"
                 placeholder={t('assets.enterSerialNumber')}
-                required
               />
             </div>
 
