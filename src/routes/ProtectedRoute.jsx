@@ -1,10 +1,13 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
+import { useNavigation } from "../hooks/useNavigation";
 
-export default function ProtectedRoute({ children, allowedRoles = [] }) {
+export default function ProtectedRoute({ children, allowedRoles = [], requiredAppId = null }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const roles = useAuthStore((state) => state.roles) || [];
+  const location = useLocation();
+  const { hasAccess } = useNavigation();
   
   // Get user role IDs from tblUserJobRoles
   const userRoleIds = roles.map(role => role.job_role_id);
@@ -25,8 +28,14 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
     
     if (!hasAllowedRole) {
       console.log('Access denied. User roles:', userRoleIds, 'Allowed roles:', allowedRoles);
-      return <Navigate to="/" />; // Redirect to login page
+      return <Navigate to="/dashboard" />; // Redirect to dashboard instead of login
     }
+  }
+
+  // Check navigation permissions if requiredAppId is provided
+  if (requiredAppId && !hasAccess(requiredAppId)) {
+    console.log('Access denied. User does not have access to app:', requiredAppId);
+    return <Navigate to="/dashboard" />; // Redirect to dashboard
   }
 
   return children;

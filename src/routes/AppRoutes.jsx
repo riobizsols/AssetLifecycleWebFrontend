@@ -162,7 +162,7 @@ export default function AppRoutes() {
         <Route
           path="/supervisor-approval"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>
                 <MaintenanceSupervisor />
               </MainLayout>
@@ -348,7 +348,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/uploads"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="ROLES">
               <MainLayout>
                 <BulkUpload />
               </MainLayout>
@@ -407,7 +407,7 @@ export default function AppRoutes() {
         <Route
           path="/workorder-management"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="WORKORDERMANAGEMENT">
               <MainLayout>
                 <WorkorderManagement />
               </MainLayout>
@@ -440,7 +440,7 @@ export default function AppRoutes() {
         <Route
           path="/group-asset"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="GROUPASSET">
               <MainLayout>
                 <GroupAsset />
               </MainLayout>
@@ -481,7 +481,7 @@ export default function AppRoutes() {
         <Route
           path="/assets"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="ASSETS" >
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -496,7 +496,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/asset-types"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="ASSETTYPES">
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -511,7 +511,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/prod-serv"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "employee", "JR001"]}>
+            <ProtectedRoute requiredAppId="PRODSERV">
               <MainLayout>
                 <ProdServ />
               </MainLayout>
@@ -522,7 +522,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/user-roles"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="USERS">
               <MainLayout>
                 <UserRoles />
               </MainLayout>
@@ -532,7 +532,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/assign-roles"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="USERS">
               <MainLayout>
                 <AssignRoles />
               </MainLayout>
@@ -542,7 +542,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/departments"
           element={
-            <ProtectedRoute allowedRoles={["system_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="DEPARTMENTS">
               <MainLayout>
                 <Departments />
               </MainLayout>
@@ -552,7 +552,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/departments-admin"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="DEPARTMENTSADMIN">
               <MainLayout>
                 <DepartmentsAdmin />
               </MainLayout>
@@ -562,7 +562,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/departments-asset"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="DEPARTMENTSASSET">
               <MainLayout>
                 <DepartmentsAsset />
               </MainLayout>
@@ -572,7 +572,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/organizations"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="ORGANIZATIONS">
               <MainLayout>
                 <Organization />
               </MainLayout>
@@ -583,7 +583,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/vendors"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="VENDORS">
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -598,7 +598,7 @@ export default function AppRoutes() {
         <Route
   path="/master-data/add-vendor"
   element={
-    <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+    <ProtectedRoute requiredAppId="VENDORS">
       <MainLayout>
         <AddEntityForm />
       </MainLayout>
@@ -611,7 +611,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/branches"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="BRANCHES">
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -626,7 +626,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-sales"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPSALES">
               <MainLayout>
                 <ScrapSales />
               </MainLayout>
@@ -636,7 +636,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-sales/create"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPSALES">
               <MainLayout>
                 <CreateScrapSales />
               </MainLayout>
@@ -646,7 +646,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-sales/edit/:scrapId"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPSALES">
               <MainLayout>
                 <EditScrapSales />
               </MainLayout>
@@ -656,7 +656,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-sales/view/:scrapId"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPSALES">
               <MainLayout>
                 <ViewScrapSales />
               </MainLayout>
@@ -668,7 +668,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-assets"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPASSETS">
               <MainLayout>
                 <ScrapAssets />
               </MainLayout>
@@ -679,7 +679,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-assets/nearing-expiry"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPASSETS">
               <MainLayout>
                 <NearingExpiry />
               </MainLayout>
@@ -689,7 +689,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-assets/expired"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPASSETS">
               <MainLayout>
                 <ExpiredAssets />
               </MainLayout>
@@ -699,7 +699,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-assets/categories"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPASSETS">
               <MainLayout>
                 <CategoriesOverview />
               </MainLayout>
@@ -709,7 +709,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-assets/by-category"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPASSETS">
               <MainLayout>
                 <ExpiringByCategory />
               </MainLayout>
@@ -719,7 +719,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-assets/by-category/:category"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPASSETS">
               <MainLayout>
                 <CategoryAssets />
               </MainLayout>
@@ -729,7 +729,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-assets/create"
           element={
-            <ProtectedRoute allowedRoles={["super_admin", "admin", "JR001"]}>
+            <ProtectedRoute requiredAppId="SCRAPASSETS">
               <MainLayout>
                 <CreateScrapAsset />
               </MainLayout>
