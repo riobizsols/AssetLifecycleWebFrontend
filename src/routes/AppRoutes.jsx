@@ -173,7 +173,7 @@ export default function AppRoutes() {
         <Route
           path="/supervisor-approval-detail/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>
                 <MaintSupervisorApproval />
               </MainLayout>
@@ -184,7 +184,7 @@ export default function AppRoutes() {
         <Route
           path="/cron-management"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="CRONMANAGEMENT">
               <MainLayout>
                 <CronJobManagement />
               </MainLayout>
@@ -195,7 +195,7 @@ export default function AppRoutes() {
         <Route
           path="/report-breakdown"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="REPORTBREAKDOWN">
               <MainLayout>
                 <ReportsBreakdown />
               </MainLayout>
@@ -206,7 +206,7 @@ export default function AppRoutes() {
         <Route
           path="/reports/asset-report"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="ASSETREPORT">
               <MainLayout>
                 <AssetReport />
               </MainLayout>
@@ -217,7 +217,7 @@ export default function AppRoutes() {
         <Route
           path="/reports/asset-lifecycle-report"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="ASSETLIFECYCLEREPORT">
               <MainLayout>
                 <AssetLifecycleReport />
               </MainLayout>
@@ -228,7 +228,7 @@ export default function AppRoutes() {
         <Route
           path="/reports/maintenance-history"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="MAINTENANCEHISTORY">
               <MainLayout>
                 <MaintenanceHistory />
               </MainLayout>
@@ -239,7 +239,7 @@ export default function AppRoutes() {
         <Route
           path="/reports/asset-valuation"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="ASSETVALUATION">
               <MainLayout>
                 <AssetValuation />
               </MainLayout>
@@ -250,7 +250,7 @@ export default function AppRoutes() {
         <Route
           path="/reports/asset-workflow-history"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="ASSETWORKFLOWHISTORY">
               <MainLayout>
                 <AssetWorkflowHistory />
               </MainLayout>
@@ -261,7 +261,7 @@ export default function AppRoutes() {
         <Route
           path="/serial-number-print"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="SERIALNUMBERPRINT">
               <MainLayout>
                 <SerialNumberPrint />
               </MainLayout>
@@ -271,7 +271,7 @@ export default function AppRoutes() {
         <Route
           path="/serial-number-print/:assetId"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="SERIALNUMBERPRINT">
               <MainLayout>
                 <SerialNumberPrint />
               </MainLayout>
@@ -282,7 +282,7 @@ export default function AppRoutes() {
         <Route
           path="/reports/breakdown-history"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
               <MainLayout>
                 <BreakdownHistory />
               </MainLayout>
@@ -304,7 +304,7 @@ export default function AppRoutes() {
         <Route
           path="/edit-breakdown"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="REPORTBREAKDOWN">
               <MainLayout>
                 <EditBreakdownReport />
               </MainLayout>
@@ -326,7 +326,7 @@ export default function AppRoutes() {
         <Route
           path="/admin-settings-view"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
               <MainLayout>
                 <AdminSettingsView />
               </MainLayout>
@@ -337,7 +337,7 @@ export default function AppRoutes() {
         <Route
           path="/maintenance-schedule-view"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="MAINTENANCESCHEDULE">
               <MainLayout>
                 <MaintenanceScheduleView />
               </MainLayout>
@@ -348,7 +348,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/uploads"
           element={
-            <ProtectedRoute requiredAppId="ROLES">
+            <ProtectedRoute requiredAppId="BULKUPLOAD">
               <MainLayout>
                 <BulkUpload />
               </MainLayout>
@@ -385,7 +385,7 @@ export default function AppRoutes() {
         <Route
           path="/audit-logs-view/config"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="AUDITLOGCONFIG">
               <MainLayout>
                 <AuditLogConfig />
               </MainLayout>
@@ -396,7 +396,7 @@ export default function AppRoutes() {
         <Route
           path="/audit-log-config"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="AUDITLOGCONFIG">
               <MainLayout>
                 <AuditLogConfigPage />
               </MainLayout>
@@ -418,7 +418,7 @@ export default function AppRoutes() {
         <Route
           path="/workorder-management/workorder-detail/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="WORKORDERMANAGEMENT">
               <MainLayout>
                 <WorkOrderDetail />
               </MainLayout>
@@ -429,7 +429,7 @@ export default function AppRoutes() {
         <Route
           path="/inspection-view"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="INSPECTIONVIEW">
               <MainLayout>
                 <InspectionView />
               </MainLayout>
@@ -489,7 +489,6 @@ export default function AppRoutes() {
           }
         >
           <Route index element={<Assets />} />
-
           <Route path="add" element={<AddAssetForm />} />
         </Route>
 

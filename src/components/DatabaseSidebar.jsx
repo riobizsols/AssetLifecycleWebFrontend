@@ -135,43 +135,43 @@ const DatabaseSidebar = () => {
   // Map app_id to route paths
   const appIdToPath = {
     DASHBOARD: "/dashboard",
-    ASSETS: "/assets",
-    ADDASSET: "/assets/add",
+    ASSETS: "/assets", //done
+    ADDASSET: "/assets/add", //done
     ASSETASSIGNMENT: "/assign-department-assets",
-    VENDORS: "/master-data/vendors",
+    VENDORS: "/master-data/vendors", //done
     DEPTASSIGNMENT: "/assign-department-assets",
     EMPASSIGNMENT: "/assign-employee-assets",
-    WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance
+    WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance  //done
     INSPECTION: "/inspection-view", // Separate route for inspection
     MAINTENANCEAPPROVAL: "/maintenance-approval",
-    SUPERVISORAPPROVAL: "/supervisor-approval",
-    REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports
+    SUPERVISORAPPROVAL: "/supervisor-approval", //done
+    REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
     // Report routes
-    ASSETLIFECYCLEREPORT: "/reports/asset-lifecycle-report",
-    ASSETREPORT: "/reports/asset-report",
-    MAINTENANCEHISTORY: "/reports/maintenance-history",
-    ASSETVALUATION: "/reports/asset-valuation",
-    ASSETWORKFLOWHISTORY: "/reports/asset-workflow-history",
-    SERIALNUMBERPRINT: "/serial-number-print",
-    BREAKDOWNHISTORY: "/reports/breakdown-history",
-    ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings
-    MASTERDATA: "/master-data/vendors",
-    ORGANIZATIONS: "/master-data/organizations",
-    ASSETTYPES: "/master-data/asset-types",
-    DEPARTMENTS: "/master-data/departments",
-    DEPARTMENTSADMIN: "/master-data/departments-admin",
-    DEPARTMENTSASSET: "/master-data/departments-asset",
-    BRANCHES: "/master-data/branches",
-    PRODSERV: "/master-data/prod-serv",
+    ASSETLIFECYCLEREPORT: "/reports/asset-lifecycle-report",  //done
+    ASSETREPORT: "/reports/asset-report",  //done
+    MAINTENANCEHISTORY: "/reports/maintenance-history", //done
+    ASSETVALUATION: "/reports/asset-valuation",  //done
+    ASSETWORKFLOWHISTORY: "/reports/asset-workflow-history", //done
+    SERIALNUMBERPRINT: "/serial-number-print", //not required
+    BREAKDOWNHISTORY: "/reports/breakdown-history",  //done
+    ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
+    MASTERDATA: "/master-data/vendors",  //done
+    ORGANIZATIONS: "/master-data/organizations",  //done
+    ASSETTYPES: "/master-data/asset-types",  //done
+    DEPARTMENTS: "/master-data/departments",  //done
+    DEPARTMENTSADMIN: "/master-data/departments-admin",  //not required
+    DEPARTMENTSASSET: "/master-data/departments-asset",  //not required
+    BRANCHES: "/master-data/branches", //done
+    PRODSERV: "/master-data/prod-serv",  //no required
     ROLES: "/master-data/uploads",
     USERS: "/master-data/user-roles",
     MAINTENANCESCHEDULE: "/maintenance-schedule-view", // Unique route
-    AUDITLOGS: "/audit-logs-view", // Unique route
-    AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route
+    AUDITLOGS: "/audit-logs-view", // Unique route  //done
+    AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route  //done
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
-    SCRAPASSETS: "/scrap-assets", // Scrap Assets route
+    SCRAPASSETS: "/scrap-assets", // Scrap Assets route  //done
   };
 
   // Dynamic icon component

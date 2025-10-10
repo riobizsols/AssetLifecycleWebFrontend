@@ -4,6 +4,7 @@ import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
+import { useNavigation } from "../hooks/useNavigation";
 
 const ReportsBreakdown = () => {
   const navigate = useNavigate();
@@ -16,6 +17,19 @@ const ReportsBreakdown = () => {
     fromDate: "",
     toDate: "",
   });
+
+  // Access control
+  const { canEdit, canDelete, getAccessLevel } = useNavigation();
+  const hasEditAccess = canEdit('REPORTBREAKDOWN');
+  const hasDeleteAccess = canDelete('REPORTBREAKDOWN');
+  const accessLevel = getAccessLevel('REPORTBREAKDOWN');
+  const isReadOnly = accessLevel === 'D';
+  
+  // Debug logging
+  console.log('ReportsBreakdown - Access Level:', accessLevel);
+  console.log('ReportsBreakdown - Has Edit Access:', hasEditAccess);
+  console.log('ReportsBreakdown - Has Delete Access:', hasDeleteAccess);
+  console.log('ReportsBreakdown - Is Read Only:', isReadOnly);
   const [columns] = useState([
     { label: "Breakdown ID", name: "abr_id", visible: true },
     { label: "Asset ID", name: "asset_id", visible: true },
@@ -136,8 +150,11 @@ const ReportsBreakdown = () => {
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        showAddButton={hasEditAccess}
+        showDeleteButton={hasDeleteAccess}
         showActions={true}
-        onAdd={() => navigate("/breakdown-selection")}
+        isReadOnly={isReadOnly}
+        onAdd={hasEditAccess ? () => navigate("/breakdown-selection") : null}
       >
         {({ visibleColumns }) => {
           const filtered = filterData(data, filterValues, visibleColumns);
@@ -151,6 +168,7 @@ const ReportsBreakdown = () => {
               rowKey="abr_id"
               showActions={true}
               onEdit={handleEdit}
+              isReadOnly={isReadOnly}
             />
           );
         }}

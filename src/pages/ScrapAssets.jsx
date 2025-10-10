@@ -5,6 +5,7 @@ import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import { TrendingUp, AlertTriangle, XCircle, BarChart3, PieChart, Plus } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useNavigation } from '../hooks/useNavigation';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -18,6 +19,11 @@ const ScrapAssets = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { t } = useLanguage();
+  
+  // Get navigation permissions
+  const { getAccessLevel } = useNavigation();
+  const accessLevel = getAccessLevel('SCRAPASSETS');
+  const isReadOnly = accessLevel === 'D';
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalAssets: 0,
@@ -497,15 +503,17 @@ const ScrapAssets = () => {
        </div>
 
        {/* Add Scrap Asset Button */}
-       <div className="mt-8 flex justify-center">
-         <button
-           onClick={handleAddScrapAsset}
-           className="px-6 py-3 bg-[#0E2F4B] text-white rounded-lg hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg"
-         >
-           <Plus size={20} />
-           <span className="text-lg font-semibold">{t('scrapAssets.addScrapAsset')}</span>
-         </button>
-       </div>
+       {!isReadOnly && (
+         <div className="mt-8 flex justify-center">
+           <button
+             onClick={handleAddScrapAsset}
+             className="px-6 py-3 bg-[#0E2F4B] text-white rounded-lg hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg"
+           >
+             <Plus size={20} />
+             <span className="text-lg font-semibold">{t('scrapAssets.addScrapAsset')}</span>
+           </button>
+         </div>
+       )}
      </div>
    );
 };

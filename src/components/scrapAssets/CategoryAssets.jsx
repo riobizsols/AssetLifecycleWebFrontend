@@ -6,11 +6,15 @@ import { toast } from 'react-hot-toast';
 import { Plus, ArrowLeft, BarChart3, X, AlertTriangle } from 'lucide-react';
 import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
+import { useNavigation } from '../../hooks/useNavigation';
 
 const CategoryAssets = () => {
   const navigate = useNavigate();
   const { category } = useParams();
   const { user } = useAuthStore();
+  const { getAccessLevel, loading: navLoading } = useNavigation();
+  const accessLevel = getAccessLevel('SCRAPASSETS');
+  const isReadOnly = accessLevel === 'D';
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -188,7 +192,7 @@ const CategoryAssets = () => {
     { key: 'expiry_date', name: 'expiry_date', label: 'EXPIRY DATE', sortable: true, visible: true },
     { key: 'days_until_expiry', name: 'days_until_expiry', label: 'DAYS UNTIL EXPIRY', sortable: true, visible: true },
     { key: 'current_status', name: 'current_status', label: 'STATUS', sortable: true, visible: true },
-    { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true }
+    ...(!navLoading && !isReadOnly ? [{ key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true }] : [])
   ];
 
   const handleScrap = (row) => {

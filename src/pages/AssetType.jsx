@@ -26,8 +26,10 @@ const AssetType = () => {
   });
   
   // Access control
-  const { hasEditAccess } = useNavigation();
+  const { hasEditAccess, getAccessLevel } = useNavigation();
   const canEdit = hasEditAccess('ASSETTYPES');
+  const accessLevel = getAccessLevel('ASSETTYPES');
+  const isReadOnly = accessLevel === 'D';
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSET_TYPES_APP_ID);
@@ -376,9 +378,10 @@ const AssetType = () => {
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
         showAddButton={canEdit}
-        showActions={canEdit}
+        showActions={true}
+        isReadOnly={false}
       >
-        {({ visibleColumns }) => {
+        {({ visibleColumns, showActions }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
@@ -390,15 +393,17 @@ const AssetType = () => {
                 data={sortedData}
                 selectedRows={selectedRows}
                 setSelectedRows={setSelectedRows}
-                onEdit={canEdit ? handleEdit : null}
+                onEdit={handleEdit}
                 rowKey="asset_type_id"
-                showActions={canEdit}
+                showActions={true}
+                isReadOnly={isReadOnly}
               />
               {updateModalOpen && (
                 <UpdateAssetTypeModal
                   isOpen={updateModalOpen}
                   onClose={handleUpdateModalClose}
                   assetData={selectedAssetType}
+                  isReadOnly={isReadOnly}
                 />
               )}
             </>

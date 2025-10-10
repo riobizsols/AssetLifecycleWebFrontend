@@ -5,7 +5,7 @@ import API from '../lib/axios';
 import { generateUUID } from '../utils/uuid';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
+const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false }) => {
   const { t } = useLanguage();
   
   const [formData, setFormData] = useState({
@@ -344,7 +344,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="vendor_name"
                   value={formData.vendor_name}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded text-sm ${isFieldInvalid(formData.vendor_name) ? 'border-red-500' : 'border-gray-300'}`}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isFieldInvalid(formData.vendor_name) ? 'border-red-500' : 'border-gray-300'} ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   required
                 />
               </div>
@@ -358,7 +359,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="company_name"
                   value={formData.company_name}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded text-sm ${isFieldInvalid(formData.company_name) ? 'border-red-500' : 'border-gray-300'}`}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isFieldInvalid(formData.company_name) ? 'border-red-500' : 'border-gray-300'} ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   required
                 />
               </div>
@@ -372,7 +374,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="company_email"
                   value={formData.company_email}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded text-sm ${isFieldInvalid(formData.company_email) ? 'border-red-500' : 'border-gray-300'}`}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isFieldInvalid(formData.company_email) ? 'border-red-500' : 'border-gray-300'} ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   required
                 />
               </div>
@@ -386,7 +389,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="gst_number"
                   value={formData.gst_number}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -399,7 +403,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="cin_number"
                   value={formData.cin_number}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -411,7 +416,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="int_status"
                   value={formData.int_status}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 >
                   <option value={1}>Active</option>
                   <option value={0}>Inactive</option>
@@ -427,7 +433,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="pincode"
                   value={formData.pincode}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
             </div>
@@ -443,7 +450,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="contact_person_name"
                   value={formData.contact_person_name}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -456,7 +464,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="contact_person_email"
                   value={formData.contact_person_email}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -469,7 +478,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="contact_person_number"
                   value={formData.contact_person_number}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -482,7 +492,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="address_line1"
                   value={formData.address_line1}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -495,7 +506,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="address_line2"
                   value={formData.address_line2}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -508,7 +520,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -521,7 +534,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                   name="state"
                   value={formData.state}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded text-sm"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -538,12 +552,14 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
             >
               {t('common.cancel')}
             </button>
-            <button
-              type="submit"
-              className="bg-[#ffc107] hover:bg-[#e0a800] text-white text-sm font-medium py-1.5 px-5 rounded"
-            >
-              {t('common.update')}
-            </button>
+            {!isReadOnly && (
+              <button
+                type="submit"
+                className="bg-[#ffc107] hover:bg-[#e0a800] text-white text-sm font-medium py-1.5 px-5 rounded"
+              >
+                {t('common.update')}
+              </button>
+            )}
           </div>
         </form>
 
@@ -609,6 +625,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
           </div>
 
           {/* Upload New Documents */}
+          {!isReadOnly && (
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-medium text-gray-900">{t('vendors.uploadNewDocuments')}</h3>
@@ -750,6 +767,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
               </div>
             )}
           </div>
+          )}
 
           {/* Archived Documents Section */}
           <div className="mt-6 border-t pt-6">
@@ -857,26 +875,30 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor }) => {
                       </svg>
                       {t('vendors.download')}
                     </button>
-                    {isArchived ? (
-                      <button
-                        onClick={() => handleDocumentAction(doc, 'unarchive')}
-                        className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        {t('vendors.unarchive')}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleDocumentAction(doc, 'archive')}
-                        className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4m0 0l4-4m-4 4V3m0 0h4m-4 0H3" />
-                        </svg>
-                        Archive
-                      </button>
+                    {!isReadOnly && (
+                      <>
+                        {isArchived ? (
+                          <button
+                            onClick={() => handleDocumentAction(doc, 'unarchive')}
+                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            {t('vendors.unarchive')}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDocumentAction(doc, 'archive')}
+                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            <svg className="w-4 h-4 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l4 4m0 0l4-4m-4 4V3m0 0h4m-4 0H3" />
+                            </svg>
+                            Archive
+                          </button>
+                        )}
+                      </>
                     )}
                   </>
                 );

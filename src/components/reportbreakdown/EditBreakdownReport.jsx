@@ -5,6 +5,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 import API from "../../lib/axios";
 import EnhancedDropdown from "../ui/EnhancedDropdown";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useNavigation } from "../../hooks/useNavigation";
 
 const EditBreakdownReport = () => {
   const navigate = useNavigate();
@@ -12,6 +13,15 @@ const EditBreakdownReport = () => {
   const { user } = useAuthStore();
   const { t } = useLanguage();
   const breakdown = state?.breakdown;
+
+  // Access control
+  const { getAccessLevel } = useNavigation();
+  const accessLevel = getAccessLevel('REPORTBREAKDOWN');
+  const isReadOnly = accessLevel === 'D';
+  
+  // Debug logging
+  console.log('EditBreakdownReport - Access Level:', accessLevel);
+  console.log('EditBreakdownReport - Is Read Only:', isReadOnly);
 
   const [reasonCodes, setReasonCodes] = useState([]);
   const [brCode, setBrCode] = useState("");
@@ -239,6 +249,7 @@ const EditBreakdownReport = () => {
                   onChange={setBrCode}
                   placeholder={t('breakdownDetails.selectBreakdownCode')}
                   required
+                  disabled={isReadOnly}
                 />
               </div>
 
@@ -252,6 +263,7 @@ const EditBreakdownReport = () => {
                   onChange={setDecisionCode}
                   placeholder={t('breakdownDetails.selectDecisionCode')}
                   required
+                  disabled={isReadOnly}
                 />
               </div>
             </div>
@@ -263,7 +275,8 @@ const EditBreakdownReport = () => {
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 rows={3}
                 placeholder={t('breakdownDetails.enterBreakdownDescription')}
                 required
@@ -296,13 +309,15 @@ const EditBreakdownReport = () => {
             >
               {t('breakdownDetails.cancel')}
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || !brCode || !description || !decisionCode}
-              className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSubmitting ? t('breakdownDetails.updating') : t('breakdownDetails.updateBreakdownReport')}
-            </button>
+            {!isReadOnly && (
+              <button
+                type="submit"
+                disabled={isSubmitting || !brCode || !description || !decisionCode}
+                className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSubmitting ? t('breakdownDetails.updating') : t('breakdownDetails.updateBreakdownReport')}
+              </button>
+            )}
           </div>
         </form>
       </div>

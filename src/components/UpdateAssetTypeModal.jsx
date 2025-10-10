@@ -8,7 +8,7 @@ import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 
-const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
+const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }) => {
   const [assetType, setAssetType] = useState("");
   const [assignmentType, setAssignmentType] = useState("user");
 
@@ -606,7 +606,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 type="text"
                 value={assetType}
                 onChange={(e) => setAssetType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 placeholder={t('assetTypes.enterAssetTypeName')}
               />
             </div>
@@ -621,6 +622,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                     value="user"
                     checked={assignmentType === "user"}
                     onChange={(e) => setAssignmentType(e.target.value)}
+                    disabled={isReadOnly}
                     className="form-radio text-blue-500"
                   />
                   <span className="ml-2">{t('assetTypes.userWise')}</span>
@@ -631,6 +633,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                     value="department"
                     checked={assignmentType === "department"}
                     onChange={(e) => setAssignmentType(e.target.value)}
+                    disabled={isReadOnly}
                     className="form-radio text-blue-500"
                   />
                   <span className="ml-2">{t('assetTypes.departmentWise')}</span>
@@ -645,10 +648,11 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 <span className={`text-sm ${!isActive ? 'text-gray-900' : 'text-gray-500'}`}>{t('assetTypes.inactive')}</span>
                 <button
                   type="button"
-                  onClick={() => setIsActive(!isActive)}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  onClick={() => !isReadOnly && setIsActive(!isActive)}
+                  disabled={isReadOnly}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                     isActive ? 'bg-blue-600' : 'bg-gray-200'
-                  }`}
+                  } ${isReadOnly ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                 >
                   <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -666,42 +670,44 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
             <div className="text-md font-medium text-gray-900 mb-4">{t('assetTypes.propertiesManagement')}</div>
             
             {/* Add New Property */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">{t('assetTypes.addProperty')}</label>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <SearchableDropdown
-                    options={properties.filter(prop => 
-                      !existingProperties.some(existing => existing.prop_id === prop.id)
-                    )}
-                    value={selectedProperties.length > 0 ? selectedProperties[0] : ""}
-                    onChange={(value) => {
-                      if (value) {
-                        setSelectedProperties([value]);
+            {!isReadOnly && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">{t('assetTypes.addProperty')}</label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <SearchableDropdown
+                      options={properties.filter(prop => 
+                        !existingProperties.some(existing => existing.prop_id === prop.id)
+                      )}
+                      value={selectedProperties.length > 0 ? selectedProperties[0] : ""}
+                      onChange={(value) => {
+                        if (value) {
+                          setSelectedProperties([value]);
+                        }
+                      }}
+                      placeholder={t('assetTypes.selectPropertyToAdd')}
+                      searchPlaceholder={t('assetTypes.searchProperties')}
+                      displayKey="text"
+                      valueKey="id"
+                      className="w-full"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedProperties.length > 0) {
+                        handleAddProperty(selectedProperties[0]);
+                        setSelectedProperties([]);
                       }
                     }}
-                    placeholder={t('assetTypes.selectPropertyToAdd')}
-                    searchPlaceholder={t('assetTypes.searchProperties')}
-                    displayKey="text"
-                    valueKey="id"
-                    className="w-full"
-                  />
+                    disabled={selectedProperties.length === 0}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t('common.add')}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedProperties.length > 0) {
-                      handleAddProperty(selectedProperties[0]);
-                      setSelectedProperties([]);
-                    }
-                  }}
-                  disabled={selectedProperties.length === 0}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t('common.add')}
-                </button>
               </div>
-            </div>
+            )}
 
             {/* Existing Properties */}
             <div>
@@ -718,16 +724,18 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                         <span className="text-sm font-medium text-gray-900">{prop.prop_name || prop.property}</span>
                         <span className="ml-2 text-xs text-gray-500">({prop.prop_id})</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveProperty(prop.asset_type_prop_id)}
-                        className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-                        title={t('assetTypes.removeProperty')}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProperty(prop.asset_type_prop_id)}
+                          className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                          title={t('assetTypes.removeProperty')}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -742,6 +750,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 type="checkbox"
                 checked={groupRequired}
                 onChange={(e) => setGroupRequired(e.target.checked)}
+                disabled={isReadOnly}
                 className="form-checkbox text-blue-500 rounded"
               />
               <span>{t('assetTypes.groupRequired')}</span>
@@ -752,6 +761,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 type="checkbox"
                 checked={requireInspection}
                 onChange={(e) => setRequireInspection(e.target.checked)}
+                disabled={isReadOnly}
                 className="form-checkbox text-blue-500 rounded"
               />
               <span>{t('assetTypes.requireInspection')}</span>
@@ -762,6 +772,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 type="checkbox"
                 checked={requireMaintenance}
                 onChange={(e) => setRequireMaintenance(e.target.checked)}
+                disabled={isReadOnly}
                 className="form-checkbox text-blue-500 rounded"
               />
               <span>{t('assetTypes.requireMaintenance')}</span>
@@ -779,7 +790,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 <select
                   value={selectedMaintenanceType}
                   onChange={(e) => setSelectedMaintenanceType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 >
                   <option value="">{t('assetTypes.selectMaintenanceTypeOption')}</option>
                   {maintenanceTypes.map((type) => (
@@ -799,7 +811,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                   type="text"
                   value={maintenanceLeadType}
                   onChange={(e) => setMaintenanceLeadType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   placeholder={t('assetTypes.enterMaintenanceLeadType')}
                 />
               </div>
@@ -876,20 +889,21 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
             </div>
 
             {/* Upload New Documents */}
-            <div className="border-t pt-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-md font-medium text-gray-900">{t('assetTypes.uploadNewDocuments')}</h3>
-                <button 
-                  type="button" 
-                  className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
-                  onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
-                >
-                  <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  {t('assetTypes.addDocument')}
-                </button>
-              </div>
+            {!isReadOnly && (
+              <div className="border-t pt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-md font-medium text-gray-900">{t('assetTypes.uploadNewDocuments')}</h3>
+                  <button 
+                    type="button" 
+                    className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
+                    onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
+                  >
+                    <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    {t('assetTypes.addDocument')}
+                  </button>
+                </div>
               
               <div className="space-y-3">
                 {uploadRows.length === 0 && <div className="text-sm text-gray-500">{t('assetTypes.noNewFilesAdded')}</div>}
@@ -1017,7 +1031,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                   </button>
                 </div>
               )}
-            </div>
+              </div>
+            )}
 
             {/* Archived Documents Section */}
             <div className="mt-6 border-t pt-6">
@@ -1105,8 +1120,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                 <label className="block text-sm font-medium mb-1">{t('assetTypes.parentChild')}</label>
                 <select
                   value={parentChild}
-                  onChange={(e) => setParentChild(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => !isReadOnly && setParentChild(e.target.value)}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 >
                   <option value="parent">{t('assetTypes.parent')}</option>
                   <option value="child">{t('assetTypes.child')}</option>
@@ -1121,8 +1137,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                   </label>
                   <select
                     value={selectedParentType}
-                    onChange={(e) => setSelectedParentType(e.target.value)}
-                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => !isReadOnly && setSelectedParentType(e.target.value)}
+                    disabled={isReadOnly}
+                    className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   >
                     <option value="">Select parent asset type</option>
                     {parentAssetTypes.map((type) => (
@@ -1146,13 +1163,15 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
             >
               {t('common.cancel')}
             </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? t('assetTypes.updating') : t('common.update')}
-            </button>
+            {!isReadOnly && (
+              <button
+                type="submit"
+                className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? t('assetTypes.updating') : t('common.update')}
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -1203,7 +1222,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                     {downloadLoading ? t('common.loading') : t('assetTypes.download')}
                   </button>
                   
-                  {isArchived ? (
+                  {!isReadOnly && (isArchived ? (
                     <button
                       onClick={() => handleDocumentAction(doc, 'unarchive')}
                       disabled={unarchiveLoading}
@@ -1225,7 +1244,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData }) => {
                       </svg>
                       {archiveLoading ? 'Loading...' : 'Archive'}
                     </button>
-                  )}
+                  ))}
                 </>
               );
             })()}

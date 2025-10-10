@@ -8,11 +8,17 @@ import ChecklistModal from "./ChecklistModal";
 import SearchableDropdown from "./ui/SearchableDropdown";
 import { generateUUID } from '../utils/uuid';
 import { useLanguage } from "../contexts/LanguageContext";
+import { useNavigation } from "../hooks/useNavigation";
 
 export default function MaintSupervisorApproval() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  
+  // Access control
+  const { getAccessLevel } = useNavigation();
+  const accessLevel = getAccessLevel('SUPERVISORAPPROVAL');
+  const isReadOnly = accessLevel === 'D';
   const [maintenanceData, setMaintenanceData] = useState(null);
   const [checklist, setChecklist] = useState([]);
   const [loadingChecklist, setLoadingChecklist] = useState(true);
@@ -831,6 +837,7 @@ export default function MaintSupervisorApproval() {
         </div>
 
         {/* Doc Upload Section */}
+        {!isReadOnly && (
         <div className="p-6 rounded-lg border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.docUpload')}</h2>
           <div className="text-sm text-gray-600 mb-3">{t('maintenanceSupervisor.uploadMaintenanceDocuments')}</div>
@@ -968,8 +975,10 @@ export default function MaintSupervisorApproval() {
             </div>
           )}
         </div>
+        )}
 
         {/* Before/After Images Upload Section */}
+        {!isReadOnly && (
         <div className="p-6 rounded-lg border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.beforeAfterImages')}</h2>
           <div className="text-sm text-gray-600 mb-3">{t('maintenanceSupervisor.uploadImagesBeforeAfter')}</div>
@@ -1107,6 +1116,7 @@ export default function MaintSupervisorApproval() {
             </div>
           )}
         </div>
+        )}
 
         {/* Maintenance Documents Display Section */}
         <div className="p-6 rounded-lg border border-gray-200">
@@ -1338,7 +1348,8 @@ export default function MaintSupervisorApproval() {
                   name="technician_name"
                   value={formData.technician_name}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${validationErrors.technician_name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.technician_name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   placeholder={t('maintenanceSupervisor.enterTechnicianName')}
                 />
                 {validationErrors.technician_name && (
@@ -1353,7 +1364,8 @@ export default function MaintSupervisorApproval() {
                   name="technician_phno"
                   value={formData.technician_phno}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${validationErrors.technician_phno ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.technician_phno ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   placeholder={t('maintenanceSupervisor.enterTechnicianPhone')}
                 />
                 {validationErrors.technician_phno && (
@@ -1367,7 +1379,8 @@ export default function MaintSupervisorApproval() {
                   name="status"
                   value={formData.status}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${validationErrors.status ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.status ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   required
                 >
                   <option value="">{t('maintenanceSupervisor.selectStatus')}</option>
@@ -1388,7 +1401,8 @@ export default function MaintSupervisorApproval() {
                   name="po_number"
                   value={formData.po_number}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${validationErrors.po_number ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.po_number ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   placeholder={t('maintenanceSupervisor.enterPONumber')}
                 />
                 {validationErrors.po_number && (
@@ -1403,7 +1417,8 @@ export default function MaintSupervisorApproval() {
                   name="invoice"
                   value={formData.invoice}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${validationErrors.invoice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.invoice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   placeholder={t('maintenanceSupervisor.enterInvoiceNumber')}
                 />
                 {validationErrors.invoice && (
@@ -1418,7 +1433,8 @@ export default function MaintSupervisorApproval() {
                   name="technician_email"
                   value={formData.technician_email}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                   placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
                   required
                 />
@@ -1440,7 +1456,8 @@ export default function MaintSupervisorApproval() {
                 value={formData.notes}
                 onChange={handleInputChange}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 placeholder={t('maintenanceSupervisor.enterAdditionalNotes')}
               />
             </div>
@@ -1453,12 +1470,14 @@ export default function MaintSupervisorApproval() {
               >
                 {t('maintenanceSupervisor.cancel')}
               </button>
+              {!isReadOnly && (
               <button
                 type="submit"
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#0E2F4B] hover:bg-[#14395c] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 {t('maintenanceSupervisor.submit')}
               </button>
+              )}
             </div>
           </form>
         </div>

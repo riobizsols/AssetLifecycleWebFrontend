@@ -3,7 +3,7 @@ import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
 import { exportToExcel } from "../utils/exportToExcel";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/assets/UpdateAssetModal";
@@ -12,10 +12,21 @@ import useAuditLog from "../hooks/useAuditLog";
 import { ASSETS_APP_ID } from "../constants/assetsAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import { translateErrorMessage } from "../utils/errorTranslation";
+import { useNavigation } from "../hooks/useNavigation";
 
 const Assets = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
+  
+  // Get navigation permissions
+  const { canEdit, canCreate, canDelete, getAccessLevel } = useNavigation();
+  
+  // Check access levels for ASSETS app_id
+  const hasEditAccess = canEdit('ASSETS');
+  const hasCreateAccess = canCreate('ASSETS');
+  const hasDeleteAccess = canDelete('ASSETS');
+  const accessLevel = getAccessLevel('ASSETS');
   const [data, setData] = useState([]);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
@@ -58,6 +69,14 @@ const Assets = () => {
   useEffect(() => {
     fetchAssets();
   }, []);
+
+  // Prevent access to /assets/add for read-only users
+  useEffect(() => {
+    if (location.pathname === '/assets/add' && !hasCreateAccess) {
+      toast.error(t('assets.noPermissionToAddAssets'));
+      navigate('/assets');
+    }
+  }, [location.pathname, hasCreateAccess, navigate, t]);
 
   const fetchAssets = async () => {
     try {
@@ -318,20 +337,23 @@ const Assets = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={async () => {
+        onAdd={hasCreateAccess ? async () => {
           // Log Create event when plus icon is clicked
           await recordActionByNameWithFetch('Create', { 
             action: t('assets.addAssetFormOpened')
           });
           navigate("/assets/add");
-        }}
-        onDeleteSelected={handleDeleteSelected}
+        } : undefined}
+        onDeleteSelected={hasDeleteAccess ? handleDeleteSelected : undefined}
         onDownload={handleDownload}
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        showAddButton={hasCreateAccess}
+        showDeleteButton={hasDeleteAccess}
+        isReadOnly={false}
       >
-        {({ visibleColumns }) => {
+        {({ visibleColumns, showActions }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
@@ -344,8 +366,11 @@ const Assets = () => {
                 selectedRows={selectedRows}
                 setSelectedRows={setSelectedRows}
                 onEdit={handleEdit}
-                onDelete={handleDelete}
+                onDelete={hasDeleteAccess ? handleDelete : undefined}
                 rowKey="asset_id"
+                showCheckbox={hasEditAccess || hasDeleteAccess}
+                showActions={true}
+                isReadOnly={accessLevel === 'D'}
               />
               {updateModalOpen && (
                 <UpdateAssetModal

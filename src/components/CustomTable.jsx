@@ -19,6 +19,7 @@ const CustomTable = ({
   actionLabel = "Action",
   showAddButton = false,
   addButtonTitle = "Add",
+  isReadOnly = false,
 }) => {
   const visible = visibleColumns.filter((col) => col.visible);
 
@@ -83,7 +84,7 @@ const CustomTable = ({
             <td key={colIndex} className="border text-xs px-4 py-2">
               {colIndex === 0 ? (
                 <div className="flex items-center gap-2">
-                  {showActions && showCheckbox && (
+                  {showActions && showCheckbox && !isReadOnly && (
                     <input
                       type="checkbox"
                       checked={selectedRows.includes(row[rowKey])}
@@ -113,7 +114,7 @@ const CustomTable = ({
                   <Eye size={16} />
                 </button>
               )} */}
-              {showAddButton && onAdd && (
+              {showAddButton && onAdd && !isReadOnly && (
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
@@ -125,7 +126,7 @@ const CustomTable = ({
                   <Plus size={16} />
                 </button>
               )}
-              {onRowAction && (
+              {onRowAction && !isReadOnly && (
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
@@ -144,7 +145,7 @@ const CustomTable = ({
                     onEdit(row);
                   }} 
                   className="text-blue-600 hover:text-blue-800"
-                  title="Edit"
+                  title={isReadOnly ? "View" : "Edit"}
                 >
                   <Pencil size={16} />
                 </button>

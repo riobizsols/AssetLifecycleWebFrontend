@@ -9,11 +9,17 @@ import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
 import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useNavigation } from '../../hooks/useNavigation';
 
 const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
   const { t } = useLanguage();
+  
+  // Get access level for read-only check
+  const { getAccessLevel } = useNavigation();
+  const accessLevel = getAccessLevel('ASSETS');
+  const isReadOnly = accessLevel === 'D';
   
   // Translate property names
   const translatePropertyName = (propertyName) => {
@@ -656,7 +662,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 placeholder="Enter description"
               />
             </div>
@@ -669,7 +676,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 step="0.01"
                 value={form.purchaseCost || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseCost: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 placeholder="Enter purchase cost"
                 required
               />
@@ -682,7 +690,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 type="date"
                 value={form.purchaseDate}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseDate: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 required
               />
             </div>
@@ -694,7 +703,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 type="date"
                 value={form.expiryDate}
                 onChange={(e) => setForm(prev => ({ ...prev, expiryDate: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
 
@@ -705,7 +715,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 type="text"
                 value={form.warrantyPeriod}
                 onChange={(e) => setForm(prev => ({ ...prev, warrantyPeriod: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 placeholder="Enter warranty period"
               />
             </div>
@@ -716,7 +727,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
               <select
                 value={form.purchaseBy}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseBy: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               >
                 <option value="">{t('assets.selectUser')}</option>
                 {purchaseByOptions.map(option => (
@@ -733,7 +745,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
               <select
                 value={form.purchaseSupply}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseSupply: e.target.value, vendorId: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               >
                 <option value="">Select Purchase Vendor</option>
                 {purchaseSupplyOptions.map(option => (
@@ -750,7 +763,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
               <select
                 value={form.serviceSupply}
                 onChange={(e) => setForm(prev => ({ ...prev, serviceSupply: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               >
                 <option value="">Select Service Vendor</option>
                 {serviceSupplyOptions.map(option => (
@@ -792,7 +806,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                           name={`property_${property.prop_id}`}
                           value={currentValue}
                           onChange={(e) => handlePropChange(property.property, e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9 scrollable-dropdown"
+                          disabled={isReadOnly}
+                          className={`w-full px-2 py-1 border border-gray-300 rounded text-sm h-9 scrollable-dropdown ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
                         >
                           <option value="">{t('assets.select')} {translatePropertyName(property.property)}</option>
                           {property.values.map((value) => (
@@ -808,8 +823,9 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                           name={`property_${property.prop_id}`}
                           value={currentValue}
                           onChange={(e) => handlePropChange(property.property, e.target.value)}
+                          disabled={isReadOnly}
                           placeholder={`${t('assets.enter')} ${translatePropertyName(property.property)}`}
-                          className="w-full px-2 py-1 border border-gray-300 rounded bg-white text-sm h-9"
+                          className={`w-full px-2 py-1 border border-gray-300 rounded text-sm h-9 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : 'bg-white'}`}
                         />
                       )}
                     </div>
@@ -972,16 +988,18 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
             <div className="border-t pt-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-md font-medium text-gray-900">{t('assets.uploadNewDocuments')}</h3>
-                <button 
-                  type="button" 
-                  className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
-                  onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
-                >
-                  <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  {t('assets.addDocument')}
-                </button>
+                {!isReadOnly && (
+                  <button 
+                    type="button" 
+                    className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
+                    onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
+                  >
+                    <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    {t('assets.addDocument')}
+                  </button>
+                )}
               </div>
               
               <div className="space-y-3">
@@ -1114,23 +1132,25 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
           {/* Action Buttons */}
           <div className="flex justify-between items-center mt-6">
-            <button
-              type="button"
-              onClick={() => setShowQSNPrintModal(true)}
-              className={`px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] transition-colors flex items-center gap-2 ${
-                isSubmitting || isQSNPrintLoading
-                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                  : 'bg-[#0E2F4B] text-white hover:bg-[#1a4971]'
-              }`}
-              disabled={isSubmitting || isQSNPrintLoading}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              {t('assets.qsnPrint')}
-            </button>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={() => setShowQSNPrintModal(true)}
+                className={`px-6 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] transition-colors flex items-center gap-2 ${
+                  isSubmitting || isQSNPrintLoading
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    : 'bg-[#0E2F4B] text-white hover:bg-[#1a4971]'
+                }`}
+                disabled={isSubmitting || isQSNPrintLoading}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                {t('assets.qsnPrint')}
+              </button>
+            )}
             
-            <div className="flex gap-3">
+            <div className={`flex gap-3 ${isReadOnly ? 'w-full justify-end' : ''}`}>
               <button
                 type="button"
                 onClick={() => onClose(false)}
@@ -1139,13 +1159,15 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
               >
                 {t('common.cancel')}
               </button>
-              <button
-                type="submit"
-                className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? t('common.loading') : t('common.save')}
-              </button>
+              {!isReadOnly && (
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? t('common.loading') : t('common.save')}
+                </button>
+              )}
             </div>
           </div>
         </form>

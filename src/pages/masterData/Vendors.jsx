@@ -29,8 +29,10 @@ const Vendors = () => {
   });
   
   // Access control
-  const { hasEditAccess } = useNavigation();
+  const { hasEditAccess, getAccessLevel } = useNavigation();
   const canEdit = hasEditAccess('VENDORS');
+  const accessLevel = getAccessLevel('VENDORS');
+  const isReadOnly = accessLevel === 'D';
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(VENDORS_APP_ID);
@@ -310,7 +312,8 @@ const Vendors = () => {
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
         showAddButton={canEdit}
-        showActions={canEdit}
+        showActions={true}
+        isReadOnly={false}
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
@@ -324,10 +327,11 @@ const Vendors = () => {
                 data={sortedData}
                 selectedRows={selectedRows}
                 setSelectedRows={setSelectedRows}
-                onEdit={canEdit ? handleEdit : null}
+                onEdit={handleEdit}
                 onDelete={canEdit ? (row) => console.log("Delete vendor:", row) : null}
                 rowKey="vendor_id"
-                showActions={canEdit}
+                showActions={true}
+                isReadOnly={isReadOnly}
               />
               <EditVendorModal
                 show={showEditModal}
@@ -337,6 +341,7 @@ const Vendors = () => {
                 }}
                 onConfirm={handleUpdate}
                 vendor={editingVendor}
+                isReadOnly={isReadOnly}
               />
             </>
           );

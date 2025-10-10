@@ -35,6 +35,7 @@ const ContentBox = ({
   showFilterButton = true, // Add this line
   onAdd, // Add onAdd prop
   customHeaderActions, // Custom header actions
+  isReadOnly = false, // Add isReadOnly prop
 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -483,7 +484,7 @@ const ContentBox = ({
                         className="flex items-center gap-2 cursor-pointer flex-grow"
                         onClick={() => onSort(filter.name)}
                       >
-                        {index === 0 && showActions && showHeaderCheckbox && (
+                        {index === 0 && showActions && showHeaderCheckbox && !isReadOnly && (
                           <input
                             type="checkbox"
                             className="accent-yellow-400"
@@ -682,7 +683,7 @@ const ContentBox = ({
           </thead>
           <tbody>
             {typeof children === "function"
-              ? children({ visibleColumns, showActions })
+              ? children({ visibleColumns, showActions: showActions && !isReadOnly })
               : children}
           </tbody>
         </table>

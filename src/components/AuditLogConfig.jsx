@@ -11,9 +11,15 @@ import {
 import { toast } from 'react-hot-toast';
 import API from '../lib/axios';
 import { useNavigate } from 'react-router-dom';
+import { useNavigation } from '../hooks/useNavigation';
 
 const AuditLogConfig = () => {
   const navigate = useNavigate();
+  
+  // Access control
+  const { getAccessLevel } = useNavigation();
+  const accessLevel = getAccessLevel('AUDITLOGCONFIG');
+  const isReadOnly = accessLevel === 'D';
   const [configs, setConfigs] = useState([]);
   const [filteredConfigs, setFilteredConfigs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -297,19 +303,21 @@ const AuditLogConfig = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => toggleEnabled(config.alc_id, config.enabled)}
-                          disabled={isSaving}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 ${
-                            config.enabled ? 'bg-green-600' : 'bg-gray-200'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                              config.enabled ? 'translate-x-5' : 'translate-x-1'
+                        {!isReadOnly ? (
+                          <button
+                            onClick={() => toggleEnabled(config.alc_id, config.enabled)}
+                            disabled={isSaving}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 ${
+                              config.enabled ? 'bg-green-600' : 'bg-gray-200'
                             }`}
-                          />
-                        </button>
+                          >
+                            <span
+                              className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                                config.enabled ? 'translate-x-5' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        ) : null}
                         <span className="text-sm text-gray-600">
                           {config.enabled ? 'Enabled' : 'Disabled'}
                         </span>
@@ -317,26 +325,28 @@ const AuditLogConfig = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => toggleReportingRequired(config.alc_id, config.reporting_required)}
-                          disabled={isSaving}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 ${
-                            config.reporting_required ? 'bg-blue-600' : 'bg-gray-200'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                              config.reporting_required ? 'translate-x-5' : 'translate-x-1'
+                        {!isReadOnly ? (
+                          <button
+                            onClick={() => toggleReportingRequired(config.alc_id, config.reporting_required)}
+                            disabled={isSaving}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 ${
+                              config.reporting_required ? 'bg-blue-600' : 'bg-gray-200'
                             }`}
-                          />
-                        </button>
+                          >
+                            <span
+                              className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                                config.reporting_required ? 'translate-x-5' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        ) : null}
                         <span className="text-sm text-gray-600">
                           {config.reporting_required ? 'Required' : 'Not Required'}
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      {editingEmail === config.alc_id ? (
+                      {!isReadOnly && editingEmail === config.alc_id ? (
                         <div className="flex items-center gap-2">
                           <input
                             type="email"
@@ -373,14 +383,16 @@ const AuditLogConfig = () => {
                           <span className="text-sm text-gray-900">
                             {config.reporting_email || 'No email set'}
                           </span>
-                          <button
-                            onClick={() => startEditingEmail(config.alc_id, config.reporting_email)}
-                            disabled={isSaving}
-                            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-                            title="Edit email"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          {!isReadOnly && (
+                            <button
+                              onClick={() => startEditingEmail(config.alc_id, config.reporting_email)}
+                              disabled={isSaving}
+                              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                              title="Edit email"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>
