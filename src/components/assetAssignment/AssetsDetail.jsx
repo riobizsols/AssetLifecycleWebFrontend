@@ -98,7 +98,10 @@ const AssetsDetail = () => {
                   'maintsch_id',
                   'parent_asset_type_name',
                   'parent_asset_type_id',
-                  'prod_serv_name'
+                  'prod_serv_name',
+                  'purchase_vendor_name', // Hide as it's shown in place of purchase_vendor_id
+                  'service_vendor_name',  // Hide as it's shown in place of service_vendor_id
+                  'purchased_by_name'     // Hide as it's shown in place of purchased_by
                 ];
                 return !hiddenColumns.includes(key);
               })
@@ -132,6 +135,15 @@ const AssetsDetail = () => {
                   } catch (error) {
                     displayValue = value;
                   }
+                } else if (key === 'purchase_vendor_id') {
+                  // Show vendor name instead of ID
+                  displayValue = assetDetails.purchase_vendor_name || value || t('assetsDetail.notSet');
+                } else if (key === 'service_vendor_id') {
+                  // Show vendor name instead of ID
+                  displayValue = assetDetails.service_vendor_name || value || t('assetsDetail.notSet');
+                } else if (key === 'purchased_by') {
+                  // Show username instead of user ID
+                  displayValue = assetDetails.purchased_by_name || value || t('assetsDetail.notSet');
                 } else {
                   displayValue = value;
                 }

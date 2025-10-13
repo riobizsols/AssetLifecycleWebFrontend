@@ -142,39 +142,22 @@ const AssetSelection = () => {
         }));
         console.log('Department asset types for dept', entityId, ':', incoming);
       } 
+      else if (entityType === "employee") {
+        // For employee assignments, fetch only 'user' assignment type asset types
+        const res = await API.get("/dept-assets/asset-types?assignment_type=user");
+        incoming = Array.isArray(res.data) ? res.data : [];
+        console.log('User assignment type asset types:', incoming);
+      }
       else {
-        // For employee assignments, fetch all asset types (no department filtering)
+        // Fallback: fetch all asset types
         const res = await API.get("/dept-assets/asset-types");
         incoming = Array.isArray(res.data) ? res.data : [];
         console.log('All asset types:', incoming);
       }
 
-      // Determine target assignment type based on context
-      const targetAssignment = entityType === "department" ? "department" : "user";
-
-      // If assignment_type is already present, filter directly
-      let filtered = incoming;
-      if (incoming.length && Object.prototype.hasOwnProperty.call(incoming[0], "assignment_type")) {
-        filtered = incoming.filter((t) => t.assignment_type === targetAssignment);
-      } else {
-        // Fallback: fetch full asset types to get assignment_type, then filter by intersection
-        try {
-          const typesRes = await API.get("/asset-types");
-          const allTypes = Array.isArray(typesRes.data) ? typesRes.data : (Array.isArray(typesRes.data?.data) ? typesRes.data.data : []);
-          const allowedIds = new Set(
-            allTypes
-              .filter((t) => t.assignment_type === targetAssignment)
-              .map((t) => t.asset_type_id)
-          );
-          filtered = incoming.filter((t) => allowedIds.has(t.asset_type_id));
-        } catch (fallbackErr) {
-          console.warn("Fallback fetch for /asset-types failed, showing unfiltered list", fallbackErr);
-          filtered = incoming; // gracefully degrade
-        }
-      }
-
-      console.log('Filtered asset types:', filtered);
-      setAssetTypes(filtered);
+      // Backend already filters by assignment_type, so just use the results
+      setAssetTypes(incoming);
+      console.log('Final asset types:', incoming);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
       toast.error(t('assets.failedToFetchAssetTypes'));

@@ -54,10 +54,10 @@ const DepartmentsAsset = () => {
     }
   };
 
-  // Fetch asset types - backend already filters to only department type
+  // Fetch asset types - only department assignment type
   const fetchAssetTypes = async () => {
     try {
-      const res = await API.get("/dept-assets/asset-types");
+      const res = await API.get("/dept-assets/asset-types?assignment_type=department");
       setAssetTypes(res.data);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
