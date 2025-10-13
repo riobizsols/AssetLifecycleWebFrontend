@@ -7,7 +7,7 @@ export default function ProtectedRoute({ children, allowedRoles = [], requiredAp
   const user = useAuthStore((state) => state.user);
   const roles = useAuthStore((state) => state.roles) || [];
   const location = useLocation();
-  const { hasAccess } = useNavigation();
+  const { hasAccess, loading } = useNavigation();
   
   // Get user role IDs from tblUserJobRoles
   const userRoleIds = roles.map(role => role.job_role_id);
@@ -32,10 +32,23 @@ export default function ProtectedRoute({ children, allowedRoles = [], requiredAp
     }
   }
 
+  // Wait for navigation to load before checking permissions
+  if (requiredAppId && loading) {
+    // Show a loading state while navigation permissions are being fetched
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Check navigation permissions if requiredAppId is provided
   if (requiredAppId && !hasAccess(requiredAppId)) {
     console.log('Access denied. User does not have access to app:', requiredAppId);
-    return <Navigate to="/dashboard" />; // Redirect to dashboard
+    return <Navigate to="/not-authorized" />; // Redirect to not authorized page
   }
 
   return children;
