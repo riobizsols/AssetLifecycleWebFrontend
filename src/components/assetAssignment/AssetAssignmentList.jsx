@@ -8,6 +8,7 @@ import useAuditLog from '../../hooks/useAuditLog';
 import { DEPT_ASSIGNMENT_APP_ID } from '../../constants/deptAssignmentAuditEvents';
 import { EMP_ASSIGNMENT_APP_ID } from '../../constants/empAssignmentAuditEvents';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useNavigation } from '../../hooks/useNavigation';
 
 const AssetAssignmentList = ({
   title,
@@ -36,6 +37,11 @@ const AssetAssignmentList = ({
   // Initialize audit logging based on entity type
   const appId = entityType === 'employee' ? EMP_ASSIGNMENT_APP_ID : DEPT_ASSIGNMENT_APP_ID;
   const { recordActionByNameWithFetch } = useAuditLog(appId);
+
+  // Get access level for read-only check
+  const { getAccessLevel } = useNavigation();
+  const accessLevel = getAccessLevel(appId);
+  const isReadOnly = accessLevel === 'D';
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
 
@@ -143,25 +149,27 @@ const AssetAssignmentList = ({
             </div>
           )}
 
-          <div className="flex gap-2">
-            <button
-              className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50 flex items-center gap-2"
-              onClick={() => navigate('/asset-selection', {     
-                state: { 
-                  entityId: selectedEntity,
-                  entityIntId: selectedEntityIntId,
-                  entityType: entityType,
-                  departmentId: selectedDepartment
-                } 
-              })}
-              disabled={!selectedEntity || (showDepartmentFilter && !selectedDepartment)}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              {t('employees.assignAsset')}
-            </button>
-          </div>
+          {!isReadOnly && (
+            <div className="flex gap-2">
+              <button
+                className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50 flex items-center gap-2"
+                onClick={() => navigate('/asset-selection', {     
+                  state: { 
+                    entityId: selectedEntity,
+                    entityIntId: selectedEntityIntId,
+                    entityType: entityType,
+                    departmentId: selectedDepartment
+                  } 
+                })}
+                disabled={!selectedEntity || (showDepartmentFilter && !selectedDepartment)}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                {t('employees.assignAsset')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       
@@ -213,7 +221,7 @@ const AssetAssignmentList = ({
           </div>
           {entityType === 'department' ? (
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className="grid grid-cols-8 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+              <div className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
                 <div>{t('assets.assetId')}</div>
                 <div>{t('employees.departmentId')}</div>
                 <div>{t('employees.assetTypeName')}</div>
@@ -221,7 +229,7 @@ const AssetAssignmentList = ({
                 <div>{t('employees.action')}</div>
                 <div>{t('employees.assignmentDate')}</div>
                 <div>{t('employees.assignedBy')}</div>
-                <div className="text-center">{t('common.actions')}</div>
+                {!isReadOnly && <div className="text-center">{t('common.actions')}</div>}
               </div>
               {assignmentList.length === 0 ? (
                 <div className="px-4 py-6 text-center text-gray-500 col-span-8 bg-white rounded-b">{t('employees.noAssetsAssigned')}</div>
@@ -230,7 +238,7 @@ const AssetAssignmentList = ({
                   {assignmentList.map((item, i) => (
                     <div
                       key={item.asset_assign_id || `${item.asset_id}_${i}`}
-                      className={`grid grid-cols-8 px-4 py-2 items-center border-b ${
+                      className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 items-center border-b ${
                         i % 2 === 0 ? "bg-white" : "bg-gray-100"
                       } text-gray-800`}
                     >
@@ -241,14 +249,16 @@ const AssetAssignmentList = ({
                       <div>{item.action || '-'}</div>
                       <div>{item.action_on ? new Date(item.action_on).toLocaleString() : '-'}</div>
                       <div>{item.action_by || '-'}</div>
-                      <div className="flex justify-center">
-                        <button
-                          className="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-3 rounded shadow"
-                          onClick={() => handleDelete(item)}
-                        >
-                          {t('employees.unassign')}
-                        </button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="flex justify-center">
+                          <button
+                            className="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-3 rounded shadow"
+                            onClick={() => handleDelete(item)}
+                          >
+                            {t('employees.unassign')}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -256,7 +266,7 @@ const AssetAssignmentList = ({
             </div>
           ) : (
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className="grid grid-cols-8 px-4 py-2 font-semibold border-b-4 border-yellow-400">
+              <div className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
                 <div>{t('assets.assetId')}</div>
                 <div>{t('employees.departmentId')}</div>
                 <div>{t('employees.orgId')}</div>
@@ -264,7 +274,7 @@ const AssetAssignmentList = ({
                 <div>{t('employees.action')}</div>
                 <div>{t('employees.assignmentDate')}</div>
                 <div>{t('employees.assignedBy')}</div>
-                <div className="text-center">{t('common.actions')}</div>
+                {!isReadOnly && <div className="text-center">{t('common.actions')}</div>}
               </div>
               {assignmentList.length === 0 && (
                 <div className="px-4 py-6 text-center text-gray-500 col-span-7 bg-white rounded-b">
@@ -275,7 +285,7 @@ const AssetAssignmentList = ({
                 {assignmentList.map((item, i) => (
                   <div
                     key={item.asset_assign_id || `${item.asset_id}_${i}`}
-                    className={`grid grid-cols-8 px-4 py-2 items-center border-b ${
+                    className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 items-center border-b ${
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800`}
                   >
@@ -286,14 +296,16 @@ const AssetAssignmentList = ({
                     <div>{item.action}</div>
                     <div>{item.action_on ? new Date(item.action_on).toLocaleString() : ''}</div>
                     <div>{item.action_by}</div>
-                    <div className="flex justify-center">
-                      <button
-                        className="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-3 rounded shadow"
-                        onClick={() => handleDelete(item)}
-                      >
-                        {t('employees.unassign')}
-                      </button>
-                    </div>
+                    {!isReadOnly && (
+                      <div className="flex justify-center">
+                        <button
+                          className="bg-yellow-400 hover:bg-yellow-500 text-white text-xs font-semibold py-1 px-3 rounded shadow"
+                          onClick={() => handleDelete(item)}
+                        >
+                          {t('employees.unassign')}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

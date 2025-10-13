@@ -128,8 +128,26 @@ const AssetSelection = () => {
 
   const fetchAssetTypes = async () => {
     try {
-      const res = await API.get("/dept-assets/asset-types");
-      const incoming = Array.isArray(res.data) ? res.data : [];
+      let incoming = [];
+      
+      // For department assignments, fetch only asset types assigned to that department
+      if (entityType === "department" && entityId) {
+        const res = await API.get(`/dept-assets/department/${entityId}/asset-types`);
+        // Handle nested data structure from backend
+        incoming = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        // Transform asset_type_name to text for consistency
+        incoming = incoming.map(item => ({
+          ...item,
+          text: item.asset_type_name || item.text
+        }));
+        console.log('Department asset types for dept', entityId, ':', incoming);
+      } 
+      else {
+        // For employee assignments, fetch all asset types (no department filtering)
+        const res = await API.get("/dept-assets/asset-types");
+        incoming = Array.isArray(res.data) ? res.data : [];
+        console.log('All asset types:', incoming);
+      }
 
       // Determine target assignment type based on context
       const targetAssignment = entityType === "department" ? "department" : "user";
@@ -155,6 +173,7 @@ const AssetSelection = () => {
         }
       }
 
+      console.log('Filtered asset types:', filtered);
       setAssetTypes(filtered);
     } catch (err) {
       console.error("Failed to fetch asset types", err);

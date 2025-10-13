@@ -54,7 +54,7 @@ const DepartmentsAsset = () => {
     }
   };
 
-  // Fetch asset types
+  // Fetch asset types - backend already filters to only department type
   const fetchAssetTypes = async () => {
     try {
       const res = await API.get("/dept-assets/asset-types");
@@ -154,6 +154,19 @@ const DepartmentsAsset = () => {
 
   // Helper for invalid field
   const isFieldInvalid = (val) => submitAttempted && !val;
+
+  // Get available asset types for the selected department (exclude already assigned ones)
+  const getAvailableAssetTypes = () => {
+    if (!selectedDeptId) return assetTypes;
+    
+    // Get asset type IDs already assigned to this department
+    const assignedAssetTypeIds = deptAssets
+      .filter(da => da.dept_id === selectedDeptId)
+      .map(da => da.asset_type_id);
+    
+    // Return only unassigned asset types
+    return assetTypes.filter(at => !assignedAssetTypeIds.includes(at.asset_type_id));
+  };
 
   useEffect(() => {
     fetchDepartments();
@@ -268,7 +281,7 @@ const DepartmentsAsset = () => {
                 type="button"
               >
                 {selectedAssetTypeId
-                  ? assetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.text || t('departments.selectAssetType')
+                  ? getAvailableAssetTypes().find((at) => at.asset_type_id === selectedAssetTypeId)?.text || assetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.text || t('departments.selectAssetType')
                   : selectedDeptId
                   ? t('departments.selectAssetType')
                   : t('departments.selectDepartmentFirst')}
@@ -277,7 +290,7 @@ const DepartmentsAsset = () => {
               {/* Dropdown List */}
               <div
                 ref={dropdownRef}
-                className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-48 overflow-y-auto z-10 hidden"
+                className="absolute left-0 right-0 mt-1 bg-white border rounded shadow-lg max-h-96 overflow-y-auto z-10 hidden"
                 style={{ minWidth: "100%" }}
               >
                 {/* Sticky Search Input */}
@@ -292,7 +305,7 @@ const DepartmentsAsset = () => {
                   />
                 </div>
                 {/* Filtered Asset Types */}
-                {assetTypes
+                {getAvailableAssetTypes()
                   .filter(at => at.text.toLowerCase().includes(searchAssetType.toLowerCase()))
                   .map((at) => (
                     <div
@@ -307,6 +320,11 @@ const DepartmentsAsset = () => {
                       {at.text}
                     </div>
                   ))}
+                {getAvailableAssetTypes().filter(at => at.text.toLowerCase().includes(searchAssetType.toLowerCase())).length === 0 && (
+                  <div className="px-4 py-2 text-sm text-gray-500 text-center">
+                    {t('departments.noAvailableAssetTypes')}
+                  </div>
+                )}
                 {/* Sticky Create New Option */}
                 <div className="sticky bottom-0 bg-white border-t px-4 py-2 cursor-pointer text-blue-600 font-semibold hover:bg-blue-50 text-sm" onClick={() => {
                   dropdownRef.current.classList.add("hidden");
