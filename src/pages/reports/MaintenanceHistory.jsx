@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useLanguage } from "../../contexts/LanguageContext";
 import ReportLayout from "../../components/reportModels/ReportLayout";
 import { useReportState } from "../../components/reportModels/useReportState";
 import { REPORTS } from "../../components/reportModels/ReportConfig";
@@ -8,7 +8,7 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import { REPORTS_APP_IDS } from "../../constants/reportsAuditEvents";
 
 export default function MaintenanceHistory() {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const selectedReportId = "maintenance-history";
   const report = useMemo(() => REPORTS.find((r) => r.id === selectedReportId), []);
   

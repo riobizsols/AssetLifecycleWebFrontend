@@ -1,13 +1,13 @@
 import React, { useMemo, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import ReportLayout from "../../components/reportModels/ReportLayout";
 import { useReportState } from "../../components/reportModels/useReportState";
 import { REPORTS } from "../../components/reportModels/ReportConfig";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { REPORTS_APP_IDS } from "../../constants/reportsAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function AssetLifecycleReport() {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const selectedReportId = "asset-lifecycle";
   const report = useMemo(() => REPORTS.find((r) => r.id === selectedReportId), []);
   

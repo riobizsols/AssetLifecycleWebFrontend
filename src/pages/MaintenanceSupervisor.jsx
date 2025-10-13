@@ -86,16 +86,33 @@ const MaintenanceSupervisor = () => {
   };
 
   const handleFilterChange = (columnName, value) => {
-    setFilterValues((prev) => ({
-      ...prev,
-      columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-      ...(value && {
-        columnFilters: [
-          ...prev.columnFilters.filter((f) => f.column !== columnName),
-          { column: columnName, value },
-        ],
-      }),
-    }));
+    // Handle columnFilters array from ContentBox
+    if (columnName === "columnFilters") {
+      setFilterValues((prev) => ({
+        ...prev,
+        columnFilters: value,
+      }));
+    }
+    // Handle date filters
+    else if (columnName === "fromDate" || columnName === "toDate") {
+      setFilterValues((prev) => ({
+        ...prev,
+        [columnName]: value,
+      }));
+    }
+    // Handle individual column filters (legacy support)
+    else {
+      setFilterValues((prev) => ({
+        ...prev,
+        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
+        ...(value && {
+          columnFilters: [
+            ...prev.columnFilters.filter((f) => f.column !== columnName),
+            { column: columnName, value },
+          ],
+        }),
+      }));
+    }
   };
 
   const handleSort = (column) => {

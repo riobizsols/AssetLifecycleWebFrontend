@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ChevronDown,
   Download,
@@ -48,7 +48,10 @@ const ContentBox = ({
   const [showColumnsDropdown, setShowColumnsDropdown] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchableDropdownOpen, setSearchableDropdownOpen] = useState({});
+  const [searchableDropdownSearch, setSearchableDropdownSearch] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef({});
 
   // Handle refresh with animation
   const handleRefresh = async () => {
@@ -73,6 +76,31 @@ const ContentBox = ({
       setColumnFilters([{ column: "", value: "" }]);
     }
   }, [activeFilters]); // Run when activeFilters change
+
+  // Handle click outside to close searchable dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      Object.keys(searchableDropdownOpen).forEach(index => {
+        if (searchableDropdownOpen[index] && 
+            dropdownRef.current[index] && 
+            !dropdownRef.current[index].contains(event.target)) {
+          setSearchableDropdownOpen(prev => ({
+            ...prev,
+            [index]: false
+          }));
+          setSearchableDropdownSearch(prev => ({
+            ...prev,
+            [index]: ""
+          }));
+        }
+      });
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [searchableDropdownOpen]);
 
   const handleColumnChange = (index, column) => {
     const updated = [...columnFilters];
@@ -109,6 +137,33 @@ const ContentBox = ({
     }
     const validFilters = updated.filter((f) => f.column && f.value);
     onFilterChange("columnFilters", validFilters); // Update parent's filter state
+  };
+
+  // Helper functions for searchable dropdown
+  const toggleSearchableDropdown = (index) => {
+    setSearchableDropdownOpen(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  const handleSearchableDropdownSearch = (index, searchTerm) => {
+    setSearchableDropdownSearch(prev => ({
+      ...prev,
+      [index]: searchTerm
+    }));
+  };
+
+  const selectSearchableValue = (index, value) => {
+    handleValueChange(index, value);
+    setSearchableDropdownOpen(prev => ({
+      ...prev,
+      [index]: false
+    }));
+    setSearchableDropdownSearch(prev => ({
+      ...prev,
+      [index]: ""
+    }));
   };
 
   const availableFilterTypes = ["date", "search", "simpleSearch"];
@@ -290,22 +345,57 @@ const ContentBox = ({
                           {columnOptions}
                         </select>
 
-                        {/* Value dropdown, visible only if a column is selected */}
+                        {/* Searchable Value dropdown, visible only if a column is selected */}
                         {cf.column && (
-                          <select
-                            className="border text-sm px-2 py-1"
-                            value={cf.value}
-                            onChange={(e) =>
-                              handleValueChange(index, e.target.value)
-                            }
-                          >
-                            <option value="">Select value</option>
-                            {valueOptions.map((val, i) => (
-                              <option key={i} value={val}>
-                                {val}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="relative" ref={el => dropdownRef.current[index] = el}>
+                            <button
+                              type="button"
+                              className="border text-sm px-2 py-1 bg-white w-40 text-left flex items-center justify-between"
+                              onClick={() => toggleSearchableDropdown(index)}
+                            >
+                              <span className={cf.value ? "" : "text-gray-500"}>
+                                {cf.value || "Select value"}
+                              </span>
+                              <ChevronDown size={14} />
+                            </button>
+                            
+                            {searchableDropdownOpen[index] && (
+                              <div className="absolute z-50 mt-1 bg-white border rounded shadow-lg w-40 max-h-60 overflow-hidden">
+                                <div className="p-2 border-b">
+                                  <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={searchableDropdownSearch[index] || ""}
+                                    onChange={(e) => handleSearchableDropdownSearch(index, e.target.value)}
+                                    className="w-full px-2 py-1 border text-sm focus:outline-none focus:ring-1 focus:ring-[#FFC107]"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div className="max-h-48 overflow-y-auto">
+                                  <div
+                                    className="px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 cursor-pointer"
+                                    onClick={() => selectSearchableValue(index, "")}
+                                  >
+                                    Select value
+                                  </div>
+                                  {valueOptions
+                                    .filter(val => 
+                                      !searchableDropdownSearch[index] || 
+                                      val.toLowerCase().includes(searchableDropdownSearch[index].toLowerCase())
+                                    )
+                                    .map((val, i) => (
+                                    <div
+                                      key={i}
+                                      className="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer"
+                                      onClick={() => selectSearchableValue(index, val)}
+                                    >
+                                      {val}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
 
                         {/* Plus button, visible only for the last column filter */}

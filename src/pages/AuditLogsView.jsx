@@ -307,10 +307,15 @@ const AuditLogsView = () => {
   // Server-side filtering is handled in fetchAuditLogs
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setFilters(prev => {
+      if (key === 'columnFilters') {
+        return { ...prev, columnFilters: value };
+      } else if (key === 'fromDate' || key === 'toDate') {
+        return { ...prev, [key]: value };
+      } else {
+        return { ...prev, [key]: value };
+      }
+    });
   };
 
   const handlePageChange = (page) => {

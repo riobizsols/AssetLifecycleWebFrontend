@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 // Common UI Components
 export const SectionTitle = ({ children }) => (
@@ -36,7 +36,7 @@ export function Input({ value, onChange, placeholder, type = "text", min, classN
 }
 
 export function Select({ value, onChange, options, placeholder }) {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   
@@ -99,6 +99,7 @@ function SafeDropdownMultiSelect({ values = [], onChange, options, placeholder =
 }
 
 function DropdownMultiSelectInner({ values = [], onChange, options, placeholder = "Select..." }) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
@@ -385,7 +386,7 @@ export function GroupedField({ field, value, onChange, onSubFieldChange }) {
 }
 
 export function SearchableSelect({ onChange, options, placeholder, value }) {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   // Force rebuild - React error fix applied
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -504,7 +505,7 @@ export const OP_MAP = {
 };
 
 export function AdvancedBuilder({ fields, value, onChange }) {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const rows = value || [];
   const add = () => {
     const defaultField = fields[0];

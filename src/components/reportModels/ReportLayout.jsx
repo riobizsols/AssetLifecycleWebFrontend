@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useLanguage } from "../../contexts/LanguageContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { FaShareAlt } from "react-icons/fa";
@@ -45,7 +45,7 @@ export default function ReportLayout({
   onGenerateReport,
   onExportReport
 }) {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const [isSaving, setIsSaving] = useState(false);
   const [viewName, setViewName] = useState("");
   const saveInputRef = useRef(null);

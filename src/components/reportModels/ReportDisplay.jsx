@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from "../../contexts/LanguageContext";
 import { Download, FileText, BarChart3, Filter, Calendar, User, Building2 } from 'lucide-react';
 
 /**
@@ -7,7 +7,7 @@ import { Download, FileText, BarChart3, Filter, Calendar, User, Building2 } from
  * Shows the generated report with header, filters, summary, and detailed data
  */
 export default function ReportDisplay({ reportData, onClose }) {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('summary');
 
   if (!reportData) {
@@ -116,7 +116,7 @@ export default function ReportDisplay({ reportData, onClose }) {
  * Summary Tab Component
  */
 function SummaryTab({ summary, header }) {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   return (
     <div className="space-y-6">
       {/* Overview Cards */}
@@ -228,7 +228,7 @@ function SummaryTab({ summary, header }) {
  * Filters Tab Component
  */
 function FiltersTab({ filters }) {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   return (
     <div className="space-y-6">
       {!filters.hasFilters ? (
@@ -304,7 +304,7 @@ function FiltersTab({ filters }) {
  * Data Tab Component
  */
 function DataTab({ data }) {
-  const { t } = useTranslation();
+  const { t } = useLanguage();
   if (!data.rows || data.rows.length === 0) {
     return (
       <div className="text-center py-12">

@@ -193,10 +193,15 @@ const GroupAsset = () => {
   };
 
   const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+    setFilterValues(prev => {
+      if (filterType === 'columnFilters') {
+        return { ...prev, columnFilters: value };
+      } else if (filterType === 'fromDate' || filterType === 'toDate') {
+        return { ...prev, [filterType]: value };
+      } else {
+        return { ...prev, [filterType]: value };
+      }
+    });
   };
 
   const filters = columns.map((col) => ({

@@ -99,9 +99,11 @@ const AssetsDetail = () => {
                   'parent_asset_type_name',
                   'parent_asset_type_id',
                   'prod_serv_name',
-                  'purchase_vendor_name', // Hide as it's shown in place of purchase_vendor_id
-                  'service_vendor_name',  // Hide as it's shown in place of service_vendor_id
-                  'purchased_by_name'     // Hide as it's shown in place of purchased_by
+                  'purchase_vendor_id',    // Hide Purchase Vendor ID field
+                  'service_vendor_id',     // Hide Service Vendor ID field
+                  'purchase_vendor_name',  // Hide as it's shown in place of purchase_vendor_id
+                  'service_vendor_name',   // Hide as it's shown in place of service_vendor_id
+                  'purchased_by_name'      // Hide as it's shown in place of purchased_by
                 ];
                 return !hiddenColumns.includes(key);
               })
