@@ -43,8 +43,10 @@ const BreakdownSelection = () => {
 
   const fetchAssetTypes = async () => {
     try {
-      const res = await API.get("/dept-assets/asset-types");
-      setAssetTypes(Array.isArray(res.data) ? res.data : []);
+      const res = await API.get("/asset-types/maint-required");
+      // The API returns { success: true, data: [...] } format
+      const assetTypesData = res.data.success ? res.data.data : res.data;
+      setAssetTypes(Array.isArray(assetTypesData) ? assetTypesData : []);
     } catch (err) {
       console.error(t('breakdownSelection.failedToFetchAssetTypes'), err);
       toast.error(t('breakdownSelection.failedToFetchAssetTypes'));
