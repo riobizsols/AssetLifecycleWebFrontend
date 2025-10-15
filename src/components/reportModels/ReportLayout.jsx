@@ -145,52 +145,105 @@ export default function ReportLayout({
     }
   };
 
-  const activeChips = useMemo(() => {
-    const chips = [];
-    translatedReport.quickFields.forEach((f) => {
-      const v = quick[f.key];
-      if (!v || (Array.isArray(v) && v.length === 0)) return;
-      
-      // Handle grouped fields
-      if (f.type === "group") {
-        // Check if any sub-fields have values
-        const hasSubValues = f.subFields.some(subField => {
-          const subVal = v[subField.key];
-          return subVal && (Array.isArray(subVal) ? subVal.length > 0 : subVal !== "");
-        });
-        
-        if (hasSubValues) {
-          // Show individual sub-field chips instead of the group
-          f.subFields.forEach(subField => {
-            const subVal = v[subField.key];
-            if (subVal && (Array.isArray(subVal) ? subVal.length > 0 : subVal !== "")) {
-              if (subField.type === "daterange") {
-                chips.push(`${subField.label}: ${subVal[0]} → ${subVal[1]}`);
-              } else if (Array.isArray(subVal)) {
-                chips.push(`${subField.label}: ${subVal.join(", ")}`);
-              } else {
-                chips.push(`${subField.label}: ${subVal}`);
-              }
-            }
-          });
-        }
-      } else if (f.type === "daterange") {
-        chips.push(`${f.label}: ${v[0]} → ${v[1]}`);
-      } else if (Array.isArray(v)) {
-        chips.push(`${f.label}: ${v.join(", ")}`);
-      } else {
-        chips.push(`${f.label}: ${v}`);
-      }
-    });
-    (advanced || []).forEach((r, idx) => {
-      if (!r.field) return;
-      const field = translatedReport.fields.find(f => f.key === r.field);
-      const label = field ? field.label : r.field;
-      const val = Array.isArray(r.val) ? r.val.join(", ") || "–" : r.val ?? "–";
-      chips.push(`${label} ${r.op} ${val}`);
-    });
-    return chips;
-  }, [quick, advanced, report]);
+   const activeChips = useMemo(() => {
+     const chips = [];
+     translatedReport.quickFields.forEach((f) => {
+       const v = quick[f.key];
+       if (!v || (Array.isArray(v) && v.length === 0)) return;
+       
+       // Handle grouped fields
+       if (f.type === "group") {
+         // Check if any sub-fields have values
+         const hasSubValues = f.subFields.some(subField => {
+           const subVal = v[subField.key];
+           return subVal && (Array.isArray(subVal) ? subVal.length > 0 : subVal !== "");
+         });
+         
+         if (hasSubValues) {
+           // Show individual sub-field chips instead of the group
+           f.subFields.forEach(subField => {
+             const subVal = v[subField.key];
+             if (subVal && (Array.isArray(subVal) ? subVal.length > 0 : subVal !== "")) {
+               if (subField.type === "daterange") {
+                 chips.push({
+                   type: 'quick',
+                   fieldKey: f.key,
+                   subFieldKey: subField.key,
+                   label: `${subField.label}: ${subVal[0]} → ${subVal[1]}`,
+                   removeAction: () => {
+                     const currentValue = quick[f.key] || {};
+                     const newValue = { ...currentValue, [subField.key]: "" };
+                     setQuickField(f.key, newValue);
+                   }
+                 });
+               } else if (Array.isArray(subVal)) {
+                 chips.push({
+                   type: 'quick',
+                   fieldKey: f.key,
+                   subFieldKey: subField.key,
+                   label: `${subField.label}: ${subVal.join(", ")}`,
+                   removeAction: () => {
+                     const currentValue = quick[f.key] || {};
+                     const newValue = { ...currentValue, [subField.key]: [] };
+                     setQuickField(f.key, newValue);
+                   }
+                 });
+               } else {
+                 chips.push({
+                   type: 'quick',
+                   fieldKey: f.key,
+                   subFieldKey: subField.key,
+                   label: `${subField.label}: ${subVal}`,
+                   removeAction: () => {
+                     const currentValue = quick[f.key] || {};
+                     const newValue = { ...currentValue, [subField.key]: "" };
+                     setQuickField(f.key, newValue);
+                   }
+                 });
+               }
+             }
+           });
+         }
+       } else if (f.type === "daterange") {
+         chips.push({
+           type: 'quick',
+           fieldKey: f.key,
+           label: `${f.label}: ${v[0]} → ${v[1]}`,
+           removeAction: () => setQuickField(f.key, "")
+         });
+       } else if (Array.isArray(v)) {
+         chips.push({
+           type: 'quick',
+           fieldKey: f.key,
+           label: `${f.label}: ${v.join(", ")}`,
+           removeAction: () => setQuickField(f.key, [])
+         });
+       } else {
+         chips.push({
+           type: 'quick',
+           fieldKey: f.key,
+           label: `${f.label}: ${v}`,
+           removeAction: () => setQuickField(f.key, "")
+         });
+       }
+     });
+     (advanced || []).forEach((r, idx) => {
+       if (!r.field) return;
+       const field = translatedReport.fields.find(f => f.key === r.field);
+       const label = field ? field.label : r.field;
+       const val = Array.isArray(r.val) ? r.val.join(", ") || "–" : r.val ?? "–";
+       chips.push({
+         type: 'advanced',
+         index: idx,
+         label: `${label} ${r.op} ${val}`,
+         removeAction: () => {
+           const newAdvanced = advanced.filter((_, i) => i !== idx);
+           setAdvanced(newAdvanced);
+         }
+       });
+     });
+     return chips;
+   }, [quick, advanced, report, setQuickField, setAdvanced]);
 
 
 
@@ -621,11 +674,6 @@ export default function ReportLayout({
                 {t('reports.saveView')}
               </button>
             )}
-            {hasFilters && (
-              <button onClick={clearAll} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm">
-                {t('reports.clear')}
-              </button>
-            )}
             <DropdownMenu label={t('reports.export')} options={exportOptions} />
           </div>
         </div>
@@ -787,24 +835,40 @@ export default function ReportLayout({
               <div className="mt-4">
                 <AdvancedBuilder fields={translatedReport.fields} value={advanced} onChange={setAdvanced} />
               </div>
-              {/* Active Chips */}
-              <div className="mt-3">
-                <SectionTitle>{t('reports.activeFilters')}</SectionTitle>
-                <div className="flex flex-wrap">
-                  {activeChips.length === 0 && <span className="text-sm text-slate-500">{t('reports.none')}</span>}
-                  {activeChips.map((c, idx) => (
-                    <Chip key={idx} label={c} />
-                  ))}
-                </div>
-              </div>
-              {/* Actions */}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button 
-                  onClick={handlePreviewReport}
-                  className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm hover:bg-gray-50"
-                >
-                  {t('reports.preview')}
-                </button>
+               {/* Active Chips */}
+               <div className="mt-3">
+                 <SectionTitle>{t('reports.activeFilters')}</SectionTitle>
+                 <div className="flex flex-wrap gap-2">
+                   {activeChips.length === 0 && <span className="text-sm text-slate-500">{t('reports.none')}</span>}
+                   {activeChips.map((chip, idx) => (
+                     <div key={idx} className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                       <span>{chip.label}</span>
+                       <button
+                         onClick={chip.removeAction}
+                         className="text-blue-600 hover:text-blue-800 hover:bg-blue-200 rounded-full p-1 transition-colors"
+                         title={t('reports.removeFilter')}
+                       >
+                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                         </svg>
+                       </button>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+               {/* Actions */}
+               <div className="mt-4 flex items-center justify-end gap-2">
+                 {hasFilters && (
+                   <button onClick={clearAll} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm hover:bg-gray-50">
+                     {t('reports.clear')}
+                   </button>
+                 )}
+                 <button 
+                   onClick={handlePreviewReport}
+                   className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm hover:bg-gray-50"
+                 >
+                   {t('reports.preview')}
+                 </button>
                 
                 {/* Generate Report Button - Show dropdown for asset-valuation */}
                 {translatedReport.id === 'asset-valuation' ? (
@@ -868,8 +932,8 @@ export default function ReportLayout({
                   </button>
                 </div>
               </div>
-              <div className="overflow-auto h-[calc(100%-48px)]">
-                <table className="min-w-full text-sm">
+              <div className="overflow-x-auto overflow-y-auto h-[calc(100%-48px)]">
+                <table className="min-w-full text-sm" style={{ minWidth: '800px' }}>
                   <thead className="bg-slate-50 sticky top-0">
                     <tr>
                       {cols.map((col) => (
