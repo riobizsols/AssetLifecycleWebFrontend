@@ -175,7 +175,9 @@ const MaintenanceApprovalDetail = () => {
       setLoadingApprovalDetails(true);
       try {
         
-        const response = await API.get(`/approval-detail/workflow/${id}`);
+        // Add cache-busting timestamp to prevent stale data
+        const timestamp = Date.now();
+        const response = await API.get(`/approval-detail/workflow/${id}?t=${timestamp}`);
         
         
         if (response.data.success) {
@@ -248,25 +250,25 @@ const MaintenanceApprovalDetail = () => {
     // TODO: Replace above with real API call using id
   }, [id]);
 
-  // Find the current step and user
-  const currentStep = steps.find((step) => step.status === "current");
-  const isCurrentApprover = currentStep && currentStep.user.id === currentUserEmpId;
+  // Find ALL current steps and users (after escalation, there can be multiple current approvers)
+  const currentSteps = steps.filter((step) => step.status === "current");
+  const isCurrentApprover = currentSteps.some((step) => step.user.id === currentUserEmpId);
   const isRejected = steps.some((step) => step.status === "rejected");
 
-  // Find the user with AP status (current action pending user)
-  const currentActionStep = steps.find((step) => {
-    // Look for the step that should be the current action user
-    // It should be the one with 'current' status and 'Action pending by' description
+  // Find ALL users with AP status (current action pending users)
+  const currentActionSteps = steps.filter((step) => {
+    // Look for steps that should be current action users
+    // They should have 'current' status and 'Action pending by' description
     const isCurrentAction = step.title !== 'System' && 
            step.status === 'current' && 
            step.description.includes('Action pending by');
     return isCurrentAction;
   });
   
-  // Check if current user is the one with AP status
-  const isCurrentActionUser = currentActionStep && (
-    currentActionStep.user.id === currentUserEmpId || 
-    currentActionStep.user.name === user?.full_name
+  // Check if current user is among ANY of the users with AP status
+  const isCurrentActionUser = currentActionSteps.some((step) => 
+    step.user.id === currentUserEmpId || 
+    step.user.name === user?.full_name
   );
   
   
@@ -701,8 +703,15 @@ const MaintenanceApprovalDetail = () => {
               )}
               {!isCurrentActionUser && (
                 <div className="text-gray-500 text-sm italic">
-                  {currentActionStep 
-                    ? t('maintenanceApproval.waitingForActionFrom', { userName: currentActionStep.user.name })
+                  {currentActionSteps.length > 0 
+                    ? (() => {
+                        if (currentActionSteps.length === 1) {
+                          return t('maintenanceApproval.waitingForActionFrom', { userName: currentActionSteps[0].user.name });
+                        } else {
+                          const userNames = currentActionSteps.map(step => step.user.name).join(', ');
+                          return t('maintenanceApproval.waitingForActionFrom', { userName: userNames });
+                        }
+                      })()
                     : t('maintenanceApproval.noActionRequiredFromYou')
                   }
                 </div>
