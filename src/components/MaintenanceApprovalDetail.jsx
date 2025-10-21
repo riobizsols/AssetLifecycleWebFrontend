@@ -250,26 +250,48 @@ const MaintenanceApprovalDetail = () => {
     // TODO: Replace above with real API call using id
   }, [id]);
 
+  // ROLE-BASED: Get current user's job roles from auth store
+  const userRoles = user?.roles || [];
+  const userRoleIds = userRoles.map(role => role.job_role_id);
+  
+  console.log('🔍 Current user roles:', userRoleIds);
+  console.log('📋 Workflow steps:', steps);
+  
   // Find ALL current steps and users (after escalation, there can be multiple current approvers)
   const currentSteps = steps.filter((step) => step.status === "current");
-  const isCurrentApprover = currentSteps.some((step) => step.user.id === currentUserEmpId);
+  
+  // ROLE-BASED: Check if user has ANY of the required roles for current approval steps
+  const isCurrentApprover = currentSteps.some((step) => {
+    // Backend sends role info in step.role.id (job_role_id)
+    const stepRoleId = step.role?.id || step.user?.id;
+    const hasRole = userRoleIds.includes(stepRoleId);
+    console.log(`🔍 Checking step: Required role=${stepRoleId}, User has role=${hasRole}`);
+    return hasRole;
+  });
+  
   const isRejected = steps.some((step) => step.status === "rejected");
 
-  // Find ALL users with AP status (current action pending users)
+  // Find ALL steps with AP status (current action pending)
   const currentActionSteps = steps.filter((step) => {
     // Look for steps that should be current action users
-    // They should have 'current' status and 'Action pending by' description
+    // They should have 'current' status and 'Action pending by' or similar description
     const isCurrentAction = step.title !== 'System' && 
-           step.status === 'current' && 
-           step.description.includes('Action pending by');
+           step.title !== 'Approval Initiated' &&
+           step.status === 'current';
     return isCurrentAction;
   });
   
-  // Check if current user is among ANY of the users with AP status
-  const isCurrentActionUser = currentActionSteps.some((step) => 
-    step.user.id === currentUserEmpId || 
-    step.user.name === user?.full_name
-  );
+  // ROLE-BASED: Check if current user has ANY of the roles requiring action
+  const isCurrentActionUser = currentActionSteps.some((step) => {
+    // Backend sends role info in step.role.id (job_role_id)
+    const stepRoleId = step.role?.id || step.user?.id;
+    const hasRole = userRoleIds.includes(stepRoleId);
+    console.log(`🔍 Checking action step: Required role=${stepRoleId}, User has role=${hasRole}`);
+    return hasRole;
+  });
+  
+  console.log('✅ User can approve:', isCurrentActionUser);
+  console.log('📊 Current action steps:', currentActionSteps);
   
   
 
@@ -706,10 +728,16 @@ const MaintenanceApprovalDetail = () => {
                   {currentActionSteps.length > 0 
                     ? (() => {
                         if (currentActionSteps.length === 1) {
-                          return t('maintenanceApproval.waitingForActionFrom', { userName: currentActionSteps[0].user.name });
+                          // ROLE-BASED: Show role name instead of user name
+                          const roleName = currentActionSteps[0].role?.name || currentActionSteps[0].user?.name;
+                          return t('maintenanceApproval.waitingForActionFrom', { userName: `any ${roleName}` });
                         } else {
-                          const userNames = currentActionSteps.map(step => step.user.name).join(', ');
-                          return t('maintenanceApproval.waitingForActionFrom', { userName: userNames });
+                          // ROLE-BASED: Show all role names
+                          const roleNames = currentActionSteps.map(step => {
+                            const roleName = step.role?.name || step.user?.name;
+                            return `any ${roleName}`;
+                          }).join(', ');
+                          return t('maintenanceApproval.waitingForActionFrom', { userName: roleNames });
                         }
                       })()
                     : t('maintenanceApproval.noActionRequiredFromYou')

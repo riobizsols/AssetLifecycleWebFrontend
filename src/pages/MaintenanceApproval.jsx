@@ -34,7 +34,6 @@ const MaintenanceApprovalDetail = () => {
     { label: t('maintenanceApproval.scheduledDate'), name: "scheduled_date", visible: true },
     { label: t('maintenanceApproval.vendor'), name: "vendor", visible: true },
     { label: t('maintenanceApproval.department'), name: "department", visible: true },
-    { label: t('maintenanceApproval.employee'), name: "employee", visible: true },
     { label: t('maintenanceApproval.maintenanceType'), name: "maintenance_type", visible: true },
     { label: t('maintenanceApproval.status'), name: "status", visible: true },
     { label: t('maintenanceApproval.daysUntilDue'), name: "days_until_due", visible: true },
