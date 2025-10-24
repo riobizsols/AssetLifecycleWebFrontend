@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "./ui/card";
 import { Clock, CheckCircle2 } from "lucide-react";
 import ChecklistModal from "./ChecklistModal";
@@ -139,9 +139,13 @@ const getActionColor = (type) => {
 
 const MaintenanceApprovalDetail = () => {
   const { id } = useParams();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   const { t } = useLanguage();
   
+  // Get context from URL or state (MAINTENANCEAPPROVAL)
+  const context = searchParams.get('context') || location.state?.context || 'MAINTENANCEAPPROVAL';
   
   const [maintenance, setMaintenance] = useState(null);
   const [steps, setSteps] = useState([]);
@@ -362,7 +366,10 @@ const MaintenanceApprovalDetail = () => {
       setLoadingAssetDetails(true);
       try {
         console.log("Fetching asset details for asset ID:", approvalDetails.assetId);
-        const response = await API.get(`/assets/${approvalDetails.assetId}`);
+        // Pass context parameter so logs go to MAINTENANCEAPPROVAL CSV
+        const response = await API.get(`/assets/${approvalDetails.assetId}`, {
+          params: { context }
+        });
         console.log("Asset details API response:", response.data);
         
         if (response.data) {

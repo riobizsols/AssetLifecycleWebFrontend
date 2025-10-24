@@ -78,6 +78,21 @@ export default function AppRoutes() {
         <Route path="/" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/not-authorized" element={
+          <div className="flex items-center justify-center min-h-screen bg-gray-50">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🚫</div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+              <p className="text-gray-600 mb-4">You don't have permission to access this page.</p>
+              <button 
+                onClick={() => window.history.back()} 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        } />
         <Route
           path="/dashboard"
           element={
@@ -348,7 +363,7 @@ export default function AppRoutes() {
         <Route
           path="/master-data/uploads"
           element={
-            <ProtectedRoute requiredAppId="BULKUPLOAD">
+            <ProtectedRoute requiredAppId="ROLES">
               <MainLayout>
                 <BulkUpload />
               </MainLayout>

@@ -343,19 +343,27 @@ const EditScrapSales = () => {
   const handleDocumentAction = async (doc, action) => {
     try {
       if (action === 'view') {
-        const res = await API.get(`/scrap-sales-docs/${doc.ssdoc_id}/download?mode=view`);
+        const res = await API.get(`/scrap-sales-docs/${doc.ssdoc_id}/download?mode=view`, {
+          params: { context: 'SCRAPSALES' }
+        });
         window.open(res.data.url, '_blank');
       } else if (action === 'download') {
-        const res = await API.get(`/scrap-sales-docs/${doc.ssdoc_id}/download?mode=download`);
+        const res = await API.get(`/scrap-sales-docs/${doc.ssdoc_id}/download?mode=download`, {
+          params: { context: 'SCRAPSALES' }
+        });
         window.open(res.data.url, '_blank');
       } else if (action === 'archive') {
         await API.put(`/scrap-sales-docs/${doc.ssdoc_id}/archive-status`, {
           is_archived: true,
           archived_path: doc.doc_path
+        }, {
+          params: { context: 'SCRAPSALES' }
         });
         toast.success('Document archived successfully');
         // Refresh documents
-        const res = await API.get(`/scrap-sales-docs/${scrapId}`);
+        const res = await API.get(`/scrap-sales-docs/${scrapId}`, {
+          params: { context: 'SCRAPSALES' }
+        });
         const allDocs = res.data?.documents || [];
         const active = allDocs.filter(d => !d.is_archived);
         const archived = allDocs.filter(d => d.is_archived);
@@ -365,10 +373,14 @@ const EditScrapSales = () => {
         await API.put(`/scrap-sales-docs/${doc.ssdoc_id}/archive-status`, {
           is_archived: false,
           archived_path: null
+        }, {
+          params: { context: 'SCRAPSALES' }
         });
         toast.success('Document unarchived successfully');
         // Refresh documents
-        const res = await API.get(`/scrap-sales-docs/${scrapId}`);
+        const res = await API.get(`/scrap-sales-docs/${scrapId}`, {
+          params: { context: 'SCRAPSALES' }
+        });
         const allDocs = res.data?.documents || [];
         const active = allDocs.filter(d => !d.is_archived);
         const archived = allDocs.filter(d => d.is_archived);
@@ -419,7 +431,8 @@ const EditScrapSales = () => {
           }
           
           await API.post(`/scrap-sales-docs/upload`, fd, { 
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
+            params: { context: 'SCRAPSALES' }
           });
           successCount++;
         } catch (err) {
@@ -436,7 +449,9 @@ const EditScrapSales = () => {
         }
         setUploadRows([]); // Clear all attachments after upload
         // Refresh the documents list
-        const res = await API.get(`/scrap-sales-docs/${scrapId}`);
+        const res = await API.get(`/scrap-sales-docs/${scrapId}`, {
+          params: { context: 'SCRAPSALES' }
+        });
         const allDocs = res.data?.documents || [];
         const active = allDocs.filter(doc => !doc.is_archived);
         const archived = allDocs.filter(doc => doc.is_archived);
@@ -470,7 +485,9 @@ const EditScrapSales = () => {
       console.log('EditScrapSales - Fetching documents for scrapId:', scrapId);
       setDocsLoading(true);
       try {
-        const res = await API.get(`/scrap-sales-docs/${scrapId}`);
+        const res = await API.get(`/scrap-sales-docs/${scrapId}`, {
+          params: { context: 'SCRAPSALES' }
+        });
         console.log('EditScrapSales - Documents API response:', res.data);
         const allDocs = res.data?.documents || res.data?.data || [];
         
@@ -513,7 +530,9 @@ const EditScrapSales = () => {
   const fetchDocumentTypes = async () => {
     try {
       console.log('Fetching document types for scrap sales...');
-      const res = await API.get('/doc-type-objects/object-type/scrap sales');
+      const res = await API.get('/doc-type-objects/object-type/scrap sales', {
+        params: { context: 'SCRAPSALES' }
+      });
       console.log('Document types response:', res.data);
 
       if (res.data && res.data.success && Array.isArray(res.data.data)) {

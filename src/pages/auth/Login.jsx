@@ -49,7 +49,8 @@ export default function Login() {
         action: 'User Logged In Successfully',
         userId: user?.user_id,
         userEmail: user?.email,
-        userRole: user?.job_role_id
+        userRole: user?.job_role_id,
+        org_id: user?.org_id
       });
 
       // Redirect to dashboard

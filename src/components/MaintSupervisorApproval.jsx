@@ -93,7 +93,10 @@ export default function MaintSupervisorApproval() {
     try {
       setLoadingData(true);
       const apiUrl = `/maintenance-schedules/${id}`;
-      const res = await API.get(apiUrl);
+      // Pass context so logs go to SUPERVISORAPPROVAL CSV
+      const res = await API.get(apiUrl, {
+        params: { context: 'SUPERVISORAPPROVAL' }
+      });
       if (res.data.success) {
         setMaintenanceData(res.data.data);
         // Initialize form data with existing values
@@ -123,7 +126,10 @@ export default function MaintSupervisorApproval() {
       // Get checklist for the specific asset type
       if (maintenanceData?.asset_type_id) {
         const apiUrl = `/checklist/asset-type/${maintenanceData.asset_type_id}`;
-        const res = await API.get(apiUrl);
+        // Pass context so logs go to SUPERVISORAPPROVAL CSV
+        const res = await API.get(apiUrl, {
+          params: { context: 'SUPERVISORAPPROVAL' }
+        });
         
         // The API returns { success: true, data: [...], count: 3 }
         if (res.data && res.data.success && Array.isArray(res.data.data)) {
@@ -213,7 +219,9 @@ export default function MaintSupervisorApproval() {
         // Add validateStatus to prevent Axios from treating 404 as an error
         validateStatus: function (status) {
           return status === 200 || status === 404; // Accept both 200 and 404
-        }
+        },
+        // Pass context so logs go to SUPERVISORAPPROVAL CSV
+        params: { context: 'SUPERVISORAPPROVAL' }
       });
       
       console.log('Assets documents API response:', res.data);
@@ -688,7 +696,9 @@ export default function MaintSupervisorApproval() {
         ...formData
       };
       
-      const res = await API.put(`/maintenance-schedules/${id}`, updateData);
+      const res = await API.put(`/maintenance-schedules/${id}`, updateData, {
+        params: { context: 'SUPERVISORAPPROVAL' }
+      });
       
       if (res.data.success) {
         toast.success(t('maintenanceSupervisor.maintenanceScheduleUpdatedSuccessfully'));

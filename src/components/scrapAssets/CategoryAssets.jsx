@@ -26,7 +26,9 @@ const CategoryAssets = () => {
   const fetchAssetsByCategory = async () => {
     try {
       console.log('🔍 Fetching assets by category:', category);
-      const response = await API.get('/assets/expiring-30-days-by-type');
+      const response = await API.get('/assets/expiring-30-days-by-type', {
+        params: { context: 'SCRAPASSETS' }
+      });
       console.log('📊 API Response:', response.data);
       
       if (response.data && response.data.asset_types) {
@@ -88,7 +90,9 @@ const CategoryAssets = () => {
             // Fallback: Try to fetch assets directly for this category
             try {
               console.log('🔄 Attempting fallback fetch for category:', categoryData.asset_type_name);
-              const fallbackResponse = await API.get(`/assets/expiry/expiring_soon?days=30&asset_type=${categoryData.asset_type_id}`);
+              const fallbackResponse = await API.get(`/assets/expiry/expiring_soon?days=30&asset_type=${categoryData.asset_type_id}`, {
+                params: { context: 'SCRAPASSETS' }
+              });
               
               if (fallbackResponse.data && fallbackResponse.data.assets) {
                 console.log('✅ Fallback fetch successful:', fallbackResponse.data.assets);
@@ -223,7 +227,9 @@ const CategoryAssets = () => {
       console.log('📤 Sending scrap data to API:', scrapData);
 
       // Call the scrap asset API
-      const response = await API.post('/scrap-assets', scrapData);
+      const response = await API.post('/scrap-assets', scrapData, {
+        params: { context: 'SCRAPASSETS' }
+      });
       
       if (response.data.success) {
         toast.success(`Asset ${selectedAsset.asset_name} successfully marked for scrapping!`);

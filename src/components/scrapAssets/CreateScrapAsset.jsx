@@ -100,7 +100,9 @@ const CreateScrapAsset = () => {
       return;
     }
     try {
-      const res = await API.get(`/scrap-assets/available-by-type/${assetTypeId}`);
+      const res = await API.get(`/scrap-assets/available-by-type/${assetTypeId}`, {
+        params: { context: 'SCRAPASSETS' }
+      });
       const apiAssets = Array.isArray(res.data?.assets)
         ? res.data.assets
         : Array.isArray(res.data?.data)
@@ -153,7 +155,9 @@ const CreateScrapAsset = () => {
 
   const fetchAssetTypes = async () => {
     try {
-      const res = await API.get('/asset-types');
+      const res = await API.get('/asset-types', {
+        params: { context: 'SCRAPASSETS' }
+      });
       const types = (res.data?.asset_types) || res.data?.rows || res.data || [];
       setAssetTypes(Array.isArray(types) ? types : []);
     } catch (error) {
@@ -177,7 +181,9 @@ const CreateScrapAsset = () => {
 
     try {
       // Fetch the asset by ID
-      const assetResp = await API.get(`/assets/${encodeURIComponent(scannedAssetId)}`);
+      const assetResp = await API.get(`/assets/${encodeURIComponent(scannedAssetId)}`, {
+        params: { context: 'SCRAPASSETS' }
+      });
       if (!assetResp || !assetResp.data) {
         toast.error(t('createScrapAsset.assetNotFound'));
         return;
@@ -292,7 +298,9 @@ const CreateScrapAsset = () => {
       console.log('📤 Sending scrap data to API:', scrapData);
 
       // Call the scrap asset API
-      const response = await API.post('/scrap-assets', scrapData);
+      const response = await API.post('/scrap-assets', scrapData, {
+        params: { context: 'SCRAPASSETS' }
+      });
       
       if (response.data.success) {
         toast.success(t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }));

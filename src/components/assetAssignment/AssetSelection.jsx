@@ -182,7 +182,12 @@ const AssetSelection = () => {
 
   const fetchInactiveAssetsByType = async (assetTypeId) => {
     try {
-      const res = await API.get(`/assets/type/${assetTypeId}/inactive`);
+      // Determine context based on entityType
+      const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
+      
+      const res = await API.get(`/assets/type/${assetTypeId}/inactive`, {
+        params: { context }
+      });
       // If the response is an object with a 'data' array, use that
       const assetsArr = Array.isArray(res.data.data)
         ? res.data.data
@@ -577,15 +582,18 @@ const AssetSelection = () => {
                     <div>
                       <button
                         className="text-blue-600 underline hover:text-blue-800"
-                        onClick={() =>
-                          navigate(`/asset-detail/${asset.asset_id}`, {
+                        onClick={() => {
+                          // Determine context based on entityType
+                          const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
+                          navigate(`/asset-detail/${asset.asset_id}?context=${context}`, {
                             state: {
                               employee_int_id: entityIntId,
                               dept_id: asset.dept_id || departmentId,
                               org_id: asset.org_id,
+                              context: context
                             },
-                          })
-                        }
+                          });
+                        }}
                       >
                         {asset.asset_id}
                       </button>

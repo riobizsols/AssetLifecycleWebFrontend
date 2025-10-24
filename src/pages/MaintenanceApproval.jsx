@@ -245,7 +245,9 @@ const MaintenanceApprovalDetail = () => {
   }));
 
   const handleRowClick = (row) => {
-    navigate(`/approval-detail/${row.wfamsh_id}`);
+    navigate(`/approval-detail/${row.wfamsh_id}?context=MAINTENANCEAPPROVAL`, {
+      state: { context: 'MAINTENANCEAPPROVAL' }
+    });
   };
 
   return (

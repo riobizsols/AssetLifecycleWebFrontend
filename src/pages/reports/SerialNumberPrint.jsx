@@ -331,7 +331,10 @@ const SerialNumberPrint = () => {
     
     // Fetch asset properties
     try {
-      const response = await API.get(`/assets/${item.asset_id}`);
+      // Pass context so logs go to SERIALNUMBERPRINT CSV
+      const response = await API.get(`/assets/${item.asset_id}`, {
+        params: { context: 'SERIALNUMBERPRINT' }
+      });
       if (response.data && response.data.properties) {
         setSelectedItem(prev => ({
           ...prev,

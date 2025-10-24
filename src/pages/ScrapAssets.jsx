@@ -44,7 +44,9 @@ const ScrapAssets = () => {
   const fetchTotalAssetsCount = async () => {
     try {
       console.log('🔍 Fetching total assets count...');
-      const response = await API.get('/assets/count');
+      const response = await API.get('/assets/count', {
+        params: { context: 'SCRAPASSETS' }
+      });
       console.log('📊 API Response:', response.data);
       
       if (response.data && response.data.success) {
@@ -68,7 +70,9 @@ const ScrapAssets = () => {
   const fetchNearingExpiryCount = async () => {
     try {
       console.log('🔍 Fetching nearing expiry count...');
-      const response = await API.get('/assets/expiry/expiring_soon?days=30');
+      const response = await API.get('/assets/expiry/expiring_soon?days=30', {
+        params: { context: 'SCRAPASSETS' }
+      });
       console.log('📊 Nearing Expiry API Response:', response.data);
       
       if (response.data && response.data.count !== undefined) {
@@ -92,7 +96,9 @@ const ScrapAssets = () => {
   const fetchExpiredCount = async () => {
     try {
       console.log('🔍 Fetching expired assets count...');
-      const response = await API.get('/assets/expiry/expired');
+      const response = await API.get('/assets/expiry/expired', {
+        params: { context: 'SCRAPASSETS' }
+      });
       console.log('📊 Expired Assets API Response:', response.data);
       
       if (response.data && response.data.count !== undefined) {
@@ -116,7 +122,9 @@ const ScrapAssets = () => {
   const fetchExpiringByCategory = async () => {
     try {
       console.log('🔍 Fetching assets expiring by category...');
-      const response = await API.get('/assets/expiring-30-days-by-type');
+      const response = await API.get('/assets/expiring-30-days-by-type', {
+        params: { context: 'SCRAPASSETS' }
+      });
       console.log('📊 Expiring by Category API Response:', response.data);
       
       if (response.data && response.data.asset_types) {

@@ -31,7 +31,9 @@ const ScrapSales = () => {
   const fetchScrapSales = async () => {
     try {
       setLoading(true);
-      const res = await API.get('/scrap-sales');
+      const res = await API.get('/scrap-sales', {
+        params: { context: 'SCRAPSALES' }
+      });
       const list = Array.isArray(res.data?.scrap_sales)
         ? res.data.scrap_sales
         : Array.isArray(res.data?.data)
@@ -135,10 +137,107 @@ const ScrapSales = () => {
     });
   };
 
-  const handleDelete = (row) => {
-    // Implement delete functionality
-    console.log(t('scrapSales.deleteScrapSale'), row);
-    toast.info(t('scrapSales.deleteFunctionalityToBeImplemented'));
+  const handleDelete = async (row) => {
+    try {
+      console.log('Deleting scrap sale:', row);
+      
+      const response = await API.delete(`/scrap-sales/${row.ssh_id}`, {
+        params: { context: 'SCRAPSALES' }
+      });
+      
+      if (response.data.success) {
+        toast.success(t('scrapSales.scrapSaleDeletedSuccessfully'), {
+          style: {
+            borderRadius: '10px',
+            background: '#10B981',
+            color: '#fff',
+          },
+        });
+        
+        // Refresh the scrap sales list
+        fetchScrapSales();
+      } else {
+        throw new Error(response.data.message || 'Delete failed');
+      }
+    } catch (error) {
+      console.error('Error deleting scrap sale:', error);
+      toast.error(error.response?.data?.message || t('scrapSales.errorDeletingScrapSale'), {
+        style: {
+          borderRadius: '10px',
+          background: '#EF4444',
+          color: '#fff',
+        },
+      });
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!selectedRows || selectedRows.length === 0) {
+      toast(t('scrapSales.pleaseSelectScrapSalesToDelete'), {
+        icon: '⚠️',
+        style: {
+          borderRadius: '10px',
+          background: '#F59E0B',
+          color: '#fff',
+        },
+      });
+      return false; // Return false to keep modal open
+    }
+    
+    try {
+      console.log('Deleting selected scrap sales:', selectedRows);
+      
+      // Delete each scrap sale individually
+      const deletePromises = selectedRows.map(sshId => 
+        API.delete(`/scrap-sales/${sshId}`, {
+          params: { context: 'SCRAPSALES' }
+        })
+      );
+      
+      const results = await Promise.allSettled(deletePromises);
+      
+      // Count successful and failed deletions
+      const successful = results.filter(result => result.status === 'fulfilled' && result.value.data.success).length;
+      const failed = results.length - successful;
+      
+      if (successful > 0) {
+        toast.success(t('scrapSales.scrapSalesDeletedSuccessfully', { count: successful }), {
+          style: {
+            borderRadius: '10px',
+            background: '#10B981',
+            color: '#fff',
+          },
+        });
+        
+        // Refresh the scrap sales list
+        fetchScrapSales();
+        
+        // Clear selected rows
+        setSelectedRows([]);
+      }
+      
+      if (failed > 0) {
+        toast.error(t('scrapSales.errorDeletingScrapSales', { count: failed }), {
+          style: {
+            borderRadius: '10px',
+            background: '#EF4444',
+            color: '#fff',
+          },
+        });
+      }
+      
+      return true; // Return true to close modal
+    } catch (error) {
+      console.error('Error deleting scrap sales:', error);
+      toast.error(t('scrapSales.errorDeletingScrapSales'), {
+        style: {
+          borderRadius: '10px',
+          background: '#EF4444',
+          color: '#fff',
+        },
+      });
+      return false; // Return false to keep modal open
+    }
   };
 
 
@@ -212,7 +311,7 @@ const ScrapSales = () => {
         onSort={handleSort}
         sortConfig={sortConfig}
                  onAdd={handleAddScrapSale}
-        onDeleteSelected={handleDelete}
+        onDeleteSelected={handleDeleteSelected}
         data={scrapSales}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}

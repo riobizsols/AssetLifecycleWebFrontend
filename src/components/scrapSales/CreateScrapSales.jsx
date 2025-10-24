@@ -59,7 +59,9 @@ const CreateScrapSales = () => {
     const fetchAssetTypes = async () => {
       setLoadingAssetTypes(true);
       try {
-        const res = await API.get("/asset-types");
+        const res = await API.get("/asset-types", {
+          params: { context: 'SCRAPSALES' }
+        });
         const types = res.data?.asset_types || res.data?.rows || res.data || [];
         setAssetTypes(Array.isArray(types) ? types : []);
       } catch (error) {
@@ -81,7 +83,9 @@ const CreateScrapSales = () => {
   const fetchDocumentTypes = async () => {
     try {
       console.log('Fetching document types for scrap sales...');
-      const res = await API.get('/doc-type-objects/object-type/scrap sales');
+      const res = await API.get('/doc-type-objects/object-type/scrap sales', {
+        params: { context: 'SCRAPSALES' }
+      });
       console.log('Document types response:', res.data);
 
       if (res.data && res.data.success && Array.isArray(res.data.data)) {
@@ -116,7 +120,9 @@ const CreateScrapSales = () => {
 
       try {
         const fetchPromises = selectedAssetTypes.map((typeId) =>
-          API.get(`/scrap-assets-by-type/${typeId}`)
+          API.get(`/scrap-assets-by-type/${typeId}`, {
+            params: { context: 'SCRAPSALES' }
+          })
         );
         const responses = await Promise.all(fetchPromises);
 
@@ -471,7 +477,9 @@ const CreateScrapSales = () => {
 
       console.log("Creating scrap sale:", scrapSaleData);
 
-      const response = await API.post("/scrap-sales", scrapSaleData);
+      const response = await API.post("/scrap-sales", scrapSaleData, {
+        params: { context: 'SCRAPSALES' }
+      });
 
       if (response.data.success) {
         toast.success(
@@ -498,7 +506,10 @@ const CreateScrapSales = () => {
               fd.append('doc_type_name', r.docTypeName);
             }
             try {
-              await API.post(`/scrap-sales-docs/upload`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+              await API.post(`/scrap-sales-docs/upload`, fd, { 
+                headers: { 'Content-Type': 'multipart/form-data' },
+                params: { context: 'SCRAPSALES' }
+              });
             } catch (upErr) {
               console.warn('Scrap sales doc upload failed', upErr);
             }

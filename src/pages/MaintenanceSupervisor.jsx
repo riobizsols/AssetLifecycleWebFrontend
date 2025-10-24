@@ -48,7 +48,10 @@ const MaintenanceSupervisor = () => {
 
   const fetchMaintenanceSchedules = async () => {
     try {
-      const res = await API.get("/maintenance-schedules/all");
+      // Pass context so logs go to SUPERVISORAPPROVAL CSV
+      const res = await API.get("/maintenance-schedules/all", {
+        params: { context: 'SUPERVISORAPPROVAL' }
+      });
       const maintenanceArray = Array.isArray(res.data) ? res.data : res.data.data || [];
       const formattedData = maintenanceArray.map(item => {
         const formatDate = (dateString) => {

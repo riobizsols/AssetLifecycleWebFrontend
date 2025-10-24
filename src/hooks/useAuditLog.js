@@ -196,6 +196,8 @@ export const useAuditLog = (appId) => {
         app_id: appId,
         event_id: event.event_id,
         text: cleanText,
+        user_id: user?.user_id,
+        org_id: user?.org_id,
         ...additionalData
       };
       console.log(`📤 [Audit] Sending audit payload:`, auditPayload);

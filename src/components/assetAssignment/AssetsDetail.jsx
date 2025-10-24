@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API from '../../lib/axios';
 import toast from 'react-hot-toast';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const AssetsDetail = () => {
@@ -11,7 +11,11 @@ const AssetsDetail = () => {
   // Get asset_id from URL params
   const { asset_id } = useParams();
   const location = useLocation();
-  const { employee_int_id, dept_id, org_id, hideAssign, backTo, selectedAssetType } = location.state || {};
+  const [searchParams] = useSearchParams();
+  const { employee_int_id, dept_id, org_id, hideAssign, backTo, selectedAssetType, context } = location.state || {};
+  
+  // Get context from URL query params (DEPTASSIGNMENT or EMPASSIGNMENT)
+  const contextFromUrl = searchParams.get('context') || context;
 
   // Helper to generate a unique assignment ID
   const generateUniqueId = () => `AA${Date.now()}`;
@@ -67,11 +71,13 @@ const AssetsDetail = () => {
 
   useEffect(() => {
     if (asset_id) {
-      API.get(`/assets/${asset_id}`)
+      // Pass context parameter to API if available
+      const params = contextFromUrl ? { context: contextFromUrl } : {};
+      API.get(`/assets/${asset_id}`, { params })
         .then(res => setAssetDetails(res.data))
         .catch(() => toast.error(t('assetsDetail.failedToFetchAssetDetails')));
     }
-  }, [asset_id, t]);
+  }, [asset_id, contextFromUrl, t]);
 
   return (
     <div className="max-w-7xl mx-auto mt-8 bg-[#F5F8FA] rounded-xl shadow">

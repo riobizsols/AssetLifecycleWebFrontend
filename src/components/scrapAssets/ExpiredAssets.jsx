@@ -25,7 +25,9 @@ const ExpiredAssets = () => {
     try {
       console.log('🔍 Fetching expired assets...');
       setLoading(true);
-      const response = await API.get('/assets/expiry/expired');
+      const response = await API.get('/assets/expiry/expired', {
+        params: { context: 'SCRAPASSETS' }
+      });
       console.log('📊 API Response:', response.data);
       
       if (response.data && response.data.assets) {
@@ -90,7 +92,9 @@ const ExpiredAssets = () => {
       console.log('📤 Sending scrap data to API:', scrapData);
 
       // Call the scrap asset API
-      const response = await API.post('/scrap-assets', scrapData);
+      const response = await API.post('/scrap-assets', scrapData, {
+        params: { context: 'SCRAPASSETS' }
+      });
       
       if (response.data.success) {
         toast.success(`Asset ${selectedAsset.text} successfully marked for scrapping!`);

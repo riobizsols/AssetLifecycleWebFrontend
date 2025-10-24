@@ -23,35 +23,66 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employ
       return;
     }
 
+    // Determine context for logging
+    const context = type === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
+
     API.get(endpoint)
       .then(async res => {
         const historyArr = Array.isArray(res.data) ? res.data : [];
-        // Fetch asset details for each asset_id in history
-        const assetDetailsMap = {};
-        await Promise.all(
-          historyArr.map(async (item) => {
-            if (!item.asset_id || assetDetailsMap[item.asset_id]) return;
-            try {
-              const assetRes = await API.get(`/assets/${item.asset_id}`);
-              assetDetailsMap[item.asset_id] = assetRes.data;
-            } catch (err) {
-              assetDetailsMap[item.asset_id] = {};
-            }
-          })
-        );
-        // Merge asset_type and description into history
-        const merged = historyArr.map(item => ({
+        
+        // Display history immediately (don't wait for asset details)
+        setHistory(historyArr.map(item => ({
           ...item,
-          asset_type: assetDetailsMap[item.asset_id]?.asset_type_id || '',
-          description: assetDetailsMap[item.asset_id]?.description || '-',
-        }));
-        setHistory(merged);
+          asset_type: '',
+          description: 'Loading...'
+        })));
+        setLoading(false); // Stop showing "Loading history..." immediately
+        
+        // Get UNIQUE asset IDs only (prevent duplicate fetches)
+        const uniqueAssetIds = [...new Set(historyArr.map(item => item.asset_id).filter(Boolean))];
+        
+        // Fetch asset details for unique assets only (in background)
+        const assetDetailsMap = {};
+        
+        // Fetch unique assets one by one (not all at once to prevent overwhelming)
+        for (const asset_id of uniqueAssetIds) {
+          try {
+            // Pass context parameter so logs go to the right CSV
+            const assetRes = await API.get(`/assets/${asset_id}`, {
+              params: { context }
+            });
+            assetDetailsMap[asset_id] = assetRes.data;
+            
+            // Update history progressively as each asset loads
+            setHistory(prevHistory => 
+              prevHistory.map(item => 
+                item.asset_id === asset_id ? {
+                  ...item,
+                  asset_type: assetRes.data?.asset_type_id || '',
+                  description: assetRes.data?.description || '-'
+                } : item
+              )
+            );
+          } catch (err) {
+            assetDetailsMap[asset_id] = {};
+            // Update with error state
+            setHistory(prevHistory => 
+              prevHistory.map(item => 
+                item.asset_id === asset_id ? {
+                  ...item,
+                  asset_type: '',
+                  description: '-'
+                } : item
+              )
+            );
+          }
+        }
       })
       .catch(err => {
         toast.error(t('employees.failedToFetchAssignmentHistory', { type }));
         setHistory([]);
-      })
-      .finally(() => setLoading(false));
+        setLoading(false);
+      });
   }, [employeeIntId, deptId, type]);
 
   const getTitle = () => {

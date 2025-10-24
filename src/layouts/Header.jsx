@@ -104,7 +104,8 @@ export default function Header() {
     await recordActionByNameWithFetch('Logging Out', { 
       action: 'User Logged Out Successfully',
       userId: user?.user_id,
-      userEmail: user?.email
+      userEmail: user?.email,
+      org_id: user?.org_id
     });
     
     logout();
