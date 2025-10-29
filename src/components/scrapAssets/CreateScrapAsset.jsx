@@ -149,6 +149,18 @@ const CreateScrapAsset = () => {
   };
 
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    // Also ensure document body is at top
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // Reset any potential scroll containers
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+      mainContent.scrollTop = 0;
+    }
+    
     // Initial: load asset types; assets loaded on asset type selection
     fetchAssetTypes();
   }, []);
