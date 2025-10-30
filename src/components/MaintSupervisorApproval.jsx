@@ -61,7 +61,8 @@ export default function MaintSupervisorApproval() {
     invoice: "",
     technician_name: "",
     technician_email: "",
-    technician_phno: ""
+    technician_phno: "",
+    cost: ""
   });
 
   // Validation state for each field
@@ -71,7 +72,8 @@ export default function MaintSupervisorApproval() {
     invoice: false,
     technician_name: false,
     technician_email: false,
-    technician_phno: false
+    technician_phno: false,
+    cost: false
   });
 
   useEffect(() => {
@@ -107,7 +109,8 @@ export default function MaintSupervisorApproval() {
           invoice: res.data.data.invoice || "",
           technician_name: res.data.data.technician_name || "",
           technician_email: res.data.data.technician_email || "",
-          technician_phno: res.data.data.technician_phno || ""
+          technician_phno: res.data.data.technician_phno || "",
+          cost: res.data.data.cost || ""
         });
       } else {
         toast.error(res.data.message || t('maintenanceSupervisor.failedToFetchMaintenanceData'));
@@ -674,11 +677,25 @@ export default function MaintSupervisorApproval() {
       hasErrors = true;
     }
     
+    if (!formData.cost || formData.cost.trim() === '') {
+      errors.cost = true;
+      hasErrors = true;
+    }
+    
     // Email format validation
     if (formData.technician_email && formData.technician_email.trim() !== '') {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.technician_email)) {
         errors.technician_email = true;
+        hasErrors = true;
+      }
+    }
+    
+    // Cost validation - must be a positive number
+    if (formData.cost && formData.cost.trim() !== '') {
+      const costValue = parseFloat(formData.cost);
+      if (isNaN(costValue) || costValue < 0) {
+        errors.cost = true;
         hasErrors = true;
       }
     }
@@ -693,7 +710,8 @@ export default function MaintSupervisorApproval() {
     
     try {
       const updateData = {
-        ...formData
+        ...formData,
+        cost: formData.cost ? parseFloat(formData.cost) : null
       };
       
       const res = await API.put(`/maintenance-schedules/${id}`, updateData, {
@@ -1383,7 +1401,9 @@ export default function MaintSupervisorApproval() {
                 )}
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.status')}</label>
                 <select
                   name="status"
@@ -1402,6 +1422,24 @@ export default function MaintSupervisorApproval() {
                 {validationErrors.status && (
                   <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.statusIsRequired')}</p>
                 )}
+              </div>
+                <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')}</label>
+                <input
+                  type="number"
+                  name="cost"
+                  value={formData.cost}
+                  onChange={handleInputChange}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.cost ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  placeholder={t('maintenanceSupervisor.enterCost')}
+                  min="0"
+                  step="0.01"
+                />
+                {validationErrors.cost && (
+                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.costIsRequired')}</p>
+                )}
+                </div>
               </div>
 
               <div>

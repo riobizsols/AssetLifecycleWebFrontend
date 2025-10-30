@@ -501,7 +501,8 @@
       "searchWorkOrderId": "Search Work Order ID...",
       "enterPONumber": "Enter PO Number",
       "enterInvoiceNumber": "Enter Invoice Number",
-      "searchWithinNotes": "Search within notes text"
+      "searchWithinNotes": "Search within notes text",
+      "enterBranchNumber": "Enter Branch Number"
     },
     "auditActions": {
       "generateReport": "Generate Report",
@@ -1349,11 +1350,13 @@
     "selectStatus": "Select status",
     "poNumber": "PO Number",
     "invoice": "Invoice",
+    "costOfMaintenance": "Cost of Maintenance",
     "enterTechnicianName": "Enter technician name",
     "enterTechnicianPhone": "Enter technician phone",
     "enterPONumber": "Enter PO number",
     "enterInvoiceNumber": "Enter invoice number",
     "enterTechnicianEmail": "Enter technician email",
+    "enterCost": "Enter maintenance cost",
     "enterAdditionalNotes": "Enter any additional notes...",
     "cancel": "Cancel",
     "submit": "Submit",
@@ -1391,6 +1394,7 @@
     "poNumberIsRequired": "PO number is required",
     "invoiceIsRequired": "Invoice number is required",
     "emailIsRequired": "Email is required",
+    "costIsRequired": "Maintenance cost is required",
     "invalidEmailFormat": "Please enter a valid email address"
   },
     "serialNumberPrint": {
