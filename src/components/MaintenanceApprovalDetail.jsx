@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "./ui/card";
 import { Clock, CheckCircle2 } from "lucide-react";
@@ -164,6 +164,24 @@ const MaintenanceApprovalDetail = () => {
   const [workflowHistory, setWorkflowHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Check if this is a subscription renewal (MT001)
+  const isSubscriptionRenewal = useMemo(() => {
+    if (!approvalDetails) return false;
+    const maintType = (approvalDetails.maintenanceType || '').toLowerCase();
+    const maintTypeId = approvalDetails.maint_type_id || '';
+    const result = maintType.includes('subscription') || maintTypeId === 'MT001';
+    console.log('Subscription renewal check:', { maintType, maintTypeId, result, approvalDetails });
+    return result;
+  }, [approvalDetails]);
+  
+  // Reset active tab if it's subscription renewal and user is on vendor/asset tab
+  useEffect(() => {
+    if (isSubscriptionRenewal && (activeTab === 'vendor' || activeTab === 'asset')) {
+      console.log('Resetting tab from', activeTab, 'to approval for subscription renewal');
+      setActiveTab('approval');
+    }
+  }, [isSubscriptionRenewal, activeTab]);
+
   // Set current user from auth store
   useEffect(() => {
     if (user && user.emp_int_id) {
@@ -194,11 +212,14 @@ const MaintenanceApprovalDetail = () => {
             wfamsdId: workflowData.workflowDetails?.[0]?.wfamsd_id || workflowData.wfamshId,
             wfamshId: workflowData.wfamshId,
             assetId: workflowData.assetId,
+            assetName: workflowData.assetName,
+            assetSerialNumber: workflowData.assetSerialNumber,
             assetTypeId: workflowData.assetTypeId,
             assetTypeName: workflowData.assetTypeName,
             vendorId: workflowData.vendorId,
             vendorName: workflowData.vendorName,
             maintenanceType: workflowData.maintenanceType,
+            maint_type_id: workflowData.maint_type_id,
             dueDate: workflowData.dueDate,
             cutoffDate: workflowData.cutoffDate,
             actionBy: workflowData.workflowDetails?.[0]?.user_name || 'Unassigned',
@@ -431,6 +452,15 @@ const MaintenanceApprovalDetail = () => {
             {/* <span className="text-2xl font-semibold text-center w-full">Maintenance Approval</span> */}
           </div>
           <div className="p-6">
+            {/* Asset Name at the top */}
+            {(assetDetails?.asset_name || approvalDetails?.assetName) && (
+              <div className="mb-6 pb-4 border-b border-gray-200">
+                <h2 className="text-2xl font-semibold text-gray-800">
+                  {assetDetails?.asset_name || approvalDetails?.assetName}
+                </h2>
+              </div>
+            )}
+            
             {/* Progress Steps with Details */}
             <div className="mb-8">
               <div className="flex items-center">
@@ -473,7 +503,10 @@ const MaintenanceApprovalDetail = () => {
             {/* Tabs */}
             <div className="border-b border-gray-200 mb-6">
               <nav className="-mb-px flex space-x-8">
-                {['approval', 'vendor', 'asset', 'history'].map((tab) => (
+                {(isSubscriptionRenewal 
+                  ? ['approval', 'history'] 
+                  : ['approval', 'vendor', 'asset', 'history']
+                ).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}

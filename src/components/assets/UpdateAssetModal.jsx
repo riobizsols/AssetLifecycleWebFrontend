@@ -60,7 +60,16 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     purchaseSupply: '',
     serviceSupply: '',
     vendorId: '',
-    properties: {}
+    properties: {},
+    // New fields
+    costCenter: '',
+    location: '',
+    insurancePolicyNumber: '',
+    insurer: '',
+    insuredValue: '',
+    insuranceStartDate: '',
+    insuranceEndDate: '',
+    comprehensiveInsurance: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,7 +161,16 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           purchaseSupply: dataToUse.purchase_vendor_id || '',
           serviceSupply: dataToUse.service_vendor_id || '',
           vendorId: dataToUse.purchase_vendor_id || '',
-          properties: dataToUse.properties || {}
+          properties: dataToUse.properties || {},
+          // Map DB fields to form
+          costCenter: dataToUse.cost_center_code || '',
+          location: dataToUse.location || '',
+          insurancePolicyNumber: dataToUse.insurance_policy_no || '',
+          insurer: dataToUse.insurer || '',
+          insuredValue: cleanNumericValue(dataToUse.insured_value),
+          insuranceStartDate: formatDate(dataToUse.insurance_start_date),
+          insuranceEndDate: formatDate(dataToUse.insurance_end_date),
+          comprehensiveInsurance: dataToUse.comprehensive_insurance || ''
         });
 
         // Fetch dynamic properties for the asset type
@@ -506,7 +524,16 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         expiry_date: form.expiryDate || null,
         current_status: 'Active',
         warranty_period: form.warrantyPeriod || null,
-        properties: form.properties || {}
+        properties: form.properties || {},
+        // New fields mapping to backend columns
+        cost_center_code: form.costCenter || null,
+        location: form.location || null,
+        insurance_policy_no: form.insurancePolicyNumber || null,
+        insurer: form.insurer || null,
+        insured_value: form.insuredValue ? parseFloat(form.insuredValue) : null,
+        insurance_start_date: form.insuranceStartDate || null,
+        insurance_end_date: form.insuranceEndDate || null,
+        comprehensive_insurance: form.comprehensiveInsurance || null
       };
 
       // Use the asset_id from the passed assetData prop
@@ -621,7 +648,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-[90%] max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-visible">
+      <div className="bg-white rounded-xl shadow-lg w-[98%] max-w-[90vw] max-h-[90vh] overflow-y-auto overflow-x-visible">
         <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
           <h1 className="text-2xl font-semibold">{t('assets.editAsset')}</h1>
         </div>
@@ -721,6 +748,18 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
               />
             </div>
 
+            {/* Location */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Location</label>
+              <input
+                type="text"
+                value={form.location}
+                onChange={(e) => setForm(prev => ({ ...prev, location: e.target.value }))}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
+            </div>
+
             {/* Purchase By */}
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.purchaseBy')}</label>
@@ -773,6 +812,85 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+          {/* Accounting Details */}
+          <div className="grid grid-cols-3 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-medium mb-1">Cost Center</label>
+              <input
+                type="text"
+                value={form.costCenter}
+                onChange={(e) => setForm(prev => ({ ...prev, costCenter: e.target.value }))}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
+            </div>
+          </div>
+
+          {/* Insurance Details */}
+          <div className="mb-2 text-base font-semibold">Insurance Details</div>
+          <div className="grid grid-cols-3 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-medium mb-1">Policy Number</label>
+              <input
+                type="text"
+                value={form.insurancePolicyNumber}
+                onChange={(e) => setForm(prev => ({ ...prev, insurancePolicyNumber: e.target.value }))}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Insurer</label>
+              <input
+                type="text"
+                value={form.insurer}
+                onChange={(e) => setForm(prev => ({ ...prev, insurer: e.target.value }))}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Insured Value</label>
+              <input
+                type="number"
+                step="0.01"
+                value={form.insuredValue}
+                onChange={(e) => setForm(prev => ({ ...prev, insuredValue: e.target.value }))}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Insurance Start Date</label>
+              <input
+                type="date"
+                value={form.insuranceStartDate}
+                onChange={(e) => setForm(prev => ({ ...prev, insuranceStartDate: e.target.value }))}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Insurance End Date</label>
+              <input
+                type="date"
+                value={form.insuranceEndDate}
+                onChange={(e) => setForm(prev => ({ ...prev, insuranceEndDate: e.target.value }))}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Comprehensive Insurance</label>
+              <input
+                type="text"
+                value={form.comprehensiveInsurance}
+                onChange={(e) => setForm(prev => ({ ...prev, comprehensiveInsurance: e.target.value }))}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
             </div>
           </div>
 

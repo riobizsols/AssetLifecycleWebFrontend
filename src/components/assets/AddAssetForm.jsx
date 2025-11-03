@@ -31,6 +31,15 @@ const initialForm = {
   // Accounting fields that users need to enter
   salvageValue: '',
   usefulLifeYears: '5',
+  // New fields
+  costCenter: '',
+  location: '',
+  insurancePolicyNumber: '',
+  insurer: '',
+  insuredValue: '',
+  insuranceStartDate: '',
+  insuranceEndDate: '',
+  comprehensiveInsurance: '',
 };
 
 
@@ -91,6 +100,7 @@ const AddAssetForm = ({ userRole }) => {
     purchase: true,
     vendor: true,
     accounting: true, // Add new state for accounting details
+    insurance: true,
     other: true,
   });
   const [purchaseByOptions, setPurchaseByOptions] = useState([]);
@@ -586,10 +596,10 @@ const AddAssetForm = ({ userRole }) => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     console.log('🔍 handleChange called:', { name, value });
     setForm((prev) => {
-      const newForm = { ...prev, [name]: value };
+      const newForm = { ...prev, [name]: type === 'checkbox' ? checked : value };
       // If serviceSupply is changed, just update it
       if (name === 'serviceSupply') {
         newForm[name] = value;
@@ -856,7 +866,16 @@ const AddAssetForm = ({ userRole }) => {
         current_book_value: parseFloat(form.purchaseCost) || 0, // Same as purchase cost initially
         accumulated_depreciation: 0, // Default to 0
         last_depreciation_calc_date: null, // Default to null
-        depreciation_start_date: form.purchaseDate || new Date() // Automatically set to purchase date
+        depreciation_start_date: form.purchaseDate || new Date(), // Automatically set to purchase date
+        // Additional fields (frontend only unless backend supports them)
+        cost_center: form.costCenter || null,
+        location: form.location || null,
+        insurance_policy_number: form.insurancePolicyNumber || null,
+        insurer: form.insurer || null,
+        insured_value: form.insuredValue ? parseFloat(form.insuredValue) : null,
+        insurance_start_date: form.insuranceStartDate || null,
+        insurance_end_date: form.insuranceEndDate || null,
+        comprehensive_insurance: form.comprehensiveInsurance || null
       };
 
       // Debug: Log depreciation values being sent
@@ -1268,6 +1287,11 @@ const AddAssetForm = ({ userRole }) => {
                 <label className="block text-sm mb-1 font-medium">{t('assets.assetName')}</label>
                 <textarea name="description" placeholder="" onChange={handleChange} value={form.description} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm" rows={3}></textarea>
               </div>
+              {/* Location */}
+              <div>
+                <label className="block text-sm mb-1 font-medium">Location</label>
+                <input name="location" type="text" onChange={handleChange} value={form.location} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+              </div>
             </div>
           )}
         </div>
@@ -1628,6 +1652,16 @@ const AddAssetForm = ({ userRole }) => {
           {!collapsedSections.accounting && (
             <div className="grid grid-cols-4 gap-6 mb-4">
               <div>
+                <label className="block text-sm mb-1 font-medium">Cost Center</label>
+                <input 
+                  name="costCenter" 
+                  type="text" 
+                  onChange={handleChange} 
+                  value={form.costCenter || ''} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
+                />
+              </div>
+              <div>
                 <label className="block text-sm mb-1 font-medium">{t('assets.salvageValue')}</label>
                 <input 
                   name="salvageValue" 
@@ -1650,6 +1684,46 @@ const AddAssetForm = ({ userRole }) => {
                   value={form.usefulLifeYears || '5'} 
                   className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
                 />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Insurance Details Section */}
+        <div className="mb-6">
+          <button type="button" onClick={() => toggleSection('insurance')} className="flex items-center gap-2 text-lg font-semibold mb-2 focus:outline-none">
+            <span>Insurance Details</span>
+            {collapsedSections.insurance ? (
+              <MdKeyboardArrowRight size={24} />
+            ) : (
+              <MdKeyboardArrowDown size={24} />
+            )}
+          </button>
+          {!collapsedSections.insurance && (
+            <div className="grid grid-cols-4 gap-6 mb-4">
+              <div>
+                <label className="block text-sm mb-1 font-medium">Policy Number</label>
+                <input name="insurancePolicyNumber" type="text" onChange={handleChange} value={form.insurancePolicyNumber} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 font-medium">Insurer</label>
+                <input name="insurer" type="text" onChange={handleChange} value={form.insurer} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 font-medium">Insured Value</label>
+                <input name="insuredValue" type="number" step="0.01" onChange={handleChange} value={form.insuredValue} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 font-medium">Insurance Start Date</label>
+                <input name="insuranceStartDate" type="date" onChange={handleChange} value={form.insuranceStartDate} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 font-medium">Insurance End Date</label>
+                <input name="insuranceEndDate" type="date" onChange={handleChange} value={form.insuranceEndDate} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 font-medium">Comprehensive Insurance</label>
+                <input name="comprehensiveInsurance" type="text" autoComplete="off" onChange={handleChange} value={form.comprehensiveInsurance} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
               </div>
             </div>
           )}

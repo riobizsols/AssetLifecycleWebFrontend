@@ -39,14 +39,26 @@ const WorkorderManagement = () => {
           : Array.isArray(res.data)
           ? res.data
           : [];
+        // Helper function to check if value is empty and return "Not Set"
+        const getDisplayValue = (value, dateFormat = false) => {
+          if (dateFormat && value) {
+            return new Date(value).toLocaleDateString();
+          }
+          if (value === null || value === undefined || value === "" || (typeof value === 'string' && value.trim() === '')) {
+            return t('workorderManagement.notSet') || 'Not Set';
+          }
+          return value;
+        };
+
         const formatted = raw.map((wo) => ({
           ...wo,
-          asset_id: wo.asset?.asset_id || t('workorderManagement.notAvailable'),
-          description: wo.asset?.description || t('workorderManagement.notAvailable'),
-          asset_type_name: wo.asset_type?.asset_type_name || t('workorderManagement.notAvailable'),
-          act_maint_st_date: wo.act_maint_st_date
-            ? new Date(wo.act_maint_st_date).toLocaleDateString()
-            : "",
+          ams_id: getDisplayValue(wo.ams_id),
+          asset_id: getDisplayValue(wo.asset?.asset_id),
+          description: getDisplayValue(wo.asset?.description),
+          maintenance_type_name: getDisplayValue(wo.maintenance_type_name),
+          act_maint_st_date: getDisplayValue(wo.act_maint_st_date, true),
+          status: getDisplayValue(wo.status),
+          asset_type_name: getDisplayValue(wo.asset_type?.asset_type_name),
         }));
         setData(formatted);
       } catch (err) {

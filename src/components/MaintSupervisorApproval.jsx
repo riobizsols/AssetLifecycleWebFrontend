@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { CheckCircle, ArrowLeft, ClipboardCheck, FileText, Upload, Eye, Download, X, Plus, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -52,6 +52,23 @@ export default function MaintSupervisorApproval() {
   // Document types from API
   const [maintenanceDocTypes, setMaintenanceDocTypes] = useState([]);
   const [photoDocTypes, setPhotoDocTypes] = useState([]);
+  
+  // Check if this is a subscription renewal (MT001)
+  const isSubscriptionRenewal = maintenanceData?.maint_type_id === 'MT001' || 
+                                 maintenanceData?.maintenance_type_name?.toLowerCase().includes('subscription');
+  
+  // Filter document types - exclude work order for subscription renewal
+  const filteredMaintenanceDocTypes = useMemo(() => {
+    if (isSubscriptionRenewal) {
+      return maintenanceDocTypes.filter(docType => 
+        !docType.doc_type?.toLowerCase().includes('wo') &&
+        !docType.doc_type?.toLowerCase().includes('workorder') &&
+        !docType.text?.toLowerCase().includes('work order') &&
+        !docType.text?.toLowerCase().includes('workorder')
+      );
+    }
+    return maintenanceDocTypes;
+  }, [maintenanceDocTypes, isSubscriptionRenewal]);
   
   // Form state for updatable fields
   const [formData, setFormData] = useState({
@@ -646,12 +663,46 @@ export default function MaintSupervisorApproval() {
     const errors = {};
     let hasErrors = false;
     
-    // Required fields validation
-    if (!formData.status || formData.status.trim() === '') {
-      errors.status = true;
-      hasErrors = true;
+    // Validation differs for subscription renewal vs regular maintenance
+    if (isSubscriptionRenewal) {
+      // For subscription renewal: status is required (used as payment status)
+      if (!formData.status || formData.status.trim() === '') {
+        errors.status = true;
+        hasErrors = true;
+      }
+    } else {
+      // For regular maintenance: status and technician fields are required
+      if (!formData.status || formData.status.trim() === '') {
+        errors.status = true;
+        hasErrors = true;
+      }
+      
+      if (!formData.technician_name || formData.technician_name.trim() === '') {
+        errors.technician_name = true;
+        hasErrors = true;
+      }
+      
+      if (!formData.technician_email || formData.technician_email.trim() === '') {
+        errors.technician_email = true;
+        hasErrors = true;
+      }
+      
+      if (!formData.technician_phno || formData.technician_phno.trim() === '') {
+        errors.technician_phno = true;
+        hasErrors = true;
+      }
+      
+      // Email format validation
+      if (formData.technician_email && formData.technician_email.trim() !== '') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.technician_email)) {
+          errors.technician_email = true;
+          hasErrors = true;
+        }
+      }
     }
     
+    // Common required fields for both types
     if (!formData.po_number || formData.po_number.trim() === '') {
       errors.po_number = true;
       hasErrors = true;
@@ -662,33 +713,9 @@ export default function MaintSupervisorApproval() {
       hasErrors = true;
     }
     
-    if (!formData.technician_name || formData.technician_name.trim() === '') {
-      errors.technician_name = true;
-      hasErrors = true;
-    }
-    
-    if (!formData.technician_email || formData.technician_email.trim() === '') {
-      errors.technician_email = true;
-      hasErrors = true;
-    }
-    
-    if (!formData.technician_phno || formData.technician_phno.trim() === '') {
-      errors.technician_phno = true;
-      hasErrors = true;
-    }
-    
     if (!formData.cost || formData.cost.trim() === '') {
       errors.cost = true;
       hasErrors = true;
-    }
-    
-    // Email format validation
-    if (formData.technician_email && formData.technician_email.trim() !== '') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.technician_email)) {
-        errors.technician_email = true;
-        hasErrors = true;
-      }
     }
     
     // Cost validation - must be a positive number
@@ -709,10 +736,17 @@ export default function MaintSupervisorApproval() {
     }
     
     try {
+      // Prepare update data
       const updateData = {
         ...formData,
         cost: formData.cost ? parseFloat(formData.cost) : null
       };
+      
+      // For subscription renewal, status represents payment status:
+      // CO = Payment Done/Completed
+      // IP = Payment Pending
+      // IN = Payment Initiated
+      // CA = Payment Cancelled
       
       const res = await API.put(`/maintenance-schedules/${id}`, updateData, {
         params: { context: 'SUPERVISORAPPROVAL' }
@@ -778,7 +812,8 @@ export default function MaintSupervisorApproval() {
           </div>
         </div>
 
-        {/* View Manual Section */}
+        {/* View Manual Section - Hide for subscription renewal */}
+        {!isSubscriptionRenewal && (
         <div className="p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.technicalManual')}</h2>
@@ -863,6 +898,7 @@ export default function MaintSupervisorApproval() {
           )}
           
         </div>
+        )}
 
         {/* Doc Upload Section */}
         {!isReadOnly && (
@@ -891,7 +927,7 @@ export default function MaintSupervisorApproval() {
                   <div className="col-span-3">
                     <label className="block text-xs font-medium mb-1">{t('maintenanceSupervisor.documentType')}</label>
                     <SearchableDropdown
-                      options={maintenanceDocTypes}
+                      options={filteredMaintenanceDocTypes}
                       value={upload.type}
                       onChange={(value) => updateInvoiceUpload(upload.id, { type: value })}
                       placeholder={t('maintenanceSupervisor.selectType')}
@@ -903,7 +939,7 @@ export default function MaintSupervisorApproval() {
                   </div>
 
                   {(() => {
-                    const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
+                    const selectedDocType = filteredMaintenanceDocTypes.find(dt => dt.id === upload.type);
                     const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName && (
                       <div className="col-span-3">
@@ -920,7 +956,7 @@ export default function MaintSupervisorApproval() {
                   })()}
 
                   <div className={(() => {
-                    const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
+                    const selectedDocType = filteredMaintenanceDocTypes.find(dt => dt.id === upload.type);
                     const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                     return needsCustomName ? 'col-span-4' : 'col-span-7';
                   })()}>
@@ -1005,8 +1041,8 @@ export default function MaintSupervisorApproval() {
         </div>
         )}
 
-        {/* Before/After Images Upload Section */}
-        {!isReadOnly && (
+        {/* Before/After Images Upload Section - Hide for subscription renewal */}
+        {!isReadOnly && !isSubscriptionRenewal && (
         <div className="p-6 rounded-lg border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.beforeAfterImages')}</h2>
           <div className="text-sm text-gray-600 mb-3">{t('maintenanceSupervisor.uploadImagesBeforeAfter')}</div>
@@ -1369,42 +1405,48 @@ export default function MaintSupervisorApproval() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.updateMaintenanceSchedule')}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.name')}</label>
-                <input
-                  type="text"
-                  name="technician_name"
-                  value={formData.technician_name}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.technician_name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('maintenanceSupervisor.enterTechnicianName')}
-                />
-                {validationErrors.technician_name && (
-                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.nameIsRequired')}</p>
-                )}
-              </div>
+              {/* Technician fields - hide for subscription renewal */}
+              {!isSubscriptionRenewal && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.name')}</label>
+                    <input
+                      type="text"
+                      name="technician_name"
+                      value={formData.technician_name}
+                      onChange={handleInputChange}
+                      disabled={isReadOnly}
+                      className={`w-full px-3 py-2 border ${validationErrors.technician_name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                      placeholder={t('maintenanceSupervisor.enterTechnicianName')}
+                    />
+                    {validationErrors.technician_name && (
+                      <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.nameIsRequired')}</p>
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.phone')}</label>
-                <input
-                  type="tel"
-                  name="technician_phno"
-                  value={formData.technician_phno}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.technician_phno ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('maintenanceSupervisor.enterTechnicianPhone')}
-                />
-                {validationErrors.technician_phno && (
-                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.phoneIsRequired')}</p>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.phone')}</label>
+                    <input
+                      type="tel"
+                      name="technician_phno"
+                      value={formData.technician_phno}
+                      onChange={handleInputChange}
+                      disabled={isReadOnly}
+                      className={`w-full px-3 py-2 border ${validationErrors.technician_phno ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                      placeholder={t('maintenanceSupervisor.enterTechnicianPhone')}
+                    />
+                    {validationErrors.technician_phno && (
+                      <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.phoneIsRequired')}</p>
+                    )}
+                  </div>
+                </>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.status')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {isSubscriptionRenewal ? 'Payment Status' : t('maintenanceSupervisor.status')}
+                </label>
                 <select
                   name="status"
                   value={formData.status}
@@ -1420,7 +1462,9 @@ export default function MaintSupervisorApproval() {
                   <option value="CA">{t('maintenanceSupervisor.cancelled')}</option>
                 </select>
                 {validationErrors.status && (
-                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.statusIsRequired')}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {isSubscriptionRenewal ? 'Payment status is required' : t('maintenanceSupervisor.statusIsRequired')}
+                  </p>
                 )}
               </div>
                 <div>
@@ -1474,27 +1518,30 @@ export default function MaintSupervisorApproval() {
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')}</label>
-                <input
-                  type="email"
-                  name="technician_email"
-                  value={formData.technician_email}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
-                  required
-                />
-                {validationErrors.technician_email && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {formData.technician_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.technician_email) 
-                      ? t('maintenanceSupervisor.invalidEmailFormat')
-                      : t('maintenanceSupervisor.emailIsRequired')
-                    }
-                  </p>
-                )}
-              </div>
+              {/* Email field - hide for subscription renewal */}
+              {!isSubscriptionRenewal && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')}</label>
+                  <input
+                    type="email"
+                    name="technician_email"
+                    value={formData.technician_email}
+                    onChange={handleInputChange}
+                    disabled={isReadOnly}
+                    className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                    placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
+                    required
+                  />
+                  {validationErrors.technician_email && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {formData.technician_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.technician_email) 
+                        ? t('maintenanceSupervisor.invalidEmailFormat')
+                        : t('maintenanceSupervisor.emailIsRequired')
+                      }
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

@@ -52,6 +52,14 @@ const BreakdownDetails = () => {
         }
         setAssetTypeDetails(typeDetails);
         setReportedByType(typeDetails.assignment_type);
+        
+        // If maint_required is false, set decision code to BF02 and make it fixed
+        // Only set if not viewing an existing breakdown (which may already have a decision code)
+        if (!existingBreakdown && (typeDetails.maint_required === false || typeDetails.maint_required === 0)) {
+          setDecisionCode("BF02");
+          // Also set a default priority for BF02 (High)
+          setPriority("High");
+        }
       } catch (err) {
         console.error(t('breakdownDetails.failedToFetchAssetTypeDetails'), err);
         toast.error(err.message || t('breakdownDetails.failedToFetchAssetTypeDetails'));
@@ -508,7 +516,7 @@ const BreakdownDetails = () => {
                   value={decisionCode}
                   onChange={handleDecisionCodeChange}
                   placeholder={t('breakdownDetails.selectDecisionCode')}
-                  disabled={isReadOnly}
+                  disabled={isReadOnly || (assetTypeDetails?.maint_required === false || assetTypeDetails?.maint_required === 0)}
                   required
                 />
                 <p className="text-xs text-gray-500">

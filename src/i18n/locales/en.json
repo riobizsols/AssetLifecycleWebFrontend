@@ -1106,6 +1106,7 @@
     "startDate": "Start Date",
     "status": "Status",
     "assetType": "Asset Type",
+    "notSet": "Not Set",
     "failedToFetchWorkOrders": "Failed to fetch work orders",
     "noWorkOrdersFound": "No work orders found",
     "loadingWorkOrders": "Loading work orders...",

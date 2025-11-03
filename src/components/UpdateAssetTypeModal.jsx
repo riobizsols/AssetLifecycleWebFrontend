@@ -458,7 +458,15 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       };
 
       // Make API call
+      console.log('Updating asset type:', assetData.asset_type_id, 'with data:', formData);
       const response = await API.put(`/asset-types/${assetData.asset_type_id}`, formData);
+      console.log('Update response:', response.data);
+
+      // Check if the update was successful
+      if (!response.data || !response.data.message) {
+        console.error('Invalid update response:', response.data);
+        throw new Error('Update response invalid');
+      }
 
       // Log update action after successful update
       await recordActionByNameWithFetch('Update', {
@@ -484,9 +492,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
           },
         }
       );
-      onClose();
-      // Refresh the parent component
-      window.location.reload();
+      
+      // Call onClose with a flag to trigger refresh in parent
+      onClose(true);
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Failed to update asset type";
       const errorDetails = error.response?.data?.details || "";

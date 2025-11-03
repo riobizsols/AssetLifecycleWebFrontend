@@ -8,6 +8,7 @@ import useAuditLog from "../../hooks/useAuditLog";
 import { DEPT_ASSIGNMENT_APP_ID } from "../../constants/deptAssignmentAuditEvents";
 import { EMP_ASSIGNMENT_APP_ID } from "../../constants/empAssignmentAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import SearchableDropdown from "../ui/SearchableDropdown";
  
 
 const AssetSelection = () => {
@@ -120,8 +121,8 @@ const AssetSelection = () => {
   }, [selectedAssetType]);
 
   // Handler for asset type selection (no persistence)
-  const handleAssetTypeChange = (e) => {
-    setSelectedAssetType(e.target.value);
+  const handleAssetTypeChange = (value) => {
+    setSelectedAssetType(value || null);
   };
 
   // No persistence effect needed
@@ -460,18 +461,21 @@ const AssetSelection = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('assets.assetType')}
                 </label>
-                <select
-                  className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
+                <SearchableDropdown
+                  options={[
+                    { id: "", text: t('assets.allAssetTypes') },
+                    ...assetTypes.map((type) => ({
+                      id: type.asset_type_id,
+                      text: type.text || type.asset_type_name
+                    }))
+                  ]}
                   value={selectedAssetType || ""}
                   onChange={handleAssetTypeChange}
-                >
-                  <option value="">{t('assets.allAssetTypes')}</option>
-                  {assetTypes.map((type) => (
-                    <option key={type.asset_type_id} value={type.asset_type_id}>
-                      {type.text}
-                    </option>
-                  ))}
-                </select>
+                  placeholder={t('assets.allAssetTypes')}
+                  searchPlaceholder={t('assets.searchAssetType') || 'Search asset type...'}
+                  displayKey="text"
+                  valueKey="id"
+                />
               </div>
 
               <div className="flex gap-2">

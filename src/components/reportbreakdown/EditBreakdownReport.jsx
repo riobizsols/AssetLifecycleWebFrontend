@@ -32,16 +32,45 @@ const EditBreakdownReport = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const assetId = breakdown?.asset_id || "";
-  const assetTypeId = breakdown?.asset_type_id || "";
+  const [assetTypeId, setAssetTypeId] = useState(breakdown?.asset_type_id || "");
 
   useEffect(() => {
     if (breakdown) {
+      console.log('Breakdown data received:', breakdown);
       // Populate form with existing breakdown data
       setBrCode(breakdown.atbrrc_id || "");
       setDescription(breakdown.description || "");
       setDecisionCode(breakdown.decision_code || "");
+      
+      // Set asset type ID if available in breakdown
+      if (breakdown.asset_type_id) {
+        console.log('Asset type ID from breakdown:', breakdown.asset_type_id);
+        setAssetTypeId(breakdown.asset_type_id);
+      } else {
+        console.log('No asset_type_id in breakdown data');
+      }
     }
   }, [breakdown]);
+
+  // Fetch asset type ID from asset if not available in breakdown
+  useEffect(() => {
+    const fetchAssetTypeId = async () => {
+      if (assetId && !assetTypeId) {
+        try {
+          console.log('Fetching asset type ID for asset:', assetId);
+          const res = await API.get(`/assets/${assetId}`);
+          console.log('Asset response:', res.data);
+          if (res.data?.asset_type_id) {
+            console.log('Setting asset type ID:', res.data.asset_type_id);
+            setAssetTypeId(res.data.asset_type_id);
+          }
+        } catch (err) {
+          console.error('Failed to fetch asset type ID:', err);
+        }
+      }
+    };
+    fetchAssetTypeId();
+  }, [assetId, assetTypeId]);
 
   useEffect(() => {
     // Fetch asset type details when asset type changes
@@ -61,22 +90,42 @@ const EditBreakdownReport = () => {
   useEffect(() => {
     // Fetch reason codes
     const fetchReasonCodes = async () => {
+      if (!assetTypeId) {
+        console.warn('assetTypeId not available, skipping reason codes fetch. Current assetTypeId:', assetTypeId, 'assetId:', assetId);
+        setReasonCodes([]);
+        return;
+      }
       try {
+        console.log('Fetching reason codes for asset type:', assetTypeId);
         const res = await API.get("/reportbreakdown/reason-codes", {
           params: {
-            asset_type_id: assetTypeId || undefined,
+            asset_type_id: assetTypeId,
             org_id: user?.org_id,
           },
         });
+        console.log('Reason codes API response:', res.data);
         const arr = Array.isArray(res.data?.data)
           ? res.data.data
           : Array.isArray(res.data)
           ? res.data
           : [];
-        setReasonCodes(arr);
+        
+        console.log('Parsed reason codes array:', arr);
+        
+        // Deduplicate by id (atbrrc_id) to ensure unique entries
+        const uniqueCodes = arr.reduce((acc, code) => {
+          if (!acc.find(item => item.id === code.id)) {
+            acc.push(code);
+          }
+          return acc;
+        }, []);
+        
+        console.log('Deduplicated reason codes:', uniqueCodes);
+        setReasonCodes(uniqueCodes);
       } catch (err) {
         console.error(t('breakdownDetails.failedToFetchReasonCodes'), err);
         toast.error(t('breakdownDetails.failedToFetchReasonCodes'));
+        setReasonCodes([]);
       }
     };
     fetchReasonCodes();
@@ -263,7 +312,7 @@ const EditBreakdownReport = () => {
                   onChange={setDecisionCode}
                   placeholder={t('breakdownDetails.selectDecisionCode')}
                   required
-                  disabled={isReadOnly}
+                  disabled={true}
                 />
               </div>
             </div>

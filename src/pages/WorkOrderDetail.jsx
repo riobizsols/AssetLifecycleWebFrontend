@@ -41,14 +41,10 @@ const WorkOrderDetail = () => {
   const fetchWorkOrderDetails = async () => {
     setIsLoading(true);
     try {
-      // Prefer navigation state if available to avoid failing API and faster load
-      const stateWO = location.state?.workOrder;
-      let workOrderData = stateWO;
-
-      if (!workOrderData) {
-        const woResponse = await API.get(`/work-orders/${id}`);
-        workOrderData = woResponse.data?.data;
-      }
+      // Always fetch fresh data from API to ensure all fields (including location) are present
+      // Navigation state might be stale or missing new fields
+      const woResponse = await API.get(`/work-orders/${id}`);
+      let workOrderData = woResponse.data?.data;
       
       if (!workOrderData) {
         toast.error(t('workorderManagement.workOrderNotFound'));
@@ -63,6 +59,8 @@ const WorkOrderDetail = () => {
         approval_date: Array.isArray(workOrderData.approval_date) ? workOrderData.approval_date[0] : workOrderData.approval_date,
         recent_activities: Array.isArray(workOrderData.recent_activities) ? workOrderData.recent_activities : [],
       };
+      console.log('Work Order Data:', workOrderData);
+      console.log('Asset Location:', workOrderData.asset?.location);
       setWorkOrder(aligned);
 
       // Set asset details from the work order response
@@ -370,7 +368,7 @@ const WorkOrderDetail = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.location')}</label>
-                  <p className="text-gray-900">{assetDetails?.branch_name || assetDetails?.department_name || t('workorderManagement.notAvailable')}</p>
+                  <p className="text-gray-900">{assetDetails?.location || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceDate')}</label>
@@ -392,23 +390,25 @@ const WorkOrderDetail = () => {
             </div>
 
             {/* {t('workorderManagement.approvalInformation')} */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.approvalInformation')}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
-                  <p className="text-gray-900">_____________________</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
-                  <p className="text-gray-900">_____________________</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
-                  <p className="text-gray-900">_____________________</p>
+            {workOrder.wfamsh_id && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.approvalInformation')}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
+                    <p className="text-gray-900">_____________________</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
+                    <p className="text-gray-900">_____________________</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
+                    <p className="text-gray-900">_____________________</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </section>
 
           {/* Vendor Section */}
@@ -578,7 +578,7 @@ const WorkOrderDetail = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.location')}</label>
-                    <p className="text-gray-900">{workOrder.asset?.branch_name || workOrder.asset?.department_name || t('workorderManagement.notAvailable')}</p>
+                    <p className="text-gray-900">{workOrder.asset?.location || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceDate')}</label>
@@ -600,23 +600,25 @@ const WorkOrderDetail = () => {
               </div>
 
               {/* {t('workorderManagement.approvalInformation')} */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.approvalInformation')}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
-                    <p className="text-gray-900">_____________________</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
-                    <p className="text-gray-900">_____________________</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
-                    <p className="text-gray-900">_____________________</p>
+              {workOrder.wfamsh_id && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.approvalInformation')}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
+                      <p className="text-gray-900">_____________________</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
+                      <p className="text-gray-900">_____________________</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
+                      <p className="text-gray-900">_____________________</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </section>
           )}
 
@@ -771,7 +773,7 @@ const WorkOrderDetail = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.location')}</label>
-                    <p className="text-gray-900">{workOrder.asset?.branch_name || workOrder.asset?.department_name || t('workorderManagement.notAvailable')}</p>
+                    <p className="text-gray-900">{workOrder.asset?.location || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceDate')}</label>
@@ -796,23 +798,25 @@ const WorkOrderDetail = () => {
               </Card>
 
               {/* Approval Section */}
-              <Card className="p-6">
-                <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.approvalInformation')}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
-                    <p className="text-gray-900">{workOrder.final_approver_name || t('workorderManagement.notAvailable')}</p>
+              {workOrder.wfamsh_id && (
+                <Card className="p-6">
+                  <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.approvalInformation')}</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
+                      <p className="text-gray-900">{workOrder.final_approver_name || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
+                      <p className="text-gray-900">{workOrder.technician_name || t('workorderManagement.notAvailable')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
+                      <p className="text-gray-900">{workOrder.approval_date ? new Date(workOrder.approval_date).toLocaleDateString('en-GB').replaceAll('/', '-') : t('workorderManagement.notAvailable')}</p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
-                    <p className="text-gray-900">{workOrder.technician_name || t('workorderManagement.notAvailable')}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
-                    <p className="text-gray-900">{workOrder.approval_date ? new Date(workOrder.approval_date).toLocaleDateString('en-GB').replaceAll('/', '-') : t('workorderManagement.notAvailable')}</p>
-                  </div>
-                </div>
-              </Card>
+                </Card>
+              )}
 
 
             </>

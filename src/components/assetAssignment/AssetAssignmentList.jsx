@@ -9,6 +9,7 @@ import { DEPT_ASSIGNMENT_APP_ID } from '../../constants/deptAssignmentAuditEvent
 import { EMP_ASSIGNMENT_APP_ID } from '../../constants/empAssignmentAuditEvents';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useNavigation } from '../../hooks/useNavigation';
+import SearchableDropdown from '../ui/SearchableDropdown';
 
 const AssetAssignmentList = ({
   title,
@@ -108,21 +109,21 @@ const AssetAssignmentList = ({
           {showDepartmentFilter && (
             <div className="w-64">
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.department')}</label>
-              <select
-                className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
+              <SearchableDropdown
+                options={departments.map(dept => ({
+                  id: dept.id,
+                  text: dept.name
+                }))}
                 value={selectedDepartment || ""}
-                onChange={(e) => {
-                  onDepartmentSelect(e.target.value);
-                  onDepartmentChange(e.target.value);
+                onChange={(value) => {
+                  onDepartmentSelect(value);
+                  onDepartmentChange(value);
                 }}
-              >
-                <option value="">{t('departments.selectDepartment')}</option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
+                placeholder={t('departments.selectDepartment')}
+                searchPlaceholder={t('departments.searchDepartment') || 'Search department...'}
+                displayKey="text"
+                valueKey="id"
+              />
             </div>
           )}
           
@@ -132,20 +133,18 @@ const AssetAssignmentList = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {entityType === 'department' ? t('common.department') : t('employees.title')}
               </label>
-              <select
-                className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
+              <SearchableDropdown
+                options={entities.map(entity => ({
+                  id: entity.id,
+                  text: entity.name
+                }))}
                 value={selectedEntity || ""}
-                onChange={(e) => onEntitySelect(e.target.value)}
-              >
-                <option value="">
-                  {entityType === 'department' ? t('departments.selectDepartment') : t('employees.selectEmployee')}
-                </option>
-                {entities.map((entity) => (
-                  <option key={entity.id} value={entity.id}>
-                    {entity.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => onEntitySelect(value)}
+                placeholder={entityType === 'department' ? t('departments.selectDepartment') : t('employees.selectEmployee')}
+                searchPlaceholder={entityType === 'department' ? t('departments.searchDepartment') : t('employees.searchEmployee')}
+                displayKey="text"
+                valueKey="id"
+              />
             </div>
           )}
 
