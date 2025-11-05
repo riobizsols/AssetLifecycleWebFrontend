@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "../ui/card";
 
-const DashboardMetrics = ({ metrics }) => {
+const DashboardMetrics = ({ metrics, loading = false }) => {
   const navigate = useNavigate();
 
   return (
@@ -12,8 +12,8 @@ const DashboardMetrics = ({ metrics }) => {
         return (
           <Card
             key={index}
-            className={`${metric.color} text-white cursor-pointer transition-all duration-200 hover:shadow-xl hover:scale-105 ${metric.hoverColor}`}
-            onClick={() => navigate(metric.path)}
+            className={`${metric.color} text-white ${metric.path ? 'cursor-pointer' : ''} transition-all duration-200 hover:shadow-xl hover:scale-105 ${metric.hoverColor}`}
+            onClick={() => metric.path && navigate(metric.path)}
           >
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
@@ -21,7 +21,13 @@ const DashboardMetrics = ({ metrics }) => {
                   <p className="text-white/80 text-sm font-medium mb-2">
                     {metric.title}
                   </p>
-                  <p className="text-3xl sm:text-4xl font-bold">{metric.value}</p>
+                  <p className="text-3xl sm:text-4xl font-bold">
+                    {loading ? (
+                      <span className="text-white/60 animate-pulse">...</span>
+                    ) : (
+                      metric.value
+                    )}
+                  </p>
                 </div>
                 <div className="bg-white/20 p-2 sm:p-3 rounded-lg">
                   <IconComponent className="w-6 h-6 sm:w-8 sm:h-8" />

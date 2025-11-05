@@ -63,7 +63,15 @@
     "depreciationCronJobTrigger": "Depreciation Cron Job Trigger",
     "triggerDepreciationCronJob": "Trigger Depreciation Cron Job",
     "clickButtonToTrigger": "Click the button above to trigger the depreciation calculation cron job",
-    "processAllAssets": "This will process all assets eligible for depreciation"
+    "processAllAssets": "This will process all assets eligible for depreciation",
+    "assetBreakdown": "Asset Breakdown & Overlaps",
+    "overlaps": "Overlaps (Assets in Multiple Categories)",
+    "assignedAndMaintenance": "Assigned + Maintenance",
+    "assignedAndDecommissioned": "Assigned + Decommissioned",
+    "maintenanceAndDecommissioned": "Maintenance + Decommissioned",
+    "allThree": "All Three Categories",
+    "assetsNotInCategories": "Assets not in any category",
+    "breakdownNote": "These assets are unassigned, not under maintenance, and not decommissioned."
   },
   "assets": {
     "title": "Assets",

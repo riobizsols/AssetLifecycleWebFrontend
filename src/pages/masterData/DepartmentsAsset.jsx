@@ -102,6 +102,7 @@ const DepartmentsAsset = () => {
       });
       
       setSelectedAssetTypeId("");
+      setSubmitAttempted(false); // Reset submit attempt flag to remove red border
       fetchDeptAssets();
       toast.success(t('departments.assetMappingAddedSuccessfully', { assetTypeName: selectedAssetTypeName, deptName: selectedDeptName }));
     } catch (err) {
@@ -313,6 +314,7 @@ const DepartmentsAsset = () => {
                       className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedAssetTypeId === at.asset_type_id ? "bg-gray-200" : ""}`}
                       onClick={() => {
                         setSelectedAssetTypeId(at.asset_type_id);
+                        setSubmitAttempted(false); // Reset validation state when selecting
                         dropdownRef.current.classList.add("hidden");
                         setSearchAssetType("");
                       }}
