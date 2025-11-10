@@ -163,6 +163,7 @@ const MaintenanceApprovalDetail = () => {
   const [loadingAssetDetails, setLoadingAssetDetails] = useState(false);
   const [workflowHistory, setWorkflowHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showAllAssets, setShowAllAssets] = useState(false);
 
   // Check if this is a subscription renewal (MT001)
   const isSubscriptionRenewal = useMemo(() => {
@@ -206,6 +207,16 @@ const MaintenanceApprovalDetail = () => {
           
           
           const workflowData = response.data.data;
+          
+          // Debug logging
+          console.log('📦 Full workflow data from API:', workflowData);
+          console.log('🔍 Group maintenance check:', {
+            isGroupMaintenance: workflowData.isGroupMaintenance,
+            groupId: workflowData.groupId,
+            groupName: workflowData.groupName,
+            groupAssets: workflowData.groupAssets,
+            groupAssetsLength: workflowData.groupAssets?.length
+          });
             
           // Transform the workflow data to match the expected format
           const transformedData = {
@@ -234,8 +245,20 @@ const MaintenanceApprovalDetail = () => {
             notes: workflowData.notes,
             checklist: workflowData.checklist,
             vendorDetails: workflowData.vendorDetails,
-            workflowSteps: workflowData.workflowSteps
+            workflowSteps: workflowData.workflowSteps,
+            // Group asset maintenance information
+            groupId: workflowData.groupId || null,
+            groupName: workflowData.groupName || null,
+            groupAssetCount: workflowData.groupAssetCount || null,
+            isGroupMaintenance: workflowData.isGroupMaintenance || false,
+            groupAssets: workflowData.groupAssets || [] // All assets in the group
           };
+          
+          console.log('✅ Transformed data:', {
+            isGroupMaintenance: transformedData.isGroupMaintenance,
+            groupAssets: transformedData.groupAssets,
+            groupAssetsLength: transformedData.groupAssets?.length
+          });
             
           setApprovalDetails(transformedData);
           setSteps(workflowData.workflowSteps || []);
@@ -452,12 +475,64 @@ const MaintenanceApprovalDetail = () => {
             {/* <span className="text-2xl font-semibold text-center w-full">Maintenance Approval</span> */}
           </div>
           <div className="p-6">
-            {/* Asset Name at the top */}
+            {/* Asset Name(s) at the top */}
             {(assetDetails?.asset_name || approvalDetails?.assetName) && (
               <div className="mb-6 pb-4 border-b border-gray-200">
+                {(() => {
+                  console.log('🎨 Rendering asset name section:', {
+                    isGroupMaintenance: approvalDetails?.isGroupMaintenance,
+                    groupAssets: approvalDetails?.groupAssets,
+                    groupAssetsLength: approvalDetails?.groupAssets?.length,
+                    groupName: approvalDetails?.groupName
+                  });
+                  
+                  if (approvalDetails?.isGroupMaintenance && approvalDetails?.groupAssets && approvalDetails.groupAssets.length > 0) {
+                    const assetsToShow = showAllAssets ? approvalDetails.groupAssets : approvalDetails.groupAssets.slice(0, 4);
+                    const hasMoreAssets = approvalDetails.groupAssets.length > 4;
+                    
+                    return (
+                      <div>
+                        <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+                          {approvalDetails.groupName || 'Group Maintenance'}
+                        </h2>
+                        <div className="mt-3">
+                          <p className="text-sm font-medium text-gray-600 mb-2">
+                            Assets in Group ({approvalDetails.groupAssets.length}):
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {assetsToShow.map((asset, index) => (
+                              <span
+                                key={asset.assetId || index}
+                                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                              >
+                                {asset.assetName || asset.assetId}
+                                {asset.serialNumber && (
+                                  <span className="ml-2 text-xs text-blue-600">
+                                    ({asset.serialNumber})
+                                  </span>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                          {hasMoreAssets && (
+                            <button
+                              onClick={() => setShowAllAssets(!showAllAssets)}
+                              className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+                            >
+                              {showAllAssets ? 'Show Less' : `Show ${approvalDetails.groupAssets.length - 4} More`}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    return (
                 <h2 className="text-2xl font-semibold text-gray-800">
                   {assetDetails?.asset_name || approvalDetails?.assetName}
                 </h2>
+                    );
+                  }
+                })()}
               </div>
             )}
             
@@ -683,7 +758,7 @@ const MaintenanceApprovalDetail = () => {
                             <span className="font-medium">{t('maintenanceApproval.branchID')}:</span> {assetDetails.branch_id || "-"}
                           </div>
                           <div>
-                            <span className="font-medium">{t('maintenanceApproval.groupID')}:</span> {assetDetails.group_id || "-"}
+                            <span className="font-medium">{t('maintenanceApproval.groupID')}:</span> {assetDetails.group_id || approvalDetails?.groupId || "-"}
                           </div>
                           <div>
                             <span className="font-medium">{t('maintenanceApproval.maintenanceScheduleID')}:</span> {assetDetails.maintsch_id || "-"}
@@ -691,6 +766,54 @@ const MaintenanceApprovalDetail = () => {
                           <div>
                             <span className="font-medium">{t('maintenanceApproval.organizationID')}:</span> {assetDetails.org_id || "-"}
                           </div>
+                          {/* Group Maintenance Information */}
+                          {approvalDetails?.isGroupMaintenance && approvalDetails?.groupName && (
+                            <>
+                              <div className="col-span-2 mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 text-blue-800">
+                                    Group Maintenance
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                                  <div>
+                                    <span className="font-medium">Group Name:</span> {approvalDetails.groupName || "-"}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Assets in Group:</span> {approvalDetails.groupAssetCount || "-"}
+                                  </div>
+                                </div>
+                                {approvalDetails?.groupAssets && approvalDetails.groupAssets.length > 0 && (
+                                  <div className="mt-3 pt-3 border-t border-blue-200">
+                                    <p className="text-sm font-medium text-gray-700 mb-2">All Assets:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {(showAllAssets ? approvalDetails.groupAssets : approvalDetails.groupAssets.slice(0, 4)).map((asset, index) => (
+                                        <span
+                                          key={asset.assetId || index}
+                                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white text-gray-700 border border-blue-200"
+                                        >
+                                          {asset.assetName || asset.assetId}
+                                          {asset.serialNumber && (
+                                            <span className="ml-1 text-gray-500">
+                                              ({asset.serialNumber})
+                                            </span>
+                                          )}
+                                        </span>
+                                      ))}
+                                    </div>
+                                    {approvalDetails.groupAssets.length > 4 && (
+                                      <button
+                                        onClick={() => setShowAllAssets(!showAllAssets)}
+                                        className="mt-2 text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+                                      >
+                                        {showAllAssets ? 'Show Less' : `Show ${approvalDetails.groupAssets.length - 4} More`}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </>

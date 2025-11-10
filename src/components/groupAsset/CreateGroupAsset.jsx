@@ -128,14 +128,15 @@ const CreateGroupAsset = () => {
   };
 
   // Fetch assets for all selected asset types
-  const fetchAssetsForSelectedType = async () => {
-    if (!selectedAssetType) {
+  const fetchAssetsForSelectedType = async (assetTypeId = null) => {
+    const typeId = assetTypeId || selectedAssetType;
+    if (!typeId) {
       setAvailableAssets([]);
       return;
     }
     setLoadingAssets(true);
     try {
-      const response = await API.get(`/group-assets/available/${selectedAssetType}`);
+      const response = await API.get(`/group-assets/available/${typeId}`);
       const list = Array.isArray(response.data?.assets)
         ? response.data.assets
         : Array.isArray(response.data?.data)
@@ -143,7 +144,34 @@ const CreateGroupAsset = () => {
           : Array.isArray(response.data)
             ? response.data
             : [];
-      setAvailableAssets(list);
+      
+      // Filter assets to ensure they match the selected asset type, org_id, and branch_id (client-side safety check)
+      const filteredList = list.filter(asset => {
+        const matchesAssetType = asset.asset_type_id === typeId;
+        const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
+        const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+        return matchesAssetType && matchesOrg && matchesBranch;
+      });
+      
+      // Log for debugging if there's a mismatch
+      if (filteredList.length !== list.length) {
+        console.warn(`Warning: Backend returned ${list.length} assets, but only ${filteredList.length} match filters`);
+        const assetTypeMismatch = list.filter(asset => asset.asset_type_id !== typeId);
+        const orgMismatch = list.filter(asset => user?.org_id && asset.org_id !== user.org_id);
+        const branchMismatch = list.filter(asset => user?.branch_id && asset.branch_id !== user.branch_id);
+        
+        if (assetTypeMismatch.length > 0) {
+          console.warn('Assets with mismatched asset_type_id:', assetTypeMismatch);
+        }
+        if (orgMismatch.length > 0) {
+          console.warn('Assets with mismatched org_id:', orgMismatch);
+        }
+        if (branchMismatch.length > 0) {
+          console.warn('Assets with mismatched branch_id:', branchMismatch);
+        }
+      }
+      
+      setAvailableAssets(filteredList);
     } catch (error) {
       console.error('Error fetching assets:', error);
       toast.error(t('createGroupAsset.failedToFetchAssets'));
@@ -153,10 +181,19 @@ const CreateGroupAsset = () => {
   };
 
   const filteredAvailableAssets = availableAssets.filter(asset => {
+    // First, filter by selected asset type to ensure correct assets are shown
+    const matchesAssetType = !selectedAssetType || asset.asset_type_id === selectedAssetType;
+    
+    // Filter by user's organization and branch
+    const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
+    const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+    
+    // Then filter by search term
     const matchesSearch = (asset.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                          (asset.description?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                          (asset.asset_id?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    
+    return matchesAssetType && matchesOrg && matchesBranch && matchesSearch;
   });
 
   const filteredSelectedAssets = selectedAssets.filter(asset => {
@@ -196,11 +233,15 @@ const CreateGroupAsset = () => {
   };
 
   const handleAssetTypeSelect = (assetType) => {
-    setSelectedAssetType(assetType.asset_type_id);
+    const newAssetTypeId = assetType.asset_type_id;
+    // Clear existing assets and selected assets when changing asset type
+    setAvailableAssets([]);
     setSelectedAssets([]);
+    setSelectedAssetType(newAssetTypeId);
     setIsDropdownOpen(false);
     setDropdownSearchTerm('');
-    fetchAssetsForSelectedType();
+    // Fetch assets for the newly selected type (pass the ID directly to avoid race condition)
+    fetchAssetsForSelectedType(newAssetTypeId);
   };
 
   // Remove asset type from selection

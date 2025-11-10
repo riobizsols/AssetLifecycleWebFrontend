@@ -64,7 +64,9 @@ const NotificationsPanel = () => {
       // Transform API data to match the existing UI structure
       const transformedAlerts = notifications.map(notification => ({
         alertType: notification.maintenanceType || "Regular Maintenance",
-        alertText: `${notification.assetTypeName} Maintenance`,
+        alertText: notification.isGroupMaintenance && notification.groupName
+          ? `${notification.groupName} (${notification.groupAssetCount} assets)`
+          : `${notification.assetTypeName} Maintenance`,
         dueOn: formatDate(notification.dueDate),
         actionBy: notification.userName || "Unassigned",
         cutoffDate: formatDate(notification.cutoffDate),
@@ -72,7 +74,13 @@ const NotificationsPanel = () => {
         wfamshId: notification.wfamshId, // For navigation
         id: notification.id,
         daysUntilCutoff: notification.daysUntilCutoff,
-        assetId: notification.assetId // Add assetId to the transformed alert
+        assetId: notification.assetId, // Add assetId to the transformed alert
+        // Group asset maintenance information
+        isGroupMaintenance: notification.isGroupMaintenance || false,
+        groupId: notification.groupId,
+        groupName: notification.groupName,
+        groupAssetCount: notification.groupAssetCount,
+        assetTypeName: notification.assetTypeName
       }));
       console.log("Transformed alerts:", transformedAlerts);
       setAlerts(transformedAlerts);
@@ -134,13 +142,18 @@ const NotificationsPanel = () => {
               title={alert.isUrgent ? `Urgent: Only ${alert.daysUntilCutoff} days until cutoff!` : ""}
               onClick={() => handleAlertClick(alert)}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {alert.isUrgent && (
                   <ExclamationTriangleIcon className="w-5 h-5 text-red-500 mr-1" />
                 )}
                 <span className={`text-xs font-bold px-2 py-1 rounded ${badgeColors[alert.alertType] || "bg-gray-100 text-gray-800"}`}>
                   {alert.alertType}
                 </span>
+                {alert.isGroupMaintenance && (
+                  <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 text-blue-800">
+                    Group Maintenance
+                  </span>
+                )}
                 <span className="font-semibold text-gray-800">{alert.alertText}</span>
                 {alert.daysUntilCutoff !== undefined && (
                   <span className={`text-xs px-2 py-1 rounded ml-auto ${

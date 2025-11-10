@@ -230,17 +230,46 @@ const EditGroupAsset = () => {
     
     setLoadingAssets(true);
     try {
-      const response = await API.get(`/assets/type/${assetTypeId}`);
-      if (response.data && response.data.success) {
-        setAvailableAssets(prev => {
-          const newAssets = response.data.data || [];
-          const existingAssetIds = prev.map(asset => asset.asset_id);
-          const uniqueNewAssets = newAssets.filter(asset => !existingAssetIds.includes(asset.asset_id));
-          return [...prev, ...uniqueNewAssets];
-        });
-      } else {
-        toast.error(t('editGroupAsset.failedToFetchAssets'));
+      const response = await API.get(`/group-assets/available/${assetTypeId}`);
+      const list = Array.isArray(response.data?.assets)
+        ? response.data.assets
+        : Array.isArray(response.data?.data)
+          ? response.data.data
+          : Array.isArray(response.data)
+            ? response.data
+            : [];
+      
+      // Filter assets to ensure they match the selected asset type, org_id, and branch_id (client-side safety check)
+      const filteredList = list.filter(asset => {
+        const matchesAssetType = asset.asset_type_id === assetTypeId;
+        const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
+        const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+        return matchesAssetType && matchesOrg && matchesBranch;
+      });
+      
+      // Log for debugging if there's a mismatch
+      if (filteredList.length !== list.length) {
+        console.warn(`Warning: Backend returned ${list.length} assets, but only ${filteredList.length} match filters`);
+        const assetTypeMismatch = list.filter(asset => asset.asset_type_id !== assetTypeId);
+        const orgMismatch = list.filter(asset => user?.org_id && asset.org_id !== user.org_id);
+        const branchMismatch = list.filter(asset => user?.branch_id && asset.branch_id !== user.branch_id);
+        
+        if (assetTypeMismatch.length > 0) {
+          console.warn('Assets with mismatched asset_type_id:', assetTypeMismatch);
+        }
+        if (orgMismatch.length > 0) {
+          console.warn('Assets with mismatched org_id:', orgMismatch);
+        }
+        if (branchMismatch.length > 0) {
+          console.warn('Assets with mismatched branch_id:', branchMismatch);
+        }
       }
+      
+      setAvailableAssets(prev => {
+        const existingAssetIds = prev.map(asset => asset.asset_id);
+        const uniqueNewAssets = filteredList.filter(asset => !existingAssetIds.includes(asset.asset_id));
+        return [...prev, ...uniqueNewAssets];
+      });
     } catch (error) {
       console.error('Error fetching assets:', error);
       toast.error(t('editGroupAsset.failedToFetchAssets'));
@@ -260,10 +289,24 @@ const EditGroupAsset = () => {
     try {
       const allAssets = [];
       for (const assetTypeId of assetTypeIds) {
-        const response = await API.get(`/assets/type/${assetTypeId}`);
-        if (response.data && response.data.success) {
-          allAssets.push(...(response.data.data || []));
-        }
+        const response = await API.get(`/group-assets/available/${assetTypeId}`);
+        const list = Array.isArray(response.data?.assets)
+          ? response.data.assets
+          : Array.isArray(response.data?.data)
+            ? response.data.data
+            : Array.isArray(response.data)
+              ? response.data
+              : [];
+        
+        // Filter assets to ensure they match the selected asset type, org_id, and branch_id
+        const filteredList = list.filter(asset => {
+          const matchesAssetType = asset.asset_type_id === assetTypeId;
+          const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
+          const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+          return matchesAssetType && matchesOrg && matchesBranch;
+        });
+        
+        allAssets.push(...filteredList);
       }
       
       const uniqueAssets = allAssets.filter((asset, index, self) => 
@@ -841,10 +884,20 @@ const EditGroupAsset = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                         {availableAssets
-                          .filter(asset => 
-                            asset.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            asset.asset_id?.toLowerCase().includes(searchTerm.toLowerCase())
-                          )
+                          .filter(asset => {
+                            // Filter by search term
+                            const matchesSearch = asset.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                 asset.asset_id?.toLowerCase().includes(searchTerm.toLowerCase());
+                            
+                            // Filter by selected asset types
+                            const matchesAssetType = selectedAssetTypes.length === 0 || selectedAssetTypes.includes(asset.asset_type_id);
+                            
+                            // Filter by user's organization and branch
+                            const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
+                            const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+                            
+                            return matchesSearch && matchesAssetType && matchesOrg && matchesBranch;
+                          })
                           .map((asset) => {
                             const isSelected = selectedAssets.some(selected => selected.asset_id === asset.asset_id);
                             return (

@@ -33,6 +33,7 @@ const WorkOrderDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showAllAssets, setShowAllAssets] = useState(false);
 
   useEffect(() => {
     fetchWorkOrderDetails();
@@ -58,9 +59,20 @@ const WorkOrderDetail = () => {
         final_approver_name: workOrderData.final_approver_name,
         approval_date: Array.isArray(workOrderData.approval_date) ? workOrderData.approval_date[0] : workOrderData.approval_date,
         recent_activities: Array.isArray(workOrderData.recent_activities) ? workOrderData.recent_activities : [],
+        // Group maintenance information
+        is_group_maintenance: workOrderData.is_group_maintenance || false,
+        group_id: workOrderData.group_id || null,
+        group_name: workOrderData.group_name || null,
+        group_asset_count: workOrderData.group_asset_count || 0,
+        group_assets: workOrderData.group_assets || []
       };
       console.log('Work Order Data:', workOrderData);
       console.log('Asset Location:', workOrderData.asset?.location);
+      console.log('Group Maintenance Info:', {
+        is_group_maintenance: aligned.is_group_maintenance,
+        group_asset_count: aligned.group_asset_count,
+        group_assets: aligned.group_assets
+      });
       setWorkOrder(aligned);
 
       // Set asset details from the work order response
@@ -352,11 +364,46 @@ const WorkOrderDetail = () => {
             
             {/* Asset Details */}
             <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.assetInformation')}</h3>
+              <h3 className="text-lg font-semibold mb-4">
+                {workOrder.is_group_maintenance && workOrder.group_name 
+                  ? `${workOrder.group_name} - ${t('workorderManagement.assetInformation')}`
+                  : t('workorderManagement.assetInformation')}
+              </h3>
+              
+              {/* Group Maintenance Info for PDF */}
+              {workOrder.is_group_maintenance && workOrder.group_assets && workOrder.group_assets.length > 0 && (
+                <div className="mb-4 mt-6 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 text-blue-800">
+                      Group Maintenance
+                    </span>
+                    <span className="text-sm text-gray-700">
+                      {workOrder.group_asset_count} {workOrder.group_asset_count === 1 ? 'Asset' : 'Assets'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">All Assets in Group:</p>
+                    <div className="text-sm text-gray-700">
+                      {workOrder.group_assets.map((asset, index) => (
+                        <span key={asset.asset_id || index} className="inline-block mr-2 mb-1">
+                          {asset.asset_name || asset.asset_id}
+                          {asset.serial_number && ` (${asset.serial_number})`}
+                          {index < workOrder.group_assets.length - 1 && ', '}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetID')}</label>
-                  <p className="text-gray-900">{workOrder.asset_id}</p>
+                  <p className="text-gray-900">
+                    {workOrder.is_group_maintenance 
+                      ? `${workOrder.asset?.asset_id || workOrder.asset_id || t('workorderManagement.notAvailable')} (Representative)` 
+                      : workOrder.asset?.asset_id || workOrder.asset_id || t('workorderManagement.notAvailable')}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.serialNumber')}</label>
@@ -544,10 +591,6 @@ const WorkOrderDetail = () => {
           </h1>
           <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
             <span className="flex items-center gap-1">
-              <WrenchIcon className="w-4 h-4" />
-              {workOrder.maintenance_type_name || t('workorderManagement.maintenance')}
-            </span>
-            <span className="flex items-center gap-1">
               <DocumentTextIcon className="w-4 h-4" />
               <span className="font-bold">{workOrder.ams_id}</span>
             </span>
@@ -562,11 +605,46 @@ const WorkOrderDetail = () => {
               
               {/* Asset Details */}
               <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.assetInformation')}</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  {workOrder.is_group_maintenance && workOrder.group_name 
+                    ? `${workOrder.group_name} - ${t('workorderManagement.assetInformation')}`
+                    : t('workorderManagement.assetInformation')}
+                </h3>
+                
+                {/* Group Maintenance Info for Print */}
+                {workOrder.is_group_maintenance && workOrder.group_assets && workOrder.group_assets.length > 0 && (
+                  <div className="mb-4 mt-6 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 text-blue-800">
+                        Group Maintenance
+                      </span>
+                      <span className="text-sm text-gray-700">
+                        {workOrder.group_asset_count} {workOrder.group_asset_count === 1 ? 'Asset' : 'Assets'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">All Assets in Group:</p>
+                      <div className="text-sm text-gray-700">
+                        {workOrder.group_assets.map((asset, index) => (
+                          <span key={asset.asset_id || index} className="inline-block mr-2 mb-1">
+                            {asset.asset_name || asset.asset_id}
+                            {asset.serial_number && ` (${asset.serial_number})`}
+                            {index < workOrder.group_assets.length - 1 && ', '}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetID')}</label>
-                    <p className="text-gray-900">{workOrder.asset?.asset_id || t('workorderManagement.notAvailable')}</p>
+                    <p className="text-gray-900">
+                      {workOrder.is_group_maintenance 
+                        ? `${workOrder.asset?.asset_id} (Representative)` 
+                        : workOrder.asset?.asset_id || t('workorderManagement.notAvailable')}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.serialNumber')}</label>
@@ -757,11 +835,60 @@ const WorkOrderDetail = () => {
 
               {/* Asset Details */}
               <Card className="p-6">
-                <h2 className="text-lg font-semibold mb-4">{t('workorderManagement.assetInformation')}</h2>
+                <h2 className="text-lg font-semibold mb-4">
+                  {workOrder?.is_group_maintenance && workOrder?.group_name 
+                    ? `${workOrder.group_name} - ${t('workorderManagement.assetInformation')}`
+                    : t('workorderManagement.assetInformation')}
+                </h2>
+                
+                {/* Group Maintenance Info */}
+                {workOrder?.is_group_maintenance && workOrder?.group_assets && workOrder.group_assets.length > 0 && (
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 text-blue-800">
+                        Group Maintenance
+                      </span>
+                      <span className="text-sm text-gray-700">
+                        {workOrder.group_asset_count} {workOrder.group_asset_count === 1 ? 'Asset' : 'Assets'}
+                      </span>
+                    </div>
+                    <div className="mb-3">
+                      <p className="text-sm font-medium text-gray-700 mb-2">All Assets in Group:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(showAllAssets ? workOrder.group_assets : workOrder.group_assets.slice(0, 4)).map((asset, index) => (
+                          <span
+                            key={asset.asset_id || index}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white text-gray-700 border border-blue-200"
+                          >
+                            {asset.asset_name || asset.asset_id}
+                            {asset.serial_number && (
+                              <span className="ml-2 text-xs text-gray-500">
+                                ({asset.serial_number})
+                              </span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                      {workOrder.group_assets.length > 4 && (
+                        <button
+                          onClick={() => setShowAllAssets(!showAllAssets)}
+                          className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+                        >
+                          {showAllAssets ? 'Show Less' : `Show ${workOrder.group_assets.length - 4} More`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetID')}</label>
-                    <p className="text-gray-900">{workOrder.asset?.asset_id || t('workorderManagement.notAvailable')}</p>
+                    <p className="text-gray-900">
+                      {workOrder?.is_group_maintenance 
+                        ? `${workOrder.asset?.asset_id} (Representative)` 
+                        : workOrder.asset?.asset_id || t('workorderManagement.notAvailable')}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.serialNumber')}</label>

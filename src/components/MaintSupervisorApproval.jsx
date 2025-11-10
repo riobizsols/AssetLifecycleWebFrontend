@@ -53,6 +53,9 @@ export default function MaintSupervisorApproval() {
   const [maintenanceDocTypes, setMaintenanceDocTypes] = useState([]);
   const [photoDocTypes, setPhotoDocTypes] = useState([]);
   
+  // State for showing all group assets
+  const [showAllAssets, setShowAllAssets] = useState(false);
+  
   // Check if this is a subscription renewal (MT001)
   const isSubscriptionRenewal = maintenanceData?.maint_type_id === 'MT001' || 
                                  maintenanceData?.maintenance_type_name?.toLowerCase().includes('subscription');
@@ -107,6 +110,7 @@ export default function MaintSupervisorApproval() {
       fetchMaintenanceDocuments();
     }
   }, [maintenanceData]);
+
 
   const fetchMaintenanceData = async () => {
     try {
@@ -225,50 +229,63 @@ export default function MaintSupervisorApproval() {
 
 
   const fetchMaintenanceDocuments = async () => {
-    if (!maintenanceData?.asset_id) {
-      console.log('No asset_id available for fetching maintenance documents');
+    if (!maintenanceData?.ams_id && !maintenanceData?.asset_id) {
+      console.log('No ams_id or asset_id available for fetching maintenance documents');
       return;
     }
     
     setLoadingMaintenanceDocs(true);
     try {
-      console.log('Fetching all documents for asset:', maintenanceData.asset_id);
+      let res;
       
-      // Use the same endpoint as the Assets screen - this returns all documents for the asset
-      const res = await API.get(`/assets/${maintenanceData.asset_id}/docs`, {
-        // Add validateStatus to prevent Axios from treating 404 as an error
-        validateStatus: function (status) {
-          return status === 200 || status === 404; // Accept both 200 and 404
-        },
-        // Pass context so logs go to SUPERVISORAPPROVAL CSV
-        params: { context: 'SUPERVISORAPPROVAL' }
-      });
+      // For group maintenance or when ams_id is available, fetch by work order (ams_id)
+      // This ensures we get documents uploaded for the maintenance schedule
+      if (maintenanceData?.ams_id) {
+        console.log('Fetching maintenance documents for work order:', maintenanceData.ams_id);
+        res = await API.get(`/asset-maint-docs/work-order/${maintenanceData.ams_id}`, {
+          validateStatus: function (status) {
+            return status === 200 || status === 404;
+          },
+          params: { context: 'SUPERVISORAPPROVAL' }
+        });
+      } else {
+        // Fallback to asset documents if ams_id is not available
+        console.log('Fetching all documents for asset:', maintenanceData.asset_id);
+        res = await API.get(`/assets/${maintenanceData.asset_id}/docs`, {
+          validateStatus: function (status) {
+            return status === 200 || status === 404;
+          },
+          params: { context: 'SUPERVISORAPPROVAL' }
+        });
+      }
       
-      console.log('Assets documents API response:', res.data);
+      console.log('Documents API response:', res.data);
       
       // If 404, set empty arrays
       if (res.status === 404) {
-        console.log('No documents found for asset');
+        console.log('No documents found');
         setMaintenanceDocs([]);
         setArchivedDocs([]);
         setManualDocs([]);
         return;
       }
       
-      // Process the response - should be an array of documents
-      const allDocs = Array.isArray(res.data) ? res.data : [];
+      // Process the response - API returns { success: true, data: [...] } for work order endpoint
+      // or array directly for asset endpoint
+      const allDocs = res.data?.data ? res.data.data : (Array.isArray(res.data) ? res.data : []);
       console.log('All documents from assets endpoint:', allDocs);
       
       // Debug each document's structure
       allDocs.forEach((doc, index) => {
         console.log(`Document ${index + 1}:`, {
+          amd_id: doc.amd_id,
           a_d_id: doc.a_d_id,
           doc_type: doc.doc_type,
           doc_type_text: doc.doc_type_text,
           doc_type_name: doc.doc_type_name,
           file_name: doc.file_name,
           is_archived: doc.is_archived,
-          source: 'asset'
+          source: maintenanceData?.ams_id ? 'maintenance' : 'asset'
         });
       });
       
@@ -290,7 +307,8 @@ export default function MaintSupervisorApproval() {
           
           const isTechnicalManual = hasTechnicalManualCode || hasTechnicalManualText || hasTechnicalManualName || hasTechnicalManualOriginal;
           
-          console.log('Technical Manual filter check:', {
+            console.log('Technical Manual filter check:', {
+            amd_id: doc.amd_id,
             a_d_id: doc.a_d_id,
             doc_type: doc.doc_type,
             doc_type_text: doc.doc_type_text,
@@ -327,11 +345,11 @@ export default function MaintSupervisorApproval() {
         });
         
         console.log('Technical Manual documents found:', manualDocs.map(doc => ({
-          id: doc.a_d_id,
+          id: doc.amd_id || doc.a_d_id,
           doc_type_text: doc.doc_type_text,
           file_name: doc.file_name,
           doc_type_name: doc.doc_type_name,
-          source: 'asset'
+          source: maintenanceData?.ams_id ? 'maintenance' : 'asset'
         })));
         
         // Test the specific case for technical manual
@@ -382,7 +400,8 @@ export default function MaintSupervisorApproval() {
     event.preventDefault();
     event.stopPropagation();
     
-    const docId = doc.a_d_id;
+    // Use amd_id for maintenance documents, fallback to a_d_id for asset documents
+    const docId = doc.amd_id || doc.a_d_id;
     
     if (activeDropdown === docId) {
       setActiveDropdown(null);
@@ -399,30 +418,50 @@ export default function MaintSupervisorApproval() {
   const handleDocumentAction = async (action, doc) => {
     console.log(`Document action: ${action} for doc:`, doc);
     
+    // Close dropdown immediately
+    setActiveDropdown(null);
+    
     try {
-      const docId = doc.a_d_id;
+      // Use amd_id for maintenance documents, fallback to a_d_id for asset documents
+      const docId = doc.amd_id || doc.a_d_id;
+      
+      if (!docId) {
+        throw new Error('Document ID not found');
+      }
       
       if (action === 'view') {
-        // Use the same API as Assets screen
-        const res = await API.get(`/asset-docs/${docId}/download-url?mode=view`);
+        // Use maintenance document API if amd_id exists, otherwise use asset document API
+        const endpoint = doc.amd_id 
+          ? `/asset-maint-docs/${docId}/download?mode=view`
+          : `/asset-docs/${docId}/download-url?mode=view`;
+        const res = await API.get(endpoint);
+        console.log('View response:', res.data);
         if (res.data && res.data.url) {
           window.open(res.data.url, '_blank');
         } else {
           throw new Error('No URL returned from API');
         }
       } else if (action === 'download') {
-        // Use the same API as Assets screen
-        const res = await API.get(`/asset-docs/${docId}/download-url?mode=download`);
+        // Use maintenance document API if amd_id exists, otherwise use asset document API
+        const endpoint = doc.amd_id 
+          ? `/asset-maint-docs/${docId}/download?mode=download`
+          : `/asset-docs/${docId}/download-url?mode=download`;
+        const res = await API.get(endpoint);
+        console.log('Download response:', res.data);
         if (res.data && res.data.url) {
           window.open(res.data.url, '_blank');
         } else {
           throw new Error('No URL returned from API');
         }
       } else if (action === 'archive') {
-        const res = await API.put(`/asset-docs/${docId}/archive-status`, {
+        // Use maintenance document API if amd_id exists, otherwise use asset document API
+        const endpoint = doc.amd_id 
+          ? `/asset-maint-docs/${docId}/archive-status`
+          : `/asset-docs/${docId}/archive-status`;
+        const res = await API.put(endpoint, {
           is_archived: true
         });
-        
+        console.log('Archive response:', res.data);
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
           toast.success(t('maintenanceSupervisor.documentArchivedSuccessfully'));
           // Refresh documents
@@ -431,10 +470,14 @@ export default function MaintSupervisorApproval() {
           toast.error(t('maintenanceSupervisor.failedToArchiveDocument'));
         }
       } else if (action === 'unarchive') {
-        const res = await API.put(`/asset-docs/${docId}/archive-status`, {
+        // Use maintenance document API if amd_id exists, otherwise use asset document API
+        const endpoint = doc.amd_id 
+          ? `/asset-maint-docs/${docId}/archive-status`
+          : `/asset-docs/${docId}/archive-status`;
+        const res = await API.put(endpoint, {
           is_archived: false
         });
-        
+        console.log('Unarchive response:', res.data);
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
           toast.success(t('maintenanceSupervisor.documentUnarchivedSuccessfully'));
           // Refresh documents
@@ -445,10 +488,9 @@ export default function MaintSupervisorApproval() {
       }
     } catch (err) {
       console.error(`Failed to ${action} document:`, err);
-      toast.error(t('maintenanceSupervisor.failedToActionDocument', { action }));
+      console.error('Error response:', err.response?.data);
+      toast.error(err.response?.data?.message || t('maintenanceSupervisor.failedToActionDocument', { action }));
     }
-    
-    setActiveDropdown(null);
   };
 
   useEffect(() => {
@@ -793,12 +835,63 @@ export default function MaintSupervisorApproval() {
         </button>
       </div>
 
+      {/* Group Maintenance Info Section */}
+      {maintenanceData?.is_group_maintenance && maintenanceData?.group_assets && maintenanceData.group_assets.length > 0 && (
+        <div className="mb-6 pb-4 border-b border-gray-200">
+          {(() => {
+            const assetsToShow = showAllAssets ? maintenanceData.group_assets : maintenanceData.group_assets.slice(0, 4);
+            const hasMoreAssets = maintenanceData.group_assets.length > 4;
+            
+            return (
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+                  {maintenanceData.group_name || 'Group Maintenance'}
+                </h2>
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-gray-600 mb-2">
+                    Assets in Group ({maintenanceData.group_assets.length}):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {assetsToShow.map((asset, index) => (
+                      <span
+                        key={asset.asset_id || index}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                      >
+                        {asset.asset_name || asset.asset_id}
+                        {asset.serial_number && (
+                          <span className="ml-2 text-xs text-blue-600">
+                            ({asset.serial_number})
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  {hasMoreAssets && (
+                    <button
+                      onClick={() => setShowAllAssets(!showAllAssets)}
+                      className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+                    >
+                      {showAllAssets ? 'Show Less' : `Show ${maintenanceData.group_assets.length - 4} More`}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="space-y-6">
         {/* Checklist Section - At the Top */}
         <div className="p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.maintenanceChecklist')}</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.maintenanceChecklist')}</h2>
+              {maintenanceData?.is_group_maintenance && (
+                <p className="text-sm text-gray-600 mt-1">Applies to all {maintenanceData.group_asset_count} assets in the group</p>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setShowChecklist(true)}
@@ -816,7 +909,12 @@ export default function MaintSupervisorApproval() {
         {!isSubscriptionRenewal && (
         <div className="p-6 rounded-lg border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.technicalManual')}</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.technicalManual')}</h2>
+              {maintenanceData?.is_group_maintenance && (
+                <p className="text-sm text-gray-600 mt-1">Applies to all {maintenanceData.group_asset_count} assets in the group</p>
+              )}
+            </div>
             <div className="relative">
               <button
                 type="button"
@@ -855,7 +953,7 @@ export default function MaintSupervisorApproval() {
                   data-dropdown-menu
                 >
                   {manualDocs.map((doc, index) => (
-                    <div key={doc.a_d_id || index}>
+                    <div key={doc.amd_id || doc.a_d_id || index}>
                       <div className="px-3 py-2 text-xs text-gray-500 border-b border-gray-100 last:border-b-0">
                         {doc.file_name || 'Document'}
                       </div>
@@ -903,7 +1001,12 @@ export default function MaintSupervisorApproval() {
         {/* Doc Upload Section */}
         {!isReadOnly && (
         <div className="p-6 rounded-lg border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.docUpload')}</h2>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.docUpload')}</h2>
+            {maintenanceData?.is_group_maintenance && (
+              <p className="text-sm text-gray-600 mt-1">Documents will be associated with the group maintenance record</p>
+            )}
+          </div>
           <div className="text-sm text-gray-600 mb-3">{t('maintenanceSupervisor.uploadMaintenanceDocuments')}</div>
           
           <div className="flex items-center justify-between mb-4">
@@ -1044,7 +1147,12 @@ export default function MaintSupervisorApproval() {
         {/* Before/After Images Upload Section - Hide for subscription renewal */}
         {!isReadOnly && !isSubscriptionRenewal && (
         <div className="p-6 rounded-lg border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.beforeAfterImages')}</h2>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.beforeAfterImages')}</h2>
+            {maintenanceData?.is_group_maintenance && (
+              <p className="text-sm text-gray-600 mt-1">Images will be associated with the group maintenance record</p>
+            )}
+          </div>
           <div className="text-sm text-gray-600 mb-3">{t('maintenanceSupervisor.uploadImagesBeforeAfter')}</div>
           
           <div className="flex items-center justify-between mb-4">
@@ -1209,7 +1317,7 @@ export default function MaintSupervisorApproval() {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {maintenanceDocs.map((doc) => (
-                          <tr key={doc.a_d_id}>
+                          <tr key={doc.amd_id || doc.a_d_id}>
                             <td className="px-4 py-3 text-sm text-gray-900">
                               {doc.doc_type_text || doc.doc_type || 'Unknown'}
                             </td>
@@ -1233,7 +1341,7 @@ export default function MaintSupervisorApproval() {
                                   <MoreVertical className="w-3 h-3" />
                                 </button>
                                 
-                                {activeDropdown === doc.a_d_id && createPortal(
+                                {activeDropdown === (doc.amd_id || doc.a_d_id) && createPortal(
                                   <div
                                     ref={dropdownRef}
                                     className="absolute z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 min-w-[120px]"
@@ -1316,7 +1424,7 @@ export default function MaintSupervisorApproval() {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {archivedDocs.map((doc) => (
-                            <tr key={doc.a_d_id}>
+                            <tr key={doc.amd_id || doc.a_d_id}>
                               <td className="px-4 py-3 text-sm text-gray-900">
                                 {doc.doc_type_text || doc.doc_type || 'Unknown'}
                               </td>
@@ -1340,7 +1448,7 @@ export default function MaintSupervisorApproval() {
                                     <MoreVertical className="w-3 h-3" />
                                   </button>
                                   
-                                  {activeDropdown === doc.a_d_id && createPortal(
+                                  {activeDropdown === (doc.amd_id || doc.a_d_id) && createPortal(
                                     <div
                                       ref={dropdownRef}
                                       className="absolute z-50 bg-white border border-gray-200 rounded-md shadow-lg py-1 min-w-[120px]"
@@ -1402,7 +1510,12 @@ export default function MaintSupervisorApproval() {
 
         {/* Update Form - Only Fields That Need to be Updated */}
         <div className="bg-gray-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">{t('maintenanceSupervisor.updateMaintenanceSchedule')}</h2>
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.updateMaintenanceSchedule')}</h2>
+            {maintenanceData?.is_group_maintenance && (
+              <p className="text-sm text-gray-600 mt-1">Updating this maintenance schedule will update the single record that represents all {maintenanceData.group_asset_count} assets in the group</p>
+            )}
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Technician fields - hide for subscription renewal */}
