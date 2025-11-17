@@ -547,6 +547,22 @@ const Users = () => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
+          if (sortedData.length === 0) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + (canEdit ? 1 : 0);
+            return (
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('common.noDataFound')}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            );
+          }
+
           return (
             <CustomTable
               columns={visibleColumns}

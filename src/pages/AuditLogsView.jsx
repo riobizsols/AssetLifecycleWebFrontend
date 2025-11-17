@@ -24,9 +24,11 @@ import API from '../lib/axios';
 import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
 import SearchableDropdown from '../components/ui/SearchableDropdown';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const AuditLogsView = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   
   // State management
   const [auditLogs, setAuditLogs] = useState([]);
@@ -637,23 +639,56 @@ const AuditLogsView = () => {
         showAddButton={false}
         showActions={false}
       >
-        {({ visibleColumns, showActions }) => (
-          <CustomTable
-            visibleColumns={visibleColumns}
-            data={paginatedLogs}
-            selectedRows={[]}
-            setSelectedRows={() => {}}
-            showActions={false}
-            renderCell={(col, row) => {
-              if (col.name === 'user_name') return renderUserName(col, row);
-              if (col.name === 'event') return renderEvent(col, row);
-              if (col.name === 'application') return renderApplication(col, row);
-              if (col.name === 'timestamp') return renderTimestamp(col, row);
-              if (col.name === 'description') return renderDescription(col, row);
-              return row[col.name];
-            }}
-          />
-        )}
+        {({ visibleColumns, showActions }) => {
+          if (isLoading) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length;
+            return (
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">{t('common.loading')}</p>
+                  </div>
+                </td>
+              </tr>
+            );
+          }
+
+          if (paginatedLogs.length === 0) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length;
+            return (
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('auditLogs.noAuditLogsFound')}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            );
+          }
+          
+          return (
+            <CustomTable
+              visibleColumns={visibleColumns}
+              data={paginatedLogs}
+              selectedRows={[]}
+              setSelectedRows={() => {}}
+              showActions={false}
+              renderCell={(col, row) => {
+                if (col.name === 'user_name') return renderUserName(col, row);
+                if (col.name === 'event') return renderEvent(col, row);
+                if (col.name === 'application') return renderApplication(col, row);
+                if (col.name === 'timestamp') return renderTimestamp(col, row);
+                if (col.name === 'description') return renderDescription(col, row);
+                return row[col.name];
+              }}
+            />
+          );
+        }}
       </ContentBox>
 
       {/* Pagination */}

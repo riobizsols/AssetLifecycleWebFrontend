@@ -55,6 +55,7 @@ export const ALL_COLUMNS = {
   "depreciation-schedule": ["Asset Code", "Name", "Book", "Method", "Depn for Period", "Accum Depn", "Net Book Value"],
   "maintenance-history": ["Work Order ID", "Asset ID", "Asset Name", "Maintenance Start Date", "Maintenance End Date", "Notes", "Vendor ID", "Vendor Name", "Work Order Status", "Maintenance Type", "Cost (₹)", "Downtime (h)"],
   "asset-workflow-history": ["Work Order ID", "Asset ID", "Asset Name", "Workflow Step", "Planned Schedule Date", "Actual Schedule Date", "Notes", "Vendor ID", "Vendor Name", "Workflow Status", "Step Status", "Assigned To", "Maintenance Type", "Asset Type", "Department", "Serial Number", "Asset Status", "Purchased On", "Purchased Cost", "Vendor Contact", "Vendor Email", "Vendor Phone", "Vendor Address", "User Name", "User Email", "Job Role", "Sequence", "History Count", "Latest Action", "Latest Action Date", "Latest Action By", "History ID", "Action By", "Action On", "Action", "History Notes", "Action By Email", "Step User", "Step User Email"],
+  "usage-based-asset": ["Usage ID", "Asset ID", "Asset Name", "Serial Number", "Asset Type", "Department", "Branch", "Usage Counter", "Recorded By", "Recorded Date", "Employee Name", "Asset Description"],
   "breakdown-history": ["Breakdown ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Work Order Status", "Breakdown Status", "Breakdown Reason", "Asset Type", "Department", "Branch", "Serial Number", "Asset Status", "Purchased On", "Purchased Cost", "Vendor Contact", "Vendor Email", "Vendor Phone", "Vendor Address", "Reported By Email", "Reported By Phone"],
   "warranty-amc-expiry": ["Asset", "Category", "Vendor", "Coverage", "Start", "End", "Days Left"],
   "spares-inventory": ["Part Code", "Description", "UoM", "On Hand", "Safety", "Reorder", "Non‑Moving (days)", "Preferred Vendor"],
@@ -168,6 +169,18 @@ export const FIELD_TO_COLUMN_MAP = {
     purchasedCost: "Purchased Cost",
     workflowCreatedDateRange: "Workflow Created Date"
   },
+  "usage-based-asset": {
+    assetId: "Asset ID",
+    assetName: "Asset Name",
+    serialNumber: "Serial Number",
+    assetType: "Asset Type",
+    department: "Department",
+    branch: "Branch",
+    dateRange: "Recorded Date",
+    createdBy: "Recorded By",
+    usageCounterMin: "Usage Counter",
+    usageCounterMax: "Usage Counter",
+  },
 };
 
 // Report definitions
@@ -199,7 +212,7 @@ export const REPORTS = [
       "PO Number", "Invoice Number", "Category", "Location", "Purchase Date", 
       "Commissioned Date", "Current Status", "Cost", "Status"
     ],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["asset-register"] || [],
   },
   {
     id: "asset-lifecycle",
@@ -230,7 +243,7 @@ export const REPORTS = [
       "Purchase Date", "Commissioned Date", "Asset Usage History", "Current Status",
       "Scrap Date", "Scrap Location", "Scrapped By", "Buyer", "Sale Date", "Sale Amount"
     ],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["asset-lifecycle"] || [],
   },
   {
     id: "asset-valuation",
@@ -259,7 +272,7 @@ export const REPORTS = [
       "Asset Status", "Acquisition Date", "Current Value", "Original Cost", 
       "Accumulated Depreciation", "Net Book Value", "Depreciation Method", "Useful Life"
     ],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["asset-valuation"] || [],
     exportFormats: ["pdf", "json"], // Special export formats for Asset Valuation
   },
   {
@@ -278,7 +291,7 @@ export const REPORTS = [
       { key: "includeDisposed", label: "Include Disposed", type: "boolean" },
     ],
     defaultColumns: ["Asset Code", "Name", "Book", "Method", "Depn for Period", "Accum Depn", "Net Book Value"],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["depreciation-schedule"] || [],
   },
   {
     id: "maintenance-history",
@@ -301,7 +314,7 @@ export const REPORTS = [
       { key: "downtime", label: "Downtime ≥ (h)", type: "number" },
     ],
     defaultColumns: ["Work Order ID", "Asset ID", "Asset Name", "Maintenance Start Date", "Maintenance End Date", "Notes", "Vendor ID", "Vendor Name", "Work Order Status", "Maintenance Type", "Cost (₹)", "Downtime (h)"],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["maintenance-history"] || [],
   },
   {
     id: "breakdown-history",
@@ -330,7 +343,7 @@ export const REPORTS = [
       { key: "vendorEmail", label: "Vendor Email", type: "text" },
     ],
     defaultColumns: ["Breakdown ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Breakdown Status", "Breakdown Reason", "Asset Type", "Department", "Branch", "Serial Number", "Asset Status"],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["breakdown-history"] || [],
   },
   {
     id: "asset-workflow-history",
@@ -359,7 +372,28 @@ export const REPORTS = [
       { key: "workflowCreatedDateRange", label: "Workflow Created Date", type: "daterange" },
     ],
     defaultColumns: ["Work Order ID", "Asset ID", "Asset Name", "Workflow Step", "Planned Schedule Date", "Actual Schedule Date", "Notes", "Vendor ID", "Vendor Name", "Workflow Status", "Step Status", "Assigned To", "Maintenance Type", "Asset Type", "Department", "Serial Number", "Asset Status"],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["asset-workflow-history"] || [],
+  },
+  {
+    id: "usage-based-asset",
+    name: "Usage-Based Asset Report",
+    description: "Complete record of asset usage with usage counter values, dates, and recorded by information.",
+    quickFields: [
+      { key: "assetId", label: "Asset ID", type: "searchable", domain: [], placeholder: "Search Asset ID..." },
+      { key: "dateRange", label: "Date Range", type: "daterange", preset: "COMMON" },
+      { key: "assetType", label: "Asset Type", type: "multiselect", domain: [] },
+      { key: "department", label: "Department", type: "multiselect", domain: [] },
+      { key: "branch", label: "Branch", type: "multiselect", domain: [] },
+      { key: "createdBy", label: "Recorded By", type: "multiselect", domain: [] },
+    ],
+    fields: [
+      { key: "assetName", label: "Asset Name", type: "text" },
+      { key: "serialNumber", label: "Serial Number", type: "text" },
+      { key: "usageCounterMin", label: "Usage Counter ≥", type: "number", placeholder: "Enter minimum usage" },
+      { key: "usageCounterMax", label: "Usage Counter ≤", type: "number", placeholder: "Enter maximum usage" },
+    ],
+    defaultColumns: ["Usage ID", "Asset ID", "Asset Name", "Serial Number", "Asset Type", "Department", "Branch", "Usage Counter", "Recorded By", "Recorded Date", "Employee Name"],
+    allColumns: ALL_COLUMNS["usage-based-asset"] || [],
   },
   {
     id: "warranty-amc-expiry",
@@ -376,7 +410,7 @@ export const REPORTS = [
       { key: "includeExpired", label: "Include Expired", type: "boolean" },
     ],
     defaultColumns: ["Asset", "Category", "Vendor", "Coverage", "Start", "End", "Days Left"],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["warranty-amc-expiry"] || [],
   },
   {
     id: "spares-inventory",
@@ -392,7 +426,7 @@ export const REPORTS = [
       { key: "vendor", label: "Vendor", type: "multiselect", domain: VENDORS },
     ],
     defaultColumns: ["Part Code", "Description", "UoM", "On Hand", "Safety", "Reorder", "Non‑Moving (days)", "Preferred Vendor"],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["spares-inventory"] || [],
   },
   {
     id: "vendor-performance",
@@ -407,7 +441,7 @@ export const REPORTS = [
       { key: "minThreshold", label: "Threshold ≥", type: "number" },
     ],
     defaultColumns: ["Vendor", "Jobs", "On‑time %", "Avg TAT (hrs)", "FTF %", "Defect %"],
-    allColumns: ALL_COLUMNS,
+    allColumns: ALL_COLUMNS["vendor-performance"] || [],
   },
 ];
 

@@ -30,6 +30,7 @@ import {
   DollarSign,
   GitBranch,
   AlertTriangle,
+  Gauge,
 } from "lucide-react";
 
 const DatabaseSidebar = () => {
@@ -97,7 +98,9 @@ const DatabaseSidebar = () => {
       'Asset Valuation': t('navigation.assetValuation'),
       'Asset Workflow History': t('navigation.assetWorkflowHistory'),
       'Asset Workflow Hi...': t('navigation.assetWorkflowHistory'),
-      'Breakdown History': t('navigation.breakdownHistory')
+      'Breakdown History': t('navigation.breakdownHistory'),
+      'Usage-Based Asset Report': t('navigation.usageBasedAssetReport'),
+      'Usage-Based Asset...': t('navigation.usageBasedAssetReport'),
     };
     
     // Debug: Log the label to see what's being passed
@@ -154,6 +157,7 @@ const DatabaseSidebar = () => {
     ASSETWORKFLOWHISTORY: "/reports/asset-workflow-history", //done
     SERIALNUMBERPRINT: "/serial-number-print", //not required
     BREAKDOWNHISTORY: "/reports/breakdown-history",  //done
+    USAGEBASEDASSETREPORT: "/reports/usage-based-asset",  //done
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
     MASTERDATA: "/master-data/vendors",  //done
     ORGANIZATIONS: "/master-data/organizations",  //done
@@ -196,6 +200,7 @@ const DatabaseSidebar = () => {
       ASSETWORKFLOWHISTORY: GitBranch,
       SERIALNUMBERPRINT: History,
       BREAKDOWNHISTORY: AlertTriangle,
+      USAGEBASEDASSETREPORT: Gauge,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
       ORGANIZATIONS: Building,

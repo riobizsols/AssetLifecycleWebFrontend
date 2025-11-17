@@ -16,6 +16,7 @@ const Vendors = () => {
   const navigate = useNavigate();
 
   const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -67,6 +68,7 @@ const Vendors = () => {
 
   useEffect(() => {
     const fetchVendors = async () => {
+      setIsLoading(true);
       try {
         const response = await API.get("/get-vendors");
         const formattedData = response.data.map(item => ({
@@ -79,6 +81,8 @@ const Vendors = () => {
       } catch (error) {
         console.error("Error fetching vendors:", error);
         toast.error(t('vendors.failedToFetchVendors'));
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -318,6 +322,61 @@ const Vendors = () => {
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
+
+          if (isLoading) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + 1; // +1 for actions column
+            return (
+              <>
+                <tr>
+                  <td colSpan={colSpan} className="text-center py-16">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">{t('common.loading')}</p>
+                    </div>
+                  </td>
+                </tr>
+                <EditVendorModal
+                  show={showEditModal}
+                  onClose={() => {
+                    setShowEditModal(false);
+                    setEditingVendor(null);
+                  }}
+                  onConfirm={handleUpdate}
+                  vendor={editingVendor}
+                  isReadOnly={isReadOnly}
+                />
+              </>
+            );
+          }
+
+          if (sortedData.length === 0) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + 1; // +1 for actions column
+            return (
+              <>
+                <tr>
+                  <td colSpan={colSpan} className="text-center py-16">
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-xl font-semibold text-gray-800">
+                        {t('common.noDataFound')}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+                <EditVendorModal
+                  show={showEditModal}
+                  onClose={() => {
+                    setShowEditModal(false);
+                    setEditingVendor(null);
+                  }}
+                  onConfirm={handleUpdate}
+                  vendor={editingVendor}
+                  isReadOnly={isReadOnly}
+                />
+              </>
+            );
+          }
 
           return (
             <>

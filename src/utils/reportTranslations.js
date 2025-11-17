@@ -117,10 +117,14 @@ export const getTranslatedPlaceholder = (key) => {
 /**
  * Get translated column header
  * @param {string} columnName - The column name
+ * @param {function} t - Translation function from useTranslation hook
  * @returns {string} - The translated column header
  */
-export const getTranslatedColumnHeader = (columnName) => {
-  const { t } = useTranslation();
+export const getTranslatedColumnHeader = (columnName, t = null) => {
+  // If t is not provided, return the column name as-is (for cases where hook can't be used)
+  if (!t) {
+    return columnName;
+  }
   
   const columnHeaderMap = {
     'Asset ID': t('reports.columnHeaders.assetId'),
@@ -176,9 +180,37 @@ export const getTranslatedColumnHeader = (columnName) => {
     'Breakdown Status': t('reports.columnHeaders.breakdownStatus'),
     'Breakdown Reason': t('reports.columnHeaders.breakdownReason'),
     'Branch': t('reports.columnHeaders.branch'),
+    'Usage ID': t('reports.columnHeaders.usageId'),
+    'Usage Counter': t('reports.columnHeaders.usageCounter'),
+    'Recorded By': t('reports.columnHeaders.recordedBy'),
+    'Recorded Date': t('reports.columnHeaders.recordedDate'),
+    'Employee Name': t('reports.columnHeaders.employeeName'),
+    'Asset Description': t('reports.columnHeaders.assetDescription'),
   };
   
-  return columnHeaderMap[columnName] || columnName;
+  // If translation is missing, the t() function might return the key itself
+  // Check if it's still a key (starts with 'reports.') and return a human-readable fallback
+  const translated = columnHeaderMap[columnName];
+  
+  // If translation returns the key (not found), provide fallbacks
+  if (translated && typeof translated === 'string' && translated.startsWith('reports.columnHeaders.')) {
+    // Translation key not found, use a human-readable fallback based on the key
+    const fallbackMap = {
+      'reports.columnHeaders.usageId': 'Usage ID',
+      'reports.columnHeaders.usageCounter': 'Usage Counter',
+      'reports.columnHeaders.recordedBy': 'Recorded By',
+      'reports.columnHeaders.recordedDate': 'Recorded Date',
+      'reports.columnHeaders.employeeName': 'Employee Name',
+      'reports.columnHeaders.assetDescription': 'Asset Description',
+      'reports.columnHeaders.department': 'Department',
+      'reports.columnHeaders.branch': 'Branch',
+      'reports.columnHeaders.assetType': 'Asset Type',
+      'reports.columnHeaders.serialNumber': 'Serial Number',
+    };
+    return fallbackMap[translated] || columnName;
+  }
+  
+  return translated || columnName;
 };
 
 /**

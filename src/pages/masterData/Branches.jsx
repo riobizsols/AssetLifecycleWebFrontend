@@ -15,6 +15,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 const Branches = () => {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -54,6 +55,7 @@ const Branches = () => {
 
   useEffect(() => {
     const fetchBranches = async () => {
+      setIsLoading(true);
       try {
         const response = await API.get("/branches");
         const formattedData = response.data.map(item => ({
@@ -66,6 +68,8 @@ const Branches = () => {
       } catch (error) {
         console.error("Error fetching branches:", error);
         toast.error(t('branches.failedToFetchBranches'));
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -268,6 +272,59 @@ const Branches = () => {
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
+
+          if (isLoading) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + (canEdit ? 1 : 0);
+            return (
+              <>
+                <tr>
+                  <td colSpan={colSpan} className="text-center py-16">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">{t('common.loading')}</p>
+                    </div>
+                  </td>
+                </tr>
+                <EditBranchModal
+                  show={showEditModal}
+                  onClose={() => {
+                    setShowEditModal(false);
+                    setEditingBranch(null);
+                  }}
+                  onConfirm={handleUpdateBranch}
+                  branch={editingBranch}
+                />
+              </>
+            );
+          }
+
+          if (sortedData.length === 0) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + (canEdit ? 1 : 0);
+            return (
+              <>
+                <tr>
+                  <td colSpan={colSpan} className="text-center py-16">
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-xl font-semibold text-gray-800">
+                        {t('common.noDataFound')}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+                <EditBranchModal
+                  show={showEditModal}
+                  onClose={() => {
+                    setShowEditModal(false);
+                    setEditingBranch(null);
+                  }}
+                  onConfirm={handleUpdateBranch}
+                  branch={editingBranch}
+                />
+              </>
+            );
+          }
 
           return (
             <>

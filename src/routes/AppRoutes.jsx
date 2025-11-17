@@ -65,6 +65,7 @@ import MaintenanceHistory from "../pages/reports/MaintenanceHistory";
 import AssetValuation from "../pages/reports/AssetValuation";
 import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
 import BreakdownHistory from "../pages/reports/BreakdownHistory";
+import UsageBasedAssetReport from "../pages/reports/UsageBasedAssetReport";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
 import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
 import BulkUpload from "../pages/masterData/BulkUpload";
@@ -300,6 +301,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
               <MainLayout>
                 <BreakdownHistory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/usage-based-asset"
+          element={
+            <ProtectedRoute requiredAppId="USAGEBASEDASSETREPORT">
+              <MainLayout>
+                <UsageBasedAssetReport />
               </MainLayout>
             </ProtectedRoute>
           }

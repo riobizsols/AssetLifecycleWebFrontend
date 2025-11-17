@@ -28,6 +28,7 @@ const Assets = () => {
   const hasDeleteAccess = canDelete('ASSETS');
   const accessLevel = getAccessLevel('ASSETS');
   const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -79,6 +80,7 @@ const Assets = () => {
   }, [location.pathname, hasCreateAccess, navigate, t]);
 
   const fetchAssets = async () => {
+    setIsLoading(true);
     try {
       const res = await API.get("/assets");
       // Format the data
@@ -110,6 +112,8 @@ const Assets = () => {
     } catch (err) {
       console.error("Failed to fetch assets", err);
       toast.error(t('assets.failedToFetchAssets'));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -372,6 +376,55 @@ const Assets = () => {
         {({ visibleColumns, showActions }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
+
+          if (isLoading) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + (showActions ? 1 : 0);
+            return (
+              <>
+                <tr>
+                  <td colSpan={colSpan} className="text-center py-16">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">{t('common.loading')}</p>
+                    </div>
+                  </td>
+                </tr>
+                {updateModalOpen && (
+                  <UpdateAssetModal
+                    isOpen={updateModalOpen}
+                    onClose={handleUpdateModalClose}
+                    assetData={selectedAsset}
+                  />
+                )}
+              </>
+            );
+          }
+
+          if (sortedData.length === 0) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + (showActions ? 1 : 0);
+            return (
+              <>
+                <tr>
+                  <td colSpan={colSpan} className="text-center py-16">
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-xl font-semibold text-gray-800">
+                        {t('common.noDataFound')}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+                {updateModalOpen && (
+                  <UpdateAssetModal
+                    isOpen={updateModalOpen}
+                    onClose={handleUpdateModalClose}
+                    assetData={selectedAsset}
+                  />
+                )}
+              </>
+            );
+          }
 
           return (
             <>

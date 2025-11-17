@@ -255,16 +255,24 @@ const GroupAsset = () => {
             }
 
             if (sortedData.length === 0) {
+              const visibleCols = visibleColumns.filter((col) => col.visible);
+              const colSpan = visibleCols.length + 1; // +1 for actions column
               return (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">{t('groupAssets.noAssetGroupsFound')}</p>
-                  <button
-                    onClick={handleAddGroupAsset}
-                    className="mt-2 text-blue-600 hover:text-blue-800 underline"
-                  >
-                    {t('groupAssets.createYourFirstAssetGroup')}
-                  </button>
-                </div>
+                <tr>
+                  <td colSpan={colSpan} className="text-center py-16">
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-xl font-semibold text-gray-800 mb-2">
+                        {t('groupAssets.noAssetGroupsFound')}
+                      </p>
+                      <button
+                        onClick={handleAddGroupAsset}
+                        className="mt-2 text-blue-600 hover:text-blue-800 underline text-sm"
+                      >
+                        {t('groupAssets.createYourFirstAssetGroup')}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               );
             }
 

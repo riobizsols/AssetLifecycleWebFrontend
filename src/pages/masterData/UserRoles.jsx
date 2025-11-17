@@ -10,10 +10,13 @@ import DeleteConfirmModal from "../../components/DeleteConfirmModal";
 import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { USERS_APP_ID } from "../../constants/usersAuditEvents";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const Users = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
@@ -200,6 +203,7 @@ const Users = () => {
 
   useEffect(() => {
     const fetchUsers = async () => {
+      setIsLoading(true);
       try {
         const response = await API.get("/users/get-users");
         // Handle the new API response format with success/data structure
@@ -217,6 +221,8 @@ const Users = () => {
       } catch (error) {
         console.error("Error fetching users:", error);
         toast.error("Failed to fetch users");
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchUsers();
@@ -678,6 +684,37 @@ const Users = () => {
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
+
+          if (isLoading) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + (canEdit ? 1 : 0);
+            return (
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">{t('common.loading')}</p>
+                  </div>
+                </td>
+              </tr>
+            );
+          }
+
+          if (sortedData.length === 0) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + (canEdit ? 1 : 0);
+            return (
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('common.noDataFound')}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            );
+          }
 
           return (
             <CustomTable

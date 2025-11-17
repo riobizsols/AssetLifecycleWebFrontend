@@ -161,10 +161,42 @@ const WorkorderManagement = () => {
         {({ visibleColumns }) => {
           const filtered = filterData(data, filterValues, visibleColumns);
           const sorted = sortData(filtered);
+          
+          if (isLoading) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length;
+            return (
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">{t('workorderManagement.loadingWorkOrders')}</p>
+                  </div>
+                </td>
+              </tr>
+            );
+          }
+          
+          if (sorted.length === 0) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length;
+            return (
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('workorderManagement.noWorkOrdersFound')}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            );
+          }
+          
           return (
             <CustomTable
               visibleColumns={visibleColumns}
-              data={isLoading ? [] : sorted}
+              data={sorted}
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
               rowKey="ams_id"

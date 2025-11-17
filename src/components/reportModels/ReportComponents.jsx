@@ -250,6 +250,18 @@ export function DateRange({ value, onChange, preset }) {
   const now = new Date();
   const [cfyStart, cfyEnd] = useMemo(() => getCurrentFYBounds(now), []);
 
+  // Available preset options - can be customized based on preset prop
+  const getPresetOptions = () => {
+    // If preset is "COMMON", show common date presets including FY options
+    if (preset === "COMMON") {
+      return ["today", "yesterday", "last_week", "last_month", "current_fy", "last_fy", "custom"];
+    }
+    // Default options for other presets
+    return ["current_fy", "last_fy", "custom"];
+  };
+
+  const presetOptions = getPresetOptions();
+
   useEffect(() => {
     if (value && value[0]) return;
     if (preset === "FY") {
@@ -265,26 +277,88 @@ export function DateRange({ value, onChange, preset }) {
       start.setDate(now.getDate() - 180);
       onChange([formatISO(start), formatISO(now)]);
       setMode("custom");
+    } else if (preset === "COMMON") {
+      // Default to custom mode for COMMON preset
+      setMode("custom");
     }
   }, [preset]);
 
+  // Format mode for display
+  const formatModeLabel = (m) => {
+    const labels = {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "last_week": "Last Week",
+      "last_month": "Last Month",
+      "current_fy": "Current FY",
+      "last_fy": "Last FY",
+      "custom": "Custom"
+    };
+    return labels[m] || m;
+  };
+
   const handleMode = (m) => {
     setMode(m);
-    if (m === "current_fy") onChange([formatISO(cfyStart), formatISO(cfyEnd)]);
-    else if (m === "last_fy") {
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    
+    if (m === "today") {
+      const todayStr = formatISO(today);
+      onChange([todayStr, todayStr]);
+    } else if (m === "yesterday") {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      const yesterdayStr = formatISO(yesterday);
+      onChange([yesterdayStr, yesterdayStr]);
+    } else if (m === "last_week") {
+      // Last week: 7 days ago to today
+      const lastWeekStart = new Date(today);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 6); // 7 days including today
+      onChange([formatISO(lastWeekStart), formatISO(today)]);
+    } else if (m === "last_month") {
+      // Last month: 30 days ago to today
+      const lastMonthStart = new Date(today);
+      lastMonthStart.setDate(lastMonthStart.getDate() - 29); // 30 days including today
+      onChange([formatISO(lastMonthStart), formatISO(today)]);
+    } else if (m === "current_fy") {
+      onChange([formatISO(cfyStart), formatISO(cfyEnd)]);
+    } else if (m === "last_fy") {
       const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() - 1 : now.getFullYear() - 2;
       const start = new Date(fyStartYear, 3, 1);
       const end = new Date(fyStartYear + 1, 2, 31);
       onChange([formatISO(start), formatISO(end)]);
-    } else onChange(["", ""]);
+    } else {
+      onChange(["", ""]);
+    }
+  };
+
+  // Get display value for Select component
+  const displayValue = formatModeLabel(mode);
+
+  // Map label back to mode value
+  const getModeFromLabel = (label) => {
+    const labelToMode = {
+      "Today": "today",
+      "Yesterday": "yesterday",
+      "Last Week": "last_week",
+      "Last Month": "last_month",
+      "Current FY": "current_fy",
+      "Last FY": "last_fy",
+      "Custom": "custom"
+    };
+    return labelToMode[label] || label.toLowerCase().replace(/\s+/g, '_');
   };
 
   return (
     <div className="space-y-2">
       <Select
-        value={mode}
-        onChange={handleMode}
-        options={["current_fy", "last_fy", "custom"]}
+        value={displayValue}
+        onChange={(selectedLabel) => {
+          const selectedMode = getModeFromLabel(selectedLabel);
+          handleMode(selectedMode);
+        }}
+        options={presetOptions.map(opt => formatModeLabel(opt))}
         placeholder="Select Date Range"
       />
       {mode === "custom" && (
@@ -623,7 +697,12 @@ export const DropdownMenu = ({ label, options }) => {
 
 // Utility functions
 export function formatISO(d) {
-  return d.toISOString().slice(0, 10);
+  // Use local date formatting to avoid timezone issues
+  // Get year, month, day in local timezone
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function getCurrentFYBounds(base = new Date()) {

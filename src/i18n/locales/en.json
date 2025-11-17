@@ -36,7 +36,8 @@
     "maintenanceHistoryOfAsset": "Maintenance History of Asset",
     "assetValuation": "Asset Valuation",
     "assetWorkflowHistory": "Asset Workflow History",
-    "breakdownHistory": "Breakdown History"
+    "breakdownHistory": "Breakdown History",
+    "usageBasedAssetReport": "Usage-Based Asset Report"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -587,7 +588,13 @@
       "reportedBy": "Reported By",
       "breakdownStatus": "Breakdown Status",
       "breakdownReason": "Breakdown Reason",
-      "branch": "Branch"
+      "branch": "Branch",
+      "usageId": "Usage ID",
+      "usageCounter": "Usage Counter",
+      "recordedBy": "Recorded By",
+      "recordedDate": "Recorded Date",
+      "employeeName": "Employee Name",
+      "assetDescription": "Asset Description"
     },
     "advancedConditions": {
       "title": "Advanced Conditions",

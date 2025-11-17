@@ -320,6 +320,22 @@ const ScrapSales = () => {
           const filteredData = filterData(scrapSales, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
+          if (!loading && sortedData.length === 0) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + 1; // +1 for actions column
+            return (
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('scrapSales.noScrapSalesFound')}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            );
+          }
+
           return (
             <CustomTable
               columns={visibleColumns}

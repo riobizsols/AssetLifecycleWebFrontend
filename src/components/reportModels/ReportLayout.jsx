@@ -113,7 +113,44 @@ export default function ReportLayout({
       case 'location':
         return filterOptions.locations || [];
       case 'department':
-        return filterOptions.departments || [];
+        // Transform departments to dropdown format: {value: dept_id, label: department_name}
+        if (filterOptions.departments && Array.isArray(filterOptions.departments)) {
+          const transformed = filterOptions.departments
+            .filter(dept => dept && dept.dept_id)
+            .map(dept => {
+              // Get department name - prioritize department_name, then text, then dept_id
+              let label = '';
+              if (dept.department_name && String(dept.department_name).trim() !== '') {
+                label = String(dept.department_name).trim();
+              } else if (dept.text && String(dept.text).trim() !== '') {
+                label = String(dept.text).trim();
+              } else if (dept.dept_id) {
+                label = String(dept.dept_id);
+              } else {
+                label = 'Unknown Department';
+              }
+              
+              console.log(`🔍 [ReportLayout] Department option:`, {
+                dept_id: dept.dept_id,
+                department_name: dept.department_name,
+                text: dept.text,
+                final_label: label
+              });
+              
+              return {
+                value: dept.dept_id,
+                label: label
+              };
+            });
+          
+          console.log(`🔍 [ReportLayout] Transformed ${transformed.length} departments for dropdown`);
+          if (transformed.length > 0) {
+            console.log(`🔍 [ReportLayout] Sample departments:`, transformed.slice(0, 3));
+          }
+          return transformed;
+        }
+        console.warn('⚠️ [ReportLayout] No departments found in filterOptions');
+        return [];
       case 'vendor':
         return filterOptions.vendors || [];
       case 'maintenanceType':
@@ -123,7 +160,41 @@ export default function ReportLayout({
       case 'vendorId':
         return filterOptions.vendor_options || [];
       case 'assetId':
-        return filterOptions.asset_options || [];
+        // Transform assets to dropdown format: {value: asset_id, label: asset_id - asset_name}
+        if (filterOptions.assets && Array.isArray(filterOptions.assets)) {
+          return filterOptions.assets.map(asset => ({
+            value: asset.asset_id,
+            label: `${asset.asset_id} - ${asset.asset_name || asset.description || asset.text || asset.asset_id || 'Unknown Asset'}`
+          }));
+        }
+        return [];
+      case 'assetType':
+        // Transform asset types to dropdown format: {value: asset_type_id, label: text}
+        if (filterOptions.assetTypes && Array.isArray(filterOptions.assetTypes)) {
+          return filterOptions.assetTypes.map(at => ({
+            value: at.asset_type_id,
+            label: at.text || at.asset_type_id || 'Unknown Asset Type'
+          }));
+        }
+        return [];
+      case 'branch':
+        // Transform branches to dropdown format: {value: branch_id, label: branch_name}
+        if (filterOptions.branches && Array.isArray(filterOptions.branches)) {
+          return filterOptions.branches.map(branch => ({
+            value: branch.branch_id,
+            label: branch.branch_name || branch.text || branch.branch_id || 'Unknown Branch'
+          }));
+        }
+        return [];
+      case 'createdBy':
+        // Transform users to dropdown format: {value: user_id, label: user_name}
+        if (filterOptions.users && Array.isArray(filterOptions.users)) {
+          return filterOptions.users.map(user => ({
+            value: user.user_id,
+            label: user.user_name || user.full_name || user.user_id || 'Unknown User'
+          }));
+        }
+        return [];
       case 'workOrderId':
         return filterOptions.work_order_options || [];
       case 'breakdownReason':
@@ -462,7 +533,7 @@ export default function ReportLayout({
     }
     
     // Add table headers
-    csvContent.push(cols.map(col => getTranslatedColumnHeader(col)).join(","));
+    csvContent.push(cols.map(col => getTranslatedColumnHeader(col, t)).join(","));
     
     // Add table data
     filteredRows.forEach(row => {
@@ -559,7 +630,7 @@ export default function ReportLayout({
     doc.text("DETAILED ASSET DATA", margin, yPosition);
     yPosition += 25;
     
-    const tableColumn = cols.map(col => getTranslatedColumnHeader(col));
+    const tableColumn = cols.map(col => getTranslatedColumnHeader(col, t));
     const tableRows = filteredRows.map((r) => cols.map((c) => r[c] ?? ""));
     
     autoTable(doc, {
@@ -913,17 +984,24 @@ export default function ReportLayout({
                 <div className="flex items-center gap-2">
                   <SearchableSelect
                     onChange={(c) => setColumns([...cols, c])}
-                    options={Object.values(translatedReport.allColumns || {}).flat().filter(c => !cols.includes(c)).map(col => ({
-                      value: col,
-                      label: getTranslatedColumnHeader(col)
-                    }))}
+                    options={(() => {
+                      // Handle both array and object formats for allColumns
+                      const allCols = translatedReport.allColumns || [];
+                      const colsArray = Array.isArray(allCols) 
+                        ? allCols 
+                        : Object.values(allCols).flat();
+                      return colsArray.filter(c => !cols.includes(c)).map(col => ({
+                        value: col,
+                        label: getTranslatedColumnHeader(col, t)
+                      }));
+                    })()}
                     placeholder={t('reports.addColumn')}
                   />
                   <SearchableSelect
                     onChange={(c) => setColumns(cols.filter((col) => col !== c))}
                     options={cols.map(col => ({
                       value: col,
-                      label: getTranslatedColumnHeader(col)
+                      label: getTranslatedColumnHeader(col, t)
                     }))}
                     placeholder={t('reports.removeColumn')}
                   />
@@ -939,7 +1017,7 @@ export default function ReportLayout({
                       {cols.map((col) => (
                         <th key={col} className="text-left font-medium text-slate-600 px-3 py-2 border-b border-slate-200 whitespace-nowrap">
                           <span className="inline-flex items-center gap-2">
-                            {getTranslatedColumnHeader(col)}
+                            {getTranslatedColumnHeader(col, t)}
                             <button
                               type="button"
                               title={t('reports.removeColumnTooltip')}
