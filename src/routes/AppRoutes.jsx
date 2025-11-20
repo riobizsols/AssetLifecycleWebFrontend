@@ -5,6 +5,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "../layouts/MainLayout";
 import ForgotPassword from "../pages/auth/ForgetPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
+import SetupWizard from "../pages/setup/SetupWizard";
 import Assets from "../pages/Assets";
 import UserRoles from "../pages/masterData/UserRoles";
 import AssignRoles from "../components/AssignRoles";
@@ -77,6 +78,7 @@ export default function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/setup" element={<SetupWizard />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/not-authorized" element={
