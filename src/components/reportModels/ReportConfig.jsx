@@ -129,6 +129,12 @@ export const FIELD_TO_COLUMN_MAP = {
     cost: "Cost (₹)",
     downtime: "Downtime (h)"
   },
+  "sla-report": {
+    assetType: "Asset Type ID",  // Use ID column since filter values are IDs
+    vendor: "Vendor ID",  // Use ID column since filter values are IDs
+    slaDescription: "SLA ID",  // Use ID column since filter values are IDs
+    dateRange: "Created On"  // Use Created On from tblVendorSLAs for date range
+  },
   "breakdown-history": {
     breakdownDateRange: "Breakdown Date",
     reportedBy: "Reported By",
@@ -443,6 +449,27 @@ export const REPORTS = [
     defaultColumns: ["Vendor", "Jobs", "On‑time %", "Avg TAT (hrs)", "FTF %", "Defect %"],
     allColumns: ALL_COLUMNS["vendor-performance"] || [],
   },
+  {
+    id: "sla-report",
+    name: "SLA Reports",
+    description: "View vendor SLA information with filters.",
+    quickFields: [
+      { key: "assetType", label: "Asset Type", type: "multiselect", domain: [] },
+      { key: "vendor", label: "Vendors", type: "multiselect", domain: [] },
+      { key: "slaDescription", label: "SLA Description", type: "multiselect", domain: [] },
+      { key: "dateRange", label: "Date Range", type: "daterange", preset: "COMMON" },
+    ],
+    fields: [],
+    defaultColumns: [
+      "Vendor Name", "Company Name", "Contact Person", "Contract Start", "Contract End",
+      "Asset Type", "SLA Description", "SLA Value (hrs)"
+    ],
+    allColumns: ALL_COLUMNS["sla-report"] || [
+      "Vendor ID", "Vendor Name", "Company Name", "Company Email", "Contact Person", "Contact Number",
+      "Contract Start", "Contract End", "Asset Type ID", "Asset Type",
+      "SLA ID", "SLA Description", "SLA Value (hrs)"
+    ],
+  },
 ];
 
 // Filtering logic
@@ -527,12 +554,145 @@ export function filterRows(allRows, reportId, quickFilters, advancedFilters) {
 // Helper function to apply individual filters
 function applyFilter(row, colName, val, field) {
   if (field.type === 'daterange') {
-    const rowDate = new Date(row[colName]);
-    const start = new Date(val[0]);
-    const end = new Date(val[1]);
-    if (rowDate < start || rowDate > end) return false;
+    // For sla-report, check both Created On and Changed On
+    if (colName === "Created On") {
+      // Handle date range filtering for SLA report using created_on and changed_on
+      const createdOnStr = row["Created On"];
+      const changedOnStr = row["Changed On"];
+      
+      // Parse dates, handling null/undefined/invalid dates
+      let createdOn = null;
+      let changedOn = null;
+      
+      if (createdOnStr && createdOnStr !== '-' && createdOnStr !== '') {
+        try {
+          createdOn = new Date(createdOnStr);
+          if (isNaN(createdOn.getTime())) createdOn = null;
+        } catch (e) {
+          createdOn = null;
+        }
+      }
+      
+      if (changedOnStr && changedOnStr !== '-' && changedOnStr !== '') {
+        try {
+          changedOn = new Date(changedOnStr);
+          if (isNaN(changedOn.getTime())) changedOn = null;
+        } catch (e) {
+          changedOn = null;
+        }
+      }
+      
+      // Parse filter dates and normalize to start/end of day for proper comparison
+      let start = null;
+      let end = null;
+      
+      if (val[0]) {
+        start = new Date(val[0]);
+        start.setHours(0, 0, 0, 0); // Set to start of day
+      }
+      
+      if (val[1]) {
+        end = new Date(val[1]);
+        end.setHours(23, 59, 59, 999); // Set to end of day
+      }
+      
+      if (!start || !end) return true; // If no date range specified, show all
+      
+      // Normalize row dates to start of day for comparison
+      if (createdOn && !isNaN(createdOn.getTime())) {
+        const createdOnDate = new Date(createdOn);
+        createdOnDate.setHours(0, 0, 0, 0);
+        createdOn = createdOnDate;
+      }
+      
+      if (changedOn && !isNaN(changedOn.getTime())) {
+        const changedOnDate = new Date(changedOn);
+        changedOnDate.setHours(0, 0, 0, 0);
+        changedOn = changedOnDate;
+      }
+      
+      // Check if either created_on or changed_on falls within the range
+      const createdInRange = createdOn && !isNaN(createdOn.getTime()) && 
+                            createdOn >= start && createdOn <= end;
+      const changedInRange = changedOn && !isNaN(changedOn.getTime()) && 
+                            changedOn >= start && changedOn <= end;
+      
+      // Debug logging (can be removed later)
+      if (createdOn || changedOn) {
+        console.log('🔍 [DateRangeFilter] Row dates:', {
+          createdOn: createdOn ? createdOn.toISOString() : null,
+          changedOn: changedOn ? changedOn.toISOString() : null,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          createdInRange,
+          changedInRange
+        });
+      }
+      
+      // Show row if either date is in range
+      // If both dates are null, show the row (don't filter out null dates)
+      if (!createdInRange && !changedInRange && (createdOn || changedOn)) return false;
+    } else {
+      // Default date range check
+      const rowDateStr = row[colName];
+      if (!rowDateStr || rowDateStr === '-' || rowDateStr === '') return false;
+      
+      try {
+        const rowDate = new Date(rowDateStr);
+        if (isNaN(rowDate.getTime())) return false;
+        
+        // Normalize row date to start of day
+        rowDate.setHours(0, 0, 0, 0);
+        
+        let start = null;
+        let end = null;
+        
+        if (val[0]) {
+          start = new Date(val[0]);
+          start.setHours(0, 0, 0, 0); // Set to start of day
+        }
+        
+        if (val[1]) {
+          end = new Date(val[1]);
+          end.setHours(23, 59, 59, 999); // Set to end of day
+        }
+        
+        if (!start || !end) return true;
+        
+        if (rowDate < start || rowDate > end) return false;
+      } catch (e) {
+        return false;
+      }
+    }
   } else if (field.type === 'multiselect') {
-    if (!val.includes(String(row[colName]))) return false;
+    // Extract values from array (handle both objects and primitives)
+    const filterValues = val.map(v => {
+      const value = typeof v === 'object' && v !== null ? v.value : v;
+      // Convert to string and trim for consistent comparison
+      return String(value).trim();
+    });
+    
+    const rowValue = String(row[colName] || '').trim();
+    
+    // Handle comma-separated values in rows (e.g., "1, 2" for IDs)
+    const rowValues = rowValue === '-' || rowValue === '' 
+      ? []
+      : rowValue.includes(',') 
+        ? rowValue.split(',').map(s => s.trim()).filter(s => s !== '')
+        : [rowValue];
+    
+    // Check if any filter value matches any row value (case-insensitive, handle number/string conversion)
+    const matches = filterValues.some(fv => {
+      return rowValues.some(rv => {
+        // Compare as both strings and numbers to handle type mismatches
+        const fvStr = String(fv).trim();
+        const rvStr = String(rv).trim();
+        return fvStr === rvStr || 
+               (fvStr !== '' && rvStr !== '' && !isNaN(fvStr) && !isNaN(rvStr) && Number(fvStr) === Number(rvStr));
+      });
+    });
+    
+    if (!matches && filterValues.length > 0) return false;
   } else if (field.type === 'number') {
     if (val > row[colName]) return false;
   } else if (field.type === 'text') {

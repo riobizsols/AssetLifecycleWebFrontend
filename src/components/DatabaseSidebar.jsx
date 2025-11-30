@@ -100,6 +100,7 @@ const DatabaseSidebar = () => {
       'Asset Workflow Hi...': t('navigation.assetWorkflowHistory'),
       'Breakdown History': t('navigation.breakdownHistory'),
       'Usage-Based Asset Report': t('navigation.usageBasedAssetReport'),
+      'SLA Reports': t('navigation.slaReport'),
       'Usage-Based Asset...': t('navigation.usageBasedAssetReport'),
     };
     
@@ -158,6 +159,7 @@ const DatabaseSidebar = () => {
     SERIALNUMBERPRINT: "/serial-number-print", //not required
     BREAKDOWNHISTORY: "/reports/breakdown-history",  //done
     USAGEBASEDASSETREPORT: "/reports/usage-based-asset",  //done
+    SLAREPORT: "/reports/sla-report",  //done
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
     MASTERDATA: "/master-data/vendors",  //done
     ORGANIZATIONS: "/master-data/organizations",  //done
@@ -201,6 +203,7 @@ const DatabaseSidebar = () => {
       SERIALNUMBERPRINT: History,
       BREAKDOWNHISTORY: AlertTriangle,
       USAGEBASEDASSETREPORT: Gauge,
+      SLAREPORT: FileText,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
       ORGANIZATIONS: Building,

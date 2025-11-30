@@ -147,11 +147,11 @@ const SetupWizard = () => {
   }, []);
 
   useEffect(() => {
-    if (!loadingCatalog && !bootstrappedSelections) {
-      setSelectedAssetTypes(catalog.assetTypes.map((asset) => asset.id));
-      setSelectedOrgSettings(catalog.orgSettings.map((setting) => setting.key));
-      setSelectedAuditEvents(catalog.auditEvents.map((event) => event.id));
-      setSelectedProdServices(catalog.prodServices.map((item) => item.id));
+    if (!loadingCatalog && !bootstrappedSelections && catalog) {
+      setSelectedAssetTypes((catalog.assetTypes || []).map((asset) => asset.id));
+      setSelectedOrgSettings((catalog.orgSettings || []).map((setting) => setting.key));
+      setSelectedAuditEvents((catalog.auditEvents || []).map((event) => event.id));
+      setSelectedProdServices((catalog.prodServices || []).map((item) => item.id));
       setBootstrappedSelections(true);
     }
   }, [loadingCatalog, bootstrappedSelections, catalog]);
@@ -844,28 +844,39 @@ API_BASE_URL=http://localhost:5000/api
                       Toggle the baseline organization settings that the wizard should pre-create.
                     </p>
                   </div>
-                  <button
-                    className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 hover:border-indigo-300"
-                    onClick={() => setSelectedOrgSettings(catalog.orgSettings.map((item) => item.key))}
-                  >
-                    <CheckSquare className="h-3 w-3" />
-                    Select All
-                  </button>
+                  {loadingCatalog ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  ) : (
+                    <button
+                      className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => setSelectedOrgSettings((catalog.orgSettings || []).map((item) => item.key))}
+                      disabled={!catalog.orgSettings || catalog.orgSettings.length === 0}
+                    >
+                      <CheckSquare className="h-3 w-3" />
+                      Select All
+                    </button>
+                  )}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-3">
-                  {catalog.orgSettings.map((setting) => (
-                    <button
-                      key={setting.key}
-                      onClick={() => handleToggleOrgSetting(setting.key)}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                        selectedOrgSettings.includes(setting.key)
-                          ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-                      }`}
-                    >
-                      {setting.key} · {setting.value}
-                    </button>
-                  ))}
+                  {loadingCatalog ? (
+                    <p className="text-sm text-slate-500">Loading organization settings...</p>
+                  ) : catalog.orgSettings && catalog.orgSettings.length > 0 ? (
+                    catalog.orgSettings.map((setting) => (
+                      <button
+                        key={setting.key}
+                        onClick={() => handleToggleOrgSetting(setting.key)}
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                          selectedOrgSettings.includes(setting.key)
+                            ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                        }`}
+                      >
+                        {setting.key} · {setting.value}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">No organization settings available</p>
+                  )}
                 </div>
               </div>
 
@@ -877,40 +888,51 @@ API_BASE_URL=http://localhost:5000/api
                       Choose which audit log configurations should be enabled by default.
                     </p>
                   </div>
-                  <button
-                    className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 hover:border-indigo-300"
-                    onClick={() => setSelectedAuditEvents(catalog.auditEvents.map((item) => item.id))}
-                  >
-                    <CheckSquare className="h-3 w-3" />
-                    Select All
-                  </button>
+                  {loadingCatalog ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                  ) : (
+                    <button
+                      className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 hover:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => setSelectedAuditEvents((catalog.auditEvents || []).map((item) => item.id))}
+                      disabled={!catalog.auditEvents || catalog.auditEvents.length === 0}
+                    >
+                      <CheckSquare className="h-3 w-3" />
+                      Select All
+                    </button>
+                  )}
                 </div>
                 <div className="mt-4 space-y-3">
-                  {catalog.auditEvents.map((event) => (
-                    <label
-                      key={event.id}
-                      className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-sm transition ${
-                        selectedAuditEvents.includes(event.id)
-                          ? "border-indigo-500 bg-indigo-50"
-                          : "border-slate-200 bg-white hover:border-slate-300"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedAuditEvents.includes(event.id)}
-                        onChange={() => handleToggleAuditEvent(event.id)}
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <div>
-                        <div className="font-semibold text-slate-900">
-                          {event.description || event.id}
+                  {loadingCatalog ? (
+                    <p className="text-sm text-slate-500">Loading audit log events...</p>
+                  ) : catalog.auditEvents && catalog.auditEvents.length > 0 ? (
+                    catalog.auditEvents.map((event) => (
+                      <label
+                        key={event.id}
+                        className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-sm transition ${
+                          selectedAuditEvents.includes(event.id)
+                            ? "border-indigo-500 bg-indigo-50"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedAuditEvents.includes(event.id)}
+                          onChange={() => handleToggleAuditEvent(event.id)}
+                          className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <div>
+                          <div className="font-semibold text-slate-900">
+                            {event.description || event.id}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">
+                            App: {event.appId} · Event: {event.eventId}
+                          </p>
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          App: {event.appId} · Event: {event.eventId}
-                        </p>
-                      </div>
-                    </label>
-                  ))}
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">No audit log events available</p>
+                  )}
                 </div>
               </div>
             </section>

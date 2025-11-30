@@ -1,19 +1,21 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Building2 } from "lucide-react";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { toast } from "react-hot-toast";
 
-export default function Login() {
-  const [form, setForm] = useState({ email: "", password: "" });
+export default function TenantLogin() {
+  const [form, setForm] = useState({ org_id: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [show, setShow] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, login } = useAuthStore();
   const { t } = useLanguage();
   
@@ -24,10 +26,22 @@ export default function Login() {
     if (isAuthenticated) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+    
+    // Check if redirected from tenant setup
+    if (location.state?.message) {
+      toast.success(location.state.message);
+      if (location.state.orgId) {
+        setForm(prev => ({ ...prev, org_id: location.state.orgId }));
+      }
+      if (location.state.email) {
+        setForm(prev => ({ ...prev, email: location.state.email }));
+      }
+    }
+  }, [isAuthenticated, navigate, location]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const value = e.target.name === 'org_id' ? e.target.value.toUpperCase() : e.target.value;
+    setForm({ ...form, [e.target.name]: value });
     setError("");
   };
 
@@ -37,7 +51,7 @@ export default function Login() {
     setError("");
 
     try {
-      const res = await API.post("/auth/login", form);
+      const res = await API.post("/auth/tenant-login", form);
 
       const { token, user } = res.data;
 
@@ -46,7 +60,7 @@ export default function Login() {
 
       // Log audit event for successful login
       await recordActionByNameWithFetch('Logging In', { 
-        action: 'User Logged In Successfully',
+        action: 'User Logged In Successfully (Multi-Tenant)',
         userId: user?.user_id,
         userEmail: user?.email,
         userRole: user?.job_role_id,
@@ -63,11 +77,18 @@ export default function Login() {
       setLoading(false);
     }
   };
+
   return (
     <div className="flex min-h-screen">
       {/* Left section */}
       <div className="hidden md:flex w-1/2 bg-[#0E2F4B] items-center justify-center">
-        <img src="/logo.png" alt="Logo" className="w-48 h-auto" />
+        <div className="text-center">
+          <img src="/logo.png" alt="Logo" className="w-48 h-auto mx-auto mb-4" />
+          <div className="flex items-center justify-center gap-2 text-white mt-6">
+            <Building2 className="h-6 w-6" />
+            <span className="text-lg font-semibold">Multi-Tenant Login</span>
+          </div>
+        </div>
       </div>
 
       {/* Right section */}
@@ -82,6 +103,32 @@ export default function Login() {
           {error && <p className="text-red-600 mb-4">{error}</p>}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label
+                htmlFor="org_id"
+                className="block text-sm font-semibold text-gray-700"
+              >
+                Organization ID<span className="text-red-600">*</span>
+              </label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  id="org_id"
+                  name="org_id"
+                  type="text"
+                  required
+                  placeholder="e.g., ORG001"
+                  value={form.org_id}
+                  onChange={handleChange}
+                  className="mt-1 w-full pl-10 pr-3 py-2 border rounded-md shadow-sm border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] uppercase"
+                  maxLength={10}
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Enter your organization ID to connect to your database
+              </p>
+            </div>
+
             <div>
               <label
                 htmlFor="email"
@@ -150,13 +197,13 @@ export default function Login() {
 
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-center text-gray-600">
-              Using multi-tenant login?{" "}
+              Using standard login?{" "}
               <button
                 type="button"
-                onClick={() => navigate("/tenant-login")}
+                onClick={() => navigate("/login")}
                 className="text-[#0E2F4B] hover:underline font-medium"
               >
-                Switch to Multi-Tenant Login
+                Switch to Standard Login
               </button>
             </p>
           </div>
@@ -165,3 +212,4 @@ export default function Login() {
     </div>
   );
 }
+

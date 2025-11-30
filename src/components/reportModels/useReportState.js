@@ -5,6 +5,7 @@ import { assetLifecycleService } from "../../services/assetLifecycleService";
 import { maintenanceHistoryService } from "../../services/maintenanceHistoryService";
 import { breakdownHistoryService } from "../../services/breakdownHistoryService";
 import assetWorkflowHistoryService from "../../services/assetWorkflowHistoryService";
+import { slaReportService } from "../../services/slaReportService";
 import { useAuthStore } from "../../store/useAuthStore";
 
 export function useReportState(reportId, report) {
@@ -216,6 +217,76 @@ export function useReportState(reportId, report) {
         }
       };
 
+      fetchFilterOptions();
+    } else if (reportId === "sla-report") {
+      const fetchFilterOptions = async () => {
+        try {
+          console.log('🔍 [useReportState] Fetching SLA report filter options...');
+          const response = await slaReportService.getFilterOptions();
+          console.log('🔍 [useReportState] SLA report filter options response:', response);
+          const filterData = response.data?.data || response.data || {};
+          console.log('🔍 [useReportState] Filter data structure:', {
+            hasVendors: !!filterData.vendors,
+            vendorsCount: filterData.vendors?.length || 0,
+            hasAssetTypes: !!filterData.assetTypes,
+            assetTypesCount: filterData.assetTypes?.length || 0,
+            hasAssets: !!filterData.assets,
+            assetsCount: filterData.assets?.length || 0
+          });
+          setFilterOptions(filterData);
+          
+          const report = REPORTS.find(r => r.id === reportId);
+          if (report && filterData) {
+            console.log('✅ [useReportState] Updated SLA report filter options with real data');
+            
+            // Update quick fields with real data
+            report.quickFields.forEach(field => {
+              if (field.key === "assetType" && filterData.assetTypes) {
+                const assetTypeOptions = filterData.assetTypes.map(at => {
+                  // Handle multilingual/camelCase - use the cleaned text field
+                  const label = (at.asset_type_name || at.text || at.asset_type_id || '').toString().trim();
+                  return {
+                    value: at.asset_type_id,
+                    label: label || at.asset_type_id
+                  };
+                });
+                field.domain = assetTypeOptions;
+                console.log(`✅ [useReportState] Updated Asset Type dropdown with ${assetTypeOptions.length} options:`, assetTypeOptions.slice(0, 3));
+              } else if (field.key === "vendor" && filterData.vendors) {
+                const vendorOptions = filterData.vendors.map(v => {
+                  // Handle multilingual/camelCase - prioritize vendor_name, fallback to company_name
+                  const label = (v.vendor_name || v.company_name || v.vendor_id || '').toString().trim();
+                  return {
+                    value: v.vendor_id,
+                    label: label || v.vendor_id
+                  };
+                });
+                field.domain = vendorOptions;
+                console.log(`✅ [useReportState] Updated Vendor dropdown with ${vendorOptions.length} options:`, vendorOptions.slice(0, 3));
+              } else if (field.key === "slaDescription" && filterData.slaDescriptions) {
+                const slaDescriptionOptions = filterData.slaDescriptions.map(sla => {
+                  // Handle multilingual/camelCase - use description field
+                  const label = (sla.description || sla.sla_id || '').toString().trim();
+                  return {
+                    value: sla.sla_id,
+                    label: label || sla.sla_id
+                  };
+                });
+                field.domain = slaDescriptionOptions;
+                console.log(`✅ [useReportState] Updated SLA Description dropdown with ${slaDescriptionOptions.length} options:`, slaDescriptionOptions.slice(0, 3));
+              }
+            });
+            
+            setUpdatedReport({ ...report });
+          } else {
+            console.warn('⚠️ [useReportState] Report or filterData not found for sla-report');
+          }
+        } catch (err) {
+          console.error('❌ [useReportState] Error fetching SLA report filter options:', err);
+          console.error('❌ [useReportState] Error details:', err.response?.data);
+        }
+      };
+      
       fetchFilterOptions();
     } else if (reportId === "asset-workflow-history") {
       const fetchFilterOptions = async () => {
@@ -1037,6 +1108,128 @@ export function useReportState(reportId, report) {
       };
 
       fetchAssetWorkflowHistoryData();
+    } else if (reportId === "sla-report") {
+      const fetchSLAReportData = async () => {
+        console.log('🔍 [useReportState] Starting SLA report data fetch...');
+        setLoading(true);
+        setError(null);
+        try {
+          // Convert quick filters to API parameters
+          const apiFilters = {};
+          Object.entries(quick).forEach(([key, value]) => {
+            if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
+              // Extract values from arrays (handle both objects and primitives)
+              let processedValue = value;
+              if (Array.isArray(value)) {
+                processedValue = value.map(v => typeof v === 'object' && v !== null ? v.value : v);
+              }
+              
+              if (key === 'assetType') {
+                apiFilters.asset_type_id = processedValue;
+              } else if (key === 'vendor') {
+                apiFilters.vendor_id = processedValue;
+              } else if (key === 'slaDescription') {
+                apiFilters.sla_description = processedValue;
+              } else if (key === 'dateRange' && Array.isArray(value) && value.length === 2) {
+                apiFilters.dateRange = value;
+              } else {
+                apiFilters[key] = processedValue;
+              }
+            }
+          });
+          
+          console.log('🔍 [useReportState] Sending SLA report API filters:', apiFilters);
+          
+          const response = await slaReportService.getSLAReport({
+            ...apiFilters,
+            limit: 1000,
+            offset: 0
+          });
+          
+          const slaData = response.data?.data || [];
+          console.log('✅ [useReportState] Loaded', slaData.length, 'SLA report records from API');
+          
+          // Transform data to create rows for each vendor-SLA combination
+          // Since query now returns one row per vendor with aggregated asset types
+          const transformedData = [];
+          
+          slaData.forEach(item => {
+            // Extract asset type info (now comes as comma-separated string)
+            const assetTypeNames = item.asset_type_names || '';
+            const assetTypeIds = item.asset_type_ids || '';
+            
+            // Collect all SLA values for this vendor
+            const slas = [];
+            for (let i = 1; i <= 10; i++) {
+              const slaValue = item[`sla_${i}_value`];
+              const slaDescription = item[`sla_${i}_description`];
+              const slaId = item[`sla_${i}_id`];
+              
+              if (slaValue && slaValue.trim() !== '') {
+                slas.push({
+                  sla_id: slaId,
+                  sla_description: slaDescription,
+                  sla_value: slaValue
+                });
+              }
+            }
+            
+            // Create a row for each SLA that has a value
+            if (slas.length > 0) {
+              slas.forEach(sla => {
+                transformedData.push({
+                  "Vendor ID": item.vendor_id,
+                  "Vendor Name": item.vendor_name,
+                  "Company Name": item.company_name,
+                  "Company Email": item.company_email || '-',
+                  "Contact Person": item.contact_person_name || '-',
+                  "Contact Number": item.contact_person_number || '-',
+                  "Contract Start": item.contract_start_date ? new Date(item.contract_start_date).toLocaleDateString() : '-',
+                  "Contract End": item.contract_end_date ? new Date(item.contract_end_date).toLocaleDateString() : '-',
+                  "Asset Type ID": assetTypeIds || '-',
+                  "Asset Type": assetTypeNames || '-',
+                  "SLA ID": sla.sla_id || '-',
+                  "SLA Description": sla.sla_description || '-',
+                  "SLA Value (hrs)": sla.sla_value || '-',
+                  "Created On": item.created_on ? new Date(item.created_on).toISOString() : null,
+                  "Changed On": item.changed_on ? new Date(item.changed_on).toISOString() : null
+                });
+              });
+            } else {
+              // If no SLA values, still show the vendor row
+              transformedData.push({
+                "Vendor ID": item.vendor_id,
+                "Vendor Name": item.vendor_name,
+                "Company Name": item.company_name,
+                "Company Email": item.company_email || '-',
+                "Contact Person": item.contact_person_name || '-',
+                "Contact Number": item.contact_person_number || '-',
+                "Contract Start": item.contract_start_date ? new Date(item.contract_start_date).toLocaleDateString() : '-',
+                "Contract End": item.contract_end_date ? new Date(item.contract_end_date).toLocaleDateString() : '-',
+                "Asset Type ID": assetTypeIds || '-',
+                "Asset Type": assetTypeNames || '-',
+                "SLA ID": '-',
+                "SLA Description": '-',
+                "SLA Value (hrs)": '-',
+                "Created On": item.created_on ? new Date(item.created_on).toISOString() : null,
+                "Changed On": item.changed_on ? new Date(item.changed_on).toISOString() : null
+              });
+            }
+          });
+          
+          setAllRows(transformedData);
+          console.log('✅ [useReportState] Set SLA report data:', transformedData.length, 'transformed records');
+        } catch (err) {
+          console.error('❌ [useReportState] Error fetching SLA report data:', err);
+          console.error('❌ [useReportState] Error details:', err.response?.data);
+          setError(err.response?.data?.message || 'Failed to fetch SLA report data');
+          setAllRows([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchSLAReportData();
     } else if (reportId === "asset-valuation") {
       // Asset Valuation uses its own service and doesn't need data fetching here
       // as it's handled by the AssetValuation component itself

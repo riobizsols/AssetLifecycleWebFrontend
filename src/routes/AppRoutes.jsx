@@ -1,11 +1,13 @@
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Login from "../pages/auth/Login";
+import TenantLogin from "../pages/auth/TenantLogin";
 import Dashboard from "../pages/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "../layouts/MainLayout";
 import ForgotPassword from "../pages/auth/ForgetPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import SetupWizard from "../pages/setup/SetupWizard";
+import TenantSetup from "../pages/tenant/TenantSetup";
 import Assets from "../pages/Assets";
 import UserRoles from "../pages/masterData/UserRoles";
 import AssignRoles from "../components/AssignRoles";
@@ -70,6 +72,7 @@ import UsageBasedAssetReport from "../pages/reports/UsageBasedAssetReport";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
 import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
 import BulkUpload from "../pages/masterData/BulkUpload";
+import SLAReport from "../pages/reports/SLAReport";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -78,7 +81,10 @@ export default function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/tenant-login" element={<TenantLogin />} />
         <Route path="/setup" element={<SetupWizard />} />
+        <Route path="/tenant-setup" element={<TenantSetup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/not-authorized" element={
@@ -314,6 +320,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="USAGEBASEDASSETREPORT">
               <MainLayout>
                 <UsageBasedAssetReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/sla-report"
+          element={
+            <ProtectedRoute requiredAppId="SLAREPORT">
+              <MainLayout>
+                <SLAReport />
               </MainLayout>
             </ProtectedRoute>
           }

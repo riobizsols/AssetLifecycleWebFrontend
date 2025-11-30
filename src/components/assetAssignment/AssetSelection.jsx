@@ -31,6 +31,9 @@ const AssetSelection = () => {
   const videoRef = useRef(null);
   const [inactiveAssets, setInactiveAssets] = useState([]);
   const [inactiveAssetsRaw, setInactiveAssetsRaw] = useState([]);
+  
+  // Local state to store entityIntId if fetched (fallback if not passed via navigation state)
+  const [entityIntIdLocal, setEntityIntIdLocal] = useState(entityIntId);
 
   // Initialize audit logging based on entity type
   const appId = entityType === 'employee' ? EMP_ASSIGNMENT_APP_ID : DEPT_ASSIGNMENT_APP_ID;
@@ -101,15 +104,47 @@ const AssetSelection = () => {
 
   useEffect(() => {
     // Debug: print entityIntId on mount
-    console.log("entityIntId on mount:", entityIntId);
+    console.log("AssetSelection - entityIntId on mount:", entityIntId);
+    console.log("AssetSelection - entityId:", entityId);
+    console.log("AssetSelection - entityType:", entityType);
+    
     if (!entityId || !entityType) {
       toast.error(t('assets.invalidNavigation'));
       navigate(-1);
       return;
     }
 
+    // If entityIntId is missing for employee type, try to fetch it
+    if (entityType === "employee" && !entityIntId && entityId) {
+      console.warn("entityIntId is missing for employee, attempting to fetch...");
+      fetchEmployeeIntId(entityId);
+    }
+
     fetchAssetTypes();
-  }, [entityId, entityType]);
+  }, [entityId, entityType, entityIntId]);
+
+  // Fetch employee internal ID if missing
+  const fetchEmployeeIntId = async (employeeId) => {
+    try {
+      const res = await API.get(`/employees/${employeeId}`);
+      const empIntId = res.data.emp_int_id || res.data.employee_int_id;
+      if (empIntId) {
+        console.log("Fetched emp_int_id:", empIntId);
+        setEntityIntIdLocal(empIntId);
+      } else {
+        console.error("emp_int_id not found in API response:", res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch employee internal ID:", err);
+    }
+  };
+  
+  // Update local state when entityIntId from props changes
+  useEffect(() => {
+    if (entityIntId) {
+      setEntityIntIdLocal(entityIntId);
+    }
+  }, [entityIntId]);
 
   useEffect(() => {
     if (selectedAssetType) {
@@ -240,7 +275,9 @@ const AssetSelection = () => {
           toast.error(t('assets.assetTypeCanOnlyBeAssignedToDepartments'));
           return;
         }
-        if (!entityIntId) {
+        // Use local state if entityIntId from props is missing
+        const finalEntityIntId = entityIntIdLocal || entityIntId;
+        if (!finalEntityIntId) {
           toast.error(t('assets.employeeInternalIdMissing'));
           return;
         }
@@ -250,7 +287,7 @@ const AssetSelection = () => {
           asset_id: asset.asset_id,
           org_id: asset.org_id,
           dept_id: asset.dept_id || departmentId,
-          employee_int_id: entityIntId,
+          employee_int_id: entityIntIdLocal || entityIntId,
           latest_assignment_flag: true,
           action: "A",
         };
@@ -259,7 +296,7 @@ const AssetSelection = () => {
         // Log assign action for employee
         await recordActionByNameWithFetch('Assign', {
           assetId: asset.asset_id,
-          employeeId: entityIntId,
+          employeeId: entityIntIdLocal || entityIntId,
           deptId: asset.dept_id || departmentId,
           action: 'Asset Assigned to Employee'
         });
@@ -591,7 +628,7 @@ const AssetSelection = () => {
                           const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
                           navigate(`/asset-detail/${asset.asset_id}?context=${context}`, {
                             state: {
-                              employee_int_id: entityIntId,
+                              employee_int_id: entityIntIdLocal || entityIntId,
                               dept_id: asset.dept_id || departmentId,
                               org_id: asset.org_id,
                               context: context

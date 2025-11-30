@@ -22,6 +22,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
     city: '',
     state: '',
     pincode: '',
+    contract_start_date: '',
+    contract_end_date: '',
     int_status: 1
   });
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -31,6 +33,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
   const [isUploading, setIsUploading] = useState(false);
   const [documentTypes, setDocumentTypes] = useState([]);
+  const [slaDescriptions, setSlaDescriptions] = useState([]);
+  const [selectedSLAs, setSelectedSLAs] = useState([]); // Array of {sla_id, description, value, index}
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [showArchived, setShowArchived] = useState(true);
@@ -38,7 +42,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
 
   useEffect(() => {
     if (vendor) {
-      setFormData({
+      const baseFormData = {
         vendor_name: vendor.vendor_name || '',
         company_name: vendor.company_name || '',
         company_email: vendor.company_email || '',
@@ -52,14 +56,56 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         city: vendor.city || '',
         state: vendor.state || '',
         pincode: vendor.pincode || '',
+        contract_start_date: vendor.contract_start_date || '',
+        contract_end_date: vendor.contract_end_date || '',
         int_status: vendor.int_status === 'Active' ? 1 : 0
-      });
+      };
+      
+      setFormData({ ...baseFormData });
+      // SLA values will be loaded when slaDescriptions are fetched in fetchSLADescriptions
     }
   }, [vendor]);
 
   useEffect(() => {
-    const fetchDocs = async () => {
+    const fetchVendorData = async () => {
       if (!vendor?.vendor_id) return;
+      
+      // Fetch vendor details with SLAs
+      try {
+        const vendorRes = await API.get(`/vendor/${vendor.vendor_id}`);
+        if (vendorRes.data?.success && vendorRes.data?.data) {
+          const vendorData = vendorRes.data.data;
+          // Update formData with full vendor data including vendor_slas
+          setFormData(prev => ({
+            ...prev,
+            vendor_name: vendorData.vendor_name || '',
+            company_name: vendorData.company_name || '',
+            company_email: vendorData.company_email || '',
+            contact_person_name: vendorData.contact_person_name || '',
+            contact_person_email: vendorData.contact_person_email || '',
+            contact_person_number: vendorData.contact_person_number || '',
+            gst_number: vendorData.gst_number || '',
+            cin_number: vendorData.cin_number || '',
+            address_line1: vendorData.address_line1 || '',
+            address_line2: vendorData.address_line2 || '',
+            city: vendorData.city || '',
+            state: vendorData.state || '',
+            pincode: vendorData.pincode || '',
+            contract_start_date: vendorData.contract_start_date || '',
+            contract_end_date: vendorData.contract_end_date || '',
+            int_status: vendorData.int_status === 'Active' ? 1 : 0
+          }));
+          
+          // Store vendor with SLAs for later use
+          if (vendorData.vendor_slas) {
+            // Will be loaded when SLA descriptions are fetched
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch vendor details', err);
+      }
+      
+      // Fetch vendor documents
       setDocsLoading(true);
       try {
         const res = await API.get(`/vendor-docs/${vendor.vendor_id}`);
@@ -79,12 +125,13 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         setDocsLoading(false);
       }
     };
-    fetchDocs();
+    fetchVendorData();
   }, [vendor?.vendor_id]);
 
-  // Fetch document types on component mount
+  // Fetch document types and SLA descriptions on component mount
   useEffect(() => {
     fetchDocumentTypes();
+    fetchSLADescriptions();
   }, []);
 
   // Handle click outside to close dropdown
@@ -127,12 +174,133 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
     }
   };
 
+  const fetchSLADescriptions = async () => {
+    try {
+      console.log('Fetching SLA descriptions...');
+      const res = await API.get('/sla-descriptions');
+      console.log('SLA descriptions response:', res.data);
+
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        setSlaDescriptions(res.data.data);
+        
+        // If we have vendor data with existing vendor_slas, load them into selectedSLAs
+        if (vendor && vendor.vendor_id) {
+          try {
+            // Fetch full vendor data including vendor_slas
+            const vendorRes = await API.get(`/vendor/${vendor.vendor_id}`);
+            if (vendorRes.data?.success && vendorRes.data?.data?.vendor_slas) {
+              const vendorSLAs = vendorRes.data.data.vendor_slas;
+              const existingSLAs = vendorSLAs.map((vsla, index) => {
+                // Find the matching SLA description
+                const matched = res.data.data.find(s => s.sla_id === vsla.sla_id);
+                return {
+                  sla_id: vsla.sla_id,
+                  description: matched ? matched.description : vsla.sla_description || vsla.sla_id,
+                  value: vsla.value,
+                  index: index + 1
+                };
+              });
+              
+              if (existingSLAs.length > 0) {
+                setSelectedSLAs(existingSLAs);
+                console.log('Loaded existing vendor SLAs:', existingSLAs);
+              }
+            }
+          } catch (err) {
+            console.warn('Failed to fetch vendor SLAs:', err);
+          }
+        }
+        
+        console.log('SLA descriptions loaded:', res.data.data);
+      } else {
+        console.log('No SLA descriptions found');
+        setSlaDescriptions([]);
+      }
+    } catch (err) {
+      console.error('Error fetching SLA descriptions:', err);
+      toast.error('Failed to load SLA descriptions');
+      setSlaDescriptions([]);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  // Handle SLA selection from dropdown
+  const handleSLASelect = (e) => {
+    const selectedSlaId = e.target.value;
+    console.log('[EditVendorModal] handleSLASelect called with value:', selectedSlaId);
+    
+    if (!selectedSlaId || selectedSlaId === '') {
+      console.log('[EditVendorModal] Empty value, returning');
+      return;
+    }
+    
+    const selectedSLA = slaDescriptions.find(sla => sla.sla_id === selectedSlaId);
+    if (!selectedSLA) {
+      console.warn('[EditVendorModal] Selected SLA not found in slaDescriptions:', selectedSlaId);
+      e.target.value = '';
+      return;
+    }
+    
+    console.log('[EditVendorModal] Found SLA in descriptions:', selectedSLA);
+    
+    // Use functional update to check if already selected
+    setSelectedSLAs(prev => {
+      // Check if already selected
+      if (prev.find(s => s.sla_id === selectedSlaId)) {
+        console.warn('[EditVendorModal] SLA already exists:', selectedSlaId);
+        toast.error('This SLA is already selected');
+        e.target.value = '';
+        return prev;
+      }
+      
+      // Add to selectedSLAs with next available index (1-10)
+      const nextIndex = prev.length + 1;
+      if (nextIndex > 10) {
+        toast.error('Maximum 10 SLAs can be selected');
+        e.target.value = '';
+        return prev;
+      }
+      
+      const newSLA = {
+        sla_id: selectedSLA.sla_id,
+        description: selectedSLA.description,
+        value: '',
+        index: nextIndex
+      };
+      
+      console.log('[EditVendorModal] Adding SLA to selectedSLAs:', newSLA);
+      console.log('[EditVendorModal] Current selectedSLAs before update:', prev);
+      
+      const updated = [...prev, newSLA];
+      console.log('[EditVendorModal] Updated selectedSLAs array:', updated);
+      console.log('[EditVendorModal] Updated array length:', updated.length);
+      
+      // Reset dropdown after state update
+      setTimeout(() => {
+        e.target.value = '';
+      }, 0);
+      
+      return updated;
+    });
+  };
+
+  // Handle SLA value change
+  const handleSLAValueChange = (slaId, value) => {
+    setSelectedSLAs(prev => prev.map(sla => 
+      sla.sla_id === slaId ? { ...sla, value } : sla
+    ));
+  };
+
+  // Handle SLA removal
+  const handleRemoveSLA = (slaId) => {
+    setSelectedSLAs(prev => prev.filter(sla => sla.sla_id !== slaId));
   };
 
   const handleSubmit = async (e) => {
@@ -168,7 +336,17 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       return;
     }
 
-    onConfirm(formData);
+    // Map selected SLAs to vendor_slas array
+    const vendor_slas = selectedSLAs
+      .filter(sla => sla.value && sla.value.trim()) // Only include SLAs with values
+      .map(sla => ({
+        sla_id: sla.sla_id,
+        value: sla.value
+      }));
+    
+    const formDataWithSLAs = { ...formData, vendor_slas };
+
+    onConfirm(formDataWithSLAs);
   };
 
   // Handle document uploads
@@ -542,6 +720,122 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             </div>
           </div>
 
+          {/* Contract Dates */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Contract Start Date
+              </label>
+              <input
+                type="date"
+                name="contract_start_date"
+                value={formData.contract_start_date}
+                onChange={handleChange}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Contract End Date
+              </label>
+              <input
+                type="date"
+                name="contract_end_date"
+                value={formData.contract_end_date}
+                onChange={handleChange}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              />
+            </div>
+          </div>
+
+          {/* SLA Fields Section */}
+          {slaDescriptions.length > 0 && (
+            <div className="mb-6 mt-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">SLA Fields</h3>
+              
+              {/* SLA Dropdown */}
+              {!isReadOnly && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select SLA
+                  </label>
+                  <select
+                    onChange={handleSLASelect}
+                    className="w-64 px-3 py-2 border rounded text-sm"
+                    value=""
+                    key={`sla-dropdown-${selectedSLAs.length}`}
+                  >
+                    <option value="" disabled hidden>Select an SLA</option>
+                    {slaDescriptions
+                      .filter(sla => !selectedSLAs.find(s => s.sla_id === sla.sla_id))
+                      .map((sla) => (
+                        <option key={sla.sla_id} value={sla.sla_id}>
+                          {sla.description}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Selected SLAs with Input Fields */}
+              <div className="space-y-3" key={`sla-container-${selectedSLAs.length}`}>
+                {selectedSLAs.length === 0 && (
+                  <p className="text-sm text-gray-500 italic">No SLAs selected. Select an SLA from the dropdown above.</p>
+                )}
+                {selectedSLAs.map((sla, idx) => {
+                  const uniqueKey = `sla-input-${sla.sla_id || sla.index}-${idx}`;
+                  console.log('[EditVendorModal] Rendering SLA input field #' + (idx + 1) + ':', {
+                    sla_id: sla.sla_id,
+                    description: sla.description,
+                    value: sla.value,
+                    index: sla.index,
+                    key: uniqueKey,
+                    arrayIndex: idx,
+                    totalSelected: selectedSLAs.length
+                  });
+                  return (
+                    <div key={uniqueKey} className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {sla.description || sla.sla_id || `SLA ${sla.index}`}
+                        </label>
+                        <input
+                          type="text"
+                          name={`sla-input-${sla.sla_id || sla.index}`}
+                          id={`sla-input-${sla.sla_id || sla.index}-${idx}`}
+                          value={sla.value || ''}
+                          onChange={(e) => {
+                            console.log('[EditVendorModal] Input changed for:', sla.sla_id || sla.index, 'new value:', e.target.value);
+                            handleSLAValueChange(sla.sla_id || sla.index, e.target.value);
+                          }}
+                          disabled={isReadOnly}
+                          placeholder="Enter in hr"
+                          className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                        />
+                      </div>
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            console.log('[EditVendorModal] Removing SLA:', sla.sla_id || sla.index);
+                            handleRemoveSLA(sla.sla_id || sla.index);
+                          }}
+                          className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Remove SLA"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex justify-end gap-3 mt-6">

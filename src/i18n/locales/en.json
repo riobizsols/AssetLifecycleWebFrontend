@@ -37,7 +37,8 @@
     "assetValuation": "Asset Valuation",
     "assetWorkflowHistory": "Asset Workflow History",
     "breakdownHistory": "Breakdown History",
-    "usageBasedAssetReport": "Usage-Based Asset Report"
+    "usageBasedAssetReport": "Usage-Based Asset Report",
+    "slaReport": "SLA Reports"
   },
   "dashboard": {
     "title": "Dashboard",
