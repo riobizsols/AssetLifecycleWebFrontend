@@ -33,6 +33,8 @@ const AddEntityForm = () => {
     contact_person_name: "",
     contact_person_email: "",
     contact_person_number: "", // Added this required field
+    contract_start_date: "",
+    contract_end_date: "",
     created_by: "admin",
     created_on: null, // Will be set by backend
     changed_by: "admin",
@@ -51,10 +53,20 @@ const AddEntityForm = () => {
   const [uploadRows, setUploadRows] = useState([]); // {id,type,docTypeName,file,previewUrl}
   const [isUploading, setIsUploading] = useState(false);
   const [documentTypes, setDocumentTypes] = useState([]);
+  const [slaDescriptions, setSlaDescriptions] = useState([]);
+  const [selectedSLAs, setSelectedSLAs] = useState([]); // Array of {sla_id, description, value, index}
+  const [slaDropdownValue, setSlaDropdownValue] = useState(''); // Controlled value for SLA dropdown
 
-  // Fetch document types on component mount
+  // Debug: Log when selectedSLAs changes
+  useEffect(() => {
+    console.log('[AddEntityForm] selectedSLAs state updated:', selectedSLAs);
+    console.log('[AddEntityForm] Number of selected SLAs:', selectedSLAs.length);
+  }, [selectedSLAs]);
+
+  // Fetch document types and SLA descriptions on component mount
   useEffect(() => {
     fetchDocumentTypes();
+    fetchSLADescriptions();
   }, []);
 
   const fetchDocumentTypes = async () => {
@@ -80,6 +92,29 @@ const AddEntityForm = () => {
       console.error('Error fetching document types:', err);
       toast.error(t('vendors.failedToLoadDocumentTypes'));
       setDocumentTypes([]);
+    }
+  };
+
+  const fetchSLADescriptions = async () => {
+    try {
+      console.log('Fetching SLA descriptions...');
+      const res = await API.get('/sla-descriptions');
+      console.log('SLA descriptions response:', res.data);
+
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        console.log(`Loaded ${res.data.data.length} SLA descriptions:`, res.data.data);
+        setSlaDescriptions(res.data.data);
+        console.log('SLA descriptions loaded:', res.data.data);
+      } else {
+        console.warn('No SLA descriptions found or invalid response format:', res.data);
+        setSlaDescriptions([]);
+        toast.error('No SLA descriptions found in database');
+      }
+    } catch (err) {
+      console.error('Error fetching SLA descriptions:', err);
+      console.error('Error details:', err.response?.data || err.message);
+      toast.error(err.response?.data?.message || 'Failed to load SLA descriptions. Please check if tblSLA_Desc table exists.');
+      setSlaDescriptions([]);
     }
   };
 
@@ -110,13 +145,106 @@ const AddEntityForm = () => {
     }
   };
 
+  // Handle SLA selection from dropdown
+  const handleSLASelect = (e) => {
+    const selectedSlaId = e.target.value;
+    console.log('[AddEntityForm] handleSLASelect called with value:', selectedSlaId);
+    
+    if (!selectedSlaId || selectedSlaId === '') {
+      console.log('[AddEntityForm] Empty value, returning');
+      return;
+    }
+    
+    const selectedSLA = slaDescriptions.find(sla => sla.sla_id === selectedSlaId);
+    if (!selectedSLA) {
+      console.warn('[AddEntityForm] Selected SLA not found in slaDescriptions:', selectedSlaId);
+      e.target.value = '';
+      return;
+    }
+    
+    console.log('[AddEntityForm] Found SLA in descriptions:', selectedSLA);
+    
+    // Use functional update to check if already selected
+    setSelectedSLAs(prev => {
+      // Check if already selected
+      if (prev.find(s => s.sla_id === selectedSlaId)) {
+        console.warn('[AddEntityForm] SLA already exists:', selectedSlaId);
+        toast.error('This SLA is already selected');
+        e.target.value = '';
+        return prev;
+      }
+      
+      // Add to selectedSLAs with next available index (1-10)
+      const nextIndex = prev.length + 1;
+      if (nextIndex > 10) {
+        toast.error('Maximum 10 SLAs can be selected');
+        e.target.value = '';
+        return prev;
+      }
+      
+      const newSLA = {
+        sla_id: selectedSLA.sla_id,
+        description: selectedSLA.description,
+        value: '',
+        index: nextIndex
+      };
+      
+      console.log('[AddEntityForm] Adding SLA to selectedSLAs:', newSLA);
+      console.log('[AddEntityForm] Current selectedSLAs before update:', prev);
+      
+      const updated = [...prev, newSLA];
+      console.log('[AddEntityForm] Updated selectedSLAs array:', updated);
+      console.log('[AddEntityForm] Updated array length:', updated.length);
+      
+      // Reset dropdown after state update
+      setTimeout(() => {
+        e.target.value = '';
+      }, 0);
+      
+      return updated;
+    });
+  };
+  
+  // Handle SLA value input change
+  const handleSLAValueChange = (slaId, value) => {
+    setSelectedSLAs(prev => prev.map(sla => 
+      sla.sla_id === slaId ? { ...sla, value } : sla
+    ));
+  };
+  
+  // Remove selected SLA
+  const handleRemoveSLA = (slaId) => {
+    setSelectedSLAs(prev => {
+      const filtered = prev.filter(sla => sla.sla_id !== slaId);
+      // Re-index remaining SLAs
+      return filtered.map((sla, idx) => ({ ...sla, index: idx + 1 }));
+    });
+  };
+  
+  // Map selected SLAs to vendor_slas array for backend
+  const mapSLAsToForm = () => {
+    const mapped = selectedSLAs
+      .filter(sla => sla.value && sla.value.trim()) // Only include SLAs with values
+      .map(sla => ({
+        sla_id: sla.sla_id, // e.g., "SLA-1", "SLA-2", etc. from tblsla_desc
+        value: sla.value
+      }));
+    console.log('[AddEntityForm] Mapped SLAs for backend:', mapped);
+    return mapped;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitAttempted(true);
     try {
       setLoading(true);
       setSavingTab("Vendor Details");
-      const response = await API.post("/create-vendor", form); // Backend adds ext_id, created_on, org_id
+      
+      // Map selected SLAs to vendor_slas array
+      const vendor_slas = mapSLAsToForm();
+      const formDataWithSLAs = { ...form, vendor_slas };
+      
+      const response = await API.post("/create-vendor", formDataWithSLAs); // Backend adds ext_id, created_on, org_id
       const vendorId = response.data?.data?.vendor_id;
       setCreatedVendorId(vendorId || "");
       setVendorSaved(true); // Mark vendor as saved
@@ -431,6 +559,117 @@ const AddEntityForm = () => {
               <FormInput label={t('vendors.contactPerson')} name="contact_person_name" value={form.contact_person_name} onChange={handleInputChange} required isInvalid={isFieldInvalid(form.contact_person_name)} placeholder={t('vendors.enterContactPersonName')} />
               <FormInput label={t('vendors.contactEmail')} name="contact_person_email" value={form.contact_person_email} onChange={handleInputChange} type="email" placeholder={t('vendors.enterContactPersonEmail')} />
             </div>
+
+            {/* Contract Dates */}
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Contract Start Date
+                </label>
+                <input
+                  type="date"
+                  name="contract_start_date"
+                  value={form.contract_start_date}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Contract End Date
+                </label>
+                <input
+                  type="date"
+                  name="contract_end_date"
+                  value={form.contract_end_date}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* SLA Fields Section */}
+            {slaDescriptions.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">SLA Fields</h3>
+                
+                {/* SLA Dropdown */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select SLA
+                  </label>
+              <select
+                onChange={handleSLASelect}
+                className="w-64 px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                value=""
+                key={`sla-dropdown-${selectedSLAs.length}`}
+              >
+                <option value="" disabled hidden>Select an SLA</option>
+                {slaDescriptions
+                  .filter(sla => !selectedSLAs.find(s => s.sla_id === sla.sla_id))
+                  .map((sla) => (
+                    <option key={sla.sla_id} value={sla.sla_id}>
+                      {sla.description}
+                    </option>
+                  ))}
+              </select>
+                </div>
+
+                {/* Selected SLAs with Input Fields */}
+                <div className="space-y-3" key={`sla-container-${selectedSLAs.length}`}>
+                  {selectedSLAs.length === 0 && (
+                    <p className="text-sm text-gray-500 italic">No SLAs selected. Select an SLA from the dropdown above.</p>
+                  )}
+                  {selectedSLAs.map((sla, idx) => {
+                    // Use a stable key based on sla_id and index - ensure it's unique
+                    const uniqueKey = `sla-input-${sla.sla_id}-${idx}`;
+                    console.log('[AddEntityForm] Rendering SLA input field #' + (idx + 1) + ':', {
+                      sla_id: sla.sla_id,
+                      description: sla.description,
+                      value: sla.value,
+                      index: sla.index,
+                      key: uniqueKey,
+                      arrayIndex: idx,
+                      totalSelected: selectedSLAs.length
+                    });
+                    return (
+                      <div key={uniqueKey} className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg bg-gray-50">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {sla.description || sla.sla_id}
+                          </label>
+                          <input
+                            type="text"
+                            name={`sla-input-${sla.sla_id}`}
+                            id={`sla-input-${sla.sla_id}-${idx}`}
+                            value={sla.value || ''}
+                            onChange={(e) => {
+                              console.log('[AddEntityForm] Input changed for:', sla.sla_id, 'new value:', e.target.value);
+                              handleSLAValueChange(sla.sla_id, e.target.value);
+                            }}
+                            placeholder="Enter in hr"
+                            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            console.log('[AddEntityForm] Removing SLA:', sla.sla_id);
+                            handleRemoveSLA(sla.sla_id);
+                          }}
+                          className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Remove SLA"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Checkboxes */}
             <div className="flex flex-col gap-3 mb-10 pl-2">

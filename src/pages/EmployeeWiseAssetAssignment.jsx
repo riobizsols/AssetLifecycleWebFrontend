@@ -43,8 +43,8 @@ const EmployeeWiseAssetAssignment = () => {
       const res = await API.get(`/employees/department/${deptId}`);
       const formattedEmployees = res.data.map(emp => ({
         id: emp.employee_id,
-        name: emp.employee_name || emp.name,
-        employee_int_id: emp.employee_int_id
+        name: emp.employee_name || emp.name || emp.full_name,
+        employee_int_id: emp.emp_int_id || emp.employee_int_id // Support both field names
       }));
       setEmployees(formattedEmployees);
       setSelectedEmployee(null); // Reset selected employee when department changes
@@ -90,11 +90,29 @@ const EmployeeWiseAssetAssignment = () => {
   // Handle employee selection and fetch employee_int_id
   const handleEmployeeSelect = async (employeeId) => {
     setSelectedEmployee(employeeId);
+    
+    // First, try to get emp_int_id from the employees array (already fetched)
+    const employeeFromArray = employees.find(emp => emp.id === employeeId);
+    if (employeeFromArray && employeeFromArray.employee_int_id) {
+      console.log('Using emp_int_id from employees array:', employeeFromArray.employee_int_id);
+      setSelectedEmployeeIntId(employeeFromArray.employee_int_id);
+      return; // Exit early if we found it in the array
+    }
+    
+    // Fallback: fetch from API if not found in array
     try {
       const res = await API.get(`/employees/${employeeId}`);
       console.log('Employee details response:', res.data);
-      setSelectedEmployeeIntId(res.data.emp_int_id); // <-- use emp_int_id
+      const empIntId = res.data.emp_int_id || res.data.employee_int_id;
+      if (empIntId) {
+        setSelectedEmployeeIntId(empIntId);
+      } else {
+        console.error('emp_int_id not found in API response:', res.data);
+        toast.error("Employee internal ID not found. Please try selecting the employee again.");
+        setSelectedEmployeeIntId(null);
+      }
     } catch (err) {
+      console.error("Failed to fetch employee details:", err);
       toast.error("Failed to fetch employee details");
       setSelectedEmployeeIntId(null);
     }

@@ -169,15 +169,21 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
   }, [safeOptions, searchTerm]);
 
   const toggle = (opt) => {
-    const set = new Set(values);
-    // For object options, compare by value; for string options, compare directly
-    const optValue = typeof opt === 'object' ? opt.value : opt;
-    const existingValue = values.find(v => (typeof v === 'object' ? v.value : v) === optValue);
+    // For object options, extract the value; for string options, use directly
+    const optValue = typeof opt === 'object' && opt !== null ? opt.value : opt;
     
-    if (existingValue) {
-      onChange(values.filter(v => (typeof v === 'object' ? v.value : v) !== optValue));
+    // Check if value already exists (handle both object and primitive values)
+    const existingIndex = values.findIndex(v => {
+      const vValue = typeof v === 'object' && v !== null ? v.value : v;
+      return vValue === optValue;
+    });
+    
+    if (existingIndex >= 0) {
+      // Remove the value
+      onChange(values.filter((v, idx) => idx !== existingIndex));
     } else {
-      onChange([...values, opt]);
+      // Add only the value, not the entire object
+      onChange([...values, optValue]);
     }
   };
 
@@ -199,7 +205,18 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-left bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center justify-between"
       >
         <span className="truncate pr-2">
-          {values.length > 0 ? values.map(v => typeof v === 'object' ? v.label : String(v || '')).join(", ") : placeholder}
+          {values.length > 0 ? values.map(v => {
+            // If value is an object, use label; otherwise find the label from options
+            if (typeof v === 'object' && v !== null && v.label) {
+              return v.label;
+            }
+            // Find the label from options for primitive values
+            const option = safeOptions.find(opt => {
+              const optValue = typeof opt === 'object' && opt !== null ? opt.value : opt;
+              return optValue === v;
+            });
+            return option ? (typeof option === 'object' ? option.label : option) : String(v || '');
+          }).join(", ") : placeholder}
         </span>
         <span className="text-slate-500">▼</span>
       </button>
@@ -220,9 +237,12 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
               <div className="text-sm text-slate-500 p-2">{t('reports.filterOptions.noOptionsFound')}</div>
             ) : (
               filteredOptions.map((opt, index) => {
-                const optValue = typeof opt === 'object' ? opt.value : opt;
-                const optLabel = typeof opt === 'object' ? opt.label : opt;
-                const isChecked = values.some(v => (typeof v === 'object' ? v.value : v) === optValue);
+                const optValue = typeof opt === 'object' && opt !== null ? opt.value : opt;
+                const optLabel = typeof opt === 'object' && opt !== null ? opt.label : opt;
+                const isChecked = values.some(v => {
+                  const vValue = typeof v === 'object' && v !== null ? v.value : v;
+                  return vValue === optValue;
+                });
                 
                 return (
                   <label key={optValue || index} className="flex items-center gap-2 text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer">

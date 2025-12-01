@@ -282,13 +282,28 @@ export default function ReportLayout({
            label: `${f.label}: ${v[0]} → ${v[1]}`,
            removeAction: () => setQuickField(f.key, "")
          });
-       } else if (Array.isArray(v)) {
-         chips.push({
-           type: 'quick',
-           fieldKey: f.key,
-           label: `${f.label}: ${v.join(", ")}`,
-           removeAction: () => setQuickField(f.key, [])
-         });
+      } else if (Array.isArray(v)) {
+        // Get labels for multiselect values
+        const getLabel = (value) => {
+          // If value is already a string/number, use it directly
+          if (typeof value !== 'object' || value === null) {
+            // Try to find the label from the field's domain
+            const option = f.domain?.find(opt => {
+              const optValue = typeof opt === 'object' && opt !== null ? opt.value : opt;
+              return optValue === value;
+            });
+            return option ? (typeof option === 'object' ? option.label : option) : String(value);
+          }
+          // If value is an object, use its label
+          return value.label || value.value || String(value);
+        };
+        const displayValues = v.map(getLabel).join(", ");
+        chips.push({
+          type: 'quick',
+          fieldKey: f.key,
+          label: `${f.label}: ${displayValues}`,
+          removeAction: () => setQuickField(f.key, [])
+        });
        } else {
          chips.push({
            type: 'quick',
