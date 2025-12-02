@@ -56,6 +56,22 @@ export default function MaintSupervisorApproval() {
   // State for showing all group assets
   const [showAllAssets, setShowAllAssets] = useState(false);
   
+  // Vendor SLA states
+  const [vendorSLAs, setVendorSLAs] = useState([]);
+  const [slaRecords, setSlaRecords] = useState({}); // { "SLA-1": { value: "", technician_name: "", technician_phno: "" }, ... }
+  const [slaRating, setSlaRating] = useState(""); // Single rating for all SLAs
+  const [expandedSLA, setExpandedSLA] = useState(null);
+  const [loadingSLAs, setLoadingSLAs] = useState(false);
+  const [slaDataLoaded, setSlaDataLoaded] = useState(false); // Track if SLA data has been loaded
+  const autoSaveTimeoutRef = useRef(null); // For debouncing auto-save
+  const slaModifiedRef = useRef({}); // Track which SLAs have been modified: { "SLA-1": true, ... }
+  
+  // Refs to ensure we always have latest values in timeout callbacks
+  const maintenanceDataRef = useRef(null);
+  const slaDataLoadedRef = useRef(false);
+  const slaRatingRef = useRef("");
+  const slaRecordsRef = useRef({});
+  
   // Check if this is a subscription renewal (MT001)
   const isSubscriptionRenewal = maintenanceData?.maint_type_id === 'MT001' || 
                                  maintenanceData?.maintenance_type_name?.toLowerCase().includes('subscription');
@@ -110,6 +126,40 @@ export default function MaintSupervisorApproval() {
       fetchMaintenanceDocuments();
     }
   }, [maintenanceData]);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    maintenanceDataRef.current = maintenanceData;
+  }, [maintenanceData]);
+
+  useEffect(() => {
+    slaDataLoadedRef.current = slaDataLoaded;
+  }, [slaDataLoaded]);
+
+  useEffect(() => {
+    slaRatingRef.current = slaRating;
+  }, [slaRating]);
+
+  useEffect(() => {
+    slaRecordsRef.current = slaRecords;
+  }, [slaRecords]);
+
+  // Fetch vendor SLAs when maintenance data is available and has vendor_id
+  useEffect(() => {
+    if (maintenanceData?.vendor_id) {
+      fetchVendorSLAs();
+      fetchSlaRecords();
+    }
+  }, [maintenanceData?.vendor_id, id]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
 
   const fetchMaintenanceData = async () => {
@@ -225,6 +275,352 @@ export default function MaintSupervisorApproval() {
       setMaintenanceDocTypes([]);
       setPhotoDocTypes([]);
     }
+  };
+
+
+  const fetchVendorSLAs = async () => {
+    if (!maintenanceData?.vendor_id) return;
+    
+    setLoadingSLAs(true);
+    try {
+      const res = await API.get(`/vendor/${maintenanceData.vendor_id}/slas`, {
+        params: { context: 'SUPERVISORAPPROVAL' }
+      });
+      
+      if (res.data.success) {
+        // Filter only SLAs that have values (are filled)
+        const filledSLAs = res.data.data.filter(sla => sla.value && sla.value.trim() !== '');
+        setVendorSLAs(filledSLAs);
+        
+        // Initialize SLA records state with SLA values from vendor SLAs
+        const initialRecords = {};
+        filledSLAs.forEach(sla => {
+          initialRecords[sla.sla_id] = {
+            value: sla.value || "",
+            technician_name: "",
+            technician_phno: ""
+          };
+        });
+        // Don't overwrite existing records, just merge
+        setSlaRecords(prev => {
+          const merged = { ...initialRecords };
+          Object.keys(prev).forEach(key => {
+            if (merged[key]) {
+              merged[key] = { ...merged[key], ...prev[key] };
+            }
+          });
+          return merged;
+        });
+        // Mark as loaded after a short delay to allow fetchSlaRecords to complete first
+        setTimeout(() => setSlaDataLoaded(true), 100);
+      } else {
+        setVendorSLAs([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch vendor SLAs:", err);
+      setVendorSLAs([]);
+    } finally {
+      setLoadingSLAs(false);
+    }
+  };
+
+  const fetchSlaRecords = async () => {
+    if (!id || !maintenanceData?.vendor_id) return;
+    
+    try {
+      const res = await API.get(`/vendor-sla-records/maintenance/${id}`, {
+        params: { context: 'SUPERVISORAPPROVAL' }
+      });
+      
+      if (res.data.success && res.data.data && Array.isArray(res.data.data)) {
+        // Transform API response to state format
+        const records = {};
+        let ratingValue = "";
+        
+        res.data.data.forEach(record => {
+          records[record.sla_id] = {
+            value: record.sla_value || "",
+            technician_name: record.technician_name || "",
+            technician_phno: record.technician_phno || ""
+          };
+          // Get rating from first record (since it's the same for all)
+          if (!ratingValue && record.rating) {
+            ratingValue = record.rating;
+          }
+        });
+        
+        setSlaRecords(prev => ({ ...prev, ...records }));
+        if (ratingValue) {
+          setSlaRating(ratingValue);
+        }
+        setSlaDataLoaded(true); // Mark that data has been loaded
+      } else {
+        setSlaDataLoaded(true); // Mark as loaded even if no data
+      }
+    } catch (err) {
+      // If endpoint doesn't exist yet or no records, that's okay
+      console.log("No existing SLA records found or endpoint not available yet");
+    }
+  };
+
+  const handleSlaRecordChange = (slaId, field, value) => {
+    console.log(`handleSlaRecordChange called for ${slaId}, field: ${field}, value:`, value);
+    
+    // Mark this SLA as modified
+    slaModifiedRef.current[slaId] = true;
+    
+    setSlaRecords(prev => {
+      const currentRecord = prev[slaId] || { value: "", technician_name: "", technician_phno: "" };
+      const updated = {
+        ...prev,
+        [slaId]: {
+          ...currentRecord,
+          [field]: value
+        }
+      };
+      console.log(`State updated for ${slaId}.${field}:`, value);
+      return updated;
+    });
+  };
+
+  // Check if all fields for a specific SLA are filled (excluding rating which is separate)
+  const isSlaRecordComplete = (slaId) => {
+    const record = slaRecords[slaId];
+    if (!record) return false;
+    
+    return (
+      record.value && record.value.trim() !== '' &&
+      record.technician_name && record.technician_name.trim() !== '' &&
+      record.technician_phno && record.technician_phno.trim() !== ''
+    );
+  };
+
+  // Auto-save function - only saves if all fields are filled for each SLA
+  // Accepts currentRecords parameter to use latest state
+  const autoSaveSlaRecords = async (currentRecords = null, currentRating = null) => {
+    // Use refs to get latest values (important for timeout callbacks)
+    const latestMaintenanceData = maintenanceDataRef.current;
+    const latestSlaDataLoaded = slaDataLoadedRef.current;
+    
+    if (!id || !latestMaintenanceData?.vendor_id || !latestSlaDataLoaded) {
+      console.log("Auto-save skipped:", { 
+        id, 
+        vendor_id: latestMaintenanceData?.vendor_id, 
+        slaDataLoaded: latestSlaDataLoaded 
+      });
+      return; // Don't auto-save if data hasn't been loaded yet
+    }
+
+    // Use provided records or ref (which has latest state)
+    const recordsToCheck = currentRecords || slaRecordsRef.current;
+    const ratingToUse = currentRating !== null ? currentRating : slaRatingRef.current;
+
+    console.log("Auto-save triggered. Current SLA records:", recordsToCheck);
+    console.log("Current rating:", ratingToUse);
+
+    // Filter to only include SLAs where all fields are filled
+    const recordsToSave = Object.entries(recordsToCheck)
+      .filter(([slaId, data]) => {
+        const isComplete = (
+          data && data.value && data.value.trim() !== '' &&
+          data.technician_name && data.technician_name.trim() !== '' &&
+          data.technician_phno && data.technician_phno.trim() !== ''
+        );
+        console.log(`SLA ${slaId} complete check:`, { isComplete, data });
+        return isComplete;
+      })
+      .map(([slaId, data]) => ({
+        sla_id: slaId,
+        sla_value: data.value,
+        technician_name: data.technician_name,
+        technician_phno: data.technician_phno,
+        rating: ratingToUse || null // Use single rating for all SLAs (can be null)
+      }));
+
+    // Only save if there are complete records (rating can be added later)
+    if (recordsToSave.length === 0) {
+      console.log("No complete SLA records to save");
+      return; // Don't save if no complete records
+    }
+
+    console.log("Saving SLA records to tblvendorslarecs:", {
+      maintenanceId: id,
+      vendor_id: latestMaintenanceData.vendor_id,
+      recordsCount: recordsToSave.length,
+      records: recordsToSave
+    });
+
+    try {
+      const response = await API.post(`/vendor-sla-records/maintenance/${id}`, {
+        vendor_id: latestMaintenanceData.vendor_id,
+        ams_id: id,
+        records: recordsToSave
+      }, {
+        params: { context: 'SUPERVISORAPPROVAL' }
+      });
+
+      // Show success toast for auto-save
+      console.log("✅ SLA records auto-saved successfully to tblvendorslarecs", {
+        savedCount: recordsToSave.length,
+        rating: ratingToUse || 'not set',
+        response: response.data
+      });
+      toast.success(`SLA records saved successfully (${recordsToSave.length} SLA${recordsToSave.length > 1 ? 's' : ''})`);
+    } catch (err) {
+      console.error("❌ Failed to auto-save SLA records to tblvendorslarecs:", err);
+      console.error("Error details:", err.response?.data);
+      console.error("Request data:", {
+        vendor_id: latestMaintenanceData.vendor_id,
+        ams_id: id,
+        records: recordsToSave
+      });
+      // Show error toast for auto-save failures so user knows something went wrong
+      toast.error("Failed to auto-save SLA records. Please try again.");
+    }
+  };
+
+  // Debounced auto-save handler - checks if all fields are filled before saving
+  const handleSlaRecordBlur = (slaId, field, value, event) => {
+    console.log(`handleSlaRecordBlur called for ${slaId}, field: ${field}, value:`, value);
+    
+    // First, update the state with the latest value
+    setSlaRecords(currentRecords => {
+      const record = currentRecords[slaId] || { value: "", technician_name: "", technician_phno: "" };
+      
+      // IMPORTANT: Update the record with the latest value from the blur event
+      // This ensures we use the actual value from the input, not stale state
+      const updatedRecord = {
+        ...record,
+        [field]: value // This is the value from the blur event, guaranteed to be current
+      };
+
+      // CRITICAL FIX: Read all field values directly from DOM to ensure we have the latest values
+      // This prevents issues where state hasn't updated yet
+      if (event && event.target) {
+        try {
+          // Try multiple strategies to find the inputs
+          // Strategy 1: Find by data attributes anywhere in the document (most reliable)
+          const valueInput = document.querySelector(`input[data-sla-id="${slaId}"][data-field="value"]`);
+          const nameInput = document.querySelector(`input[data-sla-id="${slaId}"][data-field="technician_name"]`);
+          const phoneInput = document.querySelector(`input[data-sla-id="${slaId}"][data-field="technician_phno"]`);
+          
+          console.log(`🔍 DOM search for ${slaId}:`, {
+            valueInput: valueInput ? `found (value: "${valueInput.value}")` : 'not found',
+            nameInput: nameInput ? `found (value: "${nameInput.value}")` : 'not found',
+            phoneInput: phoneInput ? `found (value: "${phoneInput.value}")` : 'not found'
+          });
+          
+          // Update record with actual DOM values (these are always current)
+          // Always use DOM values if they exist, even if empty (to ensure we have the latest state)
+          if (valueInput) {
+            updatedRecord.value = valueInput.value || '';
+            if (valueInput.value) {
+              console.log(`✅ Read value from DOM: "${valueInput.value}"`);
+            }
+          }
+          if (nameInput) {
+            updatedRecord.technician_name = nameInput.value || '';
+            if (nameInput.value) {
+              console.log(`✅ Read name from DOM: "${nameInput.value}"`);
+            }
+          }
+          if (phoneInput) {
+            updatedRecord.technician_phno = phoneInput.value || '';
+            if (phoneInput.value) {
+              console.log(`✅ Read phone number from DOM: "${phoneInput.value}"`);
+            }
+          }
+        } catch (err) {
+          console.warn("Could not read values from DOM:", err);
+        }
+      }
+
+      console.log(`Updated record for ${slaId}:`, updatedRecord);
+      console.log(`Field being updated: ${field}, New value: "${value}"`);
+
+      // Check if complete with the updated value
+      const isComplete = (
+        updatedRecord.value && updatedRecord.value.trim() !== '' &&
+        updatedRecord.technician_name && updatedRecord.technician_name.trim() !== '' &&
+        updatedRecord.technician_phno && updatedRecord.technician_phno.trim() !== ''
+      );
+
+      console.log(`SLA ${slaId} completeness check:`, {
+        value: updatedRecord.value,
+        technician_name: updatedRecord.technician_name,
+        technician_phno: updatedRecord.technician_phno,
+        valueFilled: !!(updatedRecord.value && updatedRecord.value.trim() !== ''),
+        nameFilled: !!(updatedRecord.technician_name && updatedRecord.technician_name.trim() !== ''),
+        phoneFilled: !!(updatedRecord.technician_phno && updatedRecord.technician_phno.trim() !== ''),
+        isComplete
+      });
+
+      // Update state first
+      const updatedRecords = {
+        ...currentRecords,
+        [slaId]: updatedRecord
+      };
+
+      // Then check and trigger save after state is updated
+      // Only save if all fields are complete AND this SLA was modified
+      const wasModified = slaModifiedRef.current[slaId] === true;
+      
+      if (isComplete && wasModified) {
+        console.log(`✅ SLA ${slaId} is complete and modified, will trigger auto-save...`, updatedRecord);
+
+        // Clear existing timeout
+        if (autoSaveTimeoutRef.current) {
+          clearTimeout(autoSaveTimeoutRef.current);
+        }
+        
+        // Set new timeout for auto-save (100ms delay for debouncing) - use the updated records
+        autoSaveTimeoutRef.current = setTimeout(() => {
+          console.log("Executing auto-save for SLA records with updated state...");
+          // Use the updated records with the latest value and rating from ref
+          // Also update the ref immediately so it has the latest value
+          slaRecordsRef.current = updatedRecords;
+          autoSaveSlaRecords(updatedRecords, slaRatingRef.current);
+          
+          // Reset modified flag after saving
+          slaModifiedRef.current[slaId] = false;
+        }, 100); // Reduced from 500ms to 100ms for faster auto-save
+      } else {
+        console.log(`⚠️ SLA ${slaId} is not complete yet, skipping auto-save`, updatedRecord);
+        console.log(`Missing fields:`, {
+          value: !updatedRecord.value || updatedRecord.value.trim() === '' ? 'MISSING' : 'OK',
+          technician_name: !updatedRecord.technician_name || updatedRecord.technician_name.trim() === '' ? 'MISSING' : 'OK',
+          technician_phno: !updatedRecord.technician_phno || updatedRecord.technician_phno.trim() === '' ? 'MISSING' : 'OK'
+        });
+      }
+
+      // Always return updated state
+      return updatedRecords;
+    });
+  };
+
+  // Handle rating change (single rating for all SLAs)
+  const handleSlaRatingChange = (value) => {
+    setSlaRating(value);
+    // Auto-save when rating is changed if there are any complete SLA records
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      // Use ref to get latest records (important for timeout callbacks)
+      const latestRecords = slaRecordsRef.current;
+      // Check if at least one SLA is complete before saving
+      const hasCompleteSLA = Object.keys(latestRecords).some(slaId => {
+        const record = latestRecords[slaId];
+        return record && 
+          record.value && record.value.trim() !== '' &&
+          record.technician_name && record.technician_name.trim() !== '' &&
+          record.technician_phno && record.technician_phno.trim() !== '';
+      });
+      if (hasCompleteSLA) {
+        console.log("Rating changed, triggering auto-save...");
+        autoSaveSlaRecords(latestRecords, value);
+      }
+    }, 500);
   };
 
 
@@ -1517,6 +1913,227 @@ export default function MaintSupervisorApproval() {
             )}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Vendor SLA Section - At the Top */}
+            {!isSubscriptionRenewal && maintenanceData?.vendor_id && (
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-800">Vendor SLA</h3>
+                    <p className="text-sm text-gray-600 mt-1">Fill in all fields (marked with *) for each SLA. Data will be saved automatically when all fields are completed.</p>
+                  </div>
+                  <div className="flex-shrink-0 w-48">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Rating <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value={slaRating}
+                      onChange={(e) => handleSlaRatingChange(e.target.value)}
+                      disabled={isReadOnly}
+                      required
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                      placeholder="Enter rating (0-5)"
+                    />
+                  </div>
+                </div>
+
+                {loadingSLAs ? (
+                  <div className="text-center text-gray-500 py-4">Loading SLAs...</div>
+                ) : vendorSLAs.length === 0 ? (
+                  <div className="text-center text-gray-500 py-4">No SLAs configured for this vendor</div>
+                ) : (
+                  <div className="space-y-2">
+                    {vendorSLAs.map((sla, index) => {
+                      const slaId = sla.sla_id || `SLA-${index + 1}`;
+                      const isExpanded = expandedSLA === slaId;
+                      const record = slaRecords[slaId] || { value: "", technician_name: "", technician_phno: "" };
+
+                      return (
+                        <div
+                          key={slaId}
+                          className="border border-gray-200 rounded-lg overflow-hidden transition-all duration-200"
+                          onMouseEnter={() => setExpandedSLA(slaId)}
+                          onMouseLeave={(e) => {
+                            // Don't collapse if mouse is moving to an input field
+                            const relatedTarget = e.relatedTarget;
+                            if (!relatedTarget || !relatedTarget.closest(`[data-sla-id="${slaId}"]`)) {
+                              setExpandedSLA(null);
+                              
+                              // Only trigger auto-save if this SLA was modified
+                              const wasModified = slaModifiedRef.current[slaId] === true;
+                              
+                              if (!wasModified) {
+                                console.log(`ℹ️ SLA ${slaId} section collapsed but no changes were made, skipping auto-save`);
+                                return;
+                              }
+                              
+                              // Trigger auto-save when SLA section collapses
+                              // Read latest values directly from DOM to ensure we have current data
+                              setTimeout(() => {
+                                try {
+                                  const valueInput = document.querySelector(`input[data-sla-id="${slaId}"][data-field="value"]`);
+                                  const nameInput = document.querySelector(`input[data-sla-id="${slaId}"][data-field="technician_name"]`);
+                                  const phoneInput = document.querySelector(`input[data-sla-id="${slaId}"][data-field="technician_phno"]`);
+                                  
+                                  const record = {
+                                    value: valueInput ? (valueInput.value || '') : (slaRecords[slaId]?.value || ''),
+                                    technician_name: nameInput ? (nameInput.value || '') : (slaRecords[slaId]?.technician_name || ''),
+                                    technician_phno: phoneInput ? (phoneInput.value || '') : (slaRecords[slaId]?.technician_phno || '')
+                                  };
+                                  
+                                  const isComplete = (
+                                    record.value && record.value.trim() !== '' &&
+                                    record.technician_name && record.technician_name.trim() !== '' &&
+                                    record.technician_phno && record.technician_phno.trim() !== ''
+                                  );
+                                  
+                                  if (isComplete) {
+                                    console.log(`✅ SLA ${slaId} section collapsed with complete data and modifications, triggering auto-save...`, record);
+                                    
+                                    // Update state with latest values from DOM
+                                    setSlaRecords(currentRecords => {
+                                      const updatedRecords = {
+                                        ...currentRecords,
+                                        [slaId]: record
+                                      };
+                                      slaRecordsRef.current = updatedRecords;
+                                      
+                                      // Trigger auto-save with updated records
+                                      autoSaveSlaRecords(updatedRecords, slaRatingRef.current);
+                                      
+                                      // Reset modified flag after saving
+                                      slaModifiedRef.current[slaId] = false;
+                                      
+                                      return updatedRecords;
+                                    });
+                                  } else {
+                                    console.log(`⚠️ SLA ${slaId} section collapsed but data is incomplete, skipping auto-save`, record);
+                                  }
+                                } catch (err) {
+                                  console.warn("Error reading values when SLA section collapsed:", err);
+                                }
+                              }, 150); // Small delay to ensure blur events have fired
+                            }
+                          }}
+                        >
+                          <div className="bg-gray-50 px-4 py-3 flex items-center justify-between cursor-pointer">
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-700">
+                                  {sla.description || slaId}
+                                </span>
+                                {sla.value && (
+                                  <span className="text-sm text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded">
+                                    Agreed SLA: {sla.value} hr/days
+                                  </span>
+                                )}
+                              </div>
+                              {isSlaRecordComplete(slaId) && (
+                                <span className="text-xs text-green-600 font-medium">✓ Complete</span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {isExpanded ? "▼" : "▶"}
+                            </div>
+                          </div>
+                          
+                          {isExpanded && (
+                            <div className="p-4 bg-white space-y-4 animate-in slide-in-from-top-2 duration-200">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    SLA Value <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    data-sla-id={slaId}
+                                    data-field="value"
+                                    value={record.value}
+                                    onChange={(e) => handleSlaRecordChange(slaId, 'value', e.target.value)}
+                                    onBlur={(e) => handleSlaRecordBlur(slaId, 'value', e.target.value, e)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        e.target.blur(); // Trigger blur to save
+                                      }
+                                    }}
+                                    disabled={isReadOnly}
+                                    required
+                                    className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                                    placeholder="Enter SLA value"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Technician Name <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    data-sla-id={slaId}
+                                    data-field="technician_name"
+                                    value={record.technician_name}
+                                    onChange={(e) => handleSlaRecordChange(slaId, 'technician_name', e.target.value)}
+                                    onBlur={(e) => handleSlaRecordBlur(slaId, 'technician_name', e.target.value, e)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        e.target.blur(); // Trigger blur to save
+                                      }
+                                    }}
+                                    disabled={isReadOnly}
+                                    required
+                                    className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                                    placeholder="Enter technician name"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Technician Phone Number <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="tel"
+                                    data-sla-id={slaId}
+                                    data-field="technician_phno"
+                                    value={record.technician_phno}
+                                    onChange={(e) => handleSlaRecordChange(slaId, 'technician_phno', e.target.value)}
+                                    onBlur={(e) => handleSlaRecordBlur(slaId, 'technician_phno', e.target.value, e)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        e.target.blur(); // Trigger blur to save
+                                      }
+                                    }}
+                                    disabled={isReadOnly}
+                                    required
+                                    className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                                    placeholder="Enter technician phone number"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {!isReadOnly && vendorSLAs.length > 0 && (
+                  <div className="mt-4 text-sm text-gray-600">
+                    <p className="flex items-center gap-2">
+                      <span className="text-green-600">✓</span>
+                      <span>Data will be saved automatically when all fields are filled for each SLA</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Technician fields - hide for subscription renewal */}
               {!isSubscriptionRenewal && (

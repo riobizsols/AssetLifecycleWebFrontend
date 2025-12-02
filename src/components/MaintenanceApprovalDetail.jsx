@@ -165,15 +165,31 @@ const MaintenanceApprovalDetail = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showAllAssets, setShowAllAssets] = useState(false);
 
-  // Check if this is a subscription renewal (MT001)
+  // Check if this is a subscription renewal (MT001) or vendor contract renewal (MT005)
   const isSubscriptionRenewal = useMemo(() => {
     if (!approvalDetails) return false;
     const maintType = (approvalDetails.maintenanceType || '').toLowerCase();
     const maintTypeId = approvalDetails.maint_type_id || '';
     const result = maintType.includes('subscription') || maintTypeId === 'MT001';
-    console.log('Subscription renewal check:', { maintType, maintTypeId, result, approvalDetails });
     return result;
   }, [approvalDetails]);
+
+  const isVendorContractRenewal = useMemo(() => {
+    if (!approvalDetails) return false;
+    const maintType = (approvalDetails.maintenanceType || '').toLowerCase();
+    const maintTypeId = approvalDetails.maint_type_id || '';
+    const result = maintType.includes('vendor contract') || maintType.includes('contract renewal') || maintTypeId === 'MT005';
+    console.log('Vendor contract renewal check:', { maintType, maintTypeId, result, approvalDetails });
+    return result;
+  }, [approvalDetails]);
+  
+  // Reset active tab if it's vendor contract renewal and user is on asset tab
+  useEffect(() => {
+    if (isVendorContractRenewal && activeTab === 'asset') {
+      console.log('Resetting tab from', activeTab, 'to approval for vendor contract renewal');
+      setActiveTab('approval');
+    }
+  }, [isVendorContractRenewal, activeTab]);
   
   // Reset active tab if it's subscription renewal and user is on vendor/asset tab
   useEffect(() => {
@@ -578,10 +594,18 @@ const MaintenanceApprovalDetail = () => {
             {/* Tabs */}
             <div className="border-b border-gray-200 mb-6">
               <nav className="-mb-px flex space-x-8">
-                {(isSubscriptionRenewal 
-                  ? ['approval', 'history'] 
-                  : ['approval', 'vendor', 'asset', 'history']
-                ).map((tab) => (
+                {(() => {
+                  // For subscription renewal (MT001): show only approval and history
+                  if (isSubscriptionRenewal) {
+                    return ['approval', 'history'];
+                  }
+                  // For vendor contract renewal (MT005): show approval, vendor, and history (no asset)
+                  if (isVendorContractRenewal) {
+                    return ['approval', 'vendor', 'history'];
+                  }
+                  // For regular maintenance: show all tabs
+                  return ['approval', 'vendor', 'asset', 'history'];
+                })().map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -636,14 +660,18 @@ const MaintenanceApprovalDetail = () => {
                           label={t('maintenanceApproval.vendor')} 
                           value={approvalDetails?.vendorName || "-"} 
                         />
-                        <ReadOnlyInput 
-                          label={t('maintenanceApproval.assetType')} 
-                          value={approvalDetails?.assetTypeName || "-"} 
-                        />
-                         <ReadOnlyInput 
-                           label={t('maintenanceApproval.assetID')} 
-                           value={approvalDetails?.assetId || "-"} 
-                         />
+                        {!isVendorContractRenewal && (
+                          <>
+                            <ReadOnlyInput 
+                              label={t('maintenanceApproval.assetType')} 
+                              value={approvalDetails?.assetTypeName || "-"} 
+                            />
+                            <ReadOnlyInput 
+                              label={t('maintenanceApproval.assetID')} 
+                              value={approvalDetails?.assetId || "-"} 
+                            />
+                          </>
+                        )}
                          <ReadOnlyInput 
                            label="Workflow ID" 
                            value={approvalDetails?.wfamshId || "-"} 
@@ -704,6 +732,9 @@ const MaintenanceApprovalDetail = () => {
                       <div className="grid grid-cols-5 gap-6 mb-6">
                         <ReadOnlyInput label={t('maintenanceApproval.contactPersonName')} value={approvalDetails.vendorDetails.contact_person_name || "-"} />
                         <ReadOnlyInput label={t('maintenanceApproval.contactPersonEmail')} value={approvalDetails.vendorDetails.contact_person_email || "-"} />
+                        <ReadOnlyInput label="Contract Start Date" value={approvalDetails.vendorDetails.contract_start_date ? new Date(approvalDetails.vendorDetails.contract_start_date).toLocaleDateString() : "-"} />
+                        <ReadOnlyInput label="Contract End Date" value={approvalDetails.vendorDetails.contract_end_date ? new Date(approvalDetails.vendorDetails.contract_end_date).toLocaleDateString() : "-"} />
+                        <ReadOnlyInput label="Rating" value={approvalDetails.vendorDetails.rating || approvalDetails.vendorDetails.vendor_rating || "-"} />
                       </div>
 
                     </>
