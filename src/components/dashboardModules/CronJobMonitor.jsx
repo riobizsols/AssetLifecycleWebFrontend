@@ -42,8 +42,37 @@ const CronJobMonitor = () => {
         fetchCronStatus();
       }, 1000);
     } catch (err) {
-      console.error("Error triggering maintenance generation:", err);
-      setError("Failed to trigger maintenance generation");
+      // Detailed error logging
+      console.error("❌ Error triggering maintenance generation:", err);
+      console.error("❌ Error details:", {
+        message: err.message,
+        name: err.name,
+        code: err.code,
+        response: err.response,
+        responseData: err.response?.data,
+        responseStatus: err.response?.status,
+        responseHeaders: err.response?.headers,
+        request: err.request,
+        config: err.config,
+        stack: err.stack
+      });
+      
+      // Log the full error response if available
+      if (err.response?.data) {
+        console.error("❌ Server error response:", JSON.stringify(err.response.data, null, 2));
+        console.error("❌ Error message from server:", err.response.data.message || err.response.data.error || err.response.data.details);
+        if (err.response.data.stack) {
+          console.error("❌ Server error stack:", err.response.data.stack);
+        }
+      }
+      
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error || 
+                          err.response?.data?.details || 
+                          err.message || 
+                          "Failed to trigger maintenance generation";
+      
+      setError(errorMessage);
     } finally {
       setIsTriggering(false);
     }

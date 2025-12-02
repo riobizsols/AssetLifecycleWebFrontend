@@ -2173,30 +2173,6 @@ export default function MaintSupervisorApproval() {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isSubscriptionRenewal ? 'Payment Status' : t('maintenanceSupervisor.status')}
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.status ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  required
-                >
-                  <option value="">{t('maintenanceSupervisor.selectStatus')}</option>
-                  <option value="IN">{t('maintenanceSupervisor.initiated')}</option>
-                  <option value="IP">{t('maintenanceSupervisor.inProgress')}</option>
-                  <option value="CO">{t('maintenanceSupervisor.completed')}</option>
-                  <option value="CA">{t('maintenanceSupervisor.cancelled')}</option>
-                </select>
-                {validationErrors.status && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {isSubscriptionRenewal ? 'Payment status is required' : t('maintenanceSupervisor.statusIsRequired')}
-                  </p>
-                )}
-              </div>
                 <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')}</label>
                 <input
@@ -2214,38 +2190,21 @@ export default function MaintSupervisorApproval() {
                   <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.costIsRequired')}</p>
                 )}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')}</label>
-                <input
-                  type="text"
-                  name="po_number"
-                  value={formData.po_number}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.po_number ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('maintenanceSupervisor.enterPONumber')}
-                />
-                {validationErrors.po_number && (
-                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.poNumberIsRequired')}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')}</label>
-                <input
-                  type="text"
-                  name="invoice"
-                  value={formData.invoice}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.invoice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('maintenanceSupervisor.enterInvoiceNumber')}
-                />
-                {validationErrors.invoice && (
-                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.invoiceIsRequired')}</p>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')}</label>
+                  <input
+                    type="text"
+                    name="po_number"
+                    value={formData.po_number}
+                    onChange={handleInputChange}
+                    disabled={isReadOnly}
+                    className={`w-full px-3 py-2 border ${validationErrors.po_number ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                    placeholder={t('maintenanceSupervisor.enterPONumber')}
+                  />
+                  {validationErrors.po_number && (
+                    <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.poNumberIsRequired')}</p>
+                  )}
+                </div>
               </div>
 
               {/* Email field - hide for subscription renewal */}
@@ -2272,6 +2231,22 @@ export default function MaintSupervisorApproval() {
                   )}
                 </div>
               )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')}</label>
+                <input
+                  type="text"
+                  name="invoice"
+                  value={formData.invoice}
+                  onChange={handleInputChange}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.invoice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  placeholder={t('maintenanceSupervisor.enterInvoiceNumber')}
+                />
+                {validationErrors.invoice && (
+                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.invoiceIsRequired')}</p>
+                )}
+              </div>
             </div>
 
             <div>
@@ -2285,6 +2260,33 @@ export default function MaintSupervisorApproval() {
                 className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 placeholder={t('maintenanceSupervisor.enterAdditionalNotes')}
               />
+            </div>
+
+            {/* Status Dropdown - Highlighted */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                {isSubscriptionRenewal ? 'Payment Status' : t('maintenanceSupervisor.status')}
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleInputChange}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2.5 border-2 ${validationErrors.status ? 'border-red-500' : 'border-gray-400'} rounded-md shadow-md bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                required
+              >
+                <option value="">{t('maintenanceSupervisor.selectStatus')}</option>
+                <option value="IN">{t('maintenanceSupervisor.initiated')}</option>
+                <option value="IP">{t('maintenanceSupervisor.inProgress')}</option>
+                <option value="CO">{t('maintenanceSupervisor.completed')}</option>
+                <option value="CA">{t('maintenanceSupervisor.cancelled')}</option>
+              </select>
+              {validationErrors.status && (
+                <p className="mt-1 text-sm text-red-600 font-medium">
+                  {isSubscriptionRenewal ? 'Payment status is required' : t('maintenanceSupervisor.statusIsRequired')}
+                </p>
+              )}
             </div>
 
             <div className="flex justify-end space-x-3 pt-4">

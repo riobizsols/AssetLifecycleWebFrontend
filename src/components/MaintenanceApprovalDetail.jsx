@@ -662,14 +662,14 @@ const MaintenanceApprovalDetail = () => {
                         />
                         {!isVendorContractRenewal && (
                           <>
-                            <ReadOnlyInput 
-                              label={t('maintenanceApproval.assetType')} 
-                              value={approvalDetails?.assetTypeName || "-"} 
-                            />
-                            <ReadOnlyInput 
-                              label={t('maintenanceApproval.assetID')} 
-                              value={approvalDetails?.assetId || "-"} 
-                            />
+                        <ReadOnlyInput 
+                          label={t('maintenanceApproval.assetType')} 
+                          value={approvalDetails?.assetTypeName || "-"} 
+                        />
+                         <ReadOnlyInput 
+                           label={t('maintenanceApproval.assetID')} 
+                           value={approvalDetails?.assetId || "-"} 
+                         />
                           </>
                         )}
                          <ReadOnlyInput 
