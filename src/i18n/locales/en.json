@@ -291,7 +291,7 @@
     "requireMaintenance": "Require Maintenance",
     "selectMaintenanceType": "Select Maint Type",
     "selectMaintenanceTypeOption": "Select maintenance type",
-    "maintenanceLeadType": "Maintenance Lead Type",
+    "maintenanceLeadType": "Maintenance Lead Time",
     "enterMaintenanceLeadType": "Enter maintenance lead type",
     "docUpload": "Doc Upload",
     "addDocument": "Add Document",
