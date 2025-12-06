@@ -279,6 +279,20 @@ const AssignRoles = () => {
         showHeaderCheckbox={false}  // Hide header checkbox
         showActions={true}
         showFilterButton={true}
+        customHeaderActions={
+          <button
+            onClick={async () => {
+              // Log create action when Create button is clicked
+              await recordActionByNameWithFetch('Create', {
+                action: 'Create Employee Screen Opened'
+              });
+              navigate("/master-data/create-user");
+            }}
+            className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-3 py-1 hover:bg-gray-100 bg-[#0E2F4B] text-sm"
+          >
+            Create
+          </button>
+        }
       >
         {({ visibleColumns, showActions }) => (
           <CustomTable

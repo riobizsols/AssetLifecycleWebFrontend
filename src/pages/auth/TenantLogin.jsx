@@ -16,15 +16,28 @@ export default function TenantLogin() {
 
   const navigate = useNavigate();
   const location = useLocation();
+<<<<<<< HEAD
   const { isAuthenticated, login } = useAuthStore();
+=======
+  const { isAuthenticated, login, requiresPasswordChange } = useAuthStore();
+>>>>>>> origin/main
   const { t } = useLanguage();
   
   // Audit logging for login
   const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.LOGIN);
 
   useEffect(() => {
+<<<<<<< HEAD
     if (isAuthenticated) {
       navigate("/dashboard", { replace: true });
+=======
+    // Only redirect to dashboard if authenticated AND password change is not required
+    if (isAuthenticated && !requiresPasswordChange) {
+      navigate("/dashboard", { replace: true });
+    } else if (isAuthenticated && requiresPasswordChange) {
+      // If password change is required, redirect to change password screen
+      navigate("/change-password", { replace: true });
+>>>>>>> origin/main
     }
     
     // Check if redirected from tenant setup
@@ -37,7 +50,11 @@ export default function TenantLogin() {
         setForm(prev => ({ ...prev, email: location.state.email }));
       }
     }
+<<<<<<< HEAD
   }, [isAuthenticated, navigate, location]);
+=======
+  }, [isAuthenticated, requiresPasswordChange, navigate, location]);
+>>>>>>> origin/main
 
   const handleChange = (e) => {
     const value = e.target.name === 'org_id' ? e.target.value.toUpperCase() : e.target.value;
@@ -53,10 +70,17 @@ export default function TenantLogin() {
     try {
       const res = await API.post("/auth/tenant-login", form);
 
+<<<<<<< HEAD
       const { token, user } = res.data;
 
       // Store user + token in Zustand
       login({ ...user, token });
+=======
+      const { token, user, requiresPasswordChange } = res.data;
+
+      // Store user + token in Zustand (including requiresPasswordChange flag)
+      login({ ...user, token, requiresPasswordChange });
+>>>>>>> origin/main
 
       // Log audit event for successful login
       await recordActionByNameWithFetch('Logging In', { 
@@ -67,8 +91,18 @@ export default function TenantLogin() {
         org_id: user?.org_id
       });
 
+<<<<<<< HEAD
       // Redirect to dashboard
       navigate("/dashboard");
+=======
+      // Navigate immediately based on password change requirement
+      // This happens before useEffect can trigger, ensuring direct navigation
+      if (requiresPasswordChange) {
+        navigate("/change-password", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
+>>>>>>> origin/main
     } catch (err) {
       setError(
         err.response?.data?.message || "Login failed. Please try again."
@@ -134,14 +168,24 @@ export default function TenantLogin() {
                 htmlFor="email"
                 className="block text-sm font-semibold text-gray-700"
               >
+<<<<<<< HEAD
                 {t('auth.email')}<span className="text-red-600">*</span>
+=======
+                Email / Username<span className="text-red-600">*</span>
+>>>>>>> origin/main
               </label>
               <input
                 id="email"
                 name="email"
+<<<<<<< HEAD
                 type="email"
                 required
                 placeholder={t('auth.email')}
+=======
+                type="text"
+                required
+                placeholder="Enter email or username"
+>>>>>>> origin/main
                 value={form.email}
                 onChange={handleChange}
                 className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]"

@@ -571,11 +571,13 @@ const AddAssetType = () => {
                 className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${submitAttempted && requireMaintenance && !selectedMaintenanceType ? 'border-red-500' : 'border-gray-300'}`}
               >
                 <option value="">{t('assetTypes.selectMaintenanceTypeOption')}</option>
-                {maintenanceTypes.map((type) => (
-                  <option key={type.maint_type_id} value={type.maint_type_id}>
-                    {type.text}
-                  </option>
-                ))}
+                {maintenanceTypes
+                  .filter((type) => !type.text?.toLowerCase().includes('vendor contract renewal'))
+                  .map((type) => (
+                    <option key={type.maint_type_id} value={type.maint_type_id}>
+                      {type.text}
+                    </option>
+                  ))}
               </select>
             </div>
 

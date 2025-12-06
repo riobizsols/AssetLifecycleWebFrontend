@@ -6,11 +6,14 @@ import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "../layouts/MainLayout";
 import ForgotPassword from "../pages/auth/ForgetPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
+import ChangePassword from "../pages/auth/ChangePassword";
+import RequestPasswordChange from "../pages/auth/RequestPasswordChange";
 import SetupWizard from "../pages/setup/SetupWizard";
 import TenantSetup from "../pages/tenant/TenantSetup";
 import Assets from "../pages/Assets";
 import UserRoles from "../pages/masterData/UserRoles";
 import AssignRoles from "../components/AssignRoles";
+import CreateUser from "../pages/masterData/CreateUser";
 import Departments from "../pages/masterData/Departments";
 import Branches from "../pages/masterData/Branches";
 import AddBranch from "../components/AddBranch";
@@ -87,6 +90,15 @@ export default function AppRoutes() {
         <Route path="/tenant-setup" element={<TenantSetup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/request-password-change" element={<RequestPasswordChange />} />
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute>
+              <ChangePassword />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/not-authorized" element={
           <div className="flex items-center justify-center min-h-screen bg-gray-50">
             <div className="text-center">
@@ -580,6 +592,16 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="USERS">
               <MainLayout>
                 <AssignRoles />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/create-user"
+          element={
+            <ProtectedRoute requiredAppId="USERS">
+              <MainLayout>
+                <CreateUser />
               </MainLayout>
             </ProtectedRoute>
           }

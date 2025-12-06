@@ -73,7 +73,10 @@
     "maintenanceAndDecommissioned": "Maintenance + Decommissioned",
     "allThree": "All Three Categories",
     "assetsNotInCategories": "Assets not in any category",
-    "breakdownNote": "These assets are unassigned, not under maintenance, and not decommissioned."
+    "breakdownNote": "These assets are unassigned, not under maintenance, and not decommissioned.",
+    "vendorContractRenewal": "Vendor Contract Renewal",
+    "triggerVendorRenewal": "Trigger Vendor Renewal",
+    "vendorContractRenewalDescription": "Checks vendor contracts ending within 10 days and creates renewal workflows"
   },
   "assets": {
     "title": "Assets",
@@ -291,7 +294,7 @@
     "requireMaintenance": "Require Maintenance",
     "selectMaintenanceType": "Select Maint Type",
     "selectMaintenanceTypeOption": "Select maintenance type",
-    "maintenanceLeadType": "Maintenance Lead Type",
+    "maintenanceLeadType": "Maintenance Lead Time",
     "enterMaintenanceLeadType": "Enter maintenance lead type",
     "docUpload": "Doc Upload",
     "addDocument": "Add Document",

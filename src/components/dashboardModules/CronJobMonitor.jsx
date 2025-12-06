@@ -11,7 +11,9 @@ const CronJobMonitor = () => {
   const [cronStatus, setCronStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isTriggering, setIsTriggering] = useState(false);
+  const [isTriggeringVendor, setIsTriggeringVendor] = useState(false);
   const [lastTriggerResult, setLastTriggerResult] = useState(null);
+  const [lastVendorTriggerResult, setLastVendorTriggerResult] = useState(null);
   const [error, setError] = useState(null);
 
   // Fetch cron job status
@@ -42,10 +44,74 @@ const CronJobMonitor = () => {
         fetchCronStatus();
       }, 1000);
     } catch (err) {
-      console.error("Error triggering maintenance generation:", err);
-      setError("Failed to trigger maintenance generation");
+      // Detailed error logging
+      console.error("❌ Error triggering maintenance generation:", err);
+      console.error("❌ Error details:", {
+        message: err.message,
+        name: err.name,
+        code: err.code,
+        response: err.response,
+        responseData: err.response?.data,
+        responseStatus: err.response?.status,
+        responseHeaders: err.response?.headers,
+        request: err.request,
+        config: err.config,
+        stack: err.stack
+      });
+      
+      // Log the full error response if available
+      if (err.response?.data) {
+        console.error("❌ Server error response:", JSON.stringify(err.response.data, null, 2));
+        console.error("❌ Error message from server:", err.response.data.message || err.response.data.error || err.response.data.details);
+        if (err.response.data.stack) {
+          console.error("❌ Server error stack:", err.response.data.stack);
+        }
+      }
+      
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error || 
+                          err.response?.data?.details || 
+                          err.message || 
+                          "Failed to trigger maintenance generation";
+      
+      setError(errorMessage);
     } finally {
       setIsTriggering(false);
+    }
+  };
+
+  // Trigger vendor contract renewal manually
+  const triggerVendorContractRenewal = async () => {
+    try {
+      setIsTriggeringVendor(true);
+      setError(null);
+      const response = await API.post("/cron/trigger-vendor-contract-renewal");
+      setLastVendorTriggerResult(response.data);
+      
+      // Refresh status after successful trigger
+      setTimeout(() => {
+        fetchCronStatus();
+      }, 1000);
+    } catch (err) {
+      console.error("❌ Error triggering vendor contract renewal:", err);
+      console.error("❌ Error details:", {
+        message: err.message,
+        name: err.name,
+        code: err.code,
+        response: err.response,
+        responseData: err.response?.data,
+        responseStatus: err.response?.status
+      });
+      
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error || 
+                          err.response?.data?.details || 
+                          err.message || 
+                          "Failed to trigger vendor contract renewal";
+      
+      setError(errorMessage);
+    } finally {
+      setIsTriggeringVendor(false);
     }
   };
 
@@ -165,7 +231,7 @@ const CronJobMonitor = () => {
 
             {lastTriggerResult && (
               <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                <h5 className="font-medium text-green-900 mb-2">Last Trigger Result</h5>
+                <h5 className="font-medium text-green-900 mb-2">Last Maintenance Trigger Result</h5>
                 <div className="text-sm text-green-700 space-y-1">
                   <div>Message: {lastTriggerResult.message}</div>
                   {lastTriggerResult.result && (
@@ -173,6 +239,73 @@ const CronJobMonitor = () => {
                       <pre className="whitespace-pre-wrap">
                         {JSON.stringify(lastTriggerResult.result, null, 2)}
                       </pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Vendor Contract Renewal Section */}
+            <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
+              <h4 className="font-medium text-purple-900 mb-2">{t('dashboard.vendorContractRenewal') || 'Vendor Contract Renewal'}</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-purple-700">{t('dashboard.schedule')}:</span>
+                  <span className="font-mono text-purple-900">0 8 * * *</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-purple-700">{t('dashboard.timezone')}:</span>
+                  <span className="text-purple-900">Asia/Kolkata (IST)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-purple-700">{t('dashboard.nextRun')}:</span>
+                  <span className="text-purple-900">Daily at 8:00 AM IST</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-purple-700">{t('dashboard.status')}:</span>
+                  <span className="text-green-600 font-medium">{t('dashboard.active')}</span>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-purple-600">
+                <span>{t('dashboard.vendorContractRenewalDescription') || 'Checks vendor contracts ending within 10 days and creates renewal workflows'}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerVendorContractRenewal();
+                }}
+                disabled={isTriggeringVendor}
+                className="flex-1 bg-purple-500 hover:bg-purple-600 disabled:bg-purple-300 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+              >
+                {isTriggeringVendor ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t('common.loading')}
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4" />
+                    {t('dashboard.triggerVendorRenewal') || 'Trigger Vendor Renewal'}
+                  </>
+                )}
+              </button>
+            </div>
+
+            {lastVendorTriggerResult && (
+              <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                <h5 className="font-medium text-green-900 mb-2">Last Vendor Renewal Trigger Result</h5>
+                <div className="text-sm text-green-700 space-y-1">
+                  <div>Message: {lastVendorTriggerResult.message}</div>
+                  {lastVendorTriggerResult.result && (
+                    <div className="text-xs bg-green-100 p-2 rounded">
+                      <div className="space-y-1">
+                        <div>Workflows Created: {lastVendorTriggerResult.result.workflowsCreated || 0}</div>
+                        <div>Vendors Deactivated: {lastVendorTriggerResult.result.vendorsDeactivated || 0}</div>
+                        <div>Duration: {lastVendorTriggerResult.result.duration || 0}ms</div>
+                      </div>
                     </div>
                   )}
                 </div>

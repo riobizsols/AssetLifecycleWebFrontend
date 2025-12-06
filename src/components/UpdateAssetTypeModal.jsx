@@ -802,11 +802,13 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                   className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 >
                   <option value="">{t('assetTypes.selectMaintenanceTypeOption')}</option>
-                  {maintenanceTypes.map((type) => (
-                    <option key={type.maint_type_id} value={type.maint_type_id}>
-                      {type.text}
-                    </option>
-                  ))}
+                  {maintenanceTypes
+                    .filter((type) => !type.text?.toLowerCase().includes('vendor contract renewal'))
+                    .map((type) => (
+                      <option key={type.maint_type_id} value={type.maint_type_id}>
+                        {type.text}
+                      </option>
+                    ))}
                 </select>
               </div>
 

@@ -666,20 +666,27 @@ const Users = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={canEdit ? async () => {
-          // Log create action when Add button is clicked
-          await recordActionByNameWithFetch('Create', {
-            action: 'Assign Roles Screen Opened'
-          });
-          navigate("/master-data/assign-roles");
-        } : null}
         onDeleteSelected={canEdit ? handleDelete : null}
         onDownload={handleDownload}
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
-        showAddButton={canEdit}
+        showAddButton={false}
         showActions={canEdit}
+        customHeaderActions={canEdit ? (
+          <button
+            onClick={async () => {
+              // Log create action when Assign Roles button is clicked
+              await recordActionByNameWithFetch('Create', {
+                action: 'Assign Roles Screen Opened'
+              });
+              navigate("/master-data/assign-roles");
+            }}
+            className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-3 py-1 hover:bg-gray-100 bg-[#0E2F4B] text-sm"
+          >
+            Assign Roles
+          </button>
+        ) : null}
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
