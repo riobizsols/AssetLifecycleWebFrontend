@@ -96,14 +96,14 @@ export default function Login() {
                 htmlFor="email"
                 className="block text-sm font-semibold text-gray-700"
               >
-                Email / Username<span className="text-red-600">*</span>
+                Email<span className="text-red-600">*</span>
               </label>
               <input
                 id="email"
                 name="email"
                 type="text"
                 required
-                placeholder="Enter email or username"
+                placeholder="Enter your email"
                 value={form.email}
                 onChange={handleChange}
                 className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]"
