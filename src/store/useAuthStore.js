@@ -7,6 +7,7 @@ export const useAuthStore = create(
             isAuthenticated: false,
             user: null,
             token: null,
+            requiresPasswordChange: false,
 
             login: (data) =>
                 set({
@@ -20,6 +21,7 @@ export const useAuthStore = create(
                     branch_code: data.branch_code || null,
                     dept_id: data.dept_id || null,
                     dept_name: data.dept_name || null,
+                    requiresPasswordChange: data.requiresPasswordChange || false, // Store password change requirement
                 }),
 
             logout: () =>
@@ -34,6 +36,12 @@ export const useAuthStore = create(
                     branch_code: null,
                     dept_id: null,
                     dept_name: null,
+                    requiresPasswordChange: false,
+                }),
+
+            clearPasswordChangeRequirement: () =>
+                set({
+                    requiresPasswordChange: false,
                 }),
         }),
         {

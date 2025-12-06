@@ -84,8 +84,6 @@ const buildInitialAdminState = (org) => {
     email: "",
     phone: "",
     username: "USR001",
-    password: "",
-    confirmPassword: "",
     employeeCode: "EMP001",
     departmentTempId: firstDept?.tempId || null,
   };
@@ -437,9 +435,9 @@ const SetupWizard = () => {
       setRunLogs(result.logs || []);
       setSetupSummary(result.summary || null);
       setAdminCredentials({
-        username: adminUser.username,
+        username: result.adminUser?.username || 'rioadmin',
         email: adminUser.email,
-        password: adminUser.password, // Store temporarily for display
+        password: 'Initial1', // Default password (or from org settings)
       });
       setSetupComplete(true);
       setCurrentStep(wizardSteps.length); // Move to completion screen
@@ -485,8 +483,6 @@ const SetupWizard = () => {
           adminUser.fullName.trim() &&
           adminUser.email.trim() &&
           adminUser.username.trim() &&
-          adminUser.password &&
-          adminUser.password === adminUser.confirmPassword &&
           !!adminUser.departmentTempId
         );
       case 5:
@@ -1210,31 +1206,9 @@ API_BASE_URL=http://localhost:5000/api
                     setAdminUser((prev) => ({ ...prev, username: e.target.value.toUpperCase() }))
                   }
                 />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Password</label>
-                <input
-                  type="password"
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  value={adminUser.password}
-                  onChange={(e) => setAdminUser((prev) => ({ ...prev, password: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Confirm Password</label>
-                <input
-                  type="password"
-                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  value={adminUser.confirmPassword}
-                  onChange={(e) =>
-                    setAdminUser((prev) => ({ ...prev, confirmPassword: e.target.value }))
-                  }
-                />
-                {adminUser.password &&
-                  adminUser.confirmPassword &&
-                  adminUser.password !== adminUser.confirmPassword && (
-                    <p className="text-xs text-rose-600 mt-1">Passwords do not match.</p>
-                  )}
+                <p className="text-xs text-slate-500 mt-1">
+                  Note: The default password will be "Initial1" (or as configured in org settings). You'll be prompted to change it on first login.
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">Employee Code</label>

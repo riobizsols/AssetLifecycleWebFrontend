@@ -16,15 +16,19 @@ export default function TenantLogin() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, login } = useAuthStore();
+  const { isAuthenticated, login, requiresPasswordChange } = useAuthStore();
   const { t } = useLanguage();
   
   // Audit logging for login
   const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.LOGIN);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // Only redirect to dashboard if authenticated AND password change is not required
+    if (isAuthenticated && !requiresPasswordChange) {
       navigate("/dashboard", { replace: true });
+    } else if (isAuthenticated && requiresPasswordChange) {
+      // If password change is required, redirect to change password screen
+      navigate("/change-password", { replace: true });
     }
     
     // Check if redirected from tenant setup
@@ -37,7 +41,7 @@ export default function TenantLogin() {
         setForm(prev => ({ ...prev, email: location.state.email }));
       }
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, requiresPasswordChange, navigate, location]);
 
   const handleChange = (e) => {
     const value = e.target.name === 'org_id' ? e.target.value.toUpperCase() : e.target.value;
@@ -53,10 +57,10 @@ export default function TenantLogin() {
     try {
       const res = await API.post("/auth/tenant-login", form);
 
-      const { token, user } = res.data;
+      const { token, user, requiresPasswordChange } = res.data;
 
-      // Store user + token in Zustand
-      login({ ...user, token });
+      // Store user + token in Zustand (including requiresPasswordChange flag)
+      login({ ...user, token, requiresPasswordChange });
 
       // Log audit event for successful login
       await recordActionByNameWithFetch('Logging In', { 
@@ -67,8 +71,13 @@ export default function TenantLogin() {
         org_id: user?.org_id
       });
 
-      // Redirect to dashboard
-      navigate("/dashboard");
+      // Navigate immediately based on password change requirement
+      // This happens before useEffect can trigger, ensuring direct navigation
+      if (requiresPasswordChange) {
+        navigate("/change-password", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     } catch (err) {
       setError(
         err.response?.data?.message || "Login failed. Please try again."
@@ -134,14 +143,14 @@ export default function TenantLogin() {
                 htmlFor="email"
                 className="block text-sm font-semibold text-gray-700"
               >
-                {t('auth.email')}<span className="text-red-600">*</span>
+                Email / Username<span className="text-red-600">*</span>
               </label>
               <input
                 id="email"
                 name="email"
-                type="email"
+                type="text"
                 required
-                placeholder={t('auth.email')}
+                placeholder="Enter email or username"
                 value={form.email}
                 onChange={handleChange}
                 className="mt-1 w-full px-3 py-2 border rounded-md shadow-sm border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]"
