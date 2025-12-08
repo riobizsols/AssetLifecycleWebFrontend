@@ -1,12 +1,12 @@
 // Environment configuration for frontend
 const config = {
   development: {
-    API_BASE_URL: 'http://localhost:5000/api',
+    API_BASE_URL: 'http://localhost:5001/api',
     FRONTEND_URL: 'http://localhost:5173',
     ENVIRONMENT: 'development'
   },
   production: {
-    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://your-domain.com/api',
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://your-domain.com:5001/api',
     FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'https://your-domain.com',
     ENVIRONMENT: 'production'
   }
