@@ -181,12 +181,16 @@ const ScrapAssets = () => {
         setStats(updatedStats);
 
         // Update chart data with real counts
+        // Filter out categories with 0 value
+        const activeValue = Math.max(0, totalAssetsCount - nearingExpiryCount - expiredCount);
+        const expiryDistributionData = [
+          { name: t('scrapAssets.active'), value: activeValue, color: '#10B981' },
+          { name: t('scrapAssets.nearingExpiry'), value: nearingExpiryCount, color: '#F59E0B' },
+          { name: t('scrapAssets.expired'), value: expiredCount, color: '#EF4444' }
+        ].filter(item => item.value > 0); // Filter out 0% values
+        
         const updatedChartData = {
-          expiryDistribution: [
-            { name: t('scrapAssets.active'), value: Math.max(0, totalAssetsCount - nearingExpiryCount - expiredCount), color: '#10B981' },
-            { name: t('scrapAssets.nearingExpiry'), value: nearingExpiryCount, color: '#F59E0B' },
-            { name: t('scrapAssets.expired'), value: expiredCount, color: '#EF4444' }
-          ],
+          expiryDistribution: expiryDistributionData,
           expiringByCategory: expiringByCategoryData
         };
         

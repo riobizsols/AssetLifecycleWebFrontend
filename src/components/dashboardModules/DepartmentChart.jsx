@@ -35,12 +35,14 @@ const DepartmentChart = () => {
         const response = await API.get("/assets/department-distribution");
         
         if (response.data.success && response.data.data) {
-          // Map API data to chart format with colors
-          const chartData = response.data.data.map((dept, index) => ({
-            name: dept.name,
-            value: dept.value,
-            color: COLORS[index % COLORS.length],
-          }));
+          // Map API data to chart format with colors and filter out 0% values
+          const chartData = response.data.data
+            .map((dept, index) => ({
+              name: dept.name,
+              value: dept.value,
+              color: COLORS[index % COLORS.length],
+            }))
+            .filter(item => item.value > 0); // Filter out departments with 0 value
           setData(chartData);
         } else {
           setData([]);
