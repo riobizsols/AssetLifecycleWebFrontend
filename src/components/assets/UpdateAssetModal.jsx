@@ -10,6 +10,7 @@ import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useNavigation } from '../../hooks/useNavigation';
+import useColumnAccess from '../../hooks/useColumnAccess';
 
 const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Initialize audit logging
@@ -20,6 +21,9 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const { getAccessLevel } = useNavigation();
   const accessLevel = getAccessLevel('ASSETS');
   const isReadOnly = accessLevel === 'D';
+  
+  // Get column access for tblAssets
+  const { isVisible: isColumnVisible, isReadOnly: isColumnReadOnly, getAccessLevel: getColumnAccessLevel, loading: columnAccessLoading } = useColumnAccess('tblAssets');
   
   // Translate property names
   const translatePropertyName = (propertyName) => {
@@ -497,8 +501,24 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.assetType || !form.serialNumber || !form.purchaseDate || !form.purchaseCost) {
-      toast.error('Required fields missing');
+    
+    // Validate only visible fields
+    const validationErrors = [];
+    if (isColumnVisible('asset_type_id') && !form.assetType) {
+      validationErrors.push('Asset Type');
+    }
+    if (isColumnVisible('serial_number') && !form.serialNumber) {
+      validationErrors.push('Serial Number');
+    }
+    if (isColumnVisible('purchased_on') && !form.purchaseDate) {
+      validationErrors.push('Purchase Date');
+    }
+    if (isColumnVisible('purchased_cost') && !form.purchaseCost) {
+      validationErrors.push('Purchase Cost');
+    }
+    
+    if (validationErrors.length > 0) {
+      toast.error(`Required fields missing: ${validationErrors.join(', ')}`);
       return;
     }
 
@@ -509,32 +529,75 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       console.log('User branch ID for asset update:', userBranchId);
 
       // Prepare the asset data according to backend requirements
-      const updateData = {
-        asset_type_id: form.assetType,
-        serial_number: form.serialNumber,
-        description: form.description,
-        branch_id: userBranchId, // Auto-populate user's branch
-        purchase_vendor_id: form.purchaseSupply || null,
-        service_vendor_id: form.serviceSupply || null, // Service Supply is service vendor
-        prod_serv_id: null, // Product/Service is not used in this form
-        maintsch_id: null,
-        purchased_cost: form.purchaseCost,
-        purchased_on: form.purchaseDate,
-        purchased_by: form.purchaseBy || null,
-        expiry_date: form.expiryDate || null,
-        current_status: 'Active',
-        warranty_period: form.warrantyPeriod || null,
-        properties: form.properties || {},
-        // New fields mapping to backend columns
-        cost_center_code: form.costCenter || null,
-        location: form.location || null,
-        insurance_policy_no: form.insurancePolicyNumber || null,
-        insurer: form.insurer || null,
-        insured_value: form.insuredValue ? parseFloat(form.insuredValue) : null,
-        insurance_start_date: form.insuranceStartDate || null,
-        insurance_end_date: form.insuranceEndDate || null,
-        comprehensive_insurance: form.comprehensiveInsurance || null
-      };
+      // Only include fields that are visible (not NONE access)
+      const updateData = {};
+      
+      // Only add fields that are visible (not NONE access)
+      if (isColumnVisible('asset_type_id')) {
+        updateData.asset_type_id = form.assetType;
+      }
+      if (isColumnVisible('serial_number')) {
+        updateData.serial_number = form.serialNumber;
+      }
+      if (isColumnVisible('description')) {
+        updateData.description = form.description;
+      }
+      if (isColumnVisible('branch_id')) {
+        updateData.branch_id = userBranchId; // Auto-populate user's branch
+      }
+      if (isColumnVisible('purchase_vendor_id')) {
+        updateData.purchase_vendor_id = form.purchaseSupply || null;
+      }
+      if (isColumnVisible('service_vendor_id')) {
+        updateData.service_vendor_id = form.serviceSupply || null;
+      }
+      if (isColumnVisible('purchased_cost')) {
+        updateData.purchased_cost = form.purchaseCost;
+      }
+      if (isColumnVisible('purchased_on')) {
+        updateData.purchased_on = form.purchaseDate;
+      }
+      if (isColumnVisible('purchased_by')) {
+        updateData.purchased_by = form.purchaseBy || null;
+      }
+      if (isColumnVisible('expiry_date')) {
+        updateData.expiry_date = form.expiryDate || null;
+      }
+      if (isColumnVisible('warranty_period')) {
+        updateData.warranty_period = form.warrantyPeriod || null;
+      }
+      if (isColumnVisible('location')) {
+        updateData.location = form.location || null;
+      }
+      
+      // Always include these (not in column access config or required for functionality)
+      updateData.current_status = 'Active';
+      updateData.properties = form.properties || {};
+      updateData.prod_serv_id = null;
+      updateData.maintsch_id = null;
+      
+      // New fields mapping to backend columns (if they exist in the table)
+      if (isColumnVisible('cost_center_code')) {
+        updateData.cost_center_code = form.costCenter || null;
+      }
+      if (isColumnVisible('insurance_policy_no')) {
+        updateData.insurance_policy_no = form.insurancePolicyNumber || null;
+      }
+      if (isColumnVisible('insurer')) {
+        updateData.insurer = form.insurer || null;
+      }
+      if (isColumnVisible('insured_value')) {
+        updateData.insured_value = form.insuredValue ? parseFloat(form.insuredValue) : null;
+      }
+      if (isColumnVisible('insurance_start_date')) {
+        updateData.insurance_start_date = form.insuranceStartDate || null;
+      }
+      if (isColumnVisible('insurance_end_date')) {
+        updateData.insurance_end_date = form.insuranceEndDate || null;
+      }
+      if (isColumnVisible('comprehensive_insurance')) {
+        updateData.comprehensive_insurance = form.comprehensiveInsurance || null;
+      }
 
       // Use the asset_id from the passed assetData prop
       await API.put(`/assets/${assetData.asset_id}`, updateData);
@@ -646,6 +709,25 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
   if (!isOpen) return null;
 
+  // Show loading state while column access is being fetched to prevent flash
+  if (columnAccessLoading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl shadow-lg w-[98%] max-w-[90vw] max-h-[90vh] overflow-y-auto overflow-x-visible">
+          <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
+            <h1 className="text-2xl font-semibold">{t('assets.editAsset')}</h1>
+          </div>
+          <div className="p-6 flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading column access...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-lg w-[98%] max-w-[90vw] max-h-[90vh] overflow-y-auto overflow-x-visible">
@@ -656,6 +738,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         <form onSubmit={handleSubmit} className="p-6 overflow-visible">
           <div className="grid grid-cols-3 gap-6 mb-6">
             {/* Asset Type Dropdown - Read Only */}
+            {isColumnVisible('asset_type_id') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.assetType')}</label>
               <div className="relative w-full">
@@ -669,8 +752,10 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Serial Number - Read Only */}
+            {isColumnVisible('serial_number') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.serialNumber')}</label>
               <input
@@ -681,21 +766,25 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 placeholder={t('assets.enterSerialNumber')}
               />
             </div>
+            )}
 
             {/* Description */}
+            {isColumnVisible('description') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.description')}</label>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('description')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('description') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 placeholder="Enter description"
               />
             </div>
+            )}
 
             {/* Purchase Cost */}
+            {isColumnVisible('purchased_cost') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.purchaseCost')}</label>
               <input
@@ -703,71 +792,81 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 step="0.01"
                 value={form.purchaseCost || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseCost: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('purchased_cost')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('purchased_cost') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 placeholder="Enter purchase cost"
                 required
               />
             </div>
+            )}
 
             {/* Purchase Date */}
+            {isColumnVisible('purchased_on') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.purchaseDate')}</label>
               <input
                 type="date"
                 value={form.purchaseDate}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseDate: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('purchased_on')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('purchased_on') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 required
               />
             </div>
+            )}
 
             {/* Expiry Date */}
+            {isColumnVisible('expiry_date') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.expiryDate')}</label>
               <input
                 type="date"
                 value={form.expiryDate}
                 onChange={(e) => setForm(prev => ({ ...prev, expiryDate: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('expiry_date')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('expiry_date') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
+            )}
 
             {/* Warranty Period */}
+            {isColumnVisible('warranty_period') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.warrantyPeriod')}</label>
               <input
                 type="text"
                 value={form.warrantyPeriod}
                 onChange={(e) => setForm(prev => ({ ...prev, warrantyPeriod: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('warranty_period')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('warranty_period') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                 placeholder="Enter warranty period"
               />
             </div>
+            )}
 
             {/* Location */}
+            {isColumnVisible('location') && (
             <div>
               <label className="block text-sm font-medium mb-1">Location</label>
               <input
                 type="text"
                 value={form.location}
                 onChange={(e) => setForm(prev => ({ ...prev, location: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('location')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('location') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
+            )}
 
             {/* Purchase By */}
+            {isColumnVisible('purchased_by') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.purchaseBy')}</label>
               <select
                 value={form.purchaseBy}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseBy: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('purchased_by')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('purchased_by') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               >
                 <option value="">{t('assets.selectUser')}</option>
                 {purchaseByOptions.map(option => (
@@ -777,15 +876,17 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 ))}
               </select>
             </div>
+            )}
 
-            {/* Purchase Supply */}
+            {/* Purchase Supply (purchase_vendor_id) */}
+            {isColumnVisible('purchase_vendor_id') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.purchaseSupply')}</label>
               <select
                 value={form.purchaseSupply}
                 onChange={(e) => setForm(prev => ({ ...prev, purchaseSupply: e.target.value, vendorId: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('purchase_vendor_id')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('purchase_vendor_id') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               >
                 <option value="">Select Purchase Vendor</option>
                 {purchaseSupplyOptions.map(option => (
@@ -795,15 +896,17 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 ))}
               </select>
             </div>
+            )}
 
-            {/* Service Supply */}
+            {/* Service Supply (service_vendor_id) */}
+            {isColumnVisible('service_vendor_id') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.serviceSupply')}</label>
               <select
                 value={form.serviceSupply}
                 onChange={(e) => setForm(prev => ({ ...prev, serviceSupply: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('service_vendor_id')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('service_vendor_id') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               >
                 <option value="">Select Service Vendor</option>
                 {serviceSupplyOptions.map(option => (
@@ -813,8 +916,10 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 ))}
               </select>
             </div>
+            )}
           </div>
           {/* Accounting Details */}
+          {isColumnVisible('cost_center_code') && (
           <div className="grid grid-cols-3 gap-6 mb-6">
             <div>
               <label className="block text-sm font-medium mb-1">Cost Center</label>
@@ -822,35 +927,43 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 type="text"
                 value={form.costCenter}
                 onChange={(e) => setForm(prev => ({ ...prev, costCenter: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                disabled={isReadOnly || isColumnReadOnly('cost_center_code')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('cost_center_code') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
           </div>
+          )}
 
           {/* Insurance Details */}
+          {(isColumnVisible('insurance_policy_no') || isColumnVisible('insurer') || isColumnVisible('insured_value') || isColumnVisible('insurance_start_date') || isColumnVisible('insurance_end_date') || isColumnVisible('comprehensive_insurance')) && (
+          <>
           <div className="mb-2 text-base font-semibold">Insurance Details</div>
           <div className="grid grid-cols-3 gap-6 mb-6">
+              {isColumnVisible('insurance_policy_no') && (
             <div>
               <label className="block text-sm font-medium mb-1">Policy Number</label>
               <input
                 type="text"
                 value={form.insurancePolicyNumber}
                 onChange={(e) => setForm(prev => ({ ...prev, insurancePolicyNumber: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly || isColumnReadOnly('insurance_policy_no')}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('insurance_policy_no') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
+              )}
+              {isColumnVisible('insurer') && (
             <div>
               <label className="block text-sm font-medium mb-1">Insurer</label>
               <input
                 type="text"
                 value={form.insurer}
                 onChange={(e) => setForm(prev => ({ ...prev, insurer: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly || isColumnReadOnly('insurer')}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('insurer') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
+              )}
+              {isColumnVisible('insured_value') && (
             <div>
               <label className="block text-sm font-medium mb-1">Insured Value</label>
               <input
@@ -858,41 +971,50 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 step="0.01"
                 value={form.insuredValue}
                 onChange={(e) => setForm(prev => ({ ...prev, insuredValue: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly || isColumnReadOnly('insured_value')}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('insured_value') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
+              )}
+              {isColumnVisible('insurance_start_date') && (
             <div>
               <label className="block text-sm font-medium mb-1">Insurance Start Date</label>
               <input
                 type="date"
                 value={form.insuranceStartDate}
                 onChange={(e) => setForm(prev => ({ ...prev, insuranceStartDate: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly || isColumnReadOnly('insurance_start_date')}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('insurance_start_date') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
+              )}
+              {isColumnVisible('insurance_end_date') && (
             <div>
               <label className="block text-sm font-medium mb-1">Insurance End Date</label>
               <input
                 type="date"
                 value={form.insuranceEndDate}
                 onChange={(e) => setForm(prev => ({ ...prev, insuranceEndDate: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly || isColumnReadOnly('insurance_end_date')}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('insurance_end_date') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
+              )}
+              {isColumnVisible('comprehensive_insurance') && (
             <div>
               <label className="block text-sm font-medium mb-1">Comprehensive Insurance</label>
               <input
                 type="text"
                 value={form.comprehensiveInsurance}
                 onChange={(e) => setForm(prev => ({ ...prev, comprehensiveInsurance: e.target.value }))}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  disabled={isReadOnly || isColumnReadOnly('comprehensive_insurance')}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('comprehensive_insurance') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
             </div>
+              )}
           </div>
+          </>
+          )}
 
           {/* Asset Properties */}
           {form.assetType && dynamicProperties.length > 0 && (

@@ -38,9 +38,9 @@ const DepartmentChart = () => {
           // Map API data to chart format with colors and filter out 0% values
           const chartData = response.data.data
             .map((dept, index) => ({
-              name: dept.name,
-              value: dept.value,
-              color: COLORS[index % COLORS.length],
+            name: dept.name,
+            value: dept.value,
+            color: COLORS[index % COLORS.length],
             }))
             .filter(item => item.value > 0); // Filter out departments with 0 value
           setData(chartData);

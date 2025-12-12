@@ -8,13 +8,19 @@ import { useAuthStore } from '../store/useAuthStore';
 const PrintPreviewModal = ({
   show,
   onClose,
-  selectedItem,
+  selectedItem, // For backward compatibility
+  selectedItems, // New: array of assets for bulk preview
   printSettings,
   printers = [],
   labelTemplates = {},
   assetTypeTemplateMapping = {}
 }) => {
   if (!show) return null;
+  
+  // Support both single item and multiple items
+  const assetsToPreview = selectedItems && selectedItems.length > 0 
+    ? selectedItems 
+    : (selectedItem ? [selectedItem] : []);
 
   const selectedPrinter = printers.find(p => p.id === parseInt(printSettings.printerId));
 
@@ -58,8 +64,8 @@ const PrintPreviewModal = ({
     return `${Math.min(maxWidth, 600)}px`;
   };
 
-  // Refs for barcode canvas
-  const barcodeRef = useRef(null);
+  // Refs for barcode canvas - use object to store refs for multiple assets
+  const barcodeRefs = useRef({});
   const { user } = useAuthStore();
   const [orgData, setOrgData] = useState({
     name: 'Organization',
@@ -86,45 +92,39 @@ const PrintPreviewModal = ({
     }
   }, [user?.org_id]);
 
-  // Generate real barcode when component mounts or serial number changes
-  useEffect(() => {
-    if (barcodeRef.current && selectedItem?.serial_number) {
+  // Generate barcode for a specific asset
+  const generateBarcode = (asset, index) => {
+    const refKey = `barcode-${asset.asset_id || index}`;
+    const barcodeRef = barcodeRefs.current[refKey];
+    
+    if (!barcodeRef || !asset?.serial_number) return;
+    
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
       try {
         // Clear previous barcode
-        barcodeRef.current.innerHTML = '';
+        barcodeRef.innerHTML = '';
 
         // Create canvas element
         const canvas = document.createElement('canvas');
-        barcodeRef.current.appendChild(canvas);
+        barcodeRef.appendChild(canvas);
 
         // Get label dimensions to adjust barcode size
         const isSmallLabel = template.dimensions?.width <= 2 && template.dimensions?.height <= 1;
 
         // Generate Code128 barcode with proper settings for scanning
-        console.log('🔍 Generating barcode for:', selectedItem.serial_number);
-        console.log('🔍 Canvas dimensions:', canvas.width, 'x', canvas.height);
-
-        JsBarcode(canvas, selectedItem.serial_number, {
+        JsBarcode(canvas, asset.serial_number, {
           format: "CODE128",
-          width: isSmallLabel ? 2 : 3, // Increased width for better scanning
-          height: isSmallLabel ? 40 : 60, // Increased height for better scanning
+          width: isSmallLabel ? 2 : 3,
+          height: isSmallLabel ? 40 : 60,
           displayValue: false,
-          margin: isSmallLabel ? 8 : 12, // Increased margin
+          margin: isSmallLabel ? 8 : 12,
           background: "#ffffff",
           lineColor: "#000000",
-          fontSize: 0, // No text display
+          fontSize: 0,
           textAlign: "center",
           textPosition: "bottom",
-          textMargin: 2,
-          // Additional settings for better scanning
-          valid: function (valid) {
-            if (!valid) {
-              console.warn('❌ Invalid barcode data:', selectedItem.serial_number);
-            } else {
-              console.log('✅ Barcode generated successfully for:', selectedItem.serial_number);
-              console.log('✅ Canvas final dimensions:', canvas.width, 'x', canvas.height);
-            }
-          }
+          textMargin: 2
         });
 
         // Ensure canvas fits within container and has proper dimensions
@@ -141,25 +141,32 @@ const PrintPreviewModal = ({
 
       } catch (error) {
         console.error('Error generating barcode:', error);
-        // Fallback: show error message
-        barcodeRef.current.innerHTML = '<div class="text-red-500 text-xs">Barcode generation failed</div>';
+        barcodeRef.innerHTML = '<div class="text-red-500 text-xs">Barcode generation failed</div>';
       }
-    }
-  }, [selectedItem?.serial_number, template.dimensions]);
+    }, 100);
+  };
+
+  // Generate barcodes when assets or template changes
+  useEffect(() => {
+    assetsToPreview.forEach((asset, index) => {
+      generateBarcode(asset, index);
+    });
+  }, [assetsToPreview.length, template.dimensions?.width, template.dimensions?.height]);
 
   // Render label with organization data and barcode
-  const renderLabelFormat = (selectedItem, template) => {
+  const renderLabelFormat = (asset, template, index) => {
+    const refKey = `barcode-${asset.asset_id || index}`;
     return (
       <div
-        className="relative w-full h-full p-6 flex flex-col justify-between" // Main label container with padding and flex column
+        className="relative w-full h-full p-3 flex flex-col justify-between" // Reduced padding from p-6 to p-3
       >
         {/* Organization Logo and Name (Top Section) */}
-        <div className="flex items-center justify-between flex-shrink-0 mb-4"> {/* Added margin-bottom for gap */}
+        <div className="flex items-center justify-between flex-shrink-0 mb-2"> {/* Reduced margin-bottom from mb-4 to mb-2 */}
           {/* Logo circle with first letter */}
           <div
-            className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold"
+            className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold" // Reduced from w-8 h-8 to w-6 h-6
             style={{
-              fontSize: '16px',
+              fontSize: '12px', // Reduced from 16px to 12px
               lineHeight: '1',
               fontFamily: 'Arial, sans-serif',
               display: 'flex',
@@ -174,23 +181,29 @@ const PrintPreviewModal = ({
           </div>
 
           {/* Organization name */}
-          <div className="text-sm font-bold text-blue-600 text-right flex-1 ml-2 leading-none">
+          <div className="text-xs font-bold text-blue-600 text-right flex-1 ml-2 leading-none"> {/* Reduced from text-sm to text-xs */}
             {orgData.name}
           </div>
         </div>
 
         {/* Serial Number (Center Section) */}
-        <div className="text-center my-auto flex-1 flex flex-col justify-center mb-4"> {/* Added margin-bottom for gap */}
-          <div className="text-md text-gray-500 font-bold leading-tight">SERIAL NUMBER</div>
-          <div className="text-lg font-bold font-mono text-black tracking-wide leading-tight">
-            {selectedItem?.serial_number}
+        <div className="text-center my-auto flex-1 flex flex-col justify-center mb-2"> {/* Reduced margin-bottom from mb-4 to mb-2 */}
+          <div className="text-xs text-gray-500 font-bold leading-tight">SERIAL NUMBER</div> {/* Reduced from text-md to text-xs */}
+          <div className="text-sm font-bold font-mono text-black tracking-wide leading-tight"> {/* Reduced from text-lg to text-sm */}
+            {asset?.serial_number}
           </div>
         </div>
 
         {/* Barcode (Bottom Section) */}
-        <div className="flex justify-center flex-shrink-0">
+        <div className="flex justify-center flex-shrink-0 pb-2"> {/* Added padding-bottom */}
           <div
-            ref={barcodeRef}
+            ref={(el) => {
+              if (el) {
+                barcodeRefs.current[refKey] = el;
+                // Generate barcode when ref is set
+                generateBarcode(asset, index);
+              }
+            }}
             className="barcode-container w-full"
           />
         </div>
@@ -215,31 +228,42 @@ const PrintPreviewModal = ({
           </button>
         </div>
 
-        {/* Label Preview Only */}
+        {/* Label Preview - Show all selected assets */}
         <div className="flex justify-center">
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 text-center">Label Preview</h3>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 bg-gray-50 flex justify-center items-center">
-              <div className="text-center w-full">
-                <div className="text-sm text-gray-500 mb-2">
-                  Label Size: {template.dimensions?.width}"×{template.dimensions?.height}" |
-                  Paper: {template.paperType} |
-                  Quality: {template.paperQuality}
-                </div>
-                <div
-                  className="bg-white border border-gray-200 rounded-lg p-6 mx-auto overflow-hidden" // Increased padding from p-4 to p-6
-                  style={{
-                    maxWidth: getLabelMaxWidth(template),
-                    aspectRatio: `${template.dimensions?.width} / ${template.dimensions?.height}` || '2 / 1',
-                    minHeight: '240px', // Increased minimum height from 180px to 240px
-                    minWidth: '480px' // Increased minimum width from 360px to 480px
-                  }}
-                >
-                  {renderLabelFormat(selectedItem, template)}
-                </div>
-                <div className="text-xs text-gray-500 mt-2">
-                  Template: {template?.name || 'Default'} | Format: {getLabelFormat(template)}
-                </div>
+          <div className="space-y-4 w-full">
+            <h3 className="text-lg font-semibold text-gray-900 text-center">
+              Label Preview ({assetsToPreview.length} {assetsToPreview.length === 1 ? 'Label' : 'Labels'})
+            </h3>
+            <div className="text-sm text-gray-500 mb-4 text-center">
+              Label Size: {template.dimensions?.width}"×{template.dimensions?.height}" |
+              Paper: {template.paperType} | 
+              Quality: {template.paperQuality} |
+              Template: {template?.name || 'Default'} | Format: {getLabelFormat(template)}
+            </div>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 bg-gray-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[60vh] overflow-y-auto pb-6">
+                {assetsToPreview.map((asset, index) => (
+                  <div key={asset.asset_id || index} className="flex flex-col items-center pb-4">
+                    <div className="text-xs text-gray-600 mb-2 text-center">
+                      {asset.asset_name || `Asset ${index + 1}`}
+                    </div>
+                    <div
+                      className="bg-white border border-gray-200 rounded-lg p-3 overflow-hidden shadow-sm"
+                      style={{
+                        maxWidth: getLabelMaxWidth(template),
+                        aspectRatio: `${template.dimensions?.width} / ${template.dimensions?.height}` || '2 / 1',
+                        minHeight: '150px',
+                        minWidth: '200px',
+                        width: '100%'
+                      }}
+                    >
+                      {renderLabelFormat(asset, template, index)}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2 text-center">
+                      SN: {asset.serial_number}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

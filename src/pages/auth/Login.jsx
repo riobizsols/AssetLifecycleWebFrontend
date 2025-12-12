@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
 import { Eye, EyeOff } from "lucide-react";
@@ -14,8 +14,13 @@ export default function Login() {
   const [show, setShow] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, login, requiresPasswordChange } = useAuthStore();
   const { t } = useLanguage();
+  
+  // Check if we're coming from admin settings route
+  const isAdminSettingsLogin = location.state?.fromAdminSettings || 
+                                sessionStorage.getItem('redirectToAdminSettings') === 'true';
   
   // Audit logging for login
   const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.LOGIN);
@@ -23,12 +28,18 @@ export default function Login() {
   useEffect(() => {
     // Only redirect to dashboard if authenticated AND password change is not required
     if (isAuthenticated && !requiresPasswordChange) {
-      navigate("/dashboard", { replace: true });
+      // If coming from admin settings, redirect there after login
+      if (isAdminSettingsLogin) {
+        sessionStorage.removeItem('redirectToAdminSettings');
+        navigate("/adminsettings/configuration", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     } else if (isAuthenticated && requiresPasswordChange) {
       // If password change is required, redirect to change password screen
       navigate("/change-password", { replace: true });
     }
-  }, [isAuthenticated, requiresPasswordChange, navigate]);
+  }, [isAuthenticated, requiresPasswordChange, navigate, isAdminSettingsLogin]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -62,7 +73,13 @@ export default function Login() {
       if (requiresPasswordChange) {
         navigate("/change-password", { replace: true });
       } else {
-        navigate("/dashboard", { replace: true });
+        // If coming from admin settings, redirect there after login
+        if (isAdminSettingsLogin) {
+          sessionStorage.removeItem('redirectToAdminSettings');
+          navigate("/adminsettings/configuration", { replace: true });
+        } else {
+          navigate("/dashboard", { replace: true });
+        }
       }
     } catch (err) {
       setError(

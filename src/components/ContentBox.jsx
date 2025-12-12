@@ -212,30 +212,68 @@ const ContentBox = ({
   const [visibleColumns, setVisibleColumns] = useState(
     filters.map((f, i) => ({
       ...f,
-      visible: i < 7 || f.name === "status", // Always show Status column
+      // Preserve existing visible property if set (e.g., from column access control)
+      // If visible is explicitly false (NONE access), always keep it false
+      // Otherwise, use default visibility logic
+      visible: f.visible === false ? false : (f.visible !== undefined ? f.visible : (i < 7 || f.name === "status")), // Always show Status column
     }))
   );
 
   // Sync visibleColumns when incoming filters change
   useEffect(() => {
-    setVisibleColumns(
-      filters.map((f, i) => ({
+    setVisibleColumns(prevVisibleColumns => {
+      // Create a map of previous visibility for user-toggled columns
+      const prevVisibilityMap = new Map(prevVisibleColumns.map(col => [col.name, col.visible]));
+      
+      return filters.map((f, i) => {
+        // If filter has visible=false (from column access NONE), always keep it false
+        if (f.visible === false) {
+          return { ...f, visible: false };
+        }
+        
+        // If filter has visible=true (from column access), use it
+        if (f.visible === true) {
+          // Preserve user's manual toggle if they changed it (unless it was forced to false)
+          const prevVisible = prevVisibilityMap.get(f.name);
+          return { ...f, visible: prevVisible === false ? false : true };
+        }
+        
+        // Otherwise, preserve previous visibility or use default
+        const prevVisible = prevVisibilityMap.get(f.name);
+        return {
         ...f,
-        visible: i < 7 || f.name === "status",
-      }))
-    );
+          visible: prevVisible !== undefined ? prevVisible : (i < 7 || f.name === "status"),
+        };
+      });
+    });
   }, [filters]);
 
   const toggleColumn = (name) => {
+    // Find the original filter to check if it has forced visibility (from column access)
+    const originalFilter = filters.find(f => f.name === name);
+    // If the original filter has visible=false (NONE access), don't allow toggling
+    if (originalFilter && originalFilter.visible === false) {
+      return; // Don't allow toggling columns with NONE access
+    }
+    
     const updated = visibleColumns.map((col) =>
       col.name === name ? { ...col, visible: !col.visible } : col
     );
     setVisibleColumns(updated);
   };
 
-  const visibleFilters = filters.filter(
-    (f) => visibleColumns.find((col) => col.name === f.name)?.visible
-  );
+  // Create visibleFilters in the same order as visibleColumns to ensure column alignment
+  // Use columns directly since filters are derived from columns - this ensures perfect alignment
+  const visibleFilters = visibleColumns
+    .filter((col) => col.visible)
+    .map((col) => {
+      // Find matching filter to preserve filter-specific properties (onChange, options, etc.)
+      const filter = filters.find((f) => f.name === col.name);
+      // Merge column properties with filter properties, prioritizing column label/name
+      return filter 
+        ? { ...filter, label: col.label || filter.label, name: col.name || filter.name }
+        : { label: col.label, name: col.name, options: [], onChange: () => {} };
+    });
 
   const isAllSelected =
     selectedRows.length > 0 && selectedRows.length === data.length;

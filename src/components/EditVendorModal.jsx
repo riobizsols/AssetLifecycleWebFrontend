@@ -599,6 +599,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                 >
                   <option value={1}>Active</option>
                   <option value={0}>Inactive</option>
+                  <option value={4}>Blacklist</option>
                 </select>
               </div>
 

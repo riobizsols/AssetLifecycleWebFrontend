@@ -12,6 +12,8 @@ import SetupWizard from "../pages/setup/SetupWizard";
 import TenantSetup from "../pages/tenant/TenantSetup";
 import Assets from "../pages/Assets";
 import UserRoles from "../pages/masterData/UserRoles";
+import JobRoles from "../pages/masterData/JobRoles";
+import CreateJobRoleNavigation from "../components/jobRoles/CreateJobRoleNavigation";
 import AssignRoles from "../components/AssignRoles";
 import CreateUser from "../pages/masterData/CreateUser";
 import Departments from "../pages/masterData/Departments";
@@ -74,8 +76,13 @@ import BreakdownHistory from "../pages/reports/BreakdownHistory";
 import UsageBasedAssetReport from "../pages/reports/UsageBasedAssetReport";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
 import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
+import BulkSerialNumberPrint from "../pages/reports/BulkSerialNumberPrint";
 import BulkUpload from "../pages/masterData/BulkUpload";
 import SLAReport from "../pages/reports/SLAReport";
+import QAAuditReport from "../pages/reports/QAAuditReport";
+import AdminSettingsRedirect from "./AdminSettingsRedirect";
+import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
+import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -316,6 +323,28 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/bulk-serial-number-print"
+          element={
+            <ProtectedRoute requiredAppId="SERIALNUMBERPRINT">
+              <MainLayout>
+                <BulkSerialNumberPrint />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Bulk Serial Number Print route under admin settings */}
+        <Route
+          path="/adminsettings/configuration/bulk-serial-number-print"
+          element={
+            <ProtectedRoute requiredAppId="BULKSERIALNUMBERPRINT">
+              <AdminSettingsLayout>
+                <BulkSerialNumberPrint />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/reports/breakdown-history"
           element={
             <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
@@ -343,6 +372,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="SLAREPORT">
               <MainLayout>
                 <SLAReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/qa-audit-report"
+          element={
+            <ProtectedRoute requiredAppId="QAAUDITREPORT">
+              <MainLayout>
+                <QAAuditReport />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -577,6 +617,36 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/master-data/job-roles"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <MainLayout>
+                <JobRoles />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/job-roles/create-navigation"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <MainLayout>
+                <CreateJobRoleNavigation />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/job-roles/update-navigation/:navId"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <MainLayout>
+                <CreateJobRoleNavigation />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/master-data/user-roles"
           element={
             <ProtectedRoute requiredAppId="USERS">
@@ -800,6 +870,63 @@ export default function AppRoutes() {
               <MainLayout>
                 <CreateScrapAsset />
               </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Settings Routes */}
+        <Route
+          path="/adminsettings"
+          element={<AdminSettingsRedirect />}
+        />
+        <Route
+          path="/adminsettings/configuration"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <AdminSettingsView />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/data-config"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <ColumnAccessConfig />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Job Roles routes under admin settings - simplified paths */}
+        <Route
+          path="/adminsettings/configuration/job-roles"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <AdminSettingsLayout>
+                <JobRoles />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/job-roles/create-navigation"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <AdminSettingsLayout>
+                <CreateJobRoleNavigation />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/job-roles/update-navigation/:navId"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <AdminSettingsLayout>
+                <CreateJobRoleNavigation />
+              </AdminSettingsLayout>
             </ProtectedRoute>
           }
         />
