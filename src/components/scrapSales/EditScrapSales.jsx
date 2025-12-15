@@ -27,7 +27,7 @@ const EditScrapSales = () => {
   const location = useLocation();
   const { user } = useAuthStore();
   const { t } = useLanguage();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedAssetType, setSelectedAssetType] = useState('');
   const [availableAssets, setAvailableAssets] = useState([]);
   const [selectedAssets, setSelectedAssets] = useState([]);
@@ -48,6 +48,8 @@ const EditScrapSales = () => {
   const [totalScrapValue, setTotalScrapValue] = useState('');
   const [individualValues, setIndividualValues] = useState({});
   const [groupName, setGroupName] = useState('');
+  const [saleDate, setSaleDate] = useState('');
+  const [collectionDate, setCollectionDate] = useState('');
 
   // Mock data for demonstration - replace with actual API calls
   const mockAssetTypes = [
@@ -89,69 +91,145 @@ const EditScrapSales = () => {
   };
 
   useEffect(() => {
-    // Load existing scrap sale data
-    let selectedAssetsData = [];
-    
-    console.log('EditScrapSales - location.state:', location.state);
-    console.log('EditScrapSales - scrapId:', scrapId);
-    
-    if (location.state?.isEdit && location.state?.scrapData) {
-      const data = location.state.scrapData;
-      console.log('EditScrapSales - Received data:', data);
+    const fetchScrapSaleData = async () => {
+      if (!scrapId) return;
       
-      setGroupName(data.group_name || '');
-      setTotalScrapValue(data.total_scrap_value || '');
-      
-      // Set buyer details
-      setBuyerDetails({
-        buyer_name: data.buyer_details?.buyer_name || '',
-        buyer_email: data.buyer_details?.buyer_email || '',
-        buyer_contact: data.buyer_details?.buyer_contact || '',
-        company_name: data.buyer_details?.company_name || ''
-      });
+      setLoading(true);
+      try {
+        // Fetch scrap sale data from API
+        const res = await API.get(`/scrap-sales/${scrapId}`, {
+          params: { context: 'SCRAPSALES' }
+        });
+        
+        const scrapSale = res.data?.scrap_sale || res.data?.data;
+        if (!scrapSale) {
+          toast.error('Scrap sale not found');
+          navigate('/scrap-sales');
+          return;
+        }
 
-      // Set selected assets (assuming the data has selected_assets array)
-      if (data.selected_assets && Array.isArray(data.selected_assets)) {
-        selectedAssetsData = data.selected_assets;
-        setSelectedAssets(data.selected_assets);
-        // Set individual values
+        const header = scrapSale.header || scrapSale;
+        const details = scrapSale.details || [];
+
+        // Set header data
+        setGroupName(header.text || '');
+        const totalValue = Array.isArray(header.total_sale_value) 
+            ? header.total_sale_value[0] 
+            : header.total_sale_value;
+        setTotalScrapValue(totalValue || '');
+        
+        // Set dates if available
+        if (header.sale_date) {
+            const saleDateStr = typeof header.sale_date === 'string' 
+                ? header.sale_date.split('T')[0] 
+                : new Date(header.sale_date).toISOString().split('T')[0];
+            setSaleDate(saleDateStr);
+        } else {
+            // Default to today if not set
+            setSaleDate(new Date().toISOString().split('T')[0]);
+        }
+        
+        if (header.collection_date) {
+            const collectionDateStr = typeof header.collection_date === 'string' 
+                ? header.collection_date.split('T')[0] 
+                : new Date(header.collection_date).toISOString().split('T')[0];
+            setCollectionDate(collectionDateStr);
+        }
+        
+        // Set buyer details (email is not stored in database, so it's optional)
+        setBuyerDetails({
+          buyer_name: header.buyer_name || '',
+          buyer_email: '', // Not stored in database - optional field
+          buyer_contact: header.buyer_phone || '',
+          company_name: header.buyer_company || ''
+        });
+
+        // Fetch asset types to map asset_type_name to asset_type_id
+        let assetTypesMap = {};
+        try {
+          const assetTypesRes = await API.get('/asset-types', {
+            params: { context: 'SCRAPSALES' }
+          });
+          const assetTypes = assetTypesRes.data?.asset_types || assetTypesRes.data?.rows || assetTypesRes.data || [];
+          assetTypesMap = {};
+          assetTypes.forEach(type => {
+            if (type.text || type.asset_type_name) {
+              assetTypesMap[type.text || type.asset_type_name] = type.asset_type_id;
+            }
+          });
+        } catch (error) {
+          console.error('Error fetching asset types:', error);
+        }
+
+        // Transform details to selected assets format
+        const transformedSelectedAssets = details.map(detail => {
+          const assetTypeId = detail.asset_type_id || assetTypesMap[detail.asset_type_name] || '';
+          return {
+            asd_id: detail.asd_id,
+            asset_id: detail.asset_id,
+            name: detail.asset_name || detail.text || '',
+            description: `${detail.asset_type_name || ''} - ${detail.asset_name || ''}`,
+            asset_type_id: assetTypeId,
+            asset_type_name: detail.asset_type_name || '',
+            serial_number: detail.serial_number || '',
+            sale_value: detail.sale_value || 0
+          };
+        });
+
+        setSelectedAssets(transformedSelectedAssets);
+        
+        // Set individual values from sale_value
         const values = {};
-        data.selected_assets.forEach(asset => {
-          values[asset.asset_id] = asset.scrap_value || '';
+        transformedSelectedAssets.forEach(asset => {
+          values[asset.asset_id] = asset.sale_value || '';
         });
         setIndividualValues(values);
-      }
 
-      // Set asset type if available
-      if (data.selected_assets && data.selected_assets.length > 0) {
-        setSelectedAssetType(data.selected_assets[0].asset_type_id || '');
-      }
-    } else {
-      console.log('EditScrapSales - Using mock data');
-      // Load mock data for demonstration
-      setGroupName(mockExistingScrapSale.group_name);
-      setTotalScrapValue(mockExistingScrapSale.total_scrap_value);
-      setBuyerDetails(mockExistingScrapSale.buyer_details);
-      selectedAssetsData = mockExistingScrapSale.selected_assets;
-      setSelectedAssets(mockExistingScrapSale.selected_assets);
-      
-      // Set individual values
-      const values = {};
-      mockExistingScrapSale.selected_assets.forEach(asset => {
-        values[asset.asset_id] = asset.scrap_value || '';
-      });
-      setIndividualValues(values);
-      
-      if (mockExistingScrapSale.selected_assets.length > 0) {
-        setSelectedAssetType(mockExistingScrapSale.selected_assets[0].asset_type_id);
-      }
-    }
+        // Set asset type from first selected asset
+        if (transformedSelectedAssets.length > 0) {
+          const firstAsset = transformedSelectedAssets[0];
+          setSelectedAssetType(firstAsset.asset_type_id || '');
+        }
 
-    // Load available assets (excluding already selected ones)
-    const selectedAssetIds = selectedAssetsData.map(asset => asset.asset_id);
-    console.log('EditScrapSales - Selected asset IDs:', selectedAssetIds);
-    setAvailableAssets(mockAssets.filter(asset => !selectedAssetIds.includes(asset.asset_id)));
-  }, [location.state, scrapId]);
+        // Fetch available assets (excluding already selected ones)
+        const selectedAsdIds = transformedSelectedAssets.map(asset => asset.asd_id);
+        const selectedAssetIds = transformedSelectedAssets.map(asset => asset.asset_id);
+        
+        // Fetch available scrap assets for the asset type
+        if (transformedSelectedAssets.length > 0 && transformedSelectedAssets[0].asset_type_id) {
+          try {
+            const assetTypeRes = await API.get(`/scrap-assets-by-type/${transformedSelectedAssets[0].asset_type_id}`, {
+              params: { context: 'SCRAPSALES' }
+            });
+            
+            const allAvailableAssets = assetTypeRes.data?.scrap_assets || [];
+            
+            // Filter out already selected assets
+            const availableOnlyAssets = allAvailableAssets.filter(asset => 
+              !selectedAsdIds.includes(asset.asd_id) && 
+              !selectedAssetIds.includes(asset.asset_id)
+            );
+            
+            setAvailableAssets(availableOnlyAssets);
+          } catch (error) {
+            console.error('Error fetching available assets:', error);
+            setAvailableAssets([]);
+          }
+        } else {
+          setAvailableAssets([]);
+        }
+
+      } catch (error) {
+        console.error('Error fetching scrap sale:', error);
+        toast.error('Failed to load scrap sale data');
+        navigate('/scrap-sales');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchScrapSaleData();
+  }, [scrapId, navigate]);
 
   const filteredAvailableAssets = availableAssets.filter(asset => {
     const matchesSearch = (asset.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -280,36 +358,48 @@ const EditScrapSales = () => {
       return;
     }
 
-    if (!buyerDetails.buyer_name || !buyerDetails.buyer_email || !buyerDetails.buyer_contact) {
-      toast.error('Please fill in all required buyer details');
+    if (!buyerDetails.buyer_name || !buyerDetails.buyer_contact) {
+      toast.error('Please fill in buyer name and contact number');
       return;
     }
 
     setLoading(true);
     try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const updatedScrapData = {
-        scrap_id: scrapId,
-        group_name: groupName,
-        selected_assets: selectedAssets.map(asset => ({
-          ...asset,
-          scrap_value: individualValues[asset.asset_id] || 0
-        })),
-        total_scrap_value: totalScrapValue || totalIndividualValues,
-        buyer_details: buyerDetails,
-        status: 'Pending',
-        updated_by: user?.name || 'Admin User',
-        updated_date: new Date().toISOString().split('T')[0]
-      };
+      // Prepare scrap assets with sale values
+      const scrapAssetsData = selectedAssets.map(asset => ({
+        asd_id: asset.asd_id,
+        sale_value: individualValues[asset.asset_id] || asset.sale_value || 0
+      }));
 
-      console.log('Updating scrap sale:', updatedScrapData);
-      toast.success('Scrap sale updated successfully!');
-      navigate('/scrap-sales');
+      // Calculate total sale value
+      const finalTotalValue = totalScrapValue || totalIndividualValues;
+
+      // Call update API
+      const response = await API.put(`/scrap-sales/${scrapId}`, {
+        text: groupName,
+        total_sale_value: finalTotalValue,
+        buyer_name: buyerDetails.buyer_name,
+        buyer_company: buyerDetails.company_name || null,
+        buyer_phone: buyerDetails.buyer_contact,
+        sale_date: saleDate || new Date().toISOString().split('T')[0], // Required field
+        collection_date: collectionDate || null,
+        invoice_no: null, // Can be added if needed
+        po_no: null, // Can be added if needed
+        scrapAssets: scrapAssetsData
+      }, {
+        params: { context: 'SCRAPSALES' }
+      });
+
+      if (response.data.success) {
+        toast.success('Scrap sale updated successfully!');
+        navigate('/scrap-sales');
+      } else {
+        throw new Error(response.data.message || 'Update failed');
+      }
     } catch (error) {
       console.error('Error updating scrap sale:', error);
-      toast.error('Failed to update scrap sale');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update scrap sale';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -554,6 +644,17 @@ const EditScrapSales = () => {
       setDocumentTypes([]);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E2F4B] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading scrap sale data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -913,7 +1014,7 @@ const EditScrapSales = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('scrapSales.emailRequired')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('scrapSales.email')} <span className="text-gray-500 text-xs">(Optional)</span></label>
               <input
                 type="email"
                 placeholder={t('scrapSales.emailPlaceholder')}

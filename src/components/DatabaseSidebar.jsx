@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
 import { useLanguage } from "../contexts/LanguageContext";
+import { AdminSettingsContext } from "../contexts/AdminSettingsContext";
 import {
   Menu,
   Eye,
@@ -31,6 +32,7 @@ import {
   GitBranch,
   AlertTriangle,
   Gauge,
+  Printer,
 } from "lucide-react";
 
 const DatabaseSidebar = () => {
@@ -46,6 +48,9 @@ const DatabaseSidebar = () => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
   const { t } = useLanguage();
+  // Get admin settings mode from context (may be undefined if not in provider)
+  const adminSettingsContext = useContext(AdminSettingsContext);
+  const isAdminSettingsMode = adminSettingsContext?.isAdminSettingsMode || false;
 
   const toggleDropdown = (id) => {
     setOpenDropdown(openDropdown === id ? null : id);
@@ -70,6 +75,7 @@ const DatabaseSidebar = () => {
       'Roles': t('navigation.roles'),
       'Users': t('navigation.users'),
       'User Roles': t('navigation.userRoles'),
+      'Column Access Config': t('navigation.columnAccessConfig'),
       'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
       'Department Assignment': t('navigation.departmentAssignment'),
@@ -103,11 +109,6 @@ const DatabaseSidebar = () => {
       'SLA Reports': t('navigation.slaReport'),
       'Usage-Based Asset...': t('navigation.usageBasedAssetReport'),
     };
-    
-    // Debug: Log the label to see what's being passed
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Translating label:', label, '→', labelMap[label] || label);
-    }
     
     return labelMap[label] || label; // Return original label if no translation found
   };
@@ -157,9 +158,11 @@ const DatabaseSidebar = () => {
     ASSETVALUATION: "/reports/asset-valuation",  //done
     ASSETWORKFLOWHISTORY: "/reports/asset-workflow-history", //done
     SERIALNUMBERPRINT: "/serial-number-print", //not required
+    BULKSERIALNUMBERPRINT: "/bulk-serial-number-print", // Bulk Serial Number Print route
     BREAKDOWNHISTORY: "/reports/breakdown-history",  //done
     USAGEBASEDASSETREPORT: "/reports/usage-based-asset",  //done
     SLAREPORT: "/reports/sla-report",  //done
+    QAAUDITREPORT: "/reports/qa-audit-report",  //done
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
     MASTERDATA: "/master-data/vendors",  //done
     ORGANIZATIONS: "/master-data/organizations",  //done
@@ -171,9 +174,11 @@ const DatabaseSidebar = () => {
     PRODSERV: "/master-data/prod-serv",  //no required
     ROLES: "/master-data/uploads",
     USERS: "/master-data/user-roles",
+    USERROLES: "/master-data/job-roles", // Job Roles route
     MAINTENANCESCHEDULE: "/maintenance-schedule-view", // Unique route
     AUDITLOGS: "/audit-logs-view", // Unique route  //done
     AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route  //done
+    COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config", // Column Access Config route
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
@@ -204,6 +209,7 @@ const DatabaseSidebar = () => {
       BREAKDOWNHISTORY: AlertTriangle,
       USAGEBASEDASSETREPORT: Gauge,
       SLAREPORT: FileText,
+      QAAUDITREPORT: FileText,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
       ORGANIZATIONS: Building,
@@ -219,6 +225,7 @@ const DatabaseSidebar = () => {
       MAINTENANCESCHEDULE: Calendar,
       AUDITLOGS: History,
       AUDITLOGCONFIG: Settings,
+      COLUMNACCESSCONFIG: Settings,
       GROUPASSET: Package,
       SCRAPSALES: Package,
       SCRAPASSETS: Package,
@@ -228,9 +235,98 @@ const DatabaseSidebar = () => {
     return () => <IconComponent size={16} />;
   };
 
+  // Get path - in admin settings mode, use simplified paths under /adminsettings/configuration
+  const getPath = (appId) => {
+    const basePath = appIdToPath[appId];
+    if (!basePath) {
+      return isAdminSettingsMode ? "/adminsettings/configuration" : "/dashboard";
+    }
+    
+    // If in admin settings mode, use simplified paths
+    if (isAdminSettingsMode) {
+      // For admin settings itself, return configuration path
+      if (appId === "ADMINSETTINGS") {
+        return "/adminsettings/configuration";
+      }
+      
+      // For admin settings only items, use simplified paths
+      // Add custom path mappings here for admin settings items
+      const adminSettingsPathMap = {
+        "USERROLES": "/adminsettings/configuration/job-roles",
+        "BULKSERIALNUMBERPRINT": "/adminsettings/configuration/bulk-serial-number-print",
+        "COLUMNACCESSCONFIG": "/adminsettings/configuration/data-config",
+        // Add more mappings here as you add more admin settings menu items
+        // Example: "NEW_APP_ID": "/adminsettings/configuration/new-path",
+      };
+      
+      if (adminSettingsPathMap[appId]) {
+        return adminSettingsPathMap[appId];
+      }
+      
+      // For all other routes, prefix with /adminsettings/configuration
+      // Remove leading slash from basePath to avoid double slashes
+      const cleanPath = basePath.startsWith('/') ? basePath.substring(1) : basePath;
+      return `/adminsettings/configuration/${cleanPath}`;
+    }
+    
+    // Normal mode - use base path
+    return basePath;
+  };
+
+  // App IDs that should only be visible in admin settings mode (/adminsettings/configuration routes)
+  // Add more app IDs here as needed for future admin settings menu items
+  const adminSettingsOnlyAppIds = ["USERROLES", "BULKSERIALNUMBERPRINT", "COLUMNACCESSCONFIG"];
+
+  // Filter navigation items - admin settings only items visible only in admin settings mode
+  const shouldShowItem = (item) => {
+    const isAdminSettingsOnlyItem = adminSettingsOnlyAppIds.includes(item.app_id);
+    
+    // Hide admin settings only items when NOT in admin settings mode
+    if (!isAdminSettingsMode) {
+      if (isAdminSettingsOnlyItem) {
+        return false;
+      }
+      // Check if any child is an admin settings only item and hide the parent if needed
+      if (item.children && item.children.length > 0) {
+        const hasAdminSettingsChild = item.children.some(child => 
+          adminSettingsOnlyAppIds.includes(child.app_id)
+        );
+        if (hasAdminSettingsChild) {
+          // Hide parent groups that only contain admin settings items
+          const nonAdminSettingsChildren = item.children.filter(child => 
+            !adminSettingsOnlyAppIds.includes(child.app_id)
+          );
+          // If all children are admin settings items, hide the parent
+          if (nonAdminSettingsChildren.length === 0) {
+            return false;
+          }
+        }
+      }
+      // Show all other items normally
+      return true;
+    }
+    
+    // In admin settings mode, only show admin settings only items
+    if (isAdminSettingsOnlyItem) {
+      return true;
+    }
+    
+    // Check children for admin settings only items
+    if (item.children && item.children.length > 0) {
+      return item.children.some(child => adminSettingsOnlyAppIds.includes(child.app_id));
+    }
+    
+    return false;
+  };
+
   // Render navigation item
   const renderNavigationItem = (item) => {
-    const path = appIdToPath[item.app_id];
+    // Filter items when in admin settings mode
+    if (!shouldShowItem(item)) {
+      return null;
+    }
+
+    const path = getPath(item.app_id);
     const accessLevel = getAccessLevel(item.app_id);
     const IconComponent = getIconComponent(item.app_id);
 
@@ -238,9 +334,14 @@ const DatabaseSidebar = () => {
       const hasChildren = item.children && item.children.length > 0;
       const isAnyChildActive =
         hasChildren &&
-        item.children.some((child) =>
-          location.pathname.startsWith(appIdToPath[child.app_id])
-        );
+        item.children.some((child) => {
+          const childPath = getPath(child.app_id);
+          // For COLUMNACCESSCONFIG, check exact match since it shares path with ADMINSETTINGS
+          if (child.app_id === "COLUMNACCESSCONFIG") {
+            return location.pathname === childPath;
+          }
+          return location.pathname.startsWith(childPath);
+        });
 
       return (
         <li key={item.id} className="mb-2">
@@ -275,24 +376,53 @@ const DatabaseSidebar = () => {
           {!collapsed && openDropdown === item.id && hasChildren && (
             <ul className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
-                const childPath = appIdToPath[child.app_id];
+                const isAdminSettingsOnlyChild = adminSettingsOnlyAppIds.includes(child.app_id);
+                
+                // Hide admin settings only items when NOT in admin settings mode
+                if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
+                  return null;
+                }
+                
+                // In admin settings mode, only show admin settings only children
+                if (isAdminSettingsMode && !isAdminSettingsOnlyChild) {
+                  return null;
+                }
+
+                const childPath = getPath(child.app_id);
                 const childAccessLevel = getAccessLevel(child.app_id);
                 const ChildIconComponent = getIconComponent(child.app_id);
 
                 // Only show children that have access
                 if (!childAccessLevel) return null;
 
+                // For COLUMNACCESSCONFIG, use exact path matching
+                const isExactMatch = child.app_id === "COLUMNACCESSCONFIG";
+                const customIsActive = isExactMatch 
+                  ? location.pathname === childPath
+                  : undefined; // Let NavLink handle it normally for others
+
+                // For COLUMNACCESSCONFIG, check exact path match
+                const isColumnAccessConfig = child.app_id === "COLUMNACCESSCONFIG";
+                const isActiveForColumnAccess = isColumnAccessConfig 
+                  ? location.pathname === childPath
+                  : undefined;
+
                 return (
                   <li key={child.id} className="mb-1">
                     <NavLink
                       to={childPath || "/dashboard"}
-                      className={({ isActive }) =>
-                        `group flex items-center gap-2 px-4 py-2 rounded text-sm ${
-                          isActive
+                      end={isColumnAccessConfig} // Use exact match for COLUMNACCESSCONFIG
+                      className={({ isActive }) => {
+                        // Use exact match check for COLUMNACCESSCONFIG
+                        const active = isColumnAccessConfig 
+                          ? isActiveForColumnAccess 
+                          : isActive;
+                        return `group flex items-center gap-2 px-4 py-2 rounded text-sm ${
+                          active
                             ? "bg-[#FFC107] text-white"
                             : "hover:bg-[#143d65] text-white"
-                        } ${getAccessColorClass(childAccessLevel)}`
-                      }
+                        } ${getAccessColorClass(childAccessLevel)}`;
+                      }}
                       title={translateLabel(child.label)}
                     >
                       {ChildIconComponent && (
@@ -316,17 +446,28 @@ const DatabaseSidebar = () => {
       // Only show items that have access
       if (!accessLevel) return null;
 
+      // For COLUMNACCESSCONFIG, check exact path match
+      const isColumnAccessConfig = item.app_id === "COLUMNACCESSCONFIG";
+      const isActiveForColumnAccess = isColumnAccessConfig 
+        ? location.pathname === path
+        : undefined;
+
       return (
         <li key={item.id} className="mb-2">
           <NavLink
             to={path || "/dashboard"}
-            className={({ isActive }) =>
-              `group flex items-center gap-2 px-4 py-2 rounded ${
-                isActive
+            end={isColumnAccessConfig} // Use exact match for COLUMNACCESSCONFIG
+            className={({ isActive }) => {
+              // Use exact match check for COLUMNACCESSCONFIG
+              const active = isColumnAccessConfig 
+                ? isActiveForColumnAccess 
+                : isActive;
+              return `group flex items-center gap-2 px-4 py-2 rounded ${
+                active
                   ? "bg-[#FFC107] text-white"
                   : "hover:bg-[#143d65] text-white"
-              } ${getAccessColorClass(accessLevel)}`
-            }
+              } ${getAccessColorClass(accessLevel)}`;
+            }}
               title={!collapsed ? translateLabel(item.label) : ""}
             >
               {IconComponent && <IconComponent className="flex-shrink-0" />}

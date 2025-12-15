@@ -13,6 +13,7 @@ import { ASSETS_APP_ID } from "../constants/assetsAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import { translateErrorMessage } from "../utils/errorTranslation";
 import { useNavigation } from "../hooks/useNavigation";
+import useColumnAccess from "../hooks/useColumnAccess";
 
 const Assets = () => {
   const navigate = useNavigate();
@@ -21,6 +22,9 @@ const Assets = () => {
   
   // Get navigation permissions
   const { canEdit, canCreate, canDelete, getAccessLevel } = useNavigation();
+  
+  // Get column access for tblAssets
+  const { isVisible: isColumnVisible, loading: columnAccessLoading, columnAccess } = useColumnAccess('tblAssets');
   
   // Check access levels for ASSETS app_id
   const hasEditAccess = canEdit('ASSETS');
@@ -45,8 +49,8 @@ const Assets = () => {
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
 
-  // Create columns with translations
-  const columns = [
+  // Create columns with translations and apply column access
+  const allColumns = [
     { label: t('assets.assetId'), name: "asset_id", visible: true },
     { label: t('assets.assetTypeId'), name: "asset_type_id", visible: true },
     { label: t('assets.assetType'), name: "text", visible: true },
@@ -59,13 +63,32 @@ const Assets = () => {
     { label: t('assets.expiryDate'), name: "expiry_date", visible: true },
     { label: t('assets.warrantyPeriod'), name: "warranty_period", visible: true },
     { label: t('assets.branchId'), name: "branch_id", visible: true },
-    { label: t('assets.vendorId'), name: "vendor_id", visible: true },
     { label: t('assets.parentId'), name: "parent_asset_id", visible: true },
     { label: t('assets.groupId'), name: "group_id", visible: true },
     { label: t('assets.maintenanceScheduleId'), name: "maintsch_id", visible: false },
     { label: t('assets.productServiceId'), name: "prod_serv_id", visible: false },
     { label: t('assets.extId'), name: "ext_id", visible: false },
   ];
+
+  // Apply column access - filter out columns with NONE access
+  // Wait for column access to load before showing columns to prevent flash
+  const columns = allColumns.map(col => {
+    // While loading, don't show any columns (set all to invisible)
+    // After loading, apply access control
+    const shouldBeVisible = columnAccessLoading 
+      ? false // Hide all columns while loading to prevent flash
+      : isColumnVisible(col.name);
+    
+    // Only log if column should be hidden to reduce console noise
+    if (!shouldBeVisible && !columnAccessLoading) {
+      console.log(`[Assets] Column ${col.name}: HIDDEN - accessLevel=${columnAccess.get(col.name) || 'AUTH'}`);
+    }
+    
+    return {
+      ...col,
+      visible: col.visible && shouldBeVisible
+    };
+  }); // Keep all columns but set visible=false for NONE access - ContentBox will handle hiding them
 
   useEffect(() => {
     fetchAssets();
@@ -342,6 +365,7 @@ const Assets = () => {
   const filters = columns.map((col) => ({
     label: col.label,
     name: col.name,
+    visible: col.visible, // Preserve the visible property from column access
     options: col.name === 'current_status' ? [
       { label: t('assets.active'), value: "Active" },
       { label: t('assets.inactive'), value: "Inactive" },
@@ -352,6 +376,14 @@ const Assets = () => {
 
   return (
     <div className="p-4">
+      {columnAccessLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading column access...</p>
+          </div>
+        </div>
+      ) : (
       <ContentBox
         filters={filters}
         onFilterChange={handleFilterChange}
@@ -454,6 +486,7 @@ const Assets = () => {
           );
         }}
       </ContentBox>
+      )}
     </div>
   );
 };

@@ -1266,7 +1266,13 @@ const AddAssetForm = ({ userRole }) => {
                   {t('assets.serialNumber')} <span className="text-red-500">*</span>
                 </label>
                               <div className="flex items-center">
-                <input name="serialNumber" placeholder="" onChange={handleChange} value={form.serialNumber} className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${validationErrors.serialNumber ? 'border-red-500' : 'border-gray-300'}`} />
+                <input 
+                  name="serialNumber" 
+                  placeholder="" 
+                  onChange={handleChange} 
+                  value={form.serialNumber} 
+                  className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${validationErrors.serialNumber ? 'border-red-500' : 'border-gray-300'}`} 
+                />
                 <button
                   type="button"
                   onClick={() => {
@@ -1285,7 +1291,14 @@ const AddAssetForm = ({ userRole }) => {
               </div>
               <div className="col-span-4">
                 <label className="block text-sm mb-1 font-medium">{t('assets.assetName')}</label>
-                <textarea name="description" placeholder="" onChange={handleChange} value={form.description} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm" rows={3}></textarea>
+                <textarea 
+                  name="description" 
+                  placeholder="" 
+                  onChange={handleChange} 
+                  value={form.description} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm" 
+                  rows={3}
+                ></textarea>
               </div>
               {/* Location */}
               <div>
@@ -1310,25 +1323,52 @@ const AddAssetForm = ({ userRole }) => {
               <div className="grid grid-cols-4 gap-6 mb-4">
                 <div>
                   <label className="block text-sm mb-1 font-medium">{t('assets.expiryDate')} <span className="text-red-500">*</span></label>
-                  <input name="expiryDate" type="date" onChange={handleChange} value={form.expiryDate} className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.expiryDate ? 'border-red-500' : 'border-gray-300'}`} />
+                  <input 
+                    name="expiryDate" 
+                    type="date" 
+                    onChange={handleChange} 
+                    value={form.expiryDate} 
+                    className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.expiryDate ? 'border-red-500' : 'border-gray-300'}`} 
+                  />
                   {validationErrors.expiryDate && (
                     <p className="mt-1 text-sm text-red-600">{t('assets.expiryDateIsRequired')}</p>
                   )}
                 </div>
                 <div>
                   <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
-                  <input name="warrantyPeriod" type="text" placeholder="e.g., 2 years" onChange={handleChange} value={form.warrantyPeriod} className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" />
+                  <input 
+                    name="warrantyPeriod" 
+                    type="text" 
+                    placeholder="e.g., 2 years" 
+                    onChange={handleChange} 
+                    value={form.warrantyPeriod} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm mb-1 font-medium">{t('assets.purchaseDate')} <span className="text-red-500">*</span></label>
-                  <input name="purchaseDate" type="date" onChange={handleChange} value={form.purchaseDate} className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseDate ? 'border-red-500' : 'border-gray-300'}`} />
+                  <input 
+                    name="purchaseDate" 
+                    type="date" 
+                    onChange={handleChange} 
+                    value={form.purchaseDate} 
+                    className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseDate ? 'border-red-500' : 'border-gray-300'}`} 
+                  />
                   {validationErrors.purchaseDate && (
                     <p className="mt-1 text-sm text-red-600">{t('assets.purchaseDateIsRequired')}</p>
                   )}
                 </div>
                 <div>
                   <label className="block text-sm mb-1 font-medium">{t('assets.purchaseCost')} <span className="text-red-500">*</span></label>
-                  <input name="purchaseCost" type="number" step="0.01" placeholder="0.00" onChange={handleChange} value={form.purchaseCost} className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseCost ? 'border-red-500' : 'border-gray-300'}`} />
+                  <input 
+                    name="purchaseCost" 
+                    type="number" 
+                    step="0.01" 
+                    placeholder="0.00" 
+                    onChange={handleChange} 
+                    value={form.purchaseCost} 
+                    className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseCost ? 'border-red-500' : 'border-gray-300'}`} 
+                  />
                   {validationErrors.purchaseCost && (
                     <p className="mt-1 text-sm text-red-600">{t('assets.purchaseCostIsRequired')}</p>
                   )}
@@ -1390,6 +1430,7 @@ const AddAssetForm = ({ userRole }) => {
                     <p className="mt-1 text-sm text-red-600">{t('assets.purchaseByIsRequired')}</p>
                   )}
                 </div>
+                )}
               </div>
             </>
           )}

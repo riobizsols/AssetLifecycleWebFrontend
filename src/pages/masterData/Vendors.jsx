@@ -73,7 +73,7 @@ const Vendors = () => {
         const response = await API.get("/get-vendors");
         const formattedData = response.data.map(item => ({
           ...item,
-          int_status: item.int_status === 1 ? 'Active' : 'Inactive',
+          int_status: item.int_status === 1 ? 'Active' : item.int_status === 4 ? 'Blacklist' : 'Inactive',
           created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
           changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : ''
         }));

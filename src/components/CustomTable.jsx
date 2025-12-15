@@ -74,10 +74,12 @@ const CustomTable = ({
 
   return (
     <>
-      {data.map((row, rowIndex) => (
+      {data.map((row, rowIndex) => {
+        const isRowSelected = selectedRows && selectedRows.includes(row[rowKey]);
+        return (
         <tr
           key={row[rowKey] || rowIndex}
-          className={`border-t${onRowClick ? ' cursor-pointer hover:bg-gray-100' : ''}`}
+          className={`border-t${onRowClick ? ' cursor-pointer hover:bg-gray-100' : ''}${isRowSelected ? ' bg-blue-50' : ''}`}
           onClick={onRowClick ? () => onRowClick(row) : undefined}
         >
           {visible.map((col, colIndex) => (
@@ -87,15 +89,19 @@ const CustomTable = ({
                   {showActions && showCheckbox && !isReadOnly && (
                     <input
                       type="checkbox"
-                      checked={selectedRows.includes(row[rowKey])}
-                      onChange={() => toggleRow(row[rowKey])}
+                      checked={selectedRows && selectedRows.includes(row[rowKey])}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        toggleRow(row[rowKey]);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
                       className="accent-yellow-400"
                     />
                   )}
-                  {renderCellContent(col, row)}
+                  {renderCell ? renderCell(col, row) : renderCellContent(col, row)}
                 </div>
               ) : (
-                renderCellContent(col, row)
+                renderCell ? renderCell(col, row) : renderCellContent(col, row)
               )}
             </td>
           ))}
@@ -153,7 +159,8 @@ const CustomTable = ({
             </td>
           )}
         </tr>
-      ))}
+        );
+      })}
     </>
   );
 };

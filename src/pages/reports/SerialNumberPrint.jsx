@@ -141,22 +141,22 @@ const SerialNumberPrint = () => {
           created_by: item.created_by,
           created_at: item.created_on,
           org_id: item.org_id,
-          // Asset details
+          // Asset details - ensure asset_name comes from asset_details, not asset_type_details
           asset_id: item.asset_details?.asset_id,
-          asset_name: item.asset_details?.asset_name,
+          asset_name: item.asset_details?.asset_name || '', // Use asset name from asset_details
+          asset_description: item.asset_details?.asset_description || '', // Use description from tblAssets
           asset_serial_number: item.asset_details?.asset_serial_number,
           purchased_on: item.asset_details?.purchased_on,
           expiry_date: item.asset_details?.expiry_date,
           current_status: item.asset_details?.current_status,
           // Asset type details
           asset_type_id: item.asset_type_details?.asset_type_id,
-          asset_type_name: item.asset_type_details?.asset_type_name,
+          asset_type_name: item.asset_type_details?.asset_type_name || '', // Use asset type name from asset_type_details
           assignment_type: item.asset_type_details?.assignment_type,
           maint_required: item.asset_type_details?.maint_required,
           inspection_required: item.asset_type_details?.inspection_required,
           group_required: item.asset_type_details?.group_required,
           // Additional fields for compatibility
-          asset_description: item.asset_details?.asset_name || '',
           estimated_cost: 0 // Default cost
         }));
         
@@ -248,7 +248,6 @@ const SerialNumberPrint = () => {
     { name: 'serial_number', label: 'Serial Number', visible: true },
     { name: 'asset_type_name', label: 'Asset Type', visible: true },
     { name: 'asset_name', label: 'Asset Name', visible: true },
-    { name: 'asset_description', label: 'Description', visible: true },
     { name: 'reason', label: 'Reason', visible: true },
     { name: 'status', label: 'Status', visible: true },
     { name: 'created_at', label: 'Created Date', visible: true },

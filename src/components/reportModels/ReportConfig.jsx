@@ -470,6 +470,28 @@ export const REPORTS = [
       "SLA ID", "SLA Description", "SLA Value (hrs)"
     ],
   },
+  {
+    id: "qa-audit-report",
+    name: "QA / Audit Reports",
+    description: "Generate and download quality and audit certificates with advanced filtering options.",
+    quickFields: [
+      { key: "dateRange", label: "Date Range", type: "daterange", preset: "COMMON" },
+      { key: "assetType", label: "Asset Type", type: "multiselect", domain: [] },
+      { key: "assets", label: "Assets", type: "multiselect", domain: [] },
+    ],
+    fields: [
+      { key: "property", label: "Property", type: "select", domain: [] },
+      { key: "operator", label: "Operator", type: "select", domain: ["=", "!=", ">", "<", ">=", "<=", "contains", "starts with", "ends with"] },
+      { key: "value", label: "Value", type: "select", domain: [] },
+    ],
+    defaultColumns: [
+      "Asset ID", "Asset Name", "Asset Type", "Quality Certificates", "Maintenance Certificates", "Date"
+    ],
+    allColumns: [
+      "Asset ID", "Asset Name", "Asset Type", "Serial Number", "Department", "Branch",
+      "Quality Certificates", "Maintenance Certificates", "Certificate Date", "Status"
+    ],
+  },
 ];
 
 // Filtering logic

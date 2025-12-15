@@ -43,7 +43,11 @@ export default function ReportLayout({
   apiData,
   exportService,
   onGenerateReport,
-  onExportReport
+  onExportReport,
+  hideTable = false,
+  hideAdvancedFilters = false,
+  hideGenerateReport = false,
+  onPreviewReport
 }) {
   const { t } = useLanguage();
   const [isSaving, setIsSaving] = useState(false);
@@ -160,6 +164,7 @@ export default function ReportLayout({
       case 'vendorId':
         return filterOptions.vendor_options || [];
       case 'assetId':
+      case 'assets':
         // Transform assets to dropdown format: {value: asset_id, label: asset_id - asset_name}
         if (filterOptions.assets && Array.isArray(filterOptions.assets)) {
           return filterOptions.assets.map(asset => ({
@@ -543,7 +548,7 @@ export default function ReportLayout({
       csvContent.push(`In-Use Assets Value,₹${totals.inUse.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })},${totals.inUseCount} active assets`);
       csvContent.push(`Scrap Assets Value,₹${totals.scrap.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })},${totals.scrapCount} disposed assets`);
       csvContent.push(`Total Portfolio Value,₹${totals.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })},${totals.totalCount} total assets`);
-      csvContent.push(`Average Asset Value,₹${totals.totalCount > 0 ? (totals.total / totals.totalCount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'},per asset`);
+      csvContent.push(`Current Value After Depreciation,₹${totals.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })},${totals.totalCount} total assets`);
       csvContent.push(''); // Empty line for spacing
     }
     
@@ -610,7 +615,7 @@ export default function ReportLayout({
         ["In-Use Assets Value", `₹${totals.inUse.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `${totals.inUseCount} active assets`],
         ["Scrap Assets Value", `₹${totals.scrap.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `${totals.scrapCount} disposed assets`],
         ["Total Portfolio Value", `₹${totals.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `${totals.totalCount} total assets`],
-        ["Average Asset Value", `₹${totals.totalCount > 0 ? (totals.total / totals.totalCount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}`, "per asset"]
+        ["Current Value After Depreciation", `₹${totals.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, `${totals.totalCount} total assets`]
       ];
       
       autoTable(doc, {
@@ -760,7 +765,7 @@ export default function ReportLayout({
                 {t('reports.saveView')}
               </button>
             )}
-            <DropdownMenu label={t('reports.export')} options={exportOptions} />
+            {!hideGenerateReport && <DropdownMenu label={t('reports.export')} options={exportOptions} />}
           </div>
         </div>
         
@@ -817,17 +822,17 @@ export default function ReportLayout({
                 </div>
               </div>
               
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-800">{t('reports.averageAssetValue')}</p>
-                    <p className="text-lg font-semibold text-gray-900">₹{totals.totalCount > 0 ? (totals.total / totals.totalCount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</p>
-                    <p className="text-xs text-gray-600">{t('reports.perAsset')}</p>
+                    <p className="text-sm font-medium text-purple-800">{t('reports.currentValueAfterDepreciation')}</p>
+                    <p className="text-lg font-semibold text-purple-900">₹{totals.total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-purple-600">{totals.totalCount} {t('reports.totalAssets')}</p>
                   </div>
                 </div>
               </div>
@@ -918,9 +923,11 @@ export default function ReportLayout({
               </div>
 
               {/* Advanced */}
-              <div className="mt-4">
-                <AdvancedBuilder fields={translatedReport.fields} value={advanced} onChange={setAdvanced} />
-              </div>
+              {!hideAdvancedFilters && (
+                <div className="mt-4">
+                  <AdvancedBuilder fields={translatedReport.fields} value={advanced} onChange={setAdvanced} />
+                </div>
+              )}
                {/* Active Chips */}
                <div className="mt-3">
                  <SectionTitle>{t('reports.activeFilters')}</SectionTitle>
@@ -950,48 +957,51 @@ export default function ReportLayout({
                    </button>
                  )}
                  <button 
-                   onClick={handlePreviewReport}
+                   onClick={onPreviewReport || handlePreviewReport}
                    className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm hover:bg-gray-50"
                  >
                    {t('reports.preview')}
                  </button>
                 
-                {/* Generate Report Button - Show dropdown for asset-valuation */}
-                {translatedReport.id === 'asset-valuation' ? (
-                  <DropdownMenu
-                    label={isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
-                    options={[
-                      {
-                        label: t('reports.pdfReport'),
-                        action: () => handleGenerateReport('pdf')
-                      },
-                      {
-                        label: t('reports.excelReport'),
-                        action: () => handleGenerateReport('excel')
-                      },
-                      {
-                        label: t('reports.csvReport'),
-                        action: () => handleGenerateReport('csv')
-                      },
-                      {
-                        label: t('reports.jsonReport'),
-                        action: () => handleGenerateReport('json')
-                      }
-                    ]}
-                  />
-                ) : (
-                  <button 
-                    onClick={() => handleGenerateReport('pdf')}
-                    disabled={isGeneratingReport}
-                    className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1e5a8a]"
-                  >
-                    {isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
-                  </button>
+                {/* Generate Report Button - Hidden if hideGenerateReport prop is true */}
+                {!hideGenerateReport && (
+                  translatedReport.id === 'asset-valuation' ? (
+                    <DropdownMenu
+                      label={isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
+                      options={[
+                        {
+                          label: t('reports.pdfReport'),
+                          action: () => handleGenerateReport('pdf')
+                        },
+                        {
+                          label: t('reports.excelReport'),
+                          action: () => handleGenerateReport('excel')
+                        },
+                        {
+                          label: t('reports.csvReport'),
+                          action: () => handleGenerateReport('csv')
+                        },
+                        {
+                          label: t('reports.jsonReport'),
+                          action: () => handleGenerateReport('json')
+                        }
+                      ]}
+                    />
+                  ) : (
+                    <button 
+                      onClick={() => handleGenerateReport('pdf')}
+                      disabled={isGeneratingReport}
+                      className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1e5a8a]"
+                    >
+                      {isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
+                    </button>
+                  )
                 )}
               </div>
             </div>
             
-            {/* Preview Table */}
+            {/* Preview Table - Hidden if hideTable prop is true */}
+            {!hideTable && (
             <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-3 border-b border-slate-200 flex items-center justify-between">
                 <div className="text-sm text-slate-600">{t('reports.previewTable')} • {filteredRows.length} {t('reports.rows')}</div>
@@ -1029,40 +1039,99 @@ export default function ReportLayout({
                 <table className="min-w-full text-sm" style={{ minWidth: '800px' }}>
                   <thead className="bg-slate-50 sticky top-0">
                     <tr>
-                      {cols.map((col) => (
-                        <th key={col} className="text-left font-medium text-slate-600 px-3 py-2 border-b border-slate-200 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-2">
-                            {getTranslatedColumnHeader(col, t)}
-                            <button
-                              type="button"
-                              title={t('reports.removeColumnTooltip')}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setColumns((prev) => (prev || cols).filter((c) => c !== col));
-                              }}
-                              className="text-slate-400 hover:text-red-600"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        </th>
-                      ))}
+                      {cols.map((col) => {
+                        // Determine alignment based on column type
+                        const isNumeric = [
+                          "Quality Certificates",
+                          "Maintenance Certificates",
+                          "Current Value",
+                          "Original Cost",
+                          "Accumulated Depreciation",
+                          "Net Book Value",
+                          "Purchase Cost",
+                          "Sale Amount"
+                        ].includes(col);
+                        
+                        const isDate = [
+                          "Date",
+                          "Certificate Date",
+                          "Purchase Date",
+                          "Commissioned Date",
+                          "Scrap Date",
+                          "Sale Date"
+                        ].includes(col);
+                        
+                        const alignClass = isNumeric 
+                          ? "text-right" 
+                          : isDate 
+                          ? "text-center" 
+                          : "text-left";
+                        
+                        return (
+                          <th key={col} className={`${alignClass} font-medium text-slate-600 px-3 py-2 border-b border-slate-200 whitespace-nowrap`}>
+                            <span className="inline-flex items-center gap-2">
+                              {getTranslatedColumnHeader(col, t)}
+                              <button
+                                type="button"
+                                title={t('reports.removeColumnTooltip')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setColumns((prev) => (prev || cols).filter((c) => c !== col));
+                                }}
+                                className="text-slate-400 hover:text-red-600"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredRows.map((r, idx) => (
                       <tr key={idx} className="odd:bg-white even:bg-slate-50">
-                        {cols.map((c) => (
-                          <td key={c} className="px-3 py-2 border-b border-slate-100 whitespace-nowrap">
-                            {String(r[c] ?? "")}
-                          </td>
-                        ))}
+                        {cols.map((c) => {
+                          // Determine alignment based on column type
+                          const isNumeric = [
+                            "Quality Certificates",
+                            "Maintenance Certificates",
+                            "Current Value",
+                            "Original Cost",
+                            "Accumulated Depreciation",
+                            "Net Book Value",
+                            "Purchase Cost",
+                            "Sale Amount"
+                          ].includes(c);
+                          
+                          const isDate = [
+                            "Date",
+                            "Certificate Date",
+                            "Purchase Date",
+                            "Commissioned Date",
+                            "Scrap Date",
+                            "Sale Date"
+                          ].includes(c);
+                          
+                          const alignClass = isNumeric 
+                            ? "text-right" 
+                            : isDate 
+                            ? "text-center" 
+                            : "text-left";
+                          
+                          return (
+                            <td key={c} className={`px-3 py-2 border-b border-slate-100 whitespace-nowrap ${alignClass}`}>
+                              {String(r[c] ?? "")}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
+            )}
           </main>
         </div>
       </div>
