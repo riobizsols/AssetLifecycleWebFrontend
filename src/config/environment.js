@@ -36,11 +36,13 @@ const getDynamicApiBaseUrl = () => {
                         parts[0] !== ''; // First part is the subdomain
     
     if (hasSubdomain) {
-      // In development, backend is typically on port 5001
+      // In development, backend is typically on port 5001 (or from env)
       // In production, backend is on the same domain (no port or standard ports)
       let backendPort = '';
       if (currentEnv === 'development') {
-        backendPort = ':5001'; // Backend port in development
+        // Use VITE_API_PORT if set, otherwise default to 5001
+        const apiPort = import.meta.env.VITE_API_PORT || '5001';
+        backendPort = `:${apiPort}`;
       } else if (currentPort && currentPort !== '80' && currentPort !== '443') {
         // In production, if there's a non-standard port, use it
         backendPort = `:${currentPort}`;
