@@ -40,7 +40,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const [maintenanceTypes, setMaintenanceTypes] = useState([]);
   const [selectedMaintenanceType, setSelectedMaintenanceType] = useState("");
   const [maintenanceLeadType, setMaintenanceLeadType] = useState("");
-  
   // Properties state variables
   const [properties, setProperties] = useState([]);
   const [selectedProperties, setSelectedProperties] = useState([]);
@@ -233,6 +232,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       setMaintenanceTypes([]);
     }
   };
+
 
   const fetchDocumentTypes = async () => {
     try {
@@ -440,6 +440,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       );
       return;
     }
+
 
     setIsSubmitting(true);
 
@@ -826,6 +827,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                   placeholder={t('assetTypes.enterMaintenanceLeadType')}
                 />
               </div>
+
             </div>
           )}
 

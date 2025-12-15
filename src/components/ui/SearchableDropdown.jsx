@@ -65,13 +65,13 @@ const SearchableDropdown = ({
         ref={buttonRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 text-left border rounded-md flex items-center justify-between ${disabled
+        className={`w-full px-3 py-2 text-left border rounded-md flex items-center justify-between min-w-0 ${disabled
             ? 'bg-gray-100 cursor-not-allowed text-gray-500'
             : 'bg-white hover:bg-gray-50'
           }`}
       >
-        <span className="truncate">{displayValue}</span>
-        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'transform rotate-180' : ''}`} />
+        <span className="truncate min-w-0 flex-1">{displayValue}</span>
+        <ChevronDown className={`w-4 h-4 transition-transform flex-shrink-0 ml-2 ${isOpen ? 'transform rotate-180' : ''}`} />
       </button>
 
       {isOpen && !disabled && createPortal(
@@ -106,7 +106,7 @@ const SearchableDropdown = ({
                   setIsOpen(false);
                   setSearchTerm("");
                 }}
-                className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${option[valueKey] === value ? 'bg-gray-100' : ''
+                className={`px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm ${option[valueKey] === value ? 'bg-gray-100' : ''
                   }`}
               >
                 {option[displayKey]}

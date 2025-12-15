@@ -11,6 +11,8 @@ import SetupWizard from "../pages/setup/SetupWizard";
 import TenantSetup from "../pages/tenant/TenantSetup";
 import Assets from "../pages/Assets";
 import UserRoles from "../pages/masterData/UserRoles";
+import JobRoles from "../pages/masterData/JobRoles";
+import CreateJobRoleNavigation from "../components/jobRoles/CreateJobRoleNavigation";
 import AssignRoles from "../components/AssignRoles";
 import CreateUser from "../pages/masterData/CreateUser";
 import Departments from "../pages/masterData/Departments";
@@ -22,6 +24,8 @@ import Organization from "../pages/masterData/Organization";
 import Vendors from "../pages/masterData/Vendors";
 import AddEntityForm from "../components/AddEntityForm";
 import ProdServ from "../pages/masterData/ProdServ";
+import Properties from "../pages/masterData/Properties";
+import BreakdownReasonCodes from "../pages/masterData/BreakdownReasonCodes";
 import AddAssetForm from "../components/assets/AddAssetForm";
 import AddAssetType from "../components/AddAssetType";
 import AssetType from "../pages/AssetType";
@@ -41,6 +45,7 @@ import BreakdownSelection from "../components/reportbreakdown/BreakdownSelection
 import BreakdownDetails from "../components/reportbreakdown/BreakdownDetails";
 import EditBreakdownReport from "../components/reportbreakdown/EditBreakdownReport";
 import AdminSettingsView from "../pages/AdminSettingsView";
+import CreateMaintenanceFrequency from "../components/CreateMaintenanceFrequency";
 import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
 import AuditLogsView from "../pages/AuditLogsView";
 import AuditLogConfig from "../components/AuditLogConfig";
@@ -73,8 +78,14 @@ import BreakdownHistory from "../pages/reports/BreakdownHistory";
 import UsageBasedAssetReport from "../pages/reports/UsageBasedAssetReport";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
 import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
+import BulkSerialNumberPrint from "../pages/reports/BulkSerialNumberPrint";
 import BulkUpload from "../pages/masterData/BulkUpload";
 import SLAReport from "../pages/reports/SLAReport";
+import QAAuditReport from "../pages/reports/QAAuditReport";
+import AdminSettingsRedirect from "./AdminSettingsRedirect";
+import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
+import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
+import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -314,6 +325,28 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/bulk-serial-number-print"
+          element={
+            <ProtectedRoute requiredAppId="SERIALNUMBERPRINT">
+              <MainLayout>
+                <BulkSerialNumberPrint />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Bulk Serial Number Print route under admin settings */}
+        <Route
+          path="/adminsettings/configuration/bulk-serial-number-print"
+          element={
+            <ProtectedRoute requiredAppId="BULKSERIALNUMBERPRINT">
+              <AdminSettingsLayout>
+                <BulkSerialNumberPrint />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/reports/breakdown-history"
           element={
             <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
@@ -341,6 +374,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="SLAREPORT">
               <MainLayout>
                 <SLAReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/qa-audit-report"
+          element={
+            <ProtectedRoute requiredAppId="QAAUDITREPORT">
+              <MainLayout>
+                <QAAuditReport />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -385,6 +429,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="ADMINSETTINGS">
               <MainLayout>
                 <AdminSettingsView />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin-settings/maintenance-frequency/add"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <MainLayout>
+                <CreateMaintenanceFrequency />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -569,6 +624,38 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="PRODSERV">
               <MainLayout>
                 <ProdServ />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/job-roles"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <MainLayout>
+                <JobRoles />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/job-roles/create-navigation"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <MainLayout>
+                <CreateJobRoleNavigation />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/job-roles/update-navigation/:navId"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <MainLayout>
+                <CreateJobRoleNavigation />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -798,6 +885,93 @@ export default function AppRoutes() {
               <MainLayout>
                 <CreateScrapAsset />
               </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Settings Routes */}
+        <Route
+          path="/adminsettings"
+          element={<AdminSettingsRedirect />}
+        />
+        <Route
+          path="/adminsettings/configuration"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <AdminSettingsView />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/data-config"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <ColumnAccessConfig />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/maintenance-config"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <MaintenanceConfiguration />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/properties"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <Properties />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/breakdown-reason-codes"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <BreakdownReasonCodes />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Job Roles routes under admin settings - simplified paths */}
+        <Route
+          path="/adminsettings/configuration/job-roles"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <AdminSettingsLayout>
+                <JobRoles />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/job-roles/create-navigation"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <AdminSettingsLayout>
+                <CreateJobRoleNavigation />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/job-roles/update-navigation/:navId"
+          element={
+            <ProtectedRoute requiredAppId="USERROLES">
+              <AdminSettingsLayout>
+                <CreateJobRoleNavigation />
+              </AdminSettingsLayout>
             </ProtectedRoute>
           }
         />

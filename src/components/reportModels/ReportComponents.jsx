@@ -103,6 +103,7 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Ensure options is always an array and safe
   const safeOptions = useMemo(() => {
@@ -114,14 +115,6 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
       return [];
     }
   }, [options]);
-
-  // Debug logging
-  console.log('🔍 [DropdownMultiSelect] Options received:', options);
-  console.log('🔍 [DropdownMultiSelect] Safe options length:', safeOptions.length);
-  if (safeOptions.length > 0) {
-    console.log('🔍 [DropdownMultiSelect] First option:', safeOptions[0]);
-    console.log('🔍 [DropdownMultiSelect] First option type:', typeof safeOptions[0]);
-  }
 
   // Ultra-safe filter function
   const filteredOptions = useMemo(() => {
@@ -185,53 +178,106 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
       // Add only the value, not the entire object
       onChange([...values, optValue]);
     }
+    // Don't close dropdown or clear search after selection for multi-select
   };
 
+  // Get display text for the input when closed
+  const getDisplayText = () => {
+    if (values.length === 0) return placeholder;
+    return values.map(v => {
+      // If value is an object, use label; otherwise find the label from options
+      if (typeof v === 'object' && v !== null && v.label) {
+        return v.label;
+      }
+      // Find the label from options for primitive values
+      const option = safeOptions.find(opt => {
+        const optValue = typeof opt === 'object' && opt !== null ? opt.value : opt;
+        return optValue === v;
+      });
+      return option ? (typeof option === 'object' ? option.label : option) : String(v || '');
+    }).join(", ");
+  };
+
+  // Handle click on the container
+  const handleContainerClick = () => {
+    if (!isOpen) {
+      setIsOpen(true);
+      // Focus input after a small delay to ensure it's rendered
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 0);
+    }
+  };
+
+  // Handle input focus
+  const handleInputFocus = () => {
+    setIsOpen(true);
+  };
+
+  // Handle outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+        setSearchTerm(""); // Clear search when closing
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isOpen]);
+
+  // Auto-focus input when dropdown opens
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-left bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center justify-between"
+      {/* Hybrid input/button - always visible */}
+      <div
+        onClick={handleContainerClick}
+        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white focus-within:outline-none focus-within:ring-2 focus-within:ring-slate-400 flex items-center justify-between cursor-text"
       >
-        <span className="truncate pr-2">
-          {values.length > 0 ? values.map(v => {
-            // If value is an object, use label; otherwise find the label from options
-            if (typeof v === 'object' && v !== null && v.label) {
-              return v.label;
-            }
-            // Find the label from options for primitive values
-            const option = safeOptions.find(opt => {
-              const optValue = typeof opt === 'object' && opt !== null ? opt.value : opt;
-              return optValue === v;
-            });
-            return option ? (typeof option === 'object' ? option.label : option) : String(v || '');
-          }).join(", ") : placeholder}
+        {isOpen ? (
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={placeholder}
+            className="flex-1 outline-none bg-transparent"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={handleInputFocus}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className="truncate pr-2 flex-1 text-left">
+            {getDisplayText()}
+          </span>
+        )}
+        <span className="text-slate-500 ml-2 flex-shrink-0" onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+          if (!isOpen) {
+            setTimeout(() => {
+              if (inputRef.current) {
+                inputRef.current.focus();
+              }
+            }, 0);
+          }
+        }}>
+          ▼
         </span>
-        <span className="text-slate-500">▼</span>
-      </button>
+      </div>
+      
+      {/* Dropdown options - shown when open */}
       {isOpen && (
         <div className="absolute z-10 w-full mt-1 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-slate-200">
-            <input
-              type="text"
-              placeholder={t('reports.filterOptions.search')}
-              className="w-full text-sm rounded-md border border-slate-300 px-2 py-1"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              autoFocus
-            />
-          </div>
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
             {filteredOptions.length === 0 ? (
               <div className="text-sm text-slate-500 p-2">{t('reports.filterOptions.noOptionsFound')}</div>
@@ -245,8 +291,17 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
                 });
                 
                 return (
-                  <label key={optValue || index} className="flex items-center gap-2 text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer">
-                    <input type="checkbox" checked={isChecked} onChange={() => toggle(opt)} className="cursor-pointer" />
+                  <label 
+                    key={optValue || index} 
+                    className="flex items-center gap-2 text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={isChecked} 
+                      onChange={() => toggle(opt)} 
+                      className="cursor-pointer" 
+                    />
                     <span className="truncate" title={String(optLabel || '')}>
                       {String(optLabel || '')}
                     </span>

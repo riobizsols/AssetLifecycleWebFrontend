@@ -40,6 +40,55 @@ const Users = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
+  // Helper function to get department name with fallback logic
+  const getDepartmentName = (item) => {
+    // Get dept_id and dept_name, handling null/undefined/empty strings
+    const deptId = item.dept_id ? String(item.dept_id).trim() : null;
+    const deptNameFromBackend = item.dept_name ? String(item.dept_name).trim() : null;
+    
+    console.log(`🔍 [getDepartmentName] Processing:`, {
+      dept_id: deptId,
+      dept_name_from_backend: deptNameFromBackend,
+      departments_count: departments.length,
+      raw_item: item
+    });
+    
+    // Try to get department name from multiple sources
+    let deptName = deptNameFromBackend; // From backend JOIN
+    
+    // If not available, try to find in departments array
+    if ((!deptName || deptName === '') && deptId && departments.length > 0) {
+      console.log(`🔍 [getDepartmentName] Searching in departments array for dept_id: ${deptId}`);
+      console.log(`🔍 [getDepartmentName] Available dept_ids:`, departments.map(d => d.dept_id));
+      const foundDept = departments.find(d => {
+        const match = String(d.dept_id).trim() === deptId;
+        console.log(`🔍 [getDepartmentName] Comparing "${d.dept_id}" === "${deptId}": ${match}`);
+        return match;
+      });
+      if (foundDept && foundDept.text) {
+        deptName = String(foundDept.text).trim();
+        console.log(`🔍 [getDepartmentName] Found in departments array: ${deptName}`);
+      } else {
+        console.log(`🔍 [getDepartmentName] Not found in departments array`);
+      }
+    }
+    
+    // If still not found but dept_id exists, show the dept_id itself
+    if ((!deptName || deptName === '') && deptId) {
+      deptName = deptId;
+      console.log(`🔍 [getDepartmentName] Using dept_id as display: ${deptName}`);
+    }
+    
+    // Final fallback - only if dept_id is also null/undefined/empty
+    if (!deptName || deptName === '') {
+      deptName = 'Not Assigned';
+      console.log(`🔍 [getDepartmentName] Using fallback: ${deptName}`);
+    }
+    
+    console.log(`🔍 [getDepartmentName] Final result: ${deptName}`);
+    return deptName;
+  };
+
   const [columns] = useState([
     { label: "User ID", name: "user_id", visible: true },
     { label: "Full Name", name: "full_name", visible: true },
@@ -67,9 +116,14 @@ const Users = () => {
   const fetchDepartments = async () => {
     try {
       const res = await API.get("/admin/departments");
-      setDepartments(res.data);
+      console.log('🔍 [Users] Departments API Response:', res);
+      console.log('🔍 [Users] Departments data:', res.data);
+      const deptData = res.data?.data || res.data || [];
+      console.log('🔍 [Users] Setting departments:', deptData);
+      console.log('🔍 [Users] Departments count:', deptData.length);
+      setDepartments(deptData);
     } catch (err) {
-      console.error("Failed to fetch departments", err);
+      console.error("❌ [Users] Failed to fetch departments", err);
       toast.error(t('users.failedToFetchDepartments'));
     }
   };
@@ -78,22 +132,52 @@ const Users = () => {
     const fetchUsers = async () => {
       try {
         const response = await API.get("/users/get-users");
-        const formattedData = response.data.map(item => ({
-          ...item,
-          int_status: item.int_status === 1 ? 'Active' : 'Inactive',
-          created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-          changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
-          last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : '',
-          dept_name: departments.find(d => d.dept_id === item.dept_id)?.text || 'Not Assigned'
-        }));
+        console.log('🔍 [Users] Full API Response:', response);
+        console.log('🔍 [Users] Response.data:', response.data);
+        console.log('🔍 [Users] Response.data.data:', response.data?.data);
+        
+        // Backend returns { success, message, data: users }
+        const users = response.data?.data || response.data || [];
+        
+        console.log('🔍 [Users] Extracted users array:', users);
+        console.log('🔍 [Users] Users count:', users.length);
+        console.log('🔍 [Users] Departments array:', departments);
+        console.log('🔍 [Users] Departments count:', departments.length);
+        
+        const formattedData = users.map(item => {
+          const deptName = getDepartmentName(item);
+          
+          // Debug logging for each user
+          console.log(`🔍 [Users] Processing user "${item.full_name}":`, {
+            user_id: item.user_id,
+            dept_id: item.dept_id,
+            dept_name_from_backend: item.dept_name,
+            final_dept_name: deptName,
+            has_dept_id: !!item.dept_id,
+            dept_id_type: typeof item.dept_id,
+            dept_id_value: item.dept_id
+          });
+          
+          return {
+            ...item,
+            int_status: item.int_status === 1 ? 'Active' : 'Inactive',
+            created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
+            changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
+            last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : '',
+            dept_name: deptName
+          };
+        });
+        
+        console.log('🔍 [Users] Final formatted data:', formattedData);
         setData(formattedData);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("❌ [Users] Error fetching users:", error);
+        console.error("❌ [Users] Error response:", error.response);
         toast.error(t('users.failedToFetchUsers'));
       }
     };
     fetchUsers();
-  }, [departments]);
+  }, [departments, t]);
 
   useEffect(() => {
     fetchDepartments();
@@ -331,14 +415,15 @@ const Users = () => {
 
         // Refresh data from server
         const refreshResponse = await API.get("/users/get-users");
-        if (Array.isArray(refreshResponse.data)) {
-          const formattedData = refreshResponse.data.map(item => ({
+        const users = refreshResponse.data?.data || refreshResponse.data || [];
+        if (Array.isArray(users) && users.length > 0) {
+          const formattedData = users.map(item => ({
             ...item,
             int_status: item.int_status === 1 ? 'Active' : 'Inactive',
             created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
             changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
             last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : '',
-            dept_name: departments.find(d => d.dept_id === item.dept_id)?.text || 'Not Assigned'
+            dept_name: getDepartmentName(item)
           }));
           setData(formattedData);
         }
@@ -471,13 +556,13 @@ const Users = () => {
           action: 'User Updated'
         });
 
-        setData(prev => prev.map(user => 
-          user.user_id === userId ? { 
-            ...user, 
-            ...response.data,
-            dept_name: departments.find(d => d.dept_id === response.data.dept_id)?.text || 'Not Assigned'
-          } : user
-        ));
+        setData(prev => prev.map(user => {
+          if (user.user_id === userId) {
+            const updatedUser = { ...user, ...response.data };
+            return { ...updatedUser, dept_name: getDepartmentName(updatedUser) };
+          }
+          return user;
+        }));
         toast.success("User updated successfully");
         setShowEditModal(false);
         setEditingUser(null);
