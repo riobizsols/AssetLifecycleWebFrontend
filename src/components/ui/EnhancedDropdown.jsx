@@ -121,6 +121,7 @@ const EnhancedDropdown = ({
                 ${index === highlightedIndex ? 'bg-blue-50 text-blue-900' : 'hover:bg-gray-50'}
                 ${option.value === value ? 'bg-blue-100 text-blue-900 font-medium' : 'text-gray-700'}
                 ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}
+                ${option.isCreateNew ? 'border-t-2 border-gray-200 mt-1 pt-3 font-semibold text-[#0E2F4B]' : ''}
                 ${optionClassName}
               `}
               onClick={() => !option.disabled && handleSelect(option)}
@@ -129,8 +130,8 @@ const EnhancedDropdown = ({
               aria-selected={option.value === value}
             >
               <div className="flex items-center justify-between">
-                <span className="text-sm">{option.label}</span>
-                {option.value === value && (
+                <span className={`text-sm ${option.isCreateNew ? 'text-[#0E2F4B]' : ''}`}>{option.label}</span>
+                {option.value === value && !option.isCreateNew && (
                   <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>

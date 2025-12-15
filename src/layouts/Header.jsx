@@ -92,6 +92,9 @@ export default function Header() {
     "/master-data/roles": {
       title: "Role Management",
     },
+    "/master-data/breakdown-reason-codes": {
+      title: "Breakdown Reason Codes",
+    },
 
     // Add more routes as needed
   };

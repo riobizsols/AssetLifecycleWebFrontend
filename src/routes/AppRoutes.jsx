@@ -23,6 +23,8 @@ import Organization from "../pages/masterData/Organization";
 import Vendors from "../pages/masterData/Vendors";
 import AddEntityForm from "../components/AddEntityForm";
 import ProdServ from "../pages/masterData/ProdServ";
+import Properties from "../pages/masterData/Properties";
+import BreakdownReasonCodes from "../pages/masterData/BreakdownReasonCodes";
 import AddAssetForm from "../components/assets/AddAssetForm";
 import AddAssetType from "../components/AddAssetType";
 import AssetType from "../pages/AssetType";
@@ -42,6 +44,7 @@ import BreakdownSelection from "../components/reportbreakdown/BreakdownSelection
 import BreakdownDetails from "../components/reportbreakdown/BreakdownDetails";
 import EditBreakdownReport from "../components/reportbreakdown/EditBreakdownReport";
 import AdminSettingsView from "../pages/AdminSettingsView";
+import CreateMaintenanceFrequency from "../components/CreateMaintenanceFrequency";
 import MaintenanceScheduleView from "../pages/MaintenanceScheduleView";
 import AuditLogsView from "../pages/AuditLogsView";
 import AuditLogConfig from "../components/AuditLogConfig";
@@ -393,6 +396,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/admin-settings/maintenance-frequency/add"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <MainLayout>
+                <CreateMaintenanceFrequency />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/maintenance-schedule-view"
           element={
             <ProtectedRoute requiredAppId="MAINTENANCESCHEDULE">
@@ -571,6 +585,28 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="PRODSERV">
               <MainLayout>
                 <ProdServ />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/properties"
+          element={
+            <ProtectedRoute requiredAppId="ASSETTYPES">
+              <MainLayout>
+                <Properties />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/breakdown-reason-codes"
+          element={
+            <ProtectedRoute requiredAppId="ASSETTYPES">
+              <MainLayout>
+                <BreakdownReasonCodes />
               </MainLayout>
             </ProtectedRoute>
           }

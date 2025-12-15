@@ -213,6 +213,7 @@ const AddAssetType = () => {
       return;
     }
 
+
     // Validate document uploads
     if (checklistUploads.length > 0) {
       for (const upload of checklistUploads) {
@@ -594,6 +595,7 @@ const AddAssetType = () => {
                 placeholder={t('assetTypes.enterMaintenanceLeadType')}
               />
             </div>
+
             {/* Checklist upload with improved UI */}
             <div className="col-span-2 mt-4">
               <div className="flex items-center justify-between mb-4">

@@ -29,6 +29,11 @@ const BreakdownDetails = () => {
   const [reportedByUserId, setReportedByUserId] = useState("");
   const [reportedByDeptId, setReportedByDeptId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Create new reason code modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newReasonCodeText, setNewReasonCodeText] = useState("");
+  const [isCreatingReasonCode, setIsCreatingReasonCode] = useState(false);
 
   const assetId = useMemo(
     () => existingBreakdown?.asset_id || selectedAsset?.asset_id || "",
@@ -101,26 +106,27 @@ const BreakdownDetails = () => {
     }
   }, [existingBreakdown, assetTypeDetails]);
 
+  const fetchReasonCodes = async () => {
+    try {
+      const res = await API.get("/reportbreakdown/reason-codes", {
+        params: {
+          asset_type_id: assetTypeId || undefined,
+          org_id: user?.org_id,
+        },
+      });
+      const arr = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+        ? res.data
+        : [];
+      setReasonCodes(arr);
+    } catch (err) {
+      console.warn(t('breakdownDetails.failedToFetchReasonCodes'));
+      setReasonCodes([]);
+    }
+  };
+
   useEffect(() => {
-    const fetchReasonCodes = async () => {
-      try {
-        const res = await API.get("/reportbreakdown/reason-codes", {
-          params: {
-            asset_type_id: assetTypeId || undefined,
-            org_id: user?.org_id,
-          },
-        });
-        const arr = Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-          ? res.data
-          : [];
-        setReasonCodes(arr);
-      } catch (err) {
-        console.warn(t('breakdownDetails.failedToFetchReasonCodes'));
-        setReasonCodes([]);
-      }
-    };
     fetchReasonCodes();
   }, [assetTypeId, user?.org_id]);
 
@@ -144,6 +150,56 @@ const BreakdownDetails = () => {
     };
     fetchUpcomingMaintenance();
   }, [assetId]);
+
+  // Handle create new reason code
+  const handleCreateNewReasonCode = async () => {
+    if (!newReasonCodeText.trim()) {
+      toast.error('Please enter a breakdown reason code');
+      return;
+    }
+
+    if (!assetTypeId) {
+      toast.error('Asset type is required to create a reason code');
+      return;
+    }
+
+    setIsCreatingReasonCode(true);
+    try {
+      const res = await API.post('/breakdown-reason-codes', {
+        asset_type_id: assetTypeId,
+        text: newReasonCodeText.trim()
+      });
+
+      if (res.data && res.data.success) {
+        toast.success('Breakdown reason code created successfully');
+        setNewReasonCodeText('');
+        setShowCreateModal(false);
+        
+        // Refresh reason codes list
+        await fetchReasonCodes();
+        
+        // Select the newly created reason code
+        const newCode = res.data.data;
+        if (newCode && (newCode.atbrrc_id || newCode.id)) {
+          setBrCode(newCode.atbrrc_id || newCode.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating breakdown reason code:', error);
+      toast.error(error.response?.data?.message || 'Failed to create breakdown reason code');
+    } finally {
+      setIsCreatingReasonCode(false);
+    }
+  };
+
+  // Handle dropdown change - check if "Create New" was selected
+  const handleBrCodeChange = (value) => {
+    if (value === 'CREATE_NEW') {
+      setShowCreateModal(true);
+    } else {
+      setBrCode(value);
+    }
+  };
 
   // Handle decision code change and update priority options
   const handleDecisionCodeChange = (newDecisionCode) => {
@@ -400,6 +456,61 @@ const BreakdownDetails = () => {
           </div>
         )}
 
+        {/* Create New Reason Code Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-lg border-b-4 border-[#FFC107]">
+                <h2 className="text-xl font-semibold">Create New Breakdown Reason Code</h2>
+              </div>
+              
+              <div className="p-6">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Breakdown Reason Code <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newReasonCodeText}
+                    onChange={(e) => setNewReasonCodeText(e.target.value)}
+                    placeholder="Enter breakdown reason code (e.g., Power Supply Damage, Screen Damage)"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleCreateNewReasonCode();
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      setNewReasonCodeText('');
+                    }}
+                    className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                    disabled={isCreatingReasonCode}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateNewReasonCode}
+                    disabled={isCreatingReasonCode || !newReasonCodeText.trim()}
+                    className="px-6 py-2.5 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCreatingReasonCode ? 'Creating...' : 'Create'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-[#0E2F4B] mb-4">
@@ -412,13 +523,21 @@ const BreakdownDetails = () => {
                   {t('breakdownDetails.breakdownCode')} *
                 </label>
                 <EnhancedDropdown
-                  options={reasonCodes.map((c) => ({
-                    value: c.id || c.atbrrc_id,
-                    label: c.text || c.name || c.description || c.code || c.id,
-                    description: c.description || ""
-                  }))}
+                  options={[
+                    ...reasonCodes.map((c) => ({
+                      value: c.id || c.atbrrc_id,
+                      label: c.text || c.name || c.description || c.code || c.id,
+                      description: c.description || ""
+                    })),
+                    {
+                      value: 'CREATE_NEW',
+                      label: '+ Create New',
+                      description: 'Create a new breakdown reason code',
+                      isCreateNew: true
+                    }
+                  ]}
                   value={brCode}
-                  onChange={setBrCode}
+                  onChange={handleBrCodeChange}
                   placeholder={t('breakdownDetails.selectBreakdownCode')}
                   disabled={isReadOnly}
                   required
