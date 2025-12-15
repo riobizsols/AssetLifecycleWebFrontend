@@ -179,6 +179,9 @@ const DatabaseSidebar = () => {
     AUDITLOGS: "/audit-logs-view", // Unique route  //done
     AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route  //done
     COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config", // Column Access Config route
+    MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config", // Maintenance Configuration route
+    PROPERTIES: "/adminsettings/configuration/properties", // Properties route
+    BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes", // Breakdown Reason Codes route
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
@@ -255,6 +258,9 @@ const DatabaseSidebar = () => {
         "USERROLES": "/adminsettings/configuration/job-roles",
         "BULKSERIALNUMBERPRINT": "/adminsettings/configuration/bulk-serial-number-print",
         "COLUMNACCESSCONFIG": "/adminsettings/configuration/data-config",
+        "MAINTENANCECONFIG": "/adminsettings/configuration/maintenance-config",
+        "PROPERTIES": "/adminsettings/configuration/properties",
+        "BREAKDOWNREASONCODES": "/adminsettings/configuration/breakdown-reason-codes",
         // Add more mappings here as you add more admin settings menu items
         // Example: "NEW_APP_ID": "/adminsettings/configuration/new-path",
       };
@@ -275,7 +281,14 @@ const DatabaseSidebar = () => {
 
   // App IDs that should only be visible in admin settings mode (/adminsettings/configuration routes)
   // Add more app IDs here as needed for future admin settings menu items
-  const adminSettingsOnlyAppIds = ["USERROLES", "BULKSERIALNUMBERPRINT", "COLUMNACCESSCONFIG"];
+  const adminSettingsOnlyAppIds = [
+    "USERROLES", 
+    "BULKSERIALNUMBERPRINT", 
+    "COLUMNACCESSCONFIG",
+    "MAINTENANCECONFIG",
+    "PROPERTIES",
+    "BREAKDOWNREASONCODES"
+  ];
 
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
@@ -395,15 +408,10 @@ const DatabaseSidebar = () => {
                 // Only show children that have access
                 if (!childAccessLevel) return null;
 
-                // For COLUMNACCESSCONFIG, use exact path matching
-                const isExactMatch = child.app_id === "COLUMNACCESSCONFIG";
-                const customIsActive = isExactMatch 
-                  ? location.pathname === childPath
-                  : undefined; // Let NavLink handle it normally for others
-
-                // For COLUMNACCESSCONFIG, check exact path match
-                const isColumnAccessConfig = child.app_id === "COLUMNACCESSCONFIG";
-                const isActiveForColumnAccess = isColumnAccessConfig 
+                // For admin settings routes, use exact path matching to prevent multiple items being active
+                const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES"];
+                const requiresExactMatch = adminSettingsRoutes.includes(child.app_id);
+                const isActiveForAdminRoute = requiresExactMatch 
                   ? location.pathname === childPath
                   : undefined;
 
@@ -411,11 +419,11 @@ const DatabaseSidebar = () => {
                   <li key={child.id} className="mb-1">
                     <NavLink
                       to={childPath || "/dashboard"}
-                      end={isColumnAccessConfig} // Use exact match for COLUMNACCESSCONFIG
+                      end={requiresExactMatch} // Use exact match for admin settings routes
                       className={({ isActive }) => {
-                        // Use exact match check for COLUMNACCESSCONFIG
-                        const active = isColumnAccessConfig 
-                          ? isActiveForColumnAccess 
+                        // Use exact match check for admin settings routes
+                        const active = requiresExactMatch 
+                          ? isActiveForAdminRoute 
                           : isActive;
                         return `group flex items-center gap-2 px-4 py-2 rounded text-sm ${
                           active
@@ -446,9 +454,10 @@ const DatabaseSidebar = () => {
       // Only show items that have access
       if (!accessLevel) return null;
 
-      // For COLUMNACCESSCONFIG, check exact path match
-      const isColumnAccessConfig = item.app_id === "COLUMNACCESSCONFIG";
-      const isActiveForColumnAccess = isColumnAccessConfig 
+      // For admin settings routes, check exact path match
+      const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES"];
+      const requiresExactMatch = adminSettingsRoutes.includes(item.app_id);
+      const isActiveForAdminRoute = requiresExactMatch 
         ? location.pathname === path
         : undefined;
 
@@ -456,11 +465,11 @@ const DatabaseSidebar = () => {
         <li key={item.id} className="mb-2">
           <NavLink
             to={path || "/dashboard"}
-            end={isColumnAccessConfig} // Use exact match for COLUMNACCESSCONFIG
+            end={requiresExactMatch} // Use exact match for admin settings routes
             className={({ isActive }) => {
-              // Use exact match check for COLUMNACCESSCONFIG
-              const active = isColumnAccessConfig 
-                ? isActiveForColumnAccess 
+              // Use exact match check for admin settings routes
+              const active = requiresExactMatch 
+                ? isActiveForAdminRoute 
                 : isActive;
               return `group flex items-center gap-2 px-4 py-2 rounded ${
                 active

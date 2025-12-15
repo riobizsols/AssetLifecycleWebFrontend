@@ -92,7 +92,10 @@ export default function Header() {
     "/master-data/roles": {
       title: "Role Management",
     },
-    "/master-data/breakdown-reason-codes": {
+    "/adminsettings/configuration/properties": {
+      title: "Properties",
+    },
+    "/adminsettings/configuration/breakdown-reason-codes": {
       title: "Breakdown Reason Codes",
     },
 

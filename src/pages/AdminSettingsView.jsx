@@ -14,7 +14,10 @@ import {
   Database,
   FileText,
   Cog,
-  Sparkles
+  Sparkles,
+  Wrench,
+  Tag,
+  AlertTriangle
 } from 'lucide-react';
 
 const AdminSettingsView = () => {
@@ -83,6 +86,39 @@ const AdminSettingsView = () => {
       iconColor: 'text-green-600',
       borderColor: 'border-green-200',
     },
+    {
+      app_id: 'MAINTENANCECONFIG',
+      label: 'Maintenance Configuration',
+      description: 'Configure maintenance details and frequency settings',
+      icon: Wrench,
+      route: '/adminsettings/configuration/maintenance-config',
+      color: 'from-orange-500 to-orange-600',
+      bgColor: 'bg-orange-50',
+      iconColor: 'text-orange-600',
+      borderColor: 'border-orange-200',
+    },
+    {
+      app_id: 'PROPERTIES',
+      label: 'Properties',
+      description: 'Manage asset properties and list values',
+      icon: Tag,
+      route: '/adminsettings/configuration/properties',
+      color: 'from-indigo-500 to-indigo-600',
+      bgColor: 'bg-indigo-50',
+      iconColor: 'text-indigo-600',
+      borderColor: 'border-indigo-200',
+    },
+    {
+      app_id: 'BREAKDOWNREASONCODES',
+      label: 'Breakdown Reason Codes',
+      description: 'Configure breakdown reason codes for asset types',
+      icon: AlertTriangle,
+      route: '/adminsettings/configuration/breakdown-reason-codes',
+      color: 'from-red-500 to-red-600',
+      bgColor: 'bg-red-50',
+      iconColor: 'text-red-600',
+      borderColor: 'border-red-200',
+    },
   ];
 
   // Use navigation items if available, otherwise use defaults (filtered by access)
@@ -103,6 +139,9 @@ const AdminSettingsView = () => {
       'USERROLES': '/adminsettings/configuration/job-roles',
       'COLUMNACCESSCONFIG': '/adminsettings/configuration/data-config',
       'BULKSERIALNUMBERPRINT': '/adminsettings/configuration/bulk-serial-number-print',
+      'MAINTENANCECONFIG': '/adminsettings/configuration/maintenance-config',
+      'PROPERTIES': '/adminsettings/configuration/properties',
+      'BREAKDOWNREASONCODES': '/adminsettings/configuration/breakdown-reason-codes',
     };
     return routeMap[appId] || '#';
   };
@@ -112,6 +151,9 @@ const AdminSettingsView = () => {
       'USERROLES': Users,
       'COLUMNACCESSCONFIG': Shield,
       'BULKSERIALNUMBERPRINT': Printer,
+      'MAINTENANCECONFIG': Wrench,
+      'PROPERTIES': Tag,
+      'BREAKDOWNREASONCODES': AlertTriangle,
     };
     return iconMap[appId] || Settings;
   };
@@ -139,6 +181,27 @@ const AdminSettingsView = () => {
         border: 'border-green-200',
         hover: 'hover:from-green-600 hover:to-green-700',
       },
+      'MAINTENANCECONFIG': {
+        gradient: 'from-orange-500 to-orange-600',
+        bg: 'bg-orange-50',
+        icon: 'text-orange-600',
+        border: 'border-orange-200',
+        hover: 'hover:from-orange-600 hover:to-orange-700',
+      },
+      'PROPERTIES': {
+        gradient: 'from-indigo-500 to-indigo-600',
+        bg: 'bg-indigo-50',
+        icon: 'text-indigo-600',
+        border: 'border-indigo-200',
+        hover: 'hover:from-indigo-600 hover:to-indigo-700',
+      },
+      'BREAKDOWNREASONCODES': {
+        gradient: 'from-red-500 to-red-600',
+        bg: 'bg-red-50',
+        icon: 'text-red-600',
+        border: 'border-red-200',
+        hover: 'hover:from-red-600 hover:to-red-700',
+      },
     };
     return colorMap[appId] || {
       gradient: 'from-gray-500 to-gray-600',
@@ -157,12 +220,12 @@ const AdminSettingsView = () => {
   };
 
   if (loading) {
-    return (
+  return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading admin settings...</p>
-        </div>
+      </div>
       </div>
     );
   }

@@ -86,6 +86,7 @@ import QAAuditReport from "../pages/reports/QAAuditReport";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
+import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -631,33 +632,11 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="/master-data/properties"
-          element={
-            <ProtectedRoute requiredAppId="ASSETTYPES">
-              <MainLayout>
-                <Properties />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
           path="/master-data/job-roles"
           element={
             <ProtectedRoute requiredAppId="USERROLES">
               <MainLayout>
                 <JobRoles />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/master-data/breakdown-reason-codes"
-          element={
-            <ProtectedRoute requiredAppId="ASSETTYPES">
-              <MainLayout>
-                <BreakdownReasonCodes />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -933,6 +912,36 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="ADMINSETTINGS">
               <AdminSettingsLayout>
                 <ColumnAccessConfig />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/maintenance-config"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <MaintenanceConfiguration />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/properties"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <Properties />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/breakdown-reason-codes"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <BreakdownReasonCodes />
               </AdminSettingsLayout>
             </ProtectedRoute>
           }
