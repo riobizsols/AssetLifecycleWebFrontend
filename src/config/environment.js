@@ -18,28 +18,52 @@ const currentEnv = import.meta.env.MODE || 'development';
 // Function to get API base URL dynamically based on current hostname
 // This ensures subdomain requests go to the correct backend
 const getDynamicApiBaseUrl = () => {
-  // In development, use the configured URL
-  if (currentEnv === 'development') {
-    return config.development.API_BASE_URL;
-  }
-  
-  // In production, use the current hostname to support subdomains
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
-    const port = window.location.port ? `:${window.location.port}` : '';
+    const currentPort = window.location.port;
     
-    // If we have a subdomain (e.g., rio.riowebworks.net), use it
-    // Otherwise, use the configured URL or default
-    if (hostname && hostname !== 'localhost' && !hostname.startsWith('127.0.0.1')) {
-      // Use the same hostname but with /api path
-      // Note: If your backend is on a different port, adjust this
-      return `${protocol}//${hostname}${port}/api`;
+    // Check if we have a subdomain (e.g., rio.localhost, rio.riowebworks.net)
+    // A subdomain exists if:
+    // 1. hostname contains a dot AND
+    // 2. hostname is not just 'localhost' AND
+    // 3. hostname has at least 2 parts when split by dots
+    const parts = hostname.split('.');
+    const hasSubdomain = hostname.includes('.') && 
+                        hostname !== 'localhost' && 
+                        !hostname.startsWith('127.0.0.1') &&
+                        parts.length >= 2 &&
+                        parts[0] !== ''; // First part is the subdomain
+    
+    if (hasSubdomain) {
+      // In development, backend is typically on port 5001
+      // In production, backend is on the same domain (no port or standard ports)
+      let backendPort = '';
+      if (currentEnv === 'development') {
+        backendPort = ':5001'; // Backend port in development
+      } else if (currentPort && currentPort !== '80' && currentPort !== '443') {
+        // In production, if there's a non-standard port, use it
+        backendPort = `:${currentPort}`;
+      }
+      
+      // Construct API URL with subdomain
+      // For localhost: rio.localhost:5173 -> rio.localhost:5001/api
+      // For production: rio.riowebworks.net -> rio.riowebworks.net/api
+      const apiUrl = `${protocol}//${hostname}${backendPort}/api`;
+      console.log(`🔍 [Environment] Subdomain detected: ${hostname}, API URL: ${apiUrl}`);
+      return apiUrl;
+    }
+    
+    // No subdomain - use configured URL
+    if (currentEnv === 'development') {
+      return config.development.API_BASE_URL;
     }
   }
   
   // Fallback to configured URL
-  return config.production.API_BASE_URL;
+  return currentEnv === 'development' 
+    ? config.development.API_BASE_URL 
+    : config.production.API_BASE_URL;
 };
 
 // Export current environment config
