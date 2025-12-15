@@ -156,19 +156,6 @@ export default function Login() {
               {loading ? t('common.loading') : t('auth.login')}
             </button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-sm text-center text-gray-600">
-              Using multi-tenant login?{" "}
-              <button
-                type="button"
-                onClick={() => navigate("/tenant-login")}
-                className="text-[#0E2F4B] hover:underline font-medium"
-              >
-                Switch to Multi-Tenant Login
-              </button>
-            </p>
-          </div>
         </div>
       </div>
     </div>

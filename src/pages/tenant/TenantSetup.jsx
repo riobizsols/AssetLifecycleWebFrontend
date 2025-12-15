@@ -179,8 +179,8 @@ export default function TenantSetup() {
             // Navigate to the subdomain URL
             window.location.href = subdomainUrl;
           } else {
-            // Fallback: navigate to tenant login if subdomain URL not available
-            navigate("/tenant-login", { 
+            // Fallback: navigate to login page if subdomain URL not available
+            navigate("/", { 
               state: { 
                 message: "Tenant created successfully! Please login with your credentials.",
                 orgId: response.data.data.orgId,

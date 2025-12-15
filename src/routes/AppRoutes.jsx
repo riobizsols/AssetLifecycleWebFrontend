@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Login from "../pages/auth/Login";
-import TenantLogin from "../pages/auth/TenantLogin";
 import Dashboard from "../pages/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "../layouts/MainLayout";
@@ -85,7 +84,6 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/tenant-login" element={<TenantLogin />} />
         <Route path="/setup" element={<SetupWizard />} />
         <Route path="/tenant-setup" element={<TenantSetup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
