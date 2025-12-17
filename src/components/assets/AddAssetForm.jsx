@@ -1430,7 +1430,6 @@ const AddAssetForm = ({ userRole }) => {
                     <p className="mt-1 text-sm text-red-600">{t('assets.purchaseByIsRequired')}</p>
                   )}
                 </div>
-                )}
               </div>
             </>
           )}

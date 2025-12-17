@@ -28,8 +28,9 @@ export default function TenantSetup() {
   const [adminUser, setAdminUser] = useState({
     fullName: "System Administrator",
     email: "",
-    password: "",
-    confirmPassword: "",
+    // Fixed initial password; user does not type this
+    password: "Initial1",
+    confirmPassword: "Initial1",
     username: "USR001",
     phone: "",
   });
@@ -130,14 +131,8 @@ export default function TenantSetup() {
         toast.error("Admin email is required");
         return;
       }
-      if (!adminUser.password || adminUser.password.length < 6) {
-        toast.error("Password is required (minimum 6 characters)");
-        return;
-      }
-      if (adminUser.password !== adminUser.confirmPassword) {
-        toast.error("Passwords do not match");
-        return;
-      }
+      // Password is fixed as \"Initial1\" and not editable,
+      // so no need to validate password/confirm password here.
     }
     setCurrentStep(currentStep + 1);
   };
@@ -468,38 +463,34 @@ export default function TenantSetup() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Password <span className="text-red-500">*</span>
+                        Password
                       </label>
                       <input
                         type="password"
                         name="password"
-                        value={adminUser.password}
-                        onChange={handleAdminChange}
-                        required
-                        placeholder="Minimum 6 characters"
-                        minLength={6}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        value="Initial1"
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Confirm Password <span className="text-red-500">*</span>
+                        Confirm Password
                       </label>
                       <input
                         type="password"
                         name="confirmPassword"
-                        value={adminUser.confirmPassword}
-                        onChange={handleAdminChange}
-                        required
-                        placeholder="Re-enter password"
-                        minLength={6}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        value="Initial1"
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                       />
                     </div>
                   </div>
-                  {adminUser.password && adminUser.confirmPassword && adminUser.password !== adminUser.confirmPassword && (
-                    <p className="text-sm text-red-600">Passwords do not match</p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    The initial password will be set to <span className="font-semibold">Initial1</span> and emailed to the admin user.
+                  </p>
                 </div>
 
                 <div className="flex justify-between pt-6 border-t border-gray-200">
@@ -514,7 +505,7 @@ export default function TenantSetup() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={!adminUser.email || !adminUser.password || adminUser.password !== adminUser.confirmPassword}
+                    disabled={!adminUser.email}
                     className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
                     Next
