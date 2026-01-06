@@ -248,8 +248,8 @@ const MaintenanceDetails = () => {
       toast.error('Please select a workflow step');
       return;
     }
-    if (!newSequence.seqs_no || parseInt(newSequence.seqs_no) % 5 !== 0) {
-      toast.error('Sequence number must be a multiple of 5 (e.g., 5, 10, 15, 20)');
+    if (!newSequence.seqs_no || parseInt(newSequence.seqs_no) < 1) {
+      toast.error('Sequence number must be a positive integer (e.g., 1, 2, 3)');
       return;
     }
 
@@ -564,8 +564,8 @@ const MaintenanceDetails = () => {
                           toast.error('Please fill in both Workflow Step and Sequence Number');
                           return;
                         }
-                        if (parseInt(newSequence.seqs_no) % 5 !== 0) {
-                          toast.error('Sequence number must be a multiple of 5 (e.g., 5, 10, 15, 20)');
+                        if (parseInt(newSequence.seqs_no) < 1) {
+                          toast.error('Sequence number must be a positive integer (e.g., 1, 2, 3)');
                           return;
                         }
                         try {
@@ -618,12 +618,12 @@ const MaintenanceDetails = () => {
                           type="number"
                           value={newSequence.seqs_no}
                           onChange={(e) => setNewSequence({ ...newSequence, seqs_no: e.target.value })}
-                          placeholder="5, 10, 15, 20, etc."
-                          min="5"
-                          step="5"
+                          placeholder="1, 2, 3, etc."
+                          min="1"
+                          step="1"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
                         />
-                        <p className="mt-1 text-xs text-gray-500">Must be a multiple of 5</p>
+                        <p className="mt-1 text-xs text-gray-500">Enter sequential number (1, 2, 3...)</p>
                       </div>
                     </div>
                   </div>

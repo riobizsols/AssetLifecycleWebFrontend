@@ -8,7 +8,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 
 
 
-const BreakdownDetails = () => {
+const BreakdownDetails2 = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const { user } = useAuthStore();
@@ -16,15 +16,18 @@ const BreakdownDetails = () => {
   const selectedAsset = state?.asset;
   const existingBreakdown = state?.breakdown;
 
+  // Debug: Log navigation state
+  console.log("=== BreakdownDetails2 Loaded ===");
+  console.log("Navigation state:", state);
+  console.log("Selected Asset:", selectedAsset);
+  console.log("User:", user);
+
   const isReadOnly = !!existingBreakdown;
 
   const [reasonCodes, setReasonCodes] = useState([]);
   const [brCode, setBrCode] = useState("");
   const [description, setDescription] = useState("");
   const [reportedByType, setReportedByType] = useState("");
-  const [decisionCode, setDecisionCode] = useState("");
-  const [priority, setPriority] = useState("");
-  const [upcomingMaintenanceDate, setUpcomingMaintenanceDate] = useState("");
   const [assetTypeDetails, setAssetTypeDetails] = useState(null);
   const [reportedByUserId, setReportedByUserId] = useState("");
   const [reportedByDeptId, setReportedByDeptId] = useState("");
@@ -57,14 +60,6 @@ const BreakdownDetails = () => {
         }
         setAssetTypeDetails(typeDetails);
         setReportedByType(typeDetails.assignment_type);
-        
-        // If maint_required is false, set decision code to BF02 and make it fixed
-        // Only set if not viewing an existing breakdown (which may already have a decision code)
-        if (!existingBreakdown && (typeDetails.maint_required === false || typeDetails.maint_required === 0)) {
-          setDecisionCode("BF02");
-          // Also set a default priority for BF02 (High)
-          setPriority("High");
-        }
       } catch (err) {
         console.error(t('breakdownDetails.failedToFetchAssetTypeDetails'), err);
         toast.error(err.message || t('breakdownDetails.failedToFetchAssetTypeDetails'));
@@ -87,21 +82,6 @@ const BreakdownDetails = () => {
         setReportedByUserId(existingBreakdown.reported_by_user_id);
       } else if (existingBreakdown.reported_by_dept_id) {
         setReportedByDeptId(existingBreakdown.reported_by_dept_id);
-      }
-             if (existingBreakdown.decision_code) {
-         setDecisionCode(existingBreakdown.decision_code);
-       }
-       if (existingBreakdown.priority) {
-         setPriority(existingBreakdown.priority);
-       }
-      if (existingBreakdown.upcoming_maintenance_date) {
-        try {
-          const d = new Date(existingBreakdown.upcoming_maintenance_date);
-          const yyyy = d.getFullYear();
-          const mm = String(d.getMonth() + 1).padStart(2, "0");
-          const dd = String(d.getDate()).padStart(2, "0");
-          setUpcomingMaintenanceDate(`${yyyy}-${mm}-${dd}`);
-        } catch {}
       }
     }
   }, [existingBreakdown, assetTypeDetails]);
@@ -129,27 +109,6 @@ const BreakdownDetails = () => {
   useEffect(() => {
     fetchReasonCodes();
   }, [assetTypeId, user?.org_id]);
-
-  useEffect(() => {
-    const fetchUpcomingMaintenance = async () => {
-      if (!assetId) return;
-      try {
-        const res = await API.get(`/reportbreakdown/upcoming-maintenance/${assetId}`);
-        const maintenanceData = res.data?.data;
-        
-        if (maintenanceData?.upcoming_maintenance_date) {
-          const date = new Date(maintenanceData.upcoming_maintenance_date);
-          const yyyy = date.getFullYear();
-          const mm = String(date.getMonth() + 1).padStart(2, "0");
-          const dd = String(date.getDate()).padStart(2, "0");
-          setUpcomingMaintenanceDate(`${yyyy}-${mm}-${dd}`);
-        }
-      } catch (err) {
-        console.warn(t('breakdownDetails.failedToFetchUpcomingMaintenanceDate'), err);
-      }
-    };
-    fetchUpcomingMaintenance();
-  }, [assetId]);
 
   // Handle create new reason code
   const handleCreateNewReasonCode = async () => {
@@ -201,24 +160,26 @@ const BreakdownDetails = () => {
     }
   };
 
-  // Handle decision code change and update priority options
-  const handleDecisionCodeChange = (newDecisionCode) => {
-    setDecisionCode(newDecisionCode);
-    // Reset priority when decision code changes
-    setPriority("");
-  };
-  
   const resetForm = () => {
     setBrCode("");
     setDescription("");
-    setDecisionCode("");
-    setPriority("");
     setReportedByUserId("");
     setReportedByDeptId("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Debug: Log form state before validation
+    console.log("=== Form State on Submit ===");
+    console.log("assetId:", assetId);
+    console.log("assetTypeId:", assetTypeId);
+    console.log("brCode:", brCode);
+    console.log("description:", description);
+    console.log("reportedByUserId:", reportedByUserId);
+    console.log("reportedByDeptId:", reportedByDeptId);
+    console.log("user:", user);
+    console.log("assetTypeDetails:", assetTypeDetails);
     
     // Validate required fields
     if (!assetId) {
@@ -249,38 +210,11 @@ const BreakdownDetails = () => {
       toast.error(t('breakdownDetails.descriptionCannotExceed50Characters'));
       return;
     }
-    if (!decisionCode) {
-      toast.error(t('breakdownDetails.pleaseSelectDecisionCode'));
-      return;
-    }
-    if (!priority) {
-      toast.error(t('breakdownDetails.pleaseSelectPriority'));
-      return;
-    }
 
     // Validate breakdown code exists in reason codes
     const selectedReasonCode = reasonCodes.find(rc => rc.id === brCode || rc.atbrrc_id === brCode);
     if (!selectedReasonCode) {
       toast.error(t('breakdownDetails.selectedBreakdownCodeInvalid'));
-      return;
-    }
-
-    // Validate decision code is valid
-    const validDecisionCodes = ['BF01', 'BF02', 'BF03'];
-    if (!validDecisionCodes.includes(decisionCode)) {
-      toast.error(t('breakdownDetails.invalidDecisionCode'));
-      return;
-    }
-
-    // Validate priority is valid for the selected decision code
-    const validPriorities = {
-      'BF01': ['High', 'Very High'],
-      'BF02': ['High', 'Very High'],
-      'BF03': ['Medium', 'Low']
-    };
-    
-    if (!validPriorities[decisionCode].includes(priority)) {
-      toast.error(t('breakdownDetails.invalidPriorityForDecisionCode', { decisionCode }));
       return;
     }
 
@@ -328,11 +262,11 @@ const BreakdownDetails = () => {
         atbrrc_id: brCode,
         reported_by: reportedBy,
         description: description,
-        decision_code: decisionCode
+        decision_code: null
       };
 
       // Validate payload structure
-      if (!payload.asset_id || !payload.atbrrc_id || !payload.reported_by || !payload.description || !payload.decision_code) {
+      if (!payload.asset_id || !payload.atbrrc_id || !payload.reported_by || !payload.description) {
         toast.error(t('breakdownDetails.invalidPayloadStructure'));
         console.error("Invalid payload:", payload);
         return;
@@ -369,7 +303,7 @@ const BreakdownDetails = () => {
         toast.success(t('breakdownDetails.breakdownReportCreatedSuccessfully'));
         resetForm(); // Reset the form
         try {
-          navigate("/report-breakdown");
+          navigate("/report-breakdown-2");
         } catch (navError) {
           console.error("Navigation error:", navError);
           // Fallback: try to navigate to the reports page
@@ -604,98 +538,6 @@ const BreakdownDetails = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-[#0E2F4B] mb-4">
-              {t('breakdownDetails.maintenancePlanning')}
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  {t('breakdownDetails.decisionCode')} *
-                </label>
-                <EnhancedDropdown
-                  options={[
-                    {
-                      value: "BF01",
-                      label: t('breakdownDetails.bf01Label'),
-                      description: t('breakdownDetails.bf01Description')
-                    },
-                    {
-                      value: "BF02", 
-                      label: t('breakdownDetails.bf02Label'),
-                      description: t('breakdownDetails.bf02Description')
-                    },
-                    {
-                      value: "BF03",
-                      label: t('breakdownDetails.bf03Label'), 
-                      description: t('breakdownDetails.bf03Description')
-                    }
-                  ]}
-                  value={decisionCode}
-                  onChange={handleDecisionCodeChange}
-                  placeholder={t('breakdownDetails.selectDecisionCode')}
-                  disabled={isReadOnly || (assetTypeDetails?.maint_required === false || assetTypeDetails?.maint_required === 0)}
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  {t('breakdownDetails.decisionCodeDescription')}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  {t('breakdownDetails.priority')} *
-                </label>
-                <EnhancedDropdown
-                  options={
-                    (decisionCode === "BF01" || decisionCode === "BF02") 
-                      ? [
-                          { value: "High", label: t('breakdownDetails.highPriority'), description: t('breakdownDetails.highPriorityDescription') },
-                          { value: "Very High", label: t('breakdownDetails.veryHighPriority'), description: t('breakdownDetails.veryHighPriorityDescription') }
-                        ]
-                      : decisionCode === "BF03"
-                      ? [
-                          { value: "Medium", label: t('breakdownDetails.mediumPriority'), description: t('breakdownDetails.mediumPriorityDescription') },
-                          { value: "Low", label: t('breakdownDetails.lowPriority'), description: t('breakdownDetails.lowPriorityDescription') }
-                        ]
-                      : []
-                  }
-                  value={priority}
-                  onChange={setPriority}
-                  placeholder={!decisionCode ? t('breakdownDetails.selectDecisionCodeFirst') : t('breakdownDetails.selectPriority')}
-                  disabled={isReadOnly || !decisionCode}
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  {t('breakdownDetails.priorityDescription')}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  {t('breakdownDetails.upcomingMaintenanceDate')}
-                </label>
-                {upcomingMaintenanceDate ? (
-                  <input
-                    type="date"
-                    value={upcomingMaintenanceDate}
-                    onChange={(e) => setUpcomingMaintenanceDate(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all"
-                    disabled
-                  />
-                ) : (
-                  <div className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-500">
-                    {t('breakdownDetails.noMaintenanceScheduled')}
-                  </div>
-                )}
-                <p className="text-xs text-gray-500">
-                  {t('breakdownDetails.upcomingMaintenanceDescription')}
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="flex items-center justify-end gap-4 pt-6">
             <button
               type="button"
@@ -730,4 +572,5 @@ const BreakdownDetails = () => {
   );
 };
 
-export default BreakdownDetails;
+export default BreakdownDetails2;
+

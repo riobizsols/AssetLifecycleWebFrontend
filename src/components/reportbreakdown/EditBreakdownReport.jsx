@@ -423,16 +423,19 @@ const EditBreakdownReport = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('breakdownDetails.decisionCode')} *
+                  {t('breakdownDetails.decisionCode')} {decisionCode && '*'}
                 </label>
                 <EnhancedDropdown
                   options={decisionCodeOptions}
                   value={decisionCode}
                   onChange={setDecisionCode}
                   placeholder={t('breakdownDetails.selectDecisionCode')}
-                  required
-                  disabled={true}
+                  required={!!decisionCode}
+                  disabled={isReadOnly || (decisionCode !== null && decisionCode !== "")}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {decisionCode ? t('breakdownDetails.decisionCodeSetReadOnly') : t('breakdownDetails.decisionCodePendingEditable')}
+                </p>
               </div>
             </div>
 
@@ -480,7 +483,7 @@ const EditBreakdownReport = () => {
             {!isReadOnly && (
               <button
                 type="submit"
-                disabled={isSubmitting || !brCode || !description || !decisionCode}
+                disabled={isSubmitting || !brCode || !description}
                 className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting ? t('breakdownDetails.updating') : t('breakdownDetails.updateBreakdownReport')}

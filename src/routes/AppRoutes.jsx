@@ -42,8 +42,11 @@ import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
 import CronJobManagement from "../pages/CronJobManagement";
 import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
 import ReportsBreakdown from "../pages/ReportsBreakdown";
+import ReportsBreakdown2 from "../pages/ReportsBreakdown2";
 import BreakdownSelection from "../components/reportbreakdown/BreakdownSelection";
+import BreakdownSelection2 from "../components/reportbreakdown/BreakdownSelection2";
 import BreakdownDetails from "../components/reportbreakdown/BreakdownDetails";
+import BreakdownDetails2 from "../components/reportbreakdown/BreakdownDetails2";
 import EditBreakdownReport from "../components/reportbreakdown/EditBreakdownReport";
 import AdminSettingsView from "../pages/AdminSettingsView";
 import CreateMaintenanceFrequency from "../components/CreateMaintenanceFrequency";
@@ -251,6 +254,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/report-breakdown-2"
+          element={
+            <ProtectedRoute requiredAppId="REPORTBREAKDOWN2">
+              <MainLayout>
+                <ReportsBreakdown2 />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/reports/asset-report"
           element={
             <ProtectedRoute requiredAppId="ASSETREPORT">
@@ -404,6 +418,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/breakdown-selection2"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <BreakdownSelection2 />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/edit-breakdown"
           element={
             <ProtectedRoute requiredAppId="REPORTBREAKDOWN">
@@ -420,6 +445,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <BreakdownDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/breakdown-details2"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <BreakdownDetails2 />
               </MainLayout>
             </ProtectedRoute>
           }
