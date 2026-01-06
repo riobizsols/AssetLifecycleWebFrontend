@@ -151,6 +151,7 @@ const DatabaseSidebar = () => {
     MAINTENANCEAPPROVAL: "/maintenance-approval",
     SUPERVISORAPPROVAL: "/supervisor-approval", //done
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
+    REPORTBREAKDOWN2: "/report-breakdown-2", // Report Breakdown 2 route //done
     // Report routes
     ASSETLIFECYCLEREPORT: "/reports/asset-lifecycle-report",  //done
     ASSETREPORT: "/reports/asset-report",  //done
@@ -202,6 +203,7 @@ const DatabaseSidebar = () => {
       MAINTENANCEAPPROVAL: ClipboardList,
       SUPERVISORAPPROVAL: UserCheck,
       REPORTBREAKDOWN: BarChart3,
+      REPORTBREAKDOWN2: BarChart3,
       // Report icons
       ASSETLIFECYCLEREPORT: FileText,
       ASSETREPORT: FileText,
