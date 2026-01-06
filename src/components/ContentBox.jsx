@@ -73,7 +73,7 @@ const ContentBox = ({
     // If 'search' is already an active filter, ensure columnFilters is initialized with at least one filter
     const searchFilterActive = activeFilters.some((f) => f.type === "search");
     if (searchFilterActive && columnFilters.length === 0) {
-      setColumnFilters([{ column: "", value: "" }]);
+      setColumnFilters([{ column: "", value: [] }]);
     }
   }, [activeFilters]); // Run when activeFilters change
 
@@ -105,24 +105,29 @@ const ContentBox = ({
   const handleColumnChange = (index, column) => {
     const updated = [...columnFilters];
     updated[index].column = column;
-    updated[index].value = ""; // Reset value when column changes
+    updated[index].value = []; // Reset value to empty array when column changes
     setColumnFilters(updated);
 
-    const validFilters = updated.filter((f) => f.column && f.value);
+    const validFilters = updated.filter((f) => f.column && f.value && f.value.length > 0);
     onFilterChange("columnFilters", validFilters);
   };
 
   const handleValueChange = (index, value) => {
     const updated = [...columnFilters];
-    updated[index].value = value;
+    // Ensure value is always an array
+    if (!Array.isArray(value)) {
+      updated[index].value = value ? [value] : [];
+    } else {
+      updated[index].value = value;
+    }
     setColumnFilters(updated);
 
-    const validFilters = updated.filter((f) => f.column && f.value);
+    const validFilters = updated.filter((f) => f.column && f.value && f.value.length > 0);
     onFilterChange("columnFilters", validFilters); // Pass valid filters to parent
   };
 
   const addColumnFilter = () => {
-    setColumnFilters([...columnFilters, { column: "", value: "" }]);
+    setColumnFilters([...columnFilters, { column: "", value: [] }]);
   };
 
   const removeColumnFilter = (index) => {
@@ -135,7 +140,7 @@ const ContentBox = ({
     ) {
       setActiveFilters((prev) => prev.filter((f) => f.type !== "search"));
     }
-    const validFilters = updated.filter((f) => f.column && f.value);
+    const validFilters = updated.filter((f) => f.column && f.value && f.value.length > 0);
     onFilterChange("columnFilters", validFilters); // Update parent's filter state
   };
 
@@ -154,16 +159,28 @@ const ContentBox = ({
     }));
   };
 
-  const selectSearchableValue = (index, value) => {
-    handleValueChange(index, value);
-    setSearchableDropdownOpen(prev => ({
-      ...prev,
-      [index]: false
-    }));
-    setSearchableDropdownSearch(prev => ({
-      ...prev,
-      [index]: ""
-    }));
+  const toggleValueSelection = (index, value) => {
+    const currentFilter = columnFilters[index];
+    const currentValues = Array.isArray(currentFilter.value) ? currentFilter.value : (currentFilter.value ? [currentFilter.value] : []);
+    
+    // Toggle value in array
+    let newValues;
+    if (currentValues.includes(value)) {
+      // Remove value if already selected
+      newValues = currentValues.filter(v => v !== value);
+    } else {
+      // Add value if not selected
+      newValues = [...currentValues, value];
+    }
+    
+    handleValueChange(index, newValues);
+  };
+
+  const removeSelectedValue = (index, valueToRemove) => {
+    const currentFilter = columnFilters[index];
+    const currentValues = Array.isArray(currentFilter.value) ? currentFilter.value : (currentFilter.value ? [currentFilter.value] : []);
+    const newValues = currentValues.filter(v => v !== valueToRemove);
+    handleValueChange(index, newValues);
   };
 
   const availableFilterTypes = ["date", "search", "simpleSearch"];
@@ -181,7 +198,7 @@ const ContentBox = ({
     setActiveFilters([...activeFilters, newFilter]);
     // If 'search by column' is added, initialize with one empty column filter
     if (type === "search" && columnFilters.length === 0) {
-      setColumnFilters([{ column: "", value: "" }]);
+      setColumnFilters([{ column: "", value: [] }]);
     }
     setFilterMenuOpen(false);
   };
@@ -388,17 +405,19 @@ const ContentBox = ({
                           <div className="relative" ref={el => dropdownRef.current[index] = el}>
                             <button
                               type="button"
-                              className="border text-sm px-2 py-1 bg-white w-40 text-left flex items-center justify-between"
+                              className="border text-sm px-2 py-1 bg-white min-w-[200px] text-left flex items-center justify-between"
                               onClick={() => toggleSearchableDropdown(index)}
                             >
-                              <span className={cf.value ? "" : "text-gray-500"}>
-                                {cf.value || "Select value"}
+                              <span className={Array.isArray(cf.value) && cf.value.length > 0 ? "" : "text-gray-500"}>
+                                {Array.isArray(cf.value) && cf.value.length > 0 
+                                  ? `${cf.value.length} selected` 
+                                  : "Select values"}
                               </span>
                               <ChevronDown size={14} />
                             </button>
                             
                             {searchableDropdownOpen[index] && (
-                              <div className="absolute z-50 mt-1 bg-white border rounded shadow-lg w-40 max-h-60 overflow-hidden">
+                              <div className="absolute z-50 mt-1 bg-white border rounded shadow-lg min-w-[200px] max-h-60 overflow-hidden">
                                 <div className="p-2 border-b">
                                   <input
                                     type="text"
@@ -410,26 +429,33 @@ const ContentBox = ({
                                   />
                                 </div>
                                 <div className="max-h-48 overflow-y-auto">
-                                  <div
-                                    className="px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 cursor-pointer"
-                                    onClick={() => selectSearchableValue(index, "")}
-                                  >
-                                    Select value
-                                  </div>
                                   {valueOptions
                                     .filter(val => 
                                       !searchableDropdownSearch[index] || 
                                       val.toLowerCase().includes(searchableDropdownSearch[index].toLowerCase())
                                     )
-                                    .map((val, i) => (
-                                    <div
-                                      key={i}
-                                      className="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer"
-                                      onClick={() => selectSearchableValue(index, val)}
-                                    >
-                                      {val}
-                                    </div>
-                                  ))}
+                                    .map((val, i) => {
+                                      const isSelected = Array.isArray(cf.value) && cf.value.includes(val);
+                                      return (
+                                        <div
+                                          key={i}
+                                          className="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                                          onClick={() => toggleValueSelection(index, val)}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            readOnly
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              toggleValueSelection(index, val);
+                                            }}
+                                            className="accent-[#0E2F4B] cursor-pointer"
+                                          />
+                                          <span className={isSelected ? "font-medium" : ""}>{val}</span>
+                                        </div>
+                                      );
+                                    })}
                                 </div>
                               </div>
                             )}

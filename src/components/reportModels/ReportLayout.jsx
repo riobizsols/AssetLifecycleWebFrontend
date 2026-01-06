@@ -5,6 +5,17 @@ import autoTable from "jspdf-autotable";
 import { FaShareAlt } from "react-icons/fa";
 import { generateUUID } from '../../utils/uuid';
 import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell
+} from "recharts";
+import {
   SectionTitle,
   Chip,
   Input,
@@ -55,10 +66,49 @@ export default function ReportLayout({
   const saveInputRef = useRef(null);
   const [generatedReport, setGeneratedReport] = useState(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [selectedAssetType, setSelectedAssetType] = useState(null);
+  const [showAssetTypeModal, setShowAssetTypeModal] = useState(false);
 
   // Get translated report configuration
   const translatedReport = useTranslatedReport(report);
-  const cols = columns || translatedReport.defaultColumns;
+  
+  // Auto-add property columns to visible columns when property filter is applied
+  const cols = useMemo(() => {
+    const baseCols = columns || translatedReport.defaultColumns;
+    const propertyFilter = (advanced || []).find(r => r.field === 'property' && r.val && typeof r.val === 'object' && r.val.property);
+    
+    if (propertyFilter && propertyFilter.val.property) {
+      const propertyColumn = `Property: ${propertyFilter.val.property}`;
+      // Check if property column exists in allColumns and add it if not already in cols
+      const allCols = translatedReport.allColumns || [];
+      const hasPropertyColumn = allCols.includes(propertyColumn);
+      
+      if (hasPropertyColumn && !baseCols.includes(propertyColumn)) {
+        // Auto-add the property column to visible columns
+        return [...baseCols, propertyColumn];
+      }
+    }
+    
+    return baseCols;
+  }, [columns, translatedReport.defaultColumns, translatedReport.allColumns, advanced]);
+  
+  // Update columns state when property filter is applied to persist the property column
+  useEffect(() => {
+    const propertyFilter = (advanced || []).find(r => r.field === 'property' && r.val && typeof r.val === 'object' && r.val.property);
+    
+    if (propertyFilter && propertyFilter.val.property) {
+      const propertyColumn = `Property: ${propertyFilter.val.property}`;
+      const allCols = translatedReport.allColumns || [];
+      const hasPropertyColumn = allCols.includes(propertyColumn);
+      const currentCols = columns || translatedReport.defaultColumns;
+      
+      if (hasPropertyColumn && !currentCols.includes(propertyColumn)) {
+        // Update columns state to include the property column
+        setColumns([...currentCols, propertyColumn]);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [advanced, translatedReport.allColumns]);
 
   const hasFilters = useMemo(() => {
     const quickHasFilters = Object.values(quick).some((v) => (Array.isArray(v) ? v.length > 0 : !!v));
@@ -99,6 +149,116 @@ export default function ReportLayout({
       totalCount: filteredRows.length
     };
   }, [filteredRows, selectedReportId, apiData?.summary]);
+
+  // Calculate chart data grouped by asset type (Category) for asset valuation
+  const chartDataByAssetType = useMemo(() => {
+    if (selectedReportId !== "asset-valuation" || !filteredRows || filteredRows.length === 0) return [];
+    
+    // Group by Category (Asset Type) and sum values
+    const grouped = {};
+    
+    filteredRows.forEach(row => {
+      const category = row["Category"] || "Unknown";
+      const currentValue = parseFloat(row["Current Value"] || 0);
+      const netBookValue = parseFloat(row["Net Book Value"] || 0);
+      
+      if (!grouped[category]) {
+        grouped[category] = {
+          category: category,
+          currentValue: 0,
+          netBookValue: 0,
+          count: 0
+        };
+      }
+      
+      grouped[category].currentValue += currentValue;
+      grouped[category].netBookValue += netBookValue;
+      grouped[category].count += 1;
+    });
+    
+    // Convert to array and sort by current value descending
+    return Object.values(grouped)
+      .map(item => ({
+        category: item.category,
+        currentValue: parseFloat(item.currentValue.toFixed(2)),
+        netBookValue: parseFloat(item.netBookValue.toFixed(2)),
+        count: item.count
+      }))
+      .sort((a, b) => b.currentValue - a.currentValue);
+  }, [filteredRows, selectedReportId]);
+
+  // Filter assets by selected asset type for detail view
+  const filteredAssetsByType = useMemo(() => {
+    if (!selectedAssetType || !filteredRows || filteredRows.length === 0) return [];
+    
+    return filteredRows
+      .filter(row => row["Category"] === selectedAssetType)
+      .map(row => {
+        // Get asset name - prioritize description (actual asset name), then Name, then Asset Code
+        // The "Name" column from backend is a.text which might be asset type name, so we prioritize description
+        let assetName = row["description"] || row["Name"] || row["Asset Code"] || "";
+        
+        // Additional check: if Name equals Category (asset type name), definitely use description or Asset Code
+        if (assetName === row["Category"] || (!row["description"] && row["Name"] === row["Category"])) {
+          assetName = row["description"] || row["Asset Code"] || "";
+        }
+        
+        return {
+          assetCode: row["Asset Code"] || "",
+          name: assetName,
+          category: row["Category"] || "",
+          location: row["Location"] || "",
+          assetStatus: row["Asset Status"] || "",
+          acquisitionDate: row["Acquisition Date"] || "",
+          currentValue: parseFloat(row["Current Value"] || 0),
+          originalCost: parseFloat(row["Original Cost"] || 0),
+          accumulatedDepreciation: parseFloat(row["Accumulated Depreciation"] || 0),
+          netBookValue: parseFloat(row["Net Book Value"] || 0),
+          depreciationMethod: row["Depreciation Method"] || "",
+          usefulLife: row["Useful Life"] || 0
+        };
+      })
+      .sort((a, b) => b.netBookValue - a.netBookValue);
+  }, [selectedAssetType, filteredRows]);
+
+  // Prepare chart data for assets in selected asset type (for detail modal)
+  const assetDetailChartData = useMemo(() => {
+    if (!filteredAssetsByType || filteredAssetsByType.length === 0) return [];
+    
+    return filteredAssetsByType.map(asset => ({
+      name: asset.name.length > 20 ? asset.name.substring(0, 20) + "..." : asset.name,
+      fullName: asset.name,
+      assetCode: asset.assetCode,
+      netBookValue: asset.netBookValue,
+      currentValue: asset.currentValue
+    }));
+  }, [filteredAssetsByType]);
+
+  // Handle chart bar click
+  const handleChartBarClick = (data, index, e) => {
+    if (data && data.category) {
+      setSelectedAssetType(data.category);
+      setShowAssetTypeModal(true);
+    } else if (index !== undefined && chartDataByAssetType && chartDataByAssetType[index]) {
+      const clickedData = chartDataByAssetType[index];
+      if (clickedData && clickedData.category) {
+        setSelectedAssetType(clickedData.category);
+        setShowAssetTypeModal(true);
+      }
+    }
+  };
+
+  // Handle click on chart container (for grey areas)
+  const handleChartContainerClick = (e, categoryIndex) => {
+    // If clicking on the chart container (not on a bar), open modal for that category
+    if (categoryIndex !== undefined && chartDataByAssetType && chartDataByAssetType[categoryIndex]) {
+      const clickedData = chartDataByAssetType[categoryIndex];
+      if (clickedData && clickedData.category) {
+        setSelectedAssetType(clickedData.category);
+        setShowAssetTypeModal(true);
+      }
+    }
+  };
 
   // Saved views for this report
   const filteredViews = useMemo(() => {
@@ -166,10 +326,11 @@ export default function ReportLayout({
       case 'assetId':
       case 'assets':
         // Transform assets to dropdown format: {value: asset_id, label: asset_id - asset_name}
+        // Use description for asset name (not text which is asset type name)
         if (filterOptions.assets && Array.isArray(filterOptions.assets)) {
           return filterOptions.assets.map(asset => ({
             value: asset.asset_id,
-            label: `${asset.asset_id} - ${asset.asset_name || asset.description || asset.text || asset.asset_id || 'Unknown Asset'}`
+            label: `${asset.asset_id} - ${asset.description || asset.asset_name || asset.asset_description || asset.asset_id || 'Unknown Asset'}`
           }));
         }
         return [];
@@ -322,11 +483,21 @@ export default function ReportLayout({
        if (!r.field) return;
        const field = translatedReport.fields.find(f => f.key === r.field);
        const label = field ? field.label : r.field;
-       const val = Array.isArray(r.val) ? r.val.join(", ") || "–" : r.val ?? "–";
+      
+      // Handle property-value filter (object with property and value)
+      let displayVal = "–";
+      if (r.field === 'property' && r.val && typeof r.val === 'object' && r.val.property && r.val.value) {
+        displayVal = `${r.val.property} = ${r.val.value}`;
+      } else if (Array.isArray(r.val)) {
+        displayVal = r.val.join(", ") || "–";
+      } else if (r.val !== null && r.val !== undefined) {
+        displayVal = String(r.val);
+      }
+      
        chips.push({
          type: 'advanced',
          index: idx,
-         label: `${label} ${r.op} ${val}`,
+        label: `${label} ${r.op} ${displayVal}`,
          removeAction: () => {
            const newAdvanced = advanced.filter((_, i) => i !== idx);
            setAdvanced(newAdvanced);
@@ -875,9 +1046,10 @@ export default function ReportLayout({
                   <div className="text-sm text-slate-500">{translatedReport.description}</div>
                 </div>
                 <div>
-                  <button onClick={() => showToast(t('reports.scheduleWithCurrentFilters'))} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm whitespace-nowrap">
+                  {/* Schedule button hidden temporarily */}
+                  {/* <button onClick={() => showToast(t('reports.scheduleWithCurrentFilters'))} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm whitespace-nowrap">
                     {t('reports.schedule')}
-                  </button>
+                  </button> */}
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-12 gap-4">
@@ -924,9 +1096,9 @@ export default function ReportLayout({
 
               {/* Advanced */}
               {!hideAdvancedFilters && (
-                <div className="mt-4">
-                  <AdvancedBuilder fields={translatedReport.fields} value={advanced} onChange={setAdvanced} />
-                </div>
+              <div className="mt-4">
+                  <AdvancedBuilder fields={translatedReport.fields} value={advanced} onChange={setAdvanced} quickFilters={quick} />
+              </div>
               )}
                {/* Active Chips */}
                <div className="mt-3">
@@ -966,41 +1138,370 @@ export default function ReportLayout({
                 {/* Generate Report Button - Hidden if hideGenerateReport prop is true */}
                 {!hideGenerateReport && (
                   translatedReport.id === 'asset-valuation' ? (
-                    <DropdownMenu
-                      label={isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
-                      options={[
-                        {
-                          label: t('reports.pdfReport'),
-                          action: () => handleGenerateReport('pdf')
-                        },
-                        {
-                          label: t('reports.excelReport'),
-                          action: () => handleGenerateReport('excel')
-                        },
-                        {
-                          label: t('reports.csvReport'),
-                          action: () => handleGenerateReport('csv')
-                        },
-                        {
-                          label: t('reports.jsonReport'),
-                          action: () => handleGenerateReport('json')
-                        }
-                      ]}
-                    />
-                  ) : (
-                    <button 
-                      onClick={() => handleGenerateReport('pdf')}
-                      disabled={isGeneratingReport}
-                      className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1e5a8a]"
-                    >
-                      {isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
-                    </button>
+                  <DropdownMenu
+                    label={isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
+                    options={[
+                      {
+                        label: t('reports.pdfReport'),
+                        action: () => handleGenerateReport('pdf')
+                      },
+                      {
+                        label: t('reports.excelReport'),
+                        action: () => handleGenerateReport('excel')
+                      },
+                      {
+                        label: t('reports.csvReport'),
+                        action: () => handleGenerateReport('csv')
+                      },
+                      {
+                        label: t('reports.jsonReport'),
+                        action: () => handleGenerateReport('json')
+                      }
+                    ]}
+                  />
+                ) : (
+                  <button 
+                    onClick={() => handleGenerateReport('pdf')}
+                    disabled={isGeneratingReport}
+                    className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1e5a8a]"
+                  >
+                    {isGeneratingReport ? t('reports.generating') : t('reports.generateReport')}
+                  </button>
                   )
                 )}
               </div>
             </div>
             
-            {/* Preview Table - Hidden if hideTable prop is true */}
+            {/* Charts Section - Only for Asset Valuation */}
+            {selectedReportId === "asset-valuation" && chartDataByAssetType.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                {/* Current Value by Asset Type Chart */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">{t('reports.currentValueByAssetType')}</h3>
+                  <div 
+                    className="h-80 cursor-pointer relative"
+                    onClick={(e) => {
+                      // Only handle click if it's on the chart background/grid area
+                      // Find which category was clicked based on chart area
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const clickX = e.clientX - rect.left;
+                      
+                      // Account for chart margins (left: 20, right: 30)
+                      const leftMargin = 20;
+                      const rightMargin = 30;
+                      const chartWidth = rect.width - leftMargin - rightMargin;
+                      const adjustedX = clickX - leftMargin;
+                      
+                      if (adjustedX >= 0 && adjustedX <= chartWidth) {
+                        const categoryCount = chartDataByAssetType.length;
+                        const categoryIndex = Math.min(
+                          Math.floor((adjustedX / chartWidth) * categoryCount),
+                          categoryCount - 1
+                        );
+                        
+                        if (categoryIndex >= 0 && categoryIndex < chartDataByAssetType.length) {
+                          handleChartContainerClick(e, categoryIndex);
+                        }
+                      }
+                    }}
+                  >
+                    <ResponsiveContainer width="100%" height="100%" style={{ cursor: 'pointer' }}>
+                      <BarChart 
+                        data={chartDataByAssetType} 
+                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                        onClick={(data, index, e) => {
+                          e.stopPropagation();
+                          handleChartBarClick(data, index, e);
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" onClick={(e) => e.stopPropagation()} />
+                        <XAxis 
+                          dataKey="category" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={100}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const categoryIndex = chartDataByAssetType.findIndex((item, idx) => {
+                              // Approximate which category was clicked based on position
+                              return true;
+                            });
+                            if (categoryIndex >= 0) {
+                              handleChartContainerClick(e, categoryIndex);
+                            }
+                          }}
+                        />
+                        <YAxis 
+                          tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip 
+                          formatter={(value) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                          labelStyle={{ color: '#1e293b' }}
+                        />
+                        <Legend />
+                        <Bar 
+                          dataKey="currentValue" 
+                          fill="#3b82f6" 
+                          name={t('reports.currentValue')}
+                          radius={[4, 4, 0, 0]}
+                          onClick={(data, index, e) => {
+                            e.stopPropagation();
+                            handleChartBarClick(data, index, e);
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {chartDataByAssetType.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleChartBarClick(entry, index, e);
+                              }}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                
+                {/* Value After Depreciation by Asset Type Chart */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">{t('reports.valueAfterDepreciationByAssetType')}</h3>
+                  <div 
+                    className="h-80 cursor-pointer relative"
+                    onClick={(e) => {
+                      // Only handle click if it's on the chart background/grid area
+                      // Find which category was clicked based on chart area
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const clickX = e.clientX - rect.left;
+                      
+                      // Account for chart margins (left: 20, right: 30)
+                      const leftMargin = 20;
+                      const rightMargin = 30;
+                      const chartWidth = rect.width - leftMargin - rightMargin;
+                      const adjustedX = clickX - leftMargin;
+                      
+                      if (adjustedX >= 0 && adjustedX <= chartWidth) {
+                        const categoryCount = chartDataByAssetType.length;
+                        const categoryIndex = Math.min(
+                          Math.floor((adjustedX / chartWidth) * categoryCount),
+                          categoryCount - 1
+                        );
+                        
+                        if (categoryIndex >= 0 && categoryIndex < chartDataByAssetType.length) {
+                          handleChartContainerClick(e, categoryIndex);
+                        }
+                      }
+                    }}
+                  >
+                    <ResponsiveContainer width="100%" height="100%" style={{ cursor: 'pointer' }}>
+                      <BarChart 
+                        data={chartDataByAssetType} 
+                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                        onClick={(data, index, e) => {
+                          e.stopPropagation();
+                          handleChartBarClick(data, index, e);
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis 
+                          dataKey="category" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={100}
+                          interval={0}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <YAxis 
+                          tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip 
+                          formatter={(value) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                          labelStyle={{ color: '#1e293b' }}
+                        />
+                        <Legend />
+                        <Bar 
+                          dataKey="netBookValue" 
+                          fill="#10b981" 
+                          name={t('reports.valueAfterDepreciation')}
+                          radius={[4, 4, 0, 0]}
+                          onClick={(data, index, e) => {
+                            e.stopPropagation();
+                            handleChartBarClick(data, index, e);
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {chartDataByAssetType.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleChartBarClick(entry, index, e);
+                              }}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+             )}
+             
+             {/* Asset Type Details Modal */}
+             {showAssetTypeModal && selectedAssetType && (
+               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowAssetTypeModal(false)}>
+                 <div className="bg-white rounded-xl shadow-lg w-[95%] max-w-[95vw] max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+                   {/* Modal Header */}
+                   <div className="bg-[#143d65] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] flex items-center justify-between">
+                     <h2 className="text-xl font-semibold">
+                       {t('reports.assetsByAssetType')}: {selectedAssetType}
+                     </h2>
+                     <button
+                       onClick={() => setShowAssetTypeModal(false)}
+                       className="text-white hover:text-gray-200 text-2xl font-bold"
+                       aria-label={t('reports.close')}
+                     >
+                       ×
+                     </button>
+                   </div>
+                   
+                   {/* Modal Content */}
+                   <div className="flex-1 overflow-y-auto p-6">
+                     {/* Summary Stats */}
+                     <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                         <p className="text-sm font-medium text-blue-800">{t('reports.totalAssets')}</p>
+                         <p className="text-2xl font-bold text-blue-900">{filteredAssetsByType.length}</p>
+                       </div>
+                       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                         <p className="text-sm font-medium text-green-800">{t('reports.totalCurrentValue')}</p>
+                         <p className="text-xl font-bold text-green-900">
+                           ₹{filteredAssetsByType.reduce((sum, asset) => sum + asset.currentValue, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                         </p>
+                       </div>
+                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                         <p className="text-sm font-medium text-purple-800">{t('reports.totalValueAfterDepreciation')}</p>
+                         <p className="text-xl font-bold text-purple-900">
+                           ₹{filteredAssetsByType.reduce((sum, asset) => sum + asset.netBookValue, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                         </p>
+                       </div>
+                     </div>
+
+                     {/* Chart for Current Value After Depreciation */}
+                     {assetDetailChartData.length > 0 && (
+                       <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
+                         <h3 className="text-lg font-semibold text-slate-900 mb-4">
+                           {t('reports.currentValueAfterDepreciationByAsset')}
+                         </h3>
+                         <div className="h-96">
+                           <ResponsiveContainer width="100%" height="100%" style={{ cursor: 'pointer' }}>
+                             <BarChart data={assetDetailChartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+                               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                               <XAxis 
+                                 dataKey="name" 
+                                 angle={-45}
+                                 textAnchor="end"
+                                 height={120}
+                                 interval={0}
+                                 tick={{ fontSize: 10 }}
+                               />
+                               <YAxis 
+                                 tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+                                 tick={{ fontSize: 12 }}
+                               />
+                               <Tooltip 
+                                 formatter={(value, name) => [
+                                   `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                                   name === 'netBookValue' ? t('reports.valueAfterDepreciation') : t('reports.currentValue')
+                                 ]}
+                                 labelFormatter={(label) => {
+                                   const asset = assetDetailChartData.find(a => a.name === label);
+                                   return asset ? `${asset.assetCode} - ${asset.fullName}` : label;
+                                 }}
+                                 labelStyle={{ color: '#1e293b' }}
+                               />
+                               <Legend />
+                               <Bar 
+                                 dataKey="netBookValue" 
+                                 fill="#10b981" 
+                                 name={t('reports.valueAfterDepreciation')}
+                                 radius={[4, 4, 0, 0]}
+                               />
+                             </BarChart>
+                           </ResponsiveContainer>
+                         </div>
+                       </div>
+                     )}
+                     
+                     {/* Assets Table */}
+                     {filteredAssetsByType.length > 0 ? (
+                       <div className="overflow-x-auto">
+                         <table className="min-w-full text-sm border-collapse">
+                           <thead className="bg-slate-50 sticky top-0">
+                             <tr>
+                               <th className="text-left font-medium text-slate-600 px-3 py-2 border-b border-slate-200">{t('reports.assetCode')}</th>
+                               <th className="text-left font-medium text-slate-600 px-3 py-2 border-b border-slate-200">{t('reports.name')}</th>
+                               <th className="text-left font-medium text-slate-600 px-3 py-2 border-b border-slate-200">{t('reports.location')}</th>
+                               <th className="text-left font-medium text-slate-600 px-3 py-2 border-b border-slate-200">{t('reports.assetStatus')}</th>
+                               <th className="text-right font-medium text-slate-600 px-3 py-2 border-b border-slate-200">{t('reports.currentValue')}</th>
+                               <th className="text-right font-medium text-slate-600 px-3 py-2 border-b border-slate-200">{t('reports.originalCost')}</th>
+                               <th className="text-right font-medium text-slate-600 px-3 py-2 border-b border-slate-200">{t('reports.accumulatedDepreciation')}</th>
+                               <th className="text-right font-medium text-slate-600 px-3 py-2 border-b border-slate-200">{t('reports.valueAfterDepreciation')}</th>
+                               <th className="text-left font-medium text-slate-600 px-3 py-2 border-b border-slate-200">{t('reports.depreciationMethod')}</th>
+                             </tr>
+                           </thead>
+                           <tbody>
+                             {filteredAssetsByType.map((asset, index) => (
+                               <tr key={index} className="hover:bg-slate-50">
+                                 <td className="px-3 py-2 border-b border-slate-100">{asset.assetCode}</td>
+                                 <td className="px-3 py-2 border-b border-slate-100">{asset.name}</td>
+                                 <td className="px-3 py-2 border-b border-slate-100">{asset.location}</td>
+                                 <td className="px-3 py-2 border-b border-slate-100">
+                                   <span className={`px-2 py-1 rounded text-xs ${
+                                     asset.assetStatus === 'In-Use' 
+                                       ? 'bg-green-100 text-green-800' 
+                                       : 'bg-red-100 text-red-800'
+                                   }`}>
+                                     {asset.assetStatus}
+                                   </span>
+                                 </td>
+                                 <td className="px-3 py-2 border-b border-slate-100 text-right">₹{asset.currentValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                 <td className="px-3 py-2 border-b border-slate-100 text-right">₹{asset.originalCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                 <td className="px-3 py-2 border-b border-slate-100 text-right">₹{asset.accumulatedDepreciation.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                 <td className="px-3 py-2 border-b border-slate-100 text-right font-semibold text-green-700">₹{asset.netBookValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                 <td className="px-3 py-2 border-b border-slate-100">{asset.depreciationMethod}</td>
+                               </tr>
+                             ))}
+                           </tbody>
+                           <tfoot className="bg-slate-50">
+                             <tr>
+                               <td colSpan="4" className="px-3 py-2 border-t-2 border-slate-300 font-semibold text-slate-700">{t('reports.total')}</td>
+                               <td className="px-3 py-2 border-t-2 border-slate-300 text-right font-semibold text-slate-700">₹{filteredAssetsByType.reduce((sum, asset) => sum + asset.currentValue, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                               <td className="px-3 py-2 border-t-2 border-slate-300 text-right font-semibold text-slate-700">₹{filteredAssetsByType.reduce((sum, asset) => sum + asset.originalCost, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                               <td className="px-3 py-2 border-t-2 border-slate-300 text-right font-semibold text-slate-700">₹{filteredAssetsByType.reduce((sum, asset) => sum + asset.accumulatedDepreciation, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                               <td className="px-3 py-2 border-t-2 border-slate-300 text-right font-semibold text-green-700">₹{filteredAssetsByType.reduce((sum, asset) => sum + asset.netBookValue, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                               <td className="px-3 py-2 border-t-2 border-slate-300"></td>
+                             </tr>
+                           </tfoot>
+                         </table>
+                       </div>
+                     ) : (
+                       <div className="text-center py-8 text-slate-500">
+                         {t('reports.noAssetsFound')}
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               </div>
+             )}
+             
+             {/* Preview Table - Hidden if hideTable prop is true */}
             {!hideTable && (
             <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="p-3 border-b border-slate-200 flex items-center justify-between">
@@ -1069,21 +1570,21 @@ export default function ReportLayout({
                         
                         return (
                           <th key={col} className={`${alignClass} font-medium text-slate-600 px-3 py-2 border-b border-slate-200 whitespace-nowrap`}>
-                            <span className="inline-flex items-center gap-2">
-                              {getTranslatedColumnHeader(col, t)}
-                              <button
-                                type="button"
-                                title={t('reports.removeColumnTooltip')}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setColumns((prev) => (prev || cols).filter((c) => c !== col));
-                                }}
-                                className="text-slate-400 hover:text-red-600"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          </th>
+                          <span className="inline-flex items-center gap-2">
+                            {getTranslatedColumnHeader(col, t)}
+                            <button
+                              type="button"
+                              title={t('reports.removeColumnTooltip')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setColumns((prev) => (prev || cols).filter((c) => c !== col));
+                              }}
+                              className="text-slate-400 hover:text-red-600"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        </th>
                         );
                       })}
                     </tr>
@@ -1121,8 +1622,8 @@ export default function ReportLayout({
                           
                           return (
                             <td key={c} className={`px-3 py-2 border-b border-slate-100 whitespace-nowrap ${alignClass}`}>
-                              {String(r[c] ?? "")}
-                            </td>
+                            {String(r[c] ?? "")}
+                          </td>
                           );
                         })}
                       </tr>

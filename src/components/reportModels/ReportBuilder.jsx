@@ -865,9 +865,10 @@ export default function ReportBuilder() {
                   <div className="text-sm text-slate-500">{report.description}</div>
                 </div>
                 <div>
-                  <button onClick={() => showToast("In-app, a schedule with current filters would be configured.")} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm whitespace-nowrap">
+                  {/* Schedule button hidden temporarily */}
+                  {/* <button onClick={() => showToast("In-app, a schedule with current filters would be configured.")} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm whitespace-nowrap">
                     Schedule…
-                  </button>
+                  </button> */}
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-12 gap-4">

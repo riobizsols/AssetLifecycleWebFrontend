@@ -212,6 +212,7 @@ export const REPORTS = [
       { key: "currentStatus", label: "Current Status", type: "multiselect", domain: ASSET_STATUSES },
       { key: "cost", label: "Cost ≥ (₹)", type: "number" },
       { key: "status", label: "Status", type: "multiselect", domain: ["Active", "In Use", "Under Maintenance", "Disposed"] },
+      { key: "property", label: "Property", type: "propertyValue", domain: [] },
     ],
     defaultColumns: [
       "Asset ID", "Asset Name", "Department", "Assigned Employee", "Vendor", 

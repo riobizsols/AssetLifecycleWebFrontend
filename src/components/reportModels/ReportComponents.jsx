@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
+import API from "../../lib/axios";
 
 // Common UI Components
 export const SectionTitle = ({ children }) => (
@@ -540,6 +542,9 @@ export function SearchableSelect({ onChange, options, placeholder, value }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
+  const buttonRef = useRef(null);
+  const [openUpward, setOpenUpward] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   
   const defaultPlaceholder = placeholder || t('reports.filterOptions.searchPlaceholder');
 
@@ -580,13 +585,45 @@ export function SearchableSelect({ onChange, options, placeholder, value }) {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+          buttonRef.current && !buttonRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      const dropdownHeight = 200; // Approximate max height (48px header + ~152px for options)
+      
+      // Open upward if there's not enough space below but enough space above
+      if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+        setOpenUpward(true);
+        // Position above the button - calculate exact height needed
+        const actualDropdownHeight = Math.min(dropdownHeight, filteredOptions.length * 32 + 60); // Approximate per option + header
+        setDropdownPosition({
+          top: buttonRect.top + window.scrollY - actualDropdownHeight, // No margin to eliminate gap
+          left: buttonRect.left + window.scrollX,
+          width: buttonRect.width
+        });
+      } else {
+        setOpenUpward(false);
+        // Position below the button - no gap
+        setDropdownPosition({
+          top: buttonRect.bottom + window.scrollY, // No margin to eliminate gap
+          left: buttonRect.left + window.scrollX,
+          width: buttonRect.width
+        });
+      }
+    }
+  }, [isOpen, filteredOptions.length]);
   
   const handleSelect = (option) => {
     const selectedValue = typeof option === 'object' && option.value ? option.value : option;
@@ -598,6 +635,7 @@ export function SearchableSelect({ onChange, options, placeholder, value }) {
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-left bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center justify-between"
@@ -615,8 +653,16 @@ export function SearchableSelect({ onChange, options, placeholder, value }) {
         </span>
         <span className="text-slate-500">▼</span>
       </button>
-      {isOpen && (
-        <div className="absolute z-10 w-full rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
+      {isOpen && createPortal(
+        <div 
+          ref={dropdownRef}
+          className="fixed z-[9999] rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width
+          }}
+        >
           <div className="p-2 border-b border-slate-200">
             <input
               type="text"
@@ -638,7 +684,8 @@ export function SearchableSelect({ onChange, options, placeholder, value }) {
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -651,9 +698,10 @@ export const OP_MAP = {
   multiselect: ["has any", "has all", "has none"],
   boolean: ["is"],
   daterange: ["in range", "before", "after"],
+  propertyValue: ["="],
 };
 
-export function AdvancedBuilder({ fields, value, onChange }) {
+export function AdvancedBuilder({ fields, value, onChange, quickFilters = {} }) {
   const { t } = useLanguage();
   const rows = value || [];
   const add = () => {
@@ -684,6 +732,13 @@ export function AdvancedBuilder({ fields, value, onChange }) {
           const field = fieldByKey(r.field);
           if (!field) return null;
           const ops = OP_MAP[field.type] || ["="];
+          const isPropertyValue = field.type === "propertyValue";
+          
+          // For propertyValue, always use "=" operator and ensure it's set
+          if (isPropertyValue && r.op !== "=") {
+            update(i, { op: "=" });
+          }
+          
           return (
             <div key={i} className="grid grid-cols-12 gap-2 items-center">
               <div className="col-span-3">
@@ -698,11 +753,13 @@ export function AdvancedBuilder({ fields, value, onChange }) {
                   options={fields.map((f) => f.label)} 
                 />
               </div>
-              <div className="col-span-3">
-                <Select value={r.op} onChange={(v) => update(i, { op: v })} options={ops} />
-              </div>
-              <div className="col-span-5">
-                <AdvValueInput field={field} cur={r.val} onChange={(v) => update(i, { val: v })} />
+              {!isPropertyValue && (
+                <div className="col-span-3">
+                  <Select value={r.op} onChange={(v) => update(i, { op: v })} options={ops} />
+                </div>
+              )}
+              <div className={isPropertyValue ? "col-span-8" : "col-span-5"}>
+                <AdvValueInput field={field} cur={r.val} onChange={(v) => update(i, { val: v })} quickFilters={quickFilters} />
               </div>
               <div className="col-span-1 text-right">
                 <button onClick={() => remove(i)} className="text-slate-500 hover:text-red-600">
@@ -717,13 +774,131 @@ export function AdvancedBuilder({ fields, value, onChange }) {
   );
 }
 
-export function AdvValueInput({ field, cur, onChange }) {
+export function PropertyValueFilter({ value, onChange, assetId = null }) {
+  const [properties, setProperties] = useState([]);
+  const [propertyValues, setPropertyValues] = useState([]);
+  const [loadingValues, setLoadingValues] = useState(false);
+  const selectedProperty = value?.property || null;
+  const selectedValue = value?.value || null;
+
+  // Fetch properties - if assetId is provided, fetch only properties for that asset
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        let response;
+        if (assetId) {
+          // Fetch properties for specific asset
+          response = await API.get(`/asset-register/asset-properties/${encodeURIComponent(assetId)}`);
+          if (response.data && response.data.success) {
+            const props = response.data.data.map(p => ({
+              propId: p.prop_id,
+              property: p.property
+            }));
+            setProperties(props);
+            // Clear selected property and value when assetId changes and property is not available
+            if (selectedProperty && !props.find(p => p.property === selectedProperty)) {
+              onChange({ property: null, value: null });
+            }
+          }
+        } else {
+          // Fetch all properties from tblProps
+          response = await API.get('/properties');
+          if (response.data && response.data.success) {
+            const props = response.data.data.map(p => ({
+              propId: p.prop_id,
+              property: p.property
+            }));
+            console.log('✅ Mapped all properties:', props);
+            setProperties(props);
+          } else {
+            console.warn('⚠️ No properties found');
+            setProperties([]);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+      }
+    };
+    fetchProperties();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetId]);
+
+  // Fetch values for selected property - if assetId is provided, fetch only values for that asset
+  useEffect(() => {
+    const fetchPropertyValues = async () => {
+      if (!selectedProperty) {
+        setPropertyValues([]);
+        return;
+      }
+
+      setLoadingValues(true);
+      try {
+        let url = `/asset-register/property-values/${encodeURIComponent(selectedProperty)}`;
+        if (assetId) {
+          url += `?assetId=${encodeURIComponent(assetId)}`;
+        }
+        console.log('🔍 Fetching property values for:', selectedProperty, assetId ? `(asset: ${assetId})` : '');
+        // Get distinct values for this property from tblAssetPropValues
+        const response = await API.get(url);
+        console.log('📦 Property values response:', response.data);
+        if (response.data && response.data.success) {
+          const values = response.data.data || [];
+          console.log('✅ Property values:', values);
+          setPropertyValues(values);
+        } else {
+          console.warn('⚠️ No property values found');
+          setPropertyValues([]);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching property values:', error);
+        console.error('❌ Error details:', error.response?.data || error.message);
+        setPropertyValues([]);
+      } finally {
+        setLoadingValues(false);
+      }
+    };
+
+    fetchPropertyValues();
+  }, [selectedProperty, assetId]);
+
+  const handlePropertyChange = (propertyName) => {
+    const selectedProp = properties.find(p => p.property === propertyName);
+    if (selectedProp) {
+      onChange({ property: selectedProp.property, value: null });
+    }
+  };
+
+  const handleValueChange = (val) => {
+    onChange({ property: selectedProperty, value: val });
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <Select
+        value={selectedProperty || ""}
+        onChange={handlePropertyChange}
+        options={properties.map(p => p.property || p.property_name || p)}
+        placeholder={properties.length === 0 ? "No properties available" : "Select Property"}
+      />
+      <Select
+        value={selectedValue || ""}
+        onChange={handleValueChange}
+        options={propertyValues}
+        placeholder={loadingValues ? "Loading..." : selectedProperty ? "Select Value" : "Select property first"}
+        disabled={!selectedProperty || loadingValues}
+      />
+    </div>
+  );
+}
+
+export function AdvValueInput({ field, cur, onChange, quickFilters = {} }) {
   if (field.type === "number") return <Input type="number" value={cur} onChange={onChange} />;
   if (field.type === "text") return <Input value={cur} onChange={onChange} placeholder="Enter text" />;
   if (field.type === "boolean") return <Select value={cur} onChange={onChange} options={["true", "false"]} />;
   if (field.type === "select") return <Select value={cur} onChange={onChange} options={field.domain || []} />;
   if (field.type === "multiselect") return <SafeDropdownMultiSelect values={cur || []} onChange={onChange} options={field.domain || []} />;
   if (field.type === "daterange") return <DateRange value={cur || ["", ""]} onChange={onChange} />;
+  if (field.type === "propertyValue") return <PropertyValueFilter value={cur} onChange={onChange} assetId={quickFilters.assetId} />;
   return <Input value={cur} onChange={onChange} />;
 }
 

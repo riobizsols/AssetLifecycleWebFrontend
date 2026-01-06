@@ -677,6 +677,30 @@ export function useReportState(reportId, report) {
           const assetData = response.data?.data || response.data || [];
           console.log('✅ [useReportState] Loaded', assetData.length, 'filtered assets from API');
           
+          // Extract property columns dynamically and add to available columns
+          if (assetData.length > 0) {
+            const propertyColumns = new Set();
+            assetData.forEach(row => {
+              Object.keys(row).forEach(key => {
+                if (key.startsWith('Property: ')) {
+                  propertyColumns.add(key);
+                }
+              });
+            });
+            
+            // Update report's allColumns with property columns
+            if (propertyColumns.size > 0) {
+              const report = REPORTS.find(r => r.id === reportId);
+              if (report) {
+                const existingColumns = report.allColumns || ALL_COLUMNS[reportId] || [];
+                const newColumns = [...existingColumns, ...Array.from(propertyColumns)];
+                // Remove duplicates
+                report.allColumns = [...new Set(newColumns)];
+                console.log('✅ [useReportState] Added property columns:', Array.from(propertyColumns));
+              }
+            }
+          }
+          
           setAllRows(assetData);
           // Force re-render to update dropdowns
           setForceUpdate(prev => prev + 1);
@@ -1314,10 +1338,48 @@ export function useReportState(reportId, report) {
           : [];
       } else {
         // Handle other reports data structure
-        assetOptions = allAvailableAssets.map(row => ({
-          value: row["Asset ID"] || row.asset_id,
-          label: `${row["Asset ID"] || row.asset_id} - ${row["Asset Name"] || row.asset_description}`
-        }));
+        // Use description for asset name (not "Asset Name" which is actually asset type name from a.text)
+        // The backend query returns a.description without alias, so it should be accessible as row.description
+        // Debug logging for first row to understand data structure
+        if (allAvailableAssets.length > 0) {
+          const sampleRow = allAvailableAssets[0];
+          console.log('🔍 [useReportState] Sample asset row keys:', Object.keys(sampleRow));
+          console.log('🔍 [useReportState] Sample row data:', {
+            assetId: sampleRow["Asset ID"] || sampleRow.asset_id,
+            description: sampleRow.description,
+            "description": sampleRow["description"],
+            Description: sampleRow.Description,
+            "Description": sampleRow["Description"],
+            asset_description: sampleRow.asset_description,
+            "Asset Name": sampleRow["Asset Name"],
+            Category: sampleRow["Category"] || sampleRow.Category
+          });
+        }
+        
+        assetOptions = allAvailableAssets.map((row, index) => {
+          const assetId = row["Asset ID"] || row.asset_id;
+          // Priority: description (lowercase, from a.description) > asset_description > other variations
+          // Note: "Asset Name" is actually asset type name (from a.text), so don't use it
+          // The backend now returns a.description as "description" (lowercase quoted)
+          const assetName = row.description || row["description"] || row.asset_description;
+          
+          // Only log for first asset to debug
+          if (index === 0) {
+            console.log('🔍 [useReportState] First asset row sample:', {
+              assetId,
+              'description': row.description,
+              '"description"': row["description"],
+              'asset_description': row.asset_description,
+              '"Asset Name" (wrong - asset type)': row["Asset Name"],
+              'All keys': Object.keys(row)
+            });
+          }
+          
+          return {
+            value: assetId,
+            label: assetName ? `${assetId} - ${assetName}` : assetId
+          };
+        });
         
         workOrderOptions = allAvailableAssets.map(row => ({
           value: row["Work Order ID"] || row.wo_id,

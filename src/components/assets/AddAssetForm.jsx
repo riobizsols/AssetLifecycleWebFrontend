@@ -87,7 +87,10 @@ const AddAssetForm = ({ userRole }) => {
     purchaseCost: false,
     parentAsset: false,
     purchaseBy: false,
-    expiryDate: false
+    expiryDate: false,
+    dateMismatch: false,
+    expiryDateBeforePurchase: false,
+    vendorRequired: false
   });
 
   // Initialize audit logging
@@ -355,7 +358,21 @@ const AddAssetForm = ({ userRole }) => {
 
   // Helper function to handle option selection
   const handleOptionSelect = (name, value, label) => {
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(prev => {
+      const newForm = { ...prev, [name]: value };
+      
+      // Real-time validation for vendor requirement
+      if (name === 'purchaseSupply' || name === 'serviceSupply') {
+        if (newForm.purchaseSupply || newForm.serviceSupply) {
+          setValidationErrors(prevErrors => ({
+            ...prevErrors,
+            vendorRequired: false
+          }));
+        }
+      }
+      
+      return newForm;
+    });
     setDropdownStates(prev => ({ ...prev, [name]: false }));
     updateSearch(name, '');
   };
@@ -605,12 +622,55 @@ const AddAssetForm = ({ userRole }) => {
         newForm[name] = value;
       }
       console.log('🔍 Form updated:', newForm);
+      
+      // Real-time validation for date mismatch and expiry before purchase
+      if ((name === 'expiryDate' || name === 'purchaseDate') && newForm.expiryDate && newForm.purchaseDate) {
+        const expiryDateObj = new Date(newForm.expiryDate);
+        const purchaseDateObj = new Date(newForm.purchaseDate);
+        
+        if (newForm.expiryDate === newForm.purchaseDate) {
+          setValidationErrors(prev => ({
+            ...prev,
+            dateMismatch: true,
+            expiryDateBeforePurchase: false,
+            expiryDate: true,
+            purchaseDate: true
+          }));
+        } else if (expiryDateObj < purchaseDateObj) {
+          setValidationErrors(prev => ({
+            ...prev,
+            dateMismatch: false,
+            expiryDateBeforePurchase: true,
+            expiryDate: true,
+            purchaseDate: false
+          }));
+        } else {
+          setValidationErrors(prev => ({
+            ...prev,
+            dateMismatch: false,
+            expiryDateBeforePurchase: false,
+            expiryDate: prev.expiryDate && name !== 'expiryDate' ? prev.expiryDate : false,
+            purchaseDate: prev.purchaseDate && name !== 'purchaseDate' ? prev.purchaseDate : false
+          }));
+        }
+      }
+      
+      // Real-time validation for vendor requirement
+      if (name === 'purchaseSupply' || name === 'serviceSupply') {
+        if (newForm.purchaseSupply || newForm.serviceSupply) {
+          setValidationErrors(prev => ({
+            ...prev,
+            vendorRequired: false
+          }));
+        }
+      }
+      
       return newForm;
     });
     setTouched((prev) => ({ ...prev, [name]: true }));
     
-    // Clear validation error when user starts typing
-    if (validationErrors[name]) {
+    // Clear validation error when user starts typing (for non-date fields)
+    if (validationErrors[name] && name !== 'expiryDate' && name !== 'purchaseDate') {
       setValidationErrors(prev => ({
         ...prev,
         [name]: false
@@ -807,6 +867,31 @@ const AddAssetForm = ({ userRole }) => {
       hasErrors = true;
     }
     
+    // Validate that expiry date and purchase date are not the same
+    if (form.expiryDate && form.purchaseDate && form.expiryDate === form.purchaseDate) {
+      errors.dateMismatch = true;
+      errors.expiryDate = true;
+      errors.purchaseDate = true;
+      hasErrors = true;
+    }
+    
+    // Validate that expiry date is not before purchase date
+    if (form.expiryDate && form.purchaseDate && form.expiryDate !== form.purchaseDate) {
+      const expiryDateObj = new Date(form.expiryDate);
+      const purchaseDateObj = new Date(form.purchaseDate);
+      if (expiryDateObj < purchaseDateObj) {
+        errors.expiryDateBeforePurchase = true;
+        errors.expiryDate = true;
+        hasErrors = true;
+      }
+    }
+    
+    // Validate that at least one vendor (product or service) is selected
+    if (!form.purchaseSupply && !form.serviceSupply) {
+      errors.vendorRequired = true;
+      hasErrors = true;
+    }
+    
     // Parent asset validation for child asset types
     const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
     const isChild = (selectedType?.is_child === true || selectedType?.is_child === 'true') && !!selectedType?.parent_asset_type_id;
@@ -819,7 +904,15 @@ const AddAssetForm = ({ userRole }) => {
     setValidationErrors(errors);
     
     if (hasErrors) {
-      toast.error(t('assets.pleaseFillAllRequiredFields'));
+      if (errors.dateMismatch) {
+        toast.error(t('assets.expiryDateCannotBeSameAsPurchaseDate') || 'Expiry date cannot be the same as purchase date');
+      } else if (errors.expiryDateBeforePurchase) {
+        toast.error(t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date');
+      } else if (errors.vendorRequired) {
+        toast.error(t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required');
+      } else {
+        toast.error(t('assets.pleaseFillAllRequiredFields'));
+      }
       return;
     }
 
@@ -1331,7 +1424,13 @@ const AddAssetForm = ({ userRole }) => {
                     className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.expiryDate ? 'border-red-500' : 'border-gray-300'}`} 
                   />
                   {validationErrors.expiryDate && (
-                    <p className="mt-1 text-sm text-red-600">{t('assets.expiryDateIsRequired')}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {validationErrors.dateMismatch 
+                        ? (t('assets.expiryDateCannotBeSameAsPurchaseDate') || 'Expiry date cannot be the same as purchase date')
+                        : validationErrors.expiryDateBeforePurchase
+                        ? (t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date')
+                        : (t('assets.expiryDateIsRequired') || 'Expiry date is required')}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -1355,7 +1454,11 @@ const AddAssetForm = ({ userRole }) => {
                     className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseDate ? 'border-red-500' : 'border-gray-300'}`} 
                   />
                   {validationErrors.purchaseDate && (
-                    <p className="mt-1 text-sm text-red-600">{t('assets.purchaseDateIsRequired')}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {validationErrors.dateMismatch 
+                        ? (t('assets.purchaseDateCannotBeSameAsExpiryDate') || 'Purchase date cannot be the same as expiry date')
+                        : (t('assets.purchaseDateIsRequired') || 'Purchase date is required')}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -1430,7 +1533,6 @@ const AddAssetForm = ({ userRole }) => {
                     <p className="mt-1 text-sm text-red-600">{t('assets.purchaseByIsRequired')}</p>
                   )}
                 </div>
-                )}
               </div>
             </>
           )}
@@ -1450,11 +1552,11 @@ const AddAssetForm = ({ userRole }) => {
             <div className="grid grid-cols-5 gap-6 mb-4">
                 {/* Product Vendor Dropdown */}
                 <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')}</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')} <span className="text-red-500">*</span></label>
                 <div className="relative w-full">
                   <button
                     type="button"
-                    className="border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9"
+                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired ? 'border-red-500' : ''}`}
                     onClick={() => toggleDropdown('purchaseSupply')}
                   >
                     <span className="text-xs truncate">
@@ -1503,15 +1605,20 @@ const AddAssetForm = ({ userRole }) => {
                     </div>
                   )}
                 </div>
+                {validationErrors.vendorRequired && !form.purchaseSupply && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required'}
+                  </p>
+                )}
               </div>
 
               {/* Service Vendor Dropdown */}
               <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.serviceVendor')}</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.serviceVendor')} <span className="text-red-500">*</span></label>
                 <div className="relative w-full">
                   <button
                     type="button"
-                    className="border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9"
+                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired ? 'border-red-500' : ''}`}
                     onClick={() => toggleDropdown('serviceSupply')}
                   >
                     <span className="text-xs truncate">
@@ -1560,6 +1667,11 @@ const AddAssetForm = ({ userRole }) => {
                     </div>
                   )}
                 </div>
+                {validationErrors.vendorRequired && !form.serviceSupply && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required'}
+                  </p>
+                )}
               </div>
 
 
