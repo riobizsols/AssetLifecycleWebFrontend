@@ -1303,13 +1303,26 @@
     "action": "Action",
     "user": "User",
     "jobRole": "Job Role",
-    "reason": "Reason",
-    "assetMaintenanceChecklist": "Asset Maintenance Checklist",
-    "noChecklistItemsFound": "No checklist items found.",
-    "close": "Close",
-    "batteryHealthCheck": "Battery health check",
-    "osAndSoftwareInstalled": "OS & software installed",
-    "physicalDamageInspection": "Physical damage inspection"
+    "department": "Department"
+  },
+  "vendorRenewalApproval": {
+    "title": "Vendor Renewal Approval",
+    "subtitle": "Review and approve vendor contract renewal requests",
+    "vendorName": "Vendor Name",
+    "companyName": "Company Name",
+    "contactPerson": "Contact Person",
+    "scheduledDate": "Scheduled Date",
+    "maintenanceType": "Maintenance Type",
+    "status": "Status",
+    "daysUntilDue": "Days Until Due",
+    "failedToFetchApprovals": "Failed to fetch vendor renewal approvals",
+    "approvalsExportedSuccessfully": "Vendor renewal approvals exported successfully",
+    "failedToExportApprovals": "Failed to export vendor renewal approvals",
+    "initiated": "Initiated",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "days": "days"
   },
   "maintenanceSupervisor": {
     "title": "Maintenance Supervisor",

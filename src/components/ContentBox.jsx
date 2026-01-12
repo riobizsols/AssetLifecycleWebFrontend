@@ -232,7 +232,7 @@ const ContentBox = ({
       // Preserve existing visible property if set (e.g., from column access control)
       // If visible is explicitly false (NONE access), always keep it false
       // Otherwise, use default visibility logic
-      visible: f.visible === false ? false : (f.visible !== undefined ? f.visible : (i < 7 || f.name === "status")), // Always show Status column
+      visible: f.visible === false ? false : (f.visible !== undefined ? f.visible : (i < 7 || f.name === "status" || f.name === "int_status")), // Always show Status column
     }))
   );
 
@@ -259,7 +259,7 @@ const ContentBox = ({
         const prevVisible = prevVisibilityMap.get(f.name);
         return {
         ...f,
-          visible: prevVisible !== undefined ? prevVisible : (i < 7 || f.name === "status"),
+          visible: prevVisible !== undefined ? prevVisible : (i < 7 || f.name === "status" || f.name === "int_status"),
         };
       });
     });

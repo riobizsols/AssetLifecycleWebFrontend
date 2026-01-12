@@ -58,7 +58,9 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         pincode: vendor.pincode || '',
         contract_start_date: vendor.contract_start_date || '',
         contract_end_date: vendor.contract_end_date || '',
-        int_status: vendor.int_status === 'Active' ? 1 : 0
+        int_status: vendor.int_status === 'Active' ? 1 : 
+                    vendor.int_status === 'CRApproved' ? 3 :
+                    vendor.int_status === 'Blocked' ? 4 : 0
       };
       
       setFormData({ ...baseFormData });
@@ -93,7 +95,10 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             pincode: vendorData.pincode || '',
             contract_start_date: vendorData.contract_start_date || '',
             contract_end_date: vendorData.contract_end_date || '',
-            int_status: vendorData.int_status === 'Active' ? 1 : 0
+            int_status: vendorData.int_status === 'Active' ? 1 :
+                        vendorData.int_status === 'CRApproved' ? 3 :
+                        vendorData.int_status === 'Blocked' ? 4 :
+                        (typeof vendorData.int_status === 'number' ? vendorData.int_status : 0)
           }));
           
           // Store vendor with SLAs for later use
@@ -599,7 +604,10 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                 >
                   <option value={1}>Active</option>
                   <option value={0}>Inactive</option>
-                  <option value={4}>Blacklist</option>
+                  <option value={4}>Blocked</option>
+                  {formData.int_status === 3 && (
+                    <option value={3} disabled>CRApproved</option>
+                  )}
                 </select>
               </div>
 

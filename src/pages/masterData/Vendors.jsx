@@ -46,6 +46,7 @@ const Vendors = () => {
     { label: t('vendors.vendorId'), name: "vendor_id", visible: true },
     { label: t('vendors.vendorName'), name: "vendor_name", visible: true },
     { label: t('vendors.company'), name: "company_name", visible: true },
+    { label: t('vendors.status'), name: "int_status", visible: true },
     { label: t('vendors.gstNumber'), name: "gst_number", visible: true },
     { label: t('vendors.cinNumber'), name: "cin_number", visible: true },
     { label: t('vendors.companyEmail'), name: "company_email", visible: true },
@@ -59,7 +60,6 @@ const Vendors = () => {
     { label: t('vendors.pincode'), name: "pincode", visible: false },
     { label: t('vendors.extId'), name: "ext_id", visible: false },
     { label: t('vendors.organizationId'), name: "org_id", visible: false },
-    { label: t('vendors.isActive'), name: "int_status", visible: true },
     { label: t('vendors.createdBy'), name: "created_by", visible: false },
     { label: t('vendors.createdOn'), name: "created_on", visible: false },
     { label: t('vendors.changedBy'), name: "changed_by", visible: false },
@@ -71,12 +71,24 @@ const Vendors = () => {
       setIsLoading(true);
       try {
         const response = await API.get("/get-vendors");
-        const formattedData = response.data.map(item => ({
-          ...item,
-          int_status: item.int_status === 1 ? 'Active' : item.int_status === 4 ? 'Blacklist' : 'Inactive',
-          created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-          changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : ''
-        }));
+        const formattedData = response.data.map(item => {
+          // Map int_status to display text
+          let statusText = 'Inactive';
+          if (item.int_status === 1) {
+            statusText = 'Active';
+          } else if (item.int_status === 3) {
+            statusText = 'CRApproved';
+          } else if (item.int_status === 4) {
+            statusText = 'Blocked';
+          }
+          
+          return {
+            ...item,
+            int_status: statusText,
+            created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
+            changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : ''
+          };
+        });
         setData(formattedData);
       } catch (error) {
         console.error("Error fetching vendors:", error);
@@ -243,16 +255,28 @@ const Vendors = () => {
       });
 
       // Update the data state with the updated vendor
-      setData(prev => prev.map(vendor => 
-        vendor.vendor_id === editingVendor.vendor_id 
-          ? { 
-              ...vendor, 
-              ...response.data.vendor,
-              int_status: response.data.vendor.int_status === 1 ? 'Active' : 'Inactive',
-              changed_on: response.data.vendor.changed_on ? new Date(response.data.vendor.changed_on).toLocaleString() : vendor.changed_on
-            }
-          : vendor
-      ));
+      setData(prev => prev.map(vendor => {
+        if (vendor.vendor_id === editingVendor.vendor_id) {
+          // Map int_status to display text
+          let statusText = 'Inactive';
+          const statusValue = response.data.vendor.int_status;
+          if (statusValue === 1) {
+            statusText = 'Active';
+          } else if (statusValue === 3) {
+            statusText = 'CRApproved';
+          } else if (statusValue === 4) {
+            statusText = 'Blocked';
+          }
+          
+          return {
+            ...vendor,
+            ...response.data.vendor,
+            int_status: statusText,
+            changed_on: response.data.vendor.changed_on ? new Date(response.data.vendor.changed_on).toLocaleString() : vendor.changed_on
+          };
+        }
+        return vendor;
+      }));
       
       setShowEditModal(false);
       setEditingVendor(null);
@@ -391,6 +415,46 @@ const Vendors = () => {
                 rowKey="vendor_id"
                 showActions={true}
                 isReadOnly={isReadOnly}
+                renderCell={(col, row, colIndex) => {
+                  // Make status column clickable
+                  if (col.name === "int_status") {
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate("/vendor-renewal-approval");
+                        }}
+                        className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-medium"
+                      >
+                        {row[col.name]}
+                      </button>
+                    );
+                  }
+                  // Handle first column with checkbox
+                  if (colIndex === 0) {
+                    return (
+                      <div className="flex items-center gap-2">
+                        {!isReadOnly && (
+                          <input
+                            type="checkbox"
+                            checked={selectedRows.includes(row["vendor_id"])}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setSelectedRows(prev => 
+                                prev.includes(row["vendor_id"]) 
+                                  ? prev.filter(id => id !== row["vendor_id"]) 
+                                  : [...prev, row["vendor_id"]]
+                              );
+                            }}
+                            className="accent-yellow-400"
+                          />
+                        )}
+                        {row[col.name]}
+                      </div>
+                    );
+                  }
+                  return row[col.name];
+                }}
               />
               <EditVendorModal
                 show={showEditModal}
