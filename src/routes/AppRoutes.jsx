@@ -35,6 +35,7 @@ import EmployeeWiseAssetAssignment from "../pages/EmployeeWiseAssetAssignment";
 import AssetSelection from "../components/assetAssignment/AssetSelection";
 import AssetsDetail from "../components/assetAssignment/AssetsDetail";
 import MaintenanceApproval from "../pages/MaintenanceApproval";
+import VendorRenewalApproval from "../pages/VendorRenewalApproval";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import AllNotifications from "../components/AllNotifications";
 import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
@@ -195,6 +196,16 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <MaintenanceApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vendor-renewal-approval"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <VendorRenewalApproval />
               </MainLayout>
             </ProtectedRoute>
           }

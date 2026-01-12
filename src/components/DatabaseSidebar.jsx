@@ -149,6 +149,7 @@ const DatabaseSidebar = () => {
     WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance  //done
     INSPECTION: "/inspection-view", // Separate route for inspection
     MAINTENANCEAPPROVAL: "/maintenance-approval",
+    VENDORRENEWALAPPROVAL: "/vendor-renewal-approval",
     SUPERVISORAPPROVAL: "/supervisor-approval", //done
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
     REPORTBREAKDOWN2: "/report-breakdown-2", // Report Breakdown 2 route //done
