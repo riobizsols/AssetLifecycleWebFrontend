@@ -416,20 +416,6 @@ const Vendors = () => {
                 showActions={true}
                 isReadOnly={isReadOnly}
                 renderCell={(col, row, colIndex) => {
-                  // Make status column clickable
-                  if (col.name === "int_status") {
-                    return (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate("/vendor-renewal-approval");
-                        }}
-                        className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-medium"
-                      >
-                        {row[col.name]}
-                      </button>
-                    );
-                  }
                   // Handle first column with checkbox
                   if (colIndex === 0) {
                     return (

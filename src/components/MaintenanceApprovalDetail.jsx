@@ -1200,7 +1200,31 @@ const MaintenanceApprovalDetail = () => {
                     Reject
                   </button>
                   <button
-                    onClick={() => setShowApproveModal(true)}
+                    onClick={() => {
+                      // Check vendor status before opening approve modal
+                      const currentVendorId = selectedVendorId !== null ? selectedVendorId : approvalDetails?.vendorId;
+                      const vendorToCheck = displayedVendorDetails || approvalDetails?.vendorDetails;
+                      const vendorStatus = vendorToCheck?.vendor_status || vendorToCheck?.int_status;
+                      
+                      // If vendor is inactive (0) or CR Approved (3), prevent approval
+                      if (currentVendorId && (vendorStatus === 0 || vendorStatus === 3)) {
+                        toast.error("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
+                        // Switch to vendor tab to show the message
+                        setActiveTab('vendor');
+                        setVendorStatusError("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
+                        return;
+                      }
+                      
+                      // If no vendor selected, also prevent
+                      if (!currentVendorId) {
+                        toast.error("Please select a vendor before approving.");
+                        setActiveTab('vendor');
+                        return;
+                      }
+                      
+                      // Vendor is valid, open approve modal
+                      setShowApproveModal(true);
+                    }}
                     className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors"
                     disabled={isSubmitting}
                   >
