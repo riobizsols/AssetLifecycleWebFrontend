@@ -7,6 +7,7 @@ import { ClipboardCheck } from "lucide-react";
 import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
+import { toast } from "react-hot-toast";
 
 const mockApiResponse = {
   steps: [
@@ -164,6 +165,12 @@ const MaintenanceApprovalDetail = () => {
   const [workflowHistory, setWorkflowHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showAllAssets, setShowAllAssets] = useState(false);
+  const [activeVendors, setActiveVendors] = useState([]);
+  const [selectedVendorId, setSelectedVendorId] = useState(null);
+  const [maintenanceDate, setMaintenanceDate] = useState("");
+  const [vendorStatusError, setVendorStatusError] = useState("");
+  const [displayedVendorDetails, setDisplayedVendorDetails] = useState(null);
+  const [loadingVendorDetails, setLoadingVendorDetails] = useState(false);
 
   // Check if this is a subscription renewal (MT001) or vendor contract renewal (MT005)
   const isSubscriptionRenewal = useMemo(() => {
@@ -207,16 +214,15 @@ const MaintenanceApprovalDetail = () => {
   }, [user]);
 
   // Fetch approval details from API
-  useEffect(() => {
-    const fetchApprovalDetails = async () => {
-      if (!id) { return; }
+  const fetchApprovalDetails = async (forceRefresh = false) => {
+    if (!id) { return; }
+    
+    setLoadingApprovalDetails(true);
+    try {
       
-      setLoadingApprovalDetails(true);
-      try {
-        
-        // Add cache-busting timestamp to prevent stale data
-        const timestamp = Date.now();
-        const response = await API.get(`/approval-detail/workflow/${id}?t=${timestamp}`);
+      // Add cache-busting timestamp to prevent stale data
+      const timestamp = Date.now();
+      const response = await API.get(`/approval-detail/workflow/${id}?t=${timestamp}`);
         
         
         if (response.data.success) {
@@ -301,8 +307,9 @@ const MaintenanceApprovalDetail = () => {
       } finally {
         setLoadingApprovalDetails(false);
       }
-    };
+  };
 
+  useEffect(() => {
     fetchApprovalDetails();
   }, [id]);
 
@@ -362,26 +369,89 @@ const MaintenanceApprovalDetail = () => {
   // Approve handler
   const handleApprove = async () => {
     if (!approveNote.trim()) return;
+    
     setIsSubmitting(true);
+    let loadingToastId = null;
+    
     try {
+      // Show loading toast
+      loadingToastId = toast.loading(t('maintenanceApproval.approving') || "Approving maintenance...", {
+        duration: Infinity, // Keep it until we dismiss it
+      });
+      
       console.log("Approving maintenance for asset:", id, "by emp:", currentUserEmpId);
+      
+      // Always send vendor and maintenance date if they have been set/changed
+      // Use selectedVendorId if changed, otherwise use original vendorId
+      const vendorToSend = selectedVendorId !== null ? selectedVendorId : approvalDetails?.vendorId;
+      // Use maintenanceDate if changed, otherwise use original dueDate
+      const dateToSend = maintenanceDate ? maintenanceDate : (approvalDetails?.dueDate ? new Date(approvalDetails.dueDate).toISOString().split('T')[0] : null);
+      
+      console.log("Sending approval with:", { 
+        vendorId: vendorToSend, 
+        maintenanceDate: dateToSend,
+        selectedVendorId: selectedVendorId,
+        originalVendorId: approvalDetails?.vendorId,
+        maintenanceDateState: maintenanceDate,
+        originalDueDate: approvalDetails?.dueDate
+      });
+      
       const response = await API.post(`/approval-detail/${id}/approve`, {
         empIntId: currentUserEmpId,
-        note: approveNote
+        note: approveNote,
+        vendorId: vendorToSend,
+        maintenanceDate: dateToSend
       });
+      
+      // Dismiss loading toast
+      if (loadingToastId) {
+        toast.dismiss(loadingToastId);
+      }
       
       if (response.data.success) {
         console.log("Maintenance approved successfully");
+        toast.success(t('maintenanceApproval.approvedSuccessfully') || "Maintenance approved successfully");
         setShowApproveModal(false);
         setApproveNote("");
-        // Refresh the page to show updated workflow
-        window.location.reload();
+        setVendorStatusError("");
+        
+        // Refresh approval details to show updated vendor and date
+        // Wait a bit for the database to be updated
+        setTimeout(() => {
+          fetchApprovalDetails(true);
+        }, 500);
       } else {
-        alert(t('maintenanceApproval.failedToApprove'));
+        // Check if it's a vendor status message (not an error)
+        if (response.data.message && (response.data.message.includes("Inactive") || response.data.message.includes("CR Approved"))) {
+          toast.error(response.data.message);
+          setVendorStatusError(response.data.message);
+          setShowApproveModal(false);
+          // Switch to vendor tab to show the message
+          setActiveTab('vendor');
+        } else {
+          toast.error(response.data.message || t('maintenanceApproval.failedToApprove'));
+        }
       }
     } catch (error) {
       console.error("Error approving maintenance:", error);
-      alert("Failed to approve. Please try again.");
+      
+      // Dismiss loading toast
+      if (loadingToastId) {
+        toast.dismiss(loadingToastId);
+      }
+      
+      const errorMessage = error.response?.data?.message || error.message || "Failed to approve. Please try again.";
+      
+      // Check if it's a vendor status message (not an error)
+      if (errorMessage.includes("Inactive") || errorMessage.includes("CR Approved")) {
+        toast.error(errorMessage);
+        setVendorStatusError(errorMessage);
+        setShowApproveModal(false);
+        // Switch to vendor tab to show the message
+        setActiveTab('vendor');
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -475,6 +545,169 @@ const MaintenanceApprovalDetail = () => {
 
     fetchWorkflowHistory();
   }, [approvalDetails?.wfamshId]);
+
+  // Fetch active service vendors for dropdown
+  useEffect(() => {
+    const fetchActiveServiceVendors = async () => {
+      try {
+        const response = await API.get('/get-vendors');
+        if (response.data && Array.isArray(response.data)) {
+          // Filter only active service vendors (int_status = 1 AND service_supply = true)
+          const activeServiceVendors = response.data
+            .filter(vendor => {
+              // Active vendors (int_status = 1)
+              const isActive = vendor.int_status === 1;
+              // Service vendors (service_supply = true, or if field doesn't exist, include all active vendors as fallback)
+              const isServiceVendor = vendor.service_supply === true || vendor.service_supply === 'true' || vendor.service_supply === 1;
+              // If service_supply field doesn't exist, show all active vendors (fallback)
+              const hasServiceSupplyField = 'service_supply' in vendor;
+              return isActive && (hasServiceSupplyField ? isServiceVendor : true);
+            })
+            .map(vendor => ({
+              value: vendor.vendor_id,
+              label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
+            }));
+          setActiveVendors(activeServiceVendors);
+        }
+      } catch (error) {
+        console.error("Error fetching active service vendors:", error);
+      }
+    };
+
+    fetchActiveServiceVendors();
+  }, []);
+
+  // Save vendor change independently
+  const saveVendorChange = async (newVendorId) => {
+    if (!approvalDetails?.wfamshId) {
+      toast.error("Workflow ID not found");
+      return;
+    }
+    
+    try {
+      const response = await API.put(`/approval-detail/workflow-header/${approvalDetails.wfamshId}`, {
+        vendorId: newVendorId
+      });
+      
+      if (response.data.success) {
+        toast.success("Vendor updated successfully");
+        // Refresh approval details to show updated vendor
+        fetchApprovalDetails(true);
+      } else {
+        toast.error(response.data.message || "Failed to update vendor");
+      }
+    } catch (error) {
+      console.error("Error saving vendor change:", error);
+      toast.error(error.response?.data?.message || "Failed to update vendor");
+    }
+  };
+  
+  // Save maintenance date change independently
+  const saveMaintenanceDateChange = async (newDate) => {
+    if (!approvalDetails?.wfamshId) {
+      toast.error("Workflow ID not found");
+      return;
+    }
+    
+    try {
+      const response = await API.put(`/approval-detail/workflow-header/${approvalDetails.wfamshId}`, {
+        maintenanceDate: newDate
+      });
+      
+      if (response.data.success) {
+        toast.success("Maintenance date updated successfully");
+        // Refresh approval details to show updated date
+        fetchApprovalDetails(true);
+      } else {
+        toast.error(response.data.message || "Failed to update maintenance date");
+      }
+    } catch (error) {
+      console.error("Error saving maintenance date change:", error);
+      toast.error(error.response?.data?.message || "Failed to update maintenance date");
+    }
+  };
+
+  // Initialize selected vendor and maintenance date from approval details
+  useEffect(() => {
+    if (approvalDetails) {
+      // Always update vendor from approval details (to reflect saved changes)
+      setSelectedVendorId(approvalDetails.vendorId || null);
+      
+      // Always update maintenance date from approval details (to reflect saved changes)
+      if (approvalDetails.dueDate) {
+        const date = new Date(approvalDetails.dueDate);
+        setMaintenanceDate(date.toISOString().split('T')[0]);
+      } else {
+        setMaintenanceDate("");
+      }
+      
+      // Set initial displayed vendor details
+      if (approvalDetails.vendorDetails) {
+        setDisplayedVendorDetails(approvalDetails.vendorDetails);
+      }
+      
+      // Check vendor status on load
+      const currentVendorStatus = approvalDetails?.vendorDetails?.vendor_status || approvalDetails?.vendorDetails?.int_status;
+      if (currentVendorStatus === 0 || currentVendorStatus === 3) {
+        setVendorStatusError("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
+      } else {
+        setVendorStatusError("");
+      }
+    }
+  }, [approvalDetails]);
+
+  // Fetch vendor details when a new vendor is selected
+  useEffect(() => {
+    const fetchSelectedVendorDetails = async () => {
+      if (!selectedVendorId || selectedVendorId === approvalDetails?.vendorId) {
+        // If no vendor selected or same as original, use original vendor details
+        if (approvalDetails?.vendorDetails) {
+          setDisplayedVendorDetails(approvalDetails.vendorDetails);
+        }
+        return;
+      }
+
+      setLoadingVendorDetails(true);
+      try {
+        const response = await API.get(`/vendor/${selectedVendorId}`);
+        if (response.data?.success && response.data?.data) {
+          const vendorData = response.data.data;
+          // Format vendor details to match the expected structure
+          setDisplayedVendorDetails({
+            vendor_id: vendorData.vendor_id,
+            vendor_name: vendorData.vendor_name,
+            company_name: vendorData.company_name,
+            company_email: vendorData.company_email,
+            contact_person_name: vendorData.contact_person_name,
+            contact_person_email: vendorData.contact_person_email,
+            contact_person_number: vendorData.contact_person_number,
+            address_line1: vendorData.address_line1,
+            address_line2: vendorData.address_line2,
+            city: vendorData.city,
+            state: vendorData.state,
+            pincode: vendorData.pincode,
+            gst_number: vendorData.gst_number,
+            cin_number: vendorData.cin_number,
+            contract_start_date: vendorData.contract_start_date,
+            contract_end_date: vendorData.contract_end_date,
+            rating: vendorData.rating || vendorData.vendor_rating,
+            int_status: vendorData.int_status,
+            vendor_status: vendorData.int_status
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching selected vendor details:", error);
+        // On error, keep original vendor details
+        if (approvalDetails?.vendorDetails) {
+          setDisplayedVendorDetails(approvalDetails.vendorDetails);
+        }
+      } finally {
+        setLoadingVendorDetails(false);
+      }
+    };
+
+    fetchSelectedVendorDetails();
+  }, [selectedVendorId, approvalDetails]);
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -639,10 +872,25 @@ const MaintenanceApprovalDetail = () => {
                           label={t('maintenanceApproval.alertType')} 
                           value={approvalDetails?.maintenanceType || "-"} 
                         />
-                        <ReadOnlyInput 
-                          label={t('maintenanceApproval.alertDueOn')} 
-                          value={formatDate(approvalDetails?.dueDate) || "-"} 
-                        />
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700">{t('maintenanceApproval.alertDueOn')}</label>
+                          <input
+                            type="date"
+                            value={maintenanceDate || ""}
+                            onChange={async (e) => {
+                              const newDate = e.target.value;
+                              setMaintenanceDate(newDate);
+                              console.log("Maintenance date changed to:", newDate);
+                              
+                              // Save maintenance date change immediately
+                              if (newDate && newDate !== (approvalDetails?.dueDate ? new Date(approvalDetails.dueDate).toISOString().split('T')[0] : "")) {
+                                await saveMaintenanceDateChange(newDate);
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Changes are saved automatically.</p>
+                        </div>
                         <ReadOnlyInput 
                           label={t('maintenanceApproval.actionBy')} 
                           value={approvalDetails?.actionBy || "-"} 
@@ -708,33 +956,76 @@ const MaintenanceApprovalDetail = () => {
               )}
               {activeTab === 'vendor' && (
                 <div className="bg-white rounded shadow p-6">
-                  {loadingApprovalDetails ? (
+                  {loadingApprovalDetails || loadingVendorDetails ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B]"></div>
                       <span className="ml-2 text-gray-600">{t('maintenanceApproval.loadingVendorDetails')}</span>
                     </div>
-                  ) : approvalDetails?.vendorDetails ? (
+                  ) : displayedVendorDetails || approvalDetails?.vendorDetails ? (
                     <>
+                      {/* Vendor Status Warning Message */}
+                      {vendorStatusError && (
+                        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-yellow-800 text-sm font-medium">{vendorStatusError}</p>
+                              <p className="text-yellow-700 text-xs mt-1">Please select an active service vendor from the dropdown above to proceed with approval.</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="grid grid-cols-5 gap-6 mb-6">
-                        <ReadOnlyInput label={t('maintenanceApproval.vendorName')} value={approvalDetails.vendorDetails.vendor_name || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.company')} value={approvalDetails.vendorDetails.company_name || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.email')} value={approvalDetails.vendorDetails.company_email || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.contactNumber')} value={approvalDetails.vendorDetails.contact_person_number || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.gstNumber')} value={approvalDetails.vendorDetails.gst_number || "-"} />
+                        {/* Vendor Name as Dropdown */}
+                        <div>
+                          <label className="block text-sm font-medium mb-1 text-gray-700">{t('maintenanceApproval.vendorName')}</label>
+                          <select
+                            value={selectedVendorId !== null ? selectedVendorId : (approvalDetails?.vendorId || "")}
+                            onChange={async (e) => {
+                              const newVendorId = e.target.value || null;
+                              setSelectedVendorId(newVendorId);
+                              setVendorStatusError(""); // Clear error when vendor changes
+                              console.log("Vendor changed to:", newVendorId);
+                              
+                              // Save vendor change immediately
+                              if (newVendorId && newVendorId !== approvalDetails?.vendorId) {
+                                await saveVendorChange(newVendorId);
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]"
+                          >
+                            <option value="">Select Service Vendor</option>
+                            {activeVendors.map(vendor => (
+                              <option key={vendor.value} value={vendor.value}>
+                                {vendor.label}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-gray-500 mt-1">Select another vendor to change service vendor. Changes are saved automatically.</p>
+                        </div>
+                        <ReadOnlyInput label={t('maintenanceApproval.company')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.company_name || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.email')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.company_email || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.contactNumber')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.contact_person_number || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.gstNumber')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.gst_number || "-"} />
                       </div>
                       <div className="grid grid-cols-5 gap-6 mb-6">
-                        <ReadOnlyInput label={t('maintenanceApproval.cinNumber')} value={approvalDetails.vendorDetails.cin_number || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.addressLine1')} value={approvalDetails.vendorDetails.address_line1 || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.city')} value={approvalDetails.vendorDetails.city || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.state')} value={approvalDetails.vendorDetails.state || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.pincode')} value={approvalDetails.vendorDetails.pincode || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.cinNumber')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.cin_number || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.addressLine1')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.address_line1 || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.city')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.city || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.state')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.state || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.pincode')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.pincode || "-"} />
                       </div>
                       <div className="grid grid-cols-5 gap-6 mb-6">
-                        <ReadOnlyInput label={t('maintenanceApproval.contactPersonName')} value={approvalDetails.vendorDetails.contact_person_name || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.contactPersonEmail')} value={approvalDetails.vendorDetails.contact_person_email || "-"} />
-                        <ReadOnlyInput label="Contract Start Date" value={approvalDetails.vendorDetails.contract_start_date ? new Date(approvalDetails.vendorDetails.contract_start_date).toLocaleDateString() : "-"} />
-                        <ReadOnlyInput label="Contract End Date" value={approvalDetails.vendorDetails.contract_end_date ? new Date(approvalDetails.vendorDetails.contract_end_date).toLocaleDateString() : "-"} />
-                        <ReadOnlyInput label="Rating" value={approvalDetails.vendorDetails.rating || approvalDetails.vendorDetails.vendor_rating || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.contactPersonName')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.contact_person_name || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.contactPersonEmail')} value={(displayedVendorDetails || approvalDetails.vendorDetails)?.contact_person_email || "-"} />
+                        <ReadOnlyInput label="Contract Start Date" value={(displayedVendorDetails || approvalDetails.vendorDetails)?.contract_start_date ? new Date((displayedVendorDetails || approvalDetails.vendorDetails).contract_start_date).toLocaleDateString() : "-"} />
+                        <ReadOnlyInput label="Contract End Date" value={(displayedVendorDetails || approvalDetails.vendorDetails)?.contract_end_date ? new Date((displayedVendorDetails || approvalDetails.vendorDetails).contract_end_date).toLocaleDateString() : "-"} />
+                        <ReadOnlyInput label="Rating" value={(displayedVendorDetails || approvalDetails.vendorDetails)?.rating || (displayedVendorDetails || approvalDetails.vendorDetails)?.vendor_rating || "-"} />
                       </div>
 
                     </>
@@ -909,7 +1200,31 @@ const MaintenanceApprovalDetail = () => {
                     Reject
                   </button>
                   <button
-                    onClick={() => setShowApproveModal(true)}
+                    onClick={() => {
+                      // Check vendor status before opening approve modal
+                      const currentVendorId = selectedVendorId !== null ? selectedVendorId : approvalDetails?.vendorId;
+                      const vendorToCheck = displayedVendorDetails || approvalDetails?.vendorDetails;
+                      const vendorStatus = vendorToCheck?.vendor_status || vendorToCheck?.int_status;
+                      
+                      // If vendor is inactive (0) or CR Approved (3), prevent approval
+                      if (currentVendorId && (vendorStatus === 0 || vendorStatus === 3)) {
+                        toast.error("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
+                        // Switch to vendor tab to show the message
+                        setActiveTab('vendor');
+                        setVendorStatusError("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
+                        return;
+                      }
+                      
+                      // If no vendor selected, also prevent
+                      if (!currentVendorId) {
+                        toast.error("Please select a vendor before approving.");
+                        setActiveTab('vendor');
+                        return;
+                      }
+                      
+                      // Vendor is valid, open approve modal
+                      setShowApproveModal(true);
+                    }}
                     className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors"
                     disabled={isSubmitting}
                   >
