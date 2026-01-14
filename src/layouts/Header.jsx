@@ -29,6 +29,7 @@ export default function Header() {
     "/workorder-management": { title: t('maintenance.workOrder') + " Management", subtitle: "" },
     "/maintenance-approval": { title: t('maintenance.approval'), subtitle: "" },
     "/report-breakdown": { title: "Report Breakdown", subtitle: "" },
+    "/employee-report-breakdown": { title: "Employee Report Breakdown", subtitle: "" },
     "/dashboard": { title: t('navigation.dashboard'), subtitle: "" },
     "/assets/add": { title: t('assets.addAsset'), subtitle: "" },
     "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },

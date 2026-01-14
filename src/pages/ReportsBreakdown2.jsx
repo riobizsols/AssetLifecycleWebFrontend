@@ -22,9 +22,9 @@ const ReportsBreakdown2 = () => {
 
   // Access control
   const { canEdit, canDelete, getAccessLevel } = useNavigation();
-  const hasEditAccess = canEdit('REPORTBREAKDOWN2');
-  const hasDeleteAccess = canDelete('REPORTBREAKDOWN2');
-  const accessLevel = getAccessLevel('REPORTBREAKDOWN2');
+  const hasEditAccess = canEdit('EMPLOYEE REPORT BREAKDOWN');
+  const hasDeleteAccess = canDelete('EMPLOYEE REPORT BREAKDOWN');
+  const accessLevel = getAccessLevel('EMPLOYEE REPORT BREAKDOWN');
   const isReadOnly = accessLevel === 'D';
   
   // Debug logging

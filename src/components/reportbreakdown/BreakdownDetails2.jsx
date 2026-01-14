@@ -303,7 +303,7 @@ const BreakdownDetails2 = () => {
         toast.success(t('breakdownDetails.breakdownReportCreatedSuccessfully'));
         resetForm(); // Reset the form
         try {
-          navigate("/report-breakdown-2");
+          navigate("/employee-report-breakdown");
         } catch (navError) {
           console.error("Navigation error:", navError);
           // Fallback: try to navigate to the reports page

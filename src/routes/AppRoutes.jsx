@@ -265,9 +265,9 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="/report-breakdown-2"
+          path="/employee-report-breakdown"
           element={
-            <ProtectedRoute requiredAppId="REPORTBREAKDOWN2">
+            <ProtectedRoute requiredAppId="EMPLOYEE REPORT BREAKDOWN">
               <MainLayout>
                 <ReportsBreakdown2 />
               </MainLayout>
