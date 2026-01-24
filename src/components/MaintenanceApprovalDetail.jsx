@@ -215,14 +215,14 @@ const MaintenanceApprovalDetail = () => {
 
   // Fetch approval details from API
   const fetchApprovalDetails = async (forceRefresh = false) => {
-    if (!id) { return; }
-    
-    setLoadingApprovalDetails(true);
-    try {
+      if (!id) { return; }
       
-      // Add cache-busting timestamp to prevent stale data
-      const timestamp = Date.now();
-      const response = await API.get(`/approval-detail/workflow/${id}?t=${timestamp}`);
+      setLoadingApprovalDetails(true);
+      try {
+        
+        // Add cache-busting timestamp to prevent stale data
+        const timestamp = Date.now();
+        const response = await API.get(`/approval-detail/workflow/${id}?t=${timestamp}`);
         
         
         if (response.data.success) {
@@ -307,7 +307,7 @@ const MaintenanceApprovalDetail = () => {
       } finally {
         setLoadingApprovalDetails(false);
       }
-  };
+    };
 
   useEffect(() => {
     fetchApprovalDetails();

@@ -357,6 +357,7 @@
     "history": "Verlauf",
     "approval": "Genehmigung",
     "supervisor": "Vorgesetzter",
+    "maintenanceList": "Wartungsliste",
     "workOrder": "Arbeitsauftrag",
     "maintenanceType": "Wartungstyp",
     "scheduledDate": "Geplantes Datum",
