@@ -302,9 +302,14 @@ const Assets = () => {
 
   const handleDownload = async () => {
     try {
-      // Get the filtered and sorted data
-      const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
-      const dataToExport = sortData(filteredData);
+      if (selectedRows.length === 0) {
+        toast.error(t('assets.pleaseSelectAssetsToDownload'));
+        return;
+      }
+
+      const selectedSet = new Set(selectedRows);
+      const selectedData = data.filter((row) => selectedSet.has(row.asset_id));
+      const dataToExport = sortData(selectedData);
 
       // Export to Excel
       const success = exportToExcel(
@@ -315,7 +320,7 @@ const Assets = () => {
 
       if (success) {
         // Log export action
-        await recordActionByNameWithFetch('Download', { count: dataToExport.length });
+        await recordActionByNameWithFetch('Download', { count: dataToExport.length, assetIds: selectedRows });
         
         toast(
           t('assets.assetsExportedSuccessfully'),
@@ -389,6 +394,7 @@ const Assets = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
+        rowKey="asset_id"
         onAdd={hasCreateAccess ? async () => {
           // Log Create event when plus icon is clicked
           await recordActionByNameWithFetch('Create', { 

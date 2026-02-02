@@ -21,6 +21,7 @@ const ContentBox = ({
   onFilterChange, // This function is called to apply filters to the parent data
   onSort,
   sortConfig = { sorts: [] }, // Add default value
+  rowKey = "id",
   selectedRows = [],
   setSelectedRows = () => {},
   onDeleteSelected = () => {},
@@ -292,15 +293,26 @@ const ContentBox = ({
         : { label: col.label, name: col.name, options: [], onChange: () => {} };
     });
 
+  const getRowId = (item) => {
+    if (!item || typeof item !== "object") return undefined;
+    if (rowKey && item[rowKey] !== undefined && item[rowKey] !== null) return item[rowKey];
+    // Backwards-compatible fallbacks for older pages that don't pass rowKey
+    return item.branch_id ?? item.user_id ?? item.id;
+  };
+
+  const dataIdSet = new Set(
+    (Array.isArray(data) ? data : [])
+      .map(getRowId)
+      .filter((v) => v !== undefined && v !== null)
+  );
+  const selectedIdSet = new Set(Array.isArray(selectedRows) ? selectedRows : []);
+
   const isAllSelected =
-    selectedRows.length > 0 && selectedRows.length === data.length;
+    dataIdSet.size > 0 && Array.from(dataIdSet).every((id) => selectedIdSet.has(id));
 
   const toggleAll = (e) => {
     if (e.target.checked) {
-      const allIds = data.map(
-        (item) => item.branch_id || item.user_id || item.id
-      ); // Support different ID fields
-      setSelectedRows(allIds);
+      setSelectedRows(Array.from(dataIdSet));
     } else {
       setSelectedRows([]);
     }

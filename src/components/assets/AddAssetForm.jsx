@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import API from '../../lib/axios';
 import toast from 'react-hot-toast';
 import { MdKeyboardArrowRight, MdKeyboardArrowDown } from 'react-icons/md';
+import { Html5Qrcode } from 'html5-qrcode';
+import { QrCode, X } from 'lucide-react';
 import SearchableDropdown from '../ui/SearchableDropdown';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +16,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 
 const initialForm = {
   assetType: '',
+  serialNumberMode: 'generate', // generate | existing | none
   serialNumber: '',
   description: '',
   expiryDate: '',
@@ -59,6 +62,7 @@ const AddAssetForm = ({ userRole }) => {
     vendors, 
     assetTypes, 
     loading: appDataLoading,
+    fetchAssetTypes,
     getUserBranchId,
     getUserBranchName,
     getUserDepartmentName 
@@ -149,6 +153,10 @@ const AddAssetForm = ({ userRole }) => {
 
   // Add state for serial number generation
   const [isGeneratingSerial, setIsGeneratingSerial] = useState(false);
+
+  // Serial number scanner (camera)
+  const [showSerialScanner, setShowSerialScanner] = useState(false);
+  const serialScannerRef = useRef(null);
   
   // Add state for fetched prod_serv_id
   const [fetchedProdServId, setFetchedProdServId] = useState(null);
@@ -160,6 +168,69 @@ const AddAssetForm = ({ userRole }) => {
   useEffect(() => {
     console.log('🔍 Form state changed:', form);
   }, [form]);
+
+  // Initialize/cleanup serial-number scanner
+  useEffect(() => {
+    if (!showSerialScanner) return;
+
+    const init = async () => {
+      try {
+        if (serialScannerRef.current) return;
+        const scanner = new Html5Qrcode('serial-qr-reader');
+        serialScannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+          },
+          (decodedText) => {
+            // Stop scanner immediately on success
+            if (serialScannerRef.current) {
+              serialScannerRef.current.stop().catch(console.error);
+              serialScannerRef.current = null;
+            }
+            setForm(prev => ({
+              ...prev,
+              serialNumberMode: 'existing',
+              serialNumber: decodedText
+            }));
+            setValidationErrors(prev => ({ ...prev, serialNumber: false }));
+            setTouched(prev => ({ ...prev, serialNumber: true }));
+            setShowSerialScanner(false);
+            toast.success(t('assets.serialNumberScannedSuccessfully'));
+          },
+          (err) => {
+            // Handle scan error silently
+            console.warn('Scan error:', err);
+          }
+        );
+      } catch (err) {
+        console.error('Error starting serial scanner:', err);
+        toast.error(t('assets.couldNotAccessCamera'));
+        setShowSerialScanner(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      if (serialScannerRef.current) {
+        serialScannerRef.current.stop().catch(console.error);
+        serialScannerRef.current = null;
+      }
+    };
+  }, [showSerialScanner, t]);
+
+  const stopSerialScanner = () => {
+    if (serialScannerRef.current) {
+      serialScannerRef.current.stop().catch(console.error);
+      serialScannerRef.current = null;
+    }
+    setShowSerialScanner(false);
+  };
 
   // Add useEffect to filter models when brand changes
   useEffect(() => {
@@ -199,7 +270,7 @@ const AddAssetForm = ({ userRole }) => {
 
   useEffect(() => {
     console.log('Component mounted, fetching asset types...');
-    fetchAssetTypes();
+    fetchAssetTypes?.();
     fetchUsers();
     fetchProdServs();
     fetchVendors();
@@ -375,18 +446,6 @@ const AddAssetForm = ({ userRole }) => {
     });
     setDropdownStates(prev => ({ ...prev, [name]: false }));
     updateSearch(name, '');
-  };
-
-  const fetchAssetTypes = async () => {
-    try {
-      console.log('Fetching asset types...');
-      const res = await API.get('/dept-assets/asset-types');
-      console.log('Asset types raw response:', res.data);
-      setAssetTypes(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error('Error fetching asset types:', err);
-      setAssetTypes([]);
-    }
   };
 
   const fetchUsers = async () => {
@@ -800,7 +859,7 @@ const AddAssetForm = ({ userRole }) => {
 
       if (response.data.success) {
         const serialNumber = response.data.data.serialNumber;
-        setForm(prev => ({ ...prev, serialNumber }));
+        setForm(prev => ({ ...prev, serialNumberMode: 'generate', serialNumber }));
         toast.success(t('assets.serialNumberPreview', { serialNumber }));
         console.log(`👀 Preview serial number: ${serialNumber} (Will be saved when asset is created)`);
         
@@ -815,6 +874,24 @@ const AddAssetForm = ({ userRole }) => {
     } finally {
       setIsGeneratingSerial(false);
     }
+  };
+
+  const handleSerialNumberModeChange = (e) => {
+    const mode = e.target.value;
+    setForm(prev => ({
+      ...prev,
+      serialNumberMode: mode,
+      serialNumber:
+        mode === 'none'
+          ? ''
+          : mode === 'generate'
+            ? ''
+            : (prev.serialNumberMode === 'generate' && mode === 'existing')
+              ? ''
+              : prev.serialNumber
+    }));
+    setTouched(prev => ({ ...prev, serialNumberMode: true }));
+    setValidationErrors(prev => ({ ...prev, serialNumber: false }));
   };
 
   const isFieldInvalid = (field) => {
@@ -842,7 +919,7 @@ const AddAssetForm = ({ userRole }) => {
       hasErrors = true;
     }
     
-    if (!form.serialNumber || form.serialNumber.trim() === '') {
+    if (form.serialNumberMode !== 'none' && (!form.serialNumber || form.serialNumber.trim() === '')) {
       errors.serialNumber = true;
       hasErrors = true;
     }
@@ -936,7 +1013,7 @@ const AddAssetForm = ({ userRole }) => {
         asset_type_id: form.assetType,
         asset_id: '', // Will be auto-generated by backend
         text: assetTypeText, // Asset type name like "Laptop", "Router", etc.
-        serial_number: form.serialNumber,
+        serial_number: form.serialNumberMode === 'none' ? null : (form.serialNumber?.trim() || null),
         description: form.description,
         branch_id: getUserBranchId(user?.user_id), // Auto-populate user's branch
         purchase_vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
@@ -1013,17 +1090,19 @@ const AddAssetForm = ({ userRole }) => {
           action: 'Asset Saved Successfully'
         });
         
-        // Add serial number to print queue
-        try {
-          console.log('🖨️ Adding serial number to print queue:', form.serialNumber);
-          const printQueueResponse = await API.post('/asset-serial-print/', {
-            serial_no: form.serialNumber,
-            status: 'New',
-            reason: null
-          });
-          console.log('✅ Serial number added to print queue:', printQueueResponse.data);
-        } catch (printError) {
-          console.error('❌ Error adding to print queue:', printError);
+        // Add serial number to print queue (only when a serial number exists)
+        if (form.serialNumberMode !== 'none' && form.serialNumber?.trim()) {
+          try {
+            console.log('🖨️ Adding serial number to print queue:', form.serialNumber);
+            const printQueueResponse = await API.post('/asset-serial-print/', {
+              serial_no: form.serialNumber.trim(),
+              status: 'New',
+              reason: null
+            });
+            console.log('✅ Serial number added to print queue:', printQueueResponse.data);
+          } catch (printError) {
+            console.error('❌ Error adding to print queue:', printError);
+          }
         }
         
         // Now handle attachments if any
@@ -1208,7 +1287,11 @@ const AddAssetForm = ({ userRole }) => {
                             onClick={() => {
                               console.log('Selected asset type:', at);
                               console.log('Selected group_required:', at.group_required);
-                              setForm((prev) => ({ ...prev, assetType: at.asset_type_id }));
+                              setForm((prev) => ({ 
+                                ...prev, 
+                                assetType: at.asset_type_id,
+                                serialNumber: prev.serialNumberMode === 'generate' ? '' : prev.serialNumber
+                              }));
                               setAssetTypeDropdownOpen(false);
                               setSearchAssetType("");
                               // Fetch dynamic properties for the selected asset type
@@ -1354,33 +1437,80 @@ const AddAssetForm = ({ userRole }) => {
                 </div>
               )}
 
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm mb-1 font-medium">
-                  {t('assets.serialNumber')} <span className="text-red-500">*</span>
+                  {t('assets.serialNumber')}
+                  {form.serialNumberMode !== 'none' && <span className="text-red-500"> *</span>}
                 </label>
-                              <div className="flex items-center">
-                <input 
-                  name="serialNumber" 
-                  placeholder="" 
-                  onChange={handleChange} 
-                  value={form.serialNumber} 
-                  className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${validationErrors.serialNumber ? 'border-red-500' : 'border-gray-300'}`} 
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsGeneratingSerial(true);
-                    generateSerialNumber();
-                  }}
-                  className="ml-2 px-3 bg-[#0E2F4B] text-white rounded text-sm h-9 transition"
-                  disabled={isGeneratingSerial || !form.assetType}
-                >
-                  {isGeneratingSerial ? t('common.loading') : t('assets.generate')}
-                </button>
-              </div>
-              {validationErrors.serialNumber && (
-                <p className="mt-1 text-sm text-red-600">{t('assets.serialNumberIsRequired')}</p>
-              )}
+                <div className="flex items-center gap-2 w-full">
+                  <select
+                    name="serialNumberMode"
+                    value={form.serialNumberMode}
+                    onChange={handleSerialNumberModeChange}
+                    className="px-2 py-2 border border-gray-300 rounded bg-white text-sm h-9 w-48 shrink-0"
+                  >
+                    <option value="generate">{t('assets.serialNumberModeGenerateNew') || 'Generate New'}</option>
+                    <option value="existing">{t('assets.serialNumberModeUseExisting') || 'Use existing one'}</option>
+                    <option value="none">{t('assets.serialNumberModeNone') || 'No serial number'}</option>
+                  </select>
+
+                  {form.serialNumberMode !== 'none' && (
+                    <div className="relative flex-1 min-w-0">
+                      <input
+                        name="serialNumber"
+                        placeholder={
+                          form.serialNumberMode === 'existing'
+                            ? (t('assets.serialNumberUseExistingPlaceholder') || 'Scan or type serial number')
+                            : ''
+                        }
+                        onChange={handleChange}
+                        value={form.serialNumber}
+                        readOnly={form.serialNumberMode === 'generate'}
+                        className={`w-full min-w-0 px-3 py-2 rounded text-sm h-9 border ${
+                          validationErrors.serialNumber ? 'border-red-500' : 'border-gray-300'
+                        } ${
+                          form.serialNumberMode === 'generate'
+                            ? 'cursor-not-allowed bg-gray-50 text-gray-600'
+                            : 'bg-white'
+                        } ${
+                          form.serialNumberMode === 'existing' ? 'pr-10' : ''
+                        }`}
+                      />
+
+                      {form.serialNumberMode === 'existing' && (
+                        <button
+                          type="button"
+                          onClick={() => setShowSerialScanner(true)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          title={t('assets.scanBarcode')}
+                        >
+                          <QrCode size={18} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {form.serialNumberMode === 'generate' && (
+                    <button
+                      type="button"
+                      onClick={generateSerialNumber}
+                      className="px-5 bg-[#0E2F4B] text-white rounded text-sm h-9 transition shrink-0"
+                      disabled={isGeneratingSerial || !form.assetType}
+                    >
+                      {isGeneratingSerial ? t('common.loading') : t('assets.generate')}
+                    </button>
+                  )}
+                </div>
+
+                {form.serialNumberMode === 'none' && (
+                  <p className="mt-1 text-xs text-gray-600">
+                    {t('assets.serialNumberNoSerialHelper') || 'This asset will be created without a serial number.'}
+                  </p>
+                )}
+
+                {validationErrors.serialNumber && form.serialNumberMode !== 'none' && (
+                  <p className="mt-1 text-sm text-red-600">{t('assets.serialNumberIsRequired')}</p>
+                )}
               </div>
               <div className="col-span-4">
                 <label className="block text-sm mb-1 font-medium">{t('assets.assetName')}</label>
@@ -2075,6 +2205,50 @@ const AddAssetForm = ({ userRole }) => {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Serial Number Scanner Modal */}
+      {showSerialScanner && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">
+                {t('assets.scanBarcode')}
+              </h3>
+              <button
+                type="button"
+                onClick={stopSerialScanner}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="relative">
+              <div id="serial-qr-reader" className="aspect-[4/3] bg-black">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-64 h-64 border-2 border-white rounded-lg"></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 text-center">
+              <p className="text-sm text-gray-600">
+                {t('assets.positionBarcodeInScanningArea')}
+              </p>
+            </div>
+
+            <div className="p-4 border-t flex justify-end">
+              <button
+                type="button"
+                onClick={stopSerialScanner}
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-300"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       
