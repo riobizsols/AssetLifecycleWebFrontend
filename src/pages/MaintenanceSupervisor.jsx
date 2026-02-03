@@ -266,7 +266,6 @@ const MaintenanceSupervisor = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={() => navigate("/maintenance-approval/add")}
         onDeleteSelected={handleDeleteSelected}
         onDownload={handleDownload}
         data={data}
