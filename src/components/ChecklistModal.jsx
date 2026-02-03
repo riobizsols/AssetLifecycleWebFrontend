@@ -6,13 +6,36 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
   const { t } = useLanguage();
   if (!open) return null;
 
-  // Function to translate common checklist items
+  // Function to translate checklist items
   const translateChecklistItem = (itemText) => {
+    if (!itemText || typeof itemText !== 'string') {
+      return itemText;
+    }
+
+    // If the text looks like a translation key (contains dots and starts with a namespace)
+    if (itemText.includes('.') && itemText.match(/^[a-zA-Z]+\.[a-zA-Z]+/)) {
+      try {
+        // Try to translate it directly
+        const translated = t(itemText);
+        // If translation returns the key itself, it means the key doesn't exist
+        // Return the original text or a fallback
+        return translated !== itemText ? translated : itemText;
+      } catch (error) {
+        // If translation fails, return original text
+        return itemText;
+      }
+    }
+
+    // Fallback: try to match against known translations
     const translations = {
       'Battery health check': t('maintenanceApproval.batteryHealthCheck'),
       'OS & software installed': t('maintenanceApproval.osAndSoftwareInstalled'),
       'Physical damage inspection': t('maintenanceApproval.physicalDamageInspection'),
+      'Physical Condition Check': t('maintenanceApproval.physicalConditionCheck'),
+      'Accessibility & Labeling': t('maintenanceApproval.accessibilityAndLabeling'),
+      'Pressure Gauge & Seal Verification': t('maintenanceApproval.pressureGaugeAndSealVerification'),
     };
+    
     return translations[itemText] || itemText;
   };
 

@@ -1,6 +1,18 @@
 import { Pencil, Eye, Plus } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 
+// Hide internal/database IDs from all UI tables by default.
+// IDs are still present in `row` for internal usage, but not displayed.
+const isIdColumnName = (name) => {
+  const n = String(name || "").toLowerCase().trim();
+  if (!n) return false;
+  if (n === "id") return true;
+  if (n.endsWith("_id")) return true;
+  if (n === "org_id") return true;
+  if (n.endsWith("_uuid") || n === "uuid") return true;
+  return false;
+};
+
 const CustomTable = ({
   visibleColumns,
   data,
@@ -21,7 +33,7 @@ const CustomTable = ({
   addButtonTitle = "Add",
   isReadOnly = false,
 }) => {
-  const visible = visibleColumns.filter((col) => col.visible);
+  const visible = visibleColumns.filter((col) => col.visible && !isIdColumnName(col.name));
 
   const toggleRow = (keyValue) => {
     setSelectedRows((prev) =>

@@ -593,13 +593,10 @@ const AssetSelection = () => {
               {inactiveAssets.length > 0 && (
                 <div
                   className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400`}
-                  style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}
+                  style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
                 >
-                  <div>{t('assets.assetTypeId')}</div>
-                  <div>{t('assets.assetId')}</div>
                   <div>{t('employees.assetTypeName')}</div>
                   <div>{t('assets.assetName')}</div>
-                  <div>{t('assets.productServiceId')}</div>
                   <div className="flex justify-center">{t('common.actions')}</div>
                 </div>
               )}
@@ -617,35 +614,31 @@ const AssetSelection = () => {
                     } text-gray-800 hover:bg-gray-200 ${
                       selectedAsset === asset.asset_id ? "bg-blue-50" : ""
                     }`}
-                    style={{ gridTemplateColumns: "repeat(6, minmax(0, 1fr))" }}
+                    style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
                   >
-                    <div>{asset.asset_type_id}</div>
-                    <div>
+                    <div>{asset.text}</div>
+                    <div title={asset.description}>
                       <button
-                        className="text-blue-600 underline hover:text-blue-800"
+                        className="text-blue-600 underline hover:text-blue-800 text-left"
                         onClick={() => {
                           // Determine context based on entityType
                           const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
                           navigate(`/asset-detail/${asset.asset_id}?context=${context}`, {
                             state: {
                               employee_int_id: entityIntIdLocal || entityIntId,
-                              dept_id: asset.dept_id || departmentId,
+                              dept_id: asset.dept_id || departmentId || entityId, // Use entityId as fallback for department assignments
                               org_id: asset.org_id,
+                              entityId: entityId, // Pass entityId explicitly for department assignments
                               context: context
                             },
                           });
                         }}
                       >
-                        {asset.asset_id}
+                        {asset.description && asset.description.length > 15
+                          ? asset.description.slice(0, 15) + "..."
+                          : (asset.description || "-")}
                       </button>
                     </div>
-                    <div>{asset.text}</div>
-                    <div title={asset.description}>
-                      {asset.description && asset.description.length > 15
-                        ? asset.description.slice(0, 15) + "..."
-                        : asset.description}
-                    </div>
-                    <div>{asset.prod_serv_id}</div>
                     <div className="flex justify-center">
                       <button
                         onClick={() => handleAssignAsset(asset)}

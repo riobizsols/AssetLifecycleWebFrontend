@@ -339,8 +339,7 @@ const DepartmentsAdmin = () => {
             </button>
           </div>
           <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-            <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-              <div>{t('departments.userId')}</div>
+            <div className="grid grid-cols-3 px-4 py-2 font-semibold border-b-4 border-yellow-400">
               <div>{t('departments.adminName')}</div>
               <div>{t('departments.departmentName')}</div>
               <div className="text-center">{t('common.actions')}</div>
@@ -352,11 +351,10 @@ const DepartmentsAdmin = () => {
               {adminList.map((admin, i) => (
                 <div
                   key={`${admin.dept_id}-${admin.user_id}`}
-                  className={`grid grid-cols-4 px-4 py-2 items-center border-b ${
+                  className={`grid grid-cols-3 px-4 py-2 items-center border-b ${
                     i % 2 === 0 ? "bg-white" : "bg-gray-100"
                   } text-gray-800`}
                 >
-                  <div>{admin.user_id}</div>
                   <div>{admin.full_name}</div>
                   <div>{admin.dept_name}</div>
                   <div className="flex justify-center">

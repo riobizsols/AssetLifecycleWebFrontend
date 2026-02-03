@@ -7,6 +7,7 @@ import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import { X } from "lucide-react";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }) => {
   const [assetType, setAssetType] = useState("");
@@ -20,6 +21,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
   const [requireMaintenance, setRequireMaintenance] = useState(false);
+  const [requireScrapApproval, setRequireScrapApproval] = useState(true); // default enabled
   const [isActive, setIsActive] = useState(true);
   const [parentChild, setParentChild] = useState("parent");
   const [parentAssetTypes, setParentAssetTypes] = useState([]);
@@ -54,6 +56,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       setGroupRequired(!!assetData.group_required); // Convert to boolean
       setRequireInspection(!!assetData.inspection_required); // Convert to boolean
       setRequireMaintenance(!!assetData.maint_required); // Convert to boolean
+      setRequireScrapApproval(assetData.require_scrap_approval !== false);
       setIsActive(assetData.int_status === 1 || assetData.int_status === "1" || assetData.int_status === true);
       setParentChild(assetData.is_child ? "child" : "parent");
       setSelectedParentType(assetData.parent_asset_type_id || "");
@@ -112,6 +115,18 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeDropdown]);
+
+  // Close modal on ESC key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const fetchChecklist = async () => {
     if (!assetData?.asset_type_id) return;
@@ -452,6 +467,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         group_required: groupRequired,
         inspection_required: requireInspection,
         maint_required: requireMaintenance ? 1 : 0,
+        require_scrap_approval: requireScrapApproval,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
         maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
@@ -591,15 +607,26 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose(false);
+      }}
+    >
+      <div
+        className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">{t('assetTypes.editAssetType')}</h2>
           <button
-            onClick={onClose}
+            type="button"
+            onClick={() => onClose(false)}
             className="text-gray-500 hover:text-gray-700"
+            aria-label="Close"
+            title="Close"
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 
@@ -785,6 +812,17 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                 className="form-checkbox text-blue-500 rounded"
               />
               <span>{t('assetTypes.requireMaintenance')}</span>
+            </label>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={requireScrapApproval}
+                onChange={(e) => setRequireScrapApproval(e.target.checked)}
+                disabled={isReadOnly}
+                className="form-checkbox text-blue-500 rounded"
+              />
+              <span>REQUIRE SCRAP APPROVAL</span>
             </label>
           </div>
 

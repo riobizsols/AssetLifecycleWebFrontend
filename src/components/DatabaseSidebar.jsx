@@ -150,6 +150,7 @@ const DatabaseSidebar = () => {
     INSPECTION: "/inspection-view", // Separate route for inspection
     MAINTENANCEAPPROVAL: "/maintenance-approval",
     VENDORRENEWALAPPROVAL: "/vendor-renewal-approval",
+    SCRAPMAINTENANCEAPPROVAL: "/scrap-maintenance-approval",
     SUPERVISORAPPROVAL: "/supervisor-approval", //done
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
     "EMPLOYEE REPORT BREAKDOWN": "/employee-report-breakdown", // Employee Report Breakdown route //done
@@ -202,6 +203,7 @@ const DatabaseSidebar = () => {
       WORKORDERMANAGEMENT: Wrench,
       INSPECTION: CheckSquare,
       MAINTENANCEAPPROVAL: ClipboardList,
+      SCRAPMAINTENANCEAPPROVAL: ClipboardList,
       SUPERVISORAPPROVAL: UserCheck,
       REPORTBREAKDOWN: BarChart3,
       "EMPLOYEE REPORT BREAKDOWN": BarChart3,

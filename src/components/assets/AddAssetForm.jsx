@@ -18,6 +18,7 @@ const initialForm = {
   assetType: '',
   serialNumberMode: 'generate', // generate | existing | none
   serialNumber: '',
+  serialNumberNotRequired: false, // New field to mark serial number as optional
   description: '',
   expiryDate: '',
   warrantyPeriod: '',
@@ -402,12 +403,24 @@ const AddAssetForm = ({ userRole }) => {
       console.log('📦 Parent assets response:', res.data);
       console.log('📊 Response data type:', typeof res.data);
       console.log('📊 Response data length:', Array.isArray(res.data) ? res.data.length : 'Not an array');
-      setParentAssets(Array.isArray(res.data) ? res.data : []);
+      const arr = Array.isArray(res.data) ? res.data : [];
+      setParentAssets(arr);
+
+      // Auto-select a parent asset when child asset type is chosen.
+      // If there are multiple possible parents, default to the first one (user can change it).
+      setForm((prev) => {
+        const current = prev.parentAsset;
+        const stillValid = current && arr.some((p) => p.asset_id === current);
+        if (stillValid) return prev;
+        if (arr.length > 0) return { ...prev, parentAsset: arr[0].asset_id };
+        return { ...prev, parentAsset: '' };
+      });
     } catch (err) {
       console.error('❌ Error fetching parent assets:', err);
       console.error('❌ Error response:', err.response?.data);
       toast.error('Failed to fetch parent assets');
       setParentAssets([]);
+      setForm((prev) => ({ ...prev, parentAsset: '' }));
     }
   };
 

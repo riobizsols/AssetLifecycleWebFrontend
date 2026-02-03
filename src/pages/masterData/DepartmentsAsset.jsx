@@ -364,8 +364,7 @@ const DepartmentsAsset = () => {
             </button>
           </div>
           <div className="bg-[#0E2F4B] text-white text-sm">
-            <div className="grid grid-cols-4 px-4 py-2 font-semibold border-b-4 border-yellow-400">
-              <div>{t('departments.id')}</div>
+            <div className="grid grid-cols-3 px-4 py-2 font-semibold border-b-4 border-yellow-400">
               <div>{t('common.department')}</div>
               <div>{t('departments.assetType')}</div>
               <div className="text-center">{t('common.actions')}</div>
@@ -377,11 +376,10 @@ const DepartmentsAsset = () => {
               {deptAssets.map((item, i) => (
                 <div
                   key={item.dept_asset_type_id}
-                  className={`grid grid-cols-4 px-4 py-2 items-center border-b ${
+                  className={`grid grid-cols-3 px-4 py-2 items-center border-b ${
                     i % 2 === 0 ? "bg-white" : "bg-gray-100"
                   } text-gray-800`}
                 >
-                <div>{item.dept_asset_type_id}</div>
                   <div>{item.dept_name}</div>
                   <div>{item.asset_name}</div>
                   <div className="flex justify-center">

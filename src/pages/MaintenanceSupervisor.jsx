@@ -9,6 +9,7 @@ import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/assets/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
+import CreateManualMaintenanceModal from "../components/maintenance/CreateManualMaintenanceModal";
 
 const MaintenanceSupervisor = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const MaintenanceSupervisor = () => {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [columns] = useState([
     { label: t('maintenanceSupervisor.id'), name: "ams_id", visible: true },
@@ -270,7 +272,8 @@ const MaintenanceSupervisor = () => {
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
-        showAddButton={false} // Hide Add button for this page
+        showAddButton={true} // Show Create button for manual maintenance creation
+        onAdd={() => setShowCreateModal(true)} // Open create modal
         showActions={false} // Hide Actions column header for this page
       >
         {({ visibleColumns, showActions }) => {
@@ -362,6 +365,16 @@ const MaintenanceSupervisor = () => {
                   isOpen={updateModalOpen}
                   onClose={handleUpdateModalClose}
                   assetData={selectedAsset}
+                />
+              )}
+              {showCreateModal && (
+                <CreateManualMaintenanceModal
+                  isOpen={showCreateModal}
+                  onClose={() => setShowCreateModal(false)}
+                  onSuccess={() => {
+                    fetchMaintenanceSchedules();
+                    setShowCreateModal(false);
+                  }}
                 />
               )}
             </>

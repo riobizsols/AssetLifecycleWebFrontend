@@ -56,6 +56,9 @@ const AllNotifications = () => {
         cutoffDate: formatDate(notification.cutoffDate),
         isUrgent: notification.daysUntilCutoff <= 2, // Show urgent only when 2 days or less until cutoff
         wfamshId: notification.wfamshId, // For navigation
+        route: notification.route,
+        workflowType: notification.workflowType,
+        workflowId: notification.workflowId,
         id: notification.id,
         daysUntilCutoff: notification.daysUntilCutoff,
         assetId: notification.assetId, // Add assetId to the transformed alert
@@ -84,13 +87,20 @@ const AllNotifications = () => {
   };
 
   const handleAlertClick = (alert) => {
-    // Navigate to approval detail page with wfamshId (specific workflow)
-    console.log("Navigating to approval detail for wfamshId:", alert.wfamshId);
-    console.log("Alert data:", alert);
+    console.log("Navigating from alert:", alert);
+    if (alert.route) {
+      navigate(alert.route);
+      return;
+    }
+    if (alert.workflowType === "SCRAP" && alert.workflowId) {
+      navigate(`/scrap-approval-detail/${alert.workflowId}?context=SCRAPMAINTENANCEAPPROVAL`);
+      return;
+    }
     if (alert.wfamshId) {
       navigate(`/approval-detail/${alert.wfamshId}`);
-    } else {
-      console.warn("No wfamshId found in alert, falling back to assetId:", alert.assetId);
+      return;
+    }
+    if (alert.assetId) {
       navigate(`/approval-detail/${alert.assetId}`);
     }
   };

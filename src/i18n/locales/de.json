@@ -1295,7 +1295,10 @@
     "close": "Schließen",
     "batteryHealthCheck": "Batteriezustand prüfen",
     "osAndSoftwareInstalled": "Betriebssystem & Software installiert",
-    "physicalDamageInspection": "Physische Schadensprüfung"
+    "physicalDamageInspection": "Physische Schadensprüfung",
+    "physicalConditionCheck": "Physischer Zustand prüfen",
+    "accessibilityAndLabeling": "Zugänglichkeit & Kennzeichnung",
+    "pressureGaugeAndSealVerification": "Druckanzeige & Dichtungsprüfung"
   },
   "maintenanceSupervisor": {
     "title": "Wartungsaufsicht",

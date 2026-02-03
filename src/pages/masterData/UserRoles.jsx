@@ -11,6 +11,7 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { USERS_APP_ID } from "../../constants/usersAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { X } from "lucide-react";
 
 const Users = () => {
   const navigate = useNavigate();
@@ -232,6 +233,24 @@ const Users = () => {
     fetchDepartments();
     fetchJobRoles();
   }, []);
+
+  // Close modals on ESC key
+  useEffect(() => {
+    if (!showEditModal && !showRoleModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      if (showRoleModal) {
+        setShowRoleModal(false);
+        setSelectedUser(null);
+        setUserRoles([]);
+      } else if (showEditModal) {
+        setShowEditModal(false);
+        setEditingUser(null);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showEditModal, showRoleModal]);
 
   const handleSort = (column) => {
     setSortConfig(prevConfig => {
@@ -751,8 +770,16 @@ const Users = () => {
 
       {/* Edit User Modal */}
       {showEditModal && editingUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-white w-[500px] rounded shadow-lg">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowEditModal(false);
+              setEditingUser(null);
+            }
+          }}
+        >
+          <div className="bg-white w-[500px] rounded shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
             <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
               <span>Edit User</span>
               <button
@@ -760,9 +787,11 @@ const Users = () => {
                   setShowEditModal(false);
                   setEditingUser(null);
                 }}
-                className="text-yellow-400 text-xl font-bold"
+                className="text-yellow-400 hover:text-yellow-300"
+                aria-label="Close"
+                title="Close"
               >
-                ×
+                <X size={18} />
               </button>
             </div>
             <div className="h-[3px] bg-[#ffc107]" />
@@ -868,8 +897,17 @@ const Users = () => {
 
       {/* Role Management Modal */}
       {showRoleModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-white w-[800px] max-h-[90vh] rounded shadow-lg overflow-hidden">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowRoleModal(false);
+              setSelectedUser(null);
+              setUserRoles([]);
+            }
+          }}
+        >
+          <div className="bg-white w-[800px] max-h-[90vh] rounded shadow-lg overflow-hidden" onMouseDown={(e) => e.stopPropagation()}>
             <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center">
               <span>Manage Roles - {selectedUser.full_name}</span>
               <button
@@ -878,9 +916,11 @@ const Users = () => {
                   setSelectedUser(null);
                   setUserRoles([]);
                 }}
-                className="text-yellow-400 text-xl font-bold"
+                className="text-yellow-400 hover:text-yellow-300"
+                aria-label="Close"
+                title="Close"
               >
-                ×
+                <X size={18} />
               </button>
             </div>
             <div className="h-[3px] bg-[#ffc107]" />

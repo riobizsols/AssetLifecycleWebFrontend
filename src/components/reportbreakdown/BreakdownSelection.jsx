@@ -239,14 +239,10 @@ const BreakdownSelection = () => {
               {inactiveAssets.length > 0 && (
                 <div
                   className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400`}
-                  style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
+                  style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
                 >
-                  <div>{t('breakdownSelection.assetTypeId')}</div>
-                  <div>{t('breakdownSelection.assetId')}</div>
                   <div>{t('breakdownSelection.assetTypeName')}</div>
                   <div>{t('breakdownSelection.assetName')}</div>
-                  <div>{t('breakdownSelection.serviceVendorId')}</div>
-                  <div>{t('breakdownSelection.productServiceId')}</div>
                   <div className="flex justify-center">{t('breakdownSelection.actions')}</div>
                 </div>
               )}
@@ -262,12 +258,12 @@ const BreakdownSelection = () => {
                     className={`grid px-4 py-2 items-center border-b ${
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800 hover:bg-gray-200`}
-                    style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
+                    style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
                   >
-                    <div>{asset.asset_type_id}</div>
-                    <div>
+                    <div>{asset.text}</div>
+                    <div title={asset.description}>
                       <button
-                        className="text-blue-600 underline hover:text-blue-800"
+                        className="text-blue-600 underline hover:text-blue-800 text-left"
                         onClick={() =>
                           navigate(`/asset-detail/${asset.asset_id}`, {
                             state: {
@@ -278,17 +274,11 @@ const BreakdownSelection = () => {
                           })
                         }
                       >
-                        {asset.asset_id}
+                        {asset.description && asset.description.length > 15
+                          ? asset.description.slice(0, 15) + "..."
+                          : (asset.description || "-")}
                       </button>
                     </div>
-                    <div>{asset.text}</div>
-                    <div title={asset.description}>
-                      {asset.description && asset.description.length > 15
-                        ? asset.description.slice(0, 15) + "..."
-                        : asset.description}
-                    </div>
-                    <div>{asset.service_vendor_id}</div>
-                    <div>{asset.prod_serv_id}</div>
                     <div className="flex justify-center">
                       <button
                         onClick={() => goToBreakdownDetails(asset)}

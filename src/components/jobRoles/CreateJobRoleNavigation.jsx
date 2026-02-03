@@ -333,7 +333,6 @@ const CreateJobRoleNavigation = () => {
                             className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
                           >
                             <div className="font-medium">{role.text}</div>
-                            <div className="text-sm text-gray-600">{role.job_role_id}</div>
                           </div>
                         ))
                       ) : (
@@ -585,7 +584,6 @@ const CreateJobRoleNavigation = () => {
                         className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
                       >
                         <div className="font-medium">{role.text}</div>
-                        <div className="text-sm text-gray-600">{role.job_role_id}</div>
                       </div>
                     ))
                   ) : (

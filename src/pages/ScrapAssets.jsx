@@ -514,18 +514,18 @@ const ScrapAssets = () => {
          />
        </div>
 
-       {/* Add Scrap Asset Button */}
-       {!isReadOnly && (
-         <div className="mt-8 flex justify-center">
-           <button
-             onClick={handleAddScrapAsset}
-             className="px-6 py-3 bg-[#0E2F4B] text-white rounded-lg hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] flex items-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg"
-           >
-             <Plus size={20} />
-             <span className="text-lg font-semibold">{t('scrapAssets.addScrapAsset')}</span>
-           </button>
-         </div>
-       )}
+      {/* Action */}
+      {!isReadOnly && (
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={handleAddScrapAsset}
+            className="px-6 py-3 bg-[#0E2F4B] text-white rounded-lg hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] flex items-center justify-center gap-2 transition-all duration-200 hover:scale-105 shadow-lg"
+          >
+            <Plus size={20} />
+            <span className="text-lg font-semibold">Scrap Asset</span>
+          </button>
+        </div>
+      )}
      </div>
    );
 };

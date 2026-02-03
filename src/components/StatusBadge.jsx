@@ -1,4 +1,5 @@
 import React from "react";
+import { useAppData } from "../contexts/AppDataContext";
 
 const statusColors = {
   approved: "text-green-600 font-semibold",
@@ -20,11 +21,22 @@ const statusColors = {
 };
 
 export default function StatusBadge({ status }) {
+  let display = status;
+  try {
+    const { getStatusText } = useAppData();
+    if (getStatusText) {
+      display = getStatusText(status) || status;
+    }
+  } catch (err) {
+    // If context not available, just use the status as-is
+    console.warn('StatusBadge: AppDataContext not available, using raw status');
+  }
+  
   const key = status?.toLowerCase();
   const className = statusColors[status] || statusColors[key] || "text-gray-600";
   return (
     <span className={className}>
-      {status}
+      {display}
     </span>
   );
 } 

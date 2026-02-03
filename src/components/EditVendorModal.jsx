@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import API from '../lib/axios';
 import { generateUUID } from '../utils/uuid';
 import { useLanguage } from '../contexts/LanguageContext';
+import { X } from 'lucide-react';
 
 const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false }) => {
   const { t } = useLanguage();
@@ -152,6 +153,16 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [activeDropdown]);
+
+  // Close modal on ESC key
+  useEffect(() => {
+    if (!show) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [show, onClose]);
 
   const fetchDocumentTypes = async () => {
     try {
@@ -497,16 +508,23 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50">
-      <div className="bg-white w-[1000px] rounded shadow-lg max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="bg-white w-[1000px] rounded shadow-lg max-h-[90vh] overflow-y-auto" onMouseDown={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t sticky top-0">
           <span>{t('vendors.editVendor')}</span>
           <button
             onClick={onClose}
-            className="text-yellow-400 text-xl font-bold"
+            className="text-yellow-400 hover:text-yellow-300"
+            aria-label="Close"
+            title="Close"
           >
-            ×
+            <X size={18} />
           </button>
         </div>
 
