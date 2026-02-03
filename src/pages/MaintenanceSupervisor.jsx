@@ -271,7 +271,8 @@ const MaintenanceSupervisor = () => {
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
-        showAddButton={false} // Hide Create button
+        showAddButton={true} // Show Create button for manual maintenance creation
+        onAdd={() => setShowCreateModal(true)} // Open create modal
         showActions={false} // Hide Actions column header for this page
       >
         {({ visibleColumns, showActions }) => {

@@ -65,6 +65,7 @@ const Assets = () => {
     { label: t('assets.branchId'), name: "branch_id", visible: true },
     { label: t('assets.parentId'), name: "parent_asset_id", visible: true },
     { label: t('assets.groupId'), name: "group_id", visible: true },
+    { label: t('assets.groupName'), name: "group_name", visible: true },
     { label: t('assets.maintenanceScheduleId'), name: "maintsch_id", visible: false },
     { label: t('assets.productServiceId'), name: "prod_serv_id", visible: false },
     { label: t('assets.extId'), name: "ext_id", visible: false },

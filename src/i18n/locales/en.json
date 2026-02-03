@@ -114,6 +114,7 @@
     "location": "Location",
     "parentId": "Parent ID",
     "groupId": "Group ID",
+    "groupName": "Group Name",
     "maintenanceScheduleId": "Maintenance Schedule ID",
     "productServiceId": "Product/Service ID",
     "extId": "Ext ID",
