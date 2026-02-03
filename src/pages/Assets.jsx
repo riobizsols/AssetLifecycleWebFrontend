@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
+import ChildItemsDropdown from "../components/ChildItemsDropdown";
 import { filterData } from "../utils/filterData";
 import { exportToExcel } from "../utils/exportToExcel";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -44,6 +45,7 @@ const Assets = () => {
   });
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [assetTypes, setAssetTypes] = useState([]);
   // Delete modal state removed - delete happens immediately
 
   // Initialize audit logging
@@ -92,6 +94,18 @@ const Assets = () => {
 
   useEffect(() => {
     fetchAssets();
+  }, []);
+
+  useEffect(() => {
+    const fetchAssetTypes = async () => {
+      try {
+        const res = await API.get("/asset-types");
+        setAssetTypes(Array.isArray(res.data) ? res.data : res.data?.rows || []);
+      } catch {
+        setAssetTypes([]);
+      }
+    };
+    fetchAssetTypes();
   }, []);
 
   // Prevent access to /assets/add for read-only users
@@ -464,6 +478,45 @@ const Assets = () => {
             );
           }
 
+          const renderAssetCell = (col, row) => {
+            // Asset ID column: dropdown for parent assets to show child assets
+            if (col.name === "asset_id") {
+              const childAssets = data.filter((d) => d.parent_asset_id === row.asset_id);
+              return (
+                <ChildItemsDropdown
+                  childItems={childAssets}
+                  renderChildItem={(item) =>
+                    `${item.asset_id}${item.text || item.description ? ` - ${item.text || item.description}` : ""}`.trim()
+                  }
+                  getChildKey={(item) => item.asset_id}
+                  emptyMessage={t("assets.noChildAssets")}
+                >
+                  {row.asset_id}
+                </ChildItemsDropdown>
+              );
+            }
+            // Asset Name column: dropdown for parent asset types to show child types
+            if (col.name === "description" && assetTypes.length > 0) {
+              const childTypes = assetTypes.filter(
+                (at) => (at.parent_asset_type_id || at.parent_asset_type) === row.asset_type_id
+              );
+              const nameDisplay = row.description || row.text || "";
+              if (childTypes.length > 0) {
+                return (
+                  <ChildItemsDropdown
+                    childItems={childTypes}
+                    renderChildItem={(item) => item.text || item.asset_type_id}
+                    getChildKey={(item) => item.asset_type_id}
+                    emptyMessage={t("assetTypes.noChildTypes")}
+                  >
+                    {nameDisplay}
+                  </ChildItemsDropdown>
+                );
+              }
+            }
+            return row[col.name];
+          };
+
           return (
             <>
               <CustomTable
@@ -477,7 +530,8 @@ const Assets = () => {
                 rowKey="asset_id"
                 showCheckbox={hasEditAccess || hasDeleteAccess}
                 showActions={true}
-                isReadOnly={accessLevel === 'D'}
+                isReadOnly={accessLevel === "D"}
+                renderCell={renderAssetCell}
               />
               {updateModalOpen && (
                 <UpdateAssetModal
