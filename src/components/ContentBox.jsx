@@ -15,6 +15,20 @@ import DeleteConfirmModal from "./DeleteConfirmModal";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 
+// Hide internal/database IDs from all UI tables by default.
+// IDs are still present in data for row keys and API calls, but not displayed or selectable.
+const isIdColumnName = (name) => {
+  const n = String(name || "").toLowerCase().trim();
+  if (!n) return false;
+  if (n === "id") return true;
+  if (n.endsWith("_id")) return true;
+  if (n === "org_id") return true;
+  if (n.endsWith("_uuid") || n === "uuid") return true;
+  // Common workflow IDs still end with _id, but keep explicit for clarity.
+  if (n === "wfamsh_id" || n === "wfamsd_id" || n === "wfscrap_h_id") return true;
+  return false;
+};
+
 const ContentBox = ({
   title,
   filters = [], // This represents the available columns for filtering/display
@@ -25,6 +39,10 @@ const ContentBox = ({
   setSelectedRows = () => {},
   onDeleteSelected = () => {},
   data = [], // The actual data to be displayed and filtered
+  // Row identifier used for select-all and bulk actions
+  rowKey = "id",
+  // Optional: provide IDs for "select all" (useful when the table is filtered/sorted in the page)
+  getSelectAllIds,
   onDownload,
   onRefresh, // Add onRefresh prop
   children,
@@ -232,7 +250,11 @@ const ContentBox = ({
       // Preserve existing visible property if set (e.g., from column access control)
       // If visible is explicitly false (NONE access), always keep it false
       // Otherwise, use default visibility logic
-      visible: f.visible === false ? false : (f.visible !== undefined ? f.visible : (i < 7 || f.name === "status" || f.name === "int_status")), // Always show Status column
+      visible: isIdColumnName(f.name)
+        ? false
+        : (f.visible === false
+          ? false
+          : (f.visible !== undefined ? f.visible : (i < 7 || f.name === "status" || f.name === "int_status"))), // Always show Status column
     }))
   );
 
@@ -243,6 +265,11 @@ const ContentBox = ({
       const prevVisibilityMap = new Map(prevVisibleColumns.map(col => [col.name, col.visible]));
       
       return filters.map((f, i) => {
+        // Never allow ID columns to be visible in UI
+        if (isIdColumnName(f.name)) {
+          return { ...f, visible: false };
+        }
+
         // If filter has visible=false (from column access NONE), always keep it false
         if (f.visible === false) {
           return { ...f, visible: false };
@@ -266,6 +293,9 @@ const ContentBox = ({
   }, [filters]);
 
   const toggleColumn = (name) => {
+    // Never allow toggling ID columns to visible
+    if (isIdColumnName(name)) return;
+
     // Find the original filter to check if it has forced visibility (from column access)
     const originalFilter = filters.find(f => f.name === name);
     // If the original filter has visible=false (NONE access), don't allow toggling
@@ -292,15 +322,44 @@ const ContentBox = ({
         : { label: col.label, name: col.name, options: [], onChange: () => {} };
     });
 
+  const resolveRowId = (item) => {
+    if (!item) return null;
+    const byKey = item?.[rowKey];
+    if (byKey !== undefined && byKey !== null && byKey !== "") return byKey;
+    // Fallbacks (kept for backward compatibility across screens)
+    return (
+      item.asset_id ||
+      item.user_id ||
+      item.branch_id ||
+      item.dept_id ||
+      item.vendor_id ||
+      item.group_id ||
+      item.id ||
+      null
+    );
+  };
+
+  const selectableIds = (() => {
+    try {
+      if (typeof getSelectAllIds === "function") {
+        const ids = getSelectAllIds();
+        return Array.isArray(ids) ? ids.filter(Boolean) : [];
+      }
+      if (!Array.isArray(data)) return [];
+      return data.map(resolveRowId).filter(Boolean);
+    } catch {
+      return [];
+    }
+  })();
+
+  const selectedSet = new Set(selectedRows || []);
+
   const isAllSelected =
-    selectedRows.length > 0 && selectedRows.length === data.length;
+    selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id));
 
   const toggleAll = (e) => {
     if (e.target.checked) {
-      const allIds = data.map(
-        (item) => item.branch_id || item.user_id || item.id
-      ); // Support different ID fields
-      setSelectedRows(allIds);
+      setSelectedRows(selectableIds);
     } else {
       setSelectedRows([]);
     }
@@ -342,7 +401,9 @@ const ContentBox = ({
                 <div className="flex flex-wrap items-center gap-2 ml-2">
                   {columnFilters.map((cf, index) => {
                     // Get options for the column dropdown
-                    const columnOptions = filters.map((f) => (
+                    const columnOptions = filters
+                      .filter((f) => !isIdColumnName(f.name))
+                      .map((f) => (
                       <option key={f.name} value={f.name}>
                         {f.label}
                       </option>
@@ -803,7 +864,9 @@ const ContentBox = ({
                                 document.body.style.overflow = "";
                               }}
                             >
-                              {visibleColumns.map((col, i) => (
+                              {visibleColumns
+                                .filter((col) => !isIdColumnName(col.name))
+                                .map((col, i) => (
                                 <label
                                   key={i}
                                   className="flex items-center px-3 py-2 hover:bg-gray-100 cursor-pointer"

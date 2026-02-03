@@ -3,19 +3,25 @@ import API from '../../lib/axios';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const AssetsDetail = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { user } = useAuthStore();
   const [assetDetails, setAssetDetails] = useState(null);
   // Get asset_id from URL params
   const { asset_id } = useParams();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { employee_int_id, dept_id, org_id, hideAssign, backTo, selectedAssetType, context } = location.state || {};
+  const { employee_int_id, dept_id, org_id, hideAssign, backTo, selectedAssetType, context, entityId } = location.state || {};
   
   // Get context from URL query params (DEPTASSIGNMENT or EMPASSIGNMENT)
   const contextFromUrl = searchParams.get('context') || context;
+  
+  // Resolve org_id and dept_id with fallbacks
+  const resolvedOrgId = org_id || user?.org_id;
+  const resolvedDeptId = dept_id || entityId; // For department assignments, entityId is the dept_id
 
   // Helper to generate a unique assignment ID
   const generateUniqueId = () => `AA${Date.now()}`;
@@ -45,25 +51,65 @@ const AssetsDetail = () => {
   };
 
   const handleAssignAsset = async () => {
-    if (!assetDetails || !employee_int_id || !dept_id || !org_id) {
-      toast.error(t('assetsDetail.missingAssignmentDetails'));
+    // Check if this is a department assignment (no employee_int_id required)
+    const isDepartmentAssignment = contextFromUrl === 'DEPTASSIGNMENT';
+    
+    // Use resolved values
+    const finalDeptId = resolvedDeptId;
+    const finalOrgId = resolvedOrgId;
+    
+    // Debug logging
+    console.log('[AssetsDetail] Assign button clicked:', {
+      contextFromUrl,
+      isDepartmentAssignment,
+      assetDetails: assetDetails?.asset_id,
+      dept_id: finalDeptId,
+      org_id: finalOrgId,
+      employee_int_id,
+      locationState: location.state
+    });
+    
+    // Validate required fields based on assignment type
+    if (!assetDetails) {
+      toast.error('Asset details not loaded');
       return;
     }
+    
+    if (!finalDeptId) {
+      toast.error('Department ID is required');
+      return;
+    }
+    
+    if (!finalOrgId) {
+      toast.error('Organization ID is required');
+      return;
+    }
+    
+    // For employee assignments, employee_int_id is required
+    if (!isDepartmentAssignment && !employee_int_id) {
+      toast.error('Employee ID is required for employee assignments');
+      return;
+    }
+    
     try {
       const payload = {
         asset_assign_id: generateUniqueId(),
-        dept_id,
+        dept_id: finalDeptId,
         asset_id: assetDetails.asset_id,
-        org_id,
-        employee_int_id,
+        org_id: finalOrgId,
+        // For department assignments, set employee_int_id to null; for employee assignments, use the provided value
+        employee_int_id: isDepartmentAssignment ? null : employee_int_id,
         latest_assignment_flag: true,
         action: 'A'
       };
+      
+      console.log('[AssetsDetail] Sending assignment payload:', payload);
+      
       await API.post('/asset-assignments', payload);
       toast.success(t('assetsDetail.assetAssignedSuccessfully'));
       navigate(-1);
     } catch (err) {
-      console.error(t('assetsDetail.failedToAssignAsset'), err);
+      console.error('[AssetsDetail] Failed to assign asset:', err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'An error occurred';
       toast.error(`${t('assetsDetail.failedToAssignAsset')}: ${errorMessage}`);
     }
@@ -183,16 +229,24 @@ const AssetsDetail = () => {
           >
             {t('assetsDetail.cancel')}
           </button>
-          {!hideAssign && (
-            <button
-              type="button"
-              onClick={handleAssignAsset}
-              className="bg-[#0E2F4B] text-white px-8 py-2 rounded-lg text-base font-semibold hover:bg-[#1a4971] transition shadow_sm"
-              disabled={!assetDetails || !employee_int_id || !dept_id || !org_id}
-            >
-              {t('assetsDetail.assign')}
-            </button>
-          )}
+          {!hideAssign && (() => {
+            // Check if this is a department assignment (no employee_int_id required)
+            const isDepartmentAssignment = contextFromUrl === 'DEPTASSIGNMENT';
+            // Use resolved values for validation
+            const isDisabled = !assetDetails || !resolvedDeptId || !resolvedOrgId || (!isDepartmentAssignment && !employee_int_id);
+            
+            return (
+              <button
+                type="button"
+                onClick={handleAssignAsset}
+                className="bg-[#0E2F4B] text-white px-8 py-2 rounded-lg text-base font-semibold hover:bg-[#1a4971] transition shadow_sm disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isDisabled}
+                title={isDisabled ? `Missing: ${!assetDetails ? 'Asset details' : !resolvedDeptId ? 'Department ID' : !resolvedOrgId ? 'Organization ID' : !employee_int_id && !isDepartmentAssignment ? 'Employee ID' : 'Unknown'}` : ''}
+              >
+                {t('assetsDetail.assign')}
+              </button>
+            );
+          })()}
         </div>
       </form>
     </div>

@@ -453,6 +453,8 @@ const EditGroupAsset = () => {
     }
   };
 
+  // Scrap approval button removed as requested
+
   const handleCancel = () => {
     navigate('/group-asset');
   };

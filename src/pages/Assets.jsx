@@ -304,7 +304,14 @@ const Assets = () => {
     try {
       // Get the filtered and sorted data
       const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
-      const dataToExport = sortData(filteredData);
+      const sorted = sortData(filteredData);
+
+      // If user selected rows, export only those rows
+      const selectedSet = new Set(selectedRows || []);
+      const dataToExport =
+        selectedSet.size > 0
+          ? sorted.filter((row) => selectedSet.has(row.asset_id))
+          : sorted;
 
       // Export to Excel
       const success = exportToExcel(
@@ -389,6 +396,12 @@ const Assets = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
+        rowKey="asset_id"
+        getSelectAllIds={() => {
+          const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
+          const sorted = sortData(filteredData);
+          return sorted.map(r => r.asset_id);
+        }}
         onAdd={hasCreateAccess ? async () => {
           // Log Create event when plus icon is clicked
           await recordActionByNameWithFetch('Create', { 

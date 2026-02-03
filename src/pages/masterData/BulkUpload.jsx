@@ -112,7 +112,6 @@ const AssetTypeDropdown = ({ options, value, onChange, placeholder = "Select an 
                 }`}
               >
                 <div className="font-medium">{option.text}</div>
-                <div className="text-sm text-gray-500">{option.asset_type_id}</div>
               </button>
             ))}
             {filteredOptions.length === 0 && (

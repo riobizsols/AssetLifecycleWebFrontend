@@ -492,7 +492,7 @@ export default function ProdServ() {
                               key={i}
                               className={`grid grid-cols-4 px-4 py-2 items-center border-b ${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} text-gray-800`}
                             >
-                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (p.assetType || p.asset_type_id))?.text || p.assetType || p.asset_type_id}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (p.assetType || p.asset_type_id))?.text || 'N/A'}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.brand}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.model}</div>
                               <div className="flex justify-center gap-2">
@@ -678,7 +678,7 @@ export default function ProdServ() {
                               key={i}
                               className={`grid grid-cols-3 px-4 py-2 items-center border-b ${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} text-gray-800`}
                             >
-                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (s.assetType || s.asset_type_id))?.text || s.assetType || s.asset_type_id}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (s.assetType || s.asset_type_id))?.text || 'N/A'}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{s.description}</div>
                               <div className="flex justify-center gap-2">
                                 <button 

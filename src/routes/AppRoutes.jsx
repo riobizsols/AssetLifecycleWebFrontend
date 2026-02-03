@@ -39,6 +39,8 @@ import VendorRenewalApproval from "../pages/VendorRenewalApproval";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import AllNotifications from "../components/AllNotifications";
 import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
+import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
+import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
 import CronJobManagement from "../pages/CronJobManagement";
 import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
@@ -72,6 +74,7 @@ import ExpiringByCategory from "../components/scrapAssets/ExpiringByCategory";
 import CategoryAssets from "../components/scrapAssets/CategoryAssets";
 import CategoriesOverview from "../components/scrapAssets/CategoriesOverview";
 import CreateScrapAsset from "../components/scrapAssets/CreateScrapAsset";
+import ScrapGroupedAssets from "../pages/ScrapGroupedAssets";
 import WorkorderManagement from "../pages/WorkorderManagement";
 import WorkOrderDetail from "../pages/WorkOrderDetail";
 import AssetReport from "../pages/reports/AssetReport";
@@ -201,6 +204,16 @@ export default function AppRoutes() {
           }
         />
         <Route
+          path="/scrap-maintenance-approval"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ScrapMaintenanceApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/vendor-renewal-approval"
           element={
             <ProtectedRoute>
@@ -216,6 +229,16 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <MaintenanceApprovalDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-approval-detail/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ScrapMaintenanceApprovalDetail />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -933,6 +956,16 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="SCRAPASSETS">
               <MainLayout>
                 <CreateScrapAsset />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-assets/group-scrap/:groupId"
+          element={
+            <ProtectedRoute requiredAppId="SCRAPASSETS">
+              <MainLayout>
+                <ScrapGroupedAssets />
               </MainLayout>
             </ProtectedRoute>
           }

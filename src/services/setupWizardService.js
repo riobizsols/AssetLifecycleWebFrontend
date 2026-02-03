@@ -22,3 +22,9 @@ export const runSetupWizard = async (payload) => {
   return response.data;
 };
 
+export const syncDatabaseKeys = async (dbConfig) => {
+  const response = await API.post("/setup/sync-keys", { db: dbConfig }, {
+    timeout: 300000, // allow up to 5 minutes for key synchronization
+  });
+  return response.data;
+};

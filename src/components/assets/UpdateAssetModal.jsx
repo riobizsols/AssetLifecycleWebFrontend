@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import API from '../../lib/axios';
 import toast from 'react-hot-toast';
 import { MdKeyboardArrowDown } from 'react-icons/md';
+import { X } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import useAuditLog from '../../hooks/useAuditLog';
 import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
@@ -234,6 +235,18 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       };
     }
   }, [isOpen]);
+
+  // Close modal on ESC key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Fetch attached documents for this asset
   useEffect(() => {
@@ -712,10 +725,27 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Show loading state while column access is being fetched to prevent flash
   if (columnAccessLoading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl shadow-lg w-[98%] max-w-[90vw] max-h-[90vh] overflow-y-auto overflow-x-visible">
-          <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) onClose(false);
+        }}
+      >
+        <div
+          className="bg-white rounded-xl shadow-lg w-[98%] max-w-[90vw] max-h-[90vh] overflow-y-auto overflow-x-visible"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] relative">
             <h1 className="text-2xl font-semibold">{t('assets.editAsset')}</h1>
+            <button
+              type="button"
+              onClick={() => onClose(false)}
+              className="absolute right-4 top-4 text-white/90 hover:text-white"
+              aria-label="Close"
+              title="Close"
+            >
+              <X size={20} />
+            </button>
           </div>
           <div className="p-6 flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -729,10 +759,27 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-[98%] max-w-[90vw] max-h-[90vh] overflow-y-auto overflow-x-visible">
-        <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose(false);
+      }}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-[98%] max-w-[90vw] max-h-[90vh] overflow-y-auto overflow-x-visible"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] relative text-center">
           <h1 className="text-2xl font-semibold">{t('assets.editAsset')}</h1>
+          <button
+            type="button"
+            onClick={() => onClose(false)}
+            className="absolute right-4 top-4 text-white/90 hover:text-white"
+            aria-label="Close"
+            title="Close"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 overflow-visible">

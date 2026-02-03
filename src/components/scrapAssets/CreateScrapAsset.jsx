@@ -15,15 +15,19 @@ const CreateScrapAsset = () => {
   const { user } = useAuthStore();
   const { t } = useLanguage();
   const [scrapAssets, setScrapAssets] = useState([]);
+  const [groupedAssetRows, setGroupedAssetRows] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [notes, setNotes] = useState('');
   const [columns, setColumns] = useState([]);
   
   // Asset selection states
-  const [showAssetSelection, setShowAssetSelection] = useState(false);
+  // Show asset selection by default (no "click plus icon" landing screen)
+  const [showAssetSelection, setShowAssetSelection] = useState(true);
   const [assetTypes, setAssetTypes] = useState([]);
   const [selectedAssetType, setSelectedAssetType] = useState('');
+  // Step 2 dropdown: Individual vs Grouped assets
+  const [assetGroupOption, setAssetGroupOption] = useState(''); // 'INDIVIDUAL' | 'GROUPED'
   const [activeTab, setActiveTab] = useState('select');
   const [scannedAssetId, setScannedAssetId] = useState('');
   const [showScanner, setShowScanner] = useState(false);
@@ -148,6 +152,45 @@ const CreateScrapAsset = () => {
     }
   };
 
+  const fetchGroupedAssetsByType = async (assetTypeId) => {
+    if (!assetTypeId) {
+      setGroupedAssetRows([]);
+      setColumns([]);
+      return;
+    }
+    try {
+      const res = await API.get(`/asset-groups/by-asset-type/${assetTypeId}`, {
+        params: { context: 'SCRAPASSETS' }
+      });
+      const groups = res.data?.groups || [];
+
+      const normalized = groups.map((g) => ({
+        assetgroup_id: g.assetgroup_h_id || '',
+        group_name: g.text || '',
+        asset_count: g.asset_count !== undefined && g.asset_count !== null ? Number(g.asset_count) : 0,
+        branch_code: g.branch_code || '',
+        created_on: g.created_on ? new Date(g.created_on).toLocaleDateString() : ''
+      }));
+
+      setGroupedAssetRows(normalized);
+
+      const groupColumns = [
+        { key: 'assetgroup_id', name: 'assetgroup_id', label: 'GROUP ID', sortable: true, visible: true },
+        { key: 'group_name', name: 'group_name', label: 'GROUP NAME', sortable: true, visible: true },
+        { key: 'asset_count', name: 'asset_count', label: 'ASSET COUNT', sortable: true, visible: true },
+        { key: 'branch_code', name: 'branch_code', label: 'BRANCH', sortable: true, visible: true },
+        { key: 'created_on', name: 'created_on', label: 'CREATED ON', sortable: true, visible: true },
+        { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true }
+      ];
+      setColumns(groupColumns);
+    } catch (error) {
+      console.error('Error fetching grouped assets:', error);
+      toast.error('Failed to load asset groups');
+      setGroupedAssetRows([]);
+      setColumns([]);
+    }
+  };
+
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
@@ -180,8 +223,28 @@ const CreateScrapAsset = () => {
 
   const handleAssetTypeChange = (e) => {
     setSelectedAssetType(e.target.value);
-    // Fetch available assets for the selected asset type
-    fetchAvailableAssetsByType(e.target.value);
+    // Reset the second dropdown + table until user selects Individual/Grouped
+    setAssetGroupOption('');
+    setScrapAssets([]);
+    setGroupedAssetRows([]);
+    setColumns([]);
+  };
+
+  const handleAssetGroupOptionChange = async (value) => {
+    setAssetGroupOption(value);
+    setSelectedAsset(null);
+    setNotes('');
+    setScrapAssets([]);
+    setGroupedAssetRows([]);
+    setColumns([]);
+
+    if (!selectedAssetType) return;
+
+    if (value === 'INDIVIDUAL') {
+      await fetchAvailableAssetsByType(selectedAssetType);
+    } else if (value === 'GROUPED') {
+      await fetchGroupedAssetsByType(selectedAssetType);
+    }
   };
 
   const handleScanSubmit = async (e) => {
@@ -229,6 +292,7 @@ const CreateScrapAsset = () => {
 
       // Set asset type (to display table section) and populate table with this single asset
       setSelectedAssetType(typeId);
+      setAssetGroupOption('INDIVIDUAL'); // scanned assets are always individual
       setScrapAssets(singleRow);
       // Derive columns from singleRow
       const keys = Object.keys(singleRow[0]);
@@ -256,25 +320,30 @@ const CreateScrapAsset = () => {
     if (!showAssetSelection) {
       // Reset filters when opening
       setSelectedAssetType('');
+      setAssetGroupOption('');
       setScannedAssetId('');
       setScrapAssets([]);
+      setGroupedAssetRows([]);
+      setColumns([]);
     } else {
       // Reset filters when closing
       setSelectedAssetType('');
+      setAssetGroupOption('');
       setScannedAssetId('');
       setScrapAssets([]);
+      setGroupedAssetRows([]);
+      setColumns([]);
     }
   };
 
   // Use API-fetched assets for selected type
   const getFilteredAssets = () => {
-    // Only show assets when an asset type is selected
-    if (!selectedAssetType) {
+    // Only show data when asset type AND option are selected
+    if (!selectedAssetType || !assetGroupOption) {
       return [];
     }
 
-    // API already returns assets for selected type
-    return scrapAssets;
+    return assetGroupOption === 'GROUPED' ? groupedAssetRows : scrapAssets;
   };
 
   // Removed scroll behavior
@@ -283,6 +352,11 @@ const CreateScrapAsset = () => {
   // Columns are derived dynamically from API responses
 
   const handleScrap = (row) => {
+    // For grouped assets, open a dedicated screen that allows partial group scrapping
+    if (assetGroupOption === 'GROUPED' && row?.assetgroup_id) {
+      navigate(`/scrap-assets/group-scrap/${row.assetgroup_id}`);
+      return;
+    }
     setSelectedAsset(row);
     setShowModal(true);
   };
@@ -291,41 +365,50 @@ const CreateScrapAsset = () => {
     try {
       console.log('Submitting scrap asset:', selectedAsset, 'with notes:', notes);
       
-      // Validate that user has emp_int_id
-      if (!user?.emp_int_id) {
-        toast.error(t('createScrapAsset.userEmployeeIdNotFound'));
+      if (!selectedAsset) {
+        toast.error('Please select an item to scrap');
         return;
       }
-      
-      // Prepare scrap asset data
-      const scrapData = {
-        asset_id: selectedAsset.asset_id,
-        scrapped_date: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
-        scrapped_by: user.emp_int_id.toString(), // Use emp_int_id from user
-        location: selectedAsset.location || null,
-        notes: notes || null,
-        org_id: user?.org_id || 1 // Default org_id if not available
-      };
 
-      console.log('📤 Sending scrap data to API:', scrapData);
+      const requestBody = assetGroupOption === 'GROUPED'
+        ? {
+            assetgroup_id: selectedAsset.assetgroup_id,
+            is_scrap_sales: 'N',
+            notes: notes || null
+          }
+        : {
+            asset_id: selectedAsset.asset_id,
+            is_scrap_sales: 'N',
+            notes: notes || null
+          };
 
-      // Call the scrap asset API
-      const response = await API.post('/scrap-assets', scrapData, {
+      console.log('📤 Sending scrap maintenance request:', requestBody);
+
+      const response = await API.post('/scrap-maintenance/create', requestBody, {
         params: { context: 'SCRAPASSETS' }
       });
-      
-      if (response.data.success) {
-        toast.success(t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }));
-        
-        // Remove the asset from the list since it's now scrapped
-        setScrapAssets(prev => prev.filter(asset => asset.asset_id !== selectedAsset.asset_id));
-        
-        // Close modal and reset state
+
+      if (response.data?.success) {
+        if (response.data.workflowCreated) {
+          toast.success(`Scrap request sent for approval (Workflow: ${response.data.wfscrap_h_id})`);
+        } else if (response.data.scrapped) {
+          toast.success(t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }));
+        } else {
+          toast.success('Scrap request created');
+        }
+
+        // Remove from list to prevent duplicate requests from this screen
+        if (assetGroupOption === 'GROUPED') {
+          setGroupedAssetRows(prev => prev.filter(g => g.assetgroup_id !== selectedAsset.assetgroup_id));
+        } else {
+          setScrapAssets(prev => prev.filter(asset => asset.asset_id !== selectedAsset.asset_id));
+        }
+
         setShowModal(false);
         setSelectedAsset(null);
         setNotes('');
       } else {
-        toast.error(t('createScrapAsset.failedToMarkAssetForScrapping'));
+        toast.error(response.data?.message || t('createScrapAsset.failedToMarkAssetForScrapping'));
       }
     } catch (error) {
       console.error('❌ Error submitting scrap asset:', error);
@@ -335,13 +418,13 @@ const CreateScrapAsset = () => {
         console.error('Response data:', error.response.data);
         
         if (error.response.status === 400) {
-          toast.error(t('createScrapAsset.validationError', { error: error.response.data.error }));
+          toast.error(error.response.data?.message || t('createScrapAsset.validationError', { error: error.response.data.error }));
         } else if (error.response.status === 401) {
           toast.error(t('createScrapAsset.unauthorizedPleaseLogInAgain'));
         } else if (error.response.status === 500) {
           toast.error(t('createScrapAsset.serverErrorPleaseTryAgainLater'));
         } else {
-          toast.error(t('createScrapAsset.error', { error: error.response.data.error || t('createScrapAsset.failedToMarkAssetForScrapping') }));
+          toast.error(error.response.data?.message || t('createScrapAsset.failedToMarkAssetForScrapping'));
         }
       } else {
         toast.error(t('createScrapAsset.networkErrorPleaseCheckConnection'));
@@ -505,7 +588,7 @@ const CreateScrapAsset = () => {
             {activeTab === 'select' ? (
               // Select Asset Type Content
               <div className="space-y-4">
-                <div className="flex gap-4 items-end">
+                <div className="flex gap-4 items-end flex-wrap">
                   <div className="w-64">
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('createScrapAsset.assetType')} *</label>
                     <SearchableDropdown
@@ -520,11 +603,29 @@ const CreateScrapAsset = () => {
                     />
                   </div>
 
+                  <div className="w-64">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Asset Groups</label>
+                    <select
+                      className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded h-10"
+                      value={assetGroupOption}
+                      onChange={(e) => handleAssetGroupOptionChange(e.target.value)}
+                      disabled={!selectedAssetType}
+                    >
+                      <option value="">Select option</option>
+                      <option value="INDIVIDUAL">Individual</option>
+                      <option value="GROUPED">Grouped assets</option>
+                    </select>
+                  </div>
+
                   <div className="flex gap-2">
                     <button
                       className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
                       onClick={() => {
                         setSelectedAssetType('');
+                        setAssetGroupOption('');
+                        setScrapAssets([]);
+                        setGroupedAssetRows([]);
+                        setColumns([]);
                       }}
                     >
 {t('createScrapAsset.clearSelection')}
@@ -578,8 +679,8 @@ const CreateScrapAsset = () => {
         </div>
       )}
       
-      {/* Table Section - Only show when asset type is selected */}
-      {selectedAssetType ? (
+      {/* Table Section - Only show when asset type AND option are selected */}
+      {selectedAssetType && assetGroupOption ? (
         <div>
           <ContentBox
             filters={columns}
@@ -606,34 +707,14 @@ const CreateScrapAsset = () => {
                   setSelectedRows={() => {}}
                   showActions={showActions}
                   onRowAction={handleScrap}
-                  actionLabel={t('createScrapAsset.createScrap')}
-                  rowKey="asset_id"
+                  actionLabel={assetGroupOption === 'GROUPED' ? 'Scrap Grouped Asset' : 'Scrap'}
+                  rowKey={assetGroupOption === 'GROUPED' ? 'assetgroup_id' : 'asset_id'}
                 />
               );
             }}
           </ContentBox>
         </div>
-      ) : (
-        /* Placeholder when no asset type is selected */
-        <div className="mx-6 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <div className="text-gray-400 mb-4">
-              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {!showAssetSelection ? t('createScrapAsset.clickPlusIconToStart') : t('createScrapAsset.selectAssetTypeToContinue')}
-            </h3>
-            <p className="text-gray-500">
-              {!showAssetSelection 
-                ? t('createScrapAsset.clickPlusIconToOpenAssetSelection')
-                : t('createScrapAsset.pleaseSelectAssetTypeFromDropdown')
-              }
-            </p>
-          </div>
-        </div>
-      )}
+      ) : null}
 
       {/* Scanner Modal */}
       {showScanner && (

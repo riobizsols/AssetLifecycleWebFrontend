@@ -36,6 +36,18 @@ const Departments = () => {
     };
   }, [isMaximized]);
 
+  // Close modals on ESC key
+  useEffect(() => {
+    if (!showDeleteModal && !showEditModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      if (showEditModal) setShowEditModal(false);
+      else if (showDeleteModal) setShowDeleteModal(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showDeleteModal, showEditModal]);
+
     const fetchDepartments = async () => {
       try {
       const res = await API.get("/departments");
@@ -243,8 +255,7 @@ const Departments = () => {
             </div>
 
             <div className="bg-[#0E2F4B] text-white text-sm">
-              <div className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400 ${canEdit ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                <div>{t('departments.departmentId')}</div>
+              <div className={`grid px-4 py-2 font-semibold border-b-4 border-yellow-400 ${canEdit ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <div>{t('departments.departmentName')}</div>
                 {canEdit && <div className="text-center">{t('common.actions')}</div>}
               </div>
@@ -257,11 +268,10 @@ const Departments = () => {
                 {departments.map((dept, i) => (
                   <div
                     key={dept.dept_id}
-                    className={`grid px-4 py-2 items-center border-b ${canEdit ? 'grid-cols-3' : 'grid-cols-2'} ${
+                    className={`grid px-4 py-2 items-center border-b ${canEdit ? 'grid-cols-2' : 'grid-cols-1'} ${
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800`}
                   >
-                    <div>{dept.dept_id}</div>
                     <div>{dept.text}</div>
                     {canEdit && (
                       <div className="flex justify-center gap-4">
@@ -282,8 +292,13 @@ const Departments = () => {
 
         {/* Modals (unchanged) */}
         {showDeleteModal && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white w-[500px] rounded shadow-lg">
+          <div
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setShowDeleteModal(false);
+            }}
+          >
+            <div className="bg-white w-[500px] rounded shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
               <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
                 <span>{t('departments.confirmDelete')}</span>
                 <button
@@ -317,8 +332,13 @@ const Departments = () => {
         )}
 
         {showEditModal && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white w-[500px] rounded shadow-lg">
+          <div
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setShowEditModal(false);
+            }}
+          >
+            <div className="bg-white w-[500px] rounded shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
               <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
                 <span>{t('departments.updateDepartment')}</span>
                 <button

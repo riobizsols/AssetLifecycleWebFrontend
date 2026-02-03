@@ -220,9 +220,7 @@ const AssetAssignmentList = ({
           </div>
           {entityType === 'department' ? (
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
-                <div>{t('assets.assetId')}</div>
-                <div>{t('employees.departmentId')}</div>
+              <div className={`grid ${isReadOnly ? 'grid-cols-5' : 'grid-cols-6'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
                 <div>{t('employees.assetTypeName')}</div>
                 <div>{t('assets.description')}</div>
                 <div>{t('employees.action')}</div>
@@ -237,12 +235,10 @@ const AssetAssignmentList = ({
                   {assignmentList.map((item, i) => (
                     <div
                       key={item.asset_assign_id || `${item.asset_id}_${i}`}
-                      className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 items-center border-b ${
+                      className={`grid ${isReadOnly ? 'grid-cols-5' : 'grid-cols-6'} px-4 py-2 items-center border-b ${
                         i % 2 === 0 ? "bg-white" : "bg-gray-100"
                       } text-gray-800`}
                     >
-                      <div>{item.asset_id}</div>
-                      <div>{departmentId || '-'}</div>
                       <div>{item.asset_type_name || '-'}</div>
                       <div>{item.description || '-'}</div>
                       <div>{item.action || '-'}</div>
@@ -265,11 +261,7 @@ const AssetAssignmentList = ({
             </div>
           ) : (
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
-                <div>{t('assets.assetId')}</div>
-                <div>{t('employees.departmentId')}</div>
-                <div>{t('employees.orgId')}</div>
-                <div>{t('employees.employeeIntId')}</div>
+              <div className={`grid ${isReadOnly ? 'grid-cols-3' : 'grid-cols-4'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
                 <div>{t('employees.action')}</div>
                 <div>{t('employees.assignmentDate')}</div>
                 <div>{t('employees.assignedBy')}</div>
@@ -284,14 +276,10 @@ const AssetAssignmentList = ({
                 {assignmentList.map((item, i) => (
                   <div
                     key={item.asset_assign_id || `${item.asset_id}_${i}`}
-                    className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 items-center border-b ${
+                    className={`grid ${isReadOnly ? 'grid-cols-3' : 'grid-cols-4'} px-4 py-2 items-center border-b ${
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800`}
                   >
-                    <div>{item.asset_id}</div>
-                    <div>{item.dept_id}</div>
-                    <div>{item.org_id}</div>
-                    <div>{item.employee_int_id}</div>
                     <div>{item.action}</div>
                     <div>{item.action_on ? new Date(item.action_on).toLocaleString() : ''}</div>
                     <div>{item.action_by}</div>
