@@ -13,6 +13,7 @@ const EditBreakdownReport = () => {
   const { user } = useAuthStore();
   const { t } = useLanguage();
   const breakdown = state?.breakdown;
+  const hideDecisionCode = state?.hideDecisionCode === true;
 
   // Access control
   const { getAccessLevel } = useNavigation();
@@ -159,10 +160,15 @@ const EditBreakdownReport = () => {
     setIsSubmitting(true);
 
     try {
+      if (!hideDecisionCode && !decisionCode) {
+        toast.error(t('breakdownDetails.pleaseSelectDecisionCode'));
+        return;
+      }
+
       const breakdownData = {
         atbrrc_id: brCode,
         description,
-        decision_code: decisionCode,
+        ...(hideDecisionCode ? {} : { decision_code: decisionCode }),
       };
 
       await API.put(`/reportbreakdown/update/${breakdown.abr_id}`, breakdownData);
@@ -421,22 +427,24 @@ const EditBreakdownReport = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('breakdownDetails.decisionCode')} {decisionCode && '*'}
-                </label>
-                <EnhancedDropdown
-                  options={decisionCodeOptions}
-                  value={decisionCode}
-                  onChange={setDecisionCode}
-                  placeholder={t('breakdownDetails.selectDecisionCode')}
-                  required={!!decisionCode}
-                  disabled={isReadOnly || (decisionCode !== null && decisionCode !== "")}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {decisionCode ? t('breakdownDetails.decisionCodeSetReadOnly') : t('breakdownDetails.decisionCodePendingEditable')}
-                </p>
-              </div>
+              {!hideDecisionCode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('breakdownDetails.decisionCode')} *
+                  </label>
+                  <EnhancedDropdown
+                    options={decisionCodeOptions}
+                    value={decisionCode}
+                    onChange={setDecisionCode}
+                    placeholder={t('breakdownDetails.selectDecisionCode')}
+                    required
+                    disabled={isReadOnly}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {t('breakdownDetails.decisionCodeDescription')}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -483,7 +491,12 @@ const EditBreakdownReport = () => {
             {!isReadOnly && (
               <button
                 type="submit"
-                disabled={isSubmitting || !brCode || !description}
+                disabled={
+                  isSubmitting ||
+                  !brCode ||
+                  !description ||
+                  (!hideDecisionCode && !decisionCode)
+                }
                 className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting ? t('breakdownDetails.updating') : t('breakdownDetails.updateBreakdownReport')}

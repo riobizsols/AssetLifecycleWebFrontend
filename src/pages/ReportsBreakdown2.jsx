@@ -43,7 +43,13 @@ const ReportsBreakdown2 = () => {
   ]);
 
   const handleEdit = (breakdown) => {
-    navigate("/edit-breakdown", { state: { breakdown } });
+    navigate("/edit-breakdown", {
+      state: {
+        breakdown,
+        // Employee Report Breakdown (Report Breakdown 2) should not show decision code on edit
+        hideDecisionCode: true,
+      },
+    });
   };
 
   useEffect(() => {

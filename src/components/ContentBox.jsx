@@ -35,6 +35,7 @@ const ContentBox = ({
   onFilterChange, // This function is called to apply filters to the parent data
   onSort,
   sortConfig = { sorts: [] }, // Add default value
+  rowKey = "id",
   selectedRows = [],
   setSelectedRows = () => {},
   onDeleteSelected = () => {},
@@ -322,44 +323,26 @@ const ContentBox = ({
         : { label: col.label, name: col.name, options: [], onChange: () => {} };
     });
 
-  const resolveRowId = (item) => {
-    if (!item) return null;
-    const byKey = item?.[rowKey];
-    if (byKey !== undefined && byKey !== null && byKey !== "") return byKey;
-    // Fallbacks (kept for backward compatibility across screens)
-    return (
-      item.asset_id ||
-      item.user_id ||
-      item.branch_id ||
-      item.dept_id ||
-      item.vendor_id ||
-      item.group_id ||
-      item.id ||
-      null
-    );
+  const getRowId = (item) => {
+    if (!item || typeof item !== "object") return undefined;
+    if (rowKey && item[rowKey] !== undefined && item[rowKey] !== null) return item[rowKey];
+    // Backwards-compatible fallbacks for older pages that don't pass rowKey
+    return item.branch_id ?? item.user_id ?? item.id;
   };
 
-  const selectableIds = (() => {
-    try {
-      if (typeof getSelectAllIds === "function") {
-        const ids = getSelectAllIds();
-        return Array.isArray(ids) ? ids.filter(Boolean) : [];
-      }
-      if (!Array.isArray(data)) return [];
-      return data.map(resolveRowId).filter(Boolean);
-    } catch {
-      return [];
-    }
-  })();
-
-  const selectedSet = new Set(selectedRows || []);
+  const dataIdSet = new Set(
+    (Array.isArray(data) ? data : [])
+      .map(getRowId)
+      .filter((v) => v !== undefined && v !== null)
+  );
+  const selectedIdSet = new Set(Array.isArray(selectedRows) ? selectedRows : []);
 
   const isAllSelected =
-    selectableIds.length > 0 && selectableIds.every((id) => selectedSet.has(id));
+    dataIdSet.size > 0 && Array.from(dataIdSet).every((id) => selectedIdSet.has(id));
 
   const toggleAll = (e) => {
     if (e.target.checked) {
-      setSelectedRows(selectableIds);
+      setSelectedRows(Array.from(dataIdSet));
     } else {
       setSelectedRows([]);
     }
