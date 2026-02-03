@@ -68,6 +68,7 @@ const ContentBox = ({
   const [searchableDropdownOpen, setSearchableDropdownOpen] = useState({});
   const [searchableDropdownSearch, setSearchableDropdownSearch] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [showAddFilterSubmenu, setShowAddFilterSubmenu] = useState(null); // Track which column's add filter submenu is open
   const dropdownRef = useRef({});
 
   // Handle refresh with animation
@@ -90,9 +91,16 @@ const ContentBox = ({
     // If 'search' is already an active filter, ensure columnFilters is initialized with at least one filter
     const searchFilterActive = activeFilters.some((f) => f.type === "search");
     if (searchFilterActive && columnFilters.length === 0) {
-      setColumnFilters([{ column: "", value: [] }]);
+      setColumnFilters([{ column: "", value: [], locked: false }]);
     }
   }, [activeFilters]); // Run when activeFilters change
+
+  // Close add filter submenu when column dropdown closes
+  useEffect(() => {
+    if (openDropdown === null) {
+      setShowAddFilterSubmenu(null);
+    }
+  }, [openDropdown]);
 
   // Handle click outside to close searchable dropdowns
   useEffect(() => {
@@ -111,16 +119,31 @@ const ContentBox = ({
           }));
         }
       });
+      
+      // Close add filter submenu if clicking outside
+      if (showAddFilterSubmenu !== null) {
+        const addFilterButton = document.querySelector(`[data-add-filter-index="${showAddFilterSubmenu}"]`);
+        if (addFilterButton && !addFilterButton.contains(event.target)) {
+          const submenu = document.querySelector(`[data-add-filter-submenu="${showAddFilterSubmenu}"]`);
+          if (submenu && !submenu.contains(event.target)) {
+            setShowAddFilterSubmenu(null);
+          }
+        }
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [searchableDropdownOpen]);
+  }, [searchableDropdownOpen, showAddFilterSubmenu]);
 
   const handleColumnChange = (index, column) => {
     const updated = [...columnFilters];
+    // Don't allow column change if it's locked (from column dropdown)
+    if (updated[index].locked) {
+      return;
+    }
     updated[index].column = column;
     updated[index].value = []; // Reset value to empty array when column changes
     setColumnFilters(updated);
@@ -144,7 +167,7 @@ const ContentBox = ({
   };
 
   const addColumnFilter = () => {
-    setColumnFilters([...columnFilters, { column: "", value: [] }]);
+    setColumnFilters([...columnFilters, { column: "", value: [], locked: false }]);
   };
 
   const removeColumnFilter = (index) => {
@@ -206,18 +229,35 @@ const ContentBox = ({
     (type) => !selectedTypes.includes(type)
   );
 
-  const handleAddFilter = (type) => {
+  const handleAddFilter = (type, preSelectedColumn = null) => {
     const labelMap = {
       date: t('assets.expiryDate'),
       search: t('common.searchByColumn'),
     };
-    const newFilter = { type, label: labelMap[type] };
-    setActiveFilters([...activeFilters, newFilter]);
-    // If 'search by column' is added, initialize with one empty column filter
-    if (type === "search" && columnFilters.length === 0) {
-      setColumnFilters([{ column: "", value: [] }]);
+    
+    // Check if filter type already exists
+    const filterExists = activeFilters.some((f) => f.type === type);
+    
+    if (!filterExists) {
+      // Add new filter type if it doesn't exist
+      const newFilter = { type, label: labelMap[type] };
+      setActiveFilters([...activeFilters, newFilter]);
     }
+    
+    // If 'search by column' is added (or already exists), handle column filter
+    if (type === "search") {
+      if (preSelectedColumn) {
+        // Pre-select the column if provided (from column dropdown)
+        // Add a new column filter with the pre-selected column and mark it as locked
+        setColumnFilters([...columnFilters, { column: preSelectedColumn, value: [], locked: true }]);
+      } else if (columnFilters.length === 0) {
+        // Otherwise, initialize with empty column filter (not locked)
+        setColumnFilters([{ column: "", value: [], locked: false }]);
+      }
+    }
+    
     setFilterMenuOpen(false);
+    setShowAddFilterSubmenu(null); // Close submenu if open
   };
 
   const handleRemoveFilter = (index) => {
@@ -373,7 +413,7 @@ const ContentBox = ({
             >
               <button
                 onClick={() => handleRemoveFilter(idx)}
-                className="bg-[#0E2F4B] text-[#FFC107] px-1 h-full"
+                className="bg-[#0E2F4B] text-[#FFC107] flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px]"
               >
                 <Minus size={14} />
               </button>
@@ -425,18 +465,20 @@ const ContentBox = ({
                         {columnFilters.length > 1 && (
                           <button
                             onClick={() => removeColumnFilter(index)}
-                            className="bg-gray-300 text-gray-700 px-1 rounded-full"
+                            className="bg-gray-300 text-gray-700 flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px] rounded-full"
                             title="Remove this column filter"
                           >
                             <Minus size={12} />
                           </button>
                         )}
                         <select
-                          className="border text-sm px-2 py-1"
+                          className={`border text-sm px-2 py-1 ${cf.locked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                           value={cf.column}
                           onChange={(e) =>
                             handleColumnChange(index, e.target.value)
                           }
+                          disabled={cf.locked}
+                          title={cf.locked ? 'Column is locked (selected from column dropdown)' : 'Select column'}
                         >
                           <option value="">Select column</option>
                           {columnOptions}
@@ -508,7 +550,7 @@ const ContentBox = ({
                         {index === columnFilters.length - 1 && (
                           <button
                             onClick={addColumnFilter}
-                            className="text-[#FFC107] bg-[#0E2F4B] px-1"
+                            className="text-[#FFC107] bg-[#0E2F4B] flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px]"
                             title="Add another column filter"
                           >
                             <Plus size={14} />
@@ -866,8 +908,65 @@ const ContentBox = ({
                             </div>
                           )}
                         </div>
-                        <div className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold">
-                          {t('common.addFilter')}
+                        <div className="relative border-t">
+                          <button
+                            data-add-filter-index={index}
+                            className="flex items-center justify-between w-full px-3 py-2 font-semibold hover:bg-gray-100 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAddFilterSubmenu(showAddFilterSubmenu === index ? null : index);
+                            }}
+                          >
+                            <span>{t('common.addFilter')}</span>
+                            <ChevronRight size={16} />
+                          </button>
+                          {showAddFilterSubmenu === index && (
+                            <div
+                              data-add-filter-submenu={index}
+                              className="fixed bg-white shadow-lg border border-gray-300 w-48 z-50"
+                              style={{
+                                top: "0px",
+                                left: "0px",
+                              }}
+                              ref={(el) => {
+                                if (el) {
+                                  const button = el.parentElement?.querySelector("button");
+                                  if (button) {
+                                    const rect = button.getBoundingClientRect();
+                                    el.style.top = `${rect.top}px`;
+                                    el.style.left = `${rect.right + 4}px`;
+                                    const dropdownRect = el.getBoundingClientRect();
+                                    if (dropdownRect.bottom > window.innerHeight) {
+                                      const topOffset = dropdownRect.bottom - window.innerHeight;
+                                      el.style.top = `${rect.top - topOffset}px`;
+                                    }
+                                  }
+                                }
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.nativeEvent.stopImmediatePropagation();
+                              }}
+                            >
+                              {/* Show only "Search by Column" option when adding filter from column dropdown */}
+                              {nextAvailableFilters.includes("search") ? (
+                                <div
+                                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                  onClick={() => {
+                                    // Pre-select the current column when adding search filter
+                                    handleAddFilter("search", filter.name);
+                                    setOpenDropdown(null);
+                                  }}
+                                >
+                                  {t('common.searchByColumn')}
+                                </div>
+                              ) : (
+                                <div className="px-3 py-2 text-gray-500 text-sm">
+                                  {t('common.noFiltersAvailable') || 'No filters available'}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
