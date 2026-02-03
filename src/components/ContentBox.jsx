@@ -35,13 +35,11 @@ const ContentBox = ({
   onFilterChange, // This function is called to apply filters to the parent data
   onSort,
   sortConfig = { sorts: [] }, // Add default value
-  rowKey = "id",
+  rowKey = "id", // Row identifier used for select-all and bulk actions
   selectedRows = [],
   setSelectedRows = () => {},
   onDeleteSelected = () => {},
   data = [], // The actual data to be displayed and filtered
-  // Row identifier used for select-all and bulk actions
-  rowKey = "id",
   // Optional: provide IDs for "select all" (useful when the table is filtered/sorted in the page)
   getSelectAllIds,
   onDownload,
