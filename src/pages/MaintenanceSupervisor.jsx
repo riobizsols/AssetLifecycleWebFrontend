@@ -256,7 +256,7 @@ const MaintenanceSupervisor = () => {
   }));
 
   const handleRowClick = (row) => {
-    navigate(`/supervisor-approval-detail/${row.ams_id}`);
+    navigate(`/maintenance-list-detail/${row.ams_id}`);
   };
 
   return (

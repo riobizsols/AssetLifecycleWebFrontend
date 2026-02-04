@@ -244,7 +244,7 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="/supervisor-approval"
+          path="/maintenance-list"
           element={
             <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>
@@ -255,7 +255,7 @@ export default function AppRoutes() {
         />
 
         <Route
-          path="/supervisor-approval-detail/:id"
+          path="/maintenance-list-detail/:id"
           element={
             <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>

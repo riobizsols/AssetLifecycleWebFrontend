@@ -151,7 +151,7 @@ const DatabaseSidebar = () => {
     MAINTENANCEAPPROVAL: "/maintenance-approval",
     VENDORRENEWALAPPROVAL: "/vendor-renewal-approval",
     SCRAPMAINTENANCEAPPROVAL: "/scrap-maintenance-approval",
-    SUPERVISORAPPROVAL: "/supervisor-approval", //done
+    SUPERVISORAPPROVAL: "/maintenance-list", //done
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
     "EMPLOYEE REPORT BREAKDOWN": "/employee-report-breakdown", // Employee Report Breakdown route //done
     // Report routes
