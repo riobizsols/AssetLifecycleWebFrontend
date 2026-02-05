@@ -6,6 +6,7 @@ const statusColors = {
   pending: "text-yellow-500 font-semibold",
   rejected: "text-red-600 font-semibold",
   // Maintenance statuses
+  AP: "text-yellow-600 font-semibold",
   IN: "text-blue-600 font-semibold",
   IP: "text-yellow-500 font-semibold",
   CO: "text-green-600 font-semibold",

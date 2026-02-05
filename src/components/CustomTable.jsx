@@ -80,6 +80,11 @@ const CustomTable = ({
       return row[col.name];
     }
     
+    // Handle formatter if provided
+    if (col.formatter && typeof col.formatter === 'function') {
+      return col.formatter(row[col.name], col.name, row);
+    }
+    
     // Handle other columns
     return row[col.name];
   };
