@@ -115,10 +115,10 @@ const CustomTable = ({
                       className="accent-yellow-400"
                     />
                   )}
-                  {renderCell ? renderCell(col, row) : renderCellContent(col, row)}
+                  {renderCell ? (renderCell(col, row) ?? renderCellContent(col, row)) : renderCellContent(col, row)}
                 </div>
               ) : (
-                renderCell ? renderCell(col, row) : renderCellContent(col, row)
+                renderCell ? (renderCell(col, row) ?? renderCellContent(col, row)) : renderCellContent(col, row)
               )}
             </td>
           ))}

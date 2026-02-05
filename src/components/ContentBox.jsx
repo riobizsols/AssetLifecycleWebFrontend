@@ -53,6 +53,7 @@ const ContentBox = ({
   onAdd, // Add onAdd prop
   customHeaderActions, // Custom header actions
   isReadOnly = false, // Add isReadOnly prop
+  onHeaderClick, // Add onHeaderClick prop
 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -729,7 +730,13 @@ const ContentBox = ({
                     <div className="flex items-center justify-between gap-2">
                       <span
                         className="flex items-center gap-2 cursor-pointer flex-grow"
-                        onClick={() => onSort(filter.name)}
+                        onClick={() => {
+                          if (onHeaderClick) {
+                            onHeaderClick(filter);
+                          } else {
+                            onSort(filter.name);
+                          }
+                        }}
                       >
                         {index === 0 && showActions && showHeaderCheckbox && !isReadOnly && (
                           <input
