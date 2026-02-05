@@ -22,7 +22,6 @@ const AddAssetType = () => {
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
   const [requireMaintenance, setRequireMaintenance] = useState(false);
-  const [requireScrapApproval, setRequireScrapApproval] = useState(true); // default enabled
   const [checklistFiles, setChecklistFiles] = useState([]); // files to upload when maintenance required
   const [checklistUploads, setChecklistUploads] = useState([]); // {id, type, docTypeName, file, previewUrl}
   const [isActive, setIsActive] = useState(true);
@@ -262,7 +261,6 @@ const AddAssetType = () => {
         group_required: groupRequired,
         inspection_required: requireInspection,
         maint_required: requireMaintenance ? 1 : 0,
-        require_scrap_approval: requireScrapApproval,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
         maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
@@ -559,15 +557,6 @@ const AddAssetType = () => {
             <span>{t('assetTypes.requireMaintenance')}</span>
           </label>
 
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={requireScrapApproval}
-              onChange={(e) => setRequireScrapApproval(e.target.checked)}
-              className="form-checkbox text-blue-500 rounded"
-            />
-            <span>REQUIRE SCRAP APPROVAL</span>
-          </label>
         </div>
 
         {/* Maintenance Fields - Conditional Rendering */}

@@ -22,8 +22,7 @@ const CreateScrapAsset = () => {
   const [columns, setColumns] = useState([]);
   
   // Asset selection states
-  // Show asset selection by default (no "click plus icon" landing screen)
-  const [showAssetSelection, setShowAssetSelection] = useState(true);
+  // Asset selection is always visible
   const [assetTypes, setAssetTypes] = useState([]);
   const [selectedAssetType, setSelectedAssetType] = useState('');
   // Step 2 dropdown: Individual vs Grouped assets
@@ -315,27 +314,6 @@ const CreateScrapAsset = () => {
     }
   };
 
-  const toggleAssetSelection = () => {
-    setShowAssetSelection(!showAssetSelection);
-    if (!showAssetSelection) {
-      // Reset filters when opening
-      setSelectedAssetType('');
-      setAssetGroupOption('');
-      setScannedAssetId('');
-      setScrapAssets([]);
-      setGroupedAssetRows([]);
-      setColumns([]);
-    } else {
-      // Reset filters when closing
-      setSelectedAssetType('');
-      setAssetGroupOption('');
-      setScannedAssetId('');
-      setScrapAssets([]);
-      setGroupedAssetRows([]);
-      setColumns([]);
-    }
-  };
-
   // Use API-fetched assets for selected type
   const getFilteredAssets = () => {
     // Only show data when asset type AND option are selected
@@ -533,17 +511,9 @@ const CreateScrapAsset = () => {
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-3">
-            <button
-              onClick={toggleAssetSelection}
-              className={`p-2 rounded-full transition-colors ${
-                showAssetSelection 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                  : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-              }`}
-              title={showAssetSelection ? "Hide Asset Selection" : "Click to open Asset Selection"}
-            >
+            <div className="p-2 rounded-full bg-blue-600 text-white">
               <Plus className="w-6 h-6" />
-            </button>
+            </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{t('createScrapAsset.createScrapAsset')}</h1>
               <p className="text-sm text-gray-600">{t('createScrapAsset.selectAssetsToMarkForScrapping')}</p>
@@ -552,9 +522,8 @@ const CreateScrapAsset = () => {
         </div>
       </div>
 
-      {/* Asset Selection Interface - Inline below Plus icon */}
-      {showAssetSelection && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6 mx-6">
+      {/* Asset Selection Interface - Always visible */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6 mx-6">
           <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm mb-4">
 {t('createScrapAsset.assetSelection')}
           </div>
@@ -677,7 +646,6 @@ const CreateScrapAsset = () => {
             )}
           </div>
         </div>
-      )}
       
       {/* Table Section - Only show when asset type AND option are selected */}
       {selectedAssetType && assetGroupOption ? (
