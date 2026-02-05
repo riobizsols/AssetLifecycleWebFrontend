@@ -647,8 +647,17 @@ const ContentBox = ({
         <div className="flex gap-2 justify-end">
           {showAddButton && (
             <button
-              onClick={onAdd || (() => navigate("add"))}
-              className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onAdd) {
+                  onAdd();
+                } else {
+                  navigate("add");
+                }
+              }}
+              className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B] cursor-pointer"
             >
               <Plus size={16} />
             </button>
