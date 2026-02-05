@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, QrCode, Maximize, Minimize } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { QrCode, Maximize, Minimize, X } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
-import API from '../../lib/axios';
+import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
-import SearchableDropdown from '../ui/SearchableDropdown';
-import { useAuthStore } from '../../store/useAuthStore';
-import { useAppData } from '../../contexts/AppDataContext';
-import { useLanguage } from '../../contexts/LanguageContext';
+import SearchableDropdown from '../components/ui/SearchableDropdown';
+import { useAuthStore } from '../store/useAuthStore';
+import { useAppData } from '../contexts/AppDataContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
-const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
+const CreateManualMaintenance = () => {
+  const navigate = useNavigate();
   const { t } = useLanguage();
   const { user } = useAuthStore();
   const { assetTypes } = useAppData();
@@ -21,15 +23,6 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
   const [showScanner, setShowScanner] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const scannerRef = useRef(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedAssetType('');
-      setAssets([]);
-      setScannedAssetId('');
-      setActiveTab('select');
-    }
-  }, [isOpen]);
 
   useEffect(() => {
     if (showScanner && !scannerRef.current) {
@@ -78,7 +71,7 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
     toast.success(t('assets.assetIdScannedSuccessfully') || 'Asset ID scanned successfully');
   };
 
-  const onScanError = () => {}
+  const onScanError = () => {};
 
   const stopScanner = () => {
     if (scannerRef.current) {
@@ -124,8 +117,7 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
       });
       if (res.data?.success) {
         toast.success(t('maintenanceSupervisor.maintenanceCreatedSuccessfully') || 'Maintenance created successfully');
-        onSuccess?.();
-        onClose();
+        navigate('/maintenance-list');
       } else {
         toast.error(res.data?.message || (t('maintenanceSupervisor.failedToCreateMaintenance') || 'Failed to create maintenance'));
       }
@@ -164,8 +156,6 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   const assetTypeOptions = [
     { id: '', text: t('assets.allAssetTypes') || 'All Asset Types' },
     ...(assetTypes || []).map((at) => ({
@@ -175,18 +165,12 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between shrink-0">
-          <h2 className="text-xl font-semibold">
-            {t('maintenanceSupervisor.createManualMaintenance') || 'Create Manual Maintenance'}
-          </h2>
-          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X size={24} />
-          </button>
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <div className="bg-white rounded shadow mb-4">
+        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
+          {t('maintenanceSupervisor.createManualMaintenance') || 'Create Manual Maintenance'}
         </div>
-
-        <div className="border-b border-gray-200 shrink-0">
+        <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
             <button
               type="button"
@@ -213,98 +197,34 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
           </nav>
         </div>
 
-        <div className="p-4 overflow-y-auto flex-1 min-h-0">
+        <div className="p-4">
           {activeTab === 'select' ? (
-            <>
-              <div className="flex gap-4 items-end mb-4">
-                <div className="w-64">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('assets.assetType') || 'Asset Type'} <span className="text-red-500">*</span>
-                  </label>
-                  <SearchableDropdown
-                    options={assetTypeOptions}
-                    value={selectedAssetType}
-                    onChange={setSelectedAssetType}
-                    placeholder={t('assets.selectAssetType') || 'Select Asset Type'}
-                    searchPlaceholder={t('assets.searchAssetType') || 'Search asset type...'}
-                    displayKey="text"
-                    valueKey="id"
-                  />
-                </div>
+            <div className="flex gap-4 items-end mb-4">
+              <div className="w-64">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('assets.assetType') || 'Asset Type'} <span className="text-red-500">*</span>
+                </label>
+                <SearchableDropdown
+                  options={assetTypeOptions}
+                  value={selectedAssetType}
+                  onChange={setSelectedAssetType}
+                  placeholder={t('assets.selectAssetType') || 'Select Asset Type'}
+                  searchPlaceholder={t('assets.searchAssetType') || 'Search asset type...'}
+                  displayKey="text"
+                  valueKey="id"
+                />
               </div>
-
-              <div
-                className={`bg-white rounded shadow border transition-all duration-300 ${
-                  isMaximized ? 'fixed inset-4 z-50 overflow-auto' : ''
-                }`}
+              <button
+                type="button"
+                onClick={() => navigate('/maintenance-list')}
+                className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
               >
-                <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-                  {t('assets.availableAssets') || 'Available Assets'}
-                  <button
-                    type="button"
-                    onClick={() => setIsMaximized((prev) => !prev)}
-                    className="text-[#0E2F4B] hover:opacity-80"
-                  >
-                    {isMaximized ? <Minimize size={18} /> : <Maximize size={18} />}
-                  </button>
-                </div>
-                <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-                  {assets.length > 0 && (
-                    <div
-                      className="grid px-4 py-2 font-semibold border-b-4 border-yellow-400"
-                      style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr)' }}
-                    >
-                      <div>{t('employees.assetTypeName') || 'Asset Type'}</div>
-                      <div>{t('assets.assetName') || 'Asset Name'}</div>
-                      <div className="flex justify-center">{t('common.actions') || 'Actions'}</div>
-                    </div>
-                  )}
-                  <div className={isMaximized ? 'max-h-[50vh] overflow-y-auto' : ''}>
-                    {loadingAssets ? (
-                      <div className="px-4 py-8 text-center text-gray-600 bg-white">
-                        {t('common.loading') || 'Loading...'}
-                      </div>
-                    ) : assets.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-gray-500 bg-white rounded-b">
-                        {selectedAssetType
-                          ? t('assets.noInactiveAssetsFound') || 'No available assets for this type (or all are already in maintenance).'
-                          : t('assets.selectAssetTypeToContinue') || 'Select an asset type to see available assets.'}
-                      </div>
-                    ) : (
-                      assets.map((asset, i) => (
-                        <div
-                          key={asset.asset_id}
-                          className={`grid px-4 py-2 items-center border-b text-gray-800 ${
-                            i % 2 === 0 ? 'bg-white' : 'bg-gray-100'
-                          } hover:bg-gray-50`}
-                          style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr)' }}
-                        >
-                          <div className="min-w-0 truncate" title={asset.asset_type_name}>
-                            {asset.asset_type_name || '-'}
-                          </div>
-                          <div className="min-w-0 truncate" title={asset.description}>
-                            {asset.description || asset.text || asset.asset_id || '-'}
-                          </div>
-                          <div className="flex justify-center">
-                            <button
-                              type="button"
-                              onClick={() => createMaintenanceForAsset(asset)}
-                              disabled={submitting}
-                              className="bg-[#0E2F4B] text-white px-3 py-1 rounded text-sm hover:bg-[#1a4971] disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {submitting ? (t('common.creating') || 'Creating...') : (t('maintenanceSupervisor.createMaintenance') || 'Create Maintenance')}
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
+                {t('common.cancel') || 'Cancel'}
+              </button>
+            </div>
           ) : (
-            <form onSubmit={handleScanSubmit} className="space-y-4">
-              <div className="w-full max-w-md">
+            <form onSubmit={handleScanSubmit} className="flex gap-4 items-end flex-wrap">
+              <div className="w-64">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('assets.assetId') || 'Asset ID'} <span className="text-red-500">*</span>
                 </label>
@@ -329,8 +249,8 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 rounded text-sm font-medium hover:bg-gray-50"
+                  onClick={() => navigate('/maintenance-list')}
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
                   disabled={submitting}
                 >
                   {t('common.cancel') || 'Cancel'}
@@ -338,7 +258,7 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
                 <button
                   type="submit"
                   disabled={submitting || !scannedAssetId?.trim()}
-                  className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm font-medium hover:bg-[#1a4971] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (t('common.creating') || 'Creating...') : (t('maintenanceSupervisor.createMaintenance') || 'Create Maintenance')}
                 </button>
@@ -346,22 +266,83 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
             </form>
           )}
         </div>
-
-        {activeTab === 'select' && (
-          <div className="px-6 py-3 border-t bg-gray-50 flex justify-end shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded text-sm font-medium hover:bg-gray-100"
-            >
-              {t('common.cancel') || 'Cancel'}
-            </button>
-          </div>
-        )}
       </div>
 
+      {activeTab === 'select' && (
+        <div
+          className={`bg-white rounded shadow transition-all duration-300 ${
+            isMaximized ? 'fixed inset-4 z-40 overflow-auto' : ''
+          }`}
+        >
+          <div className="bg-white rounded shadow">
+            <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
+              {t('assets.availableAssets') || 'Available Assets'}
+              <button
+                type="button"
+                onClick={() => setIsMaximized((prev) => !prev)}
+                className="text-[#0E2F4B] hover:opacity-80"
+              >
+                {isMaximized ? <Minimize size={18} /> : <Maximize size={18} />}
+              </button>
+            </div>
+            <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
+              {assets.length > 0 && (
+                <div
+                  className="grid px-4 py-2 font-semibold border-b-4 border-yellow-400"
+                  style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr)' }}
+                >
+                  <div>{t('employees.assetTypeName') || 'Asset Type'}</div>
+                  <div>{t('assets.assetName') || 'Asset Name'}</div>
+                  <div className="flex justify-center">{t('common.actions') || 'Actions'}</div>
+                </div>
+              )}
+              <div className={isMaximized ? 'max-h-[60vh] overflow-y-auto' : ''}>
+                {loadingAssets ? (
+                  <div className="px-4 py-8 text-center text-gray-600 bg-white">
+                    {t('common.loading') || 'Loading...'}
+                  </div>
+                ) : assets.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-gray-500 bg-white rounded-b">
+                    {selectedAssetType
+                      ? t('assets.noInactiveAssetsFound') || 'No available assets for this type (or all are already in maintenance).'
+                      : t('assets.selectAssetTypeToContinue') || 'Select an asset type to see available assets.'}
+                  </div>
+                ) : (
+                  assets.map((asset, i) => (
+                    <div
+                      key={asset.asset_id}
+                      className={`grid px-4 py-2 items-center border-b text-gray-800 ${
+                        i % 2 === 0 ? 'bg-white' : 'bg-gray-100'
+                      } hover:bg-gray-50`}
+                      style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr)' }}
+                    >
+                      <div className="min-w-0 truncate" title={asset.asset_type_name}>
+                        {asset.asset_type_name || '-'}
+                      </div>
+                      <div className="min-w-0 truncate" title={asset.description}>
+                        {asset.description || asset.text || asset.asset_id || '-'}
+                      </div>
+                      <div className="flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => createMaintenanceForAsset(asset)}
+                          disabled={submitting}
+                          className="bg-[#0E2F4B] text-white px-3 py-1 rounded text-sm hover:bg-[#1a4971] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {submitting ? (t('common.creating') || 'Creating...') : (t('maintenanceSupervisor.createMaintenance') || 'Create Maintenance')}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showScanner && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
@@ -399,4 +380,4 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
   );
 };
 
-export default CreateManualMaintenanceModal;
+export default CreateManualMaintenance;

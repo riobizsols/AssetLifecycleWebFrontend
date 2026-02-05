@@ -6,9 +6,11 @@ import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
 import { useNavigation } from "../hooks/useNavigation";
 import { useAuthStore } from "../store/useAuthStore";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const ReportsBreakdown2 = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { user } = useAuthStore();
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -176,9 +178,22 @@ const ReportsBreakdown2 = () => {
         isReadOnly={isReadOnly}
         onAdd={hasEditAccess ? () => navigate("/breakdown-selection2") : null}
       >
-        {({ visibleColumns }) => {
+        {({ visibleColumns, showActions }) => {
           const filtered = filterData(data, filterValues, visibleColumns);
           const sorted = sortData(filtered);
+          if (!isLoading && sorted.length === 0) {
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const colSpan = visibleCols.length + (showActions ? 1 : 0);
+            return (
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <p className="text-xl font-semibold text-gray-800">
+                    {t('common.noDataFound')}
+                  </p>
+                </td>
+              </tr>
+            );
+          }
           return (
             <CustomTable
               visibleColumns={visibleColumns}

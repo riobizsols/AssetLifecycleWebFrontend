@@ -1192,7 +1192,7 @@ export default function MaintSupervisorApproval() {
       
       if (res.data.success) {
         toast.success(t('maintenanceSupervisor.maintenanceScheduleUpdatedSuccessfully'));
-        navigate("/supervisor-approval");
+        navigate("/maintenance-list");
       } else {
         toast.error(res.data.message || t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'));
       }
@@ -1223,7 +1223,7 @@ export default function MaintSupervisorApproval() {
       {/* Header with Back Button */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate("/supervisor-approval")}
+          onClick={() => navigate("/maintenance-list")}
           className="flex items-center gap-2 text-[#0E2F4B] hover:text-blue-700"
         >
           <ArrowLeft size={20} />
@@ -2292,7 +2292,7 @@ export default function MaintSupervisorApproval() {
             <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
-                onClick={() => navigate("/supervisor-approval")}
+                onClick={() => navigate("/maintenance-list")}
                 className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 {t('maintenanceSupervisor.cancel')}

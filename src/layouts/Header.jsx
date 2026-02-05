@@ -19,7 +19,8 @@ export default function Header() {
 
   // Map paths to page titles and subtitles using translations
   const pathTitleMap = {
-    "/supervisor-approval": { title: t('maintenance.maintenanceList'), subtitle: "" },
+    "/maintenance-list": { title: t('maintenance.maintenanceList'), subtitle: "" },
+    "/maintenance-list/create": { title: t('maintenanceSupervisor.createManualMaintenance'), subtitle: "" },
     "/assets": { title: t('navigation.assets'), subtitle: "" },
     "/assign-department-assets": {
       title: t('departments.assignment'),

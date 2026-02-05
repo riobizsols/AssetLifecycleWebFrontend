@@ -192,6 +192,7 @@ const EditGroupAsset = () => {
           asset_id: asset.asset_id,
           name: asset.asset_name || asset.text || 'N/A',
           asset_type_id: asset.asset_type_id,
+          asset_type_name: asset.asset_type_name,
           purchased_on: asset.purchased_on
         })));
         
@@ -924,7 +925,7 @@ const EditGroupAsset = () => {
                                 </td>
                                 <td className="px-3 py-3 text-sm text-gray-500">
                                   <div className="max-w-[100px] break-words">
-                                    {asset.asset_type_id}
+                                    {asset.asset_type_name || asset.asset_type_id}
                                   </div>
                                 </td>
                                 <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
