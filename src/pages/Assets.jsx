@@ -67,6 +67,7 @@ const Assets = () => {
     { label: t('assets.branchId'), name: "branch_id", visible: true },
     { label: t('assets.parentId'), name: "parent_asset_id", visible: true },
     { label: t('assets.groupId'), name: "group_id", visible: true },
+    { label: t('assets.groupName'), name: "group_name", visible: true },
     { label: t('assets.maintenanceScheduleId'), name: "maintsch_id", visible: false },
     { label: t('assets.productServiceId'), name: "prod_serv_id", visible: false },
     { label: t('assets.extId'), name: "ext_id", visible: false },
@@ -366,6 +367,24 @@ const Assets = () => {
     }
   };
 
+  const renderCell = (col, row) => {
+    if (col.name === "group_name" && row.group_name && row.group_id) {
+      return (
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate(`/group-asset/edit/${row.group_id}`);
+          }}
+          className="text-blue-600 hover:text-blue-800 underline cursor-pointer font-semibold"
+        >
+          {row.group_name}
+        </a>
+      );
+    }
+    return undefined;
+  };
+
   const sortData = (data) => {
     if (!sortConfig.sorts.length) return data;
 
@@ -409,6 +428,11 @@ const Assets = () => {
         onSort={handleSort}
         sortConfig={sortConfig}
         rowKey="asset_id"
+        onHeaderClick={(filter) => {
+          if (filter.name === 'group_name') {
+            navigate('/group-asset');
+          }
+        }}
         onAdd={hasCreateAccess ? async () => {
           // Log Create event when plus icon is clicked
           await recordActionByNameWithFetch('Create', { 
@@ -513,6 +537,8 @@ const Assets = () => {
                 showActions={true}
                 isReadOnly={accessLevel === "D"}
                 renderCell={renderAssetCell}
+                // isReadOnly={accessLevel === 'D'}
+                // renderCell={renderCell}
               />
               {updateModalOpen && (
                 <UpdateAssetModal

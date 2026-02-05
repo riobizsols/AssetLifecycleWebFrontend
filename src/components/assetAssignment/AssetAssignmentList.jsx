@@ -9,6 +9,7 @@ import { DEPT_ASSIGNMENT_APP_ID } from '../../constants/deptAssignmentAuditEvent
 import { EMP_ASSIGNMENT_APP_ID } from '../../constants/empAssignmentAuditEvents';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useNavigation } from '../../hooks/useNavigation';
+import { useAppData } from '../../contexts/AppDataContext';
 import SearchableDropdown from '../ui/SearchableDropdown';
 
 const AssetAssignmentList = ({
@@ -34,6 +35,7 @@ const AssetAssignmentList = ({
   const [showHistory, setShowHistory] = useState(false);
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { getStatusText } = useAppData();
 
   // Initialize audit logging based on entity type
   const appId = entityType === 'employee' ? EMP_ASSIGNMENT_APP_ID : DEPT_ASSIGNMENT_APP_ID;
@@ -178,7 +180,7 @@ const AssetAssignmentList = ({
           isMaximized ? "fixed inset-0 z-50 p-6 m-6 overflow-auto" : ""
         }`}
       >
-        <div className="bg-white rounded shadow">
+        <div className="bg-white rounded shadow overflow-x-auto">
           <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
             <div className="flex items-center gap-3 w-full justify-between">
               <span>{title || 'Current Assets List'}</span>
@@ -219,8 +221,8 @@ const AssetAssignmentList = ({
             </div>
           </div>
           {entityType === 'department' ? (
-            <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className={`grid ${isReadOnly ? 'grid-cols-5' : 'grid-cols-6'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
+            <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden min-w-0">
+              <div className={`grid ${isReadOnly ? 'grid-cols-5' : 'grid-cols-6'} px-4 py-2 font-semibold border-b-4 border-yellow-400`} style={{ gridTemplateColumns: isReadOnly ? 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,0.8fr)' }}>
                 <div>{t('employees.assetTypeName')}</div>
                 <div>{t('assets.description')}</div>
                 <div>{t('employees.action')}</div>
@@ -238,10 +240,11 @@ const AssetAssignmentList = ({
                       className={`grid ${isReadOnly ? 'grid-cols-5' : 'grid-cols-6'} px-4 py-2 items-center border-b ${
                         i % 2 === 0 ? "bg-white" : "bg-gray-100"
                       } text-gray-800`}
+                      style={{ gridTemplateColumns: isReadOnly ? 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,0.8fr)' }}
                     >
-                      <div>{item.asset_type_name || '-'}</div>
-                      <div>{item.description || '-'}</div>
-                      <div>{item.action || '-'}</div>
+                      <div className="min-w-0 truncate" title={item.asset_type_name || undefined}>{item.asset_type_name || '-'}</div>
+                      <div className="min-w-0 truncate" title={item.description || undefined}>{item.description || '-'}</div>
+                      <div>{getStatusText ? getStatusText(item.action) : item.action || '-'}</div>
                       <div>{item.action_on ? new Date(item.action_on).toLocaleString() : '-'}</div>
                       <div>{item.action_by || '-'}</div>
                       {!isReadOnly && (
@@ -280,7 +283,7 @@ const AssetAssignmentList = ({
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800`}
                   >
-                    <div>{item.action}</div>
+                    <div>{getStatusText ? getStatusText(item.action) : item.action || '-'}</div>
                     <div>{item.action_on ? new Date(item.action_on).toLocaleString() : ''}</div>
                     <div>{item.action_by}</div>
                     {!isReadOnly && (

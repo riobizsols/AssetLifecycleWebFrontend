@@ -21,7 +21,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
   const [requireMaintenance, setRequireMaintenance] = useState(false);
-  const [requireScrapApproval, setRequireScrapApproval] = useState(true); // default enabled
   const [isActive, setIsActive] = useState(true);
   const [parentChild, setParentChild] = useState("parent");
   const [parentAssetTypes, setParentAssetTypes] = useState([]);
@@ -56,7 +55,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       setGroupRequired(!!assetData.group_required); // Convert to boolean
       setRequireInspection(!!assetData.inspection_required); // Convert to boolean
       setRequireMaintenance(!!assetData.maint_required); // Convert to boolean
-      setRequireScrapApproval(assetData.require_scrap_approval !== false);
       setIsActive(assetData.int_status === 1 || assetData.int_status === "1" || assetData.int_status === true);
       setParentChild(assetData.is_child ? "child" : "parent");
       setSelectedParentType(assetData.parent_asset_type_id || "");
@@ -467,7 +465,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         group_required: groupRequired,
         inspection_required: requireInspection,
         maint_required: requireMaintenance ? 1 : 0,
-        require_scrap_approval: requireScrapApproval,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
         maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
@@ -814,16 +811,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
               <span>{t('assetTypes.requireMaintenance')}</span>
             </label>
 
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={requireScrapApproval}
-                onChange={(e) => setRequireScrapApproval(e.target.checked)}
-                disabled={isReadOnly}
-                className="form-checkbox text-blue-500 rounded"
-              />
-              <span>REQUIRE SCRAP APPROVAL</span>
-            </label>
           </div>
 
           {/* Maintenance Fields - Conditional Rendering */}

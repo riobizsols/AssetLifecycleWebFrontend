@@ -42,6 +42,7 @@ import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
 import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
 import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
+import CreateManualMaintenance from "../pages/CreateManualMaintenance";
 import CronJobManagement from "../pages/CronJobManagement";
 import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
 import ReportsBreakdown from "../pages/ReportsBreakdown";
@@ -244,7 +245,7 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="/supervisor-approval"
+          path="/maintenance-list"
           element={
             <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>
@@ -253,9 +254,19 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/maintenance-list/create"
+          element={
+            <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
+              <MainLayout>
+                <CreateManualMaintenance />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
-          path="/supervisor-approval-detail/:id"
+          path="/maintenance-list-detail/:id"
           element={
             <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>

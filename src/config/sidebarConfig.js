@@ -72,7 +72,7 @@
 //     },
 //     {
 //         label: "Maintenance Supervisor",
-//         path: "/supervisor-approval",
+//         path: "/maintenance-list",
 //         icon: FileText,
 //         roles: ["JR001"],
 //     },

@@ -9,7 +9,6 @@ import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/assets/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
-import CreateManualMaintenanceModal from "../components/maintenance/CreateManualMaintenanceModal";
 
 const MaintenanceSupervisor = () => {
   const navigate = useNavigate();
@@ -28,8 +27,6 @@ const MaintenanceSupervisor = () => {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-
   const [columns] = useState([
     { label: t('maintenanceSupervisor.id'), name: "ams_id", visible: true },
     { label: t('maintenanceSupervisor.assetID'), name: "asset_id", visible: true },
@@ -256,7 +253,7 @@ const MaintenanceSupervisor = () => {
   }));
 
   const handleRowClick = (row) => {
-    navigate(`/supervisor-approval-detail/${row.ams_id}`);
+    navigate(`/maintenance-list-detail/${row.ams_id}`);
   };
 
   return (
@@ -266,14 +263,13 @@ const MaintenanceSupervisor = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        onAdd={() => navigate("/maintenance-approval/add")}
         onDeleteSelected={handleDeleteSelected}
         onDownload={handleDownload}
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
-        showAddButton={true} // Show Create button for manual maintenance creation
-        onAdd={() => setShowCreateModal(true)} // Open create modal
+        showAddButton={true}
+        onAdd={() => navigate('/maintenance-list/create')}
         showActions={false} // Hide Actions column header for this page
       >
         {({ visibleColumns, showActions }) => {
@@ -284,23 +280,14 @@ const MaintenanceSupervisor = () => {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length + (showActions ? 1 : 0);
             return (
-              <>
-                <tr>
-                  <td colSpan={colSpan} className="text-center py-16">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <p className="text-gray-600">{t('common.loading')}</p>
-                    </div>
-                  </td>
-                </tr>
-                {updateModalOpen && (
-                  <UpdateAssetModal
-                    isOpen={updateModalOpen}
-                    onClose={handleUpdateModalClose}
-                    assetData={selectedAsset}
-                  />
-                )}
-              </>
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">{t('common.loading')}</p>
+                  </div>
+                </td>
+              </tr>
             );
           }
 
@@ -308,79 +295,60 @@ const MaintenanceSupervisor = () => {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length + (showActions ? 1 : 0);
             return (
-              <>
-                <tr>
-                  <td colSpan={colSpan} className="text-center py-16">
-                    <div className="flex flex-col items-center justify-center">
-                      <p className="text-xl font-semibold text-gray-800">
-                        {t('common.noDataFound')}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-                {updateModalOpen && (
-                  <UpdateAssetModal
-                    isOpen={updateModalOpen}
-                    onClose={handleUpdateModalClose}
-                    assetData={selectedAsset}
-                  />
-                )}
-              </>
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('common.noDataFound')}
+                    </p>
+                  </div>
+                </td>
+              </tr>
             );
           }
 
           return (
-            <>
-              <CustomTable
-                columns={visibleColumns}
-                visibleColumns={visibleColumns}
-                data={sortedData}
-                selectedRows={selectedRows}
-                setSelectedRows={setSelectedRows}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                rowKey="ams_id"
-                showActions={showActions} // Hide action column for this page
-                renderCell={(col, row, colIndex) =>
-                  col.name === "status"
-                    ? <StatusBadge status={row[col.name]} />
-                    : col.name === "days_until_due"
-                    ? <span className={row.urgency_class}>{row[col.name]}</span>
-                    : colIndex === 0
-                      ? <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedRows.includes(row["ams_id"])}
-                            onChange={() => setSelectedRows(prev => prev.includes(row["ams_id"]) ? prev.filter(id => id !== row["ams_id"]) : [...prev, row["ams_id"]])}
-                            className="accent-yellow-400"
-                          />
-                          {row[col.name]}
-                        </div>
-                      : row[col.name]
-                }
-                onRowClick={handleRowClick}
-              />
-              {updateModalOpen && (
-                <UpdateAssetModal
-                  isOpen={updateModalOpen}
-                  onClose={handleUpdateModalClose}
-                  assetData={selectedAsset}
-                />
-              )}
-              {showCreateModal && (
-                <CreateManualMaintenanceModal
-                  isOpen={showCreateModal}
-                  onClose={() => setShowCreateModal(false)}
-                  onSuccess={() => {
-                    fetchMaintenanceSchedules();
-                    setShowCreateModal(false);
-                  }}
-                />
-              )}
-            </>
+            <CustomTable
+              columns={visibleColumns}
+              visibleColumns={visibleColumns}
+              data={sortedData}
+              selectedRows={selectedRows}
+              setSelectedRows={setSelectedRows}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              rowKey="ams_id"
+              showActions={showActions} // Hide action column for this page
+              renderCell={(col, row, colIndex) =>
+                col.name === "status"
+                  ? <StatusBadge status={row[col.name]} />
+                  : col.name === "days_until_due"
+                  ? <span className={row.urgency_class}>{row[col.name]}</span>
+                  : colIndex === 0
+                    ? <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.includes(row["ams_id"])}
+                          onChange={() => setSelectedRows(prev => prev.includes(row["ams_id"]) ? prev.filter(id => id !== row["ams_id"]) : [...prev, row["ams_id"]])}
+                          className="accent-yellow-400"
+                        />
+                        {row[col.name]}
+                      </div>
+                    : row[col.name]
+              }
+              onRowClick={handleRowClick}
+            />
           );
         }}
       </ContentBox>
+      
+      {/* Modals rendered outside ContentBox so they're always available */}
+      {updateModalOpen && (
+        <UpdateAssetModal
+          isOpen={updateModalOpen}
+          onClose={handleUpdateModalClose}
+          assetData={selectedAsset}
+        />
+      )}
     </div>
   );
 };

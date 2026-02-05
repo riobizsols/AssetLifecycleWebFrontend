@@ -56,6 +56,7 @@ const ScrapSales = () => {
         po_no: item.po_no || '',
         total_assets: item.total_assets || '',
         total_sale_value: Array.isArray(item.total_sale_value) ? (item.total_sale_value[0] ?? '') : (item.total_sale_value ?? ''),
+        status: item.status || '',
         created_by: item.created_by || '',
         created_on: formatDate(item.created_on || item.created_date || '')
       }));
@@ -77,6 +78,7 @@ const ScrapSales = () => {
   const columns = [
     { key: 'ssh_id', name: 'ssh_id', label: t('scrapSales.saleId'), sortable: true, visible: true },
     { key: 'text', name: 'text', label: t('scrapSales.saleTitle'), sortable: true, visible: true },
+    { key: 'status', name: 'status', label: t('scrapSales.status'), sortable: true, visible: true },
     { key: 'buyer_name', name: 'buyer_name', label: t('scrapSales.buyerName'), sortable: true, visible: true },
     { key: 'buyer_company', name: 'buyer_company', label: t('scrapSales.buyerCompany'), sortable: true, visible: true },
     { key: 'buyer_phone', name: 'buyer_phone', label: t('scrapSales.buyerPhone'), sortable: true, visible: true },

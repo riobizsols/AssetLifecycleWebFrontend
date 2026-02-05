@@ -87,6 +87,11 @@ const ScrapMaintenanceApproval = () => {
             { label: "Completed", value: "CO" },
             { label: "Cancelled", value: "CA" },
           ]
+        : col.name === "is_scrap_sales"
+        ? [
+            { label: "Scrap Sales", value: "Yes" },
+            { label: "Scrap Assets", value: "No" },
+          ]
         : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
