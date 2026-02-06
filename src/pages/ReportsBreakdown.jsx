@@ -20,16 +20,16 @@ const ReportsBreakdown = () => {
 
   // Access control
   const { canEdit, canDelete, getAccessLevel } = useNavigation();
-  const hasEditAccess = canEdit('REPORTBREAKDOWN');
-  const hasDeleteAccess = canDelete('REPORTBREAKDOWN');
-  const accessLevel = getAccessLevel('REPORTBREAKDOWN');
-  const isReadOnly = accessLevel === 'D';
-  
+  const hasEditAccess = canEdit("REPORTBREAKDOWN");
+  const hasDeleteAccess = canDelete("REPORTBREAKDOWN");
+  const accessLevel = getAccessLevel("REPORTBREAKDOWN");
+  const isReadOnly = accessLevel === "D";
+
   // Debug logging
-  console.log('ReportsBreakdown - Access Level:', accessLevel);
-  console.log('ReportsBreakdown - Has Edit Access:', hasEditAccess);
-  console.log('ReportsBreakdown - Has Delete Access:', hasDeleteAccess);
-  console.log('ReportsBreakdown - Is Read Only:', isReadOnly);
+  console.log("ReportsBreakdown - Access Level:", accessLevel);
+  console.log("ReportsBreakdown - Has Edit Access:", hasEditAccess);
+  console.log("ReportsBreakdown - Has Delete Access:", hasDeleteAccess);
+  console.log("ReportsBreakdown - Is Read Only:", isReadOnly);
   const [columns] = useState([
     { label: "Breakdown ID", name: "abr_id", visible: true },
     { label: "Asset ID", name: "asset_id", visible: true },
@@ -52,8 +52,9 @@ const ReportsBreakdown = () => {
         const raw = Array.isArray(res.data?.data)
           ? res.data.data
           : Array.isArray(res.data)
-          ? res.data
-          : [];
+            ? res.data
+            : [];
+        // Backend already filters out CO (Completed) status, so no need to filter here
         const formatted = raw.map((b) => ({
           ...b,
           created_on: b.created_at
@@ -85,7 +86,7 @@ const ReportsBreakdown = () => {
       } else if (existingSort.direction === "asc") {
         return {
           sorts: sorts.map((s) =>
-            s.column === column ? { ...s, direction: "desc" } : s
+            s.column === column ? { ...s, direction: "desc" } : s,
           ),
         };
       } else {
@@ -156,9 +157,18 @@ const ReportsBreakdown = () => {
         isReadOnly={isReadOnly}
         onAdd={hasEditAccess ? () => navigate("/breakdown-selection") : null}
       >
-        {({ visibleColumns }) => {
+        {({ visibleColumns, showActions }) => {
           const filtered = filterData(data, filterValues, visibleColumns);
           const sorted = sortData(filtered);
+          if (!isLoading && sorted.length === 0) {
+            return (
+              <div className="text-center py-16">
+                <p className="text-xl font-semibold text-gray-800">
+                  No data found
+                </p>
+              </div>
+            );
+          }
           return (
             <CustomTable
               visibleColumns={visibleColumns}

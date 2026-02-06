@@ -16,8 +16,9 @@ const statusColors = {
   Inactive: "text-gray-600 font-semibold",
   Disposed: "text-red-600 font-semibold",
   // Scrap asset statuses
-  "Nearing Expiry": "px-2 py-1 bg-yellow-100 text-amber-800 text-xs font-medium rounded-full",
-  "Expired": "px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full",
+  "Nearing Expiry":
+    "px-2 py-1 bg-yellow-100 text-amber-800 text-xs font-medium rounded-full",
+  Expired: "px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full",
   // Add more statuses as needed
 };
 
@@ -30,14 +31,11 @@ export default function StatusBadge({ status }) {
     }
   } catch (err) {
     // If context not available, just use the status as-is
-    console.warn('StatusBadge: AppDataContext not available, using raw status');
+    console.warn("StatusBadge: AppDataContext not available, using raw status");
   }
-  
+
   const key = status?.toLowerCase();
-  const className = statusColors[status] || statusColors[key] || "text-gray-600";
-  return (
-    <span className={className}>
-      {display}
-    </span>
-  );
-} 
+  const className =
+    statusColors[status] || statusColors[key] || "text-gray-600";
+  return <span className={className}>{display}</span>;
+}

@@ -68,6 +68,7 @@ const ReportsBreakdown2 = () => {
           : [];
         
         // Filter breakdowns created by the current user
+        // Backend already filters out CO (Completed) status
         // Match by user_id, emp_int_id, or dept_id depending on what's in reported_by
         const currentUserId = user?.user_id || user?.emp_int_id;
         const currentDeptId = user?.dept_id;
@@ -213,4 +214,3 @@ const ReportsBreakdown2 = () => {
 };
 
 export default ReportsBreakdown2;
-
