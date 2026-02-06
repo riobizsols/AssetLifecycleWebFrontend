@@ -21,9 +21,9 @@ const ScrapMaintenanceApproval = () => {
     { label: "Workflow ID", name: "wfscrap_h_id", visible: true },
     { label: "Asset Type", name: "asset_type_name", visible: true },
     { label: "Group ID", name: "assetgroup_id", visible: true },
-    { label: "Group Name", name: "asset_group_name", visible: true },
+    { label: "Name", name: "display_name", visible: true },
     { label: "Assets", name: "asset_count", visible: true },
-    { label: "Scrap Sales", name: "is_scrap_sales", visible: true },
+    { label: "Scrap Type", name: "scrap_type_display", visible: true },
     { label: "Status", name: "status", visible: true },
     { label: "Created On", name: "created_on", visible: true },
   ]);
@@ -38,12 +38,26 @@ const ScrapMaintenanceApproval = () => {
       const res = await API.get("/scrap-maintenance/approvals");
       const approvals = res.data?.approvals || [];
 
-      const formatted = approvals.map((row) => ({
-        ...row,
-        status: row.header_status,
-        created_on: row.created_on ? new Date(row.created_on).toLocaleDateString() : "",
-        is_scrap_sales: row.is_scrap_sales === "Y" ? "Yes" : "No",
-      }));
+      const formatted = approvals.map((row) => {
+        // Format the display name based on whether it's individual asset or group
+        let displayName = row.asset_group_name;
+        
+        // If it's an individual asset (SCRAP_INDIVIDUAL_* or SCRAP_SALES_*), show only asset name
+        if (row.assetgroup_id && (row.assetgroup_id.startsWith('SCRAP_INDIVIDUAL_') || row.assetgroup_id.startsWith('SCRAP_SALES_'))) {
+          displayName = row.asset_names || row.asset_group_name;
+        } else if (row.asset_names) {
+          // For real groups, show group name followed by asset names in parentheses
+          displayName = `${row.asset_group_name} (${row.asset_names})`;
+        }
+
+        return {
+          ...row,
+          status: row.header_status,
+          created_on: row.created_on ? new Date(row.created_on).toLocaleDateString() : "",
+          scrap_type_display: row.is_scrap_sales === "Y" ? "Scrap Sales" : "Scrap Asset",
+          display_name: displayName,
+        };
+      });
 
       setData(formatted);
     } catch (err) {
@@ -76,25 +90,28 @@ const ScrapMaintenanceApproval = () => {
     }));
   };
 
-  const filters = columns.map((col) => ({
-    label: col.label,
-    name: col.name,
-    options:
-      col.name === "status"
-        ? [
-            { label: "Initiated", value: "IN" },
-            { label: "In Progress", value: "IP" },
-            { label: "Completed", value: "CO" },
-            { label: "Cancelled", value: "CA" },
-          ]
-        : col.name === "is_scrap_sales"
-        ? [
-            { label: "Scrap Sales", value: "Yes" },
-            { label: "Scrap Assets", value: "No" },
-          ]
-        : [],
-    onChange: (value) => handleFilterChange(col.name, value),
-  }));
+  const filters = [
+    ...columns.map((col) => ({
+      label: col.label,
+      name: col.name,
+      visible: col.visible,
+      options:
+        col.name === "status"
+          ? [
+              { label: "Initiated", value: "IN" },
+              { label: "In Progress", value: "IP" },
+              { label: "Completed", value: "CO" },
+              { label: "Cancelled", value: "CA" },
+            ]
+          : col.name === "scrap_type_display"
+          ? [
+              { label: "Scrap Sales", value: "Scrap Sales" },
+              { label: "Scrap Asset", value: "Scrap Asset" },
+            ]
+          : [],
+      onChange: (value) => handleFilterChange(col.name, value),
+    })),
+  ];
 
   const handleRowClick = (row) => {
     navigate(`/scrap-approval-detail/${row.wfscrap_h_id}?context=SCRAPMAINTENANCEAPPROVAL`, {
