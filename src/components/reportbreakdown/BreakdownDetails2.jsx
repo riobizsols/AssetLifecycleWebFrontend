@@ -1,3 +1,43 @@
+  // --- Confirm/Reopen UI state ---
+  const [reopenNotes, setReopenNotes] = useState("");
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
+  const canShowConfirmReopen = existingBreakdown && (existingBreakdown.status === "CO" || existingBreakdown.status === "Completed");
+  const isAlreadyConfirmed = existingBreakdown && (existingBreakdown.status === "CF" || existingBreakdown.status === "Confirmed");
+
+  // Confirm action
+  const handleConfirm = async () => {
+    if (!existingBreakdown) return;
+    setIsConfirming(true);
+    try {
+      const res = await API.post(`/reportbreakdown/${existingBreakdown.abr_id}/confirm`);
+      toast.success("Breakdown confirmed.");
+      navigate(0); // reload
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to confirm.");
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  // Reopen action
+  const handleReopen = async () => {
+    if (!existingBreakdown) return;
+    if (!reopenNotes.trim()) {
+      toast.error("Notes are required to reopen.");
+      return;
+    }
+    setIsReopening(true);
+    try {
+      const res = await API.post(`/reportbreakdown/${existingBreakdown.abr_id}/reopen`, { notes: reopenNotes });
+      toast.success("Breakdown reopened.");
+      navigate(0); // reload
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to reopen.");
+    } finally {
+      setIsReopening(false);
+    }
+  };
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -538,32 +578,70 @@ const BreakdownDetails2 = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-4 pt-6">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-              {t('breakdownDetails.cancel')}
-            </button>
-            {!isReadOnly && (
-              <>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  disabled={isSubmitting}
-                  className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t('breakdownDetails.reset')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2.5 rounded-lg bg-[#0E2F4B] text-white font-medium hover:bg-[#1a4a76] transition-all focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? t('breakdownDetails.submitting') : t('breakdownDetails.reportBreakdown')}
-                </button>
-              </>
+          <div className="flex flex-col items-end gap-4 pt-6">
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all focus:outline-none focus:ring-2 focus:ring-gray-200"
+              >
+                {t('breakdownDetails.cancel')}
+              </button>
+              {!isReadOnly && (
+                <>
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    disabled={isSubmitting}
+                    className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t('breakdownDetails.reset')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-6 py-2.5 rounded-lg bg-[#0E2F4B] text-white font-medium hover:bg-[#1a4a76] transition-all focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? t('breakdownDetails.submitting') : t('breakdownDetails.reportBreakdown')}
+                  </button>
+                </>
+              )}
+            </div>
+            {/* Confirm/Reopen Buttons for Employee Verification Stage */}
+            {canShowConfirmReopen && !isAlreadyConfirmed && (
+              <div className="flex flex-col gap-2 w-full md:w-2/3 mt-4">
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={handleConfirm}
+                    disabled={isConfirming}
+                    className="px-6 py-2.5 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isConfirming ? "Confirming..." : "Confirm (Asset Fixed)"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleReopen}
+                    disabled={isReopening || !reopenNotes.trim()}
+                    className="px-6 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isReopening ? "Reopening..." : "Reopen (Still Not Working)"}
+                  </button>
+                </div>
+                <textarea
+                  className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-400"
+                  placeholder="Enter reason/notes for reopening (required)"
+                  value={reopenNotes}
+                  onChange={e => setReopenNotes(e.target.value)}
+                  rows={2}
+                  disabled={isReopening}
+                  required
+                />
+                <span className="text-xs text-gray-500">Notes required only for Reopen.</span>
+              </div>
+            )}
+            {isAlreadyConfirmed && (
+              <div className="mt-4 text-green-700 font-semibold">Breakdown already confirmed. No further action possible.</div>
             )}
           </div>
         </form>
