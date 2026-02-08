@@ -7,6 +7,8 @@ import { filterData } from "../utils/filterData";
 import { useNavigation } from "../hooks/useNavigation";
 import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
+import ReopenModal from "../components/reportbreakdown/ReopenModal";
+import { Check, RefreshCw, Pencil } from "lucide-react";
 
 const ReportsBreakdown2 = () => {
   const navigate = useNavigate();
@@ -22,6 +24,9 @@ const ReportsBreakdown2 = () => {
     toDate: "",
   });
 
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [selectedReport, setSelectedReport] = useState(null);
+
   // Access control
   const { canEdit, canDelete, getAccessLevel } = useNavigation();
   const hasEditAccess = canEdit('EMPLOYEE REPORT BREAKDOWN');
@@ -35,13 +40,9 @@ const ReportsBreakdown2 = () => {
   console.log('ReportsBreakdown2 - Has Delete Access:', hasDeleteAccess);
   console.log('ReportsBreakdown2 - Is Read Only:', isReadOnly);
   const [columns] = useState([
-    { label: "Breakdown ID", name: "abr_id", visible: true },
-    { label: "Asset ID", name: "asset_id", visible: true },
-    { label: "Breakdown Code", name: "atbrrc_id", visible: true },
     { label: "Reported By", name: "reported_by", visible: true },
     { label: "Status", name: "status", visible: true },
     { label: "Description", name: "description", visible: true },
-    { label: "Org ID", name: "org_id", visible: true },
   ]);
 
   const handleEdit = (breakdown) => {
@@ -54,45 +55,93 @@ const ReportsBreakdown2 = () => {
     });
   };
 
-  useEffect(() => {
-    const fetchBreakdowns = async () => {
-      if (!user) return; // Wait for user data to be available
+  const fetchBreakdowns = async () => {
+    if (!user) return; // Wait for user data to be available
+    
+    setIsLoading(true);
+    try {
+      const res = await API.get("/reportbreakdown/reports");
+      const raw = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+        ? res.data
+        : [];
       
-      setIsLoading(true);
-      try {
-        const res = await API.get("/reportbreakdown/reports");
-        const raw = Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-          ? res.data
-          : [];
-        
-        // Filter breakdowns created by the current user
-        // Backend already filters out CO (Completed) status
-        // Match by user_id, emp_int_id, or dept_id depending on what's in reported_by
-        const currentUserId = user?.user_id || user?.emp_int_id;
-        const currentDeptId = user?.dept_id;
-        
-        const userBreakdowns = raw.filter((b) => {
-          return b.reported_by === currentUserId || b.reported_by === currentDeptId;
-        });
-        
-        const formatted = userBreakdowns.map((b) => ({
-          ...b,
-          created_on: b.created_at
-            ? new Date(b.created_at).toLocaleString()
-            : "",
-        }));
-        setData(formatted);
-      } catch (err) {
-        console.error("Failed to fetch breakdowns", err);
-        setData([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      // Match by user_id, emp_int_id, or dept_id depending on what's in reported_by
+      const currentUserId = user?.user_id || user?.emp_int_id;
+      const currentDeptId = user?.dept_id;
+      
+      const userBreakdowns = raw.filter((b) => {
+        return b.reported_by === currentUserId || b.reported_by === currentDeptId;
+      });
+      
+      const formatted = userBreakdowns.map((b) => ({
+        ...b,
+        created_on: b.created_on
+          ? new Date(b.created_on).toLocaleString()
+          : "",
+      }));
+      setData(formatted);
+    } catch (err) {
+      console.error("Failed to fetch breakdowns", err);
+      setData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchBreakdowns();
   }, [user]);
+
+  const handleConfirmAction = async (abr_id) => {
+    if (!window.confirm("Confirm this breakdown as resolved?")) return;
+    try {
+      // Trigger API call
+      await API.post(`/reportbreakdown/${abr_id}/confirm`);
+      
+      // Immediate UI Refresh: Update local state without waiting for full refetch
+      setData(prevData => 
+        prevData.map(item => 
+          item.abr_id === abr_id ? { ...item, status: 'CF' } : item
+        )
+      );
+      
+      alert("Breakdown confirmed successfully");
+    } catch (err) {
+      console.error("Failed to confirm breakdown", err);
+      alert("Error confirming breakdown: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleReopenSubmit = async (notes, abr_id_from_modal) => {
+    // Standardize on abr_id (snake_case) to avoid reference errors and match confirm logic
+    const abr_id = abr_id_from_modal || selectedReport?.abr_id;
+
+    if (!abr_id) {
+      alert("No report selected or ID missing. Please reopen from the list and try again.");
+      console.error('Reopen aborted: missing abr_id', { abr_id_from_modal, selectedReport });
+      return;
+    }
+
+    try {
+      await API.post(`/reportbreakdown/${abr_id}/reopen`, { notes });
+      
+      // Immediate UI Refresh: Update local state
+      setData(prevData => 
+        prevData.map(item => 
+          item.abr_id === abr_id ? { ...item, status: 'IN' } : item
+        )
+      );
+      
+      alert("Breakdown reopened successfully");
+      setShowReopenModal(false);
+      setSelectedReport(null);
+    } catch (err) {
+      console.error("Failed to reopen breakdown", err);
+      alert("Error reopening breakdown: " + (err.response?.data?.error || err.message));
+    }
+  };
 
   const handleSort = (column) => {
     setSortConfig((prevConfig) => {
@@ -196,16 +245,68 @@ const ReportsBreakdown2 = () => {
             );
           }
           return (
-            <CustomTable
-              visibleColumns={visibleColumns}
-              data={isLoading ? [] : sorted}
-              selectedRows={selectedRows}
-              setSelectedRows={setSelectedRows}
-              rowKey="abr_id"
-              showActions={true}
-              onEdit={handleEdit}
-              isReadOnly={isReadOnly}
-            />
+            <>
+              <CustomTable
+                visibleColumns={visibleColumns}
+                data={isLoading ? [] : sorted}
+                selectedRows={selectedRows}
+                setSelectedRows={setSelectedRows}
+                rowKey="abr_id"
+                showActions={true}
+                isReadOnly={isReadOnly}
+                renderActions={(row) => {
+                  if (row.status === "CO" || row.status === "Completed") {
+                    return (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleConfirmAction(row.abr_id);
+                          }}
+                          className="text-green-600 hover:text-green-800"
+                          title="Confirm Completion"
+                        >
+                          <Check size={18} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedReport(row);
+                            setShowReopenModal(true);
+                          }}
+                          className="text-orange-600 hover:text-orange-800"
+                          title="Reopen/Reject"
+                        >
+                          <RefreshCw size={18} />
+                        </button>
+                      </div>
+                    );
+                  }
+                  // For Initiated or Pending, show View Details
+                  return (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(row);
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                      title="View Details"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                  );
+                }}
+              />
+              <ReopenModal
+                show={showReopenModal}
+                report={selectedReport}
+                onClose={() => {
+                  setShowReopenModal(false);
+                  setSelectedReport(null);
+                }}
+                onConfirm={handleReopenSubmit}
+              />
+            </>
           );
         }}
       </ContentBox>

@@ -205,7 +205,7 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="/scrap-maintenance-approval"
+          path="/scrap-approval"
           element={
             <ProtectedRoute>
               <MainLayout>

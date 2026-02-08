@@ -5,6 +5,7 @@ import CustomTable from "../components/CustomTable";
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
 import { useNavigation } from "../hooks/useNavigation";
+import { Pencil } from "lucide-react";
 
 const ReportsBreakdown = () => {
   const navigate = useNavigate();
@@ -31,44 +32,40 @@ const ReportsBreakdown = () => {
   console.log("ReportsBreakdown - Has Delete Access:", hasDeleteAccess);
   console.log("ReportsBreakdown - Is Read Only:", isReadOnly);
   const [columns] = useState([
-    { label: "Breakdown ID", name: "abr_id", visible: true },
-    { label: "Asset ID", name: "asset_id", visible: true },
-    { label: "Breakdown Code", name: "atbrrc_id", visible: true },
     { label: "Reported By", name: "reported_by", visible: true },
     { label: "Status", name: "status", visible: true },
     { label: "Description", name: "description", visible: true },
-    { label: "Org ID", name: "org_id", visible: true },
   ]);
 
   const handleEdit = (breakdown) => {
     navigate("/edit-breakdown", { state: { breakdown } });
   };
 
+  const fetchBreakdowns = async () => {
+    setIsLoading(true);
+    try {
+      const res = await API.get("/reportbreakdown/reports");
+      const raw = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+          ? res.data
+          : [];
+      const formatted = raw.map((b) => ({
+        ...b,
+        created_on: b.created_at
+          ? new Date(b.created_at).toLocaleString()
+          : "",
+      }));
+      setData(formatted);
+    } catch (err) {
+      console.error("Failed to fetch breakdowns", err);
+      setData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchBreakdowns = async () => {
-      setIsLoading(true);
-      try {
-        const res = await API.get("/reportbreakdown/reports");
-        const raw = Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-            ? res.data
-            : [];
-        // Backend already filters out CO (Completed) status, so no need to filter here
-        const formatted = raw.map((b) => ({
-          ...b,
-          created_on: b.created_at
-            ? new Date(b.created_at).toLocaleString()
-            : "",
-        }));
-        setData(formatted);
-      } catch (err) {
-        console.error("Failed to fetch breakdowns", err);
-        setData([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchBreakdowns();
   }, []);
 
@@ -177,8 +174,8 @@ const ReportsBreakdown = () => {
               setSelectedRows={setSelectedRows}
               rowKey="abr_id"
               showActions={true}
-              onEdit={handleEdit}
               isReadOnly={isReadOnly}
+              onEdit={handleEdit}
             />
           );
         }}

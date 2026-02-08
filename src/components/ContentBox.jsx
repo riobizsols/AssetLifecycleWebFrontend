@@ -96,6 +96,41 @@ const ContentBox = ({
     }
   }, [activeFilters]); // Run when activeFilters change
 
+  // Auto-add and update special filter types
+  useEffect(() => {
+    const specialFilters = filters.filter(f => f.type && [].includes(f.type));
+    
+    if (specialFilters.length > 0) {
+      setActiveFilters(prev => {
+        const newActiveFilters = [...prev];
+        
+        specialFilters.forEach(filter => {
+          const existingIndex = newActiveFilters.findIndex(af => af.type === filter.type);
+          
+          if (existingIndex >= 0) {
+            // Update existing filter
+            newActiveFilters[existingIndex] = {
+              ...newActiveFilters[existingIndex],
+              value: filter.value,
+              options: filter.options,
+              label: filter.label
+            };
+          } else {
+            // Add new filter
+            newActiveFilters.push({
+              type: filter.type,
+              label: filter.label,
+              value: filter.value,
+              options: filter.options
+            });
+          }
+        });
+        
+        return newActiveFilters;
+      });
+    }
+  }, [filters]);
+
   // Close add filter submenu when column dropdown closes
   useEffect(() => {
     if (openDropdown === null) {
@@ -285,17 +320,19 @@ const ContentBox = ({
   };
 
   const [visibleColumns, setVisibleColumns] = useState(
-    filters.map((f, i) => ({
-      ...f,
-      // Preserve existing visible property if set (e.g., from column access control)
-      // If visible is explicitly false (NONE access), always keep it false
-      // Otherwise, use default visibility logic
-      visible: isIdColumnName(f.name)
-        ? false
-        : (f.visible === false
+    filters
+      .filter(f => !f.type || ![].includes(f.type)) // Exclude special filter types from columns
+      .map((f, i) => ({
+        ...f,
+        // Preserve existing visible property if set (e.g., from column access control)
+        // If visible is explicitly false (NONE access), always keep it false
+        // Otherwise, use default visibility logic
+        visible: isIdColumnName(f.name)
           ? false
-          : (f.visible !== undefined ? f.visible : (i < 7 || f.name === "status" || f.name === "int_status"))), // Always show Status column
-    }))
+          : (f.visible === false
+            ? false
+            : (f.visible !== undefined ? f.visible : (i < 7 || f.name === "status" || f.name === "int_status"))), // Always show Status column
+      }))
   );
 
   // Sync visibleColumns when incoming filters change
@@ -304,31 +341,33 @@ const ContentBox = ({
       // Create a map of previous visibility for user-toggled columns
       const prevVisibilityMap = new Map(prevVisibleColumns.map(col => [col.name, col.visible]));
       
-      return filters.map((f, i) => {
-        // Never allow ID columns to be visible in UI
-        if (isIdColumnName(f.name)) {
-          return { ...f, visible: false };
-        }
+      return filters
+        .filter(f => !f.type || ![].includes(f.type)) // Exclude special filter types from columns
+        .map((f, i) => {
+          // Never allow ID columns to be visible in UI
+          if (isIdColumnName(f.name)) {
+            return { ...f, visible: false };
+          }
 
-        // If filter has visible=false (from column access NONE), always keep it false
-        if (f.visible === false) {
-          return { ...f, visible: false };
-        }
-        
-        // If filter has visible=true (from column access), use it
-        if (f.visible === true) {
-          // Preserve user's manual toggle if they changed it (unless it was forced to false)
+          // If filter has visible=false (from column access NONE), always keep it false
+          if (f.visible === false) {
+            return { ...f, visible: false };
+          }
+          
+          // If filter has visible=true (from column access), use it
+          if (f.visible === true) {
+            // Preserve user's manual toggle if they changed it (unless it was forced to false)
+            const prevVisible = prevVisibilityMap.get(f.name);
+            return { ...f, visible: prevVisible === false ? false : true };
+          }
+          
+          // Otherwise, preserve previous visibility or use default
           const prevVisible = prevVisibilityMap.get(f.name);
-          return { ...f, visible: prevVisible === false ? false : true };
-        }
-        
-        // Otherwise, preserve previous visibility or use default
-        const prevVisible = prevVisibilityMap.get(f.name);
-        return {
-        ...f,
-          visible: prevVisible !== undefined ? prevVisible : (i < 7 || f.name === "status" || f.name === "int_status"),
-        };
-      });
+          return {
+          ...f,
+            visible: prevVisible !== undefined ? prevVisible : (i < 7 || f.name === "status" || f.name === "int_status"),
+          };
+        });
     });
   }, [filters]);
 

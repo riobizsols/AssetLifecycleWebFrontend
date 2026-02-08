@@ -56,7 +56,7 @@ export default function Header() {
     },
     "/scrap-assets": {
       title: t('scrapAssets.title'),
-      subtitle: t('scrapAssets.subtitle'),
+      subtitle: "",
     },
 
     "/scrap-assets/nearing-expiry": {
