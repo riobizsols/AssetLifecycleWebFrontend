@@ -5,6 +5,7 @@ import CustomTable from "../components/CustomTable";
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
 import { useNavigation } from "../hooks/useNavigation";
+import { toast } from "react-hot-toast";
 
 const ReportsBreakdown = () => {
   const navigate = useNavigate();
@@ -44,32 +45,82 @@ const ReportsBreakdown = () => {
     navigate("/edit-breakdown", { state: { breakdown } });
   };
 
+  const fetchBreakdowns = async () => {
+    setIsLoading(true);
+    try {
+      const res = await API.get("/reportbreakdown/reports");
+      const raw = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data)
+        ? res.data
+        : [];
+      const formatted = raw.map((b) => ({
+        ...b,
+        created_on: b.created_at
+          ? new Date(b.created_at).toLocaleString()
+          : "",
+      }));
+      setData(formatted);
+    } catch (err) {
+      console.error("Failed to fetch breakdowns", err);
+      toast.error("Failed to fetch breakdown reports");
+      setData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchBreakdowns = async () => {
-      setIsLoading(true);
-      try {
-        const res = await API.get("/reportbreakdown/reports");
-        const raw = Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-          ? res.data
-          : [];
-        const formatted = raw.map((b) => ({
-          ...b,
-          created_on: b.created_at
-            ? new Date(b.created_at).toLocaleString()
-            : "",
-        }));
-        setData(formatted);
-      } catch (err) {
-        console.error("Failed to fetch breakdowns", err);
-        setData([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchBreakdowns();
   }, []);
+
+  const handleDeleteSelected = async () => {
+    if (!hasDeleteAccess) {
+      toast.error("You don't have permission to delete breakdown reports");
+      return false;
+    }
+
+    if (selectedRows.length === 0) {
+      toast.error("Please select breakdown reports to delete");
+      return false;
+    }
+
+    try {
+      const deletePromises = selectedRows.map(abrId => 
+        API.delete(`/reportbreakdown/${abrId}`)
+      );
+      
+      const results = await Promise.allSettled(deletePromises);
+      
+      const successCount = results.filter(r => r.status === 'fulfilled' && r.value.data?.success).length;
+      const failureCount = results.length - successCount;
+      
+      if (successCount > 0) {
+        toast.success(`Successfully deleted ${successCount} breakdown report(s)`);
+        setSelectedRows([]);
+        await fetchBreakdowns(); // Refresh the data
+      }
+      
+      if (failureCount > 0) {
+        const failedResults = results.filter(r => r.status === 'rejected' || !r.value.data?.success);
+        const errorMessages = failedResults.map(r => {
+          if (r.status === 'rejected') {
+            return r.reason?.response?.data?.details || r.reason?.message || 'Unknown error';
+          }
+          return r.value.data?.details || r.value.data?.error || 'Failed to delete';
+        });
+        
+        toast.error(`Failed to delete ${failureCount} report(s): ${errorMessages[0]}`);
+      }
+      
+      return successCount > 0;
+    } catch (err) {
+      console.error("Error deleting breakdown reports:", err);
+      const errorMessage = err.response?.data?.details || err.response?.data?.error || err.message || "Failed to delete breakdown reports";
+      toast.error(errorMessage);
+      return false;
+    }
+  };
 
   const handleSort = (column) => {
     setSortConfig((prevConfig) => {
@@ -155,6 +206,7 @@ const ReportsBreakdown = () => {
         showActions={true}
         isReadOnly={isReadOnly}
         onAdd={hasEditAccess ? () => navigate("/breakdown-selection") : null}
+        onDeleteSelected={handleDeleteSelected}
       >
         {({ visibleColumns }) => {
           const filtered = filterData(data, filterValues, visibleColumns);
