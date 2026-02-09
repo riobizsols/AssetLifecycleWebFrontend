@@ -8,6 +8,7 @@ import { useNavigation } from "../hooks/useNavigation";
 import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import ReopenModal from "../components/reportbreakdown/ReopenModal";
+import ConfirmBreakdownModal from "../components/reportbreakdown/ConfirmBreakdownModal";
 import { Check, RefreshCw, Pencil } from "lucide-react";
 
 const ReportsBreakdown2 = () => {
@@ -25,7 +26,9 @@ const ReportsBreakdown2 = () => {
   });
 
   const [showReopenModal, setShowReopenModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedConfirmReport, setSelectedConfirmReport] = useState(null);
 
   // Access control
   const { canEdit, canDelete, getAccessLevel } = useNavigation();
@@ -94,8 +97,7 @@ const ReportsBreakdown2 = () => {
     fetchBreakdowns();
   }, [user]);
 
-  const handleConfirmAction = async (abr_id) => {
-    if (!window.confirm("Confirm this breakdown as resolved?")) return;
+  const processConfirmAction = async (abr_id) => {
     try {
       // Trigger API call
       await API.post(`/reportbreakdown/${abr_id}/confirm`);
@@ -107,10 +109,14 @@ const ReportsBreakdown2 = () => {
         )
       );
       
-      alert("Breakdown confirmed successfully");
+      // Optional: Since we use custom modal, we can use a more subtle notification or keep alert for now
+      // alert("Breakdown confirmed successfully");
     } catch (err) {
       console.error("Failed to confirm breakdown", err);
       alert("Error confirming breakdown: " + (err.response?.data?.error || err.message));
+    } finally {
+      setShowConfirmModal(false);
+      setSelectedConfirmReport(null);
     }
   };
 
@@ -261,7 +267,8 @@ const ReportsBreakdown2 = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleConfirmAction(row.abr_id);
+                            setSelectedConfirmReport(row);
+                            setShowConfirmModal(true);
                           }}
                           className="text-green-600 hover:text-green-800"
                           title="Confirm Completion"
@@ -305,6 +312,15 @@ const ReportsBreakdown2 = () => {
                   setSelectedReport(null);
                 }}
                 onConfirm={handleReopenSubmit}
+              />
+              <ConfirmBreakdownModal
+                show={showConfirmModal}
+                report={selectedConfirmReport}
+                onClose={() => {
+                  setShowConfirmModal(false);
+                  setSelectedConfirmReport(null);
+                }}
+                onConfirm={processConfirmAction}
               />
             </>
           );
