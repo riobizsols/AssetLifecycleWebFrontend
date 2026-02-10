@@ -55,7 +55,9 @@ const MaintenanceApprovalDetail = () => {
           try {
             const date = new Date(dateString);
             if (isNaN(date.getTime())) return ''; // Invalid date
-            return date.toLocaleDateString();
+            // If it's a date-only string (length 10 like '2023-10-01'), keep it as a date
+            if (dateString.length <= 10) return date.toLocaleDateString();
+            return date.toLocaleString();
           } catch (err) {
             console.error('Error formatting date:', err);
             return '';

@@ -98,7 +98,9 @@ export default function MaintSupervisorApproval() {
     technician_name: "",
     technician_email: "",
     technician_phno: "",
-    cost: ""
+    cost: "",
+    hours_spent: "",
+    maint_notes: ""
   });
 
   // Validation state for each field
@@ -109,7 +111,9 @@ export default function MaintSupervisorApproval() {
     technician_name: false,
     technician_email: false,
     technician_phno: false,
-    cost: false
+    cost: false,
+    hours_spent: false,
+    maint_notes: false
   });
 
   useEffect(() => {
@@ -181,7 +185,9 @@ export default function MaintSupervisorApproval() {
           technician_name: res.data.data.technician_name || "",
           technician_email: res.data.data.technician_email || "",
           technician_phno: res.data.data.technician_phno || "",
-          cost: res.data.data.cost || ""
+          cost: res.data.data.cost || "",
+          hours_spent: res.data.data.hours_spent || "",
+          maint_notes: res.data.data.maint_notes || ""
         });
       } else {
         toast.error(res.data.message || t('maintenanceSupervisor.failedToFetchMaintenanceData'));
@@ -1164,6 +1170,18 @@ export default function MaintSupervisorApproval() {
         hasErrors = true;
       }
     }
+
+    // Time Tracking Validation
+    const hoursSpent = parseFloat(formData.hours_spent || 0);
+    const hoursRequired = parseFloat(maintenanceData?.hours_required || 0);
+    
+    // Check if delayed
+    if (hoursSpent > hoursRequired && hoursRequired > 0) {
+      if (!formData.maint_notes || formData.maint_notes.trim() === '') {
+        errors.maint_notes = true;
+        hasErrors = true;
+      }
+    }
     
     // Set validation errors
     setValidationErrors(errors);
@@ -1177,7 +1195,8 @@ export default function MaintSupervisorApproval() {
       // Prepare update data
       const updateData = {
         ...formData,
-        cost: formData.cost ? parseFloat(formData.cost) : null
+        cost: formData.cost ? parseFloat(formData.cost) : null,
+        hours_spent: formData.hours_spent ? parseFloat(formData.hours_spent) : null
       };
       
       // For subscription renewal, status represents payment status:
@@ -2247,6 +2266,49 @@ export default function MaintSupervisorApproval() {
                   <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.invoiceIsRequired')}</p>
                 )}
               </div>
+            </div>
+
+            {/* Time Tracking Section */}
+            <div className="p-4 bg-blue-50 rounded-md border border-blue-100">
+               <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.actualHoursSpent')} <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    name="hours_spent"
+                    value={formData.hours_spent}
+                    onChange={handleInputChange}
+                    disabled={isReadOnly}
+                    step="0.1"
+                    min="0"
+                    placeholder={t('maintenanceSupervisor.enterHours')}
+                    className={`w-full px-3 py-2 border ${validationErrors.hours_spent ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  />
+                   {validationErrors.hours_spent && (
+                    <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.hoursSpentIsRequired')}</p>
+                  )}
+               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {parseFloat(formData.hours_spent || 0) > parseFloat(maintenanceData?.hours_required || 0) && parseFloat(maintenanceData?.hours_required || 0) > 0 
+                  ? <span className="text-red-700 font-bold flex items-center gap-1">{t('maintenanceSupervisor.reasonForDelay')} <span className="text-red-500">*</span></span>
+                  : t('maintenanceSupervisor.maintenanceNotesOptional')}
+              </label>
+              <textarea
+                name="maint_notes"
+                value={formData.maint_notes}
+                onChange={handleInputChange}
+                rows={3}
+                disabled={isReadOnly}
+                className={`w-full px-3 py-2 border ${validationErrors.maint_notes ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                placeholder={parseFloat(formData.hours_spent || 0) > parseFloat(maintenanceData?.hours_required || 0) && parseFloat(maintenanceData?.hours_required || 0) > 0 
+                  ? t('maintenanceSupervisor.explainWhyLonger') 
+                  : t('maintenanceSupervisor.enterMaintRemarks')}
+              />
+              {validationErrors.maint_notes && (
+                <p className="mt-1 text-sm text-red-600 font-medium italic">{t('maintenanceSupervisor.maintNotesMandatoryDelay')}</p>
+              )}
             </div>
 
             <div>
