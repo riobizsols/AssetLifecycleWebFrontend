@@ -16,6 +16,7 @@ const CreateMaintenanceFrequency = () => {
   
   // Form state
   const [selectedAssetType, setSelectedAssetType] = useState('');
+  const [isRecurring, setIsRecurring] = useState(true); // New state for recurring/on-demand
   const [frequency, setFrequency] = useState('');
   const [uom, setUom] = useState('');
   const [text, setText] = useState('');
@@ -129,14 +130,17 @@ const CreateMaintenanceFrequency = () => {
       return;
     }
 
-    if (!frequency || isNaN(frequency) || parseFloat(frequency) <= 0) {
-      toast.error('Please enter a valid frequency');
-      return;
-    }
+    // Validation only for recurring maintenance
+    if (isRecurring) {
+      if (!frequency || isNaN(frequency) || parseFloat(frequency) <= 0) {
+        toast.error('Please enter a valid frequency');
+        return;
+      }
 
-    if (!uom) {
-      toast.error('Please select Unit of Measure (UOM)');
-      return;
+      if (!uom) {
+        toast.error('Please select Unit of Measure (UOM)');
+        return;
+      }
     }
 
     if (!selectedMaintenanceType) {
@@ -146,23 +150,28 @@ const CreateMaintenanceFrequency = () => {
 
     setIsSubmitting(true);
     try {
-      console.log('Submitting maintenance frequency with data:', {
+      const requestData = {
         asset_type_id: selectedAssetType,
-        frequency: parseFloat(frequency),
-        uom: uom,
-        text: text.trim() || `${frequency} ${uom}`,
+        is_recurring: isRecurring,
         maintained_by: maintainedBy,
         maint_type_id: selectedMaintenanceType
-      });
+      };
+
+      // Only include frequency, uom, and text for recurring maintenance
+      if (isRecurring) {
+        requestData.frequency = parseFloat(frequency);
+        requestData.uom = uom;
+        requestData.text = text.trim() || `${frequency} ${uom}`;
+      } else {
+        // For on-demand, set these to null or empty
+        requestData.frequency = null;
+        requestData.uom = null;
+        requestData.text = 'On Demand';
+      }
+
+      console.log('Submitting maintenance frequency with data:', requestData);
       
-      const res = await API.post('/maintenance-frequencies', {
-        asset_type_id: selectedAssetType,
-        frequency: parseFloat(frequency),
-        uom: uom,
-        text: text.trim() || `${frequency} ${uom}`,
-        maintained_by: maintainedBy,
-        maint_type_id: selectedMaintenanceType
-      });
+      const res = await API.post('/maintenance-frequencies', requestData);
 
       if (res.data && res.data.success) {
         toast.success('Maintenance frequency created successfully');
@@ -227,9 +236,49 @@ const CreateMaintenanceFrequency = () => {
                   </select>
                 </div>
 
+                {/* Recurring / On-Demand Selection */}
+                {selectedAssetType && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maintenance Type <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex gap-4 mt-2">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="maintenanceScheduleType"
+                          value="recurring"
+                          checked={isRecurring === true}
+                          onChange={() => setIsRecurring(true)}
+                          className="mr-2 w-4 h-4 text-[#0E2F4B] focus:ring-[#0E2F4B]"
+                          required
+                        />
+                        <span className="font-medium">Recurring</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="maintenanceScheduleType"
+                          value="ondemand"
+                          checked={isRecurring === false}
+                          onChange={() => setIsRecurring(false)}
+                          className="mr-2 w-4 h-4 text-[#0E2F4B] focus:ring-[#0E2F4B]"
+                          required
+                        />
+                        <span className="font-medium">On Demand</span>
+                      </label>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {isRecurring 
+                        ? 'Recurring maintenance requires frequency and UOM' 
+                        : 'On-demand maintenance does not require frequency configuration'}
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Frequency <span className="text-red-500">*</span>
+                    Frequency {isRecurring && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="number"
@@ -237,23 +286,29 @@ const CreateMaintenanceFrequency = () => {
                     step="0.01"
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value)}
-                    placeholder="Enter frequency (e.g., 30, 90, 180)"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
-                    required
+                    placeholder={isRecurring ? "Enter frequency (e.g., 30, 90, 180)" : "Not required for on-demand"}
+                    className={`w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent ${
+                      !isRecurring ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
+                    required={isRecurring}
+                    disabled={!isRecurring}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Unit of Measure (UOM) <span className="text-red-500">*</span>
+                    Unit of Measure (UOM) {isRecurring && <span className="text-red-500">*</span>}
                   </label>
                   <select
                     value={uom}
                     onChange={(e) => setUom(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
-                    required
+                    className={`w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent ${
+                      !isRecurring ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
+                    required={isRecurring}
+                    disabled={!isRecurring}
                   >
-                    <option value="">-- Select UOM --</option>
+                    <option value="">{isRecurring ? "-- Select UOM --" : "Not required for on-demand"}</option>
                     {uomOptions.map((option) => (
                       <option key={option.id} value={option.id}>
                         {option.text}
@@ -270,10 +325,17 @@ const CreateMaintenanceFrequency = () => {
                     type="text"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="Enter description (e.g., Quarterly, Monthly)"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                    placeholder={isRecurring ? "Enter description (e.g., Quarterly, Monthly)" : "Will be set as 'On Demand'"}
+                    className={`w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent ${
+                      !isRecurring ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
+                    disabled={!isRecurring}
                   />
-                  <p className="mt-1 text-xs text-gray-500">Leave empty to auto-generate from frequency and UOM</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {isRecurring 
+                      ? 'Leave empty to auto-generate from frequency and UOM'
+                      : 'Will automatically be set to "On Demand"'}
+                  </p>
                 </div>
 
                 <div>
@@ -310,7 +372,7 @@ const CreateMaintenanceFrequency = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Maintenance Type <span className="text-red-500">*</span>
+                    Maintenance Category <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={selectedMaintenanceType}
@@ -318,7 +380,7 @@ const CreateMaintenanceFrequency = () => {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
                     required
                   >
-                    <option value="">-- Select Maintenance Type --</option>
+                    <option value="">-- Select Maintenance Category --</option>
                     {maintenanceTypes.map((mt) => (
                       <option key={mt.maint_type_id} value={mt.maint_type_id}>
                         {mt.text}
