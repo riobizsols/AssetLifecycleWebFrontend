@@ -9,7 +9,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import ReopenModal from "../components/reportbreakdown/ReopenModal";
 import ConfirmBreakdownModal from "../components/reportbreakdown/ConfirmBreakdownModal";
-import { Check, RefreshCw, Pencil } from "lucide-react";
+import { Check, RefreshCw, Pencil, MoreVertical, RotateCcw } from "lucide-react";
 
 const ReportsBreakdown2 = () => {
   const navigate = useNavigate();
@@ -30,6 +30,8 @@ const ReportsBreakdown2 = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedConfirmReport, setSelectedConfirmReport] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   // Access control
   const { canEdit, canDelete, getAccessLevel } = useNavigation();
@@ -279,46 +281,19 @@ const ReportsBreakdown2 = () => {
                 showActions={true}
                 isReadOnly={isReadOnly}
                 renderActions={(row) => {
-                  if (row.status === "CO" || row.status === "Completed") {
-                    return (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedConfirmReport(row);
-                            setShowConfirmModal(true);
-                          }}
-                          className="text-green-600 hover:text-green-800"
-                          title="Confirm Completion"
-                        >
-                          <Check size={18} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedReport(row);
-                            setShowReopenModal(true);
-                          }}
-                          className="text-orange-600 hover:text-orange-800"
-                          title="Reopen/Reject"
-                        >
-                          <RefreshCw size={18} />
-                        </button>
-                      </div>
-                    );
-                  }
-                  // For Initiated or Pending, show View Details
                   return (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(row);
-                      }}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="View Details"
-                    >
-                      <Pencil size={18} />
-                    </button>
+                    <div className="flex justify-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(row);
+                        }}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors border border-transparent hover:border-blue-200"
+                        title="View/Edit Details"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                    </div>
                   );
                 }}
               />

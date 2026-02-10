@@ -6,6 +6,9 @@ import API from "../../lib/axios";
 import EnhancedDropdown from "../ui/EnhancedDropdown";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useNavigation } from "../../hooks/useNavigation";
+import { Check, RotateCcw, MoreVertical, ChevronDown } from "lucide-react";
+import ConfirmBreakdownModal from "./ConfirmBreakdownModal";
+import ReopenModal from "./ReopenModal";
 
 const EditBreakdownReport = () => {
   const navigate = useNavigate();
@@ -31,6 +34,11 @@ const EditBreakdownReport = () => {
   const [upcomingMaintenanceDate, setUpcomingMaintenanceDate] = useState("");
   const [assetTypeDetails, setAssetTypeDetails] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // New states for Confirm/Reopen dropdown and modals
+  const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showReopenModal, setShowReopenModal] = useState(false);
 
   // Create new reason code modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -261,6 +269,35 @@ const EditBreakdownReport = () => {
     navigate("/report-breakdown");
   };
 
+  const processConfirmAction = async (abr_id) => {
+    try {
+      await API.post(`/reportbreakdown/${abr_id}/confirm`);
+      toast.success(t("breakdownDetails.breakdownConfirmedSuccessfully") || "Breakdown confirmed successfully");
+      navigate("/report-breakdown");
+    } catch (err) {
+      console.error("Failed to confirm breakdown", err);
+      toast.error(err.response?.data?.error || err.message);
+    } finally {
+      setShowConfirmModal(false);
+    }
+  };
+
+  const handleReopenSubmit = async (notes, abr_id_from_modal) => {
+    const abr_id = abr_id_from_modal || breakdown?.abr_id;
+    if (!abr_id) return;
+
+    try {
+      await API.post(`/reportbreakdown/${abr_id}/reopen`, { notes });
+      toast.success(t("breakdownDetails.breakdownReopenedSuccessfully") || "Breakdown reopened successfully!");
+      navigate("/report-breakdown");
+    } catch (err) {
+      console.error("Failed to reopen breakdown", err);
+      toast.error(err.response?.data?.error || err.message);
+    } finally {
+      setShowReopenModal(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "";
 
@@ -331,6 +368,7 @@ const EditBreakdownReport = () => {
           </h1>
           <button
             onClick={handleCancel}
+            type="button"
             className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
           >
             {t("breakdownDetails.cancel")}
@@ -516,7 +554,77 @@ const EditBreakdownReport = () => {
           )}
 
           {/* Submit Buttons */}
-          <div className="flex justify-end space-x-4 pt-6 border-t">
+          <div className="flex justify-end items-center space-x-4 pt-6 border-t">
+            {(breakdown?.status === "CO" || breakdown?.status === "Completed") && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowOptionsDropdown(!showOptionsDropdown)}
+                  className="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 flex items-center gap-2 shadow-sm transition-all"
+                >
+                  <span className="font-semibold text-sm">Actions</span>
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform duration-200 ${showOptionsDropdown ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {showOptionsDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowOptionsDropdown(false)}
+                    ></div>
+                    <div className="absolute right-0 bottom-full mb-2 w-60 bg-white border border-gray-200 rounded-lg shadow-2xl z-50 py-1 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+                      <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          Select Action
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowOptionsDropdown(false);
+                          setShowConfirmModal(true);
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm font-bold text-green-700 hover:bg-green-50 transition-colors border-b border-gray-50 last:border-0"
+                      >
+                        <div className="bg-green-100 p-1.5 rounded-md">
+                          <Check
+                            size={16}
+                            className="text-green-600"
+                            strokeWidth={3}
+                          />
+                        </div>
+                        <span className="flex-1 text-left uppercase tracking-tight">
+                          Confirm Resolution
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowOptionsDropdown(false);
+                          setShowReopenModal(true);
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <div className="bg-red-100 p-1.5 rounded-md">
+                          <RotateCcw
+                            size={16}
+                            className="text-red-600"
+                            strokeWidth={3}
+                          />
+                        </div>
+                        <span className="flex-1 text-left uppercase tracking-tight">
+                          Reopen Ticket
+                        </span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <button
               type="button"
               onClick={handleCancel}
@@ -543,6 +651,20 @@ const EditBreakdownReport = () => {
           </div>
         </form>
       </div>
+
+      {/* Confirmation & Reopen Modals */}
+      <ConfirmBreakdownModal
+        show={showConfirmModal}
+        report={breakdown}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={() => processConfirmAction(breakdown?.abr_id)}
+      />
+      <ReopenModal
+        show={showReopenModal}
+        report={breakdown}
+        onClose={() => setShowReopenModal(false)}
+        onConfirm={handleReopenSubmit}
+      />
     </div>
   );
 };
