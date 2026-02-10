@@ -29,6 +29,7 @@ const ReportsBreakdown2 = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedConfirmReport, setSelectedConfirmReport] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Access control
   const { canEdit, canDelete, getAccessLevel } = useNavigation();
@@ -109,8 +110,8 @@ const ReportsBreakdown2 = () => {
         )
       );
       
-      // Optional: Since we use custom modal, we can use a more subtle notification or keep alert for now
-      // alert("Breakdown confirmed successfully");
+      setSuccessMessage("Breakdown confirmed successfully");
+      setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error("Failed to confirm breakdown", err);
       alert("Error confirming breakdown: " + (err.response?.data?.error || err.message));
@@ -140,7 +141,8 @@ const ReportsBreakdown2 = () => {
         )
       );
       
-      alert("Breakdown reopened successfully");
+      setSuccessMessage("Breakdown reopened successfully!");
+      setTimeout(() => setSuccessMessage(""), 3000);
       setShowReopenModal(false);
       setSelectedReport(null);
     } catch (err) {
@@ -219,7 +221,23 @@ const ReportsBreakdown2 = () => {
   }));
 
   return (
-    <div className="p-4">
+    <div className="p-4 relative">
+      {/* Success Notification Banner */}
+      {successMessage && (
+        <div className="fixed top-4 right-4 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="bg-green-600 text-white px-6 py-3 rounded shadow-lg flex items-center gap-3">
+            <Check size={20} className="text-white" />
+            <span className="font-medium text-sm">{successMessage}</span>
+            <button 
+              onClick={() => setSuccessMessage("")}
+              className="ml-2 hover:bg-green-700 p-1 rounded transition-colors"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <ContentBox
         filters={filters}
         onFilterChange={handleFilterChange}
