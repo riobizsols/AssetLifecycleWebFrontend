@@ -136,10 +136,14 @@ const ReportsBreakdown2 = () => {
     try {
       await API.post(`/reportbreakdown/${abr_id}/reopen`, { notes });
       
-      // Immediate UI Refresh: Update local state
+      // Immediate UI Refresh: Update local state to 'Reopened'
       setData(prevData => 
         prevData.map(item => 
-          item.abr_id === abr_id ? { ...item, status: 'IN' } : item
+          item.abr_id === abr_id ? { 
+            ...item, 
+            status: 'Reopened',
+            description: item.description + ` [Reopened: ${notes}]`
+          } : item
         )
       );
       

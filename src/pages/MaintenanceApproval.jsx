@@ -77,7 +77,13 @@ const MaintenanceApprovalDetail = () => {
                         'text-gray-600'
         };
       });
-      setData(formattedData);
+      // Sort by most recent first (descending order by maintenance_created_on or maintenance_changed_on)
+      const sortedData = formattedData.sort((a, b) => {
+        const dateA = new Date(a.maintenance_changed_on || a.maintenance_created_on || 0);
+        const dateB = new Date(b.maintenance_changed_on || b.maintenance_created_on || 0);
+        return dateB - dateA; // Descending order (newest first)
+      });
+      setData(sortedData);
     } catch (err) {
       console.error("Failed to fetch maintenance approvals", err);
       toast.error(t('maintenanceApproval.failedToFetchMaintenanceApprovals'));
