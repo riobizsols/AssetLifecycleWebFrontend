@@ -32,6 +32,8 @@ export default function Header() {
     "/report-breakdown": { title: "Report Breakdown", subtitle: "" },
     "/employee-report-breakdown": { title: "Employee Report Breakdown", subtitle: "" },
     "/dashboard": { title: t('navigation.dashboard'), subtitle: "" },
+    "/technician-certificates": { title: "Technician Certificates", subtitle: "" },
+    "/tech-cert-approvals": { title: "Technician Certificate Approvals", subtitle: "" },
     "/assets/add": { title: t('assets.addAsset'), subtitle: "" },
     "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },
     "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },

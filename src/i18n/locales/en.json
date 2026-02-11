@@ -39,7 +39,8 @@
     "assetWorkflowHistory": "Asset Workflow History",
     "breakdownHistory": "Breakdown History",
     "usageBasedAssetReport": "Usage-Based Asset Report",
-    "slaReport": "SLA Reports"
+    "slaReport": "SLA Reports",
+    "certifications": "Certifications"
   },
   "dashboard": {
     "title": "Dashboard",

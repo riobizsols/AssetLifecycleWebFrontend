@@ -94,6 +94,11 @@ const DatabaseSidebar = () => {
       'Scrap Assets': t('navigation.scrapAssets'),
       'Group Asset': t('navigation.groupAsset'),
       'Audit Logs': t('navigation.auditLogs'),
+      'Certifications': t('navigation.certifications'),
+      'Technician Certificates': 'Technician Certificates',
+      'Employee Tech Certification': 'Employee Tech Certification',
+      'Technician Certificate Approvals': 'Technician Certificate Approvals',
+      'HR/Manager Approval': 'HR/Manager Approval',
       // Report sub-items
       'Asset Lifecycle Report': t('navigation.assetLifecycleReport'),
       'Asset Lifecycle Re...': t('navigation.assetLifecycleReport'),
@@ -183,12 +188,17 @@ const DatabaseSidebar = () => {
     AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route  //done
     COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config", // Column Access Config route
     MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config", // Maintenance Configuration route
+    CERTIFICATIONS: "/certifications", // Certifications route
+    TECHCERTUPLOAD: "/technician-certificates",
+    TECHNICIANCERTIFICATES: "/technician-certificates",
     PROPERTIES: "/adminsettings/configuration/properties", // Properties route
     BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes", // Breakdown Reason Codes route
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
     SCRAPASSETS: "/scrap-assets", // Scrap Assets route  //done
+    "EMPLOYEE TECH CERTIFICATION": "/technician-certificates",
+    "HR/MANAGERAPPROVAL": "/tech-cert-approvals",
   };
 
   // Dynamic icon component
@@ -234,9 +244,14 @@ const DatabaseSidebar = () => {
       AUDITLOGS: History,
       AUDITLOGCONFIG: Settings,
       COLUMNACCESSCONFIG: Settings,
+      CERTIFICATIONS: FileText,
+      TECHCERTUPLOAD: FileText,
+      TECHNICIANCERTIFICATES: FileText,
       GROUPASSET: Package,
       SCRAPSALES: Package,
       SCRAPASSETS: Package,
+      "EMPLOYEE TECH CERTIFICATION": FileText,
+      "HR/MANAGERAPPROVAL": FileText,
     };
 
     const IconComponent = iconMap[appId] || Building;

@@ -36,7 +36,8 @@
     "maintenanceHistoryOfAsset": "Wartungsverlauf der Anlage",
     "assetValuation": "Anlagenbewertung",
     "assetWorkflowHistory": "Anlagen-Workflow-Verlauf",
-    "breakdownHistory": "Ausfallverlauf"
+    "breakdownHistory": "Ausfallverlauf",
+    "certifications": "Zertifizierungen"
   },
   "dashboard": {
     "title": "Dashboard",

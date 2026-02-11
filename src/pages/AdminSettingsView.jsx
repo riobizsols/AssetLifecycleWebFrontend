@@ -17,7 +17,8 @@ import {
   Sparkles,
   Wrench,
   Tag,
-  AlertTriangle
+  AlertTriangle,
+  FileCheck
 } from 'lucide-react';
 
 const AdminSettingsView = () => {
@@ -119,6 +120,17 @@ const AdminSettingsView = () => {
       iconColor: 'text-red-600',
       borderColor: 'border-red-200',
     },
+    {
+      app_id: 'CERTIFICATIONS',
+      label: 'Certifications',
+      description: 'Create maintenance certificates and map them to asset types',
+      icon: FileCheck,
+      route: '/certifications',
+      color: 'from-emerald-500 to-emerald-600',
+      bgColor: 'bg-emerald-50',
+      iconColor: 'text-emerald-600',
+      borderColor: 'border-emerald-200',
+    },
   ];
 
   // Use navigation items if available, otherwise use defaults (filtered by access)
@@ -142,6 +154,7 @@ const AdminSettingsView = () => {
       'MAINTENANCECONFIG': '/adminsettings/configuration/maintenance-config',
       'PROPERTIES': '/adminsettings/configuration/properties',
       'BREAKDOWNREASONCODES': '/adminsettings/configuration/breakdown-reason-codes',
+      'CERTIFICATIONS': '/certifications',
     };
     return routeMap[appId] || '#';
   };
@@ -154,6 +167,7 @@ const AdminSettingsView = () => {
       'MAINTENANCECONFIG': Wrench,
       'PROPERTIES': Tag,
       'BREAKDOWNREASONCODES': AlertTriangle,
+      'CERTIFICATIONS': FileCheck,
     };
     return iconMap[appId] || Settings;
   };
@@ -201,6 +215,13 @@ const AdminSettingsView = () => {
         icon: 'text-red-600',
         border: 'border-red-200',
         hover: 'hover:from-red-600 hover:to-red-700',
+      },
+      'CERTIFICATIONS': {
+        gradient: 'from-emerald-500 to-emerald-600',
+        bg: 'bg-emerald-50',
+        icon: 'text-emerald-600',
+        border: 'border-emerald-200',
+        hover: 'hover:from-emerald-600 hover:to-emerald-700',
       },
     };
     return colorMap[appId] || {

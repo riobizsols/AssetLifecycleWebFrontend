@@ -21,6 +21,7 @@ const CreateMaintenanceFrequency = () => {
   const [text, setText] = useState('');
   const [maintainedBy, setMaintainedBy] = useState('Self');
   const [selectedMaintenanceType, setSelectedMaintenanceType] = useState('');
+  const [maintLeadType, setMaintLeadType] = useState('');
 
   // Fetch asset types (only those with maint_required = true)
   const fetchAssetTypes = async () => {
@@ -120,6 +121,17 @@ const CreateMaintenanceFrequency = () => {
     fetchUOM();
   }, []);
 
+  useEffect(() => {
+    if (!selectedAssetType) {
+      return;
+    }
+
+    const selected = assetTypes.find((at) => at.asset_type_id === selectedAssetType);
+    if (selected?.maint_type_id) {
+      setSelectedMaintenanceType(selected.maint_type_id);
+    }
+  }, [selectedAssetType, assetTypes]);
+
   // Handle form submission
   const handleCreateFrequency = async (e) => {
     e.preventDefault();
@@ -152,7 +164,8 @@ const CreateMaintenanceFrequency = () => {
         uom: uom,
         text: text.trim() || `${frequency} ${uom}`,
         maintained_by: maintainedBy,
-        maint_type_id: selectedMaintenanceType
+        maint_type_id: selectedMaintenanceType,
+        maint_lead_type: maintLeadType.trim() || null
       });
       
       const res = await API.post('/maintenance-frequencies', {
@@ -161,7 +174,8 @@ const CreateMaintenanceFrequency = () => {
         uom: uom,
         text: text.trim() || `${frequency} ${uom}`,
         maintained_by: maintainedBy,
-        maint_type_id: selectedMaintenanceType
+        maint_type_id: selectedMaintenanceType,
+        maint_lead_type: maintLeadType.trim() || null
       });
 
       if (res.data && res.data.success) {
@@ -208,7 +222,7 @@ const CreateMaintenanceFrequency = () => {
           <div className="p-4 sm:p-6">
             <form onSubmit={handleCreateFrequency}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Asset Type <span className="text-red-500">*</span>
                   </label>
@@ -225,6 +239,38 @@ const CreateMaintenanceFrequency = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maintenance Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedMaintenanceType}
+                    onChange={(e) => setSelectedMaintenanceType(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                    required
+                  >
+                    <option value="">-- Select Maintenance Type --</option>
+                    {maintenanceTypes.map((mt) => (
+                      <option key={mt.maint_type_id} value={mt.maint_type_id}>
+                        {mt.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maintenance Lead Type
+                  </label>
+                  <input
+                    type="text"
+                    value={maintLeadType}
+                    onChange={(e) => setMaintLeadType(e.target.value)}
+                    placeholder="Enter maintenance lead type"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                  />
                 </div>
 
                 <div>
@@ -276,7 +322,7 @@ const CreateMaintenanceFrequency = () => {
                   <p className="mt-1 text-xs text-gray-500">Leave empty to auto-generate from frequency and UOM</p>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Self / Vendor Managed <span className="text-red-500">*</span>
                   </label>
@@ -291,7 +337,7 @@ const CreateMaintenanceFrequency = () => {
                         className="mr-2"
                         required
                       />
-                      <span>Self</span>
+                      <span>In-House</span>
                     </label>
                     <label className="flex items-center">
                       <input
@@ -308,24 +354,6 @@ const CreateMaintenanceFrequency = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Maintenance Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={selectedMaintenanceType}
-                    onChange={(e) => setSelectedMaintenanceType(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
-                    required
-                  >
-                    <option value="">-- Select Maintenance Type --</option>
-                    {maintenanceTypes.map((mt) => (
-                      <option key={mt.maint_type_id} value={mt.maint_type_id}>
-                        {mt.text}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
               <div className="flex gap-4 mt-6">

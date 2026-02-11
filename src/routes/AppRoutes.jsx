@@ -95,6 +95,9 @@ import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
 import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
+import Certifications from "../pages/adminSettings/Certifications";
+import TechnicianCertificates from "../pages/TechnicianCertificates";
+import TechCertApprovals from "../pages/TechCertApprovals";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -139,6 +142,26 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <Dashboard />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/technician-certificates"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TechnicianCertificates />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tech-cert-approvals"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TechCertApprovals />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -1014,6 +1037,16 @@ export default function AppRoutes() {
               <AdminSettingsLayout>
                 <MaintenanceConfiguration />
               </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/certifications"
+          element={
+            <ProtectedRoute requiredAppId="CERTIFICATIONS">
+              <MainLayout>
+                <Certifications />
+              </MainLayout>
             </ProtectedRoute>
           }
         />
