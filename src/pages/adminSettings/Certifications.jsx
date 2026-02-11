@@ -880,7 +880,7 @@ const Certifications = () => {
                       ))}
                     </select>
                   </div>
-                  <div>
+                  <div className="relative z-50">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Certificates</label>
                     <DropdownMultiSelect
                       values={selectedCertificateIds}
