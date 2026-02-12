@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
+import ChildItemsDropdown from "../components/ChildItemsDropdown";
 import { filterData } from "../utils/filterData";
 import { exportToExcel } from "../utils/exportToExcel";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -44,6 +45,7 @@ const Assets = () => {
   });
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [assetTypes, setAssetTypes] = useState([]);
   // Delete modal state removed - delete happens immediately
 
   // Initialize audit logging
@@ -93,6 +95,18 @@ const Assets = () => {
 
   useEffect(() => {
     fetchAssets();
+  }, []);
+
+  useEffect(() => {
+    const fetchAssetTypes = async () => {
+      try {
+        const res = await API.get("/asset-types");
+        setAssetTypes(Array.isArray(res.data) ? res.data : res.data?.rows || []);
+      } catch {
+        setAssetTypes([]);
+      }
+    };
+    fetchAssetTypes();
   }, []);
 
   // Prevent access to /assets/add for read-only users
@@ -353,24 +367,6 @@ const Assets = () => {
     }
   };
 
-  const renderCell = (col, row) => {
-    if (col.name === "group_name" && row.group_name && row.group_id) {
-      return (
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate(`/group-asset/edit/${row.group_id}`);
-          }}
-          className="text-blue-600 hover:text-blue-800 underline cursor-pointer font-semibold"
-        >
-          {row.group_name}
-        </a>
-      );
-    }
-    return undefined;
-  };
-
   const sortData = (data) => {
     if (!sortConfig.sorts.length) return data;
 
@@ -488,6 +484,41 @@ const Assets = () => {
             );
           }
 
+          const renderAssetCell = (col, row) => {
+            if (col.name === "description") {
+              const childAssets = data.filter((d) => d.parent_asset_id === row.asset_id);
+              const nameDisplay = row.description || row.text || "";
+
+              if (childAssets.length > 0) {
+                return (
+                  <ChildItemsDropdown
+                    childItems={childAssets}
+                    renderChildItem={(item) => item.description || item.text || item.asset_id}
+                    getChildKey={(item) => item.asset_id}
+                  >
+                    {nameDisplay}
+                  </ChildItemsDropdown>
+                );
+              }
+            }
+            // Handle group_name link
+            if (col.name === "group_name" && row.group_name && row.group_id) {
+              return (
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(`/group-asset/edit/${row.group_id}`);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 underline cursor-pointer font-semibold"
+                >
+                  {row.group_name}
+                </a>
+              );
+            }
+            return row[col.name];
+          };
+
           return (
             <>
               <CustomTable
@@ -501,8 +532,8 @@ const Assets = () => {
                 rowKey="asset_id"
                 showCheckbox={hasEditAccess || hasDeleteAccess}
                 showActions={true}
-                isReadOnly={accessLevel === 'D'}
-                renderCell={renderCell}
+                isReadOnly={accessLevel === "D"}
+                renderCell={renderAssetCell}
               />
               {updateModalOpen && (
                 <UpdateAssetModal

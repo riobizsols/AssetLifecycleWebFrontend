@@ -36,7 +36,8 @@
     "maintenanceHistoryOfAsset": "Wartungsverlauf der Anlage",
     "assetValuation": "Anlagenbewertung",
     "assetWorkflowHistory": "Anlagen-Workflow-Verlauf",
-    "breakdownHistory": "Ausfallverlauf"
+    "breakdownHistory": "Ausfallverlauf",
+    "certifications": "Zertifizierungen"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -118,6 +119,7 @@
     "assetsExportedSuccessfully": "Anlagen erfolgreich exportiert",
     "failedToExportAssets": "Fehler beim Exportieren der Anlagen",
     "addAssetFormOpened": "Anlage-Hinzufügen-Formular geöffnet",
+    "noChildAssets": "Keine Unteranlagen",
     "configuration": "Konfiguration",
     "attachments": "Anhänge",
     "purchaseDetails": "Kaufdetails",
@@ -275,6 +277,7 @@
     "assetTypesExportedSuccessfully": "Anlagentypen erfolgreich exportiert",
     "failedToExportAssetTypes": "Fehler beim Exportieren der Anlagentypen",
     "exportFailed": "Export fehlgeschlagen",
+    "noChildTypes": "Keine Unteranlagentypen",
     "typeName": "Typname",
     "typeCode": "Typcode",
     "category": "Kategorie",

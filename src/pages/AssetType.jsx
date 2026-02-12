@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
+import ChildItemsDropdown from "../components/ChildItemsDropdown";
 import { filterData } from "../utils/filterData";
 import { exportToExcel } from "../utils/exportToExcel";
 import API from "../lib/axios";
@@ -440,6 +441,46 @@ const AssetType = () => {
             );
           }
 
+          const renderAssetTypeCell = (col, row) => {
+            // Asset Type ID column: dropdown for parent types to show child asset types
+            if (col.name === "asset_type_id") {
+              const childTypes = data.filter(
+                (d) =>
+                  (d.parent_asset_type_id || d._original?.parent_asset_type_id) === row.asset_type_id
+              );
+              return (
+                <ChildItemsDropdown
+                  childItems={childTypes}
+                  renderChildItem={(item) => `${item.asset_type_id} - ${item.text || ""}`.trim()}
+                  getChildKey={(item) => item.asset_type_id}
+                  emptyMessage={t("assetTypes.noChildTypes")}
+                >
+                  {row.asset_type_id}
+                </ChildItemsDropdown>
+              );
+            }
+            // Asset Type Name column: same dropdown for consistency
+            if (col.name === "text") {
+              const childTypes = data.filter(
+                (d) =>
+                  (d.parent_asset_type_id || d._original?.parent_asset_type_id) === row.asset_type_id
+              );
+              if (childTypes.length > 0) {
+                return (
+                  <ChildItemsDropdown
+                    childItems={childTypes}
+                    renderChildItem={(item) => item.text || item.asset_type_id}
+                    getChildKey={(item) => item.asset_type_id}
+                    emptyMessage={t("assetTypes.noChildTypes")}
+                  >
+                    {row.text}
+                  </ChildItemsDropdown>
+                );
+              }
+            }
+            return row[col.name];
+          };
+
           return (
             <>
               <CustomTable
@@ -452,6 +493,7 @@ const AssetType = () => {
                 rowKey="asset_type_id"
                 showActions={true}
                 isReadOnly={isReadOnly}
+                renderCell={renderAssetTypeCell}
               />
               {updateModalOpen && (
                 <UpdateAssetTypeModal

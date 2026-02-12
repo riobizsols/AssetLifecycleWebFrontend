@@ -516,7 +516,6 @@ const CreateScrapAsset = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{t('createScrapAsset.createScrapAsset')}</h1>
-              <p className="text-sm text-gray-600">{t('createScrapAsset.selectAssetsToMarkForScrapping')}</p>
             </div>
           </div>
         </div>

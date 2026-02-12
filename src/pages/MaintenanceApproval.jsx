@@ -66,6 +66,8 @@ const MaintenanceApprovalDetail = () => {
 
         return {
           ...item,
+          raw_created_on: item.maintenance_created_on,
+          raw_changed_on: item.maintenance_changed_on,
           scheduled_date: formatDate(item.scheduled_date),
           actual_date: formatDate(item.actual_date),
           maintenance_created_on: formatDate(item.maintenance_created_on),
@@ -79,8 +81,8 @@ const MaintenanceApprovalDetail = () => {
       });
       // Sort by most recent first (descending order by maintenance_created_on or maintenance_changed_on)
       const sortedData = formattedData.sort((a, b) => {
-        const dateA = new Date(a.maintenance_changed_on || a.maintenance_created_on || 0);
-        const dateB = new Date(b.maintenance_changed_on || b.maintenance_created_on || 0);
+        const dateA = new Date(a.raw_changed_on || a.raw_created_on || 0);
+        const dateB = new Date(b.raw_changed_on || b.raw_created_on || 0);
         return dateB - dateA; // Descending order (newest first)
       });
       setData(sortedData);
