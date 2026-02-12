@@ -78,6 +78,7 @@ const DatabaseSidebar = () => {
       'Column Access Config': t('navigation.columnAccessConfig'),
       'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
+      'Cost Center Transfer': 'Cost Center Transfer',
       'Department Assignment': t('navigation.departmentAssignment'),
       'Employee Assignment': t('navigation.employeeAssignment'),
       'Workorder Management': t('navigation.workorderManagement'),
@@ -148,6 +149,7 @@ const DatabaseSidebar = () => {
     ASSETS: "/assets", //done
     ADDASSET: "/assets/add", //done
     ASSETASSIGNMENT: "/assign-department-assets",
+    COSTCENTERTRANSFER: "/cost-center-transfer",
     VENDORS: "/master-data/vendors", //done
     DEPTASSIGNMENT: "/assign-department-assets",
     EMPASSIGNMENT: "/assign-employee-assets",
@@ -208,6 +210,7 @@ const DatabaseSidebar = () => {
       ASSETS: Package,
       ADDASSET: Package,
       ASSETASSIGNMENT: Users,
+      COSTCENTERTRANSFER: GitBranch,
       DEPTASSIGNMENT: Building,
       EMPASSIGNMENT: UserCheck,
       WORKORDERMANAGEMENT: Wrench,

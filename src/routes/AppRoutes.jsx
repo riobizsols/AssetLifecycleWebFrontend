@@ -98,6 +98,7 @@ import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfigur
 import Certifications from "../pages/adminSettings/Certifications";
 import TechnicianCertificates from "../pages/TechnicianCertificates";
 import TechCertApprovals from "../pages/TechCertApprovals";
+import CostCenterTransfer from "../pages/CostCenterTransfer";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -708,6 +709,17 @@ export default function AppRoutes() {
           <Route index element={<Assets />} />
           <Route path="add" element={<AddAssetForm />} />
         </Route>
+
+        <Route
+          path="/cost-center-transfer"
+          element={
+            <ProtectedRoute requiredAppId="COSTCENTERTRANSFER" >
+              <MainLayout>
+                <CostCenterTransfer />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/master-data/asset-types"
