@@ -212,7 +212,7 @@ function Select({ value, onChange, options, placeholder = "Select" }) {
         <span className="text-slate-500">▼</span>
       </button>
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full top-full left-0 mt-0 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
             {options.map((opt) => (
               <div
@@ -270,7 +270,7 @@ function DropdownMultiSelect({ values = [], onChange, options, placeholder = "Se
         <span className="text-slate-500">▼</span>
       </button>
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full top-full left-0 mt-0 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
           <div className="p-2 border-b border-slate-200">
             <input
               type="text"
