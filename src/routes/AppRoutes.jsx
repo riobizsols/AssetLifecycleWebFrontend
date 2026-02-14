@@ -96,6 +96,7 @@ import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
 import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
 import Certifications from "../pages/adminSettings/Certifications";
+import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
 import TechnicianCertificates from "../pages/TechnicianCertificates";
 import TechCertApprovals from "../pages/TechCertApprovals";
 import CostCenterTransfer from "../pages/CostCenterTransfer";
@@ -1049,6 +1050,16 @@ export default function AppRoutes() {
               <AdminSettingsLayout>
                 <MaintenanceConfiguration />
               </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/inspection-checklists"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONCHECKLISTS">
+              <MainLayout>
+                <InspectionChecklists />
+              </MainLayout>
             </ProtectedRoute>
           }
         />

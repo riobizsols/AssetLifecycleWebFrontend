@@ -151,6 +151,7 @@ const DatabaseSidebar = () => {
     ASSETASSIGNMENT: "/assign-department-assets",
     COSTCENTERTRANSFER: "/cost-center-transfer",
     VENDORS: "/master-data/vendors", //done
+    INSPECTIONCHECKLISTS: "/master-data/inspection-checklists", // Master Data - Inspection Checklists
     DEPTASSIGNMENT: "/assign-department-assets",
     EMPASSIGNMENT: "/assign-employee-assets",
     WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance  //done
@@ -240,6 +241,7 @@ const DatabaseSidebar = () => {
       DEPARTMENTSASSET: Package,
       BRANCHES: Home,
       VENDORS: Truck,
+      INSPECTIONCHECKLISTS: ClipboardList,
       PRODSERV: Briefcase,
       ROLES: Shield,
       USERS: Users,
