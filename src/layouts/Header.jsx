@@ -39,6 +39,7 @@ export default function Header() {
     "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: "Product / Service", subtitle: "" },
+    "/master-data/inspection-checklists": { title: "Inspection Checklists", subtitle: "" },
     "/group-asset": { title: t('navigation.groupAsset'), subtitle: "" },
     "/group-asset/create": {
       title: t('navigation.groupAsset'),

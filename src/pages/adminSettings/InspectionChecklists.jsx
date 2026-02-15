@@ -22,7 +22,7 @@ const InspectionChecklists = () => {
   const [expectedValue, setExpectedValue] = useState("");
   const [minRange, setMinRange] = useState("");
   const [maxRange, setMaxRange] = useState("");
-  const [triggerMaintenance, setTriggerMaintenance] = useState(false);
+  const [triggerMaintenance, setTriggerMaintenance] = useState(true);
 
   // Edit fields
   const [editingId, setEditingId] = useState(null);
@@ -32,6 +32,10 @@ const InspectionChecklists = () => {
   const [editMinRange, setEditMinRange] = useState("");
   const [editMaxRange, setEditMaxRange] = useState("");
   const [editTriggerMaintenance, setEditTriggerMaintenance] = useState(false);
+
+  // Validation state
+  const [showErrors, setShowErrors] = useState(false);
+  const [showEditErrors, setShowEditErrors] = useState(false);
 
   // Helper to check if response type is Quantitative
   const isQuantitative = (id) => {
@@ -77,29 +81,24 @@ const InspectionChecklists = () => {
     setExpectedValue("");
     setMinRange("");
     setMaxRange("");
-    setTriggerMaintenance(false);
+    setTriggerMaintenance(true);
+    setShowErrors(false);
   };
 
   const handleSave = async () => {
-    if (!inspectionQuestion.trim()) {
-      toast.error("Please enter inspection question");
-      return;
-    }
+    // Check all mandatory fields first
+    const isQuestionValid = !!inspectionQuestion.trim();
+    const isResponseTypeValid = !!responseTypeId;
+    const isMinRangeValid = !isQuantitative(responseTypeId) || !!minRange;
+    const isMaxRangeValid = !isQuantitative(responseTypeId) || !!maxRange;
 
-    if (!responseTypeId) {
-      toast.error("Please select response type");
+    if (!isQuestionValid || !isResponseTypeValid || !isMinRangeValid || !isMaxRangeValid) {
+      setShowErrors(true);
+      if (!isQuestionValid) toast.error("Please enter inspection question");
+      else if (!isResponseTypeValid) toast.error("Please select response type");
+      else if (!isMinRangeValid) toast.error("Min Range is mandatory for Quantitative response types");
+      else if (!isMaxRangeValid) toast.error("Max Range is mandatory for Quantitative response types");
       return;
-    }
-
-    if (isQuantitative(responseTypeId)) {
-      if (!minRange) {
-        toast.error("Min Range is mandatory for Quantitative response types");
-        return;
-      }
-      if (!maxRange) {
-        toast.error("Max Range is mandatory for Quantitative response types");
-        return;
-      }
     }
 
     setIsCreating(true);
@@ -136,28 +135,25 @@ const InspectionChecklists = () => {
 
   const cancelEdit = () => {
     setEditingId(null);
+    setShowEditErrors(false);
   };
 
   const handleUpdate = async () => {
-    if (!editQuestion.trim()) {
-      toast.error("Please enter inspection question");
-      return;
-    }
+    const isQuantitativeCheck = isQuantitative(editResponseTypeId);
+    const isQuestionValid = !!editQuestion.trim();
+    const isResponseTypeValid = !!editResponseTypeId;
+    const isExpectedValueValid = isQuantitativeCheck || !!editExpectedValue.trim();
+    const isMinRangeValid = !isQuantitativeCheck || (editMinRange !== null && editMinRange !== "");
+    const isMaxRangeValid = !isQuantitativeCheck || (editMaxRange !== null && editMaxRange !== "");
 
-    if (!editResponseTypeId) {
-      toast.error("Please select response type");
+    if (!isQuestionValid || !isResponseTypeValid || !isExpectedValueValid || !isMinRangeValid || !isMaxRangeValid) {
+      setShowEditErrors(true);
+      if (!isQuestionValid) toast.error("Please enter inspection question");
+      else if (!isResponseTypeValid) toast.error("Please select response type");
+      else if (!isExpectedValueValid) toast.error("Expected Value is mandatory for Qualitative response types");
+      else if (!isMinRangeValid) toast.error("Min Range is mandatory for Quantitative response types");
+      else if (!isMaxRangeValid) toast.error("Max Range is mandatory for Quantitative response types");
       return;
-    }
-
-    if (isQuantitative(editResponseTypeId)) {
-      if (!editMinRange) {
-        toast.error("Min Range is mandatory for Quantitative response types");
-        return;
-      }
-      if (!editMaxRange) {
-        toast.error("Max Range is mandatory for Quantitative response types");
-        return;
-      }
     }
 
     setIsUpdating(true);
@@ -165,9 +161,9 @@ const InspectionChecklists = () => {
       await API.put(`/inspection-checklists/${editingId}`, {
         inspection_question: editQuestion,
         irtd_id: editResponseTypeId,
-        expected_value: editExpectedValue || null,
-        min_range: editMinRange || null,
-        max_range: editMaxRange || null,
+        expected_value: isQuantitativeCheck ? null : editExpectedValue,
+        min_range: isQuantitativeCheck ? editMinRange : null,
+        max_range: isQuantitativeCheck ? editMaxRange : null,
         trigger_maintenance: editTriggerMaintenance
       });
 
@@ -239,8 +235,6 @@ const InspectionChecklists = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Inspection Checklists</h1>
-
         {/* Form */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Create New Inspection Checklist</h2>
@@ -253,7 +247,11 @@ const InspectionChecklists = () => {
                 value={inspectionQuestion}
                 onChange={(e) => setInspectionQuestion(e.target.value)}
                 placeholder="Enter inspection question"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                  showErrors && !inspectionQuestion.trim()
+                    ? "border-red-500 focus:ring-red-500/40"
+                    : "border-gray-300 focus:ring-[#0E2F4B]/40"
+                }`}
               />
             </div>
 
@@ -270,7 +268,11 @@ const InspectionChecklists = () => {
                     setMaxRange("");
                   }
                 }}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                  showErrors && !responseTypeId
+                    ? "border-red-500 focus:ring-red-500/40"
+                    : "border-gray-300 focus:ring-[#0E2F4B]/40"
+                }`}
               >
                 <option value="">Select response type</option>
                 {responseTypes.map((type) => (
@@ -281,40 +283,54 @@ const InspectionChecklists = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Expected Value</label>
-              <input
-                type="text"
-                value={expectedValue}
-                onChange={(e) => setExpectedValue(e.target.value)}
-                placeholder="Enter expected value"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
-              />
-            </div>
+            {!isQuantitative(responseTypeId) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expected Value</label>
+                <input
+                  type="text"
+                  value={expectedValue}
+                  onChange={(e) => setExpectedValue(e.target.value)}
+                  placeholder="Enter expected value"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                />
+              </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Min Range {isQuantitative(responseTypeId) && "*"}</label>
-              <input
-                type="number"
-                value={minRange}
-                onChange={(e) => setMinRange(e.target.value)}
-                placeholder={isQuantitative(responseTypeId) ? "Enter minimum range" : "N/A"}
-                disabled={!isQuantitative(responseTypeId)}
-                className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40 ${!isQuantitative(responseTypeId) ? "bg-gray-100 cursor-not-allowed" : ""}`}
-              />
-            </div>
+            {isQuantitative(responseTypeId) && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Range {isQuantitative(responseTypeId) && "*"}</label>
+                  <input
+                    type="number"
+                    value={minRange}
+                    onChange={(e) => setMinRange(e.target.value)}
+                    placeholder={isQuantitative(responseTypeId) ? "Enter minimum range" : "N/A"}
+                    disabled={!isQuantitative(responseTypeId)}
+                    className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                      showErrors && isQuantitative(responseTypeId) && !minRange
+                        ? "border-red-500 focus:ring-red-500/40"
+                        : "border-gray-300 focus:ring-[#0E2F4B]/40"
+                    } ${!isQuantitative(responseTypeId) ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                  />
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Max Range {isQuantitative(responseTypeId) && "*"}</label>
-              <input
-                type="number"
-                value={maxRange}
-                onChange={(e) => setMaxRange(e.target.value)}
-                placeholder={isQuantitative(responseTypeId) ? "Enter maximum range" : "N/A"}
-                disabled={!isQuantitative(responseTypeId)}
-                className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40 ${!isQuantitative(responseTypeId) ? "bg-gray-100 cursor-not-allowed" : ""}`}
-              />
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Range {isQuantitative(responseTypeId) && "*"}</label>
+                  <input
+                    type="number"
+                    value={maxRange}
+                    onChange={(e) => setMaxRange(e.target.value)}
+                    placeholder={isQuantitative(responseTypeId) ? "Enter maximum range" : "N/A"}
+                    disabled={!isQuantitative(responseTypeId)}
+                    className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                      showErrors && isQuantitative(responseTypeId) && !maxRange
+                        ? "border-red-500 focus:ring-red-500/40"
+                        : "border-gray-300 focus:ring-[#0E2F4B]/40"
+                    } ${!isQuantitative(responseTypeId) ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="flex items-end">
               <label className={`flex items-center gap-2 mb-2 p-2 rounded cursor-pointer transition-colors ${triggerMaintenance ? 'bg-red-50' : 'bg-gray-50'}`}>
@@ -479,7 +495,11 @@ const InspectionChecklists = () => {
                               type="text"
                               value={editQuestion}
                               onChange={(e) => setEditQuestion(e.target.value)}
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:ring-[#0E2F4B]/40 focus:outline-none"
+                              className={`w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+                                showEditErrors && !editQuestion.trim()
+                                  ? "border-red-500 focus:ring-red-500/40"
+                                  : "border-gray-300 focus:ring-[#0E2F4B]/40"
+                              }`}
                             />
                           </td>
                           <td className="px-4 py-3">
@@ -493,7 +513,11 @@ const InspectionChecklists = () => {
                                   setEditMaxRange("");
                                 }
                               }}
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:ring-[#0E2F4B]/40 focus:outline-none"
+                              className={`w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+                                showEditErrors && !editResponseTypeId
+                                  ? "border-red-500 focus:ring-red-500/40"
+                                  : "border-gray-300 focus:ring-[#0E2F4B]/40"
+                              }`}
                             >
                               <option value="">Select type</option>
                               {responseTypes.map((type) => (
@@ -503,33 +527,53 @@ const InspectionChecklists = () => {
                               ))}
                             </select>
                           </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="text"
-                              value={editExpectedValue}
-                              onChange={(e) => setEditExpectedValue(e.target.value)}
-                              className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:ring-[#0E2F4B]/40 focus:outline-none"
-                            />
+                          <td className="px-4 py-3 text-center">
+                            {!isQuantitative(editResponseTypeId) ? (
+                              <input
+                                type="text"
+                                value={editExpectedValue}
+                                onChange={(e) => setEditExpectedValue(e.target.value)}
+                                className={`w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+                                  showEditErrors && !editExpectedValue.trim()
+                                    ? "border-red-500 focus:ring-red-500/40"
+                                    : "border-gray-300 focus:ring-[#0E2F4B]/40"
+                                }`}
+                              />
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
                           </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              value={editMinRange}
-                              onChange={(e) => setEditMinRange(e.target.value)}
-                              disabled={!isQuantitative(editResponseTypeId)}
-                              placeholder={isQuantitative(editResponseTypeId) ? "" : "N/A"}
-                              className={`w-full rounded-md border border-gray-300 px-2 py-1 text-sm ${!isQuantitative(editResponseTypeId) ? "bg-gray-100 cursor-not-allowed" : "focus:ring-[#0E2F4B]/40 focus:outline-none"}`}
-                            />
+                          <td className="px-4 py-3 text-center">
+                            {isQuantitative(editResponseTypeId) ? (
+                              <input
+                                type="number"
+                                value={editMinRange}
+                                onChange={(e) => setEditMinRange(e.target.value)}
+                                className={`w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+                                  showEditErrors && !editMinRange
+                                    ? "border-red-500 focus:ring-red-500/40"
+                                    : "border-gray-300 focus:ring-[#0E2F4B]/40"
+                                }`}
+                              />
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
                           </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              value={editMaxRange}
-                              onChange={(e) => setEditMaxRange(e.target.value)}
-                              disabled={!isQuantitative(editResponseTypeId)}
-                              placeholder={isQuantitative(editResponseTypeId) ? "" : "N/A"}
-                              className={`w-full rounded-md border border-gray-300 px-2 py-1 text-sm ${!isQuantitative(editResponseTypeId) ? "bg-gray-100 cursor-not-allowed" : "focus:ring-[#0E2F4B]/40 focus:outline-none"}`}
-                            />
+                          <td className="px-4 py-3 text-center">
+                            {isQuantitative(editResponseTypeId) ? (
+                              <input
+                                type="number"
+                                value={editMaxRange}
+                                onChange={(e) => setEditMaxRange(e.target.value)}
+                                className={`w-full rounded-md border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+                                  showEditErrors && !editMaxRange
+                                    ? "border-red-500 focus:ring-red-500/40"
+                                    : "border-gray-300 focus:ring-[#0E2F4B]/40"
+                                }`}
+                              />
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-center">
                             <input
@@ -561,9 +605,27 @@ const InspectionChecklists = () => {
                         <>
                           <td className="px-4 py-3 text-gray-900">{checklist.inspection_question}</td>
                           <td className="px-4 py-3 text-gray-700">{checklist.res_type_name}</td>
-                          <td className="px-4 py-3 text-gray-700">{checklist.expected_value || "-"}</td>
-                          <td className="px-4 py-3 text-gray-700">{checklist.min_range || "-"}</td>
-                          <td className="px-4 py-3 text-gray-700">{checklist.max_range || "-"}</td>
+                          <td className="px-4 py-3 text-center text-gray-700">
+                            {isQuantitative(checklist.irtd_id) ? (
+                              <span className="text-gray-400">N/A</span>
+                            ) : (
+                              checklist.expected_value || "-"
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center text-gray-700">
+                            {isQuantitative(checklist.irtd_id) ? (
+                              checklist.min_range || "-"
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center text-gray-700">
+                            {isQuantitative(checklist.irtd_id) ? (
+                              checklist.max_range || "-"
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 text-center">
                             <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                               checklist.trigger_maintenance 
