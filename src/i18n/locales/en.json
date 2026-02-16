@@ -311,7 +311,7 @@
     "selectMaintenanceType": "Select Maint Type",
     "selectMaintenanceTypeOption": "Select maintenance type",
     "maintenanceLeadType": "Maintenance Lead Time",
-    "enterMaintenanceLeadType": "Enter maintenance lead type",
+    "enterMaintenanceLeadType": "Enter maintenance lead time",
     "maintenanceFrequency": "Maintenance Frequency",
     "enterMaintenanceFrequency": "Enter frequency (e.g., 30, 90, 180)",
     "unitOfMeasure": "Unit Of Measure (UOM)",
