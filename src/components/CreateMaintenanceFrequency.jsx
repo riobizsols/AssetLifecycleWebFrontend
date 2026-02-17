@@ -308,13 +308,13 @@ const CreateMaintenanceFrequency = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Maintenance Lead Type
+                    Maintenance Lead Time
                   </label>
                   <input
                     type="text"
                     value={maintLeadType}
                     onChange={(e) => setMaintLeadType(e.target.value)}
-                    placeholder="Enter maintenance lead type"
+                    placeholder="Enter maintenance lead time"
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
                   />
                 </div>
