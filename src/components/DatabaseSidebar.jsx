@@ -91,6 +91,9 @@ const DatabaseSidebar = () => {
       'Reports': t('navigation.reports'),
       'Admin Settings': t('navigation.adminSettings'),
       'Master Data': t('navigation.masterData'),
+      'Asset Type - Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
+      'Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
+      'Inspection Frequency': 'Inspection Frequency',
       'Scrap Sales': t('navigation.scrapSales'),
       'Scrap Assets': t('navigation.scrapAssets'),
       'Group Asset': t('navigation.groupAsset'),
@@ -151,7 +154,9 @@ const DatabaseSidebar = () => {
     ASSETASSIGNMENT: "/assign-department-assets",
     COSTCENTERTRANSFER: "/cost-center-transfer",
     VENDORS: "/master-data/vendors", //done
-    INSPECTIONCHECKLISTS: "/master-data/inspection-checklists", // Master Data - Inspection Checklists
+    INSPECTIONCHECKLISTS: "/master-data/inspection-checklists",
+    INSPECTIONFREQUENCY: "/master-data/inspection-frequency",
+    ASSETTYPECHECKLISTMAPPING: "/master-data/asset-type-checklist-mapping",
     DEPTASSIGNMENT: "/assign-department-assets",
     EMPASSIGNMENT: "/assign-employee-assets",
     WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance  //done

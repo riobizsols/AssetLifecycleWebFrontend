@@ -97,6 +97,9 @@ import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
 import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
 import Certifications from "../pages/adminSettings/Certifications";
 import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
+import AssetTypeChecklistMapping from "../pages/masterData/AssetTypeChecklistMapping";
+import InspectionFrequency from "../pages/masterData/InspectionFrequency";
+import CreateInspectionFrequency from "../components/CreateInspectionFrequency";
 import TechnicianCertificates from "../pages/TechnicianCertificates";
 import TechCertApprovals from "../pages/TechCertApprovals";
 import CostCenterTransfer from "../pages/CostCenterTransfer";
@@ -1059,6 +1062,36 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="INSPECTIONCHECKLISTS">
               <MainLayout>
                 <InspectionChecklists />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/asset-type-checklist-mapping"
+          element={
+            <ProtectedRoute requiredAppId="ASSETTYPECHECKLISTMAPPING">
+              <MainLayout>
+                <AssetTypeChecklistMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/inspection-frequency"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONFREQUENCY">
+              <MainLayout>
+                <InspectionFrequency />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/inspection-frequency/create"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONFREQUENCY">
+              <MainLayout>
+                <CreateInspectionFrequency />
               </MainLayout>
             </ProtectedRoute>
           }

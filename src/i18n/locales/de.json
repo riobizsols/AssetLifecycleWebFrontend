@@ -27,6 +27,7 @@
     "reportBreakdown": "Bericht-Aufschlüsselung",
     "adminSettings": "Admin-Einstellungen",
     "masterData": "Stammdaten",
+    "assetTypeChecklistMapping": "Anlagentyp - Inspektions-Checkliste-Mapping",
     "organizations": "Organisationen",
     "productsServices": "Produkte/Dienstleistungen",
     "maintenanceSchedule": "Wartungsplan",
@@ -385,8 +386,6 @@
     "depreciationReport": "Abschreibungsbericht",
     "auditReport": "Audit-Bericht",
     "assetValuationReport": "Anlagenbewertungsbericht",
-    "breakdownHistoryReport": "Ausfallverlaufsbericht",
-    "assetWorkflowHistoryReport": "Anlagen-Workflow-Verlaufsbericht",
     "generate": "Generieren",
     "generating": "Wird generiert...",
     "export": "Exportieren",
@@ -441,7 +440,6 @@
     "totalValueAfterDepreciation": "Gesamter Wert nach Abschreibung",
     "averageValueAfterDepreciation": "Durchschnittlicher Wert nach Abschreibung",
     "currentValueAfterDepreciationByAsset": "Aktueller Wert nach Abschreibung nach Anlage",
-    "close": "Schließen",
     "total": "Gesamt",
     "noAssetsFound": "Keine Anlagen gefunden",
     "activeAssets": "aktive Anlagen",
@@ -462,7 +460,6 @@
     "of": "von",
     "noReportData": "Keine Berichtsdaten",
     "noReportDataAvailable": "Keine Berichtsdaten verfügbar.",
-    "close": "Schließen",
     "generatedOn": "Generiert am:",
     "reportGeneratedSuccessfully": "Bericht erfolgreich generiert",
     "reportExportedSuccessfully": "Bericht erfolgreich als {{format}} exportiert!",
@@ -2091,9 +2088,8 @@
     "failedToDeleteAssetGroup": "Fehler beim Löschen der Anlagengruppe",
     "pleaseSelectAssetGroupsToDelete": "Bitte wählen Sie Anlagengruppen zum Löschen aus",
     "assetGroupsDeletedSuccessfully": "{{count}} Anlagengruppe(n) erfolgreich gelöscht",
-    "failedToDeleteSomeAssetGroups": "Fehler beim Löschen einiger Anlagengruppen"
-  },
-      "createGroupAsset": {
+    "failedToDeleteSomeAssetGroups": "Fehler beim Löschen einiger Anlagengruppen",
+    "createGroupAsset": {
         "failedToLoadDocumentTypes": "Fehler beim Laden der Dokumenttypen",
         "failedToFetchAssetTypes": "Fehler beim Abrufen der Anlagentypen",
         "failedToFetchAssets": "Fehler beim Abrufen der Anlagen",
@@ -2239,5 +2235,6 @@
         "noArchivedDocumentsFound": "Keine archivierten Dokumente gefunden.",
         "archived": "Archiviert",
         "unarchive": "Aus Archiv entfernen"
-      }
+    }
+  }
 }

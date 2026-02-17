@@ -3,14 +3,19 @@ import { Edit2, Trash2, Filter, Plus, Minus } from "lucide-react";
 import { toast } from "react-hot-toast";
 import API from "../../lib/axios";
 import { filterData } from "../../utils/filterData";
+import DeleteConfirmModal from "../../components/DeleteConfirmModal";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const InspectionChecklists = () => {
+  const { t } = useLanguage();
   const [checklists, setChecklists] = useState([]);
   const [responseTypes, setResponseTypes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   const [filterOpen, setFilterOpen] = useState(false);
   const [columnFilters, setColumnFilters] = useState([{ column: "", value: "" }]);
@@ -86,11 +91,11 @@ const InspectionChecklists = () => {
   };
 
   const handleSave = async () => {
-    // Check all mandatory fields first
+    const isQuantitativeCheck = isQuantitative(responseTypeId);
     const isQuestionValid = !!inspectionQuestion.trim();
     const isResponseTypeValid = !!responseTypeId;
-    const isMinRangeValid = !isQuantitative(responseTypeId) || !!minRange;
-    const isMaxRangeValid = !isQuantitative(responseTypeId) || !!maxRange;
+    const isMinRangeValid = !isQuantitativeCheck || (minRange !== "" && minRange !== null);
+    const isMaxRangeValid = !isQuantitativeCheck || (maxRange !== "" && maxRange !== null);
 
     if (!isQuestionValid || !isResponseTypeValid || !isMinRangeValid || !isMaxRangeValid) {
       setShowErrors(true);
@@ -106,9 +111,9 @@ const InspectionChecklists = () => {
       await API.post("/inspection-checklists", {
         inspection_question: inspectionQuestion,
         irtd_id: responseTypeId,
-        expected_value: expectedValue || null,
-        min_range: minRange || null,
-        max_range: maxRange || null,
+        expected_value: isQuantitativeCheck ? null : expectedValue,
+        min_range: isQuantitativeCheck ? minRange : null,
+        max_range: isQuantitativeCheck ? maxRange : null,
         trigger_maintenance: triggerMaintenance
       });
 
@@ -178,14 +183,29 @@ const InspectionChecklists = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    const confirmed = window.confirm("Delete this inspection checklist?");
-    if (!confirmed) return;
+  const handleDelete = (checklist) => {
+    setItemToDelete(checklist);
+    setShowDeleteModal(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (selectedRows.length === 0 && !itemToDelete) return;
     setIsDeleting(true);
     try {
-      await API.delete(`/inspection-checklists/${id}`);
-      toast.success("Inspection checklist deleted successfully");
+      if (selectedRows.length > 0) {
+        // Bulk delete
+        for (const id of selectedRows) {
+          await API.delete(`/inspection-checklists/${id}`);
+        }
+        toast.success(`Successfully deleted ${selectedRows.length} checklist(s)`);
+        setSelectedRows([]);
+      } else if (itemToDelete) {
+        // Single delete via top button (if itemToDelete was set)
+        await API.delete(`/inspection-checklists/${itemToDelete.ic_id}`);
+        toast.success("Inspection checklist deleted successfully");
+      }
+      setShowDeleteModal(false);
+      setItemToDelete(null);
       await fetchChecklists();
     } catch (error) {
       console.error("Failed to delete checklist:", error);
@@ -193,6 +213,14 @@ const InspectionChecklists = () => {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedRows.length === 0) {
+      toast.error("Please select at least one item to delete");
+      return;
+    }
+    setShowDeleteModal(true);
   };
 
   const updateColumnFilter = (index, key, value) => {
@@ -368,13 +396,22 @@ const InspectionChecklists = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Inspection Checklists List</h2>
-            <button
-              onClick={() => setFilterOpen((prev) => !prev)}
-              className="flex items-center justify-center text-white bg-[#0E2F4B] rounded px-3 py-2 hover:bg-[#12395c]"
-              title="Filter"
-            >
-              <Filter size={18} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleDeleteSelected}
+                className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B] transition-colors"
+                title="Delete Selected"
+              >
+                <Trash2 size={16} />
+              </button>
+              <button
+                onClick={() => setFilterOpen((prev) => !prev)}
+                className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B]"
+                title="Filter"
+              >
+                <Filter size={16} />
+              </button>
+            </div>
           </div>
 
           {filterOpen && (
@@ -644,14 +681,6 @@ const InspectionChecklists = () => {
                               >
                                 <Edit2 size={14} />
                               </button>
-                              <button
-                                onClick={() => handleDelete(checklist.ic_id)}
-                                disabled={isDeleting}
-                                className="p-1 text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-60"
-                                title="Delete"
-                              >
-                                <Trash2 size={14} />
-                              </button>
                             </div>
                           </td>
                         </>
@@ -664,6 +693,16 @@ const InspectionChecklists = () => {
           )}
         </div>
       </div>
+
+      <DeleteConfirmModal
+        show={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setItemToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        message={t('assets.areYouSureDelete', { count: selectedRows.length || 1 })}
+      />
     </div>
   );
 };
