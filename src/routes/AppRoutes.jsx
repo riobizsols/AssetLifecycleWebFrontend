@@ -39,6 +39,8 @@ import VendorRenewalApproval from "../pages/VendorRenewalApproval";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import AllNotifications from "../components/AllNotifications";
 import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
+import InspectionApproval from "../pages/InspectionApproval";
+import InspectionApprovalDetail from "../components/InspectionApprovalDetail";
 import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
 import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
@@ -59,6 +61,7 @@ import AuditLogsView from "../pages/AuditLogsView";
 import AuditLogConfig from "../components/AuditLogConfig";
 import AuditLogConfigPage from "../pages/AuditLogConfigPage";
 import InspectionView from "../pages/InspectionView";
+import InspectionExecutionDetail from "../pages/InspectionExecutionDetail";
 import GroupAsset from "../pages/GroupAsset";
 import CreateGroupAsset from "../components/groupAsset/CreateGroupAsset";
 import EditGroupAsset from "../components/groupAsset/EditGroupAsset";
@@ -229,6 +232,26 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <MaintenanceApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inspection-approval"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <InspectionApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inspection-approval-detail/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <InspectionApprovalDetail />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -655,6 +678,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="INSPECTIONVIEW">
               <MainLayout>
                 <InspectionView />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/inspection-view/:id"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONVIEW">
+              <MainLayout>
+                <InspectionExecutionDetail />
               </MainLayout>
             </ProtectedRoute>
           }
