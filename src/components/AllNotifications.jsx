@@ -6,6 +6,7 @@ import {
   UserIcon,
   ClockIcon,
   BellIcon,
+  FunnelIcon,
 } from "@heroicons/react/24/outline";
 import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
@@ -13,7 +14,8 @@ import { useLanguage } from "../contexts/LanguageContext";
 
 const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
-  Urgent: "bg-red-100 text-red-800",
+  "Inspection": "bg-green-100 text-green-800",
+  "Urgent": "bg-red-100 text-red-800",
 };
 
 const AllNotifications = () => {
@@ -23,11 +25,66 @@ const AllNotifications = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Filter state
+  const [selectedFilters, setSelectedFilters] = useState({
+    inspection: true,
+    maintenance: true,
+    vendorRenewal: true,
+    subscriptionRenewal: true,
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   // Debug: Log user data
   useEffect(() => {
     console.log("Auth store user data:", user);
   }, [user]);
+
+  // Filter utility functions
+  const getNotificationType = (alert) => {
+    // Check for inspection notifications
+    if (alert.workflowType === 'INSPECTION' || alert.alertType === 'Inspection') {
+      return 'inspection';
+    }
+    
+    // Check for subscription renewal notifications
+    if (alert.alertType?.toLowerCase().includes('subscription') || 
+        alert.alertText?.toLowerCase().includes('subscription')) {
+      return 'subscriptionRenewal';
+    }
+    
+    // Check for vendor renewal notifications
+    if (alert.alertType?.toLowerCase().includes('renewal') || 
+        alert.alertText?.toLowerCase().includes('renewal') ||
+        alert.alertText?.toLowerCase().includes('contract')) {
+      return 'vendorRenewal';
+    }
+    
+    // All other notifications are maintenance
+    return 'maintenance';
+  };
+
+  const filterNotifications = (notifications) => {
+    return notifications.filter(alert => {
+      const type = getNotificationType(alert);
+      return selectedFilters[type];
+    });
+  };
+
+  const handleFilterChange = (filterType) => {
+    setSelectedFilters(prev => ({
+      ...prev,
+      [filterType]: !prev[filterType]
+    }));
+  };
+
+  const getFilteredAlerts = () => {
+    return filterNotifications(alerts);
+  };
+
+  const getFilterCount = (filterType) => {
+    return alerts.filter(alert => getNotificationType(alert) === filterType).length;
+  };
 
   const fetchNotifications = async () => {
     if (!user || !user.emp_int_id) {
@@ -44,12 +101,16 @@ const AllNotifications = () => {
       const response = await API.get(url);
       const notifications = response.data.data || [];
       console.log("API response:", response.data);
-      console.log("Notifications received:", notifications);
+      console.log("Notifications received:", notifications.length, "items");
       // Transform API data to match the existing UI structure
       const transformedAlerts = notifications.map(notification => ({
-        alertType: notification.maintenanceType || "Regular Maintenance",
+        alertType: notification.workflowType === 'INSPECTION' 
+          ? "Inspection" 
+          : notification.maintenanceType || "Regular Maintenance",
         alertText: notification.isGroupMaintenance && notification.groupName
           ? `${notification.groupName} (${notification.groupAssetCount} assets)`
+          : notification.workflowType === 'INSPECTION'
+          ? `${notification.assetTypeName} Inspection`
           : `${notification.assetTypeName} Maintenance`,
         dueOn: formatDate(notification.dueDate),
         actionBy: notification.userName || "Unassigned",
@@ -96,6 +157,10 @@ const AllNotifications = () => {
       navigate(`/scrap-approval-detail/${alert.workflowId}?context=SCRAPMAINTENANCEAPPROVAL`);
       return;
     }
+    if (alert.workflowType === "INSPECTION" && alert.wfamshId) {
+      navigate(`/inspection-approval-detail/${alert.wfamshId}`);
+      return;
+    }
     if (alert.wfamshId) {
       navigate(`/approval-detail/${alert.wfamshId}`);
       return;
@@ -127,23 +192,118 @@ const AllNotifications = () => {
           </p>
         </div>
 
+        {/* Filter Section */}
+        <div className="mb-6">
+          <div className="flex items-center gap-4 mb-4">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <FunnelIcon className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filters</span>
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                {Object.values(selectedFilters).filter(Boolean).length}
+              </span>
+            </button>
+            
+            {alerts.length > 0 && (
+              <div className="text-sm text-gray-500">
+                Showing {getFilteredAlerts().length} of {alerts.length} notifications
+              </div>
+            )}
+          </div>
+
+          {showFilters && (
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFilters.inspection}
+                    onChange={() => handleFilterChange('inspection')}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Inspection ({getFilterCount('inspection')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                    Inspections
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFilters.maintenance}
+                    onChange={() => handleFilterChange('maintenance')}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Maintenance ({getFilterCount('maintenance')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                    Maintenance
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFilters.vendorRenewal}
+                    onChange={() => handleFilterChange('vendorRenewal')}
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Vendor Renewal ({getFilterCount('vendorRenewal')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
+                    Contracts
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFilters.subscriptionRenewal}
+                    onChange={() => handleFilterChange('subscriptionRenewal')}
+                    className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Subscription Renewal ({getFilterCount('subscriptionRenewal')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
+                    Subscriptions
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="animate-pulse h-20 bg-gray-100 rounded-xl shadow-sm border border-gray-200" />
             ))}
           </div>
-        ) : alerts.length === 0 ? (
+        ) : getFilteredAlerts().length === 0 ? (
           <div className="flex flex-col items-center text-gray-400 py-12 bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="p-4 bg-blue-100 rounded-full mb-4">
               <BellIcon className="w-16 h-16 text-blue-400" />
             </div>
-            <h3 className="text-lg font-semibold mb-2 text-gray-600">No Notifications</h3>
-            <span className="text-sm text-gray-500">You don't have any maintenance notifications at the moment.</span>
+            <h3 className="text-lg font-semibold mb-2 text-gray-600">
+              {alerts.length === 0 ? "No Notifications" : "No Matching Notifications"}
+            </h3>
+            <span className="text-sm text-gray-500">
+              {alerts.length === 0 
+                ? "You don't have any maintenance notifications at the moment."
+                : "No notifications match your current filter selection. Try adjusting the filters above."
+              }
+            </span>
           </div>
         ) : (
           <div className="space-y-4">
-            {alerts.map((alert, idx) => (
+            {getFilteredAlerts().map((alert, idx) => (
               <div
                 key={alert.id || idx}
                 className={`p-6 rounded-xl border flex flex-col gap-3 shadow-lg transition-all duration-300 cursor-pointer

@@ -30,6 +30,8 @@ const mockAlerts = [
 
 const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
+  "Inspection": "bg-green-100 text-green-800",
+  "Vendor Contract Renewal": "bg-orange-100 text-orange-800",
   Urgent: "bg-red-100 text-red-800",
 };
 
@@ -62,11 +64,30 @@ const NotificationsPanel = () => {
       console.log("API response:", response.data);
       console.log("Notifications received:", notifications);
       // Transform API data to match the existing UI structure
-      const transformedAlerts = notifications.map(notification => ({
-        alertType: notification.maintenanceType || "Regular Maintenance",
-        alertText: notification.isGroupMaintenance && notification.groupName
-          ? `${notification.groupName} (${notification.groupAssetCount} assets)`
-          : `${notification.assetTypeName} Maintenance`,
+      const transformedAlerts = notifications.map(notification => {
+        // Determine alert type based on workflowType or maintenanceType
+        let alertType = "Regular Maintenance";
+        if (notification.workflowType === 'INSPECTION') {
+          alertType = "Inspection";
+        } else if (notification.maintenanceType) {
+          alertType = notification.maintenanceType;
+        }
+        
+        let alertText = "";
+        
+        if (alertType === 'Inspection') {
+           alertText = `${notification.assetTypeName} Inspection`;
+        } else if (alertType === 'Vendor Contract Renewal') {
+           alertText = `${notification.assetTypeName}`; 
+        } else if (notification.isGroupMaintenance && notification.groupName) {
+           alertText = `${notification.groupName} (${notification.groupAssetCount} assets)`;
+        } else {
+           alertText = `${notification.assetTypeName} Maintenance`;
+        }
+        
+        return {
+        alertType: alertType,
+        alertText: alertText,
         dueOn: formatDate(notification.dueDate),
         actionBy: notification.userName || "Unassigned",
         cutoffDate: formatDate(notification.cutoffDate),
@@ -84,14 +105,43 @@ const NotificationsPanel = () => {
         groupName: notification.groupName,
         groupAssetCount: notification.groupAssetCount,
         assetTypeName: notification.assetTypeName
-      }));
-      console.log("Transformed alerts:", transformedAlerts);
-      setAlerts(transformedAlerts);
+      }});
+      
+      // Filter to show up to 2 notifications with smart fallback
+      const maintenanceAlerts = transformedAlerts.filter(alert => 
+        alert.alertType !== 'Inspection' && alert.workflowType !== 'INSPECTION'
+      );
+      const inspectionAlerts = transformedAlerts.filter(alert => 
+        alert.alertType === 'Inspection' || alert.workflowType === 'INSPECTION'
+      );
+      
+      const dashboardAlerts = [];
+      
+      // Smart selection logic for dashboard display
+      if (maintenanceAlerts.length > 0 && inspectionAlerts.length > 0) {
+        // Both types available: show 1 of each
+        dashboardAlerts.push(maintenanceAlerts[0]);
+        dashboardAlerts.push(inspectionAlerts[0]);
+      } else if (maintenanceAlerts.length > 0) {
+        // Only maintenance available: show up to 2 maintenance
+        dashboardAlerts.push(...maintenanceAlerts.slice(0, 2));
+      } else if (inspectionAlerts.length > 0) {
+        // Only inspection available: show up to 2 inspection  
+        dashboardAlerts.push(...inspectionAlerts.slice(0, 2));
+      }
+      
+      console.log("Dashboard alerts selection:");
+      console.log(`  - Total available: ${transformedAlerts.length}`);
+      console.log(`  - Maintenance available: ${maintenanceAlerts.length}`);  
+      console.log(`  - Inspection available: ${inspectionAlerts.length}`);
+      console.log(`  - Selected for dashboard: ${dashboardAlerts.length}`, dashboardAlerts);
+      
+      setAlerts(dashboardAlerts);
       setError(null);
     } catch (err) {
       console.error("Error fetching notifications:", err);
       setError("Failed to load notifications");
-      setAlerts(mockAlerts);
+      setAlerts(mockAlerts.slice(0, 2)); // Limit mock data to 2 as well
     } finally {
       setLoading(false);
     }
@@ -111,6 +161,13 @@ const NotificationsPanel = () => {
     if (alert.workflowType === "SCRAP" && alert.workflowId) {
       navigate(`/scrap-approval-detail/${alert.workflowId}?context=SCRAPMAINTENANCEAPPROVAL`);
       return;
+    }
+    if (alert.alertType === "Inspection") {
+        // If the user is an approver, they likely go to approval detail:
+        navigate(`/inspection-approval`); 
+        // Or if specific ID: `/inspection-approval/${alert.wfamshId}`
+        // But for now, just the list view
+        return;
     }
     if (alert.wfamshId) {
       navigate(`/approval-detail/${alert.wfamshId}`);
@@ -143,7 +200,7 @@ const NotificationsPanel = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {alerts.slice(0, 2).map((alert, idx) => (
+          {alerts.map((alert, idx) => (
             <div
               key={alert.id || idx}
               className={`p-4 rounded-lg border flex flex-col gap-2 shadow-sm transition-colors duration-200 cursor-pointer
@@ -195,13 +252,6 @@ const NotificationsPanel = () => {
               </div>
             </div>
           ))}
-          {alerts.length > 2 && (
-            <div className="text-center pt-2">
-              <span className="text-sm text-gray-500">
-                +{alerts.length - 2} more notifications
-              </span>
-            </div>
-          )}
         </div>
       )}
       {error && (

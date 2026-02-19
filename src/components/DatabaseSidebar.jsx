@@ -154,7 +154,9 @@ const DatabaseSidebar = () => {
     DEPTASSIGNMENT: "/assign-department-assets",
     EMPASSIGNMENT: "/assign-employee-assets",
     WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance  //done
-    INSPECTION: "/inspection-view", // Separate route for inspection
+    INSPECTION: "/inspection-view", // Legacy inspection ID
+    INSPECTIONVIEW: "/inspection-view", // New Inspection Execution ID
+    INSPECTIONAPPROVAL: "/inspection-approval", // New Inspection Approval ID
     MAINTENANCEAPPROVAL: "/maintenance-approval",
     VENDORRENEWALAPPROVAL: "/vendor-renewal-approval",
     SCRAPMAINTENANCEAPPROVAL: "/scrap-approval",
@@ -215,6 +217,8 @@ const DatabaseSidebar = () => {
       EMPASSIGNMENT: UserCheck,
       WORKORDERMANAGEMENT: Wrench,
       INSPECTION: CheckSquare,
+      INSPECTIONVIEW: CheckSquare, // Execution
+      INSPECTIONAPPROVAL: ClipboardList, // Approval
       MAINTENANCEAPPROVAL: ClipboardList,
       SCRAPMAINTENANCEAPPROVAL: ClipboardList,
       SUPERVISORAPPROVAL: UserCheck,
