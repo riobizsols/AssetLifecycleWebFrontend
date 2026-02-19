@@ -32,6 +32,7 @@ const CustomTable = ({
   showAddButton = false,
   addButtonTitle = "Add",
   isReadOnly = false,
+  renderActions,
 }) => {
   const visible = visibleColumns.filter((col) => col.visible && !isIdColumnName(col.name));
 
@@ -173,6 +174,7 @@ const CustomTable = ({
                   <Pencil size={16} />
                 </button>
               )}
+              {renderActions && renderActions(row)}
             </td>
           )}
         </tr>

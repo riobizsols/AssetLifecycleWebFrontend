@@ -27,6 +27,7 @@
     "reportBreakdown": "Bericht-Aufschlüsselung",
     "adminSettings": "Admin-Einstellungen",
     "masterData": "Stammdaten",
+    "assetTypeChecklistMapping": "Anlagentyp - Inspektions-Checkliste-Mapping",
     "organizations": "Organisationen",
     "productsServices": "Produkte/Dienstleistungen",
     "maintenanceSchedule": "Wartungsplan",
@@ -385,8 +386,6 @@
     "depreciationReport": "Abschreibungsbericht",
     "auditReport": "Audit-Bericht",
     "assetValuationReport": "Anlagenbewertungsbericht",
-    "breakdownHistoryReport": "Ausfallverlaufsbericht",
-    "assetWorkflowHistoryReport": "Anlagen-Workflow-Verlaufsbericht",
     "generate": "Generieren",
     "generating": "Wird generiert...",
     "export": "Exportieren",
@@ -441,7 +440,6 @@
     "totalValueAfterDepreciation": "Gesamter Wert nach Abschreibung",
     "averageValueAfterDepreciation": "Durchschnittlicher Wert nach Abschreibung",
     "currentValueAfterDepreciationByAsset": "Aktueller Wert nach Abschreibung nach Anlage",
-    "close": "Schließen",
     "total": "Gesamt",
     "noAssetsFound": "Keine Anlagen gefunden",
     "activeAssets": "aktive Anlagen",
@@ -462,7 +460,6 @@
     "of": "von",
     "noReportData": "Keine Berichtsdaten",
     "noReportDataAvailable": "Keine Berichtsdaten verfügbar.",
-    "close": "Schließen",
     "generatedOn": "Generiert am:",
     "reportGeneratedSuccessfully": "Bericht erfolgreich generiert",
     "reportExportedSuccessfully": "Bericht erfolgreich als {{format}} exportiert!",
@@ -600,6 +597,10 @@
       "workOrderStatus": "Arbeitsauftragsstatus",
       "maintenanceType": "Wartungstyp",
       "downtime": "Ausfallzeit (h)",
+      "standardHours": "Std. Std.",
+      "actualHours": "Tats. Std.",
+      "variance": "Abweichung",
+      "maintenanceRemarks": "Wartungsanmerkungen",
       "workflowStep": "Workflow-Schritt",
       "plannedScheduleDate": "Geplantes Termin",
       "actualScheduleDate": "Tatsächliches Termin",
@@ -1428,7 +1429,21 @@
     "statusIsRequired": "Status ist erforderlich",
     "costIsRequired": "Wartungskosten sind erforderlich",
     "maintenanceScheduleUpdatedSuccessfully": "Wartungsplan erfolgreich aktualisiert!",
-    "failedToUpdateMaintenanceSchedule": "Fehler beim Aktualisieren des Wartungsplans"
+    "failedToUpdateMaintenanceSchedule": "Fehler beim Aktualisieren des Wartungsplans",
+    "standardHoursRequired": "Standard-Stunden erforderlich",
+    "actualHoursSpent": "Tatsächliche Stunden aufgewendet",
+    "standardHours": "Std. Std.",
+    "actualHours": "Tats. Std.",
+    "variance": "Abweichung",
+    "enterHours": "Gesamte aufgewendete Stunden eingeben",
+    "hoursSpentIsRequired": "Aufgewendete Stunden sind erforderlich",
+    "presetInMaintTypeConfig": "In der Wartungstyp-Konfiguration voreingestellt",
+    "reasonForDelay": "Grund für die Verzögerung",
+    "maintenanceNotesOptional": "Wartungshinweise (Optional)",
+    "explainWhyLonger": "Bitte erklären Sie, warum die Wartung länger als geschätzt gedauert hat...",
+    "enterMaintRemarks": "Geben Sie wartungsspezifische Anmerkungen ein...",
+    "maintNotesMandatoryDelay": "🚨 Dieses Feld ist obligatorisch, da die aufgewendete Zeit die Schätzung überschritten hat!",
+    "pleaseFillAllRequiredFields": "Bitte füllen Sie alle erforderlichen Felder aus"
   },
   "inspectionView": {
     "title": "Inspektionsansicht",
@@ -2103,9 +2118,8 @@
     "failedToDeleteAssetGroup": "Fehler beim Löschen der Anlagengruppe",
     "pleaseSelectAssetGroupsToDelete": "Bitte wählen Sie Anlagengruppen zum Löschen aus",
     "assetGroupsDeletedSuccessfully": "{{count}} Anlagengruppe(n) erfolgreich gelöscht",
-    "failedToDeleteSomeAssetGroups": "Fehler beim Löschen einiger Anlagengruppen"
-  },
-      "createGroupAsset": {
+    "failedToDeleteSomeAssetGroups": "Fehler beim Löschen einiger Anlagengruppen",
+    "createGroupAsset": {
         "failedToLoadDocumentTypes": "Fehler beim Laden der Dokumenttypen",
         "failedToFetchAssetTypes": "Fehler beim Abrufen der Anlagentypen",
         "failedToFetchAssets": "Fehler beim Abrufen der Anlagen",
@@ -2251,5 +2265,6 @@
         "noArchivedDocumentsFound": "Keine archivierten Dokumente gefunden.",
         "archived": "Archiviert",
         "unarchive": "Aus Archiv entfernen"
-      }
+    }
+  }
 }

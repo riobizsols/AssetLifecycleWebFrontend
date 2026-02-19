@@ -65,7 +65,7 @@ export function Select({ value, onChange, options, placeholder }) {
         <span className="text-slate-500">▼</span>
       </button>
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full top-full left-0 mt-0 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
             {options.map((opt) => (
               <div
@@ -279,7 +279,7 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
       
       {/* Dropdown options - shown when open */}
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full top-full left-0 mt-0 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
             {filteredOptions.length === 0 ? (
               <div className="text-sm text-slate-500 p-2">{t('reports.filterOptions.noOptionsFound')}</div>

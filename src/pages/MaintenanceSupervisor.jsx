@@ -35,8 +35,10 @@ const MaintenanceSupervisor = () => {
     { label: t('maintenanceSupervisor.description'), name: "asset_description", visible: true },
     { label: t('maintenanceSupervisor.maintenanceType'), name: "maintenance_type_name", visible: true },
     { label: t('maintenanceSupervisor.vendor'), name: "vendor_name", visible: true },
-    { label: t('maintenanceSupervisor.scheduleDate'), name: "act_maint_st_date", visible: true },
+    { label: t('maintenanceSupervisor.scheduledDate'), name: "act_maint_st_date", visible: true },
     { label: t('maintenanceSupervisor.status'), name: "status", visible: true },
+    { label: t('maintenanceSupervisor.actualHours'), name: "hours_spent", visible: true },
+    { label: t('maintenanceSupervisor.variance'), name: "variance", visible: true },
     { label: t('maintenanceSupervisor.daysUntilDue'), name: "days_until_due", visible: true },
     { label: t('maintenanceSupervisor.createdOn'), name: "created_on", visible: true },
     { label: t('maintenanceSupervisor.createdBy'), name: "created_by", visible: true },
@@ -74,6 +76,10 @@ const MaintenanceSupervisor = () => {
           changed_on: formatDate(item.changed_on),
           days_until_due: item.days_until_due > 0 ? `${item.days_until_due} ${t('maintenanceSupervisor.days')}` : 
                          item.days_until_due === 0 ? t('maintenanceSupervisor.dueToday') : t('maintenanceSupervisor.overdue'),
+          // Calculated Variance
+          variance: item.hours_spent && item.hours_required 
+            ? (parseFloat(item.hours_spent) - parseFloat(item.hours_required)).toFixed(2) 
+            : '0.00',
           // Add urgency styling for days until due
           urgency_class: item.days_until_due <= 2 ? 'text-red-600 font-semibold' : 
                         item.days_until_due <= 5 ? 'text-orange-600 font-semibold' : 
@@ -318,23 +324,35 @@ const MaintenanceSupervisor = () => {
               onDelete={handleDelete}
               rowKey="ams_id"
               showActions={showActions} // Hide action column for this page
-              renderCell={(col, row, colIndex) =>
-                col.name === "status"
-                  ? <StatusBadge status={row[col.name]} />
-                  : col.name === "days_until_due"
-                  ? <span className={row.urgency_class}>{row[col.name]}</span>
-                  : colIndex === 0
-                    ? <div className="flex items-center gap-2">
-                        <input
+              renderCell={(col, row, colIndex) => {
+                if (col.name === "status") return <StatusBadge status={row[col.name]} />;
+                if (col.name === "days_until_due") return <span className={row.urgency_class}>{row[col.name]}</span>;
+                if (col.name === "variance") {
+                  const val = parseFloat(row.variance || 0);
+                  if (val > 0) return <span className="text-red-600 font-bold">+{row.variance}h</span>;
+                  if (val < 0) return <span className="text-green-600 font-medium">{row.variance}h</span>;
+                  return <span className="text-gray-400 font-medium">0.00h</span>;
+                }
+                if (col.name === 'hours_spent' || col.name === 'hours_required') {
+                  return <span className="font-medium text-gray-700">{row[col.name] || '0'}h</span>;
+                }
+                
+                if (colIndex === 0) {
+                  return (
+                    <div className="flex items-center gap-2">
+                       <input
                           type="checkbox"
                           checked={selectedRows.includes(row["ams_id"])}
                           onChange={() => setSelectedRows(prev => prev.includes(row["ams_id"]) ? prev.filter(id => id !== row["ams_id"]) : [...prev, row["ams_id"]])}
+                          onClick={(e) => e.stopPropagation()}
                           className="accent-yellow-400"
                         />
                         {row[col.name]}
-                      </div>
-                    : row[col.name]
-              }
+                    </div>
+                  );
+                }
+                return row[col.name];
+              }}
               onRowClick={handleRowClick}
             />
           );

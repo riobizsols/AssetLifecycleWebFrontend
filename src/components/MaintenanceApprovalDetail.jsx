@@ -353,7 +353,9 @@ const MaintenanceApprovalDetail = () => {
   });
   
   // ROLE-BASED: Check if current user has ANY of the roles requiring action
-  const isCurrentActionUser = currentActionSteps.some((step) => {
+  const isSystemAdmin = userRoleIds.includes('JR001');
+  
+  const isCurrentActionUser = isSystemAdmin || currentActionSteps.some((step) => {
     // Backend sends role info in step.role.id (job_role_id)
     const stepRoleId = step.role?.id || step.user?.id;
     const hasRole = userRoleIds.includes(stepRoleId);
@@ -361,7 +363,7 @@ const MaintenanceApprovalDetail = () => {
     return hasRole;
   });
   
-  console.log('✅ User can approve:', isCurrentActionUser);
+  console.log('✅ User can approve:', isCurrentActionUser, ' (System Admin:', isSystemAdmin, ')');
   console.log('📊 Current action steps:', currentActionSteps);
   
   

@@ -10,7 +10,10 @@ const statusColors = {
   IN: "text-blue-600 font-semibold",
   IP: "text-yellow-500 font-semibold",
   CO: "text-green-600 font-semibold",
+  CF: "text-green-800 font-bold underline",
   CA: "text-red-600 font-semibold",
+  RE: "text-orange-600 font-semibold",
+  Reopened: "text-orange-600 font-semibold",
   // Asset statuses
   Active: "text-green-600 font-semibold",
   Inactive: "text-gray-600 font-semibold",

@@ -53,7 +53,7 @@ export const ALL_COLUMNS = {
     "Accumulated Depreciation", "Net Book Value", "Depreciation Method", "Useful Life"
   ],
   "depreciation-schedule": ["Asset Code", "Name", "Book", "Method", "Depn for Period", "Accum Depn", "Net Book Value"],
-  "maintenance-history": ["Work Order ID", "Asset ID", "Asset Name", "Maintenance Start Date", "Maintenance End Date", "Notes", "Vendor ID", "Vendor Name", "Work Order Status", "Maintenance Type", "Cost (₹)", "Downtime (h)"],
+  "maintenance-history": ["Work Order ID", "Asset ID", "Asset Name", "Maintenance Start Date", "Maintenance End Date", "Notes", "Vendor ID", "Vendor Name", "Work Order Status", "Maintenance Type", "Cost (₹)", "Downtime (h)", "Standard Hours", "Actual Hours", "Variance", "Maint Remarks"],
   "asset-workflow-history": ["Work Order ID", "Asset ID", "Asset Name", "Workflow Step", "Planned Schedule Date", "Actual Schedule Date", "Notes", "Vendor ID", "Vendor Name", "Workflow Status", "Step Status", "Assigned To", "Maintenance Type", "Asset Type", "Department", "Serial Number", "Asset Status", "Purchased On", "Purchased Cost", "Vendor Contact", "Vendor Email", "Vendor Phone", "Vendor Address", "User Name", "User Email", "Job Role", "Sequence", "History Count", "Latest Action", "Latest Action Date", "Latest Action By", "History ID", "Action By", "Action On", "Action", "History Notes", "Action By Email", "Step User", "Step User Email"],
   "usage-based-asset": ["Usage ID", "Asset ID", "Asset Name", "Serial Number", "Asset Type", "Department", "Branch", "Usage Counter", "Recorded By", "Recorded Date", "Employee Name", "Asset Description"],
   "breakdown-history": ["Breakdown ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Work Order Status", "Breakdown Status", "Breakdown Reason", "Asset Type", "Department", "Branch", "Serial Number", "Asset Status", "Purchased On", "Purchased Cost", "Vendor Contact", "Vendor Email", "Vendor Phone", "Vendor Address", "Reported By Email", "Reported By Phone"],
@@ -127,7 +127,11 @@ export const FIELD_TO_COLUMN_MAP = {
     workOrderStatus: "Work Order Status",
     maintenanceType: "Maintenance Type",
     cost: "Cost (₹)",
-    downtime: "Downtime (h)"
+    downtime: "Downtime (h)",
+    hours_required: "Standard Hours",
+    hours_spent: "Actual Hours",
+    variance: "Variance",
+    maint_notes: "Maint Remarks"
   },
   "sla-report": {
     assetType: "Asset Type ID",  // Use ID column since filter values are IDs

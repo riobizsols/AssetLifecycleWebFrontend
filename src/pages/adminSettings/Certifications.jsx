@@ -847,73 +847,64 @@ const Certifications = () => {
               </div>
             )}
 
-            {showMappingForm && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
-                    <select
-                      value={selectedAssetType}
-                      onChange={(e) => setSelectedAssetType(e.target.value)}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
-                    >
-                      <option value="">Select asset type</option>
-                      {assetTypes.map((type) => (
-                        <option key={type.asset_type_id} value={type.asset_type_id}>
-                          {type.text}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
-                    <select
-                      value={selectedMaintType}
-                      onChange={(e) => setSelectedMaintType(e.target.value)}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
-                    >
-                      <option value="">Select maintenance type</option>
-                      {filteredMaintTypes.map((type) => (
-                        <option key={type.maint_type_id} value={type.maint_type_id}>
-                          {type.text}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificates</label>
-                    <DropdownMultiSelect
-                      values={selectedCertificateIds}
-                      onChange={setSelectedCertificateIds}
-                      options={certificateOptions}
-                      placeholder="Select certificates"
-                    />
-                  </div>
+            <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6">
+              <h3 className="text-md font-semibold text-gray-900 mb-4">Create New Mapping</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
+                  <select
+                    value={selectedAssetType}
+                    onChange={(e) => setSelectedAssetType(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                  >
+                    <option value="">Select asset type</option>
+                    {assetTypes.map((type) => (
+                      <option key={type.asset_type_id} value={type.asset_type_id}>
+                        {type.text}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-
-                <div className="flex items-center justify-end mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
+                  <select
+                    value={selectedMaintType}
+                    onChange={(e) => setSelectedMaintType(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                  >
+                    <option value="">Select maintenance type</option>
+                    {filteredMaintTypes.map((type) => (
+                      <option key={type.maint_type_id} value={type.maint_type_id}>
+                        {type.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Certificates</label>
+                  <DropdownMultiSelect
+                    values={selectedCertificateIds}
+                    onChange={setSelectedCertificateIds}
+                    options={certificateOptions}
+                    placeholder="Select certificates"
+                  />
+                </div>
+                <div className="flex flex-col justify-end">
                   <button
                     onClick={handleSaveMapping}
                     disabled={isSaving}
-                    className="px-4 py-2 bg-[#0E2F4B] text-white text-sm font-medium rounded-md hover:bg-[#12395c] transition disabled:opacity-60"
+                    className="px-1 py-2 bg-[#0E2F4B] text-white text-sm font-medium rounded-md hover:bg-[#12395c] transition disabled:opacity-60"
                   >
                     {isSaving ? "Saving..." : "Save"}
                   </button>
                 </div>
-              </>
-            )}
+              </div>
+            </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-md font-semibold text-gray-900">Mapped Certificates</h3>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowMappingForm((prev) => !prev)}
-                    className="flex items-center justify-center bg-[#0E2F4B] text-white rounded-md hover:bg-[#12395c] transition px-3 py-2"
-                    title={showMappingForm ? "Close" : "Add"}
-                  >
-                    <Plus size={18} />
-                  </button>
                   <button
                     onClick={() => setMappingFilterOpen((prev) => !prev)}
                     className="flex items-center justify-center text-white border border-gray-300 rounded px-3 py-2 hover:bg-[#143d65] bg-[#0E2F4B]"
