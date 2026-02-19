@@ -269,7 +269,7 @@ const InspectionChecklists = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Inspection Question *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Inspection Question</label>
               <input
                 type="text"
                 value={inspectionQuestion}
@@ -284,7 +284,7 @@ const InspectionChecklists = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Response Type *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Response Type</label>
               <select
                 value={responseTypeId}
                 onChange={(e) => {
@@ -327,7 +327,7 @@ const InspectionChecklists = () => {
             {isQuantitative(responseTypeId) && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Range {isQuantitative(responseTypeId) && "*"}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Range</label>
                   <input
                     type="number"
                     value={minRange}
@@ -343,7 +343,7 @@ const InspectionChecklists = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Range {isQuantitative(responseTypeId) && "*"}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Range</label>
                   <input
                     type="number"
                     value={maxRange}

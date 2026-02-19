@@ -352,10 +352,10 @@ const TechnicianCertificates = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 p-6 border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 pt-2 px-4 pb-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-gray-200">
             <div>
               <h1 className="text-xl font-semibold text-gray-900">Technician Certificates</h1>
               <p className="text-sm text-gray-500">
@@ -366,7 +366,7 @@ const TechnicianCertificates = () => {
           </div>
 
           {filterOpen && (
-            <div className="p-6 border-b border-gray-200 bg-gray-50">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   {columnFilters.map((filter, index) => (
@@ -422,7 +422,7 @@ const TechnicianCertificates = () => {
           )}
 
           {showAddForm && (
-            <div className="p-6 border-b border-gray-200 bg-gray-50">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -518,7 +518,7 @@ const TechnicianCertificates = () => {
             </div>
           )}
 
-          <div className="p-6">
+          <div className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Uploaded Certificates</h2>
               <div className="flex items-center gap-2">

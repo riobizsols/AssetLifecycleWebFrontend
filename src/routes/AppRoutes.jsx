@@ -98,6 +98,7 @@ import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfigur
 import Certifications from "../pages/adminSettings/Certifications";
 import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
 import AssetTypeChecklistMapping from "../pages/masterData/AssetTypeChecklistMapping";
+import CreateAssetTypeChecklistMapping from "../pages/masterData/CreateAssetTypeChecklistMapping";
 import InspectionFrequency from "../pages/masterData/InspectionFrequency";
 import CreateInspectionFrequency from "../components/CreateInspectionFrequency";
 import TechnicianCertificates from "../pages/TechnicianCertificates";
@@ -1072,6 +1073,16 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="ASSETTYPECHECKLISTMAPPING">
               <MainLayout>
                 <AssetTypeChecklistMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/asset-type-checklist-mapping/create"
+          element={
+            <ProtectedRoute requiredAppId="ASSETTYPECHECKLISTMAPPING">
+              <MainLayout>
+                <CreateAssetTypeChecklistMapping />
               </MainLayout>
             </ProtectedRoute>
           }

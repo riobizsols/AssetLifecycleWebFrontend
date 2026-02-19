@@ -1902,7 +1902,6 @@
       "action": "Action",
       "type": "Type",
       "fileName": "File Name",
-      "status": "Status",
       "loadingDocuments": "Loading documents...",
       "noActiveDocumentsFound": "No active documents found.",
       "uploadNewDocuments": "Upload New Documents",

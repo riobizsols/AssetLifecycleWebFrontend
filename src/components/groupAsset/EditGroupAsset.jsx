@@ -3,7 +3,32 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
-import { ChevronDown, Check, X, ArrowRight, ArrowLeft, Search, Plus, MoreVertical, Eye, Download, Archive, ArchiveRestore } from 'lucide-react';
+import { 
+  ChevronDown, 
+  Check, 
+  X, 
+  ArrowRight, 
+  ArrowLeft, 
+  Search, 
+  Plus, 
+  MoreVertical, 
+  Eye, 
+  Download, 
+  Archive, 
+  ArchiveRestore,
+  Save,
+  Database,
+  CheckCircle,
+  Sparkles,
+  FileText,
+  ChevronRight,
+  ChevronLeft,
+  ChevronsRight,
+  ChevronsLeft,
+  ChevronUp,
+  ChevronsUp,
+  ChevronsDown
+} from 'lucide-react';
 import { createPortal } from 'react-dom';
 import SearchableDropdown from '../ui/SearchableDropdown';
 import { generateUUID } from '../../utils/uuid';
