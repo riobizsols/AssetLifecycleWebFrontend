@@ -83,6 +83,21 @@ const InspectionApprovalDetail = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [assetDetails, setAssetDetails] = useState(null);
   const [loadingAssetDetails, setLoadingAssetDetails] = useState(false);
+  // Vendor states
+  const [vendor, setVendor] = useState(null);
+  const [loadingVendor, setLoadingVendor] = useState(false);
+  const [activeVendors, setActiveVendors] = useState([]);
+  const [selectedVendorId, setSelectedVendorId] = useState(null);
+  const [vendorStatusError, setVendorStatusError] = useState("");
+  const [loadingVendorDetails, setLoadingVendorDetails] = useState(false);
+  const [displayedVendorDetails, setDisplayedVendorDetails] = useState(null);
+  
+  // Technician related states
+  const [technicians, setTechnicians] = useState([]);
+  const [assignedTechnician, setAssignedTechnician] = useState(null);
+  const [selectedTechnician, setSelectedTechnician] = useState("");
+  const [loadingTechnicians, setLoadingTechnicians] = useState(false);
+  const [loadingAssignedTechnician, setLoadingAssignedTechnician] = useState(false);
 
   const fetchDetail = async () => {
     setLoading(true);
@@ -96,6 +111,8 @@ const InspectionApprovalDetail = () => {
       
       // Transform data to match expected structure
       const inspectionData = res.data.data;
+      const maintainedBy = inspectionData.header.maintained_by;
+      
       setDetail({
         header: {
           ...inspectionData.header,
@@ -103,6 +120,7 @@ const InspectionApprovalDetail = () => {
           asset_code: inspectionData.header.asset_code,
           asset_name: inspectionData.header.asset_code, // Use asset_code as asset_name
           asset_type_name: inspectionData.header.asset_type_name,
+          asset_type_id: inspectionData.header.asset_type_id,
           created_on: inspectionData.header.created_on,
           created_by: inspectionData.header.created_by,
           header_status: inspectionData.header.status,
@@ -113,7 +131,8 @@ const InspectionApprovalDetail = () => {
           branch_code: inspectionData.header.branch_code,
           branch_name: inspectionData.header.branch_name,
           inspection_frequency: inspectionData.header.inspection_frequency,
-          inspection_uom: inspectionData.header.inspection_uom
+          inspection_uom: inspectionData.header.inspection_uom,
+          maintained_by: maintainedBy
         },
         assets: [{
           asset_id: inspectionData.header.asset_id,
@@ -123,6 +142,16 @@ const InspectionApprovalDetail = () => {
         }],
         workflowSteps: inspectionData.approvalLevels || [],
       });
+      
+      // Fetch technician data: always load certified technicians for this asset type (if available)
+      if (inspectionData.header.asset_type_id) {
+        fetchCertifiedTechnicians(inspectionData.header.asset_type_id);
+      }
+
+      // If header has an assigned technician (inhouse), fetch its details
+      if (inspectionData.header.emp_int_id) {
+        fetchAssignedTechnician(inspectionData.header.emp_int_id);
+      }
     } catch (e) {
       console.error("Failed to load inspection approval detail", e);
       toast.error("Failed to load inspection approval detail");
@@ -168,10 +197,202 @@ const InspectionApprovalDetail = () => {
     }
   };
 
+  // Fetch assigned technician from workflow header (for inhouse maintenance)
+  const fetchAssignedTechnician = async (empIntId) => {
+    if (!empIntId) {
+      console.log("No emp_int_id available to fetch assigned technician");
+      return;
+    }
+
+    setLoadingAssignedTechnician(true);
+    try {
+      console.log("Fetching assigned technician for emp_int_id:", empIntId);
+      const response = await API.get(`/inspection-approval/technician-header/${empIntId}`);
+      console.log("Assigned technician API response:", response.data);
+      
+      if (response.data.success && response.data.data && response.data.data.length > 0) {
+        const technicianData = response.data.data[0];
+        setAssignedTechnician(technicianData);
+        setSelectedTechnician(technicianData.emp_int_id);
+      } else {
+        console.error("No technician found for emp_int_id:", empIntId);
+        setAssignedTechnician(null);
+      }
+    } catch (error) {
+      console.error("Error fetching assigned technician:", error);
+      setAssignedTechnician(null);
+    } finally {
+      setLoadingAssignedTechnician(false);
+    }
+  };
+
+  // Fetch certified technicians (for vendor maintenance or technician selection)
+  const fetchCertifiedTechnicians = async (assetTypeId) => {
+    if (!assetTypeId) {
+      console.log("No asset type ID available to fetch technicians");
+      return;
+    }
+    
+    setLoadingTechnicians(true);
+    try {
+      console.log("Fetching certified technicians for asset type:", assetTypeId);
+      const response = await API.get(`/inspection-approval/technicians/${assetTypeId}`);
+      console.log("Technicians API response:", response.data);
+      
+      if (response.data.success) {
+        setTechnicians(response.data.data || []);
+      } else {
+        console.error("Failed to fetch technicians:", response.data.message);
+        setTechnicians([]);
+      }
+    } catch (error) {
+      console.error("Error fetching technicians:", error);
+      setTechnicians([]);
+    } finally {
+      setLoadingTechnicians(false);
+    }
+  };
+
   useEffect(() => {
     fetchDetail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Fetch vendor when detail or assetDetails change
+  useEffect(() => {
+    // Prefer vendor info returned with inspection detail (header vendor fields)
+    if (detail?.header?.vendor_name) {
+      const vd = {
+        vendor_id: detail.header.vendor_id,
+        vendor_name: detail.header.vendor_name,
+        contact_person_name: detail.header.vendor_contact_person,
+        contact_person_email: detail.header.vendor_contact_email,
+        contact_person_number: detail.header.vendor_contact_number,
+        company_email: detail.header.vendor_company_email,
+        address_line1: detail.header.vendor_address_line1,
+        contract_start_date: detail.header.vendor_contract_start_date,
+        contract_end_date: detail.header.vendor_contract_end_date,
+        int_status: detail.header.vendor_status || detail.header.vendor_int_status || detail.header.vendor_int_status
+      };
+      setVendor(vd);
+      setDisplayedVendorDetails(vd);
+      return;
+    }
+
+    const vendorId = assetDetails?.service_vendor_id || assetDetails?.purchase_vendor_id || detail?.header?.vendor_id;
+    if (!vendorId) {
+      setVendor(null);
+      return;
+    }
+
+    const fetchVendor = async (vid) => {
+      setLoadingVendor(true);
+      try {
+        const resp = await API.get(`/vendors/vendor/${vid}`);
+        if (resp.data?.success) setVendor(resp.data.data);
+        else setVendor(null);
+      } catch (err) {
+        console.error('Error fetching vendor:', err);
+        setVendor(null);
+      } finally {
+        setLoadingVendor(false);
+      }
+    };
+
+    fetchVendor(vendorId);
+  }, [detail?.header?.vendor_id, assetDetails]);
+
+  // When vendor object changes, update displayedVendorDetails and status error
+  useEffect(() => {
+    if (!vendor) {
+      setDisplayedVendorDetails(null);
+      setVendorStatusError("");
+      return;
+    }
+    setDisplayedVendorDetails(vendor);
+    const status = vendor.vendor_status || vendor.int_status || vendor.vendor_status;
+    if (status === 0 || status === 3 || status === '0' || status === '3') {
+      setVendorStatusError('The specified Service Vendor is Inactive or CR Approved. Please choose another vendor.');
+    } else {
+      setVendorStatusError('');
+    }
+  }, [vendor]);
+
+  // Fetch active service vendors for dropdown (for vendor-maintained inspections)
+  useEffect(() => {
+    const fetchActiveServiceVendors = async () => {
+      try {
+        const resp = await API.get('/get-vendors');
+        if (resp.data && Array.isArray(resp.data)) {
+          const active = resp.data
+            .filter(v => v.int_status === 1)
+            .map(v => ({ value: v.vendor_id, label: v.vendor_name || v.company_name || v.vendor_id }));
+          setActiveVendors(active);
+        }
+      } catch (e) {
+        console.error('Error fetching vendors for dropdown:', e);
+      }
+    };
+
+    fetchActiveServiceVendors();
+  }, []);
+
+  // Save vendor change for inspection header
+  const saveVendorChange = async (newVendorId) => {
+    if (!detail?.header?.wfaiish_id) return;
+    if (!newVendorId) return;
+    setLoadingVendorDetails(true);
+    try {
+      const resp = await API.put(`/inspection-approval/workflow-header/${detail.header.wfaiish_id}`, { vendorId: newVendorId });
+      if (resp.data?.success) {
+        toast.success('Vendor updated');
+        setSelectedVendorId(newVendorId);
+        // Refresh detail
+        await fetchDetail();
+        // Also fetch vendor details to display
+        try {
+          const vresp = await API.get(`/vendors/vendor/${newVendorId}`);
+          if (vresp.data?.success) setDisplayedVendorDetails(vresp.data.data);
+        } catch (e) {
+          console.error('Error fetching vendor after update:', e);
+        }
+      } else {
+        toast.error(resp.data?.message || 'Failed to update vendor');
+      }
+    } catch (e) {
+      console.error('Error saving inspection vendor change:', e);
+      toast.error('Failed to update vendor');
+    } finally {
+      setLoadingVendorDetails(false);
+    }
+  };
+
+  // Save technician change to workflow header (persist emp_int_id)
+  const saveTechnicianChange = async (newTechnicianId) => {
+    if (!detail?.header?.wfaiish_id) return;
+    if (!newTechnicianId) return;
+    try {
+      const resp = await API.put(`/inspection-approval/workflow-header/${detail.header.wfaiish_id}`, { technicianId: newTechnicianId });
+      if (resp.data?.success) {
+        toast.success('Technician updated');
+        // Update local selected and fetch details
+        setSelectedTechnician(newTechnicianId);
+        try {
+          const assignedResp = await API.get(`/inspection-approval/technician-header/${newTechnicianId}`);
+          if (assignedResp.data?.success && assignedResp.data.data && assignedResp.data.data.length > 0) {
+            setAssignedTechnician(assignedResp.data.data[0]);
+          }
+        } catch (e) {
+          console.error('Error fetching technician after update:', e);
+        }
+      } else {
+        toast.error(resp.data?.message || 'Failed to update technician');
+      }
+    } catch (e) {
+      console.error('Error saving technician change:', e);
+      toast.error('Failed to update technician');
+    }
+  };
 
   // Fetch workflow history when detail is loaded
   useEffect(() => {
@@ -315,6 +536,25 @@ const InspectionApprovalDetail = () => {
   const handleApprove = async () => {
     if (!approveNote.trim()) return;
     
+    // Check if technician selection/assignment is required
+    const maintainedBy = detail?.header?.maintained_by;
+    const isInternalMaintenance = maintainedBy && maintainedBy.toLowerCase() === 'inhouse';
+    const isVendorMaintenance = maintainedBy && maintainedBy.toLowerCase() === 'vendor';
+    
+    // Validation for internal maintenance - check if technician is assigned
+    if (isInternalMaintenance) {
+      if (!assignedTechnician && !selectedTechnician) {
+        toast.error('Technician assignment is required for internal maintenance inspections.');
+        return;
+      }
+    } else if (isVendorMaintenance) {
+      // Validation for vendor maintenance - check if technician is selected
+      if (technicians.length > 0 && !selectedTechnician) {
+        toast.error('Please select a technician to proceed with the approval.');
+        return;
+      }
+    }
+    
     // Find current step
     const currentStep = detail?.workflowSteps?.find(step => step.status === 'AP');
     if (!currentStep) {
@@ -326,17 +566,26 @@ const InspectionApprovalDetail = () => {
     let toastId = null;
     try {
       toastId = toast.loading("Approving inspection...", { duration: Infinity });
-      const res = await API.post("/inspection-approval/action", {
+      
+      const requestBody = {
         action: 'APPROVE',
         wfaiisd_id: currentStep.wfaiisd_id,
         comments: approveNote,
         wfaiish_id: id
-      });
+      };
+      
+      // Add technician ID if selected
+      if (selectedTechnician) {
+        requestBody.technicianId = selectedTechnician;
+      }
+      
+      const res = await API.post("/inspection-approval/action", requestBody);
       if (toastId) toast.dismiss(toastId);
       if (res.data?.success) {
         toast.success(res.data?.message || "Approved");
         setShowApproveModal(false);
         setApproveNote("");
+        setSelectedTechnician("");
         await fetchDetail();
         await fetchWorkflowHistory();
       } else {
@@ -457,19 +706,37 @@ const InspectionApprovalDetail = () => {
           {/* Tabs (same style as scrap maintenance) */}
           <div className="border-b border-gray-200 mb-6">
             <nav className="-mb-px flex space-x-8">
-              {["approval", "asset", "history"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm
-                    ${activeTab === tab
-                      ? "border-[#0E2F4B] text-[#0E2F4B]"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
-                >
-                  {tab === "approval" ? "Approval Details" : tab === "asset" ? "Asset Details" : "History Details"}
-                </button>
-              ))}
+              {(() => {
+                const maintainedBy = detail?.header?.maintained_by;
+                const baseTabs = ["approval", "asset"];
+                
+                // Add technician or vendor tab based on maintained_by
+                if (maintainedBy && maintainedBy.toLowerCase() === 'inhouse') {
+                  baseTabs.push("technician");
+                } else {
+                  baseTabs.push("vendor");
+                }
+                
+                baseTabs.push("history");
+                
+                return baseTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm
+                      ${activeTab === tab
+                        ? "border-[#0E2F4B] text-[#0E2F4B]"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      }`}
+                  >
+                    {tab === "approval" ? "Approval Details" : 
+                     tab === "asset" ? "Asset Details" : 
+                     tab === "technician" ? "Technician Details" :
+                     tab === "vendor" ? "Vendor Details" :
+                     "History Details"}
+                  </button>
+                ));
+              })()}
             </nav>
           </div>
 
@@ -553,6 +820,232 @@ const InspectionApprovalDetail = () => {
                   <div className="text-center py-8 text-gray-500">
                     No asset details available
                   </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "technician" && (
+              <div className="bg-white rounded shadow p-6 mb-8">
+                {(() => {
+                  const maintainedBy = detail?.header?.maintained_by;
+                  const isInhouse = maintainedBy && maintainedBy.toLowerCase() === 'inhouse';
+                  
+                  if (isInhouse) {
+                    // Show assigned technician with the ability to change from available certified technicians
+                    return (
+                      <>
+                        <h3 className="text-lg font-medium mb-4">Assigned Technician (Inhouse Maintenance)</h3>
+
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium mb-1 text-gray-700">Select Technician</label>
+                          <select
+                            value={selectedTechnician || (assignedTechnician?.emp_int_id || "")}
+                            onChange={async (e) => {
+                              const newId = e.target.value || null;
+                              setSelectedTechnician(newId);
+                              if (newId) {
+                                // find details locally first
+                                const found = technicians.find(t => String(t.emp_int_id) === String(newId));
+                                if (found) setAssignedTechnician(found);
+                                await saveTechnicianChange(newId);
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                          >
+                            <option value="">Select Technician</option>
+                            {technicians.map(t => (
+                              <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name} ({t.emp_int_id})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {loadingAssignedTechnician ? (
+                          <div className="flex items-center text-blue-600">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                            <span>Loading assigned technician...</span>
+                          </div>
+                        ) : assignedTechnician ? (
+                          <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4">
+                              <ReadOnlyInput label="Name" value={assignedTechnician.full_name} />
+                              <ReadOnlyInput label="Employee ID" value={assignedTechnician.emp_int_id} />
+                              <ReadOnlyInput label="Email" value={assignedTechnician.email_id || 'N/A'} />
+                              <ReadOnlyInput label="Phone" value={assignedTechnician.phone_number || 'N/A'} />
+                              <ReadOnlyInput label="Certification" value={assignedTechnician.cert_name || '-'} />
+                              <ReadOnlyInput label="Cert Number" value={assignedTechnician.cert_number || '-'} />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <p className="text-yellow-800">No technician assigned for this inspection</p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+
+                  // Vendor-maintained: allow selection from certified technicians and show details
+                  return (
+                    <>
+                      <h3 className="text-lg font-medium mb-4">Select Technician (Certified for this Asset Type)</h3>
+
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium mb-1 text-gray-700">Select Technician</label>
+                        <select
+                          value={selectedTechnician || ""}
+                          onChange={async (e) => {
+                            const newId = e.target.value || null;
+                            setSelectedTechnician(newId);
+                            if (newId) {
+                              const found = technicians.find(t => String(t.emp_int_id) === String(newId));
+                              if (found) setAssignedTechnician(found);
+                              await saveTechnicianChange(newId);
+                            } else {
+                              setAssignedTechnician(null);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                        >
+                          <option value="">Select Technician</option>
+                          {technicians.map(t => (
+                            <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name} ({t.emp_int_id})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {loadingTechnicians ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B] mx-auto"></div>
+                          <p className="text-gray-500 mt-2">Loading certified technicians...</p>
+                        </div>
+                      ) : (
+                        <>
+                          {assignedTechnician ? (
+                            <div className="p-4 bg-white border border-gray-200 rounded-lg mb-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <ReadOnlyInput label="Name" value={assignedTechnician.full_name} />
+                                <ReadOnlyInput label="Employee ID" value={assignedTechnician.emp_int_id} />
+                                <ReadOnlyInput label="Email" value={assignedTechnician.email_id || '-'} />
+                                <ReadOnlyInput label="Phone" value={assignedTechnician.phone_number || '-'} />
+                                <ReadOnlyInput label="Certification" value={assignedTechnician.cert_name || '-'} />
+                                <ReadOnlyInput label="Cert Number" value={assignedTechnician.cert_number || '-'} />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              <p className="text-lg mb-2">No technician selected</p>
+                            </div>
+                          )}
+
+                          {technicians.length > 0 && (
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full border border-gray-200 rounded-lg">
+                                <thead className="bg-gray-50">
+                                  <tr>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Name</th>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Email</th>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Phone</th>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Certification</th>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Cert Number</th>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Expiry</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {technicians.map((tech, idx) => (
+                                    <tr key={tech.emp_int_id || idx} className="border-b border-gray-200 hover:bg-gray-50">
+                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.full_name}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.email_id || "-"}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.phone_number || "-"}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.cert_name || "-"}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.cert_number || "-"}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.expiry_date ? formatDate(tech.expiry_date) : "No Expiry"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {activeTab === "vendor" && (
+              <div className="bg-white rounded shadow p-6 mb-8">
+                {loadingVendor ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B] mx-auto"></div>
+                    <p className="text-gray-500 mt-2">Loading vendor details...</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Vendor selection always visible */}
+                    <div className="mb-4">
+                      {vendorStatusError && (
+                        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-yellow-800 text-sm font-medium">{vendorStatusError}</p>
+                              <p className="text-yellow-700 text-xs mt-1">Please select an active service vendor from the dropdown below to proceed with approval.</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Service Vendor</label>
+                      <select
+                        value={selectedVendorId !== null ? selectedVendorId : (displayedVendorDetails?.vendor_id || "")}
+                        onChange={async (e) => {
+                          const newVid = e.target.value || null;
+                          setSelectedVendorId(newVid);
+                          setVendorStatusError("");
+                          if (newVid) {
+                            await saveVendorChange(newVid);
+                            try {
+                              const vresp = await API.get(`/vendors/vendor/${newVid}`);
+                              if (vresp.data?.success) setDisplayedVendorDetails(vresp.data.data);
+                            } catch (err) {
+                              console.error('Error fetching vendor after select:', err);
+                            }
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none mb-3"
+                      >
+                        <option value="">Select Service Vendor</option>
+                        {activeVendors.map(v => (
+                          <option key={v.value} value={v.value}>{v.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {displayedVendorDetails ? (
+                      <div className="grid grid-cols-2 gap-6">
+                        <ReadOnlyInput label="Vendor ID" value={displayedVendorDetails.vendor_id || '-'} />
+                        <ReadOnlyInput label="Vendor Name" value={displayedVendorDetails.vendor_name || displayedVendorDetails.company_name || '-'} />
+                        <ReadOnlyInput label="Contact Person" value={displayedVendorDetails.contact_person_name || '-'} />
+                        <ReadOnlyInput label="Contact Email" value={displayedVendorDetails.contact_person_email || displayedVendorDetails.company_email || '-'} />
+                        <ReadOnlyInput label="Contact Phone" value={displayedVendorDetails.contact_person_number || '-'} />
+                        <ReadOnlyInput label="Contract From" value={displayedVendorDetails.contract_start_date ? formatDate(displayedVendorDetails.contract_start_date) : '-'} />
+                        <ReadOnlyInput label="Contract To" value={displayedVendorDetails.contract_end_date ? formatDate(displayedVendorDetails.contract_end_date) : '-'} />
+                        <ReadOnlyInput label="Address" value={`${displayedVendorDetails.address_line1 || ''} ${displayedVendorDetails.address_line2 || ''} ${displayedVendorDetails.city || ''}`.trim() || '-'} />
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <p className="text-lg mb-2">No vendor information available</p>
+                        {detail?.header?.asset_type_name && (
+                          <p className="text-sm mt-2">Asset Type: {detail.header.asset_type_name}</p>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -685,6 +1178,34 @@ const InspectionApprovalDetail = () => {
                     placeholder="Please provide approval note"
                   />
                   {!approveNote.trim() && isSubmitting && <div className="text-red-500 text-xs mt-1">Note is required to approve</div>}
+                  
+                  {/* Technician Dropdown - Only show if maintained internally and technicians are available */}
+                  {detail?.header?.maintained_by && 
+                   (detail.header.maintained_by.toLowerCase() === 'internal' || detail.header.maintained_by.toLowerCase() === 'inhouse') && 
+                   technicians.length > 0 && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Technician <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={selectedTechnician}
+                        onChange={(e) => setSelectedTechnician(e.target.value)}
+                        className={`w-full px-3 py-2 border rounded focus:outline-none ${
+                          !selectedTechnician && isSubmitting ? "border-red-500" : "border-gray-300"
+                        }`}
+                      >
+                        <option value="">Select a certified technician...</option>
+                        {technicians.map((tech) => (
+                          <option key={tech.emp_int_id} value={tech.emp_int_id}>
+                            {tech.full_name} - {tech.cert_name || 'No Certification'}
+                          </option>
+                        ))}
+                      </select>
+                      {!selectedTechnician && isSubmitting && (
+                        <div className="text-red-500 text-xs mt-1">Please select a technician</div>
+                      )}
+                    </div>
+                  )}
                   <div className="flex justify-end gap-3 mt-6">
                     <button
                       onClick={() => setShowApproveModal(false)}
@@ -695,7 +1216,14 @@ const InspectionApprovalDetail = () => {
                     <button
                       onClick={handleApprove}
                       className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors"
-                      disabled={!approveNote.trim() || isSubmitting}
+                      disabled={
+                        !approveNote.trim() || 
+                        isSubmitting ||
+                        (detail?.header?.maintained_by && 
+                         (detail.header.maintained_by.toLowerCase() === 'internal' || detail.header.maintained_by.toLowerCase() === 'inhouse') &&
+                         technicians.length > 0 && 
+                         !selectedTechnician)
+                      }
                     >
                       Approve
                     </button>

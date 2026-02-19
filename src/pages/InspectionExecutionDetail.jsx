@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
+import { useAuthStore } from "../store/useAuthStore";
 import { 
   ArrowLeft, 
   Save, 
@@ -17,6 +18,7 @@ const InspectionExecutionDetail = () => {
   const [loading, setLoading] = useState(true);
   const [checklist, setChecklist] = useState([]);
   const [checklistRecords, setChecklistRecords] = useState([]);
+  const [pendingRecords, setPendingRecords] = useState([]); // local unsaved records
   const [showModal, setShowModal] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [recordedValue, setRecordedValue] = useState('');
@@ -26,6 +28,7 @@ const InspectionExecutionDetail = () => {
   const [formData, setFormData] = useState({
     notes: ""
   });
+  const { user } = useAuthStore();
 
   useEffect(() => {
     fetchDetail();
@@ -45,7 +48,10 @@ const InspectionExecutionDetail = () => {
         setData(res.data.data);
         setStatus(res.data.data.status || 'IN');
         setFormData({
-          notes: res.data.data.notes || ""
+          notes: res.data.data.notes || "",
+          inspector_name: res.data.data.inspector_name || '',
+          inspector_email: res.data.data.inspector_email || '',
+          inspector_phone: res.data.data.inspector_phone || ''
         });
       }
     } catch (error) {
@@ -121,29 +127,60 @@ const InspectionExecutionDetail = () => {
       return;
     }
 
-    try {
-      const payload = {
-        insp_check_id: selectedQuestion.insp_check_id,
-        recorded_value: recordedValue,
-        ais_id: id
-      };
+    // Save locally and mark as pending; will be sent on final save
+    const existing = checklistRecords.find(r => r.insp_check_id === selectedQuestion.insp_check_id);
+    const newRecord = {
+      attirec_id: existing?.attirec_id || null,
+      aatisch_id: id,
+      insp_check_id: selectedQuestion.insp_check_id,
+      recorded_value: recordedValue,
+      created_on: new Date().toISOString(),
+      created_by: user?.user_id || 'SYSTEM'
+    };
 
-      const res = await API.post('/inspection/records', payload);
-      if (res.data.success) {
-        toast.success("Value recorded successfully");
-        setShowModal(false);
-        setRecordedValue('');
-        setSelectedQuestion(null);
-        fetchChecklistRecords(); // Refresh records
-      }
-    } catch (error) {
-      console.error("Error saving record:", error);
-      toast.error("Failed to save record");
-    }
+    // upsert into checklistRecords
+    setChecklistRecords(prev => {
+      const without = prev.filter(r => r.insp_check_id !== selectedQuestion.insp_check_id);
+      return [...without, newRecord];
+    });
+
+    setPendingRecords(prev => {
+      const without = prev.filter(r => r.insp_check_id !== selectedQuestion.insp_check_id);
+      return [...without, { insp_check_id: selectedQuestion.insp_check_id, recorded_value: recordedValue }];
+    });
+
+    toast.success("Value saved locally. Click Save to persist all values.");
+    setShowModal(false);
+    setRecordedValue('');
+    setSelectedQuestion(null);
   };
 
   const handleFinalSave = async () => {
     try {
+      // First, persist any pending checklist records
+      if (pendingRecords.length > 0) {
+        const recPayload = {
+          ais_id: id,
+          records: pendingRecords,
+          notes: formData.notes,
+          trigger_maintenance: triggerMaintenance
+        };
+
+        // Include inspector fields only for vendor-maintained inspections
+        if (data?.vendor_id) {
+          recPayload.inspector_name = formData.inspector_name;
+          recPayload.inspector_email = formData.inspector_email;
+          recPayload.inspector_phone = formData.inspector_phone;
+        }
+
+        const recRes = await API.post('/inspection/records', recPayload);
+        if (!recRes.data?.success) {
+          toast.error('Failed to save checklist records');
+          return;
+        }
+      }
+
+      // Then update the inspection schedule
       const payload = {
         status,
         notes: formData.notes,
@@ -299,6 +336,36 @@ const InspectionExecutionDetail = () => {
           />
         </div>
 
+        {/* Inspector fields for vendor-maintained inspections */}
+        {data.maintained_by && String(data.maintained_by).toLowerCase() === 'vendor' && (
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Inspector Details (Vendor)</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <input
+                name="inspector_name"
+                value={formData.inspector_name || ''}
+                onChange={handleChange}
+                placeholder="Inspector Name"
+                className="w-full p-2 border border-gray-300 rounded"
+              />
+              <input
+                name="inspector_email"
+                value={formData.inspector_email || ''}
+                onChange={handleChange}
+                placeholder="Inspector Email"
+                className="w-full p-2 border border-gray-300 rounded"
+              />
+              <input
+                name="inspector_phone"
+                value={formData.inspector_phone || ''}
+                onChange={handleChange}
+                placeholder="Inspector Phone"
+                className="w-full p-2 border border-gray-300 rounded"
+              />
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between pt-4 border-t">
           <div className="flex items-center gap-6">
             {/* Trigger Maintenance */}
@@ -330,7 +397,8 @@ const InspectionExecutionDetail = () => {
 
           <button
             onClick={handleFinalSave}
-            className="flex items-center bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm"
+            disabled={(String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id))}
+            className={`flex items-center px-6 py-2 rounded-lg transition shadow-sm ${(String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
           >
             <Save size={18} className="mr-2" />
             Save Changes
