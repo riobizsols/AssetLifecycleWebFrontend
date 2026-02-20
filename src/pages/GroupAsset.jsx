@@ -6,7 +6,6 @@ import { toast } from "react-hot-toast";
 import { Plus } from "lucide-react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
-import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import { useAuditLog } from "../hooks/useAuditLog";
 import { GROUP_ASSETS_APP_ID } from "../constants/groupAssetsAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -17,8 +16,6 @@ const GroupAsset = () => {
   const { t } = useLanguage();
   const [groupAssets, setGroupAssets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [rowToDelete, setRowToDelete] = useState(null);
 
   // Audit logging
   const { recordActionByNameWithFetch } = useAuditLog(GROUP_ASSETS_APP_ID);
@@ -158,28 +155,20 @@ const GroupAsset = () => {
     });
   };
 
-  const handleDelete = (row) => {
-    setRowToDelete(row);
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!rowToDelete) return;
+  const handleDelete = async (row) => {
     try {
-      await API.delete(`/asset-groups/${rowToDelete.group_id}`);
+      await API.delete(`/asset-groups/${row.group_id}`);
 
       // Log audit event for delete
       await recordActionByNameWithFetch("Delete", {
-        groupId: rowToDelete.group_id,
-        groupName: rowToDelete.group_name,
+        groupId: row.group_id,
+        groupName: row.group_name,
         action: "Group Asset Deleted Successfully",
       });
 
       toast.success(t("groupAssets.assetGroupDeletedSuccessfully"));
       // Refresh the data
       fetchAssetGroups();
-      setShowDeleteModal(false);
-      setRowToDelete(null);
     } catch (error) {
       console.error("Error deleting asset group:", error);
       toast.error(t("groupAssets.failedToDeleteAssetGroup"));
@@ -189,7 +178,7 @@ const GroupAsset = () => {
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
       toast.error(t("groupAssets.pleaseSelectAssetGroupsToDelete"));
-      return false;
+      return;
     }
 
     try {
@@ -216,11 +205,9 @@ const GroupAsset = () => {
       // Clear selection and refresh data
       setSelectedRows([]);
       fetchAssetGroups();
-      return true;
     } catch (error) {
       console.error("Error deleting selected asset groups:", error);
       toast.error(t("groupAssets.failedToDeleteSomeAssetGroups"));
-      return false;
     }
   };
 
@@ -382,15 +369,6 @@ const GroupAsset = () => {
           }}
         </ContentBox>
       )}
-      <DeleteConfirmModal 
-        show={showDeleteModal} 
-        onClose={() => {
-          setShowDeleteModal(false);
-          setRowToDelete(null);
-        }} 
-        onConfirm={confirmDelete}
-        message={rowToDelete ? t('groupAssets.areYouSureDeleteGroup', { name: rowToDelete.group_name }) : null}
-      />
     </div>
   );
 };

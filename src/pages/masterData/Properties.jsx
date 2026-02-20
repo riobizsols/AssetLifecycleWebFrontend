@@ -359,7 +359,7 @@ const Properties = () => {
         {/* Create Property Modal */}
         {showCreateForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
               <div className="bg-gradient-to-r from-[#0E2F4B] to-[#1a4d7a] text-white py-4 px-6 border-b-4 border-[#FFC107] flex items-center justify-between sticky top-0 z-10">
                 <div>
                   <h2 className="text-xl font-semibold">Create New Property</h2>

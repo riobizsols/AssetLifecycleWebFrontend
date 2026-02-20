@@ -157,6 +157,81 @@ const CreateInspectionFrequency = () => {
     }
   };
 
+  // Scanner functions
+  const initializeScanner = async () => {
+    try {
+      const scanner = new Html5Qrcode("qr-reader");
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+        },
+        onScanSuccess,
+        onScanError
+      );
+    } catch (err) {
+      console.error("Error starting scanner:", err);
+      toast.error("Could not access camera");
+      setShowScanner(false);
+    }
+  };
+
+  const onScanSuccess = (decodedText) => {
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(console.error);
+      scannerRef.current = null;
+    }
+    setScannedAssetId(decodedText);
+    setSelectedMapping(decodedText);
+    setShowScanner(false);
+    toast.success('Asset ID scanned successfully');
+  };
+
+  const onScanError = (error) => {
+    // Handle scan error silently
+    console.warn("Scan error:", error);
+  };
+
+  const stopScanner = () => {
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(console.error);
+      scannerRef.current = null;
+    }
+    setShowScanner(false);
+  };
+
+  const startScanner = () => {
+    setShowScanner(true);
+  };
+
+  const handleScanSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!scannedAssetId.trim()) {
+      toast.error('Please scan or enter an asset ID');
+      return;
+    }
+
+    // Find the mapping that matches the scanned asset ID
+    const matchingMapping = assetTypeChecklistMappings.find(m => 
+      m.rowId === scannedAssetId || 
+      m.at_id === scannedAssetId ||
+      m.asset_id === parseInt(scannedAssetId)
+    );
+
+    if (matchingMapping) {
+      setSelectedMapping(matchingMapping.rowId);
+      setActiveTab('manual');
+      setScannedAssetId('');
+    } else {
+      toast.error('No matching asset type found for the scanned ID');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-4xl mx-auto">
@@ -215,10 +290,10 @@ const CreateInspectionFrequency = () => {
             {activeTab === 'manual' ? (
             <form onSubmit={handleCreateFrequency}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Asset Type Mapping Selection */}
+                {/* Asset Type Selection */}
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Asset Type / Mapping <span className="text-red-500">*</span>
+                    Asset Type <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={selectedMapping}
@@ -226,7 +301,7 @@ const CreateInspectionFrequency = () => {
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
                     required
                   >
-                    <option value="">-- Select Asset Type Mapping --</option>
+                    <option value="">-- Select Asset Type --</option>
                     {assetTypeChecklistMappings.map((mapping) => (
                       <option key={mapping.rowId} value={mapping.rowId}>
                         {mapping.displayName}

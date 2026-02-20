@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Edit2, Trash2, Filter, Plus, Minus } from "lucide-react";
+import { Edit2, Trash2, Filter, Plus, Minus, X } from "lucide-react";
 import { toast } from "react-hot-toast";
 import API from "../../lib/axios";
 import { filterData } from "../../utils/filterData";
 import DeleteConfirmModal from "../../components/DeleteConfirmModal";
+import CreateInspectionChecklist from "../../pages/masterData/CreateInspectionChecklist";
 import { useLanguage } from "../../contexts/LanguageContext";
 
 const InspectionChecklists = () => {
@@ -12,6 +13,7 @@ const InspectionChecklists = () => {
   const [responseTypes, setResponseTypes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -54,7 +56,7 @@ const InspectionChecklists = () => {
     setIsLoading(true);
     try {
       const response = await API.get("/inspection-checklists");
-      const data = response.data?.data || [];
+      const data = (response.data?.data || []).reverse();
       setChecklists(data);
     } catch (error) {
       console.error("Failed to fetch checklists:", error);
@@ -119,6 +121,7 @@ const InspectionChecklists = () => {
 
       toast.success("Inspection checklist created successfully");
       clearForm();
+      setShowCreateModal(false);
       await fetchChecklists();
     } catch (error) {
       console.error("Failed to create checklist:", error);
@@ -263,140 +266,18 @@ const InspectionChecklists = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Form */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Create New Inspection Checklist</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Inspection Question</label>
-              <input
-                type="text"
-                value={inspectionQuestion}
-                onChange={(e) => setInspectionQuestion(e.target.value)}
-                placeholder="Enter inspection question"
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                  showErrors && !inspectionQuestion.trim()
-                    ? "border-red-500 focus:ring-red-500/40"
-                    : "border-gray-300 focus:ring-[#0E2F4B]/40"
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Response Type</label>
-              <select
-                value={responseTypeId}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setResponseTypeId(val);
-                  // Clear ranges if not quantitative
-                  if (!isQuantitative(val)) {
-                    setMinRange("");
-                    setMaxRange("");
-                  }
-                }}
-                className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                  showErrors && !responseTypeId
-                    ? "border-red-500 focus:ring-red-500/40"
-                    : "border-gray-300 focus:ring-[#0E2F4B]/40"
-                }`}
-              >
-                <option value="">Select response type</option>
-                {responseTypes.map((type) => (
-                  <option key={type.irtd_id} value={type.irtd_id}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {!isQuantitative(responseTypeId) && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Expected Value</label>
-                <input
-                  type="text"
-                  value={expectedValue}
-                  onChange={(e) => setExpectedValue(e.target.value)}
-                  placeholder="Enter expected value"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
-                />
-              </div>
-            )}
-
-            {isQuantitative(responseTypeId) && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Range</label>
-                  <input
-                    type="number"
-                    value={minRange}
-                    onChange={(e) => setMinRange(e.target.value)}
-                    placeholder={isQuantitative(responseTypeId) ? "Enter minimum range" : "N/A"}
-                    disabled={!isQuantitative(responseTypeId)}
-                    className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                      showErrors && isQuantitative(responseTypeId) && !minRange
-                        ? "border-red-500 focus:ring-red-500/40"
-                        : "border-gray-300 focus:ring-[#0E2F4B]/40"
-                    } ${!isQuantitative(responseTypeId) ? "bg-gray-100 cursor-not-allowed" : ""}`}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Range</label>
-                  <input
-                    type="number"
-                    value={maxRange}
-                    onChange={(e) => setMaxRange(e.target.value)}
-                    placeholder={isQuantitative(responseTypeId) ? "Enter maximum range" : "N/A"}
-                    disabled={!isQuantitative(responseTypeId)}
-                    className={`w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-                      showErrors && isQuantitative(responseTypeId) && !maxRange
-                        ? "border-red-500 focus:ring-red-500/40"
-                        : "border-gray-300 focus:ring-[#0E2F4B]/40"
-                    } ${!isQuantitative(responseTypeId) ? "bg-gray-100 cursor-not-allowed" : ""}`}
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="flex items-end">
-              <label className={`flex items-center gap-2 mb-2 p-2 rounded cursor-pointer transition-colors ${triggerMaintenance ? 'bg-red-50' : 'bg-gray-50'}`}>
-                <input
-                  type="checkbox"
-                  checked={triggerMaintenance}
-                  onChange={(e) => setTriggerMaintenance(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-[#0E2F4B] focus:ring-[#0E2F4B]"
-                />
-                <span className={`text-sm font-semibold ${triggerMaintenance ? 'text-red-700' : 'text-gray-700'}`}>
-                  Trigger Maintenance Automatic
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 justify-end">
-            <button
-              onClick={clearForm}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 text-sm font-medium"
-            >
-              Clear
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isCreating}
-              className="px-4 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#12395c] transition disabled:opacity-60 text-sm font-medium"
-            >
-              {isCreating ? "Saving..." : "Save"}
-            </button>
-          </div>
-        </div>
-
         {/* Table Header with Filter */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Inspection Checklists List</h2>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B] transition-colors"
+                title="Create New"
+              >
+                <Plus size={16} />
+              </button>
               <button
                 onClick={handleDeleteSelected}
                 className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B] transition-colors"
@@ -693,6 +574,17 @@ const InspectionChecklists = () => {
           )}
         </div>
       </div>
+
+      {/* Create Inspection Checklist Modal */}
+      <CreateInspectionChecklist 
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          clearForm();
+        }}
+        onSuccess={fetchChecklists}
+        responseTypes={responseTypes}
+      />
 
       <DeleteConfirmModal
         show={showDeleteModal}

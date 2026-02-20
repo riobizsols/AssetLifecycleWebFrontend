@@ -121,7 +121,10 @@ export default function AppRoutes() {
         <Route path="/tenant-setup" element={<TenantSetup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/request-password-change" element={<RequestPasswordChange />} />
+        <Route
+          path="/request-password-change"
+          element={<RequestPasswordChange />}
+        />
         <Route
           path="/change-password"
           element={
@@ -130,21 +133,28 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/not-authorized" element={
-          <div className="flex items-center justify-center min-h-screen bg-gray-50">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🚫</div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-              <p className="text-gray-600 mb-4">You don't have permission to access this page.</p>
-              <button 
-                onClick={() => window.history.back()} 
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Go Back
-              </button>
+        <Route
+          path="/not-authorized"
+          element={
+            <div className="flex items-center justify-center min-h-screen bg-gray-50">
+              <div className="text-center">
+                <div className="text-6xl mb-4">🚫</div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  Access Denied
+                </h1>
+                <p className="text-gray-600 mb-4">
+                  You don't have permission to access this page.
+                </p>
+                <button
+                  onClick={() => window.history.back()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Go Back
+                </button>
+              </div>
             </div>
-          </div>
-        } />
+          }
+        />
         <Route
           path="/dashboard"
           element={
@@ -602,10 +612,6 @@ export default function AppRoutes() {
           }
         />
 
-
-
-
-        
         <Route
           path="report-modal"
           element={
@@ -682,7 +688,7 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/inspection-view/:id"
           element={
@@ -738,7 +744,7 @@ export default function AppRoutes() {
         <Route
           path="/assets"
           element={
-            <ProtectedRoute requiredAppId="ASSETS" >
+            <ProtectedRoute requiredAppId="ASSETS">
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -752,7 +758,7 @@ export default function AppRoutes() {
         <Route
           path="/cost-center-transfer"
           element={
-            <ProtectedRoute requiredAppId="COSTCENTERTRANSFER" >
+            <ProtectedRoute requiredAppId="COSTCENTERTRANSFER">
               <MainLayout>
                 <CostCenterTransfer />
               </MainLayout>
@@ -905,15 +911,15 @@ export default function AppRoutes() {
         </Route>
 
         <Route
-  path="/master-data/add-vendor"
-  element={
-    <ProtectedRoute requiredAppId="VENDORS">
-      <MainLayout>
-        <AddEntityForm />
-      </MainLayout>
-    </ProtectedRoute>
-  }
-/>
+          path="/master-data/add-vendor"
+          element={
+            <ProtectedRoute requiredAppId="VENDORS">
+              <MainLayout>
+                <AddEntityForm />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         {/* nesting routing  branches and add department  */}
 
@@ -1057,10 +1063,7 @@ export default function AppRoutes() {
         />
 
         {/* Admin Settings Routes */}
-        <Route
-          path="/adminsettings"
-          element={<AdminSettingsRedirect />}
-        />
+        <Route path="/adminsettings" element={<AdminSettingsRedirect />} />
         <Route
           path="/adminsettings/configuration"
           element={
