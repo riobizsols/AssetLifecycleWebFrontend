@@ -142,10 +142,10 @@ const CreateAssetTypeChecklistMapping = () => {
         return;
       }
 
-      // Check for camera permissions
+      // Check for camera support
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         console.error("Camera access not supported in this browser");
-        toast.error("Camera access not supported. Use HTTPS and a modern browser.");
+        toast.error("Camera access not supported. Please use HTTPS and a modern browser (Chrome, Firefox, Safari, Edge).");
         setShowScanner(false);
         return;
       }
@@ -155,17 +155,25 @@ const CreateAssetTypeChecklistMapping = () => {
       
       await scanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+        { 
+          fps: 10, 
+          qrbox: { width: 250, height: 250 }, 
+          aspectRatio: 1.0 
+        },
         onScanSuccess,
         onScanError
       );
+      console.log("Scanner started successfully");
     } catch (err) {
       console.error("Error starting scanner:", err?.message || err);
       
+      // Handle specific error types
       if (err?.message?.includes("NotAllowedError") || err?.message?.includes("Permission denied")) {
         toast.error("Camera access denied. Please allow camera permissions in your browser settings.");
-      } else if (err?.message?.includes("NotFoundError") || err?.message?.includes("no camera")) {
-        toast.error("No camera found on this device");
+      } else if (err?.message?.includes("NotFoundError") || err?.message?.includes("no camera") || err?.message?.includes("NotFoundException")) {
+        toast.error("No camera found on this device. Please check your device has a working camera.");
+      } else if (err?.message?.includes("NotSupportedError")) {
+        toast.error("Camera API not supported. Please use HTTPS connection.");
       } else {
         toast.error("Could not access camera: " + (err?.message?.substring(0, 50) || "Unknown error"));
       }

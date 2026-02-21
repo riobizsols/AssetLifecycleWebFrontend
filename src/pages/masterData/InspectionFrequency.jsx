@@ -231,25 +231,39 @@ const InspectionFrequency = () => {
 
             <form onSubmit={handleSave} id="inspectionFrequencyForm" className="flex-1 overflow-y-auto p-6">
               <div className="grid grid-cols-2 gap-6">
-                <div className="col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Asset Type / Mapping <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={selectedMappingId}
-                    onChange={(e) => setSelectedMappingId(e.target.value)}
-                    disabled={isEditing}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#003b6f] disabled:bg-gray-100"
-                    required
-                  >
-                    <option value="">-- Select Mapping --</option>
-                    {mappings.map(m => (
-                      <option key={m.rowId} value={m.rowId}>
-                        {m.asset_type_name} {m.asset_name ? `(${m.asset_name})` : "(All Assets)"}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {isEditing ? (
+                  <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Asset Type
+                    </label>
+                    <input
+                      type="text"
+                      value={frequencies.find(f => f.aatif_id === currentId)?.asset_type_name || ""}
+                      disabled
+                      className="w-full px-3 py-2 border rounded bg-gray-100 text-gray-600 cursor-not-allowed"
+                      readOnly
+                    />
+                  </div>
+                ) : (
+                  <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Asset Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedMappingId}
+                      onChange={(e) => setSelectedMappingId(e.target.value)}
+                      className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#003b6f]"
+                      required
+                    >
+                      <option value="">-- Select Mapping --</option>
+                      {mappings.map(m => (
+                        <option key={m.rowId} value={m.rowId}>
+                          {m.asset_type_name} {m.asset_name ? `(${m.asset_name})` : "(All Assets)"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
