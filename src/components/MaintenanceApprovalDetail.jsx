@@ -159,6 +159,11 @@ const MaintenanceApprovalDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [approvalDetails, setApprovalDetails] = useState(null);
+  const [technicians, setTechnicians] = useState([]);
+  const [assignedTechnician, setAssignedTechnician] = useState(null);
+  const [selectedTechnician, setSelectedTechnician] = useState(null);
+  const [loadingTechnicians, setLoadingTechnicians] = useState(false);
+  const [loadingAssignedTechnician, setLoadingAssignedTechnician] = useState(false);
   const [loadingApprovalDetails, setLoadingApprovalDetails] = useState(false);
   const [assetDetails, setAssetDetails] = useState(null);
   const [loadingAssetDetails, setLoadingAssetDetails] = useState(false);
@@ -205,6 +210,22 @@ const MaintenanceApprovalDetail = () => {
       setActiveTab('approval');
     }
   }, [isSubscriptionRenewal, activeTab]);
+
+  // Reset active tab when switching between vendor and in-house maintenance
+  useEffect(() => {
+    if (!approvalDetails) return;
+    const hasEmpIntId = approvalDetails?.header_emp_int_id;
+    const maint = (approvalDetails?.maintained_by || '').toString().toLowerCase();
+    const isInhouse = hasEmpIntId || (maint && (maint.includes('inhouse') || maint.includes('in-house')));
+    
+    if (isInhouse && activeTab === 'vendor') {
+      console.log('Resetting tab from vendor to approval for in-house maintenance');
+      setActiveTab('approval');
+    } else if (!isInhouse && activeTab === 'technician') {
+      console.log('Resetting tab from technician to approval for vendor maintenance');
+      setActiveTab('approval');
+    }
+  }, [approvalDetails?.header_emp_int_id, approvalDetails?.maintained_by, activeTab]);
 
   // Set current user from auth store
   useEffect(() => {
@@ -266,6 +287,9 @@ const MaintenanceApprovalDetail = () => {
             isOverdue: workflowData.isOverdue,
             notes: workflowData.notes,
             checklist: workflowData.checklist,
+            maintained_by: workflowData.maintained_by || null,
+            header_emp_int_id: workflowData.header_emp_int_id || null,
+            at_main_freq_id: workflowData.at_main_freq_id || null,
             vendorDetails: workflowData.vendorDetails,
             workflowSteps: workflowData.workflowSteps,
             // Group asset maintenance information
@@ -289,7 +313,7 @@ const MaintenanceApprovalDetail = () => {
         }
       } catch (error) {
         console.error("Error fetching maintenance workflow:", error);
-        // Fallback to mock data if API fails
+        // Fallback to a safe minimal state if API fails - do NOT set assetId to the workflow id
         setApprovalDetails({
           alertType: "Maintenance Alert",
           alertDueOn: "20/02/2025",
@@ -298,11 +322,11 @@ const MaintenanceApprovalDetail = () => {
           proposal: "Replace part X",
           vendor: "VendorX",
           assetType: "Hardware",
-          assetId: id,
+          assetId: null, // avoid calling /api/assets/{wfamshId}
           notes: null,
           checklist: [] // Empty array - real checklist should come from API
         });
-        // Fallback to mock steps
+        // Fallback to mock steps (limited)
         setSteps(mockApiResponse.steps);
       } finally {
         setLoadingApprovalDetails(false);
@@ -519,6 +543,88 @@ const MaintenanceApprovalDetail = () => {
     fetchAssetDetails();
   }, [approvalDetails?.assetId]);
 
+  // Fetch technicians or assigned technician when approvalDetails is loaded
+  useEffect(() => {
+    const fetchAssignedTechnician = async (empIntId) => {
+      if (!empIntId) return;
+      setLoadingAssignedTechnician(true);
+      try {
+        const response = await API.get(`/inspection-approval/technician-header/${empIntId}`);
+        if (response.data?.success && response.data.data && response.data.data.length > 0) {
+          setAssignedTechnician(response.data.data[0]);
+          setSelectedTechnician(response.data.data[0].emp_int_id);
+        } else {
+          setAssignedTechnician(null);
+        }
+      } catch (e) {
+        console.error('Error fetching assigned technician:', e);
+        setAssignedTechnician(null);
+      } finally {
+        setLoadingAssignedTechnician(false);
+      }
+    };
+
+    const fetchCertifiedTechnicians = async (assetTypeId) => {
+      if (!assetTypeId) return;
+      setLoadingTechnicians(true);
+      try {
+        const resp = await API.get(`/inspection-approval/technicians/${assetTypeId}`);
+        if (resp.data?.success) {
+          setTechnicians(resp.data.data || []);
+        } else {
+          setTechnicians([]);
+        }
+      } catch (e) {
+        console.error('Error fetching certified technicians:', e);
+        setTechnicians([]);
+      } finally {
+        setLoadingTechnicians(false);
+      }
+    };
+
+    if (!approvalDetails) return;
+    const hasEmpIntId = approvalDetails?.header_emp_int_id;
+    const maintained = (approvalDetails?.maintained_by || '').toString().toLowerCase();
+    const isInhouse = hasEmpIntId || (maintained && (maintained.includes('inhouse') || maintained.includes('in-house')));
+    
+    if (isInhouse) {
+      // Fetch assigned technician from header if present
+      if (approvalDetails?.header_emp_int_id) {
+        fetchAssignedTechnician(approvalDetails.header_emp_int_id);
+      }
+      // Also fetch certified technicians for asset type to allow selection
+      if (approvalDetails?.assetTypeId) {
+        fetchCertifiedTechnicians(approvalDetails.assetTypeId);
+      }
+    }
+  }, [approvalDetails]);
+
+  // Save technician change to workflow header
+  const saveTechnicianChange = async (newTechnicianId) => {
+    if (!approvalDetails?.wfamshId) return;
+    if (!newTechnicianId) return;
+    try {
+      const resp = await API.put(`/approval-detail/workflow-header/${approvalDetails.wfamshId}`, { technicianId: newTechnicianId });
+      if (resp.data?.success) {
+        toast.success('Technician updated');
+        setSelectedTechnician(newTechnicianId);
+        try {
+          const assignedResp = await API.get(`/inspection-approval/technician-header/${newTechnicianId}`);
+          if (assignedResp.data?.success && assignedResp.data.data && assignedResp.data.data.length > 0) {
+            setAssignedTechnician(assignedResp.data.data[0]);
+          }
+        } catch (e) {
+          console.error('Error fetching technician after update:', e);
+        }
+      } else {
+        toast.error(resp.data?.message || 'Failed to update technician');
+      }
+    } catch (e) {
+      console.error('Error saving technician change:', e);
+      toast.error('Failed to update technician');
+    }
+  };
+
   // Fetch workflow history when approval details are loaded
   useEffect(() => {
     const fetchWorkflowHistory = async () => {
@@ -648,12 +754,17 @@ const MaintenanceApprovalDetail = () => {
         setDisplayedVendorDetails(approvalDetails.vendorDetails);
       }
       
-      // Check vendor status on load
-      const currentVendorStatus = approvalDetails?.vendorDetails?.vendor_status || approvalDetails?.vendorDetails?.int_status;
-      if (currentVendorStatus === 0 || currentVendorStatus === 3) {
-        setVendorStatusError("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
-      } else {
+      // If maintenance is inhouse we ignore vendor status entirely
+      if (approvalDetails?.maintained_by && approvalDetails.maintained_by.toLowerCase().includes('inhouse')) {
         setVendorStatusError("");
+      } else {
+        // Check vendor status on load
+        const currentVendorStatus = approvalDetails?.vendorDetails?.vendor_status || approvalDetails?.vendorDetails?.int_status;
+        if (currentVendorStatus === 0 || currentVendorStatus === 3) {
+          setVendorStatusError("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
+        } else {
+          setVendorStatusError("");
+        }
       }
     }
   }, [approvalDetails]);
@@ -838,7 +949,18 @@ const MaintenanceApprovalDetail = () => {
                   if (isVendorContractRenewal) {
                     return ['approval', 'vendor', 'history'];
                   }
-                  // For regular maintenance: show all tabs
+                  // For regular maintenance: show technician tab when has emp_int_id (in-house), otherwise vendor
+                  const hasEmpIntId = approvalDetails?.header_emp_int_id;
+                  const maint = (approvalDetails?.maintained_by || '').toString().toLowerCase();
+                  console.log('🔍 Tab Logic Debug:', {
+                    hasEmpIntId,
+                    maintained_by: approvalDetails?.maintained_by,
+                    maint,
+                    approvalDetails
+                  });
+                  if (hasEmpIntId || (maint && (maint.includes('inhouse') || maint.includes('in-house')))) {
+                    return ['approval', 'technician', 'asset', 'history'];
+                  }
                   return ['approval', 'vendor', 'asset', 'history'];
                 })().map((tab) => (
                   <button
@@ -1038,6 +1160,56 @@ const MaintenanceApprovalDetail = () => {
                   )}
                 </div>
               )}
+              {activeTab === 'technician' && (
+                <div className="bg-white rounded shadow p-6 mb-8">
+                  {/* Technician tab - similar to InspectionApprovalDetail behavior */}
+                  <>
+                    <h3 className="text-lg font-medium mb-4">Technician Details</h3>
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Select Technician</label>
+                      <select
+                        value={selectedTechnician || (assignedTechnician?.emp_int_id || "")}
+                        onChange={async (e) => {
+                          const newId = e.target.value || null;
+                          setSelectedTechnician(newId);
+                          if (newId) {
+                            const found = technicians.find(t => String(t.emp_int_id) === String(newId));
+                            if (found) setAssignedTechnician(found);
+                            await saveTechnicianChange(newId);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                      >
+                        <option value="">Select Technician</option>
+                        {technicians.map(t => (
+                          <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name} ({t.emp_int_id})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {loadingAssignedTechnician ? (
+                      <div className="flex items-center text-blue-600">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                        <span>Loading assigned technician...</span>
+                      </div>
+                    ) : assignedTechnician ? (
+                      <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                        <div className="grid grid-cols-2 gap-4">
+                          <ReadOnlyInput label="Name" value={assignedTechnician.full_name} />
+                          <ReadOnlyInput label="Employee ID" value={assignedTechnician.emp_int_id} />
+                          <ReadOnlyInput label="Email" value={assignedTechnician.email_id || 'N/A'} />
+                          <ReadOnlyInput label="Phone" value={assignedTechnician.phone_number || 'N/A'} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-yellow-800">No technician assigned for this maintenance</p>
+                      </div>
+                    )}
+                  </>
+                </div>
+              )}
               {activeTab === 'asset' && (
                 <div className="bg-white rounded shadow p-6">
                   {loadingAssetDetails ? (
@@ -1208,15 +1380,17 @@ const MaintenanceApprovalDetail = () => {
                       const vendorToCheck = displayedVendorDetails || approvalDetails?.vendorDetails;
                       const vendorStatus = vendorToCheck?.vendor_status || vendorToCheck?.int_status;
                       
-                      // If vendor is inactive (0) or CR Approved (3), prevent approval
-                      if (currentVendorId && (vendorStatus === 0 || vendorStatus === 3)) {
-                        toast.error("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
-                        // Switch to vendor tab to show the message
-                        setActiveTab('vendor');
-                        setVendorStatusError("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
-                        return;
+                      // If this is inhouse maintenance, ignore vendor status
+                      if (!approvalDetails?.maintained_by || !approvalDetails.maintained_by.toLowerCase().includes('inhouse')) {
+                        // If vendor is inactive (0) or CR Approved (3), prevent approval
+                        if (currentVendorId && (vendorStatus === 0 || vendorStatus === 3)) {
+                          toast.error("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
+                          // Switch to vendor tab to show the message
+                          setActiveTab('vendor');
+                          setVendorStatusError("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
+                          return;
+                        }
                       }
-                      
                       // If no vendor selected, also prevent
                       if (!currentVendorId) {
                         toast.error("Please select a vendor before approving.");
