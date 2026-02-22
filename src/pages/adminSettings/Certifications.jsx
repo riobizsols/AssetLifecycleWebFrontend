@@ -67,6 +67,12 @@ const Certifications = () => {
   const [selectedCertificatesForMapping, setSelectedCertificatesForMapping] = useState([]);
   const [mappingFormSearchAvailable, setMappingFormSearchAvailable] = useState("");
   const [mappingFormSearchSelected, setMappingFormSearchSelected] = useState("");
+  // Form-only asset/maintenance type (no preselection when adding)
+  const [mappingFormAssetType, setMappingFormAssetType] = useState("");
+  const [mappingFormMaintType, setMappingFormMaintType] = useState("");
+  const [mappingFormMaintTypes, setMappingFormMaintTypes] = useState([]);
+  const [mappingFormMappedCertificates, setMappingFormMappedCertificates] = useState([]);
+  const [mappingFormMappedLoaded, setMappingFormMappedLoaded] = useState(false);
   
   // Track last mapping initialization to avoid re-syncing while user is editing
   const mappingFormInitRef = useRef({ assetType: '', maintType: '' });
@@ -97,6 +103,10 @@ const Certifications = () => {
   const [updateCertName, setUpdateCertName] = useState("");
   const [updateCertNumber, setUpdateCertNumber] = useState("");
   const [isUpdatingCert, setIsUpdatingCert] = useState(false);
+  const [updateModalSource, setUpdateModalSource] = useState(null); // 'create' | 'mapping' | 'inspection'
+  const [updateCertAssetType, setUpdateCertAssetType] = useState("");
+  const [updateCertMaintType, setUpdateCertMaintType] = useState("");
+  const [updateModalMaintTypes, setUpdateModalMaintTypes] = useState([]);
   
   const [dropdownSearchTerm, setDropdownSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -320,33 +330,88 @@ const Certifications = () => {
     }
   }, [filteredMaintTypes, selectedMaintType]);
 
-  // Sync Mapping Form lists (Available vs Selected) based on current mapping in DB
+  // When update modal is open for mapping, load maintenance types for selected asset type
   useEffect(() => {
-    if (showMappingForm && selectedAssetType && selectedMaintType) {
-      // If the selection has changed, we should re-initialize the available/selected lists
-      if (mappingFormInitRef.current.assetType !== selectedAssetType || 
-          mappingFormInitRef.current.maintType !== selectedMaintType) {
-        
-        console.log("🛠️ Syncing mapping lists for:", selectedAssetType, selectedMaintType);
-        
-        const existingMappings = mappedCertificates.filter(
-          (cert) => String(cert.maint_type_id) === String(selectedMaintType)
-        );
-        
-        const existingMappingIds = existingMappings.map(c => c.tech_cert_id);
-        
-        setSelectedCertificatesForMapping(existingMappings);
-        setAvailableCertificatesForMapping(
-          certificates.filter(c => !existingMappingIds.includes(c.tech_cert_id))
-        );
-        
-        mappingFormInitRef.current = { assetType: selectedAssetType, maintType: selectedMaintType };
-      }
-    } else if (!showMappingForm) {
-      // Reset ref when form is closed so it re-initializes next time
-      mappingFormInitRef.current = { assetType: '', maintType: '' };
+    if (!showUpdateModal || updateModalSource !== "mapping" || !updateCertAssetType) {
+      if (!showUpdateModal) setUpdateModalMaintTypes([]);
+      return;
     }
-  }, [showMappingForm, selectedAssetType, selectedMaintType, mappedCertificates, certificates]);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await API.get(`/maintenance-schedules/frequency/${updateCertAssetType}`);
+        const rows = Array.isArray(response.data) ? response.data : response.data?.data || [];
+        const ids = Array.from(new Set(rows.map((row) => row.maint_type_id).filter(Boolean)));
+        if (!cancelled) {
+          setUpdateModalMaintTypes(maintTypes.filter((t) => ids.includes(t.maint_type_id)));
+        }
+      } catch (err) {
+        if (!cancelled) setUpdateModalMaintTypes([]);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [showUpdateModal, updateModalSource, updateCertAssetType, maintTypes]);
+
+  // When mapping form is open and user selects an asset type, load its maintenance types and mapped certs
+  useEffect(() => {
+    if (!showMappingForm || !mappingFormAssetType) {
+      if (!showMappingForm) {
+        setMappingFormMaintTypes([]);
+        setMappingFormMappedCertificates([]);
+        setMappingFormMappedLoaded(false);
+      }
+      return;
+    }
+    setMappingFormMappedLoaded(false);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const [freqRes, mapRes] = await Promise.all([
+          API.get(`/maintenance-schedules/frequency/${mappingFormAssetType}`),
+          API.get(`/asset-types/${mappingFormAssetType}/maintenance-certificates`)
+        ]);
+        if (cancelled) return;
+        const rows = Array.isArray(freqRes.data) ? freqRes.data : freqRes.data?.data || [];
+        const maintIds = Array.from(new Set(rows.map((r) => r.maint_type_id).filter(Boolean)));
+        setMappingFormMaintTypes(maintTypes.filter((t) => maintIds.includes(t.maint_type_id)));
+        const mapData = mapRes.data?.data || [];
+        setMappingFormMappedCertificates(mapData);
+        setMappingFormMappedLoaded(true);
+      } catch (err) {
+        if (!cancelled) {
+          setMappingFormMaintTypes([]);
+          setMappingFormMappedCertificates([]);
+          setMappingFormMappedLoaded(true);
+        }
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [showMappingForm, mappingFormAssetType, maintTypes]);
+
+  // Sync Mapping Form lists (Available vs Selected) only after mapped certs for this asset type are loaded
+  useEffect(() => {
+    if (!showMappingForm) {
+      mappingFormInitRef.current = { assetType: '', maintType: '' };
+      return;
+    }
+    if (!mappingFormMappedLoaded || !mappingFormAssetType || !mappingFormMaintType) return;
+    if (mappingFormInitRef.current.assetType !== mappingFormAssetType ||
+        mappingFormInitRef.current.maintType !== mappingFormMaintType) {
+      const existingMappings = mappingFormMappedCertificates.filter(
+        (cert) => String(cert.maint_type_id) === String(mappingFormMaintType)
+      );
+      const existingMappingIds = existingMappings.map((c) => c.tech_cert_id);
+      setSelectedCertificatesForMapping(
+        certificates.filter((c) => existingMappingIds.includes(c.tech_cert_id))
+      );
+      setAvailableCertificatesForMapping(
+        certificates.filter((c) => !existingMappingIds.includes(c.tech_cert_id))
+      );
+      mappingFormInitRef.current = { assetType: mappingFormAssetType, maintType: mappingFormMaintType };
+    }
+  }, [showMappingForm, mappingFormMappedLoaded, mappingFormAssetType, mappingFormMaintType, mappingFormMappedCertificates, certificates]);
 
   // Sync Inspection Form lists (Available vs Selected) based on current inspection in DB
   useEffect(() => {
@@ -417,10 +482,20 @@ const Certifications = () => {
     }
   };
 
-  const openUpdateModal = (cert) => {
+  const openUpdateModal = (cert, source = "create") => {
     setSelectedCertForUpdate(cert);
     setUpdateCertName(cert.cert_name || "");
     setUpdateCertNumber(cert.cert_number || "");
+    setUpdateModalSource(source);
+    if (source === "mapping") {
+      setUpdateCertAssetType(selectedAssetType || "");
+      setUpdateCertMaintType(selectedMaintType || "");
+      setUpdateModalMaintTypes(filteredMaintTypes);
+    } else {
+      setUpdateCertAssetType("");
+      setUpdateCertMaintType("");
+      setUpdateModalMaintTypes([]);
+    }
     setShowUpdateModal(true);
   };
 
@@ -435,20 +510,64 @@ const Certifications = () => {
       return;
     }
 
+    if (updateModalSource === "mapping") {
+      if (!updateCertAssetType) {
+        toast.error("Asset type is required");
+        return;
+      }
+      if (!updateCertMaintType) {
+        toast.error("Maintenance type is required");
+        return;
+      }
+    }
+
     setIsUpdatingCert(true);
     try {
-      const response = await API.put(`/tech-certificates/${selectedCertForUpdate.tech_cert_id}`, {
+      await API.put(`/tech-certificates/${selectedCertForUpdate.tech_cert_id}`, {
         cert_name: updateCertName.trim(),
         cert_number: updateCertNumber.trim()
       });
 
-      if (response.data?.success) {
-        toast.success("Certificate updated successfully");
-        setShowUpdateModal(false);
-        fetchCertificates(); // Refresh to catch all changes
-        if (selectedAssetType) fetchMappedCertificates(selectedAssetType);
-        if (selectedInspectionAssetType) fetchInspectionCertificates(selectedInspectionAssetType);
+      const mappingChanged = updateModalSource === "mapping" &&
+        (updateCertAssetType !== selectedAssetType || updateCertMaintType !== selectedMaintType);
+
+      if (mappingChanged) {
+        const certId = selectedCertForUpdate.tech_cert_id;
+        const oldMaintType = selectedMaintType;
+        const oldAssetType = selectedAssetType;
+        const oldMappingCerts = mappedCertificates.filter(
+          (c) => String(c.maint_type_id) === String(oldMaintType)
+        );
+        const nextOldIds = oldMappingCerts.map((c) => c.tech_cert_id).filter((id) => id !== certId);
+        await API.post(`/asset-types/${oldAssetType}/maintenance-certificates`, {
+          certificate_ids: nextOldIds,
+          maint_type_id: oldMaintType
+        });
+        const newRes = await API.get(`/asset-types/${updateCertAssetType}/maintenance-certificates`);
+        const newData = newRes.data?.data || [];
+        const existingNewIds = newData
+          .filter((c) => String(c.maint_type_id) === String(updateCertMaintType))
+          .map((c) => c.tech_cert_id);
+        const newIds = existingNewIds.includes(certId)
+          ? existingNewIds
+          : [...existingNewIds, certId];
+        await API.post(`/asset-types/${updateCertAssetType}/maintenance-certificates`, {
+          certificate_ids: newIds,
+          maint_type_id: updateCertMaintType
+        });
       }
+
+      toast.success("Certificate updated successfully");
+      const otherAssetType = updateModalSource === "mapping" && updateCertAssetType !== selectedAssetType ? updateCertAssetType : null;
+      setShowUpdateModal(false);
+      setUpdateModalSource(null);
+      setUpdateCertAssetType("");
+      setUpdateCertMaintType("");
+      setUpdateModalMaintTypes([]);
+      fetchCertificates();
+      if (selectedAssetType) fetchMappedCertificates(selectedAssetType);
+      if (otherAssetType) fetchMappedCertificates(otherAssetType);
+      if (selectedInspectionAssetType) fetchInspectionCertificates();
     } catch (error) {
       console.error("Failed to update certificate:", error);
       toast.error(error.response?.data?.message || "Failed to update certificate");
@@ -538,12 +657,12 @@ const Certifications = () => {
   };
 
   const handleSaveMapping = async () => {
-    if (!selectedAssetType) {
+    if (!mappingFormAssetType) {
       toast.error("Please select an asset type");
       return;
     }
 
-    if (!selectedMaintType) {
+    if (!mappingFormMaintType) {
       toast.error("Please select a maintenance type");
       return;
     }
@@ -551,28 +670,25 @@ const Certifications = () => {
     setIsSaving(true);
     try {
       const certIds = selectedCertificatesForMapping.map(cert => cert.tech_cert_id);
-      console.log("📤 Saving maintenance certificates:", { selectedAssetType, certIds, selectedMaintType });
-      
-      const response = await API.post(`/asset-types/${selectedAssetType}/maintenance-certificates`, {
+      console.log("📤 Saving maintenance certificates:", { mappingFormAssetType, certIds, mappingFormMaintType });
+
+      const response = await API.post(`/asset-types/${mappingFormAssetType}/maintenance-certificates`, {
         certificate_ids: certIds,
-        maint_type_id: selectedMaintType
+        maint_type_id: mappingFormMaintType
       });
 
       console.log("📥 Save response:", response.data);
 
-      // Use the response data if available, otherwise refetch
+      // Switch table view to the asset type + maintenance type just saved so the user sees the added cert(s)
+      setSelectedAssetType(mappingFormAssetType);
+      setSelectedMaintType(mappingFormMaintType);
       if (response.data?.data) {
-        console.log("✅ Using response data to update state:", response.data.data);
         setMappedCertificates(response.data.data);
         setSelectedCertificateIds(response.data.data.map((cert) => cert.tech_cert_id));
-        const maintTypeId = response.data.data.find((cert) => cert.maint_type_id)?.maint_type_id || "";
-        setSelectedMaintType(maintTypeId);
       } else {
-        console.log("🔄 No response data, refetching mapped certificates");
-        // Refetch the mapped certificates from backend to ensure persistence
-        await fetchMappedCertificates(selectedAssetType);
+        await fetchMappedCertificates(mappingFormAssetType);
       }
-      
+
       toast.success("Certificates mapped successfully");
     } catch (error) {
       console.error("❌ Failed to map certificates:", error);
@@ -584,7 +700,12 @@ const Certifications = () => {
       setSelectedCertificatesForMapping([]);
       setMappingFormSearchAvailable("");
       setMappingFormSearchSelected("");
-      // Keep selectedAssetType and selectedMaintType to show the list for that category after save
+      setMappingFormAssetType("");
+      setMappingFormMaintType("");
+      setMappingFormMaintTypes([]);
+      setMappingFormMappedCertificates([]);
+      setMappingFormMappedLoaded(false);
+      mappingFormInitRef.current = { assetType: '', maintType: '' };
     }
   };
 
@@ -1078,7 +1199,7 @@ const Certifications = () => {
                         </td>
                         <td className="px-4 py-3 text-gray-800">
                           <button
-                            onClick={() => openUpdateModal(cert)}
+                            onClick={() => openUpdateModal(cert, activeTab === "mapping" ? "mapping" : activeTab === "inspection" ? "inspection" : "create")}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                             title="Edit"
                           >
@@ -1108,10 +1229,16 @@ const Certifications = () => {
                   <button
                     onClick={() => {
                       setShowMappingForm(true);
+                      setMappingFormAssetType("");
+                      setMappingFormMaintType("");
+                      setMappingFormMaintTypes([]);
+                      setMappingFormMappedCertificates([]);
+                      setMappingFormMappedLoaded(false);
                       setAvailableCertificatesForMapping(certificates);
                       setSelectedCertificatesForMapping([]);
                       setMappingFormSearchAvailable("");
                       setMappingFormSearchSelected("");
+                      mappingFormInitRef.current = { assetType: '', maintType: '' };
                     }}
                     className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B]"
                     title="Add"
@@ -1209,8 +1336,12 @@ const Certifications = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
                       <select
-                        value={selectedAssetType}
-                        onChange={(e) => setSelectedAssetType(e.target.value)}
+                        value={mappingFormAssetType}
+                        onChange={(e) => {
+                          setMappingFormAssetType(e.target.value);
+                          setMappingFormMaintType("");
+                          mappingFormInitRef.current = { assetType: '', maintType: '' };
+                        }}
                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
                       >
                         <option value="">Select asset type</option>
@@ -1224,12 +1355,15 @@ const Certifications = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
                       <select
-                        value={selectedMaintType}
-                        onChange={(e) => setSelectedMaintType(e.target.value)}
+                        value={mappingFormMaintType}
+                        onChange={(e) => {
+                          setMappingFormMaintType(e.target.value);
+                          mappingFormInitRef.current = { assetType: '', maintType: '' };
+                        }}
                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
                       >
                         <option value="">Select maintenance type</option>
-                        {filteredMaintTypes.map((type) => (
+                        {mappingFormMaintTypes.map((type) => (
                           <option key={type.maint_type_id} value={type.maint_type_id}>
                             {type.text}
                           </option>
@@ -1473,7 +1607,7 @@ const Certifications = () => {
                           </td>
                           <td className="px-4 py-3 text-gray-800">
                             <button
-                              onClick={() => openUpdateModal(cert)}
+                              onClick={() => openUpdateModal(cert, activeTab === "mapping" ? "mapping" : activeTab === "inspection" ? "inspection" : "create")}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                               title="Edit"
                             >
@@ -2001,7 +2135,7 @@ const Certifications = () => {
                           </td>
                           <td className="px-4 py-3 text-gray-800 text-center">
                             <button
-                                onClick={() => openUpdateModal(cert)}
+                                onClick={() => openUpdateModal(cert, activeTab === "mapping" ? "mapping" : activeTab === "inspection" ? "inspection" : "create")}
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                                 title="Edit"
                               >
@@ -2059,7 +2193,13 @@ const Certifications = () => {
                     <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 flex items-center justify-between">
                       Update Certificate
                       <button 
-                        onClick={() => setShowUpdateModal(false)}
+                        onClick={() => {
+                          setShowUpdateModal(false);
+                          setUpdateModalSource(null);
+                          setUpdateCertAssetType("");
+                          setUpdateCertMaintType("");
+                          setUpdateModalMaintTypes([]);
+                        }}
                         className="text-gray-400 hover:text-gray-500 transition-colors"
                       >
                         <X size={20} />
@@ -2086,6 +2226,43 @@ const Certifications = () => {
                           placeholder="Enter certificate number"
                         />
                       </div>
+                      {updateModalSource === "mapping" && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
+                            <select
+                              value={updateCertAssetType}
+                              onChange={(e) => {
+                                setUpdateCertAssetType(e.target.value);
+                                setUpdateCertMaintType("");
+                              }}
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                            >
+                              <option value="">Select asset type</option>
+                              {assetTypes.map((type) => (
+                                <option key={type.asset_type_id} value={type.asset_type_id}>
+                                  {type.text}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
+                            <select
+                              value={updateCertMaintType}
+                              onChange={(e) => setUpdateCertMaintType(e.target.value)}
+                              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                            >
+                              <option value="">Select maintenance type</option>
+                              {updateModalMaintTypes.map((type) => (
+                                <option key={type.maint_type_id} value={type.maint_type_id}>
+                                  {type.text}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2101,7 +2278,13 @@ const Certifications = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowUpdateModal(false)}
+                  onClick={() => {
+                    setShowUpdateModal(false);
+                    setUpdateModalSource(null);
+                    setUpdateCertAssetType("");
+                    setUpdateCertMaintType("");
+                    setUpdateModalMaintTypes([]);
+                  }}
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors"
                 >
                   Cancel
