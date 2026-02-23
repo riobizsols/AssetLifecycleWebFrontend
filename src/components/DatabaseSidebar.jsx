@@ -78,6 +78,7 @@ const DatabaseSidebar = () => {
       'Column Access Config': t('navigation.columnAccessConfig'),
       'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
+      'Cost Center Transfer': 'Cost Center Transfer',
       'Department Assignment': t('navigation.departmentAssignment'),
       'Employee Assignment': t('navigation.employeeAssignment'),
       'Workorder Management': t('navigation.workorderManagement'),
@@ -90,6 +91,9 @@ const DatabaseSidebar = () => {
       'Reports': t('navigation.reports'),
       'Admin Settings': t('navigation.adminSettings'),
       'Master Data': t('navigation.masterData'),
+      'Asset Type - Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
+      'Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
+      'Inspection Frequency': 'Inspection Frequency',
       'Scrap Sales': t('navigation.scrapSales'),
       'Scrap Assets': t('navigation.scrapAssets'),
       'Group Asset': t('navigation.groupAsset'),
@@ -148,11 +152,17 @@ const DatabaseSidebar = () => {
     ASSETS: "/assets", //done
     ADDASSET: "/assets/add", //done
     ASSETASSIGNMENT: "/assign-department-assets",
+    COSTCENTERTRANSFER: "/cost-center-transfer",
     VENDORS: "/master-data/vendors", //done
+    INSPECTIONCHECKLISTS: "/master-data/inspection-checklists",
+    INSPECTIONFREQUENCY: "/master-data/inspection-frequency",
+    ASSETTYPECHECKLISTMAPPING: "/master-data/asset-type-checklist-mapping",
     DEPTASSIGNMENT: "/assign-department-assets",
     EMPASSIGNMENT: "/assign-employee-assets",
     WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance  //done
-    INSPECTION: "/inspection-view", // Separate route for inspection
+    INSPECTION: "/inspection-view", // Legacy inspection ID
+    INSPECTIONVIEW: "/inspection-view", // New Inspection Execution ID
+    INSPECTIONAPPROVAL: "/inspection-approval", // New Inspection Approval ID
     MAINTENANCEAPPROVAL: "/maintenance-approval",
     VENDORRENEWALAPPROVAL: "/vendor-renewal-approval",
     SCRAPMAINTENANCEAPPROVAL: "/scrap-approval",
@@ -208,10 +218,13 @@ const DatabaseSidebar = () => {
       ASSETS: Package,
       ADDASSET: Package,
       ASSETASSIGNMENT: Users,
+      COSTCENTERTRANSFER: GitBranch,
       DEPTASSIGNMENT: Building,
       EMPASSIGNMENT: UserCheck,
       WORKORDERMANAGEMENT: Wrench,
       INSPECTION: CheckSquare,
+      INSPECTIONVIEW: CheckSquare, // Execution
+      INSPECTIONAPPROVAL: ClipboardList, // Approval
       MAINTENANCEAPPROVAL: ClipboardList,
       SCRAPMAINTENANCEAPPROVAL: ClipboardList,
       SUPERVISORAPPROVAL: UserCheck,
@@ -237,6 +250,7 @@ const DatabaseSidebar = () => {
       DEPARTMENTSASSET: Package,
       BRANCHES: Home,
       VENDORS: Truck,
+      INSPECTIONCHECKLISTS: ClipboardList,
       PRODSERV: Briefcase,
       ROLES: Shield,
       USERS: Users,

@@ -35,11 +35,33 @@ const TechnicianCertificates = () => {
     setLoadingOptions(true);
     try {
       const response = await API.get("/tech-certificates");
-      const data = response.data?.data || [];
+      console.log("Certificate Response:", response);
+      
+      // Handle both data.data and direct data formats
+      const data = response.data?.data || response.data || [];
+      console.log("Processed Certificate Data:", data);
+      
+      if (!Array.isArray(data)) {
+        console.error("Certificate data is not an array:", data);
+        setCertificates([]);
+        toast.error("Invalid certificate data format");
+        return;
+      }
+      
+      if (data.length === 0) {
+        console.warn("No certificates found in database");
+        toast.info("No certificates available. Please create certificates in Admin Settings first.");
+      }
+      
       setCertificates(data);
     } catch (error) {
       console.error("Failed to fetch certificate options:", error);
-      toast.error("Failed to load certificates");
+      console.error("Error details:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      toast.error("Failed to load certificates - Check browser console for details");
     } finally {
       setLoadingOptions(false);
     }
@@ -274,6 +296,11 @@ const TechnicianCertificates = () => {
       return;
     }
 
+    if (!certificateFile) {
+      toast.error("Please choose a file to upload");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const formData = new FormData();
@@ -325,10 +352,10 @@ const TechnicianCertificates = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4 p-6 border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 pt-2 px-4 pb-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-gray-200">
             <div>
               <h1 className="text-xl font-semibold text-gray-900">Technician Certificates</h1>
               <p className="text-sm text-gray-500">
@@ -339,7 +366,7 @@ const TechnicianCertificates = () => {
           </div>
 
           {filterOpen && (
-            <div className="p-6 border-b border-gray-200 bg-gray-50">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   {columnFilters.map((filter, index) => (
@@ -395,7 +422,7 @@ const TechnicianCertificates = () => {
           )}
 
           {showAddForm && (
-            <div className="p-6 border-b border-gray-200 bg-gray-50">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -422,8 +449,15 @@ const TechnicianCertificates = () => {
                       value={selectedCertId}
                       onChange={(e) => setSelectedCertId(e.target.value)}
                       className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                      disabled={loadingOptions || certificates.length === 0}
                     >
-                      <option value="">Select certificate</option>
+                      <option value="">
+                        {loadingOptions 
+                          ? "Loading certificates..." 
+                          : certificates.length === 0 
+                          ? "No certificates available" 
+                          : "Select certificate"}
+                      </option>
                       {certificateOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
@@ -431,7 +465,12 @@ const TechnicianCertificates = () => {
                       ))}
                     </select>
                     {loadingOptions && (
-                      <p className="text-xs text-gray-400 mt-1">Loading certificates...</p>
+                      <p className="text-xs text-blue-600 mt-1">⏳ Loading certificates...</p>
+                    )}
+                    {!loadingOptions && certificates.length === 0 && (
+                      <p className="text-xs text-red-600 mt-1">
+                        ⚠️ No certificates found. Admin Settings → Certifications to create one.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -479,7 +518,7 @@ const TechnicianCertificates = () => {
             </div>
           )}
 
-          <div className="p-6">
+          <div className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Uploaded Certificates</h2>
               <div className="flex items-center gap-2">
@@ -654,10 +693,10 @@ const TechnicianCertificates = () => {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                               <button
                                 onClick={() => startEdit(cert)}
-                                className="p-2 text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
+                                className="p-1 text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
                                 title="Edit"
                               >
                                 <Edit2 size={14} />
@@ -665,7 +704,7 @@ const TechnicianCertificates = () => {
                               <button
                                 onClick={() => handleDelete(cert.etc_id)}
                                 disabled={isDeleting}
-                                className="p-2 text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-60"
+                                className="p-1 text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-60"
                                 title="Delete"
                               >
                                 <Trash2 size={14} />

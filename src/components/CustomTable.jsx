@@ -32,6 +32,7 @@ const CustomTable = ({
   showAddButton = false,
   addButtonTitle = "Add",
   isReadOnly = false,
+  renderActions,
 }) => {
   const visible = visibleColumns.filter((col) => col.visible && !isIdColumnName(col.name));
 
@@ -100,7 +101,7 @@ const CustomTable = ({
           onClick={onRowClick ? () => onRowClick(row) : undefined}
         >
           {visible.map((col, colIndex) => (
-            <td key={colIndex} className="border text-xs px-4 py-2">
+            <td key={colIndex} className="text-xs px-4 py-2">
               {colIndex === 0 ? (
                 <div className="flex items-center gap-2">
                   {showActions && showCheckbox && !isReadOnly && (
@@ -124,7 +125,7 @@ const CustomTable = ({
           ))}
 
           {showActions && (
-            <td className="border px-4 py-2 flex gap-2 justify-center">
+            <td className="px-4 py-2 flex gap-2 justify-center items-center">
               {/* {onView && (
                 <button 
                   onClick={(e) => {
@@ -173,6 +174,7 @@ const CustomTable = ({
                   <Pencil size={16} />
                 </button>
               )}
+              {renderActions && renderActions(row)}
             </td>
           )}
         </tr>

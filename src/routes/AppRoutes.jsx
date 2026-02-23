@@ -39,6 +39,8 @@ import VendorRenewalApproval from "../pages/VendorRenewalApproval";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import AllNotifications from "../components/AllNotifications";
 import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
+import InspectionApproval from "../pages/InspectionApproval";
+import InspectionApprovalDetail from "../components/InspectionApprovalDetail";
 import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
 import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
@@ -59,6 +61,7 @@ import AuditLogsView from "../pages/AuditLogsView";
 import AuditLogConfig from "../components/AuditLogConfig";
 import AuditLogConfigPage from "../pages/AuditLogConfigPage";
 import InspectionView from "../pages/InspectionView";
+import InspectionExecutionDetail from "../pages/InspectionExecutionDetail";
 import GroupAsset from "../pages/GroupAsset";
 import CreateGroupAsset from "../components/groupAsset/CreateGroupAsset";
 import EditGroupAsset from "../components/groupAsset/EditGroupAsset";
@@ -96,8 +99,14 @@ import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
 import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
 import Certifications from "../pages/adminSettings/Certifications";
+import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
+import AssetTypeChecklistMapping from "../pages/masterData/AssetTypeChecklistMapping";
+import CreateAssetTypeChecklistMapping from "../pages/masterData/CreateAssetTypeChecklistMapping";
+import InspectionFrequency from "../pages/masterData/InspectionFrequency";
+import CreateInspectionFrequency from "../components/CreateInspectionFrequency";
 import TechnicianCertificates from "../pages/TechnicianCertificates";
 import TechCertApprovals from "../pages/TechCertApprovals";
+import CostCenterTransfer from "../pages/CostCenterTransfer";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -112,7 +121,10 @@ export default function AppRoutes() {
         <Route path="/tenant-setup" element={<TenantSetup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/request-password-change" element={<RequestPasswordChange />} />
+        <Route
+          path="/request-password-change"
+          element={<RequestPasswordChange />}
+        />
         <Route
           path="/change-password"
           element={
@@ -121,21 +133,28 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/not-authorized" element={
-          <div className="flex items-center justify-center min-h-screen bg-gray-50">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🚫</div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-              <p className="text-gray-600 mb-4">You don't have permission to access this page.</p>
-              <button 
-                onClick={() => window.history.back()} 
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Go Back
-              </button>
+        <Route
+          path="/not-authorized"
+          element={
+            <div className="flex items-center justify-center min-h-screen bg-gray-50">
+              <div className="text-center">
+                <div className="text-6xl mb-4">🚫</div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  Access Denied
+                </h1>
+                <p className="text-gray-600 mb-4">
+                  You don't have permission to access this page.
+                </p>
+                <button
+                  onClick={() => window.history.back()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Go Back
+                </button>
+              </div>
             </div>
-          </div>
-        } />
+          }
+        />
         <Route
           path="/dashboard"
           element={
@@ -223,6 +242,26 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <MaintenanceApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inspection-approval"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <InspectionApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inspection-approval-detail/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <InspectionApprovalDetail />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -573,10 +612,6 @@ export default function AppRoutes() {
           }
         />
 
-
-
-
-        
         <Route
           path="report-modal"
           element={
@@ -655,6 +690,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/inspection-view/:id"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONVIEW">
+              <MainLayout>
+                <InspectionExecutionDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/group-asset"
           element={
             <ProtectedRoute requiredAppId="GROUPASSET">
@@ -698,7 +744,7 @@ export default function AppRoutes() {
         <Route
           path="/assets"
           element={
-            <ProtectedRoute requiredAppId="ASSETS" >
+            <ProtectedRoute requiredAppId="ASSETS">
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -708,6 +754,17 @@ export default function AppRoutes() {
           <Route index element={<Assets />} />
           <Route path="add" element={<AddAssetForm />} />
         </Route>
+
+        <Route
+          path="/cost-center-transfer"
+          element={
+            <ProtectedRoute requiredAppId="COSTCENTERTRANSFER">
+              <MainLayout>
+                <CostCenterTransfer />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/master-data/asset-types"
@@ -854,15 +911,15 @@ export default function AppRoutes() {
         </Route>
 
         <Route
-  path="/master-data/add-vendor"
-  element={
-    <ProtectedRoute requiredAppId="VENDORS">
-      <MainLayout>
-        <AddEntityForm />
-      </MainLayout>
-    </ProtectedRoute>
-  }
-/>
+          path="/master-data/add-vendor"
+          element={
+            <ProtectedRoute requiredAppId="VENDORS">
+              <MainLayout>
+                <AddEntityForm />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         {/* nesting routing  branches and add department  */}
 
@@ -1006,10 +1063,7 @@ export default function AppRoutes() {
         />
 
         {/* Admin Settings Routes */}
-        <Route
-          path="/adminsettings"
-          element={<AdminSettingsRedirect />}
-        />
+        <Route path="/adminsettings" element={<AdminSettingsRedirect />} />
         <Route
           path="/adminsettings/configuration"
           element={
@@ -1037,6 +1091,56 @@ export default function AppRoutes() {
               <AdminSettingsLayout>
                 <MaintenanceConfiguration />
               </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/inspection-checklists"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONCHECKLISTS">
+              <MainLayout>
+                <InspectionChecklists />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/asset-type-checklist-mapping"
+          element={
+            <ProtectedRoute requiredAppId="ASSETTYPECHECKLISTMAPPING">
+              <MainLayout>
+                <AssetTypeChecklistMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/asset-type-checklist-mapping/create"
+          element={
+            <ProtectedRoute requiredAppId="ASSETTYPECHECKLISTMAPPING">
+              <MainLayout>
+                <CreateAssetTypeChecklistMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/inspection-frequency"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONFREQUENCY">
+              <MainLayout>
+                <InspectionFrequency />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/inspection-frequency/create"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONFREQUENCY">
+              <MainLayout>
+                <CreateInspectionFrequency />
+              </MainLayout>
             </ProtectedRoute>
           }
         />

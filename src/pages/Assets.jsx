@@ -367,24 +367,6 @@ const Assets = () => {
     }
   };
 
-  const renderCell = (col, row) => {
-    if (col.name === "group_name" && row.group_name && row.group_id) {
-      return (
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate(`/group-asset/edit/${row.group_id}`);
-          }}
-          className="text-blue-600 hover:text-blue-800 underline cursor-pointer font-semibold"
-        >
-          {row.group_name}
-        </a>
-      );
-    }
-    return undefined;
-  };
-
   const sortData = (data) => {
     if (!sortConfig.sorts.length) return data;
 
@@ -519,6 +501,21 @@ const Assets = () => {
                 );
               }
             }
+            // Handle group_name link
+            if (col.name === "group_name" && row.group_name && row.group_id) {
+              return (
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(`/group-asset/edit/${row.group_id}`);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 underline cursor-pointer font-semibold"
+                >
+                  {row.group_name}
+                </a>
+              );
+            }
             return row[col.name];
           };
 
@@ -537,8 +534,6 @@ const Assets = () => {
                 showActions={true}
                 isReadOnly={accessLevel === "D"}
                 renderCell={renderAssetCell}
-                // isReadOnly={accessLevel === 'D'}
-                // renderCell={renderCell}
               />
               {updateModalOpen && (
                 <UpdateAssetModal
