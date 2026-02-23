@@ -690,6 +690,7 @@ const Users = () => {
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        rowKey="user_id"
         showAddButton={false}
         showActions={canEdit}
         customHeaderActions={canEdit ? (

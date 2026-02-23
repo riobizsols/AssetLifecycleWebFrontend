@@ -218,13 +218,14 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
     setIsOpen(true);
   };
 
-  // Handle outside click
+  // Handle outside click - only close when click is truly outside (not on options/checkbox)
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-        setSearchTerm(""); // Clear search when closing
-      }
+      if (!dropdownRef.current) return;
+      const target = event.target;
+      if (dropdownRef.current.contains(target)) return;
+      setIsOpen(false);
+      setSearchTerm("");
     };
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
@@ -277,9 +278,12 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
         </span>
       </div>
       
-      {/* Dropdown options - shown when open */}
+      {/* Dropdown options - shown when open; stop mousedown so outside-click does not close */}
       {isOpen && (
-        <div className="absolute z-50 w-full top-full left-0 mt-0 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
+        <div
+          className="absolute z-50 w-full top-full left-0 mt-0 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
             {filteredOptions.length === 0 ? (
               <div className="text-sm text-slate-500 p-2">{t('reports.filterOptions.noOptionsFound')}</div>
@@ -294,14 +298,16 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
                 
                 return (
                   <label 
-                    key={optValue || index} 
+                    key={optValue ?? index} 
                     className="flex items-center gap-2 text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer"
+                    onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <input 
                       type="checkbox" 
                       checked={isChecked} 
                       onChange={() => toggle(opt)} 
+                      onClick={(e) => e.stopPropagation()}
                       className="cursor-pointer" 
                     />
                     <span className="truncate" title={String(optLabel || '')}>
@@ -701,7 +707,7 @@ export const OP_MAP = {
   propertyValue: ["="],
 };
 
-export function AdvancedBuilder({ fields, value, onChange, quickFilters = {} }) {
+export function AdvancedBuilder({ fields, value, onChange, quickFilters = {}, getFilterOptions }) {
   const { t } = useLanguage();
   const rows = value || [];
   const add = () => {
@@ -759,7 +765,7 @@ export function AdvancedBuilder({ fields, value, onChange, quickFilters = {} }) 
                 </div>
               )}
               <div className={isPropertyValue ? "col-span-8" : "col-span-5"}>
-                <AdvValueInput field={field} cur={r.val} onChange={(v) => update(i, { val: v })} quickFilters={quickFilters} />
+                <AdvValueInput field={field} cur={r.val} onChange={(v) => update(i, { val: v })} quickFilters={quickFilters} getFilterOptions={getFilterOptions} />
               </div>
               <div className="col-span-1 text-right">
                 <button onClick={() => remove(i)} className="text-slate-500 hover:text-red-600">
@@ -891,12 +897,15 @@ export function PropertyValueFilter({ value, onChange, assetId = null }) {
   );
 }
 
-export function AdvValueInput({ field, cur, onChange, quickFilters = {} }) {
+export function AdvValueInput({ field, cur, onChange, quickFilters = {}, getFilterOptions }) {
   if (field.type === "number") return <Input type="number" value={cur} onChange={onChange} />;
   if (field.type === "text") return <Input value={cur} onChange={onChange} placeholder="Enter text" />;
   if (field.type === "boolean") return <Select value={cur} onChange={onChange} options={["true", "false"]} />;
-  if (field.type === "select") return <Select value={cur} onChange={onChange} options={field.domain || []} />;
-  if (field.type === "multiselect") return <SafeDropdownMultiSelect values={cur || []} onChange={onChange} options={field.domain || []} />;
+  if (field.type === "select") return <Select value={cur} onChange={onChange} options={getFilterOptions?.(field.key) || field.domain || []} />;
+  if (field.type === "multiselect") {
+    const options = (getFilterOptions && getFilterOptions(field.key)) || field.domain || [];
+    return <SafeDropdownMultiSelect values={cur || []} onChange={onChange} options={Array.isArray(options) ? options : []} placeholder={`Select ${field.label || "..."}`} />;
+  }
   if (field.type === "daterange") return <DateRange value={cur || ["", ""]} onChange={onChange} />;
   if (field.type === "propertyValue") return <PropertyValueFilter value={cur} onChange={onChange} assetId={quickFilters.assetId} />;
   return <Input value={cur} onChange={onChange} />;
