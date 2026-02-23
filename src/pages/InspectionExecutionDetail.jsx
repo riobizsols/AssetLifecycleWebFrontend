@@ -23,7 +23,9 @@ const InspectionExecutionDetail = () => {
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [recordedValue, setRecordedValue] = useState('');
   const [triggerMaintenance, setTriggerMaintenance] = useState(false);
+  const [checklistLoading, setChecklistLoading] = useState(false);
   const [status, setStatus] = useState('IN');
+  const [saving, setSaving] = useState(false);
   
   const [formData, setFormData] = useState({
     notes: ""
@@ -51,8 +53,10 @@ const InspectionExecutionDetail = () => {
           notes: res.data.data.notes || "",
           inspector_name: res.data.data.inspector_name || '',
           inspector_email: res.data.data.inspector_email || '',
-          inspector_phone: res.data.data.inspector_phone || ''
+          inspector_phone: res.data.data.inspector_phone || res.data.data.inspector_phno || ''
         });
+        // Initialize trigger maintenance checkbox from API value
+        setTriggerMaintenance(Boolean(res.data.data.trigger_maintenance));
       }
     } catch (error) {
       console.error("Error fetching inspection:", error);
@@ -63,14 +67,27 @@ const InspectionExecutionDetail = () => {
   };
 
   const fetchChecklist = async (assetType) => {
+    setChecklistLoading(true);
     try {
       const res = await API.get(`/inspection/checklist/${assetType}`);
       if (res.data.success) {
-        setChecklist(res.data.data);
+        // Deduplicate checklist by insp_check_id to avoid duplicate keys
+        const rows = res.data.data || [];
+        const seen = new Set();
+        const unique = [];
+        for (const r of rows) {
+          if (!seen.has(r.insp_check_id)) {
+            seen.add(r.insp_check_id);
+            unique.push(r);
+          }
+        }
+        setChecklist(unique);
       }
     } catch (error) {
       console.error("Error fetching checklist:", error);
       // Don't show error toast as this might be expected for some asset types
+    } finally {
+      setChecklistLoading(false);
     }
   };
 
@@ -156,27 +173,32 @@ const InspectionExecutionDetail = () => {
   };
 
   const handleFinalSave = async () => {
+    setSaving(true);
     try {
-      // First, persist any pending checklist records
-      if (pendingRecords.length > 0) {
-        const recPayload = {
-          ais_id: id,
-          records: pendingRecords,
-          notes: formData.notes,
-          trigger_maintenance: triggerMaintenance
-        };
+      // First, persist any pending checklist records.
+      // Also persist inspector fields for vendor inspections even when no checklist records were changed.
+      const recPayload = {
+        ais_id: id,
+        records: pendingRecords,
+        notes: formData.notes,
+        trigger_maintenance: triggerMaintenance
+      };
 
-        // Include inspector fields only for vendor-maintained inspections
-        if (data?.vendor_id) {
-          recPayload.inspector_name = formData.inspector_name;
-          recPayload.inspector_email = formData.inspector_email;
-          recPayload.inspector_phone = formData.inspector_phone;
-        }
+      // Include inspector fields only for vendor-maintained inspections
+      if (data?.vendor_id) {
+        recPayload.inspector_name = formData.inspector_name;
+        recPayload.inspector_email = formData.inspector_email;
+        recPayload.inspector_phone = formData.inspector_phone;
+      }
 
+      const shouldSendRecPayload = (Array.isArray(pendingRecords) && pendingRecords.length > 0) ||
+        (data?.vendor_id && (formData.inspector_name || formData.inspector_email || formData.inspector_phone));
+
+      if (shouldSendRecPayload) {
         const recRes = await API.post('/inspection/records', recPayload);
-        if (!recRes.data?.success) {
-          toast.error('Failed to save checklist records');
-          return;
+        if (res.data.success) {
+          toast.success("Inspection updated successfully");
+          navigate('/inspection-view');
         }
       }
 
@@ -187,7 +209,7 @@ const InspectionExecutionDetail = () => {
         trigger_maintenance: triggerMaintenance,
         act_insp_end_date: status === 'CO' ? new Date().toISOString() : null
       };
-
+        setSaving(false);
       const res = await API.put(`/inspection/${id}`, payload);
       if (res.data.success) {
         toast.success("Inspection updated successfully");
@@ -195,7 +217,12 @@ const InspectionExecutionDetail = () => {
       }
     } catch (error) {
       console.error("Error updating inspection:", error);
-      toast.error("Failed to update inspection");
+      if (error.response && error.response.data) {
+        console.error('Server response:', error.response.data);
+        toast.error(error.response.data.message || 'Failed to update inspection');
+      } else {
+        toast.error("Failed to update inspection");
+      }
     }
   };
 
@@ -207,6 +234,13 @@ const InspectionExecutionDetail = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const parseInspectorFromNotes = (notes) => {
+    if (!notes) return null;
+    const match = notes.match(/Inspector:\s*(.*)/i);
+    if (!match) return null;
+    return match[1].trim();
   };
 
   if (loading) return <div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>;
@@ -266,13 +300,16 @@ const InspectionExecutionDetail = () => {
                 </div>
             </div>
         </div>
+        {/* Inspector display removed here to avoid duplication; inspector fields remain in Complete Inspection section */}
       </div>
 
       {/* Inspection Checklist */}
       <div className="bg-white p-6 rounded-lg shadow border border-gray-200 mb-6">
         <h2 className="text-lg font-medium mb-4 text-gray-700 border-b pb-2">Inspection Checklist</h2>
         
-        {checklist.length === 0 ? (
+        {checklistLoading ? (
+          <p className="text-gray-500 text-center py-8">Loading checklist...</p>
+        ) : checklist.length === 0 ? (
           <p className="text-gray-500 text-center py-8">No checklist questions found for this asset type.</p>
         ) : (
           <div className="space-y-3">
@@ -397,11 +434,20 @@ const InspectionExecutionDetail = () => {
 
           <button
             onClick={handleFinalSave}
-            disabled={(String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id))}
-            className={`flex items-center px-6 py-2 rounded-lg transition shadow-sm ${(String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+            disabled={(String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) || saving}
+            className={`flex items-center px-6 py-2 rounded-lg transition shadow-sm ${((String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) || saving) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
           >
-            <Save size={18} className="mr-2" />
-            Save Changes
+            {saving ? (
+              <span className="flex items-center">
+                <svg className="animate-spin h-4 w-4 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                Saving...
+              </span>
+            ) : (
+              <>
+                <Save size={18} className="mr-2" />
+                Save Changes
+              </>
+            )}
           </button>
         </div>
       </div>

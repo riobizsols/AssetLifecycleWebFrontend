@@ -1289,6 +1289,7 @@
     "serialNumber": "Serial Number",
     "scheduledDate": "Scheduled Date",
     "vendor": "Vendor",
+    "technicianDetails": "Technician Details",
     "department": "Department",
     "employee": "Employee",
     "maintenanceType": "Maintenance Type",
