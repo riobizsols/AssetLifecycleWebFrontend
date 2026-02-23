@@ -382,6 +382,7 @@ const AssetType = () => {
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        rowKey="asset_type_id"
         showAddButton={canEdit}
         showActions={true}
         isReadOnly={false}

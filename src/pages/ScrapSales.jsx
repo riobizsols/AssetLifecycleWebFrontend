@@ -312,11 +312,12 @@ const ScrapSales = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-                 onAdd={handleAddScrapSale}
+        onAdd={handleAddScrapSale}
         onDeleteSelected={handleDeleteSelected}
         data={scrapSales}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        rowKey="ssh_id"
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(scrapSales, filterValues, visibleColumns);

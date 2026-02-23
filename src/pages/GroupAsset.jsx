@@ -300,6 +300,7 @@ const GroupAsset = () => {
           data={groupAssets}
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
+          rowKey="group_id"
           subtitle={t("groupAssets.assetGroupsFound", {
             count: groupAssets.length,
           })}

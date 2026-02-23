@@ -1146,11 +1146,11 @@ const MaintenanceFrequency = () => {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
                 >
                   <option value="">-- Select Frequency --</option>
-                  {frequencies.map((freq) => (
-                    <option key={freq.at_main_freq_id} value={freq.at_main_freq_id}>
-                      {freq.text} ({freq.asset_type_name})
-                    </option>
-                  ))}
+                   {frequencies.map((freq) => (
+                      <option key={freq.at_main_freq_id} value={freq.at_main_freq_id}>
+                        {freq.asset_type_name}
+                      </option>
+                    ))}
                 </select>
               </div>
 

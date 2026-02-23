@@ -339,6 +339,7 @@ const Vendors = () => {
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        rowKey="vendor_id"
         showAddButton={canEdit}
         showActions={true}
         isReadOnly={false}

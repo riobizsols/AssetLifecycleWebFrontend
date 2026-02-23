@@ -252,6 +252,7 @@ const ReportsBreakdown2 = () => {
         data={data}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
+        rowKey="abr_id"
         showAddButton={hasEditAccess}
         showDeleteButton={hasDeleteAccess}
         showActions={true}

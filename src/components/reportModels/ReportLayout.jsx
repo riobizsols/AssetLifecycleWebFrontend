@@ -276,45 +276,28 @@ export default function ReportLayout({
         return filterOptions.categories || [];
       case 'location':
         return filterOptions.locations || [];
-      case 'department':
-        // Transform departments to dropdown format: {value: dept_id, label: department_name}
-        if (filterOptions.departments && Array.isArray(filterOptions.departments)) {
-          const transformed = filterOptions.departments
+      case 'department': {
+        // Prefer departments (asset-register style), then department_options (breakdown)
+        const deptList = filterOptions.departments && Array.isArray(filterOptions.departments)
+          ? filterOptions.departments
+          : (filterOptions.department_options && Array.isArray(filterOptions.department_options) ? filterOptions.department_options : []);
+        if (deptList.length > 0) {
+          return deptList
             .filter(dept => dept && dept.dept_id)
             .map(dept => {
-              // Get department name - prioritize department_name, then text, then dept_id
-              let label = '';
-              if (dept.department_name && String(dept.department_name).trim() !== '') {
-                label = String(dept.department_name).trim();
-              } else if (dept.text && String(dept.text).trim() !== '') {
-                label = String(dept.text).trim();
-              } else if (dept.dept_id) {
-                label = String(dept.dept_id);
-              } else {
-                label = 'Unknown Department';
-              }
-              
-              console.log(`🔍 [ReportLayout] Department option:`, {
-                dept_id: dept.dept_id,
-                department_name: dept.department_name,
-                text: dept.text,
-                final_label: label
-              });
-              
-              return {
-                value: dept.dept_id,
-                label: label
-              };
-            });
+              const label = (dept.department_name && String(dept.department_name).trim()) || (dept.text && String(dept.text).trim()) || String(dept.dept_id || 'Unknown Department');
+              return { value: dept.dept_id, label };
           
+        console.warn('⚠️ [ReportLayout] No departments found in filterOptions');
           console.log(`🔍 [ReportLayout] Transformed ${transformed.length} departments for dropdown`);
           if (transformed.length > 0) {
             console.log(`🔍 [ReportLayout] Sample departments:`, transformed.slice(0, 3));
           }
           return transformed;
+            });
         }
-        console.warn('⚠️ [ReportLayout] No departments found in filterOptions');
         return [];
+      }
       case 'vendor':
         return filterOptions.vendors || [];
       case 'maintenanceType':
@@ -334,15 +317,22 @@ export default function ReportLayout({
           }));
         }
         return [];
-      case 'assetType':
-        // Transform asset types to dropdown format: {value: asset_type_id, label: text}
+      case 'assetType': {
+        // Prefer assetTypes (asset-register style), then asset_type_options (breakdown)
         if (filterOptions.assetTypes && Array.isArray(filterOptions.assetTypes)) {
           return filterOptions.assetTypes.map(at => ({
             value: at.asset_type_id,
-            label: at.text || at.asset_type_id || 'Unknown Asset Type'
+            label: at.text || at.asset_type_name || at.asset_type_id || 'Unknown Asset Type'
+          }));
+        }
+        if (filterOptions.asset_type_options && Array.isArray(filterOptions.asset_type_options)) {
+          return filterOptions.asset_type_options.map(at => ({
+            value: at.asset_type_id,
+            label: at.asset_type_name || at.text || at.asset_type_id || 'Unknown Asset Type'
           }));
         }
         return [];
+      }
       case 'branch':
         // Transform branches to dropdown format: {value: branch_id, label: branch_name}
         if (filterOptions.branches && Array.isArray(filterOptions.branches)) {
@@ -363,20 +353,29 @@ export default function ReportLayout({
         return [];
       case 'workOrderId':
         return filterOptions.work_order_options || [];
-      case 'breakdownReason':
-        return filterOptions.breakdown_reason_options || [];
+      case 'breakdownReason': {
+        const raw = filterOptions.breakdown_reason_options || [];
+        return Array.isArray(raw) ? raw.map((r) => ({ value: r.atbrrc_id ?? r.breakdown_reason, label: r.breakdown_reason ?? r.atbrrc_id ?? '' })) : [];
+      }
       case 'reportedBy':
         return filterOptions.reported_by_options || [];
-      case 'breakdownStatus':
-        return filterOptions.breakdown_status_options || [];
+      case 'breakdownStatus': {
+        const raw = filterOptions.breakdown_status_options || [];
+        return Array.isArray(raw) ? raw.map((r) => ({ value: r.breakdown_status, label: r.breakdown_status ?? '' })) : [];
+      }
       case 'workflowStatus':
         return filterOptions.workflow_status_options || [];
       case 'stepStatus':
         return filterOptions.step_status_options || [];
       case 'assignedTo':
         return filterOptions.user_options || [];
-      case 'vendorName':
-        return filterOptions.vendor_options || [];
+      case 'vendorName': {
+        const vendorOpts = filterOptions.vendor_options || [];
+        return Array.isArray(vendorOpts) ? vendorOpts.map(v => ({
+          value: v.vendor_id,
+          label: v.vendor_name ? `${v.vendor_id} - ${v.vendor_name}` : String(v.vendor_id ?? '')
+        })) : [];
+      }
       default:
         return null;
     }
@@ -1097,7 +1096,7 @@ export default function ReportLayout({
               {/* Advanced */}
               {!hideAdvancedFilters && (
               <div className="mt-4">
-                  <AdvancedBuilder fields={translatedReport.fields} value={advanced} onChange={setAdvanced} quickFilters={quick} />
+                  <AdvancedBuilder fields={translatedReport.fields} value={advanced} onChange={setAdvanced} quickFilters={quick} getFilterOptions={getFilterOptions} />
               </div>
               )}
                {/* Active Chips */}
