@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
-import { useLanguage } from '../contexts/LanguageContext';
 import { Save, X } from 'lucide-react';
 
 const CreateMaintenanceFrequency = () => {
-  const { t } = useLanguage();
   const navigate = useNavigate();
   
   const [assetTypes, setAssetTypes] = useState([]);
@@ -22,6 +20,7 @@ const CreateMaintenanceFrequency = () => {
   const [text, setText] = useState('');
   const [maintainedBy, setMaintainedBy] = useState('Self');
   const [selectedMaintenanceType, setSelectedMaintenanceType] = useState('');
+  const [maintLeadType, setMaintLeadType] = useState('');
 
   // Fetch asset types (only those with maint_required = true)
   const fetchAssetTypes = async () => {
@@ -47,11 +46,11 @@ const CreateMaintenanceFrequency = () => {
       console.log('Maintenance types data:', res.data);
       
       let types = [];
-      if (Array.isArray(res.data)) {
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        types = res.data.data;
+      } else if (Array.isArray(res.data)) {
         types = res.data;
       } else if (res.data && Array.isArray(res.data.data)) {
-        types = res.data.data;
-      } else if (res.data && res.data.success && Array.isArray(res.data.data)) {
         types = res.data.data;
       }
       
@@ -121,6 +120,17 @@ const CreateMaintenanceFrequency = () => {
     fetchUOM();
   }, []);
 
+  useEffect(() => {
+    if (!selectedAssetType) {
+      return;
+    }
+
+    const selected = assetTypes.find((at) => at.asset_type_id === selectedAssetType);
+    if (selected?.maint_type_id) {
+      setSelectedMaintenanceType(selected.maint_type_id);
+    }
+  }, [selectedAssetType, assetTypes]);
+
   // Handle form submission
   const handleCreateFrequency = async (e) => {
     e.preventDefault();
@@ -154,7 +164,8 @@ const CreateMaintenanceFrequency = () => {
         asset_type_id: selectedAssetType,
         is_recurring: isRecurring,
         maintained_by: maintainedBy,
-        maint_type_id: selectedMaintenanceType
+        maint_type_id: selectedMaintenanceType,
+        maint_lead_type: maintLeadType.trim() || null
       };
 
       // Only include frequency, uom, and text for recurring maintenance
@@ -217,7 +228,7 @@ const CreateMaintenanceFrequency = () => {
           <div className="p-4 sm:p-6">
             <form onSubmit={handleCreateFrequency}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Asset Type <span className="text-red-500">*</span>
                   </label>
@@ -278,6 +289,39 @@ const CreateMaintenanceFrequency = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maintenance Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedMaintenanceType}
+                    onChange={(e) => setSelectedMaintenanceType(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                    required
+                  >
+                    <option value="">-- Select Maintenance Type --</option>
+                    {maintenanceTypes.map((mt) => (
+                      <option key={mt.maint_type_id} value={mt.maint_type_id}>
+                        {mt.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maintenance Lead Time
+                  </label>
+                  <input
+                    type="text"
+                    value={maintLeadType}
+                    onChange={(e) => setMaintLeadType(e.target.value)}
+                    placeholder="Enter maintenance lead time"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Frequency <span className="text-red-500">*</span>
                     Frequency {isRecurring && <span className="text-red-500">*</span>}
                   </label>
                   <input
@@ -338,7 +382,7 @@ const CreateMaintenanceFrequency = () => {
                   </p>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Self / Vendor Managed <span className="text-red-500">*</span>
                   </label>
@@ -353,7 +397,7 @@ const CreateMaintenanceFrequency = () => {
                         className="mr-2"
                         required
                       />
-                      <span>Self</span>
+                      <span>In-House</span>
                     </label>
                     <label className="flex items-center">
                       <input
@@ -370,24 +414,6 @@ const CreateMaintenanceFrequency = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Maintenance Category <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={selectedMaintenanceType}
-                    onChange={(e) => setSelectedMaintenanceType(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
-                    required
-                  >
-                    <option value="">-- Select Maintenance Category --</option>
-                    {maintenanceTypes.map((mt) => (
-                      <option key={mt.maint_type_id} value={mt.maint_type_id}>
-                        {mt.text}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
               <div className="flex gap-4 mt-6">

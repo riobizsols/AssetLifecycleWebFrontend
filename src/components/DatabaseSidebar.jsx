@@ -78,6 +78,7 @@ const DatabaseSidebar = () => {
       'Column Access Config': t('navigation.columnAccessConfig'),
       'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
+      'Cost Center Transfer': 'Cost Center Transfer',
       'Department Assignment': t('navigation.departmentAssignment'),
       'Employee Assignment': t('navigation.employeeAssignment'),
       'Workorder Management': t('navigation.workorderManagement'),
@@ -90,10 +91,18 @@ const DatabaseSidebar = () => {
       'Reports': t('navigation.reports'),
       'Admin Settings': t('navigation.adminSettings'),
       'Master Data': t('navigation.masterData'),
+      'Asset Type - Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
+      'Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
+      'Inspection Frequency': 'Inspection Frequency',
       'Scrap Sales': t('navigation.scrapSales'),
       'Scrap Assets': t('navigation.scrapAssets'),
       'Group Asset': t('navigation.groupAsset'),
       'Audit Logs': t('navigation.auditLogs'),
+      'Certifications': t('navigation.certifications'),
+      'Technician Certificates': 'Technician Certificates',
+      'Employee Tech Certification': 'Employee Tech Certification',
+      'Technician Certificate Approvals': 'Technician Certificate Approvals',
+      'HR/Manager Approval': 'HR/Manager Approval',
       // Report sub-items
       'Asset Lifecycle Report': t('navigation.assetLifecycleReport'),
       'Asset Lifecycle Re...': t('navigation.assetLifecycleReport'),
@@ -143,11 +152,17 @@ const DatabaseSidebar = () => {
     ASSETS: "/assets", //done
     ADDASSET: "/assets/add", //done
     ASSETASSIGNMENT: "/assign-department-assets",
+    COSTCENTERTRANSFER: "/cost-center-transfer",
     VENDORS: "/master-data/vendors", //done
+    INSPECTIONCHECKLISTS: "/master-data/inspection-checklists",
+    INSPECTIONFREQUENCY: "/master-data/inspection-frequency",
+    ASSETTYPECHECKLISTMAPPING: "/master-data/asset-type-checklist-mapping",
     DEPTASSIGNMENT: "/assign-department-assets",
     EMPASSIGNMENT: "/assign-employee-assets",
     WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance  //done
-    INSPECTION: "/inspection-view", // Separate route for inspection
+    INSPECTION: "/inspection-view", // Legacy inspection ID
+    INSPECTIONVIEW: "/inspection-view", // New Inspection Execution ID
+    INSPECTIONAPPROVAL: "/inspection-approval", // New Inspection Approval ID
     MAINTENANCEAPPROVAL: "/maintenance-approval",
     VENDORRENEWALAPPROVAL: "/vendor-renewal-approval",
     SCRAPMAINTENANCEAPPROVAL: "/scrap-approval",
@@ -183,12 +198,17 @@ const DatabaseSidebar = () => {
     AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route  //done
     COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config", // Column Access Config route
     MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config", // Maintenance Configuration route
+    CERTIFICATIONS: "/certifications", // Certifications route
+    TECHCERTUPLOAD: "/technician-certificates",
+    TECHNICIANCERTIFICATES: "/technician-certificates",
     PROPERTIES: "/adminsettings/configuration/properties", // Properties route
     BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes", // Breakdown Reason Codes route
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
     SCRAPASSETS: "/scrap-assets", // Scrap Assets route  //done
+    "EMPLOYEE TECH CERTIFICATION": "/technician-certificates",
+    "HR/MANAGERAPPROVAL": "/tech-cert-approvals",
   };
 
   // Dynamic icon component
@@ -198,10 +218,13 @@ const DatabaseSidebar = () => {
       ASSETS: Package,
       ADDASSET: Package,
       ASSETASSIGNMENT: Users,
+      COSTCENTERTRANSFER: GitBranch,
       DEPTASSIGNMENT: Building,
       EMPASSIGNMENT: UserCheck,
       WORKORDERMANAGEMENT: Wrench,
       INSPECTION: CheckSquare,
+      INSPECTIONVIEW: CheckSquare, // Execution
+      INSPECTIONAPPROVAL: ClipboardList, // Approval
       MAINTENANCEAPPROVAL: ClipboardList,
       SCRAPMAINTENANCEAPPROVAL: ClipboardList,
       SUPERVISORAPPROVAL: UserCheck,
@@ -227,6 +250,7 @@ const DatabaseSidebar = () => {
       DEPARTMENTSASSET: Package,
       BRANCHES: Home,
       VENDORS: Truck,
+      INSPECTIONCHECKLISTS: ClipboardList,
       PRODSERV: Briefcase,
       ROLES: Shield,
       USERS: Users,
@@ -234,9 +258,14 @@ const DatabaseSidebar = () => {
       AUDITLOGS: History,
       AUDITLOGCONFIG: Settings,
       COLUMNACCESSCONFIG: Settings,
+      CERTIFICATIONS: FileText,
+      TECHCERTUPLOAD: FileText,
+      TECHNICIANCERTIFICATES: FileText,
       GROUPASSET: Package,
       SCRAPSALES: Package,
       SCRAPASSETS: Package,
+      "EMPLOYEE TECH CERTIFICATION": FileText,
+      "HR/MANAGERAPPROVAL": FileText,
     };
 
     const IconComponent = iconMap[appId] || Building;

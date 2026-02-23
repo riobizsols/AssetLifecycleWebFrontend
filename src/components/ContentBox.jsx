@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown,
   Download,
@@ -27,6 +28,97 @@ const isIdColumnName = (name) => {
   // Common workflow IDs still end with _id, but keep explicit for clarity.
   if (n === "wfamsh_id" || n === "wfamsd_id" || n === "wfscrap_h_id") return true;
   return false;
+};
+
+// Columns sub-menu that stays within viewport - rendered via portal to avoid parent overflow clipping
+const DROPDOWN_WIDTH = 260;
+const DROPDOWN_GAP = 4;
+
+const ColumnsSubmenu = ({ visibleColumns, toggleColumn, isIdColumnName, triggerButtonRef }) => {
+  const elRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const el = elRef.current;
+    const button = triggerButtonRef?.current ?? el?.parentElement?.querySelector("button");
+    if (!el || !button) return;
+
+    const rect = button.getBoundingClientRect();
+    const padding = 12;
+    const maxHeight = Math.min(320, window.innerHeight - padding * 2);
+    const spaceBelow = window.innerHeight - rect.bottom - padding;
+    const spaceAbove = rect.top - padding;
+    const spaceRight = window.innerWidth - rect.right - padding;
+    const spaceLeft = rect.left - padding;
+
+    // Horizontal: prefer right of button; if not enough space, open to the left
+    if (spaceRight >= DROPDOWN_WIDTH + DROPDOWN_GAP) {
+      el.style.left = `${rect.right + DROPDOWN_GAP}px`;
+      el.style.right = "auto";
+    } else if (spaceLeft >= DROPDOWN_WIDTH + DROPDOWN_GAP) {
+      el.style.left = "auto";
+      el.style.right = `${window.innerWidth - rect.left + DROPDOWN_GAP}px`;
+    } else {
+      el.style.left = `${padding}px`;
+      el.style.right = "auto";
+      el.style.maxWidth = `${window.innerWidth - padding * 2}px`;
+    }
+
+    el.style.bottom = "auto";
+
+    // Vertical: constrain height so dropdown stays in viewport
+    const availableHeight = Math.max(spaceBelow, spaceAbove, 150);
+    const height = Math.min(maxHeight, availableHeight);
+
+    if (spaceBelow >= Math.min(maxHeight, 180)) {
+      el.style.top = `${rect.top}px`;
+      el.style.maxHeight = `${Math.min(height, spaceBelow)}px`;
+    } else if (spaceAbove > spaceBelow) {
+      el.style.top = "auto";
+      el.style.bottom = `${window.innerHeight - rect.top}px`;
+      el.style.maxHeight = `${Math.min(height, spaceAbove)}px`;
+    } else {
+      el.style.top = `${rect.top}px`;
+      el.style.maxHeight = `${Math.min(height, Math.max(spaceBelow, 120))}px`;
+    }
+  }, [visibleColumns, triggerButtonRef]);
+
+  const menuContent = (
+    <div
+      ref={elRef}
+      className="fixed bg-white shadow-lg border border-gray-300 z-[60] overflow-y-auto overscroll-contain"
+      style={{
+        top: 0,
+        width: DROPDOWN_WIDTH,
+        minWidth: DROPDOWN_WIDTH,
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.nativeEvent.stopImmediatePropagation();
+      }}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      {visibleColumns
+        .filter((col) => !isIdColumnName(col.name))
+        .map((col, i) => (
+          <label
+            key={i}
+            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer whitespace-nowrap"
+          >
+            <input
+              type="checkbox"
+              checked={col.visible}
+              onChange={(e) => toggleColumn(col.name)}
+              className="flex-shrink-0"
+            />
+            <span>{col.label}</span>
+          </label>
+        ))}
+    </div>
+  );
+
+  return typeof document !== "undefined"
+    ? createPortal(menuContent, document.body)
+    : menuContent;
 };
 
 const ContentBox = ({
@@ -71,6 +163,7 @@ const ContentBox = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddFilterSubmenu, setShowAddFilterSubmenu] = useState(null); // Track which column's add filter submenu is open
   const dropdownRef = useRef({});
+  const columnsButtonRef = useRef(null);
 
   // Handle refresh with animation
   const handleRefresh = async () => {
@@ -869,6 +962,7 @@ const ContentBox = ({
                         )}
                         <div className="relative border-t">
                           <button
+                            ref={openDropdown === index ? columnsButtonRef : undefined}
                             className="flex items-center justify-between w-full px-3 py-2 font-semibold hover:bg-gray-100 cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -879,88 +973,12 @@ const ContentBox = ({
                             <ChevronRight size={16} />
                           </button>
                           {showColumnsDropdown && (
-                            <div
-                              className="fixed bg-white shadow-lg border border-gray-300 w-48 z-50 max-h-[300px] overflow-y-auto"
-                              style={{
-                                top: "0px",
-                                left: "0px",
-                              }}
-                              ref={(el) => {
-                                if (el) {
-                                  // Position the dropdown next to the button
-                                  const button =
-                                    el.parentElement?.querySelector("button");
-                                  if (button) {
-                                    const rect = button.getBoundingClientRect();
-                                    el.style.top = `${rect.top}px`;
-                                    el.style.left = `${rect.right + 4}px`; // 4px gap
-
-                                    // Adjust vertical position if dropdown would go off screen
-                                    const dropdownRect =
-                                      el.getBoundingClientRect();
-                                    if (
-                                      dropdownRect.bottom > window.innerHeight
-                                    ) {
-                                      const topOffset =
-                                        dropdownRect.bottom -
-                                        window.innerHeight;
-                                      el.style.top = `${
-                                        rect.top - topOffset
-                                      }px`;
-                                    }
-                                  }
-                                }
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.nativeEvent.stopImmediatePropagation();
-                              }}
-                              onWheel={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                const element = e.currentTarget;
-                                const scrollSpeed = 30; // Adjust scroll speed
-                                const atTop = element.scrollTop === 0;
-                                const atBottom =
-                                  element.scrollTop + element.clientHeight ===
-                                  element.scrollHeight;
-
-                                // Only scroll if we're not at the limits or we're scrolling away from them
-                                if (!atTop || (atTop && e.deltaY > 0)) {
-                                  if (!atBottom || (atBottom && e.deltaY < 0)) {
-                                    element.scrollTop +=
-                                      e.deltaY > 0 ? scrollSpeed : -scrollSpeed;
-                                  }
-                                }
-                              }}
-                              onMouseEnter={(e) => {
-                                // Prevent scrolling of parent elements while hovering
-                                document.body.style.overflow = "hidden";
-                              }}
-                              onMouseLeave={(e) => {
-                                // Restore scrolling when leaving dropdown
-                                document.body.style.overflow = "";
-                              }}
-                            >
-                              {visibleColumns
-                                .filter((col) => !isIdColumnName(col.name))
-                                .map((col, i) => (
-                                <label
-                                  key={i}
-                                  className="flex items-center px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={col.visible}
-                                    onChange={(e) => {
-                                      toggleColumn(col.name);
-                                    }}
-                                    className="mr-2"
-                                  />
-                                  {col.label}
-                                </label>
-                              ))}
-                            </div>
+                            <ColumnsSubmenu
+                              visibleColumns={visibleColumns}
+                              toggleColumn={toggleColumn}
+                              isIdColumnName={isIdColumnName}
+                              triggerButtonRef={columnsButtonRef}
+                            />
                           )}
                         </div>
                         <div className="relative border-t">

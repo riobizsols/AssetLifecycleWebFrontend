@@ -838,7 +838,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                 </select>
               </div>
 
-              {/* Maintenance Lead Type Input */}
+              {/* Maintenance Lead Time Input */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   {t('assetTypes.maintenanceLeadType')}

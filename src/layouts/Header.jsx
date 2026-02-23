@@ -32,11 +32,17 @@ export default function Header() {
     "/report-breakdown": { title: "Report Breakdown", subtitle: "" },
     "/employee-report-breakdown": { title: "Employee Report Breakdown", subtitle: "" },
     "/dashboard": { title: t('navigation.dashboard'), subtitle: "" },
+    "/technician-certificates": { title: "Technician Certificates", subtitle: "" },
+    "/tech-cert-approvals": { title: "Technician Certificate Approvals", subtitle: "" },
     "/assets/add": { title: t('assets.addAsset'), subtitle: "" },
     "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },
     "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: "Product / Service", subtitle: "" },
+    "/master-data/inspection-checklists": { title: "Inspection Checklists", subtitle: "" },
+    "/master-data/inspection-frequency": { title: "Inspection Frequency", subtitle: "" },
+    "/master-data/asset-type-checklist-mapping/create": { title: "", subtitle: "" },
+    "/master-data/asset-type-checklist-mapping": { title: t('navigation.assetTypeChecklistMapping'), subtitle: "" },
     "/group-asset": { title: t('navigation.groupAsset'), subtitle: "" },
     "/group-asset/create": {
       title: t('navigation.groupAsset'),
@@ -151,9 +157,11 @@ export default function Header() {
     <header className="flex items-center justify-between bg-white px-6 py-3 shadow-sm relative">
       {/* Page Title */}
       <div className="flex flex-col">
-        <div className="text-2xl font-bold text-[#0E2F4B]">
-          {pageInfo.title}
-        </div>
+        {pageInfo.title && (
+          <div className="text-2xl font-bold text-[#0E2F4B]">
+            {pageInfo.title}
+          </div>
+        )}
         {pageInfo.subtitle && (
           <div className="text-sm text-gray-600">{pageInfo.subtitle}</div>
         )}
