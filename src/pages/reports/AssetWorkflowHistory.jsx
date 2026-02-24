@@ -27,6 +27,7 @@ export default function AssetWorkflowHistory() {
     filteredRows,
     setQuickField,
     report: updatedReport,
+    filterOptions,
   } = useReportState(selectedReportId, report);
 
   // Audit logging handlers
@@ -62,6 +63,7 @@ export default function AssetWorkflowHistory() {
       views={views}
       setViews={setViews}
       setQuickField={setQuickField}
+      apiData={filterOptions ? { filterOptions } : undefined}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
     />

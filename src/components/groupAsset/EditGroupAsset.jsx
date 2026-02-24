@@ -191,7 +191,7 @@ const EditGroupAsset = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('groupAsset.editGroupAsset.failedToLoadDocumentTypes'));
+      toast.error(t('groupAssets.editGroupAsset.failedToLoadDocumentTypes'));
       setDocumentTypes([]);
     }
   };
@@ -226,7 +226,7 @@ const EditGroupAsset = () => {
       }
     } catch (error) {
       console.error('Error fetching group details:', error);
-      toast.error(t('groupAsset.editGroupAsset.failedToFetchGroupDetails'));
+      toast.error(t('groupAssets.editGroupAsset.failedToFetchGroupDetails'));
     } finally {
       setLoadingGroupData(false);
     }
@@ -240,11 +240,11 @@ const EditGroupAsset = () => {
       if (response.data && response.data.success) {
         setAssetTypes(response.data.data || []);
     } else {
-        toast.error(t('groupAsset.editGroupAsset.failedToFetchAssetTypes'));
+        toast.error(t('groupAssets.editGroupAsset.failedToFetchAssetTypes'));
       }
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      toast.error(t('groupAsset.editGroupAsset.failedToFetchAssetTypes'));
+      toast.error(t('groupAssets.editGroupAsset.failedToFetchAssetTypes'));
     } finally {
       setLoadingAssetTypes(false);
     }
@@ -298,7 +298,7 @@ const EditGroupAsset = () => {
       });
     } catch (error) {
       console.error('Error fetching assets:', error);
-      toast.error(t('groupAsset.editGroupAsset.failedToFetchAssets'));
+      toast.error(t('groupAssets.editGroupAsset.failedToFetchAssets'));
     } finally {
       setLoadingAssets(false);
     }
@@ -342,7 +342,7 @@ const EditGroupAsset = () => {
       setAvailableAssets(uniqueAssets);
     } catch (error) {
       console.error('Error fetching assets for all types:', error);
-      toast.error(t('groupAsset.editGroupAsset.failedToFetchAssets'));
+      toast.error(t('groupAssets.editGroupAsset.failedToFetchAssets'));
     } finally {
       setLoadingAssets(false);
     }
@@ -370,7 +370,7 @@ const EditGroupAsset = () => {
   // Asset type selection handlers
   const handleAssetTypeSelect = (assetType) => {
     if (selectedAssetTypes.includes(assetType.asset_type_id)) {
-      toast.error(t('groupAsset.editGroupAsset.assetTypeAlreadySelected'));
+      toast.error(t('groupAssets.editGroupAsset.assetTypeAlreadySelected'));
       return;
     }
     
@@ -407,12 +407,12 @@ const EditGroupAsset = () => {
 
   // Get display text for dropdown button
   const getDropdownDisplayText = () => {
-    if (selectedAssetTypes.length === 0) return t('groupAsset.editGroupAsset.selectAssetType');
+    if (selectedAssetTypes.length === 0) return t('groupAssets.editGroupAsset.selectAssetType');
     if (selectedAssetTypes.length === 1) {
       const type = assetTypes.find(t => t.asset_type_id === selectedAssetTypes[0]);
       return type ? `${type.asset_type_id} - ${type.text}` : selectedAssetTypes[0];
     }
-    return t('groupAsset.editGroupAsset.assetTypesSelected', { count: selectedAssetTypes.length });
+    return t('groupAssets.editGroupAsset.assetTypesSelected', { count: selectedAssetTypes.length });
   };
 
   // Format date for user display
@@ -434,17 +434,17 @@ const EditGroupAsset = () => {
   // Update asset group
   const handleUpdate = async () => {
     if (!groupName.trim()) {
-      toast.error(t('groupAsset.editGroupAsset.pleaseEnterGroupName'));
+      toast.error(t('groupAssets.editGroupAsset.pleaseEnterGroupName'));
       return;
     }
 
     if (selectedAssetTypes.length === 0) {
-      toast.error(t('groupAsset.editGroupAsset.pleaseSelectAtLeastOneAssetType'));
+      toast.error(t('groupAssets.editGroupAsset.pleaseSelectAtLeastOneAssetType'));
       return;
     }
 
     if (selectedAssets.length === 0) {
-      toast.error(t('groupAsset.editGroupAsset.pleaseSelectAtLeastOneAsset'));
+      toast.error(t('groupAssets.editGroupAsset.pleaseSelectAtLeastOneAsset'));
       return;
     }
 
@@ -466,14 +466,14 @@ const EditGroupAsset = () => {
           action: 'Group Asset Updated Successfully'
         });
         
-        toast.success(t('groupAsset.editGroupAsset.assetGroupUpdatedSuccessfully'));
+        toast.success(t('groupAssets.editGroupAsset.assetGroupUpdatedSuccessfully'));
         navigate('/group-asset');
       } else {
-        toast.error(t('groupAsset.editGroupAsset.failedToUpdateAssetGroup'));
+        toast.error(t('groupAssets.editGroupAsset.failedToUpdateAssetGroup'));
       }
     } catch (error) {
       console.error('Error updating group:', error);
-      toast.error(t('groupAsset.editGroupAsset.failedToUpdateAssetGroup'));
+      toast.error(t('groupAssets.editGroupAsset.failedToUpdateAssetGroup'));
     } finally {
       setLoading(false);
     }
@@ -520,7 +520,7 @@ const EditGroupAsset = () => {
           action: 'Document Archived in Group Asset'
         });
         
-        toast.success(t('groupAsset.editGroupAsset.documentArchivedSuccessfully'));
+        toast.success(t('groupAssets.editGroupAsset.documentArchivedSuccessfully'));
         // Refresh documents
         const res = await API.get(`/asset-group-docs/${groupId}`);
         const allDocs = res.data?.documents || [];
@@ -542,7 +542,7 @@ const EditGroupAsset = () => {
           action: 'Document Unarchived in Group Asset'
         });
         
-        toast.success(t('groupAsset.editGroupAsset.documentUnarchivedSuccessfully'));
+        toast.success(t('groupAssets.editGroupAsset.documentUnarchivedSuccessfully'));
         // Refresh documents
         const res = await API.get(`/asset-group-docs/${groupId}`);
         const allDocs = res.data?.documents || [];
@@ -554,27 +554,27 @@ const EditGroupAsset = () => {
     } catch (error) {
       console.error('Document action failed:', error);
       console.error('Error details:', error.response?.data);
-      toast.error(t('groupAsset.editGroupAsset.failedToActionDocument', { action }));
+      toast.error(t('groupAssets.editGroupAsset.failedToActionDocument', { action }));
     }
   };
 
   // Handle batch upload for group asset documents
   const handleBatchUpload = async () => {
     if (uploadRows.length === 0) {
-      toast.error(t('groupAsset.editGroupAsset.addAtLeastOneFile'));
+      toast.error(t('groupAssets.editGroupAsset.addAtLeastOneFile'));
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error(t('groupAsset.editGroupAsset.selectDocumentTypeAndChooseFile'));
+        toast.error(t('groupAssets.editGroupAsset.selectDocumentTypeAndChooseFile'));
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-        toast.error(t('groupAsset.editGroupAsset.enterCustomNameFor', { docType: selectedDocType.text }));
+        toast.error(t('groupAssets.editGroupAsset.enterCustomNameFor', { docType: selectedDocType.text }));
         return;
       }
     }
@@ -614,9 +614,9 @@ const EditGroupAsset = () => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('groupAsset.editGroupAsset.allFilesUploadedSuccessfully'));
+          toast.success(t('groupAssets.editGroupAsset.allFilesUploadedSuccessfully'));
         } else {
-          toast.success(t('groupAsset.editGroupAsset.filesUploaded', { successCount, failCount }));
+          toast.success(t('groupAssets.editGroupAsset.filesUploaded', { successCount, failCount }));
         }
         setUploadRows([]); // Clear all attachments after upload
         // Refresh the documents list
@@ -627,11 +627,11 @@ const EditGroupAsset = () => {
         setDocs(active);
         setArchivedDocs(archived);
       } else {
-        toast.error(t('groupAsset.editGroupAsset.failedToUploadAnyFiles'));
+        toast.error(t('groupAssets.editGroupAsset.failedToUploadAnyFiles'));
       }
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error(t('groupAsset.editGroupAsset.uploadFailed'));
+      toast.error(t('groupAssets.editGroupAsset.uploadFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -642,7 +642,7 @@ const EditGroupAsset = () => {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">{t('groupAsset.editGroupAsset.loadingGroupDetails')}</p>
+          <p className="text-gray-600">{t('groupAssets.editGroupAsset.loadingGroupDetails')}</p>
         </div>
       </div>
     );
@@ -659,21 +659,21 @@ const EditGroupAsset = () => {
           >
             <ArrowLeft size={20} className="text-gray-600" />
           </button>
-          <h1 className="text-xl font-semibold text-gray-900">{t('groupAsset.editGroupAsset.editAssetGroup')}</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{t('groupAssets.editGroupAsset.editAssetGroup')}</h1>
         </div>
         <div className="flex gap-3">
           <button
             onClick={handleCancel}
             className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
           >
-            {t('groupAsset.editGroupAsset.cancel')}
+            {t('groupAssets.editGroupAsset.cancel')}
           </button>
           <button
             onClick={handleUpdate}
             disabled={loading}
             className="px-4 py-2 bg-[#143d65] 143d65 text-white rounded-md hover:bg-[#0E2F4B] disabled:opacity-50"
           >
-            {loading ? t('groupAsset.editGroupAsset.updating') : t('groupAsset.editGroupAsset.updateGroup')}
+            {loading ? t('groupAssets.editGroupAsset.updating') : t('groupAssets.editGroupAsset.updateGroup')}
           </button>
         </div>
       </div>
@@ -685,13 +685,13 @@ const EditGroupAsset = () => {
           <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6 flex-shrink-0">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <label className="text-sm font-medium text-gray-700 min-w-[80px] sm:min-w-[100px]">
-                {t('groupAsset.editGroupAsset.groupName')}:
+                {t('groupAssets.editGroupAsset.groupName')}:
               </label>
               <input
                 type="text"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                placeholder={t('groupAsset.editGroupAsset.enterGroupName')}
+                placeholder={t('groupAssets.editGroupAsset.enterGroupName')}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
               />
             </div>
@@ -702,7 +702,7 @@ const EditGroupAsset = () => {
             {/* Available Assets - Fixed height */}
             <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 h-[500px]">
               <div className="p-4 border-b flex-shrink-0">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('groupAsset.editGroupAsset.assetsList')}</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('groupAssets.editGroupAsset.assetsList')}</h2>
                 
                 {/* Asset Type Filter - Searchable Dropdown */}
                 <div className="mb-0">
@@ -749,7 +749,7 @@ const EditGroupAsset = () => {
                         <div className="p-3 border-b">
                           <input
                             type="text"
-                            placeholder={t('groupAsset.editGroupAsset.searchAssetTypes')}
+                            placeholder={t('groupAssets.editGroupAsset.searchAssetTypes')}
                             value={dropdownSearchTerm}
                             onChange={(e) => setDropdownSearchTerm(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -759,7 +759,7 @@ const EditGroupAsset = () => {
                         {/* Selected Asset Types Display */}
                         {selectedAssetTypes.length > 0 && (
                           <div className="p-3 border-b bg-gray-50">
-                            <div className="text-xs font-medium text-gray-700 mb-2">{t('groupAsset.editGroupAsset.selectedAssetTypes')}:</div>
+                            <div className="text-xs font-medium text-gray-700 mb-2">{t('groupAssets.editGroupAsset.selectedAssetTypes')}:</div>
                             <div className="flex flex-wrap gap-1">
                               {getSelectedAssetTypeNames().map((typeName, index) => {
                                 const typeId = selectedAssetTypes[index];
@@ -785,7 +785,7 @@ const EditGroupAsset = () => {
                         {/* Dropdown Options */}
                         <div className="max-h-48 overflow-y-auto">
                           {loadingAssetTypes ? (
-                            <div className="px-3 py-2 text-sm text-gray-500">{t('groupAsset.editGroupAsset.loadingAssetTypes')}</div>
+                            <div className="px-3 py-2 text-sm text-gray-500">{t('groupAssets.editGroupAsset.loadingAssetTypes')}</div>
                           ) : filteredAssetTypes.length > 0 ? (
                             filteredAssetTypes.map((type) => {
                               const isSelected = selectedAssetTypes.includes(type.asset_type_id);
@@ -809,7 +809,7 @@ const EditGroupAsset = () => {
                             })
                           ) : (
                             <div className="px-3 py-2 text-sm text-gray-500">
-                              {t('groupAsset.editGroupAsset.noAssetTypesFound')}
+                              {t('groupAssets.editGroupAsset.noAssetTypesFound')}
                             </div>
                           )}
                         </div>
@@ -826,13 +826,13 @@ const EditGroupAsset = () => {
                       onClick={handleSelectAll}
                       className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
                     >
-                      {t('groupAsset.editGroupAsset.selectAll')}
+                      {t('groupAssets.editGroupAsset.selectAll')}
                     </button>
                     <button
                       onClick={handleDeselectAll}
                       className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
                     >
-                      {t('groupAsset.editGroupAsset.deselectAll')}
+                      {t('groupAssets.editGroupAsset.deselectAll')}
                     </button>
                   </div>
                   
@@ -842,7 +842,7 @@ const EditGroupAsset = () => {
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
-                          placeholder={t('groupAsset.editGroupAsset.searchAssets')}
+                          placeholder={t('groupAssets.editGroupAsset.searchAssets')}
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -850,7 +850,7 @@ const EditGroupAsset = () => {
                         <button
                           onClick={() => setSearchTerm('')}
                           className="p-1 text-gray-400 hover:text-gray-600"
-                          title={t('groupAsset.editGroupAsset.clearSearch')}
+                          title={t('groupAssets.editGroupAsset.clearSearch')}
                         >
                           <X size={14} />
                         </button>
@@ -861,13 +861,13 @@ const EditGroupAsset = () => {
                         className="w-full px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-left bg-white flex items-center gap-2 text-gray-500 hover:text-gray-700"
                       >
                         <Search size={14} />
-                        <span className="text-xs">{t('groupAsset.editGroupAsset.search')}...</span>
+                        <span className="text-xs">{t('groupAssets.editGroupAsset.search')}...</span>
                       </button>
                     )}
                     <input
                       id="asset-search-input"
                       type="text"
-                      placeholder={t('groupAsset.editGroupAsset.searchAssets')}
+                      placeholder={t('groupAssets.editGroupAsset.searchAssets')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className={`absolute inset-0 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white ${
@@ -885,7 +885,7 @@ const EditGroupAsset = () => {
                   <div className="flex items-center justify-center h-32">
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                      <p className="text-sm text-gray-500">{t('groupAsset.editGroupAsset.loadingAssets')}</p>
+                      <p className="text-sm text-gray-500">{t('groupAssets.editGroupAsset.loadingAssets')}</p>
                     </div>
                   </div>
                 ) : availableAssets.length > 0 ? (
@@ -894,19 +894,19 @@ const EditGroupAsset = () => {
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                            {t('groupAsset.editGroupAsset.select')}
+                            {t('groupAssets.editGroupAsset.select')}
                           </th>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                            {t('groupAsset.editGroupAsset.assetId')}
+                            {t('groupAssets.editGroupAsset.assetId')}
                     </th>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                      {t('groupAsset.editGroupAsset.name')}
+                      {t('groupAssets.editGroupAsset.name')}
                     </th>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
-                            {t('groupAsset.editGroupAsset.assetType')}
+                            {t('groupAssets.editGroupAsset.assetType')}
                     </th>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                            {t('groupAsset.editGroupAsset.purchaseDate')}
+                            {t('groupAssets.editGroupAsset.purchaseDate')}
                     </th>
                   </tr>
                 </thead>
@@ -968,7 +968,7 @@ const EditGroupAsset = () => {
                   <div className="flex items-center justify-center h-32">
                     <div className="text-center">
                       <div className="text-gray-500">
-                        {selectedAssetTypes.length > 0 ? t('groupAsset.editGroupAsset.noAssetsFoundForSelectedType') : t('groupAsset.editGroupAsset.pleaseSelectAssetTypeToViewAssets')}
+                        {selectedAssetTypes.length > 0 ? t('groupAssets.editGroupAsset.noAssetsFoundForSelectedType') : t('groupAssets.editGroupAsset.pleaseSelectAssetTypeToViewAssets')}
                       </div>
             </div>
           </div>
@@ -982,14 +982,14 @@ const EditGroupAsset = () => {
             <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 h-[500px]">
               <div className="p-4 border-b flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  {t('groupAsset.editGroupAsset.selectedAssets')} ({selectedAssets.length})
+                  {t('groupAssets.editGroupAsset.selectedAssets')} ({selectedAssets.length})
                 </h2>
                 {selectedAssets.length > 0 && (
                   <button
                     onClick={handleDeselectAll}
                     className="text-sm text-red-600 hover:text-red-800 underline"
                   >
-                    {t('groupAsset.editGroupAsset.clearAll')}
+                    {t('groupAssets.editGroupAsset.clearAll')}
                   </button>
                 )}
             </div>
@@ -1001,19 +1001,19 @@ const EditGroupAsset = () => {
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                            {t('groupAsset.editGroupAsset.assetId')}
+                            {t('groupAssets.editGroupAsset.assetId')}
                           </th>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                            {t('groupAsset.editGroupAsset.name')}
+                            {t('groupAssets.editGroupAsset.name')}
                           </th>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
-                            {t('groupAsset.editGroupAsset.assetType')}
+                            {t('groupAssets.editGroupAsset.assetType')}
                           </th>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                            {t('groupAsset.editGroupAsset.purchaseDate')}
+                            {t('groupAssets.editGroupAsset.purchaseDate')}
                           </th>
                           <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
-                            {t('groupAsset.editGroupAsset.action')}
+                            {t('groupAssets.editGroupAsset.action')}
                           </th>
                         </tr>
                       </thead>
@@ -1044,7 +1044,7 @@ const EditGroupAsset = () => {
                               <button
                                 onClick={() => handleDeselectAsset(asset)}
                                 className="text-red-600 hover:text-red-800"
-                                title={t('groupAsset.editGroupAsset.removeFromSelection')}
+                                title={t('groupAssets.editGroupAsset.removeFromSelection')}
                               >
                                 <X size={16} />
                               </button>
@@ -1058,7 +1058,7 @@ const EditGroupAsset = () => {
                   <div className="flex items-center justify-center h-32">
                     <div className="text-center text-gray-500">
                       <ArrowLeft size={24} className="mx-auto mb-2 text-gray-400" />
-                      <p>{t('groupAsset.editGroupAsset.selectAssetsFromLeftTable')}</p>
+                      <p>{t('groupAssets.editGroupAsset.selectAssetsFromLeftTable')}</p>
                     </div>
                   </div>
                 )}
@@ -1069,35 +1069,35 @@ const EditGroupAsset = () => {
           {/* Documents Section */}
           <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-sm border p-4 flex-shrink-0">
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('groupAsset.editGroupAsset.documents')}</h3>
-              <div className="text-sm text-gray-600 mb-3">{t('groupAsset.editGroupAsset.documentTypesLoadedFromSystem')}</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('groupAssets.editGroupAsset.documents')}</h3>
+              <div className="text-sm text-gray-600 mb-3">{t('groupAssets.editGroupAsset.documentTypesLoadedFromSystem')}</div>
               
               <div className="flex items-center justify-between mb-4">
-                <div className="text-sm font-medium text-gray-700">{t('groupAsset.editGroupAsset.uploadDocuments')}</div>
+                <div className="text-sm font-medium text-gray-700">{t('groupAssets.editGroupAsset.uploadDocuments')}</div>
                 <button 
                   type="button" 
                   onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
                   className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
                 >
                   <Plus size={16} className="mr-2" />
-                  {t('groupAsset.editGroupAsset.addDocument')}
+                  {t('groupAssets.editGroupAsset.addDocument')}
                 </button>
               </div>
               
               {uploadRows.length === 0 ? (
-                <div className="text-sm text-gray-500">{t('groupAsset.editGroupAsset.noDocumentsAdded')}</div>
+                <div className="text-sm text-gray-500">{t('groupAssets.editGroupAsset.noDocumentsAdded')}</div>
               ) : (
                 <div className="space-y-3">
                   {uploadRows.map(r => (
                     <div key={r.id} className="grid grid-cols-12 gap-3 items-start bg-white border border-gray-200 rounded p-3">
                       <div className="col-span-3">
-                        <label className="block text-xs font-medium mb-1">{t('groupAsset.editGroupAsset.documentType')}</label>
+                        <label className="block text-xs font-medium mb-1">{t('groupAssets.editGroupAsset.documentType')}</label>
                         <SearchableDropdown
                           options={documentTypes}
                           value={r.type}
                           onChange={(value) => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:value}:x))}
-                          placeholder={t('groupAsset.editGroupAsset.selectType')}
-                          searchPlaceholder={t('groupAsset.editGroupAsset.searchTypes')}
+                          placeholder={t('groupAssets.editGroupAsset.selectType')}
+                          searchPlaceholder={t('groupAssets.editGroupAsset.searchTypes')}
                           className="w-full"
                           displayKey="text"
                           valueKey="id"
@@ -1109,12 +1109,12 @@ const EditGroupAsset = () => {
                         const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                         return needsCustomName && (
                           <div className="col-span-3">
-                            <label className="block text-xs font-medium mb-1">{t('groupAsset.editGroupAsset.customName')}</label>
+                            <label className="block text-xs font-medium mb-1">{t('groupAssets.editGroupAsset.customName')}</label>
                             <input
                               className="w-full border rounded px-2 py-2 text-sm h-[38px]"
                               value={r.docTypeName}
                               onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))}
-                              placeholder={t('groupAsset.editGroupAsset.enterCustomNameFor', { docType: selectedDocType?.text })}
+                              placeholder={t('groupAssets.editGroupAsset.enterCustomNameFor', { docType: selectedDocType?.text })}
                             />
                           </div>
                         );
@@ -1125,7 +1125,7 @@ const EditGroupAsset = () => {
                         const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                         return needsCustomName ? 'col-span-4' : 'col-span-7';
                       })()}>
-                        <label className="block text-xs font-medium mb-1">{t('groupAsset.editGroupAsset.fileMaxSize')}</label>
+                        <label className="block text-xs font-medium mb-1">{t('groupAssets.editGroupAsset.fileMaxSize')}</label>
                         <div className="flex items-center gap-2">
                           <div className="relative flex-1 max-w-md">
                             <input
@@ -1134,7 +1134,7 @@ const EditGroupAsset = () => {
                               onChange={e => {
                                 const f = e.target.files?.[0] || null;
                                 if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                  toast.error(t('groupAsset.editGroupAsset.fileSizeExceedsLimit'));
+                                  toast.error(t('groupAssets.editGroupAsset.fileSizeExceedsLimit'));
                                   e.target.value = '';
                                   return;
                                 }
@@ -1151,7 +1151,7 @@ const EditGroupAsset = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                               </svg>
                               <span className="truncate max-w-[200px] inline-block">
-                                {r.file ? r.file.name : t('groupAsset.editGroupAsset.chooseFile')}
+                                {r.file ? r.file.name : t('groupAssets.editGroupAsset.chooseFile')}
                               </span>
                             </label>
                           </div>
@@ -1167,7 +1167,7 @@ const EditGroupAsset = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542 7z" />
                               </svg>
-                              {t('groupAsset.editGroupAsset.preview')}
+                              {t('groupAssets.editGroupAsset.preview')}
                             </a>
                           )}
                           <button 
@@ -1178,7 +1178,7 @@ const EditGroupAsset = () => {
                             <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            {t('groupAsset.editGroupAsset.remove')}
+                            {t('groupAssets.editGroupAsset.remove')}
                           </button>
                         </div>
                       </div>
@@ -1207,14 +1207,14 @@ const EditGroupAsset = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        {t('groupAsset.editGroupAsset.processing')}
+                        {t('groupAssets.editGroupAsset.processing')}
                       </span>
                     ) : (
                       <>
                         <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>
-                        {t('groupAsset.editGroupAsset.processAllFiles')}
+                        {t('groupAssets.editGroupAsset.processAllFiles')}
                       </>
                     )}
                   </button>
@@ -1224,25 +1224,25 @@ const EditGroupAsset = () => {
 
             {/* Document Management Section */}
             <div className="mt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('groupAsset.editGroupAsset.documentManagement')}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('groupAssets.editGroupAsset.documentManagement')}</h3>
               
               {/* Active Documents */}
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">{t('groupAsset.editGroupAsset.activeDocuments')}</h3>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">{t('groupAssets.editGroupAsset.activeDocuments')}</h3>
                 <div className="border rounded-lg overflow-hidden bg-white">
                   {docsLoading ? (
-                    <div className="p-4 text-sm text-gray-500 text-center">{t('groupAsset.editGroupAsset.loadingDocuments')}</div>
+                    <div className="p-4 text-sm text-gray-500 text-center">{t('groupAssets.editGroupAsset.loadingDocuments')}</div>
                   ) : docs.length === 0 ? (
-                    <div className="p-4 text-sm text-gray-500 text-center">{t('groupAsset.editGroupAsset.noActiveDocumentsFound')}</div>
+                    <div className="p-4 text-sm text-gray-500 text-center">{t('groupAssets.editGroupAsset.noActiveDocumentsFound')}</div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAsset.editGroupAsset.fileName')}</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAsset.editGroupAsset.type')}</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAsset.editGroupAsset.status')}</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAsset.editGroupAsset.actions')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAssets.editGroupAsset.fileName')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAssets.editGroupAsset.type')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAssets.editGroupAsset.status')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAssets.editGroupAsset.actions')}</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -1252,7 +1252,7 @@ const EditGroupAsset = () => {
                               <td className="px-4 py-3 text-sm text-gray-500">{doc.doc_type_text || doc.doc_type_name || 'N/A'}</td>
                               <td className="px-4 py-3">
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  {t('groupAsset.editGroupAsset.active')}
+                                  {t('groupAssets.editGroupAsset.active')}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-500">
@@ -1288,7 +1288,7 @@ const EditGroupAsset = () => {
                                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                           >
                                             <Eye size={16} className="mr-3" />
-                                            {t('groupAsset.editGroupAsset.view')}
+                                            {t('groupAssets.editGroupAsset.view')}
                                           </button>
                                           <button
                                             onClick={(e) => {
@@ -1301,7 +1301,7 @@ const EditGroupAsset = () => {
                                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                           >
                                             <Download size={16} className="mr-3" />
-                                            {t('groupAsset.editGroupAsset.download')}
+                                            {t('groupAssets.editGroupAsset.download')}
                                           </button>
                                           <button
                                             onClick={(e) => {
@@ -1314,7 +1314,7 @@ const EditGroupAsset = () => {
                                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                           >
                                             <Archive size={16} className="mr-3" />
-                                            {t('groupAsset.editGroupAsset.archive')}
+                                            {t('groupAssets.editGroupAsset.archive')}
                                           </button>
                                         </div>
                                       </div>,
@@ -1335,12 +1335,12 @@ const EditGroupAsset = () => {
               {/* Archived Documents */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-900">{t('groupAsset.editGroupAsset.archivedDocuments')}</h3>
+                  <h3 className="text-sm font-medium text-gray-900">{t('groupAssets.editGroupAsset.archivedDocuments')}</h3>
                   <button
                     onClick={() => setShowArchived(!showArchived)}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    {showArchived ? t('groupAsset.editGroupAsset.hideArchived') : t('groupAsset.editGroupAsset.showArchived', { count: archivedDocs.length })}
+                    {showArchived ? t('groupAssets.editGroupAsset.hideArchived') : t('groupAssets.editGroupAsset.showArchived', { count: archivedDocs.length })}
                   </button>
                 </div>
                 
@@ -1348,17 +1348,17 @@ const EditGroupAsset = () => {
                   <div className="border rounded-lg overflow-hidden bg-gray-50">
                     {archivedDocs.length === 0 ? (
                       <div className="p-4 text-sm text-gray-500 text-center">
-                        {t('groupAsset.editGroupAsset.noArchivedDocumentsFound')}
+                        {t('groupAssets.editGroupAsset.noArchivedDocumentsFound')}
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-gray-100">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAsset.editGroupAsset.fileName')}</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAsset.editGroupAsset.type')}</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAsset.editGroupAsset.status')}</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAsset.editGroupAsset.actions')}</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAssets.editGroupAsset.fileName')}</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAssets.editGroupAsset.type')}</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAssets.editGroupAsset.status')}</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('groupAssets.editGroupAsset.actions')}</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -1368,7 +1368,7 @@ const EditGroupAsset = () => {
                                 <td className="px-4 py-3 text-sm text-gray-500">{doc.doc_type_text || doc.doc_type_name || 'N/A'}</td>
                                 <td className="px-4 py-3">
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                    {t('groupAsset.editGroupAsset.archived')}
+                                    {t('groupAssets.editGroupAsset.archived')}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-500">
@@ -1404,7 +1404,7 @@ const EditGroupAsset = () => {
                                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             >
                                               <Eye size={16} className="mr-3" />
-                                              {t('groupAsset.editGroupAsset.view')}
+                                              {t('groupAssets.editGroupAsset.view')}
                                             </button>
                                             <button
                                               onClick={(e) => {
@@ -1417,7 +1417,7 @@ const EditGroupAsset = () => {
                                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             >
                                               <Download size={16} className="mr-3" />
-                                              {t('groupAsset.editGroupAsset.download')}
+                                              {t('groupAssets.editGroupAsset.download')}
                                             </button>
                                             <button
                                               onClick={(e) => {
@@ -1430,7 +1430,7 @@ const EditGroupAsset = () => {
                                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             >
                                               <ArchiveRestore size={16} className="mr-3" />
-                                              {t('groupAsset.editGroupAsset.unarchive')}
+                                              {t('groupAssets.editGroupAsset.unarchive')}
                                             </button>
                                           </div>
                                         </div>,
