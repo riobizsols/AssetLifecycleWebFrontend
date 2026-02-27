@@ -68,7 +68,7 @@ const AdminSettingsView = () => {
     },
     {
       app_id: "COLUMNACCESSCONFIG",
-      label: "Column Access Config",
+      label: t('navigation.columnAccessConfig'),
       description:
         "Manage column-level access control for different job roles in data tables",
       icon: Shield,

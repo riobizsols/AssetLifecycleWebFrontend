@@ -31,7 +31,7 @@ const InspectionFrequency = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [currentId, setCurrentId] = useState(null);
-
+  
   // Form state
   const [mappings, setMappings] = useState([]);
   const [selectedMappingId, setSelectedMappingId] = useState("");
@@ -41,12 +41,29 @@ const InspectionFrequency = () => {
   const [maintainedBy, setMaintainedBy] = useState("In-House");
   const [isRecurring, setIsRecurring] = useState(true);
   const [uomOptions, setUomOptions] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
+  const [selectedTechnician, setSelectedTechnician] = useState("");
+  const [techLoading, setTechLoading] = useState(false);
 
   useEffect(() => {
     fetchFrequencies();
     fetchMappings();
     fetchUOM();
   }, []);
+
+  // Close modal on Esc key
+  useEffect(() => {
+    if (!showModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setShowModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showModal]);
 
   const fetchFrequencies = async () => {
     setIsLoading(true);
@@ -108,9 +125,49 @@ const InspectionFrequency = () => {
     setFreq(freqData.freq || "");
     setUom(freqData.uom || "");
     setDescription(freqData.text || "");
-    setMaintainedBy(freqData.maintained_by || "In-House");
+    // Normalize maintained_by from DB ('inhouse' / 'vendor') to UI values
+    const normalizedMaint = (freqData.maintained_by || "").toLowerCase();
+    const displayMaint =
+      normalizedMaint === "vendor" ? "Vendor" : "In-House";
+    setMaintainedBy(displayMaint);
     setIsRecurring(freqData.is_recurring !== false);
+    setSelectedTechnician(freqData.emp_int_id || "");
+    setTechnicians([]);
+
+    // If In-House, pre-load certified technicians for this asset type
+    if (displayMaint === "In-House" && (freqData.asset_type_id || freqData.at_id)) {
+      fetchCertifiedTechniciansForAssetType(
+        freqData.asset_type_id || freqData.at_id,
+        freqData.emp_int_id || ""
+      );
+    }
+
     setShowModal(true);
+  };
+
+  const fetchCertifiedTechniciansForAssetType = async (assetTypeId, existingEmpId = "") => {
+    if (!assetTypeId) {
+      setTechnicians([]);
+      return;
+    }
+    try {
+      setTechLoading(true);
+      const resp = await API.get(`/inspection-approval/technicians/${assetTypeId}`);
+      const techs = resp.data?.data || [];
+      const mapped = techs.map(t => ({
+        emp_int_id: t.emp_int_id || t.employee_id,
+        name: t.name || t.full_name || t.employee_id
+      }));
+      setTechnicians(mapped);
+      if (existingEmpId) {
+        setSelectedTechnician(existingEmpId);
+      }
+    } catch (err) {
+      console.error("Failed to fetch certified technicians:", err);
+      setTechnicians([]);
+    } finally {
+      setTechLoading(false);
+    }
   };
 
   const handleSave = async (e) => {
@@ -145,7 +202,8 @@ const InspectionFrequency = () => {
         uom: isRecurring ? uom : null,
         text: description,
         maintained_by: maintainedBy,
-        is_recurring: isRecurring
+        is_recurring: isRecurring,
+        emp_int_id: maintainedBy === "In-House" ? (selectedTechnician || null) : null
       };
 
       if (isEditing) {
@@ -352,6 +410,29 @@ const InspectionFrequency = () => {
                     ))}
                   </div>
                 </div>
+
+                {maintainedBy === "In-House" && (
+                  <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Technician (In-House)
+                    </label>
+                    <select
+                      value={selectedTechnician}
+                      onChange={(e) => setSelectedTechnician(e.target.value)}
+                      className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#003b6f]"
+                    >
+                      <option value="">-- Select Technician --</option>
+                      {technicians.map((t) => (
+                        <option key={t.emp_int_id} value={t.emp_int_id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    {techLoading && (
+                      <p className="mt-1 text-xs text-gray-500">Loading technicians...</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">

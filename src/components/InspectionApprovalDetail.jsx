@@ -134,6 +134,7 @@ const InspectionApprovalDetail = () => {
           branch_name: inspectionData.header.branch_name,
           inspection_frequency: inspectionData.header.inspection_frequency,
           inspection_uom: inspectionData.header.inspection_uom,
+          inspection_uom_text: inspectionData.header.inspection_uom_text,
           maintained_by: maintainedBy
         },
         assets: [{
@@ -749,7 +750,7 @@ const InspectionApprovalDetail = () => {
                   <ReadOnlyInput label="Alert Type" value="Inspection Request" />
                   <ReadOnlyInput label="Created On" value={formatDate(detail.header.created_on)} />
                   <ReadOnlyInput label="Action By" value={currentActionSteps[0]?.role?.name || "Unassigned"} />
-                  <ReadOnlyInput label="Frequency" value={`${detail.header.inspection_frequency || 'Monthly'} ${detail.header.inspection_uom || 'Month'}`} />
+                  <ReadOnlyInput label="Frequency" value={[detail.header.inspection_frequency, detail.header.inspection_uom_text || detail.header.inspection_uom].filter(Boolean).join(' ') || '—'} />
                   <ReadOnlyInput label="Asset Type" value={detail.header.asset_type_name || "-"} />
                   <ReadOnlyInput label="Asset Code" value={detail.header.asset_code || "-"} />
                   <ReadOnlyInput label="Scheduled Date" value={formatDate(detail.header.pl_sch_date)} />
@@ -770,23 +771,23 @@ const InspectionApprovalDetail = () => {
                 ) : detail.assets.length === 1 && assetDetails ? (
                   <>
                     <div className="grid grid-cols-5 gap-6 mb-6">
-                      <ReadOnlyInput label="Asset Type" value={assetDetails.asset_type_id || "-"} />
+                      <ReadOnlyInput label="Asset Type" value={assetDetails.asset_type_name || assetDetails.asset_type_id || "-"} />
                       <ReadOnlyInput label="Serial Number" value={assetDetails.serial_number || "-"} />
                       <ReadOnlyInput label="Asset ID" value={assetDetails.asset_id || "-"} />
-                      <ReadOnlyInput label="Asset Name" value={detail.header.asset_name || detail.header.asset_code || "-"} />
+                      <ReadOnlyInput label="Asset Name" value={assetDetails.description || detail.header.asset_name || detail.header.asset_code || "-"} />
                       <ReadOnlyInput label="Expiry Date" value={formatDate(assetDetails.expiry_date) || "-"} />
                     </div>
                     <div className="grid grid-cols-5 gap-6 mb-6">
                       <ReadOnlyInput label="Purchase Date" value={formatDate(assetDetails.purchased_on) || "-"} />
                       <ReadOnlyInput label="Purchase Cost" value={assetDetails.purchased_cost || "-"} />
-                      <ReadOnlyInput label="Purchase By" value={assetDetails.purchased_by || "-"} />
-                      <ReadOnlyInput label="Purchase Vendor" value={assetDetails.purchase_vendor_id || "-"} />
+                      <ReadOnlyInput label="Purchase By" value={assetDetails.purchased_by_name || assetDetails.purchased_by || "-"} />
+                      <ReadOnlyInput label="Purchase Vendor" value={assetDetails.purchase_vendor_name || assetDetails.purchase_vendor_id || "-"} />
                       <ReadOnlyInput label="Warranty Period" value={assetDetails.warranty_period || "-"} />
                     </div>
                     <div className="grid grid-cols-3 gap-6 mb-6">
                       <ReadOnlyInput label="Product/Service ID" value={assetDetails.prod_serv_id || "-"} />
                       <ReadOnlyInput label="Parent Asset" value={assetDetails.parent_asset_id || "-"} />
-                      <ReadOnlyInput label="Service Vendor" value={assetDetails.service_vendor_id || "-"} />
+                      <ReadOnlyInput label="Service Vendor" value={assetDetails.service_vendor_name || assetDetails.service_vendor_id || "-"} />
                     </div>
                     <div className="mb-6">
                       <label className="block text-sm mb-1 font-medium text-gray-700">Description</label>
@@ -801,7 +802,7 @@ const InspectionApprovalDetail = () => {
                       <label className="block text-sm mb-1 font-medium text-gray-700">Additional Info</label>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="font-medium">Branch ID:</span> {assetDetails.branch_id || "-"}
+                          <span className="font-medium">Branch Name:</span> {assetDetails.branch_name || assetDetails.branch_id || "-"}
                         </div>
                         <div>
                           <span className="font-medium">Group ID:</span> {assetDetails.group_id || "-"}
@@ -810,10 +811,13 @@ const InspectionApprovalDetail = () => {
                           <span className="font-medium">Inspection ID:</span> {detail.header.wfaiish_id || "-"}
                         </div>
                         <div>
-                          <span className="font-medium">Organization ID:</span> {assetDetails.org_id || "-"}
+                          <span className="font-medium">Org Name:</span> {assetDetails.org_name || assetDetails.org_id || "-"}
                         </div>
                         <div>
-                          <span className="font-medium">Status:</span> {assetDetails.current_status || "-"}
+                          <span className="font-medium">Status:</span>{' '}
+                          <span className={String(assetDetails.current_status || '').toLowerCase() === 'active' ? 'text-green-600 font-medium' : String(assetDetails.current_status || '').toLowerCase() === 'inactive' ? 'text-red-600 font-medium' : ''}>
+                            {assetDetails.current_status || "-"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -856,7 +860,7 @@ const InspectionApprovalDetail = () => {
                           >
                             <option value="">Select Technician</option>
                             {technicians.map(t => (
-                              <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name} ({t.emp_int_id})</option>
+                              <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name || t.name}</option>
                             ))}
                           </select>
                         </div>
@@ -873,8 +877,6 @@ const InspectionApprovalDetail = () => {
                               <ReadOnlyInput label="Employee ID" value={assignedTechnician.emp_int_id} />
                               <ReadOnlyInput label="Email" value={assignedTechnician.email_id || 'N/A'} />
                               <ReadOnlyInput label="Phone" value={assignedTechnician.phone_number || 'N/A'} />
-                              <ReadOnlyInput label="Certification" value={assignedTechnician.cert_name || '-'} />
-                              <ReadOnlyInput label="Cert Number" value={assignedTechnician.cert_number || '-'} />
                             </div>
                           </div>
                         ) : (
@@ -910,7 +912,7 @@ const InspectionApprovalDetail = () => {
                         >
                           <option value="">Select Technician</option>
                           {technicians.map(t => (
-                            <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name} ({t.emp_int_id})</option>
+                            <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name || t.name}</option>
                           ))}
                         </select>
                       </div>
@@ -929,8 +931,6 @@ const InspectionApprovalDetail = () => {
                                 <ReadOnlyInput label="Employee ID" value={assignedTechnician.emp_int_id} />
                                 <ReadOnlyInput label="Email" value={assignedTechnician.email_id || '-'} />
                                 <ReadOnlyInput label="Phone" value={assignedTechnician.phone_number || '-'} />
-                                <ReadOnlyInput label="Certification" value={assignedTechnician.cert_name || '-'} />
-                                <ReadOnlyInput label="Cert Number" value={assignedTechnician.cert_number || '-'} />
                               </div>
                             </div>
                           ) : (
@@ -947,8 +947,6 @@ const InspectionApprovalDetail = () => {
                                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Name</th>
                                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Email</th>
                                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Phone</th>
-                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Certification</th>
-                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Cert Number</th>
                                     <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Expiry</th>
                                   </tr>
                                 </thead>
@@ -958,8 +956,6 @@ const InspectionApprovalDetail = () => {
                                       <td className="px-4 py-3 text-sm text-gray-900">{tech.full_name}</td>
                                       <td className="px-4 py-3 text-sm text-gray-900">{tech.email_id || "-"}</td>
                                       <td className="px-4 py-3 text-sm text-gray-900">{tech.phone_number || "-"}</td>
-                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.cert_name || "-"}</td>
-                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.cert_number || "-"}</td>
                                       <td className="px-4 py-3 text-sm text-gray-900">{tech.expiry_date ? formatDate(tech.expiry_date) : "No Expiry"}</td>
                                     </tr>
                                   ))}

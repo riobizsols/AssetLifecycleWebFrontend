@@ -1606,7 +1606,10 @@
     "passed": "Passed",
     "failed": "Failed",
     "partial": "Partial",
-    "pending": "Pending"
+    "pending": "Pending",
+    "createManualInspection": "Trigger Inspection for Asset",
+    "inspectionCreatedSuccessfully": "Inspection created successfully",
+    "failedToCreateInspection": "Failed to create inspection"
   },
     "serialNumberPrint": {
       "title": "Serial Number Print",
@@ -2228,6 +2231,20 @@
     "sessionExpired": "Your session has expired. Please login again.",
     "dataNotFound": "Data not found",
     "operationFailed": "Operation failed. Please try again."
+  },
+  "masterDataTitles": {
+    "inspectionChecklists": "Inspection Checklists",
+    "inspectionFrequency": "Inspection Frequency",
+    "prodServ": "Product / Service",
+    "roleManagement": "Role Management",
+    "properties": "Properties",
+    "breakdownReasonCodes": "Breakdown Reason Codes"
+  },
+  "columnAccessConfig": {
+    "pageTitle": "Column Access Configuration"
+  },
+  "inspectionChecklists": {
+    "pageTitle": "Inspection Checklists List"
   },
   "language": {
     "english": "English",

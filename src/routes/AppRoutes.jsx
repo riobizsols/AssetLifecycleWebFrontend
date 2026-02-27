@@ -61,6 +61,7 @@ import AuditLogsView from "../pages/AuditLogsView";
 import AuditLogConfig from "../components/AuditLogConfig";
 import AuditLogConfigPage from "../pages/AuditLogConfigPage";
 import InspectionView from "../pages/InspectionView";
+import CreateManualInspection from "../pages/CreateManualInspection";
 import InspectionExecutionDetail from "../pages/InspectionExecutionDetail";
 import GroupAsset from "../pages/GroupAsset";
 import CreateGroupAsset from "../components/groupAsset/CreateGroupAsset";
@@ -684,6 +685,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="INSPECTIONVIEW">
               <MainLayout>
                 <InspectionView />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inspection-view/create"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONVIEW">
+              <MainLayout>
+                <CreateManualInspection />
               </MainLayout>
             </ProtectedRoute>
           }

@@ -21,6 +21,8 @@ export default function Header() {
   const pathTitleMap = {
     "/maintenance-list": { title: t('maintenance.maintenanceList'), subtitle: "" },
     "/maintenance-list/create": { title: t('maintenanceSupervisor.createManualMaintenance'), subtitle: "" },
+    "/inspection-view": { title: t('inspectionView.title'), subtitle: "" },
+    "/inspection-view/create": { title: t('inspectionView.createManualInspection'), subtitle: "" },
     "/assets": { title: t('navigation.assets'), subtitle: "" },
     "/assign-department-assets": {
       title: t('departments.assignment'),
@@ -38,9 +40,9 @@ export default function Header() {
     "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },
     "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
-    "/master-data/prod-serv": { title: "Product / Service", subtitle: "" },
-    "/master-data/inspection-checklists": { title: "Inspection Checklists", subtitle: "" },
-    "/master-data/inspection-frequency": { title: "Inspection Frequency", subtitle: "" },
+    "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
+    "/master-data/inspection-checklists": { title: t('masterDataTitles.inspectionChecklists'), subtitle: "" },
+    "/master-data/inspection-frequency": { title: t('masterDataTitles.inspectionFrequency'), subtitle: "" },
     "/master-data/asset-type-checklist-mapping/create": { title: "", subtitle: "" },
     "/master-data/asset-type-checklist-mapping": { title: t('navigation.assetTypeChecklistMapping'), subtitle: "" },
     "/group-asset": { title: t('navigation.groupAsset'), subtitle: "" },
@@ -98,13 +100,13 @@ export default function Header() {
       subtitle: t('auditLogs.configSubtitle'),
     },
     "/master-data/roles": {
-      title: "Role Management",
+      title: t('masterDataTitles.roleManagement'),
     },
     "/adminsettings/configuration/properties": {
-      title: "Properties",
+      title: t('masterDataTitles.properties'),
     },
     "/adminsettings/configuration/breakdown-reason-codes": {
-      title: "Breakdown Reason Codes",
+      title: t('masterDataTitles.breakdownReasonCodes'),
     },
 
     // Add more routes as needed

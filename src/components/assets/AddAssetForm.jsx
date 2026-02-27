@@ -531,30 +531,27 @@ const AddAssetForm = ({ userRole }) => {
 
   const fetchVendors = async () => {
     try {
-      console.log('Fetching vendors from API...');
-      const res = await API.get('/get-vendors');
-      console.log('Vendors response:', res.data);
+      console.log('Fetching product-based and service-based vendors...');
+      // Product Vendor: only vendors linked to prod_serv with ps_type = 'product'
+      const productRes = await API.get('/get-vendors', { params: { type: 'product' } });
+      // Service Vendor: only vendors linked to prod_serv with ps_type = 'service'
+      const serviceRes = await API.get('/get-vendors', { params: { type: 'service' } });
 
-      if (res.data && Array.isArray(res.data)) {
-        // Transform API data to dropdown format - only show active vendors
-        const vendors = [
-          { value: '', label: 'Select' },
-          ...res.data
-            .filter(vendor => vendor.int_status === 1) // Only active vendors
-            .map(vendor => ({
-              value: vendor.vendor_id,
-              label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
-            }))
-        ];
-        setPurchaseSupplyOptions(vendors);
-        setServiceSupplyOptions(vendors);
-      }
+      const toOptions = (data) => [
+        { value: '', label: 'Select' },
+        ...(Array.isArray(data) ? data : [])
+          .filter(v => v && (v.int_status === 1 || v.int_status == null))
+          .map(vendor => ({
+            value: vendor.vendor_id,
+            label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
+          }))
+      ];
+      setPurchaseSupplyOptions(toOptions(productRes.data || []));
+      setServiceSupplyOptions(toOptions(serviceRes.data || []));
     } catch (err) {
       console.error('Error fetching vendors:', err);
-      console.log('Using dummy vendors as fallback');
-      // Keep using dummy data if API fails
-      setPurchaseSupplyOptions([]);
-      setServiceSupplyOptions([]);
+      setPurchaseSupplyOptions([{ value: '', label: 'Select' }]);
+      setServiceSupplyOptions([{ value: '', label: 'Select' }]);
     }
   };
 

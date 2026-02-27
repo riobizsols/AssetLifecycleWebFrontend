@@ -21,6 +21,9 @@ const CreateMaintenanceFrequency = () => {
   const [maintainedBy, setMaintainedBy] = useState('Self');
   const [selectedMaintenanceType, setSelectedMaintenanceType] = useState('');
   const [maintLeadType, setMaintLeadType] = useState('');
+  const [technicians, setTechnicians] = useState([]);
+  const [selectedTechnician, setSelectedTechnician] = useState('');
+  const [techLoading, setTechLoading] = useState(false);
 
   // Fetch asset types (only those with maint_required = true)
   const fetchAssetTypes = async () => {
@@ -120,6 +123,46 @@ const CreateMaintenanceFrequency = () => {
     fetchUOM();
   }, []);
 
+  // Load certified technicians (from technician-certificates, approved in HR/manager approval) for the selected asset type
+  const fetchTechnicians = async () => {
+    if (!selectedAssetType) {
+      setTechnicians([]);
+      return;
+    }
+    try {
+      setTechLoading(true);
+      const res = await API.get(`/inspection-approval/technicians/${selectedAssetType}`);
+      const data = res.data?.data ?? res.data ?? [];
+      const list = Array.isArray(data) ? data : [];
+      setTechnicians(
+        list.map((t) => ({
+          emp_int_id: t.emp_int_id || t.employee_id,
+          name: t.full_name || t.name || t.emp_int_id || '',
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching certified technicians:', error);
+      setTechnicians([]);
+    } finally {
+      setTechLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const normalized = (maintainedBy || '').toString().toLowerCase().replace(/\s|-/g, '');
+    if (normalized && !normalized.includes('vendor')) {
+      if (selectedAssetType) {
+        fetchTechnicians();
+      } else {
+        setTechnicians([]);
+        setSelectedTechnician('');
+      }
+    } else {
+      setTechnicians([]);
+      setSelectedTechnician('');
+    }
+  }, [maintainedBy, selectedAssetType]);
+
   useEffect(() => {
     if (!selectedAssetType) {
       return;
@@ -178,6 +221,14 @@ const CreateMaintenanceFrequency = () => {
         requestData.frequency = null;
         requestData.uom = null;
         requestData.text = 'On Demand';
+      }
+
+      // For in-house/self maintenance, persist selected technician as emp_int_id
+      const maintainedNormalized = (maintainedBy || '').toString().toLowerCase().replace(/\s|-/g, '');
+      if (maintainedNormalized && !maintainedNormalized.includes('vendor')) {
+        requestData.emp_int_id = selectedTechnician || null;
+      } else {
+        requestData.emp_int_id = null;
       }
 
       console.log('Submitting maintenance frequency with data:', requestData);
@@ -413,6 +464,49 @@ const CreateMaintenanceFrequency = () => {
                     </label>
                   </div>
                 </div>
+
+                {/* Technician selection for in-house/self maintenance – certified technicians only */}
+                {(() => {
+                  const normalized = (maintainedBy || '')
+                    .toString()
+                    .toLowerCase()
+                    .replace(/\s|-/g, '');
+                  if (!normalized || normalized.includes('vendor')) return null;
+                  const noAssetType = !selectedAssetType;
+                  return (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Technician (Assign)
+                      </label>
+                      <select
+                        value={selectedTechnician}
+                        onChange={(e) => setSelectedTechnician(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent disabled:bg-gray-100"
+                        disabled={techLoading || noAssetType}
+                      >
+                        <option value="">
+                          {noAssetType
+                            ? '-- Select asset type first --'
+                            : techLoading
+                              ? '-- Loading certified technicians --'
+                              : technicians.length === 0
+                                ? '-- No certified technicians for this asset type --'
+                                : '-- Select Technician (optional) --'}
+                        </option>
+                        {technicians.map((t) => (
+                          <option key={t.emp_int_id} value={t.emp_int_id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {noAssetType
+                          ? 'Certified technicians are loaded after you select an asset type (from Technician Certificates, approved in HR/Manager approval).'
+                          : 'Only certified technicians for this asset type are shown (optional).'}
+                      </p>
+                    </div>
+                  );
+                })()}
 
               </div>
 

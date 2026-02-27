@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { 
   Pencil, 
   Trash2, 
@@ -24,6 +25,7 @@ import SearchableDropdown from "../../components/ui/SearchableDropdown";
 import { generateUUID } from "../../utils/uuid";
 
 const Certifications = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("create");
   const [certificates, setCertificates] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
@@ -283,6 +285,21 @@ const Certifications = () => {
       setSelectedAssetType(saved);
     }
   }, []);
+
+  // Browser back button: close any open form and stay on /certifications
+  useEffect(() => {
+    const handlePopState = () => {
+      setShowCreateForm(false);
+      setShowMappingForm(false);
+      setShowInspectionForm(false);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const pushCertificationsHistory = () => {
+    window.history.pushState({ certificationsForm: true }, "", location.pathname);
+  };
 
   useEffect(() => {
     if (selectedAssetType) {
@@ -1006,7 +1023,12 @@ const Certifications = () => {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowCreateForm((prev) => !prev)}
+                  onClick={() => {
+                    setShowCreateForm((prev) => {
+                      if (!prev) pushCertificationsHistory();
+                      return !prev;
+                    });
+                  }}
                   className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B]"
                   title={showCreateForm ? "Close" : "Add"}
                 >
@@ -1228,6 +1250,7 @@ const Certifications = () => {
                 {!showMappingForm && (
                   <button
                     onClick={() => {
+                      pushCertificationsHistory();
                       setShowMappingForm(true);
                       setMappingFormAssetType("");
                       setMappingFormMaintType("");
@@ -1637,6 +1660,7 @@ const Certifications = () => {
                 {!showInspectionForm && (
                   <button
                     onClick={() => {
+                      pushCertificationsHistory();
                       setShowInspectionForm(true);
                       setAvailableCertificatesForInspection(certificates);
                       setSelectedCertificatesForInspection([]);

@@ -269,7 +269,7 @@ const InspectionChecklists = () => {
         {/* Table Header with Filter */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Inspection Checklists List</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('inspectionChecklists.pageTitle')}</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowCreateModal(true)}

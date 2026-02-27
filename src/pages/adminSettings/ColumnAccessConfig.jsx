@@ -226,7 +226,7 @@ const ColumnAccessConfig = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Column Access Configuration</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('columnAccessConfig.pageTitle')}</h1>
           <p className="text-gray-600">
             Configure column-level access for different job roles. AUTH access provides full access and doesn't need to be configured.
           </p>
