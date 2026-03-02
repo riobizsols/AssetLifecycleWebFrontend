@@ -18,10 +18,12 @@ import CustomTable from '../../components/CustomTable';
 import PrintLabelScreen from '../../components/PrintLabelScreen';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import { labelTemplates, assetTypeTemplateMapping } from '../../templates/labelTemplates';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const SerialNumberPrint = () => {
   const navigate = useNavigate();
   const { assetId } = useParams();
+  const { t } = useLanguage();
   
   // State management
   const [printQueue, setPrintQueue] = useState([]);
@@ -170,7 +172,7 @@ const SerialNumberPrint = () => {
       }
     } catch (error) {
       console.error('Error fetching print queue:', error);
-      toast.error('Failed to load print queue');
+      toast.error(t('serialNumberPrint.failedToLoadPrintQueue'));
       setPrintQueue([]);
       setFilteredQueue([]);
     } finally {
@@ -237,23 +239,23 @@ const SerialNumberPrint = () => {
   }, [filters.status]);
 
   const statusOptions = [
-    { id: 'New', name: 'New', color: 'bg-blue-100 text-blue-800' },
-    { id: 'In-progress', name: 'In Progress', color: 'bg-yellow-100 text-yellow-800' },
-    { id: 'Completed', name: 'Completed', color: 'bg-green-100 text-green-800' },
-    { id: 'Cancelled', name: 'Cancelled', color: 'bg-red-100 text-red-800' }
+    { id: 'New', name: t('serialNumberPrint.new'), color: 'bg-blue-100 text-blue-800' },
+    { id: 'In-progress', name: t('serialNumberPrint.inProgress'), color: 'bg-yellow-100 text-yellow-800' },
+    { id: 'Completed', name: t('serialNumberPrint.completed'), color: 'bg-green-100 text-green-800' },
+    { id: 'Cancelled', name: t('serialNumberPrint.cancelled'), color: 'bg-red-100 text-red-800' }
   ];
 
   // Table columns
   const columns = [
-    { name: 'serial_number', label: 'Serial Number', visible: true },
-    { name: 'asset_type_name', label: 'Asset Type', visible: true },
-    { name: 'asset_name', label: 'Asset Name', visible: true },
-    { name: 'reason', label: 'Reason', visible: true },
-    { name: 'status', label: 'Status', visible: true },
-    { name: 'created_at', label: 'Created Date', visible: true },
-    { name: 'created_by', label: 'Created By', visible: false },
-    { name: 'estimated_cost', label: 'Est. Cost', visible: false },
-    { name: 'actions', label: 'Actions', visible: true }
+    { name: 'serial_number', label: t('serialNumberPrint.serialNumber'), visible: true },
+    { name: 'asset_type_name', label: t('serialNumberPrint.assetType'), visible: true },
+    { name: 'asset_name', label: t('serialNumberPrint.assetName'), visible: true },
+    { name: 'reason', label: t('serialNumberPrint.reason'), visible: true },
+    { name: 'status', label: t('serialNumberPrint.status'), visible: true },
+    { name: 'created_at', label: t('serialNumberPrint.createdDate'), visible: true },
+    { name: 'created_by', label: t('serialNumberPrint.createdBy'), visible: false },
+    { name: 'estimated_cost', label: t('serialNumberPrint.estimatedCost'), visible: false },
+    { name: 'actions', label: t('serialNumberPrint.actions'), visible: true }
   ];
 
   // Get unique asset types for dropdown
@@ -941,9 +943,11 @@ const SerialNumberPrint = () => {
       {!isLoading && filteredQueue.length === 0 && (
         <div className="text-center py-12">
           <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No print queue items found</h3>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            {t('serialNumberPrint.noPrintQueueItemsFound')}
+          </h3>
           <p className="mt-1 text-sm text-gray-500">
-            Try adjusting your filters or check if there are items in the queue.
+            {t('serialNumberPrint.tryAdjustingFilters')}
           </p>
         </div>
       )}

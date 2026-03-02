@@ -5,9 +5,11 @@ import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const ScrapMaintenanceApproval = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -17,16 +19,17 @@ const ScrapMaintenanceApproval = () => {
     toDate: "",
   });
 
-  const [columns] = useState([
-    { label: "Workflow ID", name: "wfscrap_h_id", visible: true },
-    { label: "Asset Type", name: "asset_type_name", visible: true },
-    { label: "Group ID", name: "assetgroup_id", visible: true },
-    { label: "Name", name: "display_name", visible: true },
-    { label: "Assets", name: "asset_count", visible: true },
-    { label: "Scrap Type", name: "scrap_type_display", visible: true },
-    { label: "Status", name: "status", visible: true },
-    { label: "Created On", name: "created_on", visible: true },
-  ]);
+  // Define columns from translations on each render so they react to language changes
+  const columns = [
+    { label: t('scrapApproval.workflowId'), name: "wfscrap_h_id", visible: true },
+    { label: t('scrapApproval.assetType'), name: "asset_type_name", visible: true },
+    { label: t('scrapApproval.groupId'), name: "assetgroup_id", visible: true },
+    { label: t('scrapApproval.name'), name: "display_name", visible: true },
+    { label: t('scrapApproval.assets'), name: "asset_count", visible: true },
+    { label: t('scrapApproval.scrapType'), name: "scrap_type_display", visible: true },
+    { label: t('scrapApproval.status'), name: "status", visible: true },
+    { label: t('scrapApproval.createdOn'), name: "created_on", visible: true },
+  ];
 
   useEffect(() => {
     fetchApprovals();
@@ -54,7 +57,9 @@ const ScrapMaintenanceApproval = () => {
           ...row,
           status: row.header_status,
           created_on: row.created_on ? new Date(row.created_on).toLocaleDateString() : "",
-          scrap_type_display: row.is_scrap_sales === "Y" ? "Scrap Sales" : "Scrap Asset",
+          scrap_type_display: row.is_scrap_sales === "Y"
+            ? t('scrapApproval.scrapTypeOptions.sales')
+            : t('scrapApproval.scrapTypeOptions.asset'),
           display_name: displayName,
         };
       });
@@ -62,7 +67,7 @@ const ScrapMaintenanceApproval = () => {
       setData(formatted);
     } catch (err) {
       console.error("Failed to fetch scrap approvals", err);
-      toast.error("Failed to fetch scrap approvals");
+      toast.error(t('scrapApproval.failedToFetch'));
     } finally {
       setIsLoading(false);
     }
@@ -98,15 +103,15 @@ const ScrapMaintenanceApproval = () => {
       options:
         col.name === "status"
           ? [
-              { label: "Initiated", value: "IN" },
-              { label: "In Progress", value: "IP" },
-              { label: "Completed", value: "CO" },
-              { label: "Cancelled", value: "CA" },
+              { label: t('scrapApproval.statusOptions.initiated'), value: "IN" },
+              { label: t('scrapApproval.statusOptions.inProgress'), value: "IP" },
+              { label: t('scrapApproval.statusOptions.completed'), value: "CO" },
+              { label: t('scrapApproval.statusOptions.cancelled'), value: "CA" },
             ]
           : col.name === "scrap_type_display"
           ? [
-              { label: "Scrap Sales", value: "Scrap Sales" },
-              { label: "Scrap Asset", value: "Scrap Asset" },
+              { label: t('scrapApproval.scrapTypeOptions.sales'), value: t('scrapApproval.scrapTypeOptions.sales') },
+              { label: t('scrapApproval.scrapTypeOptions.asset'), value: t('scrapApproval.scrapTypeOptions.asset') },
             ]
           : [],
       onChange: (value) => handleFilterChange(col.name, value),
@@ -144,7 +149,7 @@ const ScrapMaintenanceApproval = () => {
                 <td colSpan={colSpan} className="text-center py-16">
                   <div className="flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading...</p>
+                    <p className="text-gray-600">{t('scrapApproval.loading')}</p>
                   </div>
                 </td>
               </tr>
@@ -155,7 +160,7 @@ const ScrapMaintenanceApproval = () => {
             return (
               <tr>
                 <td colSpan={colSpan} className="text-center py-16">
-                  <p className="text-xl font-semibold text-gray-800">No Data Found</p>
+                  <p className="text-xl font-semibold text-gray-800">{t('scrapApproval.noData')}</p>
                 </td>
               </tr>
             );

@@ -31,8 +31,8 @@ export default function Header() {
     "/assign-employee-assets": { title: t('navigation.employeeAssignment'), subtitle: "" },
     "/workorder-management": { title: t('maintenance.workOrder') + " Management", subtitle: "" },
     "/maintenance-approval": { title: t('maintenance.approval'), subtitle: "" },
-    "/report-breakdown": { title: "Report Breakdown", subtitle: "" },
-    "/employee-report-breakdown": { title: "Employee Report Breakdown", subtitle: "" },
+    "/report-breakdown": { title: t('navigation.reportBreakdown'), subtitle: "" },
+    "/employee-report-breakdown": { title: t('navigation.employeeReportBreakdown'), subtitle: "" },
     "/dashboard": { title: t('navigation.dashboard'), subtitle: "" },
     "/technician-certificates": { title: "Technician Certificates", subtitle: "" },
     "/tech-cert-approvals": { title: "Technician Certificate Approvals", subtitle: "" },
@@ -107,6 +107,18 @@ export default function Header() {
     },
     "/adminsettings/configuration/breakdown-reason-codes": {
       title: t('masterDataTitles.breakdownReasonCodes'),
+    },
+    "/reports/usage-based-asset": {
+      title: t('navigation.usageBasedAssetReport'),
+      subtitle: "",
+    },
+    "/reports/sla-report": {
+      title: t('navigation.slaReport'),
+      subtitle: "",
+    },
+    "/reports/qa-audit-report": {
+      title: t('navigation.qaAuditReport'),
+      subtitle: "",
     },
 
     // Add more routes as needed

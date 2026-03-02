@@ -3,8 +3,10 @@ import { toast } from "react-hot-toast";
 import { CheckCircle, XCircle, Ban, Filter, Plus, Minus, Trash2 } from "lucide-react";
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const TechCertApprovals = () => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("approvals");
   const [certificates, setCertificates] = useState([]);
   const [employeeList, setEmployeeList] = useState([]);
@@ -291,7 +293,9 @@ const TechCertApprovals = () => {
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200">
-            <h1 className="text-xl font-semibold text-gray-900">HR/Manager Approval</h1>
+            <h1 className="text-xl font-semibold text-gray-900">
+              {t('navigation.hrManagerApproval')}
+            </h1>
             <p className="text-sm text-gray-500">
               Review technician certificates, manage technicians, and monitor activity.
             </p>

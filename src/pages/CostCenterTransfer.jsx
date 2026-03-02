@@ -76,14 +76,14 @@ const SearchableSelect = ({
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search..."
+                placeholder={placeholder}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
           <div className="overflow-y-auto max-h-48">
             {filteredOptions.length === 0 ? (
-              <div className="px-4 py-3 text-gray-500 text-center">No options found</div>
+              <div className="px-4 py-3 text-gray-500 text-center">{placeholder}</div>
             ) : (
               filteredOptions.map((option) => (
                 <button
@@ -310,7 +310,7 @@ const CostCenterTransfer = () => {
       setCostCenters(response.data);
     } catch (error) {
       console.error("Error fetching cost centers:", error);
-      toast.error("Failed to fetch cost centers");
+      toast.error(t('costCenterTransfer.failedToFetchCostCenters'));
     } finally {
       setIsLoadingCostCenters(false);
     }
@@ -320,7 +320,7 @@ const CostCenterTransfer = () => {
     e.preventDefault();
 
     if (!selectedAsset || !selectedBranch) {
-      toast.error("Please select an asset and target branch");
+      toast.error(t('costCenterTransfer.selectAssetAndBranch'));
       return;
     }
 
@@ -360,7 +360,7 @@ const CostCenterTransfer = () => {
 
       const response = await API.post("/cost-center-transfer/transfer", payload);
 
-      toast.success(response.data.message || "Asset transferred successfully");
+      toast.success(response.data.message || t('costCenterTransfer.assetTransferred'));
 
       // Reset form
       setSelectedAssetType("");
@@ -383,12 +383,12 @@ const CostCenterTransfer = () => {
     e.preventDefault();
     
     if (!scannedAssetId) {
-      toast.error("Please enter an asset ID");
+      toast.error(t('costCenterTransfer.pleaseEnterAssetId'));
       return;
     }
 
     if (!selectedBranch) {
-      toast.error("Please select a target branch");
+      toast.error(t('costCenterTransfer.pleaseSelectTargetBranch'));
       return;
     }
 
@@ -399,7 +399,7 @@ const CostCenterTransfer = () => {
       const assetData = response.data;
 
       if (!assetData.asset) {
-        toast.error("Asset not found");
+        toast.error(t('costCenterTransfer.assetNotFound'));
         return;
       }
 
@@ -412,7 +412,7 @@ const CostCenterTransfer = () => {
 
       // If cost center is selected and different from current, show confirmation modal
       if (newCostCenter && currentCostCenter !== newCostCenter) {
-        const currentCostCenterName = assetData.cost_center_name || "Not assigned";
+        const currentCostCenterName = assetData.cost_center_name || t('costCenterTransfer.notAssigned');
         const newCostCenterName = costCenters.find(cc => cc.cc_id === newCostCenter)?.text || newCostCenter;
         
         setConfirmModalData({
@@ -428,7 +428,7 @@ const CostCenterTransfer = () => {
       setScannedAssetId("");
     } catch (error) {
       console.error("Failed to process scanned asset:", error);
-      const errorMessage = error.response?.data?.message || "Failed to process asset";
+      const errorMessage = error.response?.data?.message || t('costCenterTransfer.failedToProcessAsset');
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -457,8 +457,8 @@ const CostCenterTransfer = () => {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="bg-white rounded shadow mb-4">
-        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          Cost Center Transfer
+          <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
+          {t('costCenterTransfer.title')}
         </div>
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
@@ -470,7 +470,7 @@ const CostCenterTransfer = () => {
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              Select Asset
+              {t('costCenterTransfer.selectAssetTab')}
             </button>
             <button
               onClick={() => setActiveTab("scan")}
@@ -480,7 +480,7 @@ const CostCenterTransfer = () => {
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              Scan Asset
+              {t('costCenterTransfer.scanAssetTab')}
             </button>
           </nav>
         </div>
@@ -492,16 +492,16 @@ const CostCenterTransfer = () => {
               <div className="flex gap-4 items-end flex-wrap">
                 <div className="w-64">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Asset Type
+                    {t('costCenterTransfer.assetType')}
                   </label>
                   <SearchableSelect
                     value={selectedAssetType}
                     onChange={setSelectedAssetType}
                     options={[
-                      { id: "", text: "Select Asset Type" },
+                      { id: "", text: t('costCenterTransfer.selectAssetType') },
                       ...assetTypes.map(type => ({ id: type.asset_type_id, text: type.text }))
                     ]}
-                    placeholder="Select asset type"
+                    placeholder={t('costCenterTransfer.selectAssetType')}
                     disabled={isLoadingAssetTypes}
                     loading={isLoadingAssetTypes}
                     optionLabel="text"
@@ -511,19 +511,19 @@ const CostCenterTransfer = () => {
 
                 <div className="w-64">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Target Branch
+                    {t('costCenterTransfer.targetBranch')}
                   </label>
                   <SearchableSelect
                     value={selectedBranch}
                     onChange={setSelectedBranch}
                     options={[
-                      { id: "", text: "Select Branch" },
+                      { id: "", text: t('costCenterTransfer.selectBranch') },
                       ...branches.map(branch => ({ 
                         id: branch.branch_id, 
                         text: `${branch.text}${branch.city ? ` (${branch.city})` : ''}` 
                       }))
                     ]}
-                    placeholder="Select target branch"
+                    placeholder={t('costCenterTransfer.selectTargetBranch')}
                     disabled={isLoadingBranches}
                     loading={isLoadingBranches}
                     optionLabel="text"
@@ -533,19 +533,19 @@ const CostCenterTransfer = () => {
 
                 <div className="w-64">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cost Center
+                    {t('costCenterTransfer.costCenter')}
                   </label>
                   <SearchableSelect
                     value={selectedCostCenter}
                     onChange={setSelectedCostCenter}
                     options={[
-                      { id: "", text: "Select Cost Center" },
+                      { id: "", text: t('costCenterTransfer.selectCostCenter') },
                       ...costCenters.map(cc => ({ 
                         id: cc.cc_id, 
                         text: `${cc.text} (${cc.cc_no})` 
                       }))
                     ]}
-                    placeholder="Select cost center"
+                    placeholder={t('costCenterTransfer.selectCostCenterPlaceholder')}
                     disabled={!selectedBranch || isLoadingCostCenters}
                     loading={isLoadingCostCenters}
                     optionLabel="text"
@@ -558,7 +558,7 @@ const CostCenterTransfer = () => {
                     className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
                     onClick={() => navigate(-1)}
                   >
-                    Cancel
+                    {t('costCenterTransfer.cancel')}
                   </button>
                 </div>
               </div>
@@ -569,13 +569,13 @@ const CostCenterTransfer = () => {
               <div className="flex gap-4 items-end flex-wrap">
                 <div className="w-64">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Asset ID
+                    {t('costCenterTransfer.assetId')}
                   </label>
                   <div className="relative">
                     <input
                       type="text"
                       className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
-                      placeholder="Scan or enter Asset ID"
+                      placeholder={t('costCenterTransfer.scanOrEnterAssetId')}
                       value={scannedAssetId}
                       onChange={(e) => setScannedAssetId(e.target.value)}
                     />
@@ -591,19 +591,19 @@ const CostCenterTransfer = () => {
 
                 <div className="w-64">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Target Branch
+                    {t('costCenterTransfer.targetBranch')}
                   </label>
                   <SearchableSelect
                     value={selectedBranch}
                     onChange={setSelectedBranch}
                     options={[
-                      { id: "", text: "Select Branch" },
+                      { id: "", text: t('costCenterTransfer.selectBranch') },
                       ...branches.map(branch => ({ 
                         id: branch.branch_id, 
                         text: `${branch.text}${branch.city ? ` (${branch.city})` : ''}` 
                       }))
                     ]}
-                    placeholder="Select target branch"
+                    placeholder={t('costCenterTransfer.selectTargetBranch')}
                     disabled={isLoadingBranches}
                     loading={isLoadingBranches}
                     optionLabel="text"
@@ -613,19 +613,19 @@ const CostCenterTransfer = () => {
 
                 <div className="w-64">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cost Center
+                    {t('costCenterTransfer.costCenter')}
                   </label>
                   <SearchableSelect
                     value={selectedCostCenter}
                     onChange={setSelectedCostCenter}
                     options={[
-                      { id: "", text: "Select Cost Center" },
+                      { id: "", text: t('costCenterTransfer.selectCostCenter') },
                       ...costCenters.map(cc => ({ 
                         id: cc.cc_id, 
                         text: `${cc.text} (${cc.cc_no})` 
                       }))
                     ]}
-                    placeholder="Select cost center"
+                    placeholder={t('costCenterTransfer.selectCostCenterPlaceholder')}
                     disabled={!selectedBranch || isLoadingCostCenters}
                     loading={isLoadingCostCenters}
                     optionLabel="text"
@@ -639,14 +639,14 @@ const CostCenterTransfer = () => {
                     className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
                     onClick={() => navigate(-1)}
                   >
-                    Cancel
+                    {t('costCenterTransfer.cancel')}
                   </button>
                   <button
                     type="submit"
                     className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
                     disabled={!scannedAssetId || !selectedBranch || isSubmitting}
-                  >
-                    {isSubmitting ? "Transferring..." : "Transfer Asset"}
+                    >
+                    {isSubmitting ? t('costCenterTransfer.transferring') : t('costCenterTransfer.transferAsset')}
                   </button>
                 </div>
               </div>
@@ -664,7 +664,7 @@ const CostCenterTransfer = () => {
         >
           <div className="bg-white rounded shadow">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-              Available Assets
+              {t('costCenterTransfer.availableAssets')}
               <button onClick={() => setIsMaximized((prev) => !prev)}>
                 {isMaximized ? (
                   <Minimize className="text-[#0E2F4B]" size={18} />
@@ -680,10 +680,10 @@ const CostCenterTransfer = () => {
                   className="grid px-4 py-2 font-semibold border-b-4 border-yellow-400"
                   style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
                 >
-                  <div>Asset Name</div>
-                  <div>Current Branch</div>
-                  <div>Cost Center</div>
-                  <div className="flex justify-center">Actions</div>
+                  <div>{t('costCenterTransfer.assetName')}</div>
+                  <div>{t('costCenterTransfer.currentBranch')}</div>
+                  <div>{t('costCenterTransfer.costCenter')}</div>
+                  <div className="flex justify-center">{t('costCenterTransfer.actions')}</div>
                 </div>
               )}
 
@@ -694,7 +694,7 @@ const CostCenterTransfer = () => {
               >
                 {isLoadingAssets ? (
                   <div className="px-4 py-6 text-center text-gray-500 bg-white">
-                    Loading assets...
+                    {t('costCenterTransfer.loadingAssets')}
                   </div>
                 ) : assets.length > 0 ? (
                   assets.map((asset, i) => (
@@ -730,12 +730,12 @@ const CostCenterTransfer = () => {
                             const newCostCenter = selectedCostCenter;
 
                             if (!selectedBranch) {
-                              toast.error("Please select a target branch");
+                              toast.error(t('costCenterTransfer.pleaseSelectTargetBranch'));
                               return;
                             }
 
                             if (newCostCenter && currentCostCenter !== newCostCenter) {
-                              const currentCostCenterName = asset.cost_center_name || "Not assigned";
+                              const currentCostCenterName = asset.cost_center_name || t('costCenterTransfer.notAssigned');
                               const newCostCenterName = costCenters.find(cc => cc.cc_id === newCostCenter)?.text || newCostCenter;
                               
                               setConfirmModalData({
@@ -758,8 +758,8 @@ const CostCenterTransfer = () => {
                 ) : (
                   <div className="px-4 py-6 text-center text-gray-500 bg-white rounded-b">
                     {selectedAssetType
-                      ? "No assets found for selected type"
-                      : "Please select an asset type to view available assets"}
+                      ? t('costCenterTransfer.noAssetsForType')
+                      : t('costCenterTransfer.selectTypeToViewAssets')}
                   </div>
                 )}
               </div>
@@ -774,7 +774,7 @@ const CostCenterTransfer = () => {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
-                Scan Barcode/QR Code
+                {t('costCenterTransfer.scanDialogTitle')}
               </h3>
               <button
                 onClick={stopScanner}
@@ -795,7 +795,7 @@ const CostCenterTransfer = () => {
 
             <div className="p-4 text-center">
               <p className="text-sm text-gray-600">
-                Position the barcode/QR code within the scanning area
+                {t('costCenterTransfer.scanDialogHelp')}
               </p>
             </div>
 
@@ -804,7 +804,7 @@ const CostCenterTransfer = () => {
                 onClick={stopScanner}
                 className="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-300"
               >
-                Cancel
+                {t('costCenterTransfer.cancel')}
               </button>
             </div>
           </div>
@@ -816,7 +816,7 @@ const CostCenterTransfer = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-fadeIn">
             <div className="bg-[#0E2F4B] text-white px-6 py-4 rounded-t-lg flex items-center justify-between">
-              <h3 className="text-xl font-semibold">Confirm Cost Center Change</h3>
+              <h3 className="text-xl font-semibold">{t('costCenterTransfer.confirmTitle')}</h3>
               <button
                 onClick={handleCancelTransfer}
                 disabled={isSubmitting}
@@ -827,32 +827,32 @@ const CostCenterTransfer = () => {
               </button>
             </div>
             <div className="p-6">
-              <p className="text-gray-700 mb-4">The cost center will be changed:</p>
+              <p className="text-gray-700 mb-4">{t('costCenterTransfer.confirmBody')}</p>
               <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-3">
                 <div>
-                  <span className="text-sm text-gray-600 font-medium">Current:</span>
+                  <span className="text-sm text-gray-600 font-medium">{t('costCenterTransfer.currentLabel')}</span>
                   <p className="text-gray-900 font-semibold mt-1">{confirmModalData.current}</p>
                 </div>
                 <div className="border-t pt-3">
-                  <span className="text-sm text-gray-600 font-medium">New:</span>
+                  <span className="text-sm text-gray-600 font-medium">{t('costCenterTransfer.newLabel')}</span>
                   <p className="text-[#0E2F4B] font-semibold mt-1">{confirmModalData.new}</p>
                 </div>
               </div>
-              <p className="text-gray-600 mb-6">Do you want to proceed with this change?</p>
+              <p className="text-gray-600 mb-6">{t('costCenterTransfer.confirmQuestion')}</p>
               <div className="flex gap-3">
                 <button
                   onClick={handleConfirmTransfer}
                   disabled={isSubmitting}
                   className="flex-1 bg-[#0E2F4B] text-white px-6 py-2.5 rounded-lg hover:bg-[#1a4567] focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
                 >
-                  {isSubmitting ? "Processing..." : "OK"}
+                  {isSubmitting ? t('costCenterTransfer.processing') : t('costCenterTransfer.ok')}
                 </button>
                 <button
                   onClick={handleCancelTransfer}
                   disabled={isSubmitting}
                   className="flex-1 bg-gray-200 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed font-medium transition-colors"
                 >
-                  Cancel
+                  {t('costCenterTransfer.cancel')}
                 </button>
               </div>
             </div>
