@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   Plus, Edit2, Trash2, X, Search 
 } from "lucide-react";
@@ -7,16 +7,17 @@ import { useNavigate } from "react-router-dom";
 import API from "../../lib/axios";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const AssetTypeChecklistMapping = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
-  // Column definitions for mapping summary table
-  const columns = [
-    { label: "Asset Type", name: "asset_type_name", visible: true },
-    { label: "Asset Name (Specific)", name: "asset_name", visible: true },
-    { label: "Total Questions", name: "total_questions", visible: true },
-  ];
+  const columns = useMemo(() => [
+    { label: t("assetTypeChecklistMapping.assetType"), name: "asset_type_name", visible: true },
+    { label: t("assetTypeChecklistMapping.assetNameSpecific"), name: "asset_name", visible: true },
+    { label: t("assetTypeChecklistMapping.totalQuestions"), name: "total_questions", visible: true },
+  ], [t]);
 
   // Main view state
   const [mappingSummaries, setMappingSummaries] = useState([]);
@@ -40,7 +41,7 @@ const AssetTypeChecklistMapping = () => {
       setMappingSummaries(fetchedSummaries);
     } catch (error) {
       console.error("Error fetching mapping summaries:", error);
-      toast.error("Failed to load mappings");
+      toast.error(t("assetTypeChecklistMapping.failedToLoadMappings"));
     } finally {
       setIsLoadingMain(false);
     }
@@ -64,7 +65,7 @@ const AssetTypeChecklistMapping = () => {
       }
       
       if (successCount > 0) {
-        toast.success(`Successfully deleted ${successCount} mapping group(s)`);
+        toast.success(t("assetTypeChecklistMapping.successfullyDeletedMappingCount", { count: successCount }));
         fetchMappingSummaries();
         setSelectedRows([]);
         return true;
@@ -72,7 +73,7 @@ const AssetTypeChecklistMapping = () => {
       return false;
     } catch (error) {
       console.error("Error deleting mapping groups:", error);
-      toast.error("Failed to delete some mappings");
+      toast.error(t("assetTypeChecklistMapping.failedToDeleteMappings"));
       return false;
     } finally {
       setIsDeleting(false);
@@ -129,13 +130,13 @@ const AssetTypeChecklistMapping = () => {
                         <span className="text-[10px] text-gray-400 font-mono tracking-tighter uppercase">{row.asset_id}</span>
                     </div>
                   ) : (
-                    <span className="text-gray-400 italic">All Assets of this Type</span>
+                    <span className="text-gray-400 italic">{t("assetTypeChecklistMapping.allAssetsOfThisType")}</span>
                   );
               }
               if (col.name === "total_questions") {
                 return (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200 shadow-sm">
-                      {row.total_questions} Questions
+                      {t("assetTypeChecklistMapping.questionsCount", { count: row.total_questions })}
                     </span>
                 );
               }

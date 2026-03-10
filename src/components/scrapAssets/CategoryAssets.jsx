@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
@@ -7,10 +7,12 @@ import { Plus, ArrowLeft, BarChart3, X, AlertTriangle } from 'lucide-react';
 import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 import { useNavigation } from '../../hooks/useNavigation';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const CategoryAssets = () => {
   const navigate = useNavigate();
   const { category } = useParams();
+  const { t } = useLanguage();
   const { user } = useAuthStore();
   const { getAccessLevel, loading: navLoading } = useNavigation();
   const accessLevel = getAccessLevel('SCRAPASSETS');
@@ -165,7 +167,7 @@ const CategoryAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error('Failed to fetch assets data');
+      toast.error(t('scrapAssets.failedToFetchAssetsData'));
       return [];
     }
   };
@@ -180,7 +182,7 @@ const CategoryAssets = () => {
         setAssets(data);
       } catch (error) {
         console.error('Error fetching data:', error);
-        toast.error('Failed to fetch data');
+        toast.error(t('scrapAssets.failedToFetchData'));
       } finally {
         setLoading(false);
       }
@@ -189,15 +191,15 @@ const CategoryAssets = () => {
     fetchData();
   }, [category]);
 
-  const columns = [
-    { key: 'asset_name', name: 'asset_name', label: 'ASSET NAME', sortable: true, visible: true },
-    { key: 'serial_number', name: 'serial_number', label: 'SERIAL NUMBER', sortable: true, visible: true },
-    { key: 'category', name: 'category', label: 'CATEGORY', sortable: true, visible: true },
-    { key: 'expiry_date', name: 'expiry_date', label: 'EXPIRY DATE', sortable: true, visible: true },
-    { key: 'days_until_expiry', name: 'days_until_expiry', label: 'DAYS UNTIL EXPIRY', sortable: true, visible: true },
-    { key: 'current_status', name: 'current_status', label: 'STATUS', sortable: true, visible: true },
-    ...(!navLoading && !isReadOnly ? [{ key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true }] : [])
-  ];
+  const columns = useMemo(() => [
+    { key: 'asset_name', name: 'asset_name', label: t('scrapAssets.assetName'), sortable: true, visible: true },
+    { key: 'serial_number', name: 'serial_number', label: t('scrapAssets.serialNumber'), sortable: true, visible: true },
+    { key: 'category', name: 'category', label: t('scrapAssets.category'), sortable: true, visible: true },
+    { key: 'expiry_date', name: 'expiry_date', label: t('scrapAssets.expiryDate'), sortable: true, visible: true },
+    { key: 'days_until_expiry', name: 'days_until_expiry', label: t('scrapAssets.daysUntilExpiry'), sortable: true, visible: true },
+    { key: 'current_status', name: 'current_status', label: t('scrapAssets.status'), sortable: true, visible: true },
+    ...(!navLoading && !isReadOnly ? [{ key: 'action', name: 'action', label: t('scrapAssets.action'), sortable: false, visible: true }] : [])
+  ], [t, navLoading, isReadOnly]);
 
   const handleScrap = (row) => {
     setSelectedAsset(row);
@@ -210,7 +212,7 @@ const CategoryAssets = () => {
       
       // Validate that user has emp_int_id
       if (!user?.emp_int_id) {
-        toast.error('User employee ID not found. Please contact administrator.');
+        toast.error(t('createScrapAsset.userEmployeeIdNotFound'));
         return;
       }
       
@@ -232,7 +234,7 @@ const CategoryAssets = () => {
       });
       
       if (response.data.success) {
-        toast.success(`Asset ${selectedAsset.asset_name} successfully marked for scrapping!`);
+        toast.success(t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }));
         
         // Remove the asset from the list since it's now scrapped
         setAssets(prev => prev.filter(asset => asset.asset_id !== selectedAsset.asset_id));
@@ -250,7 +252,7 @@ const CategoryAssets = () => {
         setSelectedAsset(null);
         setNotes('');
       } else {
-        toast.error('Failed to mark asset for scrapping');
+        toast.error(t('createScrapAsset.failedToMarkAssetForScrapping'));
       }
     } catch (error) {
       console.error('❌ Error submitting scrap asset:', error);
@@ -260,16 +262,16 @@ const CategoryAssets = () => {
         console.error('Response data:', error.response.data);
         
         if (error.response.status === 400) {
-          toast.error(`Validation error: ${error.response.data.error}`);
+          toast.error(t('createScrapAsset.validationError', { error: error.response.data.error || '' }));
         } else if (error.response.status === 401) {
-          toast.error('Unauthorized. Please log in again.');
+          toast.error(t('createScrapAsset.unauthorizedPleaseLogInAgain'));
         } else if (error.response.status === 500) {
-          toast.error('Server error. Please try again later.');
+          toast.error(t('createScrapAsset.serverErrorPleaseTryAgainLater'));
         } else {
-          toast.error(`Error: ${error.response.data.error || 'Failed to mark asset for scrapping'}`);
+          toast.error(t('createScrapAsset.error', { error: error.response.data.error || t('createScrapAsset.failedToMarkAssetForScrapping') }));
         }
       } else {
-        toast.error('Network error. Please check your connection.');
+        toast.error(t('createScrapAsset.networkErrorPleaseCheckConnection'));
       }
     }
   };
@@ -328,7 +330,7 @@ const CategoryAssets = () => {
                   formatDate(row[col.key])
                 ) : col.key === 'days_until_expiry' ? (
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getDaysUntilExpiryColor(row[col.key])}`}>
-                    {row[col.key]} days
+                    {typeof row[col.key] === 'object' && row[col.key]?.days != null ? row[col.key].days : row[col.key]} {t('scrapAssets.days')}
                   </span>
                 ) : col.key === 'current_status' ? (
                   <span className="px-2 py-1 bg-yellow-100 text-amber-800 text-xs font-medium rounded-full">
@@ -340,7 +342,7 @@ const CategoryAssets = () => {
                     className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors flex items-center gap-1"
                   >
                     <AlertTriangle size={12} />
-                    Scrap
+                    {t('scrapAssets.scrap')}
                   </button>
                 ) : (
                   row[col.key]
@@ -465,7 +467,7 @@ const CategoryAssets = () => {
           <button
             onClick={() => navigate('/scrap-assets')}
             className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-            title="Back to Dashboard"
+            title={t('scrapAssets.backToDashboard')}
           >
             <ArrowLeft size={20} />
           </button>
@@ -474,9 +476,9 @@ const CategoryAssets = () => {
               <BarChart3 className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{getCategoryDisplayName(category)} Assets</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{t('scrapAssets.categoryAssetsPageTitle', { category: getCategoryDisplayName(category) })}</h1>
               <p className="text-sm text-gray-600">
-                {assetTypeInfo ? `${assetTypeInfo.asset_count} assets expiring within 30 days` : 'Assets expiring soon'}
+                {assetTypeInfo ? t('scrapAssets.assetsExpiringWithin30Days', { count: assetTypeInfo.asset_count }) : t('scrapAssets.assetsExpiringSoon')}
               </p>
             </div>
           </div>
@@ -486,8 +488,8 @@ const CategoryAssets = () => {
       {assets.length === 0 ? (
         <div className="text-center text-gray-500 py-12">
           <AlertTriangle className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Assets Found</h3>
-          <p className="text-gray-600">There are no assets in the {getCategoryDisplayName(category)} category expiring within 30 days.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">{t('scrapAssets.noAssetsFound')}</h3>
+          <p className="text-gray-600">{t('scrapAssets.noAssetsInCategoryExpiring', { category: getCategoryDisplayName(category) })}</p>
         </div>
       ) : (
         <ContentBox
@@ -525,7 +527,7 @@ const CategoryAssets = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Create Scrap Asset</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('createScrapAsset.createScrapAsset')}</h3>
               <button
                 onClick={handleCloseModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -536,21 +538,21 @@ const CategoryAssets = () => {
             
             <div className="p-6">
               <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Asset: <span className="font-medium text-gray-900">{selectedAsset?.asset_name}</span></p>
-                <p className="text-sm text-gray-600">Serial: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
-                <p className="text-sm text-gray-600">Category: <span className="font-medium text-gray-900">{selectedAsset?.category}</span></p>
-                <p className="text-sm text-gray-600">Expiry: <span className="font-medium text-gray-900">{selectedAsset?.expiry_date ? new Date(selectedAsset.expiry_date).toLocaleDateString() : 'N/A'}</span></p>
+                <p className="text-sm text-gray-600 mb-2">{t('createScrapAsset.asset')}: <span className="font-medium text-gray-900">{selectedAsset?.asset_name}</span></p>
+                <p className="text-sm text-gray-600">{t('createScrapAsset.serial')}: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
+                <p className="text-sm text-gray-600">{t('createScrapAsset.category')}: <span className="font-medium text-gray-900">{selectedAsset?.category}</span></p>
+                <p className="text-sm text-gray-600">{t('createScrapAsset.expiry')}: <span className="font-medium text-gray-900">{selectedAsset?.expiry_date ? new Date(selectedAsset.expiry_date).toLocaleDateString() : 'N/A'}</span></p>
               </div>
               
               <div className="mb-6">
                 <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes (Optional)
+                  {t('createScrapAsset.notesOptional')}
                 </label>
                 <textarea
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Enter any additional notes about this scrap asset..."
+                  placeholder={t('createScrapAsset.enterAdditionalNotesAboutScrapAsset')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                   rows="3"
                 />
@@ -561,13 +563,13 @@ const CategoryAssets = () => {
                   onClick={handleCloseModal}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
                 >
-                  Cancel
+                  {t('createScrapAsset.cancel')}
                 </button>
                 <button
                   onClick={handleSubmitScrap}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  Submit
+                  {t('createScrapAsset.submit')}
                 </button>
               </div>
             </div>

@@ -37,7 +37,7 @@ const TechCertApprovals = () => {
       setCertificates(data);
     } catch (error) {
       console.error("Failed to fetch approvals:", error);
-      toast.error("Failed to load approvals");
+      toast.error(t("techCertApprovals.failedToLoadApprovals"));
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,7 @@ const TechCertApprovals = () => {
       setEmployeeList(data);
     } catch (error) {
       console.error("Failed to fetch technicians:", error);
-      toast.error("Failed to load technicians");
+      toast.error(t("techCertApprovals.failedToLoadTechnicians"));
     } finally {
       setLoadingTechnicians(false);
     }
@@ -65,7 +65,7 @@ const TechCertApprovals = () => {
       setCertMasterList(data);
     } catch (error) {
       console.error("Failed to fetch certificates:", error);
-      toast.error("Failed to load certificate list");
+      toast.error(t("techCertApprovals.failedToLoadCertificateList"));
     } finally {
       setLoadingCerts(false);
     }
@@ -92,7 +92,7 @@ const TechCertApprovals = () => {
       setMaintenanceHistory(data);
     } catch (error) {
       console.error("Failed to fetch technician job history:", error);
-      toast.error("Failed to load job history");
+      toast.error(t("techCertApprovals.failedToLoadJobHistory"));
     } finally {
       setLoadingHistory(false);
     }
@@ -106,7 +106,7 @@ const TechCertApprovals = () => {
       setUpcomingJobs(data);
     } catch (error) {
       console.error("Failed to fetch upcoming jobs:", error);
-      toast.error("Failed to load upcoming jobs");
+      toast.error(t("techCertApprovals.failedToLoadUpcomingJobs"));
     } finally {
       setLoadingUpcoming(false);
     }
@@ -133,11 +133,11 @@ const TechCertApprovals = () => {
       await API.put(`/employee-tech-certificates/${etcId}/status`, {
         status: "Approved"
       });
-      toast.success("Certificate approved successfully");
+      toast.success(t("techCertApprovals.certificateApprovedSuccessfully"));
       await fetchApprovals();
     } catch (error) {
       console.error("Failed to approve certificate:", error);
-      toast.error(error.response?.data?.message || "Failed to approve certificate");
+      toast.error(error.response?.data?.message || t("techCertApprovals.failedToApproveCertificate"));
     } finally {
       setIsApproving(false);
     }
@@ -149,11 +149,11 @@ const TechCertApprovals = () => {
       await API.put(`/employee-tech-certificates/${etcId}/status`, {
         status: "Rejected"
       });
-      toast.success("Certificate rejected successfully");
+      toast.success(t("techCertApprovals.certificateRejectedSuccessfully"));
       await fetchApprovals();
     } catch (error) {
       console.error("Failed to reject certificate:", error);
-      toast.error(error.response?.data?.message || "Failed to reject certificate");
+      toast.error(error.response?.data?.message || t("techCertApprovals.failedToRejectCertificate"));
     } finally {
       setIsApproving(false);
     }
@@ -161,22 +161,22 @@ const TechCertApprovals = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error("Please select at least one certificate to delete");
+      toast.error(t("techCertApprovals.pleaseSelectAtLeastOneToDelete"));
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${selectedRows.length} selected certificate(s)?`);
+    const confirmed = window.confirm(t("techCertApprovals.deleteSelectedConfirm", { count: selectedRows.length }));
     if (!confirmed) return;
 
     setIsDeleting(true);
     try {
       await Promise.all(selectedRows.map((id) => API.delete(`/employee-tech-certificates/${id}`)));
-      toast.success(`${selectedRows.length} certificate(s) deleted successfully`);
+      toast.success(t("techCertApprovals.certificatesDeletedSuccessfully", { count: selectedRows.length }));
       setSelectedRows([]);
       await fetchApprovals();
     } catch (error) {
       console.error("Failed to delete selected certificates:", error);
-      toast.error("Failed to delete some certificates");
+      toast.error(t("techCertApprovals.failedToDeleteSome"));
     } finally {
       setIsDeleting(false);
     }
@@ -189,33 +189,33 @@ const TechCertApprovals = () => {
       const response = await API.get(`/employee-tech-certificates/${etcId}/download`);
       const url = response.data?.url;
       if (!url) {
-        toast.error("No file available for download");
+        toast.error(t("techCertApprovals.noFileForDownload"));
         return;
       }
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Failed to get download URL:", error);
-      toast.error(error.response?.data?.message || "Failed to download file");
+      toast.error(error.response?.data?.message || t("techCertApprovals.failedToDownload"));
     } finally {
       setDownloadingId(null);
     }
   };
 
   const handleBlock = async (empIntId) => {
-    const confirmed = window.confirm("Block this technician? They will be removed from the list.");
+    const confirmed = window.confirm(t("techCertApprovals.blockTechnicianConfirm"));
     if (!confirmed) return;
 
     setIsBlocking(true);
     try {
       await API.put(`/employees/${empIntId}/status`, { int_status: 0 });
-      toast.success("Technician blocked successfully");
+      toast.success(t("techCertApprovals.technicianBlockedSuccessfully"));
       setEmployeeList((prev) => prev.filter((emp) => emp.emp_int_id !== empIntId));
       if (selectedTechnicianId === empIntId) {
         setSelectedTechnicianId("");
       }
     } catch (error) {
       console.error("Failed to block technician:", error);
-      toast.error(error.response?.data?.error || "Failed to block technician");
+      toast.error(error.response?.data?.error || t("techCertApprovals.failedToBlockTechnician"));
     } finally {
       setIsBlocking(false);
     }
@@ -248,15 +248,18 @@ const TechCertApprovals = () => {
     return date.toLocaleDateString();
   };
 
-  const approvalFilterColumns = [
-    { label: "Employee Name", value: "employee_name" },
-    { label: "Employee ID", value: "emp_int_id" },
-    { label: "Certificate Name", value: "cert_name" },
-    { label: "Certificate Number", value: "cert_number" },
-    { label: "Certificate Date", value: "certificate_date" },
-    { label: "Expiry Date", value: "certificate_expiry" },
-    { label: "Status", value: "status" }
-  ];
+  const approvalFilterColumns = useMemo(
+    () => [
+      { label: t("techCertApprovals.employeeName"), value: "employee_name" },
+      { label: t("techCertApprovals.employeeId"), value: "emp_int_id" },
+      { label: t("techCertApprovals.certificateName"), value: "cert_name" },
+      { label: t("techCertApprovals.certificateNumber"), value: "cert_number" },
+      { label: t("techCertApprovals.certificateDate"), value: "certificate_date" },
+      { label: t("techCertApprovals.expiryDate"), value: "certificate_expiry" },
+      { label: t("techCertApprovals.status"), value: "status" }
+    ],
+    [t]
+  );
 
   const filteredCertificates = useMemo(() => {
     return filterData(certificates, { columnFilters }, []);
@@ -296,20 +299,18 @@ const TechCertApprovals = () => {
             <h1 className="text-xl font-semibold text-gray-900">
               {t('navigation.hrManagerApproval')}
             </h1>
-            <p className="text-sm text-gray-500">
-              Review technician certificates, manage technicians, and monitor activity.
-            </p>
+            <p className="text-sm text-gray-500">{t("techCertApprovals.subtitle")}</p>
           </div>
 
           <div className="px-6 pt-4">
             <div className="flex flex-wrap gap-3">
               {[
-                { id: "approvals", label: "Certificate Approvals" },
-                { id: "technicians", label: "Technician List" },
-                { id: "certificates", label: "Certificate List" },
-                { id: "ratings", label: "Technician Ratings" },
-                { id: "jobHistory", label: "Technician Job History" },
-                { id: "upcoming", label: "Upcoming Jobs" }
+                { id: "approvals", label: t("techCertApprovals.tabCertificateApprovals") },
+                { id: "technicians", label: t("techCertApprovals.tabTechnicianList") },
+                { id: "certificates", label: t("techCertApprovals.tabCertificateList") },
+                { id: "ratings", label: t("techCertApprovals.tabTechnicianRatings") },
+                { id: "jobHistory", label: t("techCertApprovals.tabJobHistory") },
+                { id: "upcoming", label: t("techCertApprovals.tabUpcomingJobs") }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -334,7 +335,7 @@ const TechCertApprovals = () => {
                     <button
                       onClick={() => setFilterOpen((prev) => !prev)}
                       className="flex items-center justify-center text-white border border-gray-300 rounded px-3 py-2 hover:bg-[#143d65] bg-[#0E2F4B]"
-                      title="Filter"
+                      title={t("techCertApprovals.filter")}
                     >
                       <Filter size={18} />
                     </button>
@@ -342,7 +343,7 @@ const TechCertApprovals = () => {
                       onClick={handleDeleteSelected}
                       disabled={isDeleting || selectedRows.length === 0}
                       className="flex items-center justify-center text-white bg-red-600 rounded-md hover:bg-red-700 transition disabled:opacity-60 px-3 py-2"
-                      title="Delete"
+                      title={t("techCertApprovals.delete")}
                     >
                       <Trash2 size={18} />
                     </button>
@@ -359,7 +360,7 @@ const TechCertApprovals = () => {
                               <button
                                 onClick={() => removeColumnFilter(index)}
                                 className="bg-gray-200 text-gray-700 px-1 rounded-full"
-                                title="Remove filter"
+                                title={t("techCertApprovals.removeFilter")}
                               >
                                 <Minus size={12} />
                               </button>
@@ -369,7 +370,7 @@ const TechCertApprovals = () => {
                               value={filter.column}
                               onChange={(e) => updateColumnFilter(index, "column", e.target.value)}
                             >
-                              <option value="">Select column</option>
+                              <option value="">{t("techCertApprovals.selectColumn")}</option>
                               {approvalFilterColumns.map((col) => (
                                 <option key={col.value} value={col.value}>
                                   {col.label}
@@ -379,7 +380,7 @@ const TechCertApprovals = () => {
                             <input
                               type="text"
                               className="border text-sm px-2 py-1"
-                              placeholder="Search value"
+                              placeholder={t("techCertApprovals.searchValue")}
                               value={filter.value}
                               onChange={(e) => updateColumnFilter(index, "value", e.target.value)}
                             />
@@ -387,7 +388,7 @@ const TechCertApprovals = () => {
                               <button
                                 onClick={addColumnFilter}
                                 className="bg-[#0E2F4B] text-[#FFC107] px-1 rounded"
-                                title="Add filter"
+                                title={t("techCertApprovals.addFilter")}
                               >
                                 <Plus size={12} />
                               </button>
@@ -399,16 +400,16 @@ const TechCertApprovals = () => {
                         onClick={clearColumnFilters}
                         className="text-sm px-3 py-1 rounded border border-gray-300 hover:bg-gray-100"
                       >
-                        Clear
+                        {t("techCertApprovals.clear")}
                       </button>
                     </div>
                   </div>
                 )}
 
                 {loading ? (
-                  <div className="text-sm text-gray-500">Loading approvals...</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.loadingApprovals")}</div>
                 ) : filteredCertificates.length === 0 ? (
-                  <div className="text-sm text-gray-500">No pending approvals.</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.noPendingApprovals")}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full border border-gray-200 text-sm">
@@ -428,13 +429,13 @@ const TechCertApprovals = () => {
                               className="accent-yellow-400"
                             />
                           </th>
-                          <th className="px-4 py-3 text-left">Employee</th>
-                          <th className="px-4 py-3 text-left">Certificate</th>
-                          <th className="px-4 py-3 text-left">Certificate Date</th>
-                          <th className="px-4 py-3 text-left">Expiry Date</th>
-                          <th className="px-4 py-3 text-left">Status</th>
-                          <th className="px-4 py-3 text-left">File</th>
-                          <th className="px-4 py-3 text-left">Action</th>
+                          <th className="px-4 py-3 text-left">{t("techCertApprovals.employee")}</th>
+                          <th className="px-4 py-3 text-left">{t("techCertApprovals.certificate")}</th>
+                          <th className="px-4 py-3 text-left">{t("techCertApprovals.certificateDate")}</th>
+                          <th className="px-4 py-3 text-left">{t("techCertApprovals.expiryDate")}</th>
+                          <th className="px-4 py-3 text-left">{t("techCertApprovals.status")}</th>
+                          <th className="px-4 py-3 text-left">{t("techCertApprovals.file")}</th>
+                          <th className="px-4 py-3 text-left">{t("techCertApprovals.action")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -475,7 +476,7 @@ const TechCertApprovals = () => {
                             <td className="px-4 py-3 text-gray-700">{formatDate(cert.certificate_expiry)}</td>
                             <td className="px-4 py-3">
                               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                {cert.status || "Approval Pending"}
+                                {cert.status || t("techCertApprovals.approvalPending")}
                               </span>
                             </td>
                             <td className="px-4 py-3">
@@ -485,7 +486,7 @@ const TechCertApprovals = () => {
                                   disabled={downloadingId === cert.etc_id}
                                   className="text-xs font-medium text-blue-700 hover:text-blue-800 disabled:opacity-60"
                                 >
-                                  {downloadingId === cert.etc_id ? "Preparing..." : "View"}
+                                  {downloadingId === cert.etc_id ? t("techCertApprovals.preparing") : t("techCertApprovals.view")}
                                 </button>
                               ) : (
                                 <span className="text-xs text-gray-400">-</span>
@@ -499,7 +500,7 @@ const TechCertApprovals = () => {
                                   className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 disabled:opacity-60"
                                 >
                                   <CheckCircle size={14} />
-                                  Approve
+                                  {t("techCertApprovals.approve")}
                                 </button>
                                 <button
                                   onClick={() => handleReject(cert.etc_id)}
@@ -507,7 +508,7 @@ const TechCertApprovals = () => {
                                   className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-60"
                                 >
                                   <XCircle size={14} />
-                                  Reject
+                                  {t("techCertApprovals.reject")}
                                 </button>
                               </div>
                             </td>
@@ -523,18 +524,18 @@ const TechCertApprovals = () => {
             {activeTab === "technicians" && (
               <>
                 {loadingTechnicians ? (
-                  <div className="text-sm text-gray-500">Loading technicians...</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.loadingTechnicians")}</div>
                 ) : employeeList.length === 0 ? (
-                  <div className="text-sm text-gray-500">No technicians found.</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.noTechniciansFound")}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium">Employee</th>
-                          <th className="px-4 py-3 text-left font-medium">Role</th>
-                          <th className="px-4 py-3 text-left font-medium">Status</th>
-                          <th className="px-4 py-3 text-left font-medium">Action</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.employee")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.role")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.status")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.action")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -547,7 +548,7 @@ const TechCertApprovals = () => {
                             <td className="px-4 py-3 text-gray-700">{emp.job_role_name || "-"}</td>
                             <td className="px-4 py-3">
                               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                Active
+                                {t("techCertApprovals.active")}
                               </span>
                             </td>
                             <td className="px-4 py-3">
@@ -557,7 +558,7 @@ const TechCertApprovals = () => {
                                 className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-60"
                               >
                                 <Ban size={14} />
-                                Block
+                                {t("techCertApprovals.block")}
                               </button>
                             </td>
                           </tr>
@@ -572,16 +573,16 @@ const TechCertApprovals = () => {
             {activeTab === "certificates" && (
               <>
                 {loadingCerts ? (
-                  <div className="text-sm text-gray-500">Loading certificate list...</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.loadingCertificateList")}</div>
                 ) : certMasterList.length === 0 ? (
-                  <div className="text-sm text-gray-500">No certificates found.</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.noCertificatesFound")}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium">Certificate Name</th>
-                          <th className="px-4 py-3 text-left font-medium">Certificate Number</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.certificateName")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.certificateNumber")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -601,13 +602,13 @@ const TechCertApprovals = () => {
             {activeTab === "ratings" && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Technician</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("techCertApprovals.selectTechnician")}</label>
                   <select
                     value={selectedTechnicianId}
                     onChange={(e) => setSelectedTechnicianId(e.target.value)}
                     className="w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
                   >
-                    <option value="">Select technician</option>
+                    <option value="">{t("techCertApprovals.selectTechnicianOption")}</option>
                     {technicianOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -620,10 +621,10 @@ const TechCertApprovals = () => {
                     <>
                       <div className="font-medium text-gray-900">{selectedTechnician.name || selectedTechnician.full_name}</div>
                       <div className="text-xs text-gray-500">{selectedTechnician.emp_int_id}</div>
-                      <div className="mt-2">No ratings available yet for this technician.</div>
+                      <div className="mt-2">{t("techCertApprovals.noRatingsAvailable")}</div>
                     </>
                   ) : (
-                    "Select a technician to view ratings."
+                    t("techCertApprovals.selectTechnicianToViewRatings")
                   )}
                 </div>
               </div>
@@ -632,13 +633,13 @@ const TechCertApprovals = () => {
             {activeTab === "jobHistory" && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Technician</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("techCertApprovals.selectTechnician")}</label>
                   <select
                     value={selectedTechnicianId}
                     onChange={(e) => setSelectedTechnicianId(e.target.value)}
                     className="w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
                   >
-                    <option value="">Select technician</option>
+                    <option value="">{t("techCertApprovals.selectTechnicianOption")}</option>
                     {technicianOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -647,22 +648,22 @@ const TechCertApprovals = () => {
                   </select>
                 </div>
                 {loadingHistory ? (
-                  <div className="text-sm text-gray-500">Loading job history...</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.loadingJobHistory")}</div>
                 ) : !selectedTechnician ? (
-                  <div className="text-sm text-gray-500">Select a technician to view job history.</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.selectTechnicianToViewHistory")}</div>
                 ) : maintenanceHistory.length === 0 ? (
-                  <div className="text-sm text-gray-500">No job history found for this technician.</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.noJobHistoryFound")}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium">Work Order</th>
-                          <th className="px-4 py-3 text-left font-medium">Asset</th>
-                          <th className="px-4 py-3 text-left font-medium">Maintenance Type</th>
-                          <th className="px-4 py-3 text-left font-medium">Start Date</th>
-                          <th className="px-4 py-3 text-left font-medium">End Date</th>
-                          <th className="px-4 py-3 text-left font-medium">Status</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.workOrder")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.asset")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.maintenanceType")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.startDate")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.endDate")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.status")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -686,13 +687,13 @@ const TechCertApprovals = () => {
             {activeTab === "upcoming" && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Technician</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("techCertApprovals.selectTechnician")}</label>
                   <select
                     value={selectedTechnicianId}
                     onChange={(e) => setSelectedTechnicianId(e.target.value)}
                     className="w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
                   >
-                    <option value="">All technicians</option>
+                    <option value="">{t("techCertApprovals.allTechnicians")}</option>
                     {technicianOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -701,19 +702,19 @@ const TechCertApprovals = () => {
                   </select>
                 </div>
                 {loadingUpcoming ? (
-                  <div className="text-sm text-gray-500">Loading upcoming jobs...</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.loadingUpcomingJobs")}</div>
                 ) : filteredUpcomingJobs.length === 0 ? (
-                  <div className="text-sm text-gray-500">No upcoming jobs found.</div>
+                  <div className="text-sm text-gray-500">{t("techCertApprovals.noUpcomingJobsFound")}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium">Work Order</th>
-                          <th className="px-4 py-3 text-left font-medium">Technician</th>
-                          <th className="px-4 py-3 text-left font-medium">Maintenance Type</th>
-                          <th className="px-4 py-3 text-left font-medium">Start Date</th>
-                          <th className="px-4 py-3 text-left font-medium">Status</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.workOrder")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.technician")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.maintenanceType")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.startDate")}</th>
+                          <th className="px-4 py-3 text-left font-medium">{t("techCertApprovals.status")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">

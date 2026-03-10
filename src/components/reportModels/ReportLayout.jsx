@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -1062,17 +1063,20 @@ export default function ReportLayout({
                       // For searchable fields, use allAvailableAssets for options (not filtered data)
                       // This ensures dropdown always shows all available options
                       const options = f.domain || (getFilterOptions(f.key) || []);
-                      
-                      console.log(`🔍 [ReportLayout] ${f.key} options:`, options.length, options.slice(0, 3));
-                      console.log(`🔍 [ReportLayout] ${f.key} field domain:`, f.domain?.length || 0, 'items');
+                      const isBreakdownHistoryAssetEmpty = selectedReportId === "breakdown-history" && f.key === "assetId" && (!options || options.length === 0);
                       
                       return (
-                        <SearchableSelect 
-                          value={quick[f.key]} 
-                          onChange={(v) => setQuickField(f.key, v)} 
-                          options={options} 
-                          placeholder={f.placeholder || "Search..."} 
-                        />
+                        <div>
+                          <SearchableSelect 
+                            value={quick[f.key]} 
+                            onChange={(v) => setQuickField(f.key, v)} 
+                            options={options} 
+                            placeholder={f.placeholder || "Search..."} 
+                          />
+                          {isBreakdownHistoryAssetEmpty && (
+                            <p className="text-xs text-slate-500 mt-1.5">{t("reports.filterOptions.breakdownHistoryAssetDropdownEmpty")}</p>
+                          )}
+                        </div>
                       );
                     })()}
                     {f.type === "number" && <Input type="number" value={quick[f.key]} onChange={(v) => setQuickField(f.key, v)} placeholder={f.placeholder} />}
@@ -1619,10 +1623,18 @@ export default function ReportLayout({
                             ? "text-center" 
                             : "text-left";
                           
+                          const cellValue = r[c] ?? '';
+                          const isBreakdownIdLink = selectedReportId === 'breakdown-history' && c === 'Breakdown ID' && cellValue && String(cellValue) !== 'N/A';
                           return (
                             <td key={c} className={`px-3 py-2 border-b border-slate-100 whitespace-nowrap ${alignClass}`}>
-                            {String(r[c] ?? "")}
-                          </td>
+                              {isBreakdownIdLink ? (
+                                <Link to={`/reports/breakdown-history/${encodeURIComponent(String(cellValue))}`} className="text-blue-600 hover:text-blue-800 hover:underline font-medium">
+                                  {String(cellValue)}
+                                </Link>
+                              ) : (
+                                String(cellValue)
+                              )}
+                            </td>
                           );
                         })}
                       </tr>

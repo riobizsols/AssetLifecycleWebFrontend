@@ -3,8 +3,10 @@ import { Edit2, Trash2, Filter, Plus, Minus } from "lucide-react";
 import { toast } from "react-hot-toast";
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const TechnicianCertificates = () => {
+  const { t } = useLanguage();
   const [certificates, setCertificates] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [uploadedCertificates, setUploadedCertificates] = useState([]);
@@ -44,13 +46,13 @@ const TechnicianCertificates = () => {
       if (!Array.isArray(data)) {
         console.error("Certificate data is not an array:", data);
         setCertificates([]);
-        toast.error("Invalid certificate data format");
+        toast.error(t("technicianCertificates.invalidCertificateData"));
         return;
       }
       
       if (data.length === 0) {
         console.warn("No certificates found in database");
-        toast.info("No certificates available. Please create certificates in Admin Settings first.");
+        toast.info(t("technicianCertificates.noCertificatesCreateInAdmin"));
       }
       
       setCertificates(data);
@@ -61,7 +63,7 @@ const TechnicianCertificates = () => {
         status: error.response?.status,
         data: error.response?.data
       });
-      toast.error("Failed to load certificates - Check browser console for details");
+      toast.error(t("technicianCertificates.failedToLoadCertificates"));
     } finally {
       setLoadingOptions(false);
     }
@@ -86,7 +88,7 @@ const TechnicianCertificates = () => {
       }
     } catch (error) {
       console.error("Failed to fetch uploaded certificates:", error);
-      toast.error("Failed to load uploaded certificates");
+      toast.error(t("technicianCertificates.failedToLoadUploaded"));
     } finally {
       setLoadingList(false);
     }
@@ -103,7 +105,7 @@ const TechnicianCertificates = () => {
         setEmployees(data);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
-        toast.error("Failed to load employees");
+        toast.error(t("technicianCertificates.failedToLoadEmployees"));
       } finally {
         setLoadingEmployees(false);
       }
@@ -122,15 +124,18 @@ const TechnicianCertificates = () => {
     }));
   }, [certificates]);
 
-  const filterColumns = [
-    { label: "Employee Name", value: "employee_name" },
-    { label: "Employee ID", value: "emp_int_id" },
-    { label: "Certificate Name", value: "cert_name" },
-    { label: "Certificate Number", value: "cert_number" },
-    { label: "Certificate Date", value: "certificate_date" },
-    { label: "Expiry Date", value: "certificate_expiry" },
-    { label: "Status", value: "status" }
-  ];
+  const filterColumns = useMemo(
+    () => [
+      { label: t("technicianCertificates.employeeName"), value: "employee_name" },
+      { label: t("technicianCertificates.employeeId"), value: "emp_int_id" },
+      { label: t("technicianCertificates.certificateName"), value: "cert_name" },
+      { label: t("technicianCertificates.certificateNumber"), value: "cert_number" },
+      { label: t("technicianCertificates.certificateDate"), value: "certificate_date" },
+      { label: t("technicianCertificates.expiryDate"), value: "certificate_expiry" },
+      { label: t("technicianCertificates.status"), value: "status" },
+    ],
+    [t]
+  );
 
   const filteredUploadedCertificates = useMemo(() => {
     return filterData(uploadedCertificates, { columnFilters }, []);
@@ -186,15 +191,15 @@ const TechnicianCertificates = () => {
   const handleUpdate = async () => {
     if (!editingId) return;
     if (!editCertId) {
-      toast.error("Please select a certificate");
+      toast.error(t("technicianCertificates.pleaseSelectCertificate"));
       return;
     }
     if (!editCertificateDate) {
-      toast.error("Please select certificate date");
+      toast.error(t("technicianCertificates.pleaseSelectCertificateDate"));
       return;
     }
     if (!editCertificateExpiry) {
-      toast.error("Please select expiry date");
+      toast.error(t("technicianCertificates.pleaseSelectExpiryDate"));
       return;
     }
 
@@ -205,29 +210,29 @@ const TechnicianCertificates = () => {
         certificate_date: editCertificateDate,
         certificate_expiry: editCertificateExpiry
       });
-      toast.success("Certificate updated successfully");
+      toast.success(t("technicianCertificates.certificateUpdatedSuccessfully"));
       cancelEdit();
       await fetchUploadedCertificates();
     } catch (error) {
       console.error("Failed to update certificate:", error);
-      toast.error(error.response?.data?.message || "Failed to update certificate");
+      toast.error(error.response?.data?.message || t("technicianCertificates.failedToUpdateCertificate"));
     } finally {
       setIsUpdating(false);
     }
   };
 
   const handleDelete = async (id) => {
-    const confirmed = window.confirm("Delete this certificate?");
+    const confirmed = window.confirm(t("technicianCertificates.deleteThisCertificate"));
     if (!confirmed) return;
 
     setIsDeleting(true);
     try {
       await API.delete(`/employee-tech-certificates/${id}`);
-      toast.success("Certificate deleted successfully");
+      toast.success(t("technicianCertificates.certificateDeletedSuccessfully"));
       await fetchUploadedCertificates();
     } catch (error) {
       console.error("Failed to delete certificate:", error);
-      toast.error(error.response?.data?.message || "Failed to delete certificate");
+      toast.error(error.response?.data?.message || t("technicianCertificates.failedToDeleteCertificate"));
     } finally {
       setIsDeleting(false);
     }
@@ -235,22 +240,22 @@ const TechnicianCertificates = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error("Please select at least one certificate to delete");
+      toast.error(t("technicianCertificates.selectAtLeastOneToDelete"));
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${selectedRows.length} selected certificate(s)?`);
+    const confirmed = window.confirm(t("technicianCertificates.deleteSelectedConfirm", { count: selectedRows.length }));
     if (!confirmed) return;
 
     setIsDeleting(true);
     try {
       await Promise.all(selectedRows.map((id) => API.delete(`/employee-tech-certificates/${id}`)));
-      toast.success(`${selectedRows.length} certificate(s) deleted successfully`);
+      toast.success(t("technicianCertificates.certificatesDeletedSuccessfully", { count: selectedRows.length }));
       setSelectedRows([]);
       await fetchUploadedCertificates();
     } catch (error) {
       console.error("Failed to delete selected certificates:", error);
-      toast.error("Failed to delete some certificates");
+      toast.error(t("technicianCertificates.failedToDeleteSome"));
     } finally {
       setIsDeleting(false);
     }
@@ -263,13 +268,13 @@ const TechnicianCertificates = () => {
       const response = await API.get(`/employee-tech-certificates/${id}/download`);
       const url = response.data?.url;
       if (!url) {
-        toast.error("No file available for download");
+        toast.error(t("technicianCertificates.noFileForDownload"));
         return;
       }
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Failed to get download URL:", error);
-      toast.error(error.response?.data?.message || "Failed to download file");
+      toast.error(error.response?.data?.message || t("technicianCertificates.failedToDownload"));
     } finally {
       setDownloadingId(null);
     }
@@ -277,27 +282,27 @@ const TechnicianCertificates = () => {
 
   const handleSubmit = async () => {
     if (!selectedEmployeeId) {
-      toast.error("Please select employee");
+      toast.error(t("technicianCertificates.pleaseSelectEmployee"));
       return;
     }
 
     if (!selectedCertId) {
-      toast.error("Please select a certificate");
+      toast.error(t("technicianCertificates.pleaseSelectCertificate"));
       return;
     }
 
     if (!certificateDate) {
-      toast.error("Please select certificate date");
+      toast.error(t("technicianCertificates.pleaseSelectCertificateDate"));
       return;
     }
 
     if (!certificateExpiry) {
-      toast.error("Please select expiry date");
+      toast.error(t("technicianCertificates.pleaseSelectExpiryDate"));
       return;
     }
 
     if (!certificateFile) {
-      toast.error("Please choose a file to upload");
+      toast.error(t("technicianCertificates.pleaseChooseFileToUpload"));
       return;
     }
 
@@ -318,13 +323,13 @@ const TechnicianCertificates = () => {
         }
       });
 
-      toast.success("Certificate uploaded successfully");
+      toast.success(t("technicianCertificates.certificateUploadedSuccessfully"));
       resetForm();
       setShowAddForm(false);
       await fetchUploadedCertificates();
     } catch (error) {
       console.error("Failed to upload certificate:", error);
-      toast.error(error.response?.data?.message || "Failed to upload certificate");
+      toast.error(error.response?.data?.message || t("technicianCertificates.failedToUploadCertificate"));
     } finally {
       setIsSubmitting(false);
     }
@@ -357,11 +362,8 @@ const TechnicianCertificates = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-gray-200">
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">Technician Certificates</h1>
-              <p className="text-sm text-gray-500">
-                Upload and manage your technical certificates. New uploads will remain in Approval
-                Pending status until HR or Manager confirmation.
-              </p>
+              <h1 className="text-xl font-semibold text-gray-900">{t("technicianCertificates.title")}</h1>
+              <p className="text-sm text-gray-500">{t("technicianCertificates.subtitle")}</p>
             </div>
           </div>
 
@@ -375,7 +377,7 @@ const TechnicianCertificates = () => {
                         <button
                           onClick={() => removeColumnFilter(index)}
                           className="bg-gray-200 text-gray-700 px-1 rounded-full"
-                          title="Remove filter"
+                          title={t("technicianCertificates.removeFilter")}
                         >
                           <Minus size={12} />
                         </button>
@@ -385,7 +387,7 @@ const TechnicianCertificates = () => {
                         value={filter.column}
                         onChange={(e) => updateColumnFilter(index, "column", e.target.value)}
                       >
-                        <option value="">Select column</option>
+                        <option value="">{t("technicianCertificates.selectColumn")}</option>
                         {filterColumns.map((col) => (
                           <option key={col.value} value={col.value}>
                             {col.label}
@@ -395,7 +397,7 @@ const TechnicianCertificates = () => {
                       <input
                         type="text"
                         className="border text-sm px-2 py-1"
-                        placeholder="Search value"
+                        placeholder={t("technicianCertificates.searchValue")}
                         value={filter.value}
                         onChange={(e) => updateColumnFilter(index, "value", e.target.value)}
                       />
@@ -403,7 +405,7 @@ const TechnicianCertificates = () => {
                         <button
                           onClick={addColumnFilter}
                           className="bg-[#0E2F4B] text-[#FFC107] px-1 rounded"
-                          title="Add filter"
+                          title={t("technicianCertificates.addFilter")}
                         >
                           <Plus size={12} />
                         </button>
@@ -415,7 +417,7 @@ const TechnicianCertificates = () => {
                   onClick={clearColumnFilters}
                   className="text-sm px-3 py-1 rounded border border-gray-300 hover:bg-gray-100"
                 >
-                  Clear
+                  {t("technicianCertificates.clear")}
                 </button>
               </div>
             </div>
@@ -426,13 +428,13 @@ const TechnicianCertificates = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Employee Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("technicianCertificates.employeeName")}</label>
                     <select
                       value={selectedEmployeeId}
                       onChange={(e) => setSelectedEmployeeId(e.target.value)}
                       className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
                     >
-                      <option value="">Select employee</option>
+                      <option value="">{t("technicianCertificates.selectEmployee")}</option>
                       {employees.map((emp) => (
                         <option key={emp.emp_int_id} value={emp.emp_int_id}>
                           {emp.name || emp.full_name || emp.employee_id || emp.emp_int_id}
@@ -440,11 +442,11 @@ const TechnicianCertificates = () => {
                       ))}
                     </select>
                     {loadingEmployees && (
-                      <p className="text-xs text-gray-400 mt-1">Loading employees...</p>
+                      <p className="text-xs text-gray-400 mt-1">{t("technicianCertificates.loadingEmployees")}</p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("technicianCertificates.certificateName")}</label>
                     <select
                       value={selectedCertId}
                       onChange={(e) => setSelectedCertId(e.target.value)}
@@ -453,10 +455,10 @@ const TechnicianCertificates = () => {
                     >
                       <option value="">
                         {loadingOptions 
-                          ? "Loading certificates..." 
+                          ? t("technicianCertificates.loadingCertificates") 
                           : certificates.length === 0 
-                          ? "No certificates available" 
-                          : "Select certificate"}
+                          ? t("technicianCertificates.noCertificatesAvailable") 
+                          : t("technicianCertificates.selectCertificate")}
                       </option>
                       {certificateOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -465,18 +467,16 @@ const TechnicianCertificates = () => {
                       ))}
                     </select>
                     {loadingOptions && (
-                      <p className="text-xs text-blue-600 mt-1">⏳ Loading certificates...</p>
+                      <p className="text-xs text-blue-600 mt-1">⏳ {t("technicianCertificates.loadingCertificates")}</p>
                     )}
                     {!loadingOptions && certificates.length === 0 && (
-                      <p className="text-xs text-red-600 mt-1">
-                        ⚠️ No certificates found. Admin Settings → Certifications to create one.
-                      </p>
+                      <p className="text-xs text-red-600 mt-1">⚠️ {t("technicianCertificates.noCertificatesFoundHint")}</p>
                     )}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("technicianCertificates.certificateDate")}</label>
                     <input
                       type="date"
                       value={certificateDate}
@@ -485,7 +485,7 @@ const TechnicianCertificates = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("technicianCertificates.expiryDate")}</label>
                     <input
                       type="date"
                       value={certificateExpiry}
@@ -495,14 +495,14 @@ const TechnicianCertificates = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Certificate File</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("technicianCertificates.uploadCertificateFile")}</label>
                   <input
                     type="file"
                     onChange={(e) => setCertificateFile(e.target.files?.[0] || null)}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
                   />
                   {certificateFile && (
-                    <p className="text-xs text-gray-500 mt-1">Selected: {certificateFile.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">{t("technicianCertificates.selectedFile", { name: certificateFile.name })}</p>
                   )}
                 </div>
               </div>
@@ -512,7 +512,7 @@ const TechnicianCertificates = () => {
                   disabled={isSubmitting}
                   className="px-6 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition disabled:opacity-60"
                 >
-                  {isSubmitting ? "Uploading..." : "Upload"}
+                  {isSubmitting ? t("technicianCertificates.uploading") : t("technicianCertificates.upload")}
                 </button>
               </div>
             </div>
@@ -520,12 +520,12 @@ const TechnicianCertificates = () => {
 
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Uploaded Certificates</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t("technicianCertificates.uploadedCertificates")}</h2>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setFilterOpen((prev) => !prev)}
                   className="flex items-center justify-center text-white border border-gray-300 rounded px-3 py-2 hover:bg-[#143d65] bg-[#0E2F4B]"
-                  title="Filter"
+                  title={t("technicianCertificates.filter")}
                 >
                   <Filter size={18} />
                 </button>
@@ -533,23 +533,23 @@ const TechnicianCertificates = () => {
                   onClick={handleDeleteSelected}
                   disabled={isDeleting || selectedRows.length === 0}
                   className="flex items-center justify-center text-white bg-red-600 rounded-md hover:bg-red-700 transition disabled:opacity-60 px-3 py-2"
-                  title="Delete"
+                  title={t("technicianCertificates.delete")}
                 >
                   <Trash2 size={18} />
                 </button>
                 <button
                   onClick={() => setShowAddForm((prev) => !prev)}
                   className="flex items-center justify-center text-white bg-[#0E2F4B] rounded-md hover:bg-[#12395c] transition px-3 py-2"
-                  title={showAddForm ? "Close" : "Add"}
+                  title={showAddForm ? t("technicianCertificates.close") : t("technicianCertificates.add")}
                 >
                   <Plus size={18} />
                 </button>
               </div>
             </div>
             {loadingList ? (
-              <div className="text-sm text-gray-500">Loading certificates...</div>
+              <div className="text-sm text-gray-500">{t("technicianCertificates.loadingCertificatesList")}</div>
             ) : filteredUploadedCertificates.length === 0 ? (
-              <div className="text-sm text-gray-500">No certificates uploaded yet.</div>
+              <div className="text-sm text-gray-500">{t("technicianCertificates.noCertificatesUploadedYet")}</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full border border-gray-200 text-sm">
@@ -569,13 +569,13 @@ const TechnicianCertificates = () => {
                           className="accent-yellow-400"
                         />
                       </th>
-                      <th className="px-4 py-3 text-left">Employee</th>
-                      <th className="px-4 py-3 text-left">Certificate</th>
-                      <th className="px-4 py-3 text-left">Certificate Date</th>
-                      <th className="px-4 py-3 text-left">Expiry Date</th>
-                      <th className="px-4 py-3 text-left">Status</th>
-                      <th className="px-4 py-3 text-left">File</th>
-                      <th className="px-4 py-3 text-left">Actions</th>
+                      <th className="px-4 py-3 text-left">{t("technicianCertificates.employee")}</th>
+                      <th className="px-4 py-3 text-left">{t("technicianCertificates.certificate")}</th>
+                      <th className="px-4 py-3 text-left">{t("technicianCertificates.certificateDate")}</th>
+                      <th className="px-4 py-3 text-left">{t("technicianCertificates.expiryDate")}</th>
+                      <th className="px-4 py-3 text-left">{t("technicianCertificates.status")}</th>
+                      <th className="px-4 py-3 text-left">{t("technicianCertificates.file")}</th>
+                      <th className="px-4 py-3 text-left">{t("technicianCertificates.actions")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -613,7 +613,7 @@ const TechnicianCertificates = () => {
                               onChange={(e) => setEditCertId(e.target.value)}
                               className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
                             >
-                              <option value="">Select certificate</option>
+                              <option value="">{t("technicianCertificates.selectCertificate")}</option>
                               {certificateOptions.map((option) => (
                                 <option key={option.value} value={option.value}>
                                   {option.label}
@@ -669,7 +669,7 @@ const TechnicianCertificates = () => {
                               disabled={downloadingId === cert.etc_id}
                               className="text-xs font-medium text-blue-700 hover:text-blue-800 disabled:opacity-60"
                             >
-                              {downloadingId === cert.etc_id ? "Preparing..." : "View"}
+                              {downloadingId === cert.etc_id ? t("technicianCertificates.preparing") : t("technicianCertificates.view")}
                             </button>
                           ) : (
                             <span className="text-xs text-gray-400">-</span>
@@ -683,13 +683,13 @@ const TechnicianCertificates = () => {
                                 disabled={isUpdating}
                                 className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
                               >
-                                {isUpdating ? "Saving..." : "Save"}
+                                {isUpdating ? t("technicianCertificates.saving") : t("technicianCertificates.save")}
                               </button>
                               <button
                                 onClick={cancelEdit}
                                 className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
                               >
-                                Cancel
+                                {t("technicianCertificates.cancel")}
                               </button>
                             </div>
                           ) : (
@@ -697,7 +697,7 @@ const TechnicianCertificates = () => {
                               <button
                                 onClick={() => startEdit(cert)}
                                 className="p-1 text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
-                                title="Edit"
+                                title={t("technicianCertificates.edit")}
                               >
                                 <Edit2 size={14} />
                               </button>
@@ -705,7 +705,7 @@ const TechnicianCertificates = () => {
                                 onClick={() => handleDelete(cert.etc_id)}
                                 disabled={isDeleting}
                                 className="p-1 text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-60"
-                                title="Delete"
+                                title={t("technicianCertificates.delete")}
                               >
                                 <Trash2 size={14} />
                               </button>

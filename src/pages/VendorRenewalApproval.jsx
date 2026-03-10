@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
@@ -24,15 +24,18 @@ const VendorRenewalApproval = () => {
     sorts: []
   });
 
-  const [columns] = useState([
-    { label: t('vendorRenewalApproval.vendorName'), name: "vendor_name", visible: true },
-    { label: t('vendorRenewalApproval.companyName'), name: "company_name", visible: true },
-    { label: t('vendorRenewalApproval.contactPerson'), name: "contact_person_name", visible: true },
-    { label: t('vendorRenewalApproval.scheduledDate'), name: "scheduled_date", visible: true },
-    { label: t('vendorRenewalApproval.maintenanceType'), name: "maintenance_type", visible: true },
-    { label: t('vendorRenewalApproval.status'), name: "status", visible: true },
-    { label: t('vendorRenewalApproval.daysUntilDue'), name: "days_until_due", visible: true },
-  ]);
+  const columns = useMemo(
+    () => [
+      { label: t('vendorRenewalApproval.vendorName'), name: "vendor_name", visible: true },
+      { label: t('vendorRenewalApproval.companyName'), name: "company_name", visible: true },
+      { label: t('vendorRenewalApproval.contactPerson'), name: "contact_person_name", visible: true },
+      { label: t('vendorRenewalApproval.scheduledDate'), name: "scheduled_date", visible: true },
+      { label: t('vendorRenewalApproval.maintenanceType'), name: "maintenance_type", visible: true },
+      { label: t('vendorRenewalApproval.status'), name: "status", visible: true },
+      { label: t('vendorRenewalApproval.daysUntilDue'), name: "days_until_due", visible: true },
+    ],
+    [t]
+  );
 
   useEffect(() => {
     fetchVendorRenewalApprovals();

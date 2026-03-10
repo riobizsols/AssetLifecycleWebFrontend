@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
 import { useNavigation } from "../hooks/useNavigation";
+import { useLanguage } from "../contexts/LanguageContext";
 import { Pencil } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 const ReportsBreakdown = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
@@ -32,11 +34,11 @@ const ReportsBreakdown = () => {
   console.log("ReportsBreakdown - Has Edit Access:", hasEditAccess);
   console.log("ReportsBreakdown - Has Delete Access:", hasDeleteAccess);
   console.log("ReportsBreakdown - Is Read Only:", isReadOnly);
-  const [columns] = useState([
-    { label: "Reported By", name: "reported_by", visible: true },
-    { label: "Status", name: "status", visible: true },
-    { label: "Description", name: "description", visible: true },
-  ]);
+  const columns = useMemo(() => [
+    { label: t("breakdownDetails.reportedBy"), name: "reported_by", visible: true },
+    { label: t("breakdownDetails.status"), name: "status", visible: true },
+    { label: t("breakdownDetails.description"), name: "description", visible: true },
+  ], [t]);
 
   const handleEdit = (breakdown) => {
     navigate("/edit-breakdown", { state: { breakdown } });
@@ -60,7 +62,7 @@ const ReportsBreakdown = () => {
       setData(formatted);
     } catch (err) {
       console.error("Failed to fetch breakdowns", err);
-      toast.error("Failed to fetch breakdown reports");
+      toast.error(t("breakdownDetails.failedToFetchBreakdownReports"));
       setData([]);
     } finally {
       setIsLoading(false);
@@ -73,12 +75,12 @@ const ReportsBreakdown = () => {
 
   const handleDeleteSelected = async () => {
     if (!hasDeleteAccess) {
-      toast.error("You don't have permission to delete breakdown reports");
+      toast.error(t("breakdownDetails.noPermissionToDeleteBreakdownReports"));
       return false;
     }
 
     if (selectedRows.length === 0) {
-      toast.error("Please select breakdown reports to delete");
+      toast.error(t("breakdownDetails.pleaseSelectBreakdownReportsToDelete"));
       return false;
     }
 
@@ -93,7 +95,7 @@ const ReportsBreakdown = () => {
       const failureCount = results.length - successCount;
       
       if (successCount > 0) {
-        toast.success(`Successfully deleted ${successCount} breakdown report(s)`);
+        toast.success(t("breakdownDetails.successfullyDeletedBreakdownReports", { count: successCount }));
         setSelectedRows([]);
         await fetchBreakdowns(); // Refresh the data
       }
@@ -102,18 +104,18 @@ const ReportsBreakdown = () => {
         const failedResults = results.filter(r => r.status === 'rejected' || !r.value.data?.success);
         const errorMessages = failedResults.map(r => {
           if (r.status === 'rejected') {
-            return r.reason?.response?.data?.details || r.reason?.message || 'Unknown error';
+            return r.reason?.response?.data?.details || r.reason?.message || t("breakdownDetails.unknownError");
           }
-          return r.value.data?.details || r.value.data?.error || 'Failed to delete';
+          return r.value.data?.details || r.value.data?.error || t("breakdownDetails.failedToDeleteGeneric");
         });
         
-        toast.error(`Failed to delete ${failureCount} report(s): ${errorMessages[0]}`);
+        toast.error(t("breakdownDetails.failedToDeleteReportsCount", { count: failureCount, message: errorMessages[0] }));
       }
       
       return successCount > 0;
     } catch (err) {
       console.error("Error deleting breakdown reports:", err);
-      const errorMessage = err.response?.data?.details || err.response?.data?.error || err.message || "Failed to delete breakdown reports";
+      const errorMessage = err.response?.data?.details || err.response?.data?.error || err.message || t("breakdownDetails.failedToDeleteBreakdownReports");
       toast.error(errorMessage);
       return false;
     }
@@ -210,12 +212,17 @@ const ReportsBreakdown = () => {
           const filtered = filterData(data, filterValues, visibleColumns);
           const sorted = sortData(filtered);
           if (!isLoading && sorted.length === 0) {
+            const colSpan = visibleColumns.filter((col) => col.visible).length + (showActions ? 1 : 0);
             return (
-              <div className="text-center py-16">
-                <p className="text-xl font-semibold text-gray-800">
-                  No data found
-                </p>
-              </div>
+              <tr>
+                <td colSpan={colSpan} className="py-16">
+                  <div className="flex flex-col items-center justify-center w-full">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t("common.noDataFound")}
+                    </p>
+                  </div>
+                </td>
+              </tr>
             );
           }
           return (

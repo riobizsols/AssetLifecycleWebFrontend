@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import ReportLayout from "../../components/reportModels/ReportLayout";
 import { useReportState } from "../../components/reportModels/useReportState";
@@ -87,7 +87,7 @@ export default function QAAuditReport() {
         }
       } catch (error) {
         console.error("Error fetching filter options:", error);
-        toast.error("Failed to load filter options");
+        toast.error(t("reports.qaAuditReport.failedToLoadFilterOptions"));
       }
     };
 
@@ -159,11 +159,11 @@ export default function QAAuditReport() {
         setDocuments(maintenanceDocs);
         
         if (maintenanceDocs.length === 0) {
-          toast("No maintenance documents found for the selected filters", { icon: 'ℹ️' });
+          toast(t("reports.qaAuditReport.noMaintenanceDocumentsFound"), { icon: 'ℹ️' });
         }
       } catch (error) {
         console.error("Error fetching documents:", error);
-        toast.error("Failed to fetch documents");
+        toast.error(t("reports.qaAuditReport.failedToFetchDocuments"));
         setDocuments([]);
       } finally {
         setLoadingDocuments(false);
@@ -489,7 +489,7 @@ export default function QAAuditReport() {
           fileName: fileName
         });
         
-        toast.success("Document download started");
+        toast.success(t("reports.qaAuditReport.documentDownloadStarted"));
       } else if (convertableExtensions.includes(fileExtension)) {
         try {
           // Request file content directly from backend (avoids CORS issues with presigned URLs)
@@ -548,7 +548,7 @@ export default function QAAuditReport() {
               pdfFileName = await convertImageToPdf(fileContent, fileName);
             }
             
-            toast.success(`${fileExtension.toUpperCase()} converted to PDF and downloaded`);
+            toast.success(t("reports.qaAuditReport.convertedToPdfAndDownloaded", { format: fileExtension.toUpperCase() }));
             
             await recordActionByNameWithFetch("Download Maintenance Document", {
               documentId: doc.id,
@@ -577,7 +577,7 @@ export default function QAAuditReport() {
               pdfFileName = await convertImageToPdf(contentResponse.data.content, fileName);
             }
             
-            toast.success(`${fileExtension.toUpperCase()} converted to PDF and downloaded`);
+            toast.success(t("reports.qaAuditReport.convertedToPdfAndDownloaded", { format: fileExtension.toUpperCase() }));
             
             await recordActionByNameWithFetch("Download Maintenance Document", {
               documentId: doc.id,
@@ -617,7 +617,7 @@ export default function QAAuditReport() {
             error: conversionError.message
           });
           
-          toast.success("Document download started");
+          toast.success(t("reports.qaAuditReport.documentDownloadStarted"));
         }
       } else {
         // For other file types, download as-is
@@ -628,11 +628,11 @@ export default function QAAuditReport() {
           fileName: fileName
         });
         
-        toast.success("Document download started");
+        toast.success(t("reports.qaAuditReport.documentDownloadStarted"));
       }
     } catch (error) {
       console.error("Error downloading document:", error);
-      toast.error("Failed to download document");
+      toast.error(t("reports.qaAuditReport.failedToDownloadDocument"));
       } finally {
       setLoadingDocuments(false);
     }
@@ -641,7 +641,7 @@ export default function QAAuditReport() {
   // Download all documents as a zip file
   const handleDownloadAllDocuments = async () => {
     if (documents.length === 0) {
-      toast.error("No documents to download");
+      toast.error(t("reports.qaAuditReport.noDocumentsToDownload"));
       return;
     }
 
@@ -652,7 +652,7 @@ export default function QAAuditReport() {
       try {
         JSZipModule = await import('jszip');
       } catch (importError) {
-        console.log("JSZip not available, downloading documents individually");
+        console.log(t("reports.qaAuditReport.jsZipNotAvailable"));
         // Fallback to individual downloads
         let downloadedCount = 0;
         let failedCount = 0;
@@ -723,7 +723,7 @@ export default function QAAuditReport() {
           method: "individual"
         });
 
-        toast.success(`Downloaded ${downloadedCount} document(s) individually${failedCount > 0 ? ` (${failedCount} failed)` : ''}`);
+        toast.success(t("reports.qaAuditReport.downloadedIndividually", { count: downloadedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }));
         return;
       }
 
@@ -934,13 +934,13 @@ export default function QAAuditReport() {
           failed: failedCount
       });
       
-        toast.success(`Downloaded ${downloadedCount} document(s)${failedCount > 0 ? ` (${failedCount} failed)` : ''}`);
+        toast.success(t("reports.qaAuditReport.downloadedCount", { count: downloadedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }));
       } else {
-        toast.error("Failed to download any documents");
+        toast.error(t("reports.qaAuditReport.failedToDownloadAny"));
       }
     } catch (error) {
       console.error("Error downloading documents:", error);
-      toast.error("Failed to download documents");
+      toast.error(t("reports.qaAuditReport.failedToDownloadDocuments"));
     } finally {
       setLoadingDocuments(false);
     }
@@ -949,13 +949,13 @@ export default function QAAuditReport() {
   // Download all documents as a single merged PDF
   const handleDownloadAllAsSinglePdf = async () => {
     if (documents.length === 0) {
-      toast.error("No documents to download");
+      toast.error(t("reports.qaAuditReport.noDocumentsToDownload"));
       return;
     }
 
     try {
       setLoadingDocuments(true);
-      toast.loading(`Converting ${documents.length} document(s) to PDF...`);
+      toast.loading(t("reports.qaAuditReport.convertingToPdf", { count: documents.length }));
 
       const mergedPdf = await PDFDocument.create();
       const convertableExtensions = ['csv', 'txt', 'xlsx', 'xls', 'jpg', 'jpeg', 'png'];
@@ -1197,7 +1197,7 @@ export default function QAAuditReport() {
         window.URL.revokeObjectURL(url);
 
         toast.dismiss();
-        toast.success(`Merged ${processedCount} document(s) into single PDF${failedCount > 0 ? ` (${failedCount} failed)` : ''}`);
+        toast.success(t("reports.qaAuditReport.mergedIntoSinglePdf", { count: processedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }));
 
         await recordActionByNameWithFetch("Download All Maintenance Documents as Single PDF", {
           count: processedCount,
@@ -1205,12 +1205,12 @@ export default function QAAuditReport() {
         });
       } else {
         toast.dismiss();
-        toast.error("No documents could be processed");
+        toast.error(t("reports.qaAuditReport.noDocumentsProcessed"));
       }
     } catch (error) {
       console.error("Error merging documents:", error);
       toast.dismiss();
-      toast.error("Failed to merge documents");
+      toast.error(t("reports.qaAuditReport.failedToMergeDocuments"));
     } finally {
       setLoadingDocuments(false);
     }
@@ -1243,14 +1243,14 @@ export default function QAAuditReport() {
   // Handle preview - merge all documents into a single PDF and show in modal
   const handlePreviewReport = async () => {
     if (documents.length === 0) {
-      toast.error("No documents to preview. Please apply filters to fetch documents.");
+      toast.error(t("reports.qaAuditReport.noDocumentsToPreview"));
       return;
     }
 
     // Warn if too many documents (performance concern)
     if (documents.length > 50) {
       const proceed = window.confirm(
-        `You are about to preview ${documents.length} documents. This may take a while. Do you want to continue?`
+        t("reports.qaAuditReport.previewManyConfirm", { count: documents.length })
       );
       if (!proceed) return;
     }
@@ -1258,9 +1258,9 @@ export default function QAAuditReport() {
     try {
       setLoadingPreview(true);
       setShowPreviewModal(true);
-      setPreviewProgress({ current: 0, total: documents.length, currentFile: 'Initializing...' });
+      setPreviewProgress({ current: 0, total: documents.length, currentFile: t("reports.qaAuditReport.initializing") });
       
-      const loadingToast = toast.loading(`Preparing ${documents.length} document(s) for preview...`);
+      const loadingToast = toast.loading(t("reports.qaAuditReport.preparingForPreview", { count: documents.length }));
 
       const mergedPdf = await PDFDocument.create();
       const convertableExtensions = ['csv', 'txt', 'xlsx', 'xls', 'jpg', 'jpeg', 'png'];
@@ -1292,7 +1292,7 @@ export default function QAAuditReport() {
           
           // Update toast with progress
           toast.loading(
-            `Processing ${processedCount + 1}/${documents.length}: ${fileName.substring(0, 30)}...`,
+            t("reports.qaAuditReport.processingProgress", { current: processedCount + 1, total: documents.length, fileName: fileName.substring(0, 30) }),
             { id: loadingToast }
           );
 
@@ -1334,7 +1334,7 @@ export default function QAAuditReport() {
           
           // Update toast with progress
           toast.loading(
-            `Converting ${processedCount + 1}/${documents.length}: ${fileName.substring(0, 30)}...`,
+            t("reports.qaAuditReport.convertingProgress", { current: processedCount + 1, total: documents.length, fileName: fileName.substring(0, 30) }),
             { id: loadingToast }
           );
 
@@ -1529,9 +1529,9 @@ export default function QAAuditReport() {
         setPreviewProgress({ 
           current: documents.length, 
           total: documents.length, 
-          currentFile: 'Finalizing preview...' 
+          currentFile: t("reports.qaAuditReport.finalizingPreview") 
         });
-        toast.loading('Finalizing preview...', { id: loadingToast });
+        toast.loading(t("reports.qaAuditReport.finalizingPreview"), { id: loadingToast });
         
         const mergedPdfBytes = await mergedPdf.save();
         const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
@@ -1539,16 +1539,16 @@ export default function QAAuditReport() {
         setPreviewPdfUrl(url);
         setPreviewProgress({ current: documents.length, total: documents.length, currentFile: '' });
         toast.dismiss(loadingToast);
-        toast.success(`Preview ready: ${processedCount} document(s)${failedCount > 0 ? ` (${failedCount} failed)` : ''}`);
+        toast.success(t("reports.qaAuditReport.previewReady", { count: processedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }));
       } else {
         toast.dismiss(loadingToast);
-        toast.error("No documents could be processed for preview");
+        toast.error(t("reports.qaAuditReport.noDocumentsProcessedForPreview"));
         setShowPreviewModal(false);
       }
     } catch (error) {
       console.error("Error preparing preview:", error);
       toast.dismiss();
-      toast.error("Failed to prepare preview");
+      toast.error(t("reports.qaAuditReport.failedToPreparePreview"));
       setShowPreviewModal(false);
       setPreviewProgress({ current: 0, total: 0, currentFile: '' });
     } finally {
@@ -1594,9 +1594,9 @@ export default function QAAuditReport() {
         <div className="bg-white shadow-sm border border-slate-200 p-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="text-lg font-semibold">Documents</div>
+              <div className="text-lg font-semibold">{t("reports.qaAuditReport.documents")}</div>
               <div className="text-sm text-slate-500">
-                {documents.length} document(s) available
+                {t("reports.qaAuditReport.documentsAvailable", { count: documents.length })}
               </div>
             </div>
             <div className="relative" ref={downloadDropdownRef}>
@@ -1606,7 +1606,7 @@ export default function QAAuditReport() {
                 className="flex items-center gap-2 px-4 py-2 bg-[#143d65] text-white rounded-lg hover:bg-[#0f2d4a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Download className="w-4 h-4" />
-                Download
+                {t("reports.qaAuditReport.download")}
                 <ChevronDown className={`w-4 h-4 transition-transform ${downloadDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
               
@@ -1621,7 +1621,7 @@ export default function QAAuditReport() {
                     className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     <FileText className="w-4 h-4" />
-                    PDF
+                    {t("reports.qaAuditReport.pdf")}
                   </button>
                   <button
                     onClick={() => {
@@ -1632,7 +1632,7 @@ export default function QAAuditReport() {
                     className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border-t border-slate-200"
             >
               <Download className="w-4 h-4" />
-                    Zip
+                    {t("reports.qaAuditReport.zip")}
             </button>
           </div>
               )}
@@ -1654,12 +1654,12 @@ export default function QAAuditReport() {
                   )}
                   <div className="flex-1">
                     <div className="font-medium text-slate-900">
-                      {doc.asset_name || doc.asset_type_name || 'Asset Type Document'} {doc.asset_id && `(${doc.asset_id})`}
+                      {doc.asset_name || doc.asset_type_name || t("reports.qaAuditReport.assetTypeDocument")} {doc.asset_id && `(${doc.asset_id})`}
                       {doc.asset_type_name && !doc.asset_id && ` (${doc.asset_type_name})`}
                     </div>
                     <div className="text-sm text-slate-500">
-                      {doc.file_name || `Document ${doc.id}`}
-                      {` • ${doc.date ? new Date(doc.date).toLocaleDateString() : 'N/A'}`}
+                      {doc.file_name || t("reports.qaAuditReport.documentId", { id: doc.id })}
+                      {` • ${doc.date ? new Date(doc.date).toLocaleDateString() : t("reports.qaAuditReport.notAvailable")}`}
                       {doc.certificate_type && ` • ${doc.certificate_type}`}
                     </div>
                   </div>
@@ -1670,7 +1670,7 @@ export default function QAAuditReport() {
                   className="flex items-center gap-2 px-3 py-1.5 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Download className="w-4 h-4" />
-                  Download
+                  {t("reports.qaAuditReport.download")}
                 </button>
               </div>
             ))}
@@ -1711,8 +1711,8 @@ export default function QAAuditReport() {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-200">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">Document Preview</h2>
-                <p className="text-sm text-slate-500">{documents.length} document(s) merged</p>
+                <h2 className="text-xl font-semibold text-slate-900">{t("reports.qaAuditReport.documentPreview")}</h2>
+                <p className="text-sm text-slate-500">{t("reports.qaAuditReport.documentsMerged", { count: documents.length })}</p>
               </div>
               <button
                 onClick={handleClosePreview}
@@ -1728,11 +1728,11 @@ export default function QAAuditReport() {
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#143d65] mx-auto mb-4"></div>
-                    <p className="text-slate-600 font-medium mb-2">Preparing preview...</p>
+                    <p className="text-slate-600 font-medium mb-2">{t("reports.qaAuditReport.preparingPreview")}</p>
                     {previewProgress.total > 0 && (
                       <div className="space-y-2">
                         <p className="text-sm text-slate-500">
-                          Processing {previewProgress.current} of {previewProgress.total} documents
+                          {t("reports.qaAuditReport.processingOfTotal", { current: previewProgress.current, total: previewProgress.total })}
                         </p>
                         <div className="w-64 bg-slate-200 rounded-full h-2 mx-auto">
                           <div 
@@ -1753,11 +1753,11 @@ export default function QAAuditReport() {
                 <iframe
                   src={previewPdfUrl}
                   className="w-full h-full border-0"
-                  title="Document Preview"
+                  title={t("reports.qaAuditReport.documentPreview")}
                 />
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-slate-500">No preview available</p>
+                  <p className="text-slate-500">{t("reports.qaAuditReport.noPreviewAvailable")}</p>
                 </div>
               )}
             </div>

@@ -34,8 +34,8 @@ export default function Header() {
     "/report-breakdown": { title: t('navigation.reportBreakdown'), subtitle: "" },
     "/employee-report-breakdown": { title: t('navigation.employeeReportBreakdown'), subtitle: "" },
     "/dashboard": { title: t('navigation.dashboard'), subtitle: "" },
-    "/technician-certificates": { title: "Technician Certificates", subtitle: "" },
-    "/tech-cert-approvals": { title: "Technician Certificate Approvals", subtitle: "" },
+    "/technician-certificates": { title: t('technicianCertificates.title'), subtitle: "" },
+    "/tech-cert-approvals": { title: t('technicianCertificates.approvalsTitle'), subtitle: "" },
     "/assets/add": { title: t('assets.addAsset'), subtitle: "" },
     "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },
     "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },
@@ -43,6 +43,7 @@ export default function Header() {
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
     "/master-data/inspection-checklists": { title: t('masterDataTitles.inspectionChecklists'), subtitle: "" },
     "/master-data/inspection-frequency": { title: t('masterDataTitles.inspectionFrequency'), subtitle: "" },
+    "/master-data/uploads": { title: t('bulkUpload.title'), subtitle: "" },
     "/master-data/asset-type-checklist-mapping/create": { title: "", subtitle: "" },
     "/master-data/asset-type-checklist-mapping": { title: t('navigation.assetTypeChecklistMapping'), subtitle: "" },
     "/group-asset": { title: t('navigation.groupAsset'), subtitle: "" },
@@ -61,6 +62,10 @@ export default function Header() {
     "/scrap-sales": {
       title: t('scrapSales.title'),
       subtitle: t('scrapSales.subtitle'),
+    },
+    "/scrap-sales/create": {
+      title: t('scrapSales.createScrapSale'),
+      subtitle: "",
     },
     "/scrap-assets": {
       title: t('scrapAssets.title'),
@@ -99,6 +104,8 @@ export default function Header() {
       title: t('auditLogs.config'),
       subtitle: t('auditLogs.configSubtitle'),
     },
+    "/certifications": { title: t('navigation.certifications'), subtitle: "" },
+    "/vendor-renewal-approval": { title: t('vendorRenewalApproval.title'), subtitle: "" },
     "/master-data/roles": {
       title: t('masterDataTitles.roleManagement'),
     },

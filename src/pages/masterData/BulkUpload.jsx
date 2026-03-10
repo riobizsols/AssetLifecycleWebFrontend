@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Upload, CheckCircle, AlertCircle, FileText, Users, Package, ChevronDown, XCircle, AlertTriangle, Info } from 'lucide-react';
 import API from '../../lib/axios';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 // Helper functions for localStorage
 const saveToStorage = (key, data) => {
@@ -34,7 +35,9 @@ const clearStorage = () => {
 };
 
 // Custom Asset Type Dropdown Component (no portal, stays in place)
-const AssetTypeDropdown = ({ options, value, onChange, placeholder = "Select an asset type...", disabled = false }) => {
+const AssetTypeDropdown = ({ options, value, onChange, placeholder, disabled = false }) => {
+  const { t } = useLanguage();
+  const placeholders = placeholder ?? t('bulkUpload.selectAssetTypePlaceholder');
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = React.useRef(null);
@@ -62,7 +65,7 @@ const AssetTypeDropdown = ({ options, value, onChange, placeholder = "Select an 
 
   // Get display value for selected option
   const selectedOption = options.find(option => option.asset_type_id === value);
-  const displayValue = selectedOption ? selectedOption.text : placeholder;
+  const displayValue = selectedOption ? selectedOption.text : placeholders;
 
   return (
     <div className="relative w-full">
@@ -91,7 +94,7 @@ const AssetTypeDropdown = ({ options, value, onChange, placeholder = "Select an 
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search asset types..."
+              placeholder={t('bulkUpload.searchAssetTypes')}
               className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               autoFocus
             />
@@ -115,7 +118,7 @@ const AssetTypeDropdown = ({ options, value, onChange, placeholder = "Select an 
               </button>
             ))}
             {filteredOptions.length === 0 && (
-              <div className="px-3 py-2 text-gray-500">No asset types found</div>
+              <div className="px-3 py-2 text-gray-500">{t('bulkUpload.noAssetTypesFound')}</div>
             )}
           </div>
         </div>
@@ -126,6 +129,7 @@ const AssetTypeDropdown = ({ options, value, onChange, placeholder = "Select an 
 
 // Error Display Component
 const ErrorDisplay = ({ errors, onClear }) => {
+  const { t } = useLanguage();
   if (!errors || errors.length === 0) return null;
 
   return (
@@ -134,7 +138,7 @@ const ErrorDisplay = ({ errors, onClear }) => {
         <div className="flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-semibold text-red-800 text-sm">Validation Errors:</h4>
+            <h4 className="font-semibold text-red-800 text-sm">{t('bulkUpload.validationErrors')}</h4>
             <div className="mt-2 space-y-1">
               {errors.slice(0, 10).map((error, index) => (
                 <div key={index} className="text-sm text-red-700">
@@ -143,7 +147,7 @@ const ErrorDisplay = ({ errors, onClear }) => {
               ))}
               {errors.length > 10 && (
                 <div className="text-sm text-red-600 font-medium">
-                  ... and {errors.length - 10} more errors
+                  {t('bulkUpload.andMoreErrors', { count: errors.length - 10 })}
                 </div>
               )}
             </div>
@@ -154,7 +158,7 @@ const ErrorDisplay = ({ errors, onClear }) => {
             onClick={onClear}
             className="text-red-600 hover:text-red-800 text-sm font-medium ml-4"
           >
-            Clear
+            {t('bulkUpload.clear')}
           </button>
         )}
       </div>
@@ -163,6 +167,7 @@ const ErrorDisplay = ({ errors, onClear }) => {
 };
 
 const Roles = () => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState(loadFromStorage('activeTab', 'assets'));
   const [uploadStatus, setUploadStatus] = useState(loadFromStorage('uploadStatus', {}));
   const [trialResults, setTrialResults] = useState(loadFromStorage('trialResults', {}));
@@ -230,9 +235,9 @@ const Roles = () => {
   }, []);
 
   const tabs = [
-    { id: 'assets', label: 'Assets', icon: Package, color: 'bg-blue-500' },
-    { id: 'assetTypes', label: 'Asset Types', icon: FileText, color: 'bg-green-500' },
-    { id: 'employees', label: 'Employees', icon: Users, color: 'bg-purple-500' }
+    { id: 'assets', label: t('bulkUpload.tabAssets'), icon: Package, color: 'bg-blue-500' },
+    { id: 'assetTypes', label: t('bulkUpload.tabAssetTypes'), icon: FileText, color: 'bg-green-500' },
+    { id: 'employees', label: t('bulkUpload.tabEmployees'), icon: Users, color: 'bg-purple-500' }
   ];
 
   // Fetch available properties for asset types
@@ -287,7 +292,7 @@ const Roles = () => {
     switch (type) {
       case 'assets':
         if (!selectedAssetType) {
-          alert('Please select an asset type first');
+          alert(t('bulkUpload.pleaseSelectAssetTypeFirst'));
           return;
         }
         csvContent = generateAssetsCSV(selectedAssetType.asset_type_id, assetTypeProperties);
@@ -1674,8 +1679,8 @@ const Roles = () => {
           )}
           <span className="font-medium">
             {isValid 
-              ? 'File Uploaded & Validated Successfully' 
-              : 'File Uploaded with Validation Errors'
+              ? t('bulkUpload.fileUploadedValidatedSuccessfully') 
+              : t('bulkUpload.fileUploadedWithValidationErrors')
             }
           </span>
         </div>
@@ -1689,19 +1694,19 @@ const Roles = () => {
             <>
               <div>Total Rows: {validationResult.totalRows}</div>
               <div>Valid Rows: {validationResult.validRows}</div>
-              <div>Validation Errors: {validationResult.errors.length}</div>
+              <div>{t('bulkUpload.validationErrors')} {validationResult.errors.length}</div>
             </>
           )}
         </div>
         {validationResult && !isValid && (
           <div className="mt-2 text-xs text-red-600">
-            <div className="font-medium">Validation Errors:</div>
+            <div className="font-medium">{t('bulkUpload.validationErrors')}</div>
             <div className="max-h-20 overflow-y-auto">
               {validationResult.errors.slice(0, 5).map((error, index) => (
                 <div key={index}>• {error}</div>
               ))}
               {validationResult.errors.length > 5 && (
-                <div>... and {validationResult.errors.length - 5} more errors</div>
+                <div>{t('bulkUpload.andMoreErrors', { count: validationResult.errors.length - 5 })}</div>
               )}
             </div>
           </div>
@@ -2254,8 +2259,8 @@ const Roles = () => {
       <div className="p-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Bulk Upload</h1>
-          <p className="text-gray-600 mt-1">Upload data in bulk using CSV files for Assets, Asset Types, and Employees</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('bulkUpload.title')}</h1>
+          <p className="text-gray-600 mt-1">{t('bulkUpload.subtitle')}</p>
         </div>
 
         {/* Main Content Card */}
@@ -2291,7 +2296,7 @@ const Roles = () => {
               <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                  <span className="text-lg font-medium">Processing...</span>
+                  <span className="text-lg font-medium">{t('bulkUpload.processing')}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
@@ -2300,7 +2305,7 @@ const Roles = () => {
                   ></div>
                 </div>
                 <p className="text-sm text-gray-600 mt-2">
-                  {validationProgress < 50 ? 'Validating CSV data...' : 'Running trial upload...'}
+                  {validationProgress < 50 ? t('bulkUpload.validatingCsv') : t('bulkUpload.runningTrialUpload')}
                 </p>
               </div>
             </div>
@@ -2316,6 +2321,7 @@ const Roles = () => {
 
 // Assets Tab Component
 const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, commitResults, onClearErrors, onClearTrialErrors, onClearCommitResults, selectedAssetType, assetTypeProperties, onAssetTypeSelection, fetchAssetTypes }) => {
+  const { t } = useLanguage();
   const [selectedFile, setSelectedFile] = useState(null);
   const [assetTypes, setAssetTypes] = useState([]);
   const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
@@ -2349,21 +2355,17 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-blue-900 mb-2">Assets Bulk Upload</h3>
-        <p className="text-blue-700 text-sm">
-          Upload assets in bulk using CSV format. Select an asset type and download the sample file with the required format and properties.
-        </p>
+        <h3 className="text-lg font-semibold text-blue-900 mb-2">{t('bulkUpload.assetsBulkUpload')}</h3>
+        <p className="text-blue-700 text-sm">{t('bulkUpload.assetsIntro')}</p>
       </div>
 
       {/* Step 1: Download Sample */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Download className="w-5 h-5 text-blue-500" />
-          Step 1: Download Sample File
+          {t('bulkUpload.step1DownloadSample')}
         </h4>
-        <p className="text-gray-600 text-sm mb-4">
-          Select an asset type to generate a CSV template with the required format and properties.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">{t('bulkUpload.selectAssetTypeToGenerate')}</p>
         
         <div className="space-y-4">
           <div className="flex items-center gap-4">
@@ -2371,7 +2373,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
               {loadingAssetTypes ? (
                 <div className="flex items-center gap-2 text-gray-600">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                  <span>Loading asset types...</span>
+                  <span>{t('bulkUpload.loadingAssetTypes')}</span>
                 </div>
               ) : (
                 <AssetTypeDropdown
@@ -2383,7 +2385,6 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
                       onAssetTypeSelection(assetType);
                     }
                   }}
-                  placeholder="Select an asset type..."
                 />
               )}
             </div>
@@ -2394,7 +2395,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
               className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap"
         >
           <Download className="w-4 h-4" />
-          Download Sample CSV
+          {t('bulkUpload.downloadSampleCsv')}
         </button>
           </div>
           
@@ -2402,11 +2403,11 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-center gap-2 text-green-800">
                 <CheckCircle className="w-4 h-4" />
-                <span className="font-medium">Selected: {selectedAssetType.text}</span>
+                <span className="font-medium">{t('bulkUpload.selectedLabel', { name: selectedAssetType.text })}</span>
               </div>
               {assetTypeProperties.length > 0 && (
                 <div className="mt-2 text-sm text-green-700">
-                  <span className="font-medium">Properties ({assetTypeProperties.length}):</span>
+                  <span className="font-medium">{t('bulkUpload.propertiesCount', { count: assetTypeProperties.length })}</span>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {assetTypeProperties.map((prop, index) => (
                       <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
@@ -2425,7 +2426,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Upload className="w-5 h-5 text-green-500" />
-          Step 2: Upload Your File
+          {t('bulkUpload.step2UploadFile')}
         </h4>
         <div className="space-y-4">
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -2442,7 +2443,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
             >
               <Upload className="w-8 h-8 text-gray-400" />
               <span className="text-sm text-gray-600">
-                {selectedFile ? selectedFile.name : 'Click to select CSV file'}
+                {selectedFile ? selectedFile.name : t('bulkUpload.clickToSelectCsv')}
               </span>
             </label>
           </div>
@@ -2450,7 +2451,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
           {selectedFile && (
             <div className="flex items-center gap-2 text-sm text-green-600">
               <CheckCircle className="w-4 h-4" />
-              File selected: {selectedFile.name}
+              {t('bulkUpload.fileSelected', { name: selectedFile.name })}
             </div>
           )}
         </div>
@@ -2520,7 +2521,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
             {/* Show warning messages if any */}
             {trialResults.warningMessages && trialResults.warningMessages.length > 0 && (
               <div className="mt-4">
-                <h6 className="font-semibold text-yellow-600 mb-2">Warnings:</h6>
+                <h6 className="font-semibold text-yellow-600 mb-2">{t('bulkUpload.warnings')}</h6>
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <div className="space-y-1 text-sm text-yellow-700">
                     {trialResults.warningMessages.map((warning, index) => (
@@ -2537,7 +2538,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
             {/* Show info messages if any */}
             {trialResults.infoMessages && trialResults.infoMessages.length > 0 && (
               <div className="mt-4">
-                <h6 className="font-semibold text-blue-600 mb-2">Information:</h6>
+                <h6 className="font-semibold text-blue-600 mb-2">{t('bulkUpload.information')}</h6>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <div className="space-y-1 text-sm text-blue-700">
                     {trialResults.infoMessages.map((info, index) => (
@@ -2561,18 +2562,16 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <CheckCircle className="w-5 h-5 text-green-500" />
-          Step 4: Commit Changes
+          {t('bulkUpload.step4Commit')}
         </h4>
-        <p className="text-gray-600 text-sm mb-4">
-          Review the trial results and commit the changes to save them to the database.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">{t('bulkUpload.reviewAndCommit')}</p>
         <button
           onClick={onCommit}
           disabled={!trialResults || Object.keys(trialResults).length === 0}
           className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <CheckCircle className="w-4 h-4" />
-          Commit Changes
+          {t('bulkUpload.commitChanges')}
         </button>
         
         {/* Commit Results */}
@@ -2582,33 +2581,33 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  Commit Successful
+                  {t('bulkUpload.commitSuccessful')}
                 </h5>
                 <div className="text-green-700 text-sm space-y-1">
-                  <div>• Inserted: {commitResults.results.inserted} records</div>
-                  <div>• Updated: {commitResults.results.updated} records</div>
-                  <div>• Errors: {commitResults.results.errors} records</div>
-                  <div>• Total Processed: {commitResults.results.totalProcessed} records</div>
+                  <div>• {t('bulkUpload.insertedRecords', { count: commitResults.results.inserted })}</div>
+                  <div>• {t('bulkUpload.updatedRecordsCount', { count: commitResults.results.updated })}</div>
+                  <div>• {t('bulkUpload.errorsRecords', { count: commitResults.results.errors })}</div>
+                  <div>• {t('bulkUpload.totalProcessedRecords', { count: commitResults.results.totalProcessed })}</div>
                 </div>
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
                 >
-                  Clear Results
+                  {t('bulkUpload.clearResults')}
                 </button>
               </div>
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <h5 className="text-red-800 font-semibold mb-2 flex items-center gap-2">
                   <XCircle className="w-4 h-4" />
-                  Commit Failed
+                  {t('bulkUpload.commitFailed')}
                 </h5>
                 <p className="text-red-700 text-sm">{commitResults.error}</p>
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
                 >
-                  Clear Error
+                  {t('bulkUpload.clearError')}
                 </button>
               </div>
             )}
@@ -2621,6 +2620,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
 
 // Asset Types Tab Component
 const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, commitResults, onClearErrors, onClearTrialErrors, onClearCommitResults }) => {
+  const { t } = useLanguage();
   const [selectedFile, setSelectedFile] = useState(null);
 
   const handleFileChange = (e) => {
@@ -2634,30 +2634,26 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
   return (
     <div className="space-y-6">
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-green-900 mb-2">Asset Types Bulk Upload</h3>
-        <p className="text-green-700 text-sm">
-          Upload asset types in bulk using CSV format. Download the sample file to see the required format.
-        </p>
+        <h3 className="text-lg font-semibold text-green-900 mb-2">{t('bulkUpload.assetTypesBulkUpload')}</h3>
+        <p className="text-green-700 text-sm">{t('bulkUpload.assetTypesIntro')}</p>
       </div>
 
       {/* Step 1: Download Sample */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Download className="w-5 h-5 text-green-500" />
-          Step 1: Download Sample File
+          {t('bulkUpload.step1DownloadSample')}
         </h4>
-        <p className="text-gray-600 text-sm mb-4">
-          Download the sample CSV file to understand the required format. Each asset type row can specify its own properties.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">{t('bulkUpload.step1AssetTypesDesc')}</p>
         
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h6 className="text-sm font-semibold text-yellow-800 mb-2">Important Notes:</h6>
+          <h6 className="text-sm font-semibold text-yellow-800 mb-2">{t('bulkUpload.importantNotes')}</h6>
           <ul className="text-sm text-yellow-700 space-y-1">
-            <li>• <strong>asset_type_id</strong>: Unique identifier (e.g., "AT001", "AT002") - used for upsert operations</li>
-            <li>• <strong>parent_asset_type_id</strong>: Can be either the asset type ID (e.g., "AT001") or the asset type name (e.g., "Laptops")</li>
-            <li>• <strong>properties</strong>: Use semicolon (;) to separate multiple properties</li>
-            <li>• <strong>is_child</strong>: Set to "true" if this is a child asset type, "false" for parent</li>
-            <li>• <strong>Upsert Logic</strong>: If asset_type_id exists, record will be updated; otherwise, new record will be created</li>
+            <li>• {t('bulkUpload.noteAssetTypeId')}</li>
+            <li>• {t('bulkUpload.noteParentAssetTypeId')}</li>
+            <li>• {t('bulkUpload.noteProperties')}</li>
+            <li>• {t('bulkUpload.noteIsChild')}</li>
+            <li>• {t('bulkUpload.noteUpsertLogic')}</li>
           </ul>
         </div>
         
@@ -2666,7 +2662,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
           className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
-          Download Sample CSV
+          {t('bulkUpload.downloadSampleCsv')}
         </button>
       </div>
 
@@ -2674,7 +2670,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Upload className="w-5 h-5 text-green-500" />
-          Step 2: Upload Your File
+          {t('bulkUpload.step2UploadFile')}
         </h4>
         <div className="space-y-4">
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -2691,7 +2687,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
             >
               <Upload className="w-8 h-8 text-gray-400" />
               <span className="text-sm text-gray-600">
-                {selectedFile ? selectedFile.name : 'Click to select CSV file'}
+                {selectedFile ? selectedFile.name : t('bulkUpload.clickToSelectCsv')}
               </span>
             </label>
           </div>
@@ -2699,7 +2695,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
           {selectedFile && (
             <div className="flex items-center gap-2 text-sm text-green-600">
               <CheckCircle className="w-4 h-4" />
-              File selected: {selectedFile.name}
+              {t('bulkUpload.fileSelected', { name: selectedFile.name })}
             </div>
           )}
         </div>
@@ -2712,47 +2708,45 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-yellow-500" />
-          Step 3: Trial Upload
+          {t('bulkUpload.step3TrialUpload')}
         </h4>
-        <p className="text-gray-600 text-sm mb-4">
-          Run a trial upload to validate your data and see what will be inserted or updated.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">{t('bulkUpload.reviewTrialAndCommit')}</p>
         <button
           onClick={onTrialUpload}
           disabled={!selectedFile}
           className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <AlertCircle className="w-4 h-4" />
-          Run Trial Upload
+          {t('bulkUpload.runTrialUpload')}
         </button>
 
         {/* Trial Results */}
         {trialResults && trialResults.totalRows !== undefined && (
           <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h5 className="font-semibold text-gray-900 mb-2">Trial Results:</h5>
+            <h5 className="font-semibold text-gray-900 mb-2">{t('bulkUpload.trialResults')}</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>New Records: {trialResults.newRecords || 0}</span>
+                <span>{t('bulkUpload.newRecords', { count: trialResults.newRecords || 0 })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-blue-500" />
-                <span>Updated Records: {trialResults.updatedRecords || 0}</span>
+                <span>{t('bulkUpload.updatedRecords', { count: trialResults.updatedRecords || 0 })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-500" />
-                <span>Errors: {trialResults.errors || 0}</span>
+                <span>{t('bulkUpload.errorsCount', { count: trialResults.errors || 0 })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-gray-500" />
-                <span>Total Processed: {trialResults.totalRows || 0}</span>
+                <span>{t('bulkUpload.totalProcessed', { count: trialResults.totalRows || 0 })}</span>
               </div>
             </div>
             
             {/* Show validation errors if any */}
             {trialResults.validationErrors && trialResults.validationErrors.length > 0 && (
               <div className="mt-4">
-                <h6 className="font-semibold text-red-600 mb-2">Validation Errors:</h6>
+                <h6 className="font-semibold text-red-600 mb-2">{t('bulkUpload.validationErrors')}</h6>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <div className="space-y-1 text-sm text-red-700">
                     {trialResults.validationErrors.map((error, index) => (
@@ -2769,7 +2763,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
             {/* Show warning messages if any */}
             {trialResults.warningMessages && trialResults.warningMessages.length > 0 && (
               <div className="mt-4">
-                <h6 className="font-semibold text-yellow-600 mb-2">Warnings:</h6>
+                <h6 className="font-semibold text-yellow-600 mb-2">{t('bulkUpload.warnings')}</h6>
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <div className="space-y-1 text-sm text-yellow-700">
                     {trialResults.warningMessages.map((warning, index) => (
@@ -2786,7 +2780,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
             {/* Show info messages if any */}
             {trialResults.infoMessages && trialResults.infoMessages.length > 0 && (
               <div className="mt-4">
-                <h6 className="font-semibold text-blue-600 mb-2">Information:</h6>
+                <h6 className="font-semibold text-blue-600 mb-2">{t('bulkUpload.information')}</h6>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <div className="space-y-1 text-sm text-blue-700">
                     {trialResults.infoMessages.map((info, index) => (
@@ -2810,18 +2804,16 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <CheckCircle className="w-5 h-5 text-green-500" />
-          Step 4: Commit Changes
+          {t('bulkUpload.step4Commit')}
         </h4>
-        <p className="text-gray-600 text-sm mb-4">
-          Review the trial results and commit the changes to save them to the database.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">{t('bulkUpload.reviewAndCommit')}</p>
         <button
           onClick={onCommit}
           disabled={!trialResults || Object.keys(trialResults).length === 0}
           className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <CheckCircle className="w-4 h-4" />
-          Commit Changes
+          {t('bulkUpload.commitChanges')}
         </button>
         
         {/* Commit Results */}
@@ -2831,33 +2823,33 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  Commit Successful
+                  {t('bulkUpload.commitSuccessful')}
                 </h5>
                 <div className="text-green-700 text-sm space-y-1">
-                  <div>• Inserted: {commitResults.results.inserted} records</div>
-                  <div>• Updated: {commitResults.results.updated} records</div>
-                  <div>• Errors: {commitResults.results.errors} records</div>
-                  <div>• Total Processed: {commitResults.results.totalProcessed} records</div>
+                  <div>• {t('bulkUpload.insertedRecords', { count: commitResults.results.inserted })}</div>
+                  <div>• {t('bulkUpload.updatedRecordsCount', { count: commitResults.results.updated })}</div>
+                  <div>• {t('bulkUpload.errorsRecords', { count: commitResults.results.errors })}</div>
+                  <div>• {t('bulkUpload.totalProcessedRecords', { count: commitResults.results.totalProcessed })}</div>
                 </div>
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
                 >
-                  Clear Results
+                  {t('bulkUpload.clearResults')}
                 </button>
               </div>
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <h5 className="text-red-800 font-semibold mb-2 flex items-center gap-2">
                   <XCircle className="w-4 h-4" />
-                  Commit Failed
+                  {t('bulkUpload.commitFailed')}
                 </h5>
                 <p className="text-red-700 text-sm">{commitResults.error}</p>
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
                 >
-                  Clear Error
+                  {t('bulkUpload.clearError')}
                 </button>
               </div>
             )}
@@ -2870,6 +2862,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
 
 // Employees Tab Component
 const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, uploadStatus, trialResults, uploadErrors, trialErrors, commitResults, onClearErrors, onClearTrialErrors, onClearCommitResults }) => {
+  const { t } = useLanguage();
   const [selectedFile, setSelectedFile] = useState(null);
 
   const handleFileChange = (e) => {
@@ -2883,27 +2876,23 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
   return (
     <div className="space-y-6">
       <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-purple-900 mb-2">Employees Bulk Upload</h3>
-        <p className="text-purple-700 text-sm">
-          Upload employees in bulk using CSV format. Download the sample file to see the required format.
-        </p>
+        <h3 className="text-lg font-semibold text-purple-900 mb-2">{t('bulkUpload.employeesBulkUpload')}</h3>
+        <p className="text-purple-700 text-sm">{t('bulkUpload.employeesIntro')}</p>
       </div>
 
       {/* Step 1: Download Sample */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Download className="w-5 h-5 text-purple-500" />
-          Step 1: Download Sample File
+          {t('bulkUpload.step1DownloadSample')}
         </h4>
-        <p className="text-gray-600 text-sm mb-4">
-          Download the sample CSV file to understand the required format and mandatory fields.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">{t('bulkUpload.step1EmployeesDesc')}</p>
         <button
           onClick={onDownloadSample}
           className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
-          Download Sample CSV
+          {t('bulkUpload.downloadSampleCsv')}
         </button>
       </div>
 
@@ -2911,7 +2900,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Upload className="w-5 h-5 text-purple-500" />
-          Step 2: Upload Your File
+          {t('bulkUpload.step2UploadFile')}
         </h4>
         <div className="space-y-4">
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -2928,7 +2917,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
             >
               <Upload className="w-8 h-8 text-gray-400" />
               <span className="text-sm text-gray-600">
-                {selectedFile ? selectedFile.name : 'Click to select CSV file'}
+                {selectedFile ? selectedFile.name : t('bulkUpload.clickToSelectCsv')}
               </span>
             </label>
           </div>
@@ -2936,7 +2925,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
           {selectedFile && (
             <div className="flex items-center gap-2 text-sm text-green-600">
               <CheckCircle className="w-4 h-4" />
-              File selected: {selectedFile.name}
+              {t('bulkUpload.fileSelected', { name: selectedFile.name })}
             </div>
           )}
         </div>
@@ -2949,47 +2938,45 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-yellow-500" />
-          Step 3: Trial Upload
+          {t('bulkUpload.step3TrialUpload')}
         </h4>
-        <p className="text-gray-600 text-sm mb-4">
-          Run a trial upload to validate your data and see what will be inserted or updated.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">{t('bulkUpload.reviewTrialAndCommit')}</p>
         <button
           onClick={onTrialUpload}
           disabled={!selectedFile}
           className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <AlertCircle className="w-4 h-4" />
-          Run Trial Upload
+          {t('bulkUpload.runTrialUpload')}
         </button>
 
         {/* Trial Results */}
         {trialResults && trialResults.totalRows !== undefined && (
           <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h5 className="font-semibold text-gray-900 mb-2">Trial Results:</h5>
+            <h5 className="font-semibold text-gray-900 mb-2">{t('bulkUpload.trialResults')}</h5>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
-                <span>New Records: {trialResults.newRecords || 0}</span>
+                <span>{t('bulkUpload.newRecords', { count: trialResults.newRecords || 0 })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-blue-500" />
-                <span>Updated Records: {trialResults.updatedRecords || 0}</span>
+                <span>{t('bulkUpload.updatedRecords', { count: trialResults.updatedRecords || 0 })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-500" />
-                <span>Errors: {trialResults.errors || 0}</span>
+                <span>{t('bulkUpload.errorsCount', { count: trialResults.errors || 0 })}</span>
               </div>
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-gray-500" />
-                <span>Total Processed: {trialResults.totalRows || 0}</span>
+                <span>{t('bulkUpload.totalProcessed', { count: trialResults.totalRows || 0 })}</span>
               </div>
             </div>
             
             {/* Show validation errors if any */}
             {trialResults.validationErrors && trialResults.validationErrors.length > 0 && (
               <div className="mt-4">
-                <h6 className="font-semibold text-red-600 mb-2">Validation Errors:</h6>
+                <h6 className="font-semibold text-red-600 mb-2">{t('bulkUpload.validationErrors')}</h6>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <div className="space-y-1 text-sm text-red-700">
                     {trialResults.validationErrors.map((error, index) => (
@@ -3006,7 +2993,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
             {/* Show warning messages if any */}
             {trialResults.warningMessages && trialResults.warningMessages.length > 0 && (
               <div className="mt-4">
-                <h6 className="font-semibold text-yellow-600 mb-2">Warnings:</h6>
+                <h6 className="font-semibold text-yellow-600 mb-2">{t('bulkUpload.warnings')}</h6>
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <div className="space-y-1 text-sm text-yellow-700">
                     {trialResults.warningMessages.map((warning, index) => (
@@ -3023,7 +3010,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
             {/* Show info messages if any */}
             {trialResults.infoMessages && trialResults.infoMessages.length > 0 && (
               <div className="mt-4">
-                <h6 className="font-semibold text-blue-600 mb-2">Information:</h6>
+                <h6 className="font-semibold text-blue-600 mb-2">{t('bulkUpload.information')}</h6>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <div className="space-y-1 text-sm text-blue-700">
                     {trialResults.infoMessages.map((info, index) => (
@@ -3047,18 +3034,16 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <CheckCircle className="w-5 h-5 text-green-500" />
-          Step 4: Commit Changes
+          {t('bulkUpload.step4Commit')}
         </h4>
-        <p className="text-gray-600 text-sm mb-4">
-          Review the trial results and commit the changes to save them to the database.
-        </p>
+        <p className="text-gray-600 text-sm mb-4">{t('bulkUpload.reviewAndCommit')}</p>
         <button
           onClick={onCommit}
           disabled={!trialResults || Object.keys(trialResults).length === 0}
           className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
           <CheckCircle className="w-4 h-4" />
-          Commit Changes
+          {t('bulkUpload.commitChanges')}
         </button>
         
         {/* Commit Results */}
@@ -3068,33 +3053,33 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  Commit Successful
+                  {t('bulkUpload.commitSuccessful')}
                 </h5>
                 <div className="text-green-700 text-sm space-y-1">
-                  <div>• Inserted: {commitResults.results.inserted} records</div>
-                  <div>• Updated: {commitResults.results.updated} records</div>
-                  <div>• Errors: {commitResults.results.errors} records</div>
-                  <div>• Total Processed: {commitResults.results.totalProcessed} records</div>
+                  <div>• {t('bulkUpload.insertedRecords', { count: commitResults.results.inserted })}</div>
+                  <div>• {t('bulkUpload.updatedRecordsCount', { count: commitResults.results.updated })}</div>
+                  <div>• {t('bulkUpload.errorsRecords', { count: commitResults.results.errors })}</div>
+                  <div>• {t('bulkUpload.totalProcessedRecords', { count: commitResults.results.totalProcessed })}</div>
                 </div>
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
                 >
-                  Clear Results
+                  {t('bulkUpload.clearResults')}
                 </button>
               </div>
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <h5 className="text-red-800 font-semibold mb-2 flex items-center gap-2">
                   <XCircle className="w-4 h-4" />
-                  Commit Failed
+                  {t('bulkUpload.commitFailed')}
                 </h5>
                 <p className="text-red-700 text-sm">{commitResults.error}</p>
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-red-600 hover:text-red-800 text-sm underline"
                 >
-                  Clear Error
+                  {t('bulkUpload.clearError')}
                 </button>
               </div>
             )}

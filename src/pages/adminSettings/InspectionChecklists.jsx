@@ -60,7 +60,7 @@ const InspectionChecklists = () => {
       setChecklists(data);
     } catch (error) {
       console.error("Failed to fetch checklists:", error);
-      toast.error("Failed to load inspection checklists");
+      toast.error(t('inspectionChecklists.failedToLoadChecklists'));
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +73,7 @@ const InspectionChecklists = () => {
       setResponseTypes(data);
     } catch (error) {
       console.error("Failed to fetch response types:", error);
-      toast.error("Failed to load response types");
+      toast.error(t('inspectionChecklists.failedToLoadResponseTypes'));
     }
   };
 
@@ -101,10 +101,10 @@ const InspectionChecklists = () => {
 
     if (!isQuestionValid || !isResponseTypeValid || !isMinRangeValid || !isMaxRangeValid) {
       setShowErrors(true);
-      if (!isQuestionValid) toast.error("Please enter inspection question");
-      else if (!isResponseTypeValid) toast.error("Please select response type");
-      else if (!isMinRangeValid) toast.error("Min Range is mandatory for Quantitative response types");
-      else if (!isMaxRangeValid) toast.error("Max Range is mandatory for Quantitative response types");
+      if (!isQuestionValid) toast.error(t('inspectionChecklists.pleaseEnterInspectionQuestion'));
+      else if (!isResponseTypeValid) toast.error(t('inspectionChecklists.pleaseSelectResponseType'));
+      else if (!isMinRangeValid) toast.error(t('inspectionChecklists.minRangeMandatoryQuantitative'));
+      else if (!isMaxRangeValid) toast.error(t('inspectionChecklists.maxRangeMandatoryQuantitative'));
       return;
     }
 
@@ -119,13 +119,13 @@ const InspectionChecklists = () => {
         trigger_maintenance: triggerMaintenance
       });
 
-      toast.success("Inspection checklist created successfully");
+      toast.success(t('inspectionChecklists.checklistCreatedSuccessfully'));
       clearForm();
       setShowCreateModal(false);
       await fetchChecklists();
     } catch (error) {
       console.error("Failed to create checklist:", error);
-      toast.error(error.response?.data?.message || "Failed to create checklist");
+      toast.error(error.response?.data?.message || t('inspectionChecklists.failedToCreateChecklist'));
     } finally {
       setIsCreating(false);
     }
@@ -156,11 +156,11 @@ const InspectionChecklists = () => {
 
     if (!isQuestionValid || !isResponseTypeValid || !isExpectedValueValid || !isMinRangeValid || !isMaxRangeValid) {
       setShowEditErrors(true);
-      if (!isQuestionValid) toast.error("Please enter inspection question");
-      else if (!isResponseTypeValid) toast.error("Please select response type");
-      else if (!isExpectedValueValid) toast.error("Expected Value is mandatory for Qualitative response types");
-      else if (!isMinRangeValid) toast.error("Min Range is mandatory for Quantitative response types");
-      else if (!isMaxRangeValid) toast.error("Max Range is mandatory for Quantitative response types");
+      if (!isQuestionValid) toast.error(t('inspectionChecklists.pleaseEnterInspectionQuestion'));
+      else if (!isResponseTypeValid) toast.error(t('inspectionChecklists.pleaseSelectResponseType'));
+      else if (!isExpectedValueValid) toast.error(t('inspectionChecklists.expectedValueMandatoryQualitative'));
+      else if (!isMinRangeValid) toast.error(t('inspectionChecklists.minRangeMandatoryQuantitative'));
+      else if (!isMaxRangeValid) toast.error(t('inspectionChecklists.maxRangeMandatoryQuantitative'));
       return;
     }
 
@@ -175,12 +175,12 @@ const InspectionChecklists = () => {
         trigger_maintenance: editTriggerMaintenance
       });
 
-      toast.success("Inspection checklist updated successfully");
+      toast.success(t('inspectionChecklists.checklistUpdatedSuccessfully'));
       cancelEdit();
       await fetchChecklists();
     } catch (error) {
       console.error("Failed to update checklist:", error);
-      toast.error(error.response?.data?.message || "Failed to update checklist");
+      toast.error(error.response?.data?.message || t('inspectionChecklists.failedToUpdateChecklist'));
     } finally {
       setIsUpdating(false);
     }
@@ -200,19 +200,19 @@ const InspectionChecklists = () => {
         for (const id of selectedRows) {
           await API.delete(`/inspection-checklists/${id}`);
         }
-        toast.success(`Successfully deleted ${selectedRows.length} checklist(s)`);
+        toast.success(t('inspectionChecklists.successfullyDeletedCount', { count: selectedRows.length }));
         setSelectedRows([]);
       } else if (itemToDelete) {
         // Single delete via top button (if itemToDelete was set)
         await API.delete(`/inspection-checklists/${itemToDelete.ic_id}`);
-        toast.success("Inspection checklist deleted successfully");
+        toast.success(t('inspectionChecklists.checklistDeletedSuccessfully'));
       }
       setShowDeleteModal(false);
       setItemToDelete(null);
       await fetchChecklists();
     } catch (error) {
       console.error("Failed to delete checklist:", error);
-      toast.error(error.response?.data?.message || "Failed to delete checklist");
+      toast.error(error.response?.data?.message || t('inspectionChecklists.failedToDeleteChecklist'));
     } finally {
       setIsDeleting(false);
     }
@@ -220,7 +220,7 @@ const InspectionChecklists = () => {
 
   const handleDeleteSelected = () => {
     if (selectedRows.length === 0) {
-      toast.error("Please select at least one item to delete");
+      toast.error(t('inspectionChecklists.pleaseSelectAtLeastOneItem'));
       return;
     }
     setShowDeleteModal(true);
@@ -244,12 +244,12 @@ const InspectionChecklists = () => {
     setColumnFilters([{ column: "", value: "" }]);
   };
 
-  const filterColumns = [
-    { label: "Inspection Question", value: "inspection_question" },
-    { label: "Response Type", value: "res_type_name" },
-    { label: "Expected Value", value: "expected_value" },
-    { label: "Trigger Maintenance", value: "trigger_maintenance" }
-  ];
+  const filterColumns = useMemo(() => [
+    { label: t('inspectionChecklists.question'), value: "inspection_question" },
+    { label: t('inspectionChecklists.responseType'), value: "res_type_name" },
+    { label: t('inspectionChecklists.expectedValue'), value: "expected_value" },
+    { label: t('inspectionChecklists.triggerMaint'), value: "trigger_maintenance" }
+  ], [t]);
 
   const filteredChecklists = useMemo(() => {
     return filterData(checklists, { columnFilters }, []);
@@ -274,21 +274,21 @@ const InspectionChecklists = () => {
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B] transition-colors"
-                title="Create New"
+                title={t('inspectionChecklists.createNew')}
               >
                 <Plus size={16} />
               </button>
               <button
                 onClick={handleDeleteSelected}
                 className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B] transition-colors"
-                title="Delete Selected"
+                title={t('inspectionChecklists.deleteSelected')}
               >
                 <Trash2 size={16} />
               </button>
               <button
                 onClick={() => setFilterOpen((prev) => !prev)}
                 className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B]"
-                title="Filter"
+                title={t('inspectionChecklists.filter')}
               >
                 <Filter size={16} />
               </button>
@@ -305,7 +305,7 @@ const InspectionChecklists = () => {
                         <button
                           onClick={() => removeColumnFilter(index)}
                           className="bg-gray-200 text-gray-700 px-1 rounded-full"
-                          title="Remove filter"
+                          title={t('inspectionChecklists.removeFilter')}
                         >
                           <Minus size={12} />
                         </button>
@@ -315,7 +315,7 @@ const InspectionChecklists = () => {
                         value={filter.column}
                         onChange={(e) => updateColumnFilter(index, "column", e.target.value)}
                       >
-                        <option value="">Select column</option>
+                        <option value="">{t('inspectionChecklists.selectColumn')}</option>
                         {filterColumns.map((col) => (
                           <option key={col.value} value={col.value}>
                             {col.label}
@@ -325,7 +325,7 @@ const InspectionChecklists = () => {
                       <input
                         type="text"
                         className="border text-sm px-2 py-1"
-                        placeholder="Search value"
+                        placeholder={t('inspectionChecklists.searchValue')}
                         value={filter.value}
                         onChange={(e) => updateColumnFilter(index, "value", e.target.value)}
                       />
@@ -333,7 +333,7 @@ const InspectionChecklists = () => {
                         <button
                           onClick={addColumnFilter}
                           className="bg-[#0E2F4B] text-[#FFC107] px-1 rounded"
-                          title="Add filter"
+                          title={t('inspectionChecklists.addFilter')}
                         >
                           <Plus size={12} />
                         </button>
@@ -345,7 +345,7 @@ const InspectionChecklists = () => {
                   onClick={clearColumnFilters}
                   className="text-sm px-3 py-1 rounded border border-gray-300 hover:bg-gray-100"
                 >
-                  Clear
+                  {t('inspectionChecklists.clear')}
                 </button>
               </div>
             </div>
@@ -353,9 +353,9 @@ const InspectionChecklists = () => {
 
           {/* Table */}
           {isLoading ? (
-            <div className="text-sm text-gray-500">Loading checklists...</div>
+            <div className="text-sm text-gray-500">{t('inspectionChecklists.loadingChecklists')}</div>
           ) : filteredChecklists.length === 0 ? (
-            <div className="text-sm text-gray-500">No inspection checklists found.</div>
+            <div className="text-sm text-gray-500">{t('inspectionChecklists.noChecklistsFound')}</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full border border-gray-200 text-sm">
@@ -375,13 +375,13 @@ const InspectionChecklists = () => {
                         className="accent-yellow-400"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left">Question</th>
-                    <th className="px-4 py-3 text-left">Response Type</th>
-                    <th className="px-4 py-3 text-left">Expected Value</th>
-                    <th className="px-4 py-3 text-left">Min Range</th>
-                    <th className="px-4 py-3 text-left">Max Range</th>
-                    <th className="px-4 py-3 text-center">Trigger Maint.</th>
-                    <th className="px-4 py-3 text-left">Actions</th>
+                    <th className="px-4 py-3 text-left">{t('inspectionChecklists.question')}</th>
+                    <th className="px-4 py-3 text-left">{t('inspectionChecklists.responseType')}</th>
+                    <th className="px-4 py-3 text-left">{t('inspectionChecklists.expectedValue')}</th>
+                    <th className="px-4 py-3 text-left">{t('inspectionChecklists.minRange')}</th>
+                    <th className="px-4 py-3 text-left">{t('inspectionChecklists.maxRange')}</th>
+                    <th className="px-4 py-3 text-center">{t('inspectionChecklists.triggerMaint')}</th>
+                    <th className="px-4 py-3 text-left">{t('inspectionChecklists.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -437,7 +437,7 @@ const InspectionChecklists = () => {
                                   : "border-gray-300 focus:ring-[#0E2F4B]/40"
                               }`}
                             >
-                              <option value="">Select type</option>
+                              <option value="">{t('inspectionChecklists.selectType')}</option>
                               {responseTypes.map((type) => (
                                 <option key={type.irtd_id} value={type.irtd_id}>
                                   {type.name}
@@ -458,7 +458,7 @@ const InspectionChecklists = () => {
                                 }`}
                               />
                             ) : (
-                              <span className="text-gray-400">N/A</span>
+                              <span className="text-gray-400">{t('inspectionChecklists.notApplicable')}</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -474,7 +474,7 @@ const InspectionChecklists = () => {
                                 }`}
                               />
                             ) : (
-                              <span className="text-gray-400">N/A</span>
+                              <span className="text-gray-400">{t('inspectionChecklists.notApplicable')}</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -490,7 +490,7 @@ const InspectionChecklists = () => {
                                 }`}
                               />
                             ) : (
-                              <span className="text-gray-400">N/A</span>
+                              <span className="text-gray-400">{t('inspectionChecklists.notApplicable')}</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -508,13 +508,13 @@ const InspectionChecklists = () => {
                                 disabled={isUpdating}
                                 className="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 disabled:opacity-60"
                               >
-                                {isUpdating ? "Saving..." : "Save"}
+                                {isUpdating ? t('inspectionChecklists.saving') : t('inspectionChecklists.save')}
                               </button>
                               <button
                                 onClick={cancelEdit}
                                 className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
                               >
-                                Cancel
+                                {t('inspectionChecklists.cancel')}
                               </button>
                             </div>
                           </td>
@@ -525,7 +525,7 @@ const InspectionChecklists = () => {
                           <td className="px-4 py-3 text-gray-700">{checklist.res_type_name}</td>
                           <td className="px-4 py-3 text-center text-gray-700">
                             {isQuantitative(checklist.irtd_id) ? (
-                              <span className="text-gray-400">N/A</span>
+                              <span className="text-gray-400">{t('inspectionChecklists.notApplicable')}</span>
                             ) : (
                               checklist.expected_value || "-"
                             )}
@@ -534,14 +534,14 @@ const InspectionChecklists = () => {
                             {isQuantitative(checklist.irtd_id) ? (
                               checklist.min_range || "-"
                             ) : (
-                              <span className="text-gray-400">N/A</span>
+                              <span className="text-gray-400">{t('inspectionChecklists.notApplicable')}</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center text-gray-700">
                             {isQuantitative(checklist.irtd_id) ? (
                               checklist.max_range || "-"
                             ) : (
-                              <span className="text-gray-400">N/A</span>
+                              <span className="text-gray-400">{t('inspectionChecklists.notApplicable')}</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -550,7 +550,7 @@ const InspectionChecklists = () => {
                                 ? "bg-red-100 text-red-800" 
                                 : "bg-green-100 text-green-800"
                             }`}>
-                              {checklist.trigger_maintenance ? "On" : "Off"}
+                              {checklist.trigger_maintenance ? t('inspectionChecklists.on') : t('inspectionChecklists.off')}
                             </span>
                           </td>
                           <td className="px-4 py-3">
@@ -558,7 +558,7 @@ const InspectionChecklists = () => {
                               <button
                                 onClick={() => startEdit(checklist)}
                                 className="p-1 text-blue-700 bg-blue-50 rounded hover:bg-blue-100"
-                                title="Edit"
+                                title={t('inspectionChecklists.edit')}
                               >
                                 <Edit2 size={14} />
                               </button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
@@ -24,8 +24,7 @@ const InspectionApproval = () => {
     sorts: []
   });
 
-  // Use state for columns to prevent re-creation on every render
-  const [columns] = useState([
+  const columns = useMemo(() => [
     { label: t('inspectionApproval.assetCode'), name: "asset_code", visible: true },
     { label: t('inspectionApproval.assetType'), name: "asset_type_name", visible: true },
     { label: t('inspectionApproval.serialNumber'), name: "serial_number", visible: true },
@@ -33,7 +32,7 @@ const InspectionApproval = () => {
     { label: t('inspectionApproval.status'), name: "header_status", visible: true },
     { label: t('inspectionApproval.branch'), name: "branch_name", visible: true },
     { label: t('inspectionApproval.jobRole'), name: "job_role_name", visible: true },
-  ]);
+  ], [t]);
 
   useEffect(() => {
     fetchApprovals();
@@ -125,11 +124,11 @@ const InspectionApproval = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'header_status' ? [
-        { label: 'Initiated', value: 'IN' },
-        { label: 'Pending', value: 'PN' },
-        { label: 'Approved', value: 'AP' },
-        { label: 'Rejected', value: 'RJ' },
-        { label: 'Completed', value: 'CO' }
+        { label: t('inspectionApproval.statusInitiated'), value: 'IN' },
+        { label: t('inspectionApproval.statusPending'), value: 'PN' },
+        { label: t('inspectionApproval.statusApproved'), value: 'AP' },
+        { label: t('inspectionApproval.statusRejected'), value: 'RJ' },
+        { label: t('inspectionApproval.statusCompleted'), value: 'CO' }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));

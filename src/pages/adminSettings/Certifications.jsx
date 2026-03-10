@@ -23,9 +23,11 @@ import { filterData } from "../../utils/filterData";
 import DeleteConfirmModal from "../../components/DeleteConfirmModal";
 import SearchableDropdown from "../../components/ui/SearchableDropdown";
 import { generateUUID } from "../../utils/uuid";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const Certifications = () => {
   const location = useLocation();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("create");
   const [certificates, setCertificates] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
@@ -145,7 +147,7 @@ const Certifications = () => {
       setCertificates(data);
     } catch (error) {
       console.error("❌ Failed to fetch certificates:", error);
-      toast.error("Failed to load certificates");
+      toast.error(t("certifications.failedToLoadCertificates"));
     } finally {
       setIsLoading(false);
     }
@@ -158,7 +160,7 @@ const Certifications = () => {
       setAssetTypes(data);
     } catch (error) {
       console.error("Failed to fetch asset types:", error);
-      toast.error("Failed to load asset types");
+      toast.error(t("certifications.failedToLoadAssetTypes"));
     }
   };
 
@@ -169,7 +171,7 @@ const Certifications = () => {
       setMaintTypes(data);
     } catch (error) {
       console.error("Failed to fetch maintenance types:", error);
-      toast.error("Failed to load maintenance types");
+      toast.error(t("certifications.failedToLoadMaintTypes"));
     }
   };
 
@@ -267,7 +269,7 @@ const Certifications = () => {
       setAssetTypeMaintTypeIds(Array.from(new Set(ids)));
     } catch (error) {
       console.error("Failed to fetch maintenance types for asset type:", error);
-      toast.error("Failed to load maintenance types for selected asset type");
+      toast.error(t("certifications.failedToLoadMaintTypesForAssetType"));
       setAssetTypeMaintTypeIds([]);
     }
   };
@@ -464,12 +466,12 @@ const Certifications = () => {
 
   const handleCreateCertificate = async () => {
     if (!certName.trim()) {
-      toast.error("Certificate name is required");
+      toast.error(t("certifications.certificateNameRequired"));
       return;
     }
 
     if (!certNumber.trim()) {
-      toast.error("Certificate number is required");
+      toast.error(t("certifications.certificateNumberRequired"));
       return;
     }
 
@@ -490,10 +492,10 @@ const Certifications = () => {
       setCertName("");
       setCertNumber("");
       setShowCreateForm(false);
-      toast.success("Certificate created successfully");
+      toast.success(t("certifications.certificateCreatedSuccessfully"));
     } catch (error) {
       console.error("Failed to create certificate:", error);
-      toast.error(error.response?.data?.message || "Failed to create certificate");
+      toast.error(error.response?.data?.message || t("certifications.failedToCreateCertificate"));
     } finally {
       setIsCreating(false);
     }
@@ -518,22 +520,22 @@ const Certifications = () => {
 
   const handleUpdateCertificate = async () => {
     if (!updateCertName.trim()) {
-      toast.error("Certificate name is required");
+      toast.error(t("certifications.certificateNameRequired"));
       return;
     }
 
     if (!updateCertNumber.trim()) {
-      toast.error("Certificate number is required");
+      toast.error(t("certifications.certificateNumberRequired"));
       return;
     }
 
     if (updateModalSource === "mapping") {
       if (!updateCertAssetType) {
-        toast.error("Asset type is required");
+        toast.error(t("certifications.assetTypeRequired"));
         return;
       }
       if (!updateCertMaintType) {
-        toast.error("Maintenance type is required");
+        toast.error(t("certifications.maintenanceTypeRequired"));
         return;
       }
     }
@@ -574,7 +576,7 @@ const Certifications = () => {
         });
       }
 
-      toast.success("Certificate updated successfully");
+      toast.success(t("certifications.certificateUpdatedSuccessfully"));
       const otherAssetType = updateModalSource === "mapping" && updateCertAssetType !== selectedAssetType ? updateCertAssetType : null;
       setShowUpdateModal(false);
       setUpdateModalSource(null);
@@ -587,7 +589,7 @@ const Certifications = () => {
       if (selectedInspectionAssetType) fetchInspectionCertificates();
     } catch (error) {
       console.error("Failed to update certificate:", error);
-      toast.error(error.response?.data?.message || "Failed to update certificate");
+      toast.error(error.response?.data?.message || t("certifications.failedToUpdateCertificate"));
     } finally {
       setIsUpdatingCert(false);
     }
@@ -595,16 +597,16 @@ const Certifications = () => {
 
   const handleUnmapCertificate = async (certId) => {
     if (!selectedAssetType) {
-      toast.error("Please select an asset type");
+      toast.error(t("certifications.pleaseSelectAssetType"));
       return;
     }
 
     if (!selectedMaintType) {
-      toast.error("Please select a maintenance type");
+      toast.error(t("certifications.pleaseSelectMaintenanceType"));
       return;
     }
 
-    const confirmed = window.confirm("Remove this certificate from the mapping?");
+    const confirmed = window.confirm(t("certifications.removeCertificateFromMapping"));
     if (!confirmed) return;
 
     const nextIds = selectedCertificateIds.filter((id) => id !== certId);
@@ -617,27 +619,27 @@ const Certifications = () => {
 
       setSelectedCertificateIds(nextIds);
       setMappedCertificates(response.data?.data || []);
-      toast.success("Certificate unmapped successfully");
+      toast.success(t("certifications.certificateUnmappedSuccessfully"));
     } catch (error) {
       console.error("Failed to unmap certificate:", error);
-      toast.error(error.response?.data?.message || "Failed to unmap certificate");
+      toast.error(error.response?.data?.message || t("certifications.failedToUnmapCertificate"));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteCertificate = async (id) => {
-    const confirmed = window.confirm("Delete this certificate? This action cannot be undone.");
+    const confirmed = window.confirm(t("certifications.deleteCertificateConfirm"));
     if (!confirmed) return;
 
     setIsCreating(true);
     try {
       await API.delete(`/tech-certificates/${id}`);
       setCertificates((prev) => prev.filter((cert) => cert.tech_cert_id !== id));
-      toast.success("Certificate deleted successfully");
+      toast.success(t("certifications.certificateDeletedSuccessfully"));
     } catch (error) {
       console.error("Failed to delete certificate:", error);
-      toast.error(error.response?.data?.message || "Failed to delete certificate");
+      toast.error(error.response?.data?.message || t("certifications.failedToDeleteCertificate"));
     } finally {
       setIsCreating(false);
     }
@@ -645,7 +647,7 @@ const Certifications = () => {
 
   const handleDeleteSelectedCertificates = async () => {
     if (selectedCertificateRows.length === 0) {
-      toast.error("Please select at least one certificate to delete");
+      toast.error(t("certifications.pleaseSelectAtLeastOneCertificate"));
       return;
     }
 
@@ -665,7 +667,7 @@ const Certifications = () => {
       }
     } catch (error) {
       console.error("Failed to delete selected certificates:", error);
-      toast.error("Failed to delete some certificates");
+      toast.error(t("certifications.failedToDeleteSomeCertificates"));
     } finally {
       setIsBulkDeleting(false);
       setShowDeleteModal(false);
@@ -675,12 +677,12 @@ const Certifications = () => {
 
   const handleSaveMapping = async () => {
     if (!mappingFormAssetType) {
-      toast.error("Please select an asset type");
+      toast.error(t("certifications.pleaseSelectAssetType"));
       return;
     }
 
     if (!mappingFormMaintType) {
-      toast.error("Please select a maintenance type");
+      toast.error(t("certifications.pleaseSelectMaintenanceType"));
       return;
     }
 
@@ -706,10 +708,10 @@ const Certifications = () => {
         await fetchMappedCertificates(mappingFormAssetType);
       }
 
-      toast.success("Certificates mapped successfully");
+      toast.success(t("certifications.certificatesMappedSuccessfully"));
     } catch (error) {
       console.error("❌ Failed to map certificates:", error);
-      toast.error(error.response?.data?.message || "Failed to map certificates");
+      toast.error(error.response?.data?.message || t("certifications.failedToMapCertificates"));
     } finally {
       setIsSaving(false);
       setShowMappingForm(false);
@@ -768,17 +770,17 @@ const Certifications = () => {
 
   const handleUnmapSelected = async () => {
     if (!selectedAssetType) {
-      toast.error("Please select an asset type");
+      toast.error(t("certifications.pleaseSelectAssetType"));
       return;
     }
 
     if (!selectedMaintType) {
-      toast.error("Please select a maintenance type");
+      toast.error(t("certifications.pleaseSelectMaintenanceType"));
       return;
     }
 
     if (selectedMappedRows.length === 0) {
-      toast.error("Please select at least one certificate to unmap");
+      toast.error(t("certifications.pleaseSelectAtLeastOneToUnmap"));
       return;
     }
 
@@ -801,10 +803,10 @@ const Certifications = () => {
       // Refetch the mapped certificates from backend to ensure persistence
       await fetchMappedCertificates(selectedAssetType);
       setSelectedMappedRows([]);
-      toast.success("Certificates unmapped successfully");
+      toast.success(t("certifications.certificatesUnmappedSuccessfully"));
     } catch (error) {
       console.error("Failed to unmap selected certificates:", error);
-      toast.error(error.response?.data?.message || "Failed to unmap certificates");
+      toast.error(error.response?.data?.message || t("certifications.failedToUnmapCertificates"));
     } finally {
       setIsSaving(false);
       setShowDeleteModal(false);
@@ -814,12 +816,12 @@ const Certifications = () => {
 
   const handleSaveInspectionCertificates = async () => {
     if (!selectedInspectionAssetType) {
-      toast.error("Please select an asset type");
+      toast.error(t("certifications.pleaseSelectAssetType"));
       return;
     }
 
     if (selectedCertificatesForInspection.length === 0) {
-      toast.error("Please select at least one certificate");
+      toast.error(t("certifications.pleaseSelectAtLeastOneCertificateForInspection"));
       return;
     }
 
@@ -860,15 +862,15 @@ const Certifications = () => {
 
       // Refetch inspection certificates from backend to ensure persistence
       await fetchInspectionCertificates();
-      toast.success("Inspection certificates added successfully");
+      toast.success(t("certifications.inspectionCertificatesAddedSuccessfully"));
     } catch (error) {
       console.error("Failed to add inspection certificates:", error);
       
       // Check if the error is about the database table not existing
       if (error.response?.data?.error && error.response.data.error.includes('tblATInspCert')) {
-        toast.error("Database setup required. Please contact your administrator to run the inspection certificates migration.");
+        toast.error(t("certifications.databaseSetupRequiredInspection"));
       } else {
-        toast.error(error.response?.data?.message || "Failed to add inspection certificates");
+        toast.error(error.response?.data?.message || t("certifications.failedToAddInspectionCertificates"));
       }
     } finally {
       setIsSaving(false);
@@ -884,7 +886,7 @@ const Certifications = () => {
 
   const handleDeleteInspectionCertificates = () => {
     if (selectedInspectionRows.length === 0) {
-      toast.error("Please select certificates to remove");
+      toast.error(t("certifications.pleaseSelectCertificatesToRemove"));
       return;
     }
     setDeleteType('inspection');
@@ -897,7 +899,7 @@ const Certifications = () => {
       await Promise.all(selectedInspectionRows.map(id => API.delete(`/asset-types/inspection-certificates/${id}`)));
       await fetchInspectionCertificates();
       setSelectedInspectionRows([]);
-      toast.success("Inspection certificates removed");
+      toast.success(t("certifications.inspectionCertificatesRemoved"));
     } catch (error) {
       console.error("Failed to remove inspection certificates:", error);
       toast.error("Failed to remove some certificates");
@@ -923,10 +925,13 @@ const Certifications = () => {
     return maintTypes.find((type) => type.maint_type_id === selectedMaintType)?.text || "";
   }, [maintTypes, selectedMaintType]);
 
-  const certificateFilterColumns = [
-    { label: "Certificate Name", value: "cert_name" },
-    { label: "Certificate Number", value: "cert_number" }
-  ];
+  const certificateFilterColumns = useMemo(
+    () => [
+      { label: t("certifications.certificateName"), value: "cert_name" },
+      { label: t("certifications.certificateNumber"), value: "cert_number" }
+    ],
+    [t]
+  );
 
   const filteredCertificates = useMemo(() => {
     return filterData(certificates, { columnFilters: createColumnFilters }, []);
@@ -987,7 +992,7 @@ const Certifications = () => {
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              Certificate
+              {t("certifications.tabCertificate")}
             </button>
             <button
               onClick={() => setActiveTab("mapping")}
@@ -997,7 +1002,7 @@ const Certifications = () => {
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              Maintenance Certificate
+              {t("certifications.tabMaintenanceCertificate")}
             </button>
             <button
               onClick={() => setActiveTab("inspection")}
@@ -1007,7 +1012,7 @@ const Certifications = () => {
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              Inspection Certificates
+              {t("certifications.tabInspectionCertificates")}
             </button>
           </nav>
         </div>
@@ -1018,8 +1023,8 @@ const Certifications = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Existing Certificates</h2>
-                <p className="text-sm text-gray-500">Manage maintenance certificates stored in the system.</p>
+                <h2 className="text-lg font-semibold text-gray-900">{t("certifications.existingCertificates")}</h2>
+                <p className="text-sm text-gray-500">{t("certifications.existingCertificatesDesc")}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1030,14 +1035,14 @@ const Certifications = () => {
                     });
                   }}
                   className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B]"
-                  title={showCreateForm ? "Close" : "Add"}
+                  title={showCreateForm ? t("certifications.close") : t("certifications.add")}
                 >
                   <Plus size={16} />
                 </button>
                 <button
                   onClick={() => setCreateFilterOpen((prev) => !prev)}
                   className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B]"
-                  title="Filter"
+                  title={t("certifications.filter")}
                 >
                   <Filter size={16} />
                 </button>
@@ -1045,7 +1050,7 @@ const Certifications = () => {
                   onClick={handleDeleteSelectedCertificates}
                   disabled={isBulkDeleting}
                   className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B]"
-                  title="Delete"
+                  title={t("certifications.delete")}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -1072,7 +1077,7 @@ const Certifications = () => {
                           value={filter.column}
                           onChange={(e) => updateColumnFilter(setCreateColumnFilters, index, "column", e.target.value)}
                         >
-                          <option value="">Select column</option>
+                          <option value="">{t("certifications.selectColumn")}</option>
                           {certificateFilterColumns.map((col) => (
                             <option key={col.value} value={col.value}>
                               {col.label}
@@ -1090,7 +1095,7 @@ const Certifications = () => {
                           <button
                             onClick={() => addColumnFilter(setCreateColumnFilters)}
                             className="bg-[#0E2F4B] text-[#FFC107] px-1 rounded"
-                            title="Add filter"
+                            title={t("certifications.addFilter")}
                           >
                             <Plus size={12} />
                           </button>
@@ -1105,7 +1110,7 @@ const Certifications = () => {
                     }}
                     className="text-sm px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition"
                   >
-                    Clear
+                    {t("certifications.clear")}
                   </button>
                 </div>
               </div>
@@ -1113,11 +1118,11 @@ const Certifications = () => {
 
             {showCreateForm && (
               <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Add New Certificate</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">{t("certifications.addNewCertificate")}</h3>
                 
                 <div className="space-y-4 mb-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.certificateName")}</label>
                     <input
                       type="text"
                       value={certName}
@@ -1127,7 +1132,7 @@ const Certifications = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Certificate Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.certificateNumber")}</label>
                     <input
                       type="text"
                       value={certNumber}
@@ -1179,9 +1184,9 @@ const Certifications = () => {
                         className="accent-yellow-400"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left">Certificate Name</th>
-                    <th className="px-4 py-3 text-left">Certificate Number</th>
-                    <th className="px-4 py-3 text-left">Actions</th>
+                    <th className="px-4 py-3 text-left">{t("certifications.certificateName")}</th>
+                    <th className="px-4 py-3 text-left">{t("certifications.certificateNumber")}</th>
+                    <th className="px-4 py-3 text-left">{t("certifications.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1191,7 +1196,7 @@ const Certifications = () => {
                     </tr>
                   ) : filteredCertificates.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-4 text-center text-gray-500">No certificates found.</td>
+                      <td colSpan={4} className="px-4 py-4 text-center text-gray-500">{t("certifications.noCertificatesFound")}</td>
                     </tr>
                   ) : (
                     filteredCertificates.map((cert, index) => (
@@ -1244,7 +1249,7 @@ const Certifications = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Maintenance Certificates</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{t("certifications.maintenanceCertificates")}</h2>
               </div>
               <div className="flex items-center gap-2">
                 {!showMappingForm && (
@@ -1311,7 +1316,7 @@ const Certifications = () => {
                           value={filter.column}
                           onChange={(e) => updateColumnFilter(setMappingColumnFilters, index, "column", e.target.value)}
                         >
-                          <option value="">Select column</option>
+                          <option value="">{t("certifications.selectColumn")}</option>
                           {certificateFilterColumns.map((col) => (
                             <option key={col.value} value={col.value}>
                               {col.label}
@@ -1329,7 +1334,7 @@ const Certifications = () => {
                           <button
                             onClick={() => addColumnFilter(setMappingColumnFilters)}
                             className="bg-[#0E2F4B] text-[#FFC107] px-1 rounded"
-                            title="Add filter"
+                            title={t("certifications.addFilter")}
                           >
                             <Plus size={12} />
                           </button>
@@ -1344,7 +1349,7 @@ const Certifications = () => {
                     }}
                     className="text-sm px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition"
                   >
-                    Clear
+                    {t("certifications.clear")}
                   </button>
                 </div>
               </div>
@@ -1354,10 +1359,10 @@ const Certifications = () => {
               <>
                 {/* Asset Type & Maintenance Type Section */}
                 <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Asset & Maintenance Type</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4">{t("certifications.assetAndMaintenanceType")}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.assetType")}</label>
                       <select
                         value={mappingFormAssetType}
                         onChange={(e) => {
@@ -1376,7 +1381,7 @@ const Certifications = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.maintenanceType")}</label>
                       <select
                         value={mappingFormMaintType}
                         onChange={(e) => {
@@ -1401,7 +1406,7 @@ const Certifications = () => {
                   {/* Available Certificates - Left Side */}
                   <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 lg:flex-[2] h-[500px]">
                     <div className="p-4 border-b flex-shrink-0">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Available Certificates</h2>
+                      <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("certifications.availableCertificates")}</h2>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                         <input
@@ -1418,8 +1423,8 @@ const Certifications = () => {
                         <table className="w-full">
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certificate Name</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certificate Number</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("certifications.certificateName")}</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("certifications.certificateNumber")}</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -1501,8 +1506,8 @@ const Certifications = () => {
                         <table className="w-full">
                           <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certificate Name</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certificate Number</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("certifications.certificateName")}</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("certifications.certificateNumber")}</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
@@ -1532,7 +1537,7 @@ const Certifications = () => {
                 {/* Summary Footer for Certificates */}
                 <div className="bg-white rounded-lg shadow-sm border p-4 mb-6 flex items-center justify-between">
                   <p className="text-sm text-gray-600">
-                    Total Certificates Selected: <span className="font-semibold text-gray-900">{selectedCertificatesForMapping.length}</span>
+                    {t("certifications.totalCertificatesSelected")} <span className="font-semibold text-gray-900">{selectedCertificatesForMapping.length}</span>
                   </p>
                 </div>
 
@@ -1554,7 +1559,7 @@ const Certifications = () => {
                     disabled={isSaving}
                     className="px-4 py-2 bg-[#0E2F4B] text-white text-sm font-medium rounded-md hover:bg-[#12395c] transition disabled:opacity-60"
                   >
-                    {isSaving ? "Saving..." : "Save"}
+                    {isSaving ? t("certifications.saving") : t("certifications.save")}
                   </button>
                 </div>
               </>
@@ -1580,11 +1585,11 @@ const Certifications = () => {
                           className="accent-yellow-400"
                         />
                       </th>
-                      <th className="px-4 py-3 text-left">Certificate Name</th>
-                      <th className="px-4 py-3 text-left">Asset Type</th>
-                      <th className="px-4 py-3 text-left">Maintenance Type</th>
-                      <th className="px-4 py-3 text-left">Certificate Number</th>
-                      <th className="px-4 py-3 text-left">Actions</th>
+                      <th className="px-4 py-3 text-left">{t("certifications.certificateName")}</th>
+                      <th className="px-4 py-3 text-left">{t("certifications.assetType")}</th>
+                      <th className="px-4 py-3 text-left">{t("certifications.maintenanceType")}</th>
+                      <th className="px-4 py-3 text-left">{t("certifications.certificateNumber")}</th>
+                      <th className="px-4 py-3 text-left">{t("certifications.actions")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -1654,7 +1659,7 @@ const Certifications = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 min-h-[600px] p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Inspection Certificates</h2>
+                <h2 className="text-lg font-semibold text-gray-900">{t("certifications.inspectionCertificates")}</h2>
               </div>
               <div className="flex items-center gap-2">
                 {!showInspectionForm && (
@@ -1716,7 +1721,7 @@ const Certifications = () => {
                           value={filter.column}
                           onChange={(e) => updateColumnFilter(setInspectionColumnFilters, index, "column", e.target.value)}
                         >
-                          <option value="">Select column</option>
+                          <option value="">{t("certifications.selectColumn")}</option>
                           {certificateFilterColumns.map((col) => (
                             <option key={col.value} value={col.value}>
                               {col.label}
@@ -1734,7 +1739,7 @@ const Certifications = () => {
                           <button
                             onClick={() => addColumnFilter(setInspectionColumnFilters)}
                             className="bg-[#0E2F4B] text-[#FFC107] px-1 rounded"
-                            title="Add filter"
+                            title={t("certifications.addFilter")}
                           >
                             <Plus size={12} />
                           </button>
@@ -1749,7 +1754,7 @@ const Certifications = () => {
                     }}
                     className="text-sm px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition"
                   >
-                    Clear
+                    {t("certifications.clear")}
                   </button>
                 </div>
               </div>
@@ -1760,7 +1765,7 @@ const Certifications = () => {
                 <div className="sm:p-6 flex-1">
                   {/* Asset Type Selection - Separate Space */}
                   <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Asset Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t("certifications.selectAssetType")}</label>
                     <div className="relative max-w-md">
                       <button
                         type="button"
@@ -1770,7 +1775,7 @@ const Certifications = () => {
                         <span className={selectedInspectionAssetType ? 'text-gray-900' : 'text-gray-500'}>
                           {selectedInspectionAssetType ? 
                             (assetTypes.find(t => t.asset_type_id === selectedInspectionAssetType)?.text || selectedInspectionAssetType) 
-                            : "Select Asset Type"}
+                            : t("certifications.selectAssetType")}
                         </span>
                         <ChevronDown size={16} className="text-gray-400" />
                       </button>
@@ -1824,7 +1829,7 @@ const Certifications = () => {
                     {/* Available Certificates - Left Side */}
                     <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 lg:flex-[2] h-[500px]">
                       <div className="p-4 border-b flex-shrink-0">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Available Certificates</h2>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4">{t("certifications.availableCertificates")}</h2>
                         
                         {/* Search in Available */}
                         <div className="relative">
@@ -1850,8 +1855,8 @@ const Certifications = () => {
                             <table className="w-full">
                               <thead className="bg-gray-50 sticky top-0 z-10">
                                 <tr>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certificate Name</th>
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certificate Number</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("certifications.certificateName")}</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("certifications.certificateNumber")}</th>
                                 </tr>
                               </thead>
                               <tbody className="bg-white divide-y divide-gray-200">
@@ -1938,8 +1943,8 @@ const Certifications = () => {
                           <table className="w-full">
                             <thead className="bg-gray-50 sticky top-0 z-10">
                               <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certificate Name</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certificate Number</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("certifications.certificateName")}</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("certifications.certificateNumber")}</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
@@ -2120,10 +2125,10 @@ const Certifications = () => {
                           className="accent-yellow-400"
                         />
                       </th>
-                      <th className="px-4 py-3 text-left">Certificate Name</th>
-                      <th className="px-4 py-3 text-left">Asset Type</th>
-                      <th className="px-4 py-3 text-left">Certificate Number</th>
-                      <th className="px-4 py-3 text-left w-20">Actions</th>
+                      <th className="px-4 py-3 text-left">{t("certifications.certificateName")}</th>
+                      <th className="px-4 py-3 text-left">{t("certifications.assetType")}</th>
+                      <th className="px-4 py-3 text-left">{t("certifications.certificateNumber")}</th>
+                      <th className="px-4 py-3 text-left w-20">{t("certifications.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2253,7 +2258,7 @@ const Certifications = () => {
                       {updateModalSource === "mapping" && (
                         <>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Asset Type</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.assetType")}</label>
                             <select
                               value={updateCertAssetType}
                               onChange={(e) => {
@@ -2271,7 +2276,7 @@ const Certifications = () => {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Type</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.maintenanceType")}</label>
                             <select
                               value={updateCertMaintType}
                               onChange={(e) => setUpdateCertMaintType(e.target.value)}

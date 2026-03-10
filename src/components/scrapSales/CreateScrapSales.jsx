@@ -67,7 +67,7 @@ const CreateScrapSales = () => {
       } catch (error) {
         console.error("Error fetching asset types:", error);
         setAssetTypes([]);
-        toast.error("Failed to fetch asset types");
+        toast.error(t("scrapSales.failedToLoadAssetTypes"));
       } finally {
         setLoadingAssetTypes(false);
       }
@@ -103,7 +103,7 @@ const CreateScrapSales = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
+      toast.error(t("scrapSales.failedToLoadDocumentTypes"));
       setDocumentTypes([]);
     }
   };
@@ -151,7 +151,7 @@ const CreateScrapSales = () => {
         setLoading(false);
       } catch (err) {
         console.error("Failed to fetch assets:", err);
-        setError("Failed to load assets. Please try again.");
+        setError(t("scrapSales.failedToLoadAssets"));
         setLoading(false);
       }
     };
@@ -338,7 +338,7 @@ const CreateScrapSales = () => {
   const handleAssetTypeSelect = (assetType) => {
     // Avoid duplicates
     if (selectedAssetTypes.includes(assetType.asset_type_id)) {
-      toast.error("This asset type is already selected");
+      toast.error(t("scrapSales.assetAlreadySelected"));
       return;
     }
     setSelectedAssetTypes((prev) => [...prev, assetType.asset_type_id]);
@@ -412,9 +412,7 @@ const CreateScrapSales = () => {
     );
 
     if (!hasTotalValue && !hasIndividualValues) {
-      toast.error(
-        "Please provide either total scrap value or individual asset values"
-      );
+      toast.error(t("scrapSales.pleaseProvideTotalOrIndividualValues"));
       return false;
     }
 
@@ -430,7 +428,10 @@ const CreateScrapSales = () => {
       if (Math.abs(total - individualTotal) > 0.01) {
         // Allow for small floating point differences
         toast.error(
-          `Total scrap value (${total}) does not match sum of individual values (${individualTotal})`
+          t("scrapSales.totalDoesNotMatchIndividualValues", {
+            total: String(total),
+            individualTotal: String(individualTotal),
+          })
         );
         return false;
       }
@@ -441,7 +442,7 @@ const CreateScrapSales = () => {
 
   const handleSave = async () => {
     if (selectedAssets.length === 0) {
-      toast.error("Please select at least one asset");
+      toast.error(t("scrapSales.pleaseSelectAtLeastOneAsset"));
       return;
     }
 
@@ -450,19 +451,19 @@ const CreateScrapSales = () => {
     }
 
     if (!buyerDetails.buyer_name || !buyerDetails.buyer_contact) {
-      toast.error("Please fill in required buyer details (name and contact)");
+      toast.error(t("scrapSales.pleaseFillInRequiredBuyerDetails"));
       return;
     }
 
     if (!collectionDate) {
-      toast.error("Please select a collection date");
+      toast.error(t("scrapSales.pleaseEnterCollectionDate"));
       return;
     }
 
     setLoading(true);
     try {
       const scrapSaleData = {
-        text: groupName || "Scrap Sale", // Required field, use group name or default
+        text: groupName || t("scrapSales.scrapSaleDefaultName"),
         total_sale_value: parseFloat(totalScrapValue || totalIndividualValues),
         buyer_name: buyerDetails.buyer_name,
         buyer_company: buyerDetails.company_name,
@@ -483,7 +484,7 @@ const CreateScrapSales = () => {
 
       if (response.data.success) {
         toast.success(
-          response.data.message || "Scrap sale created successfully!"
+          response.data.message || t("scrapSales.scrapSaleCreatedSuccessfully")
         );
         const scrapId = response.data?.scrap_sale?.ssh_id || response.data?.data?.scrap_id || response.data?.scrap_id || response.data?.id;
         console.log('CreateScrapSales - Response data:', response.data);
@@ -495,7 +496,7 @@ const CreateScrapSales = () => {
             // Check if the selected document type requires a custom name
             const selectedDocType = documentTypes.find(dt => dt.id === r.type);
             if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-              toast.error(`Enter custom name for ${selectedDocType.text} before uploading`);
+              toast.error(t("scrapSales.enterCustomNameBeforeUpload", { docType: selectedDocType.text }));
               continue;
             }
             const fd = new FormData();
@@ -517,14 +518,14 @@ const CreateScrapSales = () => {
         }
         navigate("/scrap-sales");
       } else {
-        throw new Error(response.data.message || "Failed to create scrap sale");
+        throw new Error(response.data.message || t("scrapSales.failedToCreateScrapSale"));
       }
     } catch (error) {
       console.error("Error creating scrap sale:", error);
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
-        "Failed to create scrap sale";
+        t("scrapSales.failedToCreateScrapSale");
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -672,7 +673,7 @@ const CreateScrapSales = () => {
                       className="w-full px-3 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md flex items-center justify-center gap-2 font-medium"
                     >
                       <Plus size={16} />
-                      Create New Asset Type
+                      {t("scrapSales.createNewAssetType")}
                     </button>
                   </div>
                 </div>
@@ -684,7 +685,7 @@ const CreateScrapSales = () => {
         {/* Asset Selection Section */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Asset Selection
+            {t("scrapSales.assetSelection")}
           </h2>
 
           <div className="flex flex-col lg:flex-row gap-6">
@@ -692,7 +693,7 @@ const CreateScrapSales = () => {
             <div className="flex-1">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-md font-medium text-gray-900">
-                  Available Assets
+                  {t("scrapSales.availableAssets")}
                 </h3>
                 <div className="flex items-center gap-2">
                   <div className="relative">
@@ -702,7 +703,7 @@ const CreateScrapSales = () => {
                     />
                     <input
                       type="text"
-                      placeholder="Search assets..."
+                      placeholder={t("scrapSales.searchAssetsPlaceholder")}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-8 pr-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -718,16 +719,16 @@ const CreateScrapSales = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Asset ID
+                        {t("scrapSales.assetId")}
                       </th>
                       <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
+                        {t("scrapSales.name")}
                       </th>
                       <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Description
+                        {t("scrapSales.description")}
                       </th>
                       <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Serial Number
+                        {t("scrapSales.serialNumber")}
                       </th>
                     </tr>
                   </thead>
@@ -927,7 +928,7 @@ const CreateScrapSales = () => {
                           <button
                             onClick={() => handleDeselectAsset(asset)}
                             className="text-red-600 hover:text-red-800"
-                            title="Remove asset"
+                            title={t("scrapSales.removeAsset")}
                           >
                             <X size={16} />
                           </button>
@@ -1205,7 +1206,7 @@ const CreateScrapSales = () => {
                         onChange={e => {
                           const f = e.target.files?.[0] || null;
                           if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                            toast.error('File size exceeds 15MB limit');
+                            toast.error(t("scrapSales.fileSizeExceedsLimit"));
                             e.target.value = '';
                             return;
                           }
@@ -1222,7 +1223,7 @@ const CreateScrapSales = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>
                         <span className="truncate max-w-[200px] inline-block">
-                          {r.file ? r.file.name : 'Choose file'}
+                          {r.file ? r.file.name : t("scrapSales.chooseFile")}
                         </span>
                       </label>
                     </div>

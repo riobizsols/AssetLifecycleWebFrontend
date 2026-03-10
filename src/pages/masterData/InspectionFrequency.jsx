@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Plus, Edit2, Trash2, Save, X, Search, 
@@ -14,13 +14,13 @@ const InspectionFrequency = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   
-  const columns = [
-    { label: "Asset Type", name: "asset_type_name", visible: true },
-    { label: "Asset Name", name: "asset_name", visible: true },
-    { label: "Frequency", name: "freq_display", visible: true },
-    { label: "Maintained By", name: "maintained_by", visible: true },
-    { label: "Description", name: "text", visible: true },
-  ];
+  const columns = useMemo(() => [
+    { label: t("inspectionFrequency.assetType"), name: "asset_type_name", visible: true },
+    { label: t("inspectionFrequency.assetName"), name: "asset_name", visible: true },
+    { label: t("inspectionFrequency.frequency"), name: "freq_display", visible: true },
+    { label: t("inspectionFrequency.maintainedBy"), name: "maintained_by", visible: true },
+    { label: t("inspectionFrequency.description"), name: "text", visible: true },
+  ], [t]);
 
   const [frequencies, setFrequencies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -73,13 +73,13 @@ const InspectionFrequency = () => {
       const dataWithKeys = (Array.isArray(data) ? data : []).map(f => ({
         ...f,
         id: f.aatif_id,
-        asset_name: f.asset_name || "All Assets",
-        freq_display: f.is_recurring ? `${f.freq || ''} ${f.uom || ''}`.trim() || 'N/A' : "On Demand"
+        asset_name: f.asset_name || t("inspectionFrequency.allAssetsFallback"),
+        freq_display: f.is_recurring ? `${f.freq || ''} ${f.uom || ''}`.trim() || t("inspectionFrequency.notApplicable") : t("inspectionFrequency.onDemandFallback")
       }));
       setFrequencies(dataWithKeys);
     } catch (error) {
       console.error("Error fetching frequencies:", error);
-      toast.error("Failed to load inspection frequencies");
+      toast.error(t("inspectionFrequency.failedToLoadFrequencies"));
     } finally {
       setIsLoading(false);
     }
@@ -173,7 +173,7 @@ const InspectionFrequency = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!selectedMappingId) {
-      toast.error("Please select a mapping (Asset Type)");
+      toast.error(t("inspectionFrequency.pleaseSelectMapping"));
       return;
     }
 
@@ -189,7 +189,7 @@ const InspectionFrequency = () => {
           if (detailedItems.length > 0) {
             aatic_id = detailedItems[0].aatic_id;
           } else {
-            toast.error("No checklist items found for this mapping. Please create a checklist mapping first.");
+            toast.error(t("inspectionFrequency.noChecklistItemsForMapping"));
             setSaving(false);
             return;
           }
@@ -208,16 +208,16 @@ const InspectionFrequency = () => {
 
       if (isEditing) {
         await API.put(`/inspection-frequencies/${currentId}`, payload);
-        toast.success("Inspection frequency updated");
+        toast.success(t("inspectionFrequency.frequencyUpdated"));
       } else {
         await API.post("/inspection-frequencies", payload);
-        toast.success("Inspection frequency created");
+        toast.success(t("inspectionFrequency.frequencyCreated"));
       }
       setShowModal(false);
       fetchFrequencies();
     } catch (error) {
       console.error("Error saving frequency:", error);
-      toast.error("Failed to save frequency");
+      toast.error(t("inspectionFrequency.failedToSaveFrequency"));
     } finally {
       setSaving(false);
     }
@@ -233,7 +233,7 @@ const InspectionFrequency = () => {
         successCount++;
       }
       if (successCount > 0) {
-        toast.success(`Deleted ${successCount} items`);
+        toast.success(t("inspectionFrequency.deletedCount", { count: successCount }));
         fetchFrequencies();
         setSelectedRows([]);
         return true;
@@ -241,7 +241,7 @@ const InspectionFrequency = () => {
       return false;
     } catch (error) {
       console.error("Error deleting:", error);
-      toast.error("Failed to delete some items");
+      toast.error(t("inspectionFrequency.failedToDeleteSomeItems"));
       return false;
     }
   };
@@ -277,7 +277,7 @@ const InspectionFrequency = () => {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
             <div className="bg-[#003b6f] text-white px-6 py-4 flex justify-between items-center border-b-4 border-[#ffc107] flex-shrink-0">
               <h3 className="text-xl font-bold">
-                {isEditing ? "Edit Inspection Frequency" : "Add Inspection Frequency"}
+                {isEditing ? t("inspectionFrequency.editInspectionFrequency") : t("inspectionFrequency.addInspectionFrequency")}
               </h3>
               <button 
                 onClick={() => setShowModal(false)}
@@ -292,7 +292,7 @@ const InspectionFrequency = () => {
                 {isEditing ? (
                   <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Asset Type
+                      {t("inspectionFrequency.assetType")}
                     </label>
                     <input
                       type="text"
@@ -305,7 +305,7 @@ const InspectionFrequency = () => {
                 ) : (
                   <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Asset Type <span className="text-red-500">*</span>
+                      {t("inspectionFrequency.assetType")} <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={selectedMappingId}
@@ -313,10 +313,10 @@ const InspectionFrequency = () => {
                       className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#003b6f]"
                       required
                     >
-                      <option value="">-- Select Mapping --</option>
+                      <option value="">{t("inspectionFrequency.selectMapping")}</option>
                       {mappings.map(m => (
                         <option key={m.rowId} value={m.rowId}>
-                          {m.asset_type_name} {m.asset_name ? `(${m.asset_name})` : "(All Assets)"}
+                          {m.asset_type_name} {m.asset_name ? `(${m.asset_name})` : `(${t("inspectionFrequency.allAssets")})`}
                         </option>
                       ))}
                     </select>
@@ -325,7 +325,7 @@ const InspectionFrequency = () => {
 
                 <div className="col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Frequency Mode <span className="text-red-500">*</span>
+                    {t("inspectionFrequency.frequencyMode")} <span className="text-red-500">*</span>
                   </label>
                   <div className="flex flex-col gap-3">
                     <label className="flex items-start gap-2 cursor-pointer">
@@ -339,8 +339,8 @@ const InspectionFrequency = () => {
                         className="mt-1 w-4 h-4 text-[#003b6f] accent-[#003b6f]"
                       />
                       <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-gray-800">Recurring</span>
-                        <span className="text-xs text-blue-600">Recurring requires frequency and UOM</span>
+                        <span className="text-sm font-semibold text-gray-800">{t("inspectionFrequency.recurring")}</span>
+                        <span className="text-xs text-blue-600">{t("inspectionFrequency.recurringRequiresFreqUom")}</span>
                       </div>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -355,27 +355,27 @@ const InspectionFrequency = () => {
                         }}
                         className="w-4 h-4 text-[#003b6f] accent-[#003b6f]"
                       />
-                      <span className="text-sm font-semibold text-gray-800">On Demand</span>
+                      <span className="text-sm font-semibold text-gray-800">{t("inspectionFrequency.onDemand")}</span>
                     </label>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Frequency
+                    {t("inspectionFrequency.frequency")}
                   </label>
                   <input
                     type="number"
                     value={freq}
                     onChange={(e) => setFreq(e.target.value)}
-                    placeholder={!isRecurring ? "N/A" : "e.g. 30"}
+                    placeholder={!isRecurring ? t("inspectionFrequency.notApplicable") : "e.g. 30"}
                     disabled={!isRecurring}
                     className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#003b6f] disabled:bg-gray-50"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Unit of Measure (UOM)
+                    {t("inspectionFrequency.unitOfMeasure")}
                   </label>
                   <select
                     value={uom}
@@ -383,7 +383,7 @@ const InspectionFrequency = () => {
                     disabled={!isRecurring}
                     className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#003b6f] disabled:bg-gray-50"
                   >
-                    <option value="">-- Select UOM --</option>
+                    <option value="">{t("inspectionFrequency.selectUom")}</option>
                     {uomOptions.map(opt => (
                       <option key={opt.id} value={opt.text}>{opt.text}</option>
                     ))}
@@ -392,20 +392,23 @@ const InspectionFrequency = () => {
 
                 <div className="col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Self / Vendor Managed <span className="text-red-500">*</span>
+                    {t("inspectionFrequency.selfVendorManaged")} <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-6">
-                    {["In-House", "Vendor"].map((type) => (
-                      <label key={type} className="flex items-center gap-2 cursor-pointer">
+                    {[
+                      { value: "In-House", labelKey: "inHouse" },
+                      { value: "Vendor", labelKey: "vendor" }
+                    ].map(({ value, labelKey }) => (
+                      <label key={value} className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
                           name="maintainedBy"
-                          value={type}
-                          checked={maintainedBy === type}
+                          value={value}
+                          checked={maintainedBy === value}
                           onChange={(e) => setMaintainedBy(e.target.value)}
                           className="w-4 h-4 text-[#003b6f] accent-[#003b6f]"
                         />
-                        <span className="text-sm font-medium">{type}</span>
+                        <span className="text-sm font-medium">{t("inspectionFrequency." + labelKey)}</span>
                       </label>
                     ))}
                   </div>
@@ -414,14 +417,14 @@ const InspectionFrequency = () => {
                 {maintainedBy === "In-House" && (
                   <div className="col-span-2">
                     <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Technician (In-House)
+                      {t("inspectionFrequency.technicianInHouse")}
                     </label>
                     <select
                       value={selectedTechnician}
                       onChange={(e) => setSelectedTechnician(e.target.value)}
                       className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#003b6f]"
                     >
-                      <option value="">-- Select Technician --</option>
+                      <option value="">{t("inspectionFrequency.selectTechnician")}</option>
                       {technicians.map((t) => (
                         <option key={t.emp_int_id} value={t.emp_int_id}>
                           {t.name}
@@ -429,20 +432,20 @@ const InspectionFrequency = () => {
                       ))}
                     </select>
                     {techLoading && (
-                      <p className="mt-1 text-xs text-gray-500">Loading technicians...</p>
+                      <p className="mt-1 text-xs text-gray-500">{t("inspectionFrequency.loadingTechnicians")}</p>
                     )}
                   </div>
                 )}
 
                 <div className="col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Text
+                    {t("inspectionFrequency.text")}
                   </label>
                   <textarea
                     rows="2"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Enter description..."
+                    placeholder={t("inspectionFrequency.enterDescription")}
                     className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#003b6f]"
                   />
                 </div>
@@ -455,7 +458,7 @@ const InspectionFrequency = () => {
                 onClick={() => setShowModal(false)}
                 className="px-6 py-2 border rounded hover:bg-gray-100 flex items-center gap-2 transition-colors text-sm font-medium"
               >
-                <X size={18} /> Cancel
+                <X size={18} /> {t("common.cancel")}
               </button>
               <button
                 type="submit"
@@ -463,7 +466,7 @@ const InspectionFrequency = () => {
                 form="inspectionFrequencyForm"
                 className="px-6 py-2 bg-[#003b6f] text-white rounded hover:bg-[#002b52] flex items-center gap-2 transition-colors disabled:opacity-50 text-sm font-medium"
               >
-                {saving ? "Saving..." : <><Save size={18} /> Save Frequency</>}
+                {saving ? t("inspectionChecklists.saving") : <><Save size={18} /> {t("inspectionFrequency.saveFrequency")}</>}
               </button>
             </div>
           </div>

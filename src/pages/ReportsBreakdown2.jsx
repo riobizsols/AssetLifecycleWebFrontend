@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
@@ -10,6 +10,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import ReopenModal from "../components/reportbreakdown/ReopenModal";
 import ConfirmBreakdownModal from "../components/reportbreakdown/ConfirmBreakdownModal";
 import { Check, RefreshCw, Pencil, MoreVertical, RotateCcw } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 const ReportsBreakdown2 = () => {
   const navigate = useNavigate();
@@ -45,11 +46,11 @@ const ReportsBreakdown2 = () => {
   console.log('ReportsBreakdown2 - Has Edit Access:', hasEditAccess);
   console.log('ReportsBreakdown2 - Has Delete Access:', hasDeleteAccess);
   console.log('ReportsBreakdown2 - Is Read Only:', isReadOnly);
-  const [columns] = useState([
-    { label: "Reported By", name: "reported_by", visible: true },
-    { label: "Status", name: "status", visible: true },
-    { label: "Description", name: "description", visible: true },
-  ]);
+  const columns = useMemo(() => [
+    { label: t("breakdownDetails.reportedBy"), name: "reported_by", visible: true },
+    { label: t("breakdownDetails.status"), name: "status", visible: true },
+    { label: t("breakdownDetails.description"), name: "description", visible: true },
+  ], [t]);
 
   const handleEdit = (breakdown) => {
     navigate("/edit-breakdown", {
@@ -90,6 +91,7 @@ const ReportsBreakdown2 = () => {
       setData(formatted);
     } catch (err) {
       console.error("Failed to fetch breakdowns", err);
+      toast.error(t("breakdownDetails.failedToFetchBreakdowns"));
       setData([]);
     } finally {
       setIsLoading(false);
@@ -112,11 +114,11 @@ const ReportsBreakdown2 = () => {
         )
       );
       
-      setSuccessMessage("Breakdown confirmed successfully");
+      setSuccessMessage(t("breakdownDetails.breakdownConfirmedSuccessfully"));
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error("Failed to confirm breakdown", err);
-      alert("Error confirming breakdown: " + (err.response?.data?.error || err.message));
+      toast.error(t("breakdownDetails.errorConfirmingBreakdown") + ": " + (err.response?.data?.error || err.message));
     } finally {
       setShowConfirmModal(false);
       setSelectedConfirmReport(null);
@@ -128,7 +130,7 @@ const ReportsBreakdown2 = () => {
     const abr_id = abr_id_from_modal || selectedReport?.abr_id;
 
     if (!abr_id) {
-      alert("No report selected or ID missing. Please reopen from the list and try again.");
+      toast.error(t("breakdownDetails.noReportSelectedOrIdMissing"));
       console.error('Reopen aborted: missing abr_id', { abr_id_from_modal, selectedReport });
       return;
     }
@@ -147,13 +149,13 @@ const ReportsBreakdown2 = () => {
         )
       );
       
-      setSuccessMessage("Breakdown reopened successfully!");
+      setSuccessMessage(t("breakdownDetails.breakdownReopenedSuccessfully"));
       setTimeout(() => setSuccessMessage(""), 3000);
       setShowReopenModal(false);
       setSelectedReport(null);
     } catch (err) {
       console.error("Failed to reopen breakdown", err);
-      alert("Error reopening breakdown: " + (err.response?.data?.error || err.message));
+      toast.error(t("breakdownDetails.errorReopeningBreakdown") + ": " + (err.response?.data?.error || err.message));
     }
   };
 
@@ -267,10 +269,12 @@ const ReportsBreakdown2 = () => {
             const colSpan = visibleCols.length + (showActions ? 1 : 0);
             return (
               <tr>
-                <td colSpan={colSpan} className="text-center py-16">
-                  <p className="text-xl font-semibold text-gray-800">
-                    {t('common.noDataFound')}
-                  </p>
+                <td colSpan={colSpan} className="py-16">
+                  <div className="flex flex-col items-center justify-center w-full">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('common.noDataFound')}
+                    </p>
+                  </div>
                 </td>
               </tr>
             );
@@ -294,7 +298,7 @@ const ReportsBreakdown2 = () => {
                           handleEdit(row);
                         }}
                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors border border-transparent hover:border-blue-200"
-                        title="View/Edit Details"
+                        title={t("breakdownDetails.viewEditDetails")}
                       >
                         <Pencil size={18} />
                       </button>

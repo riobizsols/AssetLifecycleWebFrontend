@@ -88,6 +88,7 @@ import MaintenanceHistory from "../pages/reports/MaintenanceHistory";
 import AssetValuation from "../pages/reports/AssetValuation";
 import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
 import BreakdownHistory from "../pages/reports/BreakdownHistory";
+import BreakdownDetail from "../pages/reports/BreakdownDetail";
 import UsageBasedAssetReport from "../pages/reports/UsageBasedAssetReport";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
 import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
@@ -108,6 +109,7 @@ import CreateInspectionFrequency from "../components/CreateInspectionFrequency";
 import TechnicianCertificates from "../pages/TechnicianCertificates";
 import TechCertApprovals from "../pages/TechCertApprovals";
 import CostCenterTransfer from "../pages/CostCenterTransfer";
+import DatabaseConnectionSwitcher from "../pages/internal/DatabaseConnectionSwitcher";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -122,6 +124,7 @@ export default function AppRoutes() {
         <Route path="/tenant-setup" element={<TenantSetup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/internal/db-switcher" element={<DatabaseConnectionSwitcher />} />
         <Route
           path="/request-password-change"
           element={<RequestPasswordChange />}
@@ -476,6 +479,16 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
               <MainLayout>
                 <BreakdownHistory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/breakdown-history/:breakdownId"
+          element={
+            <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
+              <MainLayout>
+                <BreakdownDetail />
               </MainLayout>
             </ProtectedRoute>
           }
