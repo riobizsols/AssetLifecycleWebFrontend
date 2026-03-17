@@ -1044,6 +1044,14 @@ export default function ReportLayout({
                 <div>
                   <div className="text-lg font-semibold">{translatedReport.name}</div>
                   <div className="text-sm text-slate-500">{translatedReport.description}</div>
+                  {selectedReportId === "breakdown-history" && (
+                    <Link
+                      to="/reports/breakdown-reopen-details"
+                      className="inline-block mt-2 text-sm text-[#143d65] hover:underline font-medium"
+                    >
+                      {t("reports.breakdownReopenDetails.title")} →
+                    </Link>
+                  )}
                 </div>
                 <div>
                   {/* Schedule button hidden temporarily */}

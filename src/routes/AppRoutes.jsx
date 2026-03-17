@@ -89,6 +89,7 @@ import AssetValuation from "../pages/reports/AssetValuation";
 import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
 import BreakdownHistory from "../pages/reports/BreakdownHistory";
 import BreakdownDetail from "../pages/reports/BreakdownDetail";
+import BreakdownReopenDetails from "../pages/reports/BreakdownReopenDetails";
 import UsageBasedAssetReport from "../pages/reports/UsageBasedAssetReport";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
 import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
@@ -489,6 +490,16 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
               <MainLayout>
                 <BreakdownDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/breakdown-reopen-details"
+          element={
+            <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
+              <MainLayout>
+                <BreakdownReopenDetails />
               </MainLayout>
             </ProtectedRoute>
           }

@@ -90,6 +90,17 @@ export const breakdownHistoryService = {
     }
   },
 
+  // Get breakdowns that have been reopened more than once (for Reopen Details screen)
+  getReopenedMultiple: async (orgId = 'ORG001') => {
+    try {
+      const response = await API.get(`/breakdown-history/reopened-multiple?orgId=${orgId}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [BreakdownHistoryService] Error fetching reopened-multiple:', error);
+      throw error;
+    }
+  },
+
   // Get filter options
   getFilterOptions: async (orgId = 'ORG001') => {
     try {

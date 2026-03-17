@@ -185,6 +185,7 @@ const DatabaseSidebar = () => {
     SERIALNUMBERPRINT: "/serial-number-print", //not required
     BULKSERIALNUMBERPRINT: "/bulk-serial-number-print", // Bulk Serial Number Print route
     BREAKDOWNHISTORY: "/reports/breakdown-history",  //done
+    BREAKDOWNREOPENDETAILS: "/reports/breakdown-reopen-details",
     USAGEBASEDASSETREPORT: "/reports/usage-based-asset",  //done
     SLAREPORT: "/reports/sla-report",  //done
     QAAUDITREPORT: "/reports/qa-audit-report",  //done

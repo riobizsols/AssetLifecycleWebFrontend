@@ -666,6 +666,22 @@
       "technicianPhone": "Technician Phone",
       "maintenanceNotes": "Maintenance Notes"
     },
+    "breakdownReopenDetails": {
+      "title": "Breakdown Reopen Details",
+      "subtitle": "Asset breakdown fix list that have been reopened.",
+      "backToHistory": "Back to Breakdown History",
+      "breakdownId": "Breakdown ID",
+      "serialNumber": "Serial Number",
+      "assetType": "Asset Type",
+      "description": "Description",
+      "status": "Status",
+      "reopenCount": "Reopen count",
+      "reportedBy": "Reported by",
+      "createdOn": "Created on",
+      "noData": "No breakdowns have been reopened.",
+      "loadFailed": "Failed to load reopen details.",
+      "footer": "Click a row to open breakdown details."
+    },
     "columnHeaders": {
       "assetId": "Asset ID",
       "assetName": "Asset Name",
