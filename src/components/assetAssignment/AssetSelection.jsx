@@ -15,15 +15,15 @@ const AssetSelection = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { entityId, entityIntId, entityType, departmentId } =
+  const { entityId, entityIntId, entityType, departmentId, selectedAssetType: selectedAssetTypeFromState, activeTab: activeTabFromState } =
     location.state || {};
 
   const [assets, setAssets] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
-  const [selectedAssetType, setSelectedAssetType] = useState(null);
+  const [selectedAssetType, setSelectedAssetType] = useState(selectedAssetTypeFromState || null);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [activeTab, setActiveTab] = useState("select");
+  const [activeTab, setActiveTab] = useState(activeTabFromState || "select");
   const [scannedAssetId, setScannedAssetId] = useState("");
   const [filteredAssets, setFilteredAssets] = useState([]);
   const [showScanner, setShowScanner] = useState(false);
@@ -629,7 +629,16 @@ const AssetSelection = () => {
                               dept_id: asset.dept_id || departmentId || entityId, // Use entityId as fallback for department assignments
                               org_id: asset.org_id,
                               entityId: entityId, // Pass entityId explicitly for department assignments
-                              context: context
+                              context: context,
+                              backTo: location.pathname,
+                              returnState: {
+                                entityId,
+                                entityIntId: entityIntIdLocal || entityIntId,
+                                entityType,
+                                departmentId,
+                                selectedAssetType,
+                                activeTab
+                              }
                             },
                           });
                         }}

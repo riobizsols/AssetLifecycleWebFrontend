@@ -14,7 +14,7 @@ const AssetsDetail = () => {
   const { asset_id } = useParams();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { employee_int_id, dept_id, org_id, hideAssign, backTo, selectedAssetType, context, entityId } = location.state || {};
+  const { employee_int_id, dept_id, org_id, hideAssign, backTo, selectedAssetType, context, entityId, returnState } = location.state || {};
   
   // Get context from URL query params (DEPTASSIGNMENT or EMPASSIGNMENT)
   const contextFromUrl = searchParams.get('context') || context;
@@ -220,7 +220,7 @@ const AssetsDetail = () => {
             type="button"
             onClick={() => {
               if (backTo) {
-                navigate(backTo, { state: { selectedAssetType } });
+                navigate(backTo, { state: returnState || { selectedAssetType } });
               } else {
                 navigate(-1);
               }
