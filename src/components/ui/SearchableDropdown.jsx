@@ -14,7 +14,9 @@ const SearchableDropdown = ({
   disabled = false,
   className = "",
   displayKey = "text",
-  valueKey = "id"
+  valueKey = "id",
+  secondaryDisplayKey = null,
+  secondaryLoading = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -147,7 +149,18 @@ const SearchableDropdown = ({
                 className={`px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm ${option[valueKey] === value ? 'bg-gray-100' : ''
                   }`}
               >
-                {option[displayKey]}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate">{option[displayKey]}</span>
+                  {secondaryDisplayKey && secondaryLoading && (
+                    <span
+                      className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"
+                      aria-label="Loading"
+                    />
+                  )}
+                  {secondaryDisplayKey && !secondaryLoading && option[secondaryDisplayKey] !== undefined && option[secondaryDisplayKey] !== null && (
+                    <span className="text-gray-500 whitespace-nowrap text-right">({option[secondaryDisplayKey]})</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>

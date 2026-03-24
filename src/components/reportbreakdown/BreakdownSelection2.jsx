@@ -6,6 +6,7 @@ import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useAuthStore } from "../../store/useAuthStore";
+import SearchableDropdown from "../ui/SearchableDropdown";
 
 const BreakdownSelection2 = () => {
   const navigate = useNavigate();
@@ -22,6 +23,12 @@ const BreakdownSelection2 = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [myAssetsScannedId, setMyAssetsScannedId] = useState("");
   const scannerRef = useRef(null);
+
+  const assetTypeCounts = myAssets.reduce((acc, asset) => {
+    if (!asset?.asset_type_id) return acc;
+    acc[asset.asset_type_id] = (acc[asset.asset_type_id] || 0) + 1;
+    return acc;
+  }, {});
 
   useEffect(() => {
     fetchAssetTypes();
@@ -111,8 +118,8 @@ const BreakdownSelection2 = () => {
     }
   };
 
-  const handleAssetTypeChange = (e) => {
-    setSelectedAssetType(e.target.value);
+  const handleAssetTypeChange = (value) => {
+    setSelectedAssetType(value || null);
   };
 
   const startScanner = async () => {
@@ -223,18 +230,24 @@ const BreakdownSelection2 = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('breakdownSelection.assetType')}
                 </label>
-                <select
-                  className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
+                <SearchableDropdown
+                  options={[
+                    { id: "", text: t('breakdownSelection.allAssetTypes'), count: myAssets.length },
+                    ...assetTypes.map((type) => ({
+                      id: type.asset_type_id,
+                      text: type.text || type.asset_type_name || type.asset_type_id,
+                      count: assetTypeCounts[type.asset_type_id] || 0
+                    }))
+                  ]}
                   value={selectedAssetType || ""}
                   onChange={handleAssetTypeChange}
-                >
-                  <option value="">{t('breakdownSelection.allAssetTypes')}</option>
-                  {assetTypes.map((type) => (
-                    <option key={type.asset_type_id} value={type.asset_type_id}>
-                      {type.text}
-                    </option>
-                  ))}
-                </select>
+                  placeholder={t('breakdownSelection.allAssetTypes')}
+                  searchPlaceholder={t('breakdownSelection.searchAssetType') || 'Search asset type...'}
+                  displayKey="text"
+                  valueKey="id"
+                  secondaryDisplayKey="count"
+                  className="w-full"
+                />
               </div>
             </div>
           ) : (

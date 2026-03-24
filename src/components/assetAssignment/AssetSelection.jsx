@@ -12,6 +12,7 @@ import SearchableDropdown from "../ui/SearchableDropdown";
  
 
 const AssetSelection = () => {
+  const ALL_ASSET_TYPES_VALUE = "__ALL_ASSET_TYPES__";
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -31,6 +32,8 @@ const AssetSelection = () => {
   const videoRef = useRef(null);
   const [inactiveAssets, setInactiveAssets] = useState([]);
   const [inactiveAssetsRaw, setInactiveAssetsRaw] = useState([]);
+  const [assetTypeCounts, setAssetTypeCounts] = useState({});
+  const [countsLoading, setCountsLoading] = useState(false);
   
   // Local state to store entityIntId if fetched (fallback if not passed via navigation state)
   const [entityIntIdLocal, setEntityIntIdLocal] = useState(entityIntId);
@@ -147,13 +150,21 @@ const AssetSelection = () => {
   }, [entityIntId]);
 
   useEffect(() => {
-    if (selectedAssetType) {
-      fetchInactiveAssetsByType(selectedAssetType);
-    } else {
-      setInactiveAssets([]);
-    }
-    setSelectedAsset(null);
-  }, [selectedAssetType]);
+    const loadAssetsBySelection = async () => {
+      if (!selectedAssetType) {
+        // Default state: no asset type chosen yet.
+        setInactiveAssets([]);
+        setInactiveAssetsRaw([]);
+      } else if (selectedAssetType === ALL_ASSET_TYPES_VALUE) {
+        await fetchAllInactiveAssets();
+      } else {
+        await fetchInactiveAssetsByType(selectedAssetType);
+      }
+      setSelectedAsset(null);
+    };
+
+    loadAssetsBySelection();
+  }, [selectedAssetType, assetTypes]);
 
   // Handler for asset type selection (no persistence)
   const handleAssetTypeChange = (value) => {
@@ -193,11 +204,48 @@ const AssetSelection = () => {
 
       // Backend already filters by assignment_type, so just use the results
       setAssetTypes(incoming);
+      fetchAssetTypeCounts(incoming);
       console.log('Final asset types:', incoming);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
       toast.error(t('assets.failedToFetchAssetTypes'));
       setAssetTypes([]);
+    }
+  };
+
+  const fetchAssetTypeCounts = async (types = []) => {
+    try {
+      setCountsLoading(true);
+      if (!Array.isArray(types) || types.length === 0) {
+        setAssetTypeCounts({});
+        setCountsLoading(false);
+        return;
+      }
+
+      const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
+      const responses = await Promise.all(
+        types.map((type) =>
+          API.get(`/assets/type/${type.asset_type_id}/inactive`, { params: { context } })
+        )
+      );
+
+      const counts = {};
+      types.forEach((type, index) => {
+        const res = responses[index];
+        const list = Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        counts[type.asset_type_id] = list.length;
+      });
+
+      setAssetTypeCounts(counts);
+    } catch (err) {
+      console.error("Failed to fetch asset type counts", err);
+      setAssetTypeCounts({});
+    } finally {
+      setCountsLoading(false);
     }
   };
 
@@ -242,6 +290,39 @@ const AssetSelection = () => {
       console.error("Failed to fetch inactive assets", err);
       toast.error(t('assets.failedToFetchInactiveAssets'));
       setInactiveAssets([]);
+    }
+  };
+
+  const fetchAllInactiveAssets = async () => {
+    try {
+      if (!Array.isArray(assetTypes) || assetTypes.length === 0) {
+        setInactiveAssets([]);
+        setInactiveAssetsRaw([]);
+        return;
+      }
+
+      // Reuse existing API by querying each type, then de-duplicate by asset_id.
+      const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
+      const requests = assetTypes.map((type) =>
+        API.get(`/assets/type/${type.asset_type_id}/inactive`, { params: { context } })
+      );
+
+      const responses = await Promise.all(requests);
+      const combined = responses.flatMap((res) =>
+        Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : []
+      );
+
+      const uniqueByAssetId = Array.from(
+        new Map(combined.map((asset) => [asset.asset_id, asset])).values()
+      );
+
+      setInactiveAssets(uniqueByAssetId);
+      setInactiveAssetsRaw(combined);
+    } catch (err) {
+      console.error("Failed to fetch all inactive assets", err);
+      toast.error(t('assets.failedToFetchInactiveAssets'));
+      setInactiveAssets([]);
+      setInactiveAssetsRaw([]);
     }
   };
 
@@ -500,18 +581,25 @@ const AssetSelection = () => {
                 </label>
                 <SearchableDropdown
                   options={[
-                    { id: "", text: t('assets.allAssetTypes') },
+                    {
+                      id: ALL_ASSET_TYPES_VALUE,
+                      text: t('assets.allAssetTypes'),
+                      count: Object.values(assetTypeCounts).reduce((sum, c) => sum + (c || 0), 0)
+                    },
                     ...assetTypes.map((type) => ({
                       id: type.asset_type_id,
-                      text: type.text || type.asset_type_name
+                      text: type.text || type.asset_type_name,
+                      count: assetTypeCounts[type.asset_type_id] || 0
                     }))
                   ]}
                   value={selectedAssetType || ""}
                   onChange={handleAssetTypeChange}
-                  placeholder={t('assets.allAssetTypes')}
+                  placeholder={t('assets.selectAssetType') || 'Select Asset Type'}
                   searchPlaceholder={t('assets.searchAssetType') || 'Search asset type...'}
                   displayKey="text"
                   valueKey="id"
+                  secondaryDisplayKey="count"
+                  secondaryLoading={countsLoading}
                 />
               </div>
 
