@@ -42,6 +42,8 @@ const CreateGroupAsset = () => {
   // New state for API data
   const [assetTypes, setAssetTypes] = useState([]);
   const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
+  const [loadingAssetTypeCounts, setLoadingAssetTypeCounts] = useState(false);
+  const [assetTypeCounts, setAssetTypeCounts] = useState({});
   const [loadingAssets, setLoadingAssets] = useState(false);
   
   // Document upload states
@@ -99,6 +101,42 @@ const CreateGroupAsset = () => {
       setLoadingAssetTypes(false);
     }
   };
+
+  useEffect(() => {
+    const fetchAssetTypeCounts = async () => {
+      try {
+        if (!Array.isArray(assetTypes) || assetTypes.length === 0) {
+          setAssetTypeCounts({});
+          return;
+        }
+
+        setLoadingAssetTypeCounts(true);
+        const responses = await Promise.all(
+          assetTypes.map((type) => API.get(`/group-assets/available/${type.asset_type_id}`))
+        );
+
+        const counts = {};
+        assetTypes.forEach((type, index) => {
+          const list = Array.isArray(responses[index]?.data?.assets)
+            ? responses[index].data.assets
+            : Array.isArray(responses[index]?.data?.data)
+            ? responses[index].data.data
+            : Array.isArray(responses[index]?.data)
+            ? responses[index].data
+            : [];
+          counts[type.asset_type_id] = list.length;
+        });
+        setAssetTypeCounts(counts);
+      } catch (error) {
+        console.error('Error fetching group asset type counts:', error);
+        setAssetTypeCounts({});
+      } finally {
+        setLoadingAssetTypeCounts(false);
+      }
+    };
+
+    fetchAssetTypeCounts();
+  }, [assetTypes]);
 
   // Fetch assets by asset type
   const fetchAssetsByType = async (assetTypeId) => {
@@ -516,12 +554,26 @@ const CreateGroupAsset = () => {
                                   onClick={() => handleAssetTypeSelect(type)}
                                   className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between"
                                 >
-                                  <span className="text-sm text-gray-900">
-                                    {type.asset_type_id} - {type.text}
-                                  </span>
-                                  {selectedAssetType === type.asset_type_id && (
-                                    <Check size={16} className="text-blue-600" />
-                                  )}
+                                  <div className="flex items-center justify-between w-full gap-2">
+                                    <span className="text-sm text-gray-900 truncate">
+                                      {type.asset_type_id} - {type.text}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      {loadingAssetTypeCounts ? (
+                                        <span
+                                          className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"
+                                          aria-label="Loading"
+                                        />
+                                      ) : (
+                                        <span className="text-xs text-gray-500 whitespace-nowrap text-right">
+                                          ({assetTypeCounts[type.asset_type_id] || 0})
+                                        </span>
+                                      )}
+                                      {selectedAssetType === type.asset_type_id && (
+                                        <Check size={16} className="text-blue-600" />
+                                      )}
+                                    </div>
+                                  </div>
                                 </button>
                               );
                             })

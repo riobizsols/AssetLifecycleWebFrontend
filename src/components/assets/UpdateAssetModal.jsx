@@ -64,6 +64,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     vendorModel: '',
     purchaseSupply: '',
     serviceSupply: '',
+    currentStatus: '',
     vendorId: '',
     properties: {},
     // New fields
@@ -107,9 +108,18 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const fetchAssetWithProperties = async (assetId) => {
     try {
       const response = await API.get(`/assets/${assetId}`);
-      if (response.data) {
-        return response.data;
+      const payload = response?.data;
+      if (!payload) return null;
+
+      // Support both direct asset object and wrapped API shapes.
+      if (Array.isArray(payload)) {
+        return payload[0] || null;
       }
+      if (payload.data) {
+        if (Array.isArray(payload.data)) return payload.data[0] || null;
+        return payload.data;
+      }
+      return payload;
     } catch (error) {
       console.error('Error fetching asset with properties:', error);
     }
@@ -119,7 +129,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Load asset data when modal opens
   useEffect(() => {
     const loadAssetData = async () => {
-      if (assetData?.asset_id) {
+      if (isOpen && assetData?.asset_id) {
         // Fetch full asset data with properties
         const fullAssetData = await fetchAssetWithProperties(assetData.asset_id);
         const dataToUse = fullAssetData || assetData;
@@ -165,6 +175,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           vendorModel: '',
           purchaseSupply: dataToUse.purchase_vendor_id || '',
           serviceSupply: dataToUse.service_vendor_id || '',
+          currentStatus: dataToUse.current_status || 'Active',
           vendorId: dataToUse.purchase_vendor_id || '',
           properties: dataToUse.properties || {},
           // Map DB fields to form
@@ -186,7 +197,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     };
 
     loadAssetData();
-  }, [assetData]);
+  }, [assetData, isOpen]);
 
   // Populate dropdowns when context data is available
   useEffect(() => {
@@ -583,8 +594,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         updateData.location = form.location || null;
       }
       
-      // Always include these (not in column access config or required for functionality)
-      updateData.current_status = 'Active';
+      // Keep existing status unless user explicitly changes it in update form.
+      updateData.current_status = form.currentStatus || 'Active';
       updateData.properties = form.properties || {};
       updateData.prod_serv_id = null;
       updateData.maintsch_id = null;
@@ -792,7 +803,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                 <div className="border text-gray-600 px-3 py-2 text-xs w-full bg-gray-50 rounded flex justify-between items-center h-9">
                   <span className="text-xs truncate">
                     {form.assetType
-                      ? assetTypes.find((at) => at.asset_type_id === form.assetType)?.text || "Select"
+                      ? assetTypes.find((at) => at.asset_type_id === form.assetType)?.text || form.assetType
                       : "Select"}
                   </span>
                   <span className="text-xs text-gray-400">(Read Only)</span>
@@ -961,6 +972,23 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                     {option.label}
                   </option>
                 ))}
+              </select>
+            </div>
+            )}
+
+            {/* Current Status */}
+            {isColumnVisible('current_status') && (
+            <div>
+              <label className="block text-sm font-medium mb-1">{t('assets.currentStatus')}</label>
+              <select
+                value={form.currentStatus}
+                onChange={(e) => setForm(prev => ({ ...prev, currentStatus: e.target.value }))}
+                disabled={isReadOnly || isColumnReadOnly('current_status')}
+                className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly || isColumnReadOnly('current_status') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+              >
+                <option value="Active">{t('assets.active')}</option>
+                <option value="Inactive">{t('assets.inactive')}</option>
+                <option value="Disposed">{t('assets.disposed')}</option>
               </select>
             </div>
             )}

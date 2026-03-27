@@ -35,6 +35,8 @@ const CreateScrapSales = () => {
   // Asset types from API
   const [assetTypes, setAssetTypes] = useState([]);
   const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
+  const [loadingAssetTypeCounts, setLoadingAssetTypeCounts] = useState(false);
+  const [assetTypeCounts, setAssetTypeCounts] = useState({});
   const [error, setError] = useState(null);
 
   // Buyer details
@@ -74,6 +76,42 @@ const CreateScrapSales = () => {
     };
     fetchAssetTypes();
   }, []);
+
+  useEffect(() => {
+    const fetchAssetTypeCounts = async () => {
+      try {
+        if (!Array.isArray(assetTypes) || assetTypes.length === 0) {
+          setAssetTypeCounts({});
+          return;
+        }
+
+        setLoadingAssetTypeCounts(true);
+        const responses = await Promise.all(
+          assetTypes.map((type) =>
+            API.get(`/scrap-assets-by-type/${type.asset_type_id}`, {
+              params: { context: 'SCRAPSALES' }
+            })
+          )
+        );
+
+        const counts = {};
+        assetTypes.forEach((type, index) => {
+          const list = Array.isArray(responses[index]?.data?.scrap_assets)
+            ? responses[index].data.scrap_assets
+            : [];
+          counts[type.asset_type_id] = list.length;
+        });
+        setAssetTypeCounts(counts);
+      } catch (err) {
+        console.error("Failed to fetch scrap asset type counts:", err);
+        setAssetTypeCounts({});
+      } finally {
+        setLoadingAssetTypeCounts(false);
+      }
+    };
+
+    fetchAssetTypeCounts();
+  }, [assetTypes]);
 
   // Fetch document types on component mount
   useEffect(() => {
@@ -648,12 +686,26 @@ const CreateScrapSales = () => {
                                   : ""
                               }`}
                             >
-                              <span className="text-sm text-gray-900">
-                                {type.asset_type_id} - {type.text}
-                              </span>
-                              {isSelected && (
-                                <Check size={16} className="text-blue-600" />
-                              )}
+                              <div className="flex items-center justify-between w-full gap-2">
+                                <span className="text-sm text-gray-900 truncate">
+                                  {type.asset_type_id} - {type.text}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {loadingAssetTypeCounts ? (
+                                    <span
+                                      className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"
+                                      aria-label="Loading"
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-500 whitespace-nowrap text-right">
+                                      ({assetTypeCounts[type.asset_type_id] || 0})
+                                    </span>
+                                  )}
+                                  {isSelected && (
+                                    <Check size={16} className="text-blue-600" />
+                                  )}
+                                </div>
+                              </div>
                             </button>
                           );
                         })

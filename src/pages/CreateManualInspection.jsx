@@ -18,6 +18,8 @@ const CreateManualInspection = () => {
   const [selectedAssetType, setSelectedAssetType] = useState('');
   const [assets, setAssets] = useState([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
+  const [loadingAssetTypeCounts, setLoadingAssetTypeCounts] = useState(false);
+  const [assetTypeCounts, setAssetTypeCounts] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [scannedAssetId, setScannedAssetId] = useState('');
   const [showScanner, setShowScanner] = useState(false);
@@ -43,6 +45,10 @@ const CreateManualInspection = () => {
       setAssets([]);
     }
   }, [selectedAssetType]);
+
+  useEffect(() => {
+    fetchAssetTypeCounts();
+  }, [assetTypes, user?.org_id]);
 
   const initializeScanner = async () => {
     try {
@@ -102,6 +108,40 @@ const CreateManualInspection = () => {
     }
   };
 
+  const fetchAssetTypeCounts = async () => {
+    try {
+      if (!Array.isArray(assetTypes) || assetTypes.length === 0) {
+        setAssetTypeCounts({});
+        return;
+      }
+
+      setLoadingAssetTypeCounts(true);
+      const responses = await Promise.all(
+        assetTypes.map((at) =>
+          API.get('/assets', {
+            params: {
+              asset_type_id: at.asset_type_id,
+              org_id: user?.org_id,
+            },
+          })
+        )
+      );
+
+      const counts = {};
+      assetTypes.forEach((at, index) => {
+        const res = responses[index];
+        const list = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        counts[at.asset_type_id] = list.length;
+      });
+      setAssetTypeCounts(counts);
+    } catch (err) {
+      console.error('Failed to fetch asset type counts:', err);
+      setAssetTypeCounts({});
+    } finally {
+      setLoadingAssetTypeCounts(false);
+    }
+  };
+
   const createInspectionForAsset = async (asset) => {
     if (!asset?.asset_id) {
       toast.error(t('maintenanceSupervisor.pleaseSelectAsset') || 'Please select an asset');
@@ -154,10 +194,15 @@ const CreateManualInspection = () => {
   };
 
   const assetTypeOptions = [
-    { id: '', text: t('assets.allAssetTypes') || 'All Asset Types' },
+    {
+      id: '',
+      text: t('assets.allAssetTypes') || 'All Asset Types',
+      count: Object.values(assetTypeCounts).reduce((sum, count) => sum + (count || 0), 0),
+    },
     ...(assetTypes || []).map((at) => ({
       id: at.asset_type_id,
       text: at.text || at.asset_type_name || at.name || at.asset_type_id,
+      count: assetTypeCounts[at.asset_type_id] || 0,
     })),
   ];
 
@@ -209,6 +254,8 @@ const CreateManualInspection = () => {
                   searchPlaceholder={t('assets.searchAssetType') || 'Search asset type...'}
                   displayKey="text"
                   valueKey="id"
+                  secondaryDisplayKey="count"
+                  secondaryLoading={loadingAssetTypeCounts}
                 />
               </div>
               <button

@@ -6,6 +6,7 @@ import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useAuthStore } from "../../store/useAuthStore";
+import SearchableDropdown from "../ui/SearchableDropdown";
 
 const BreakdownSelection2 = () => {
   const navigate = useNavigate();
@@ -16,12 +17,20 @@ const BreakdownSelection2 = () => {
   const [assetTypes, setAssetTypes] = useState([]);
   const [selectedAssetType, setSelectedAssetType] = useState(null);
   const [myAssets, setMyAssets] = useState([]);
+  const [allAssets, setAllAssets] = useState([]);
+  const [loadingAllAssets, setLoadingAllAssets] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [myAssetsSubTab, setMyAssetsSubTab] = useState("myAssets"); // For My Assets: "myAssets", "select", or "scan"
 
   const [showScanner, setShowScanner] = useState(false);
   const [myAssetsScannedId, setMyAssetsScannedId] = useState("");
   const scannerRef = useRef(null);
+
+  const assetTypeCounts = allAssets.reduce((acc, asset) => {
+    if (!asset?.asset_type_id) return acc;
+    acc[asset.asset_type_id] = (acc[asset.asset_type_id] || 0) + 1;
+    return acc;
+  }, {});
 
   useEffect(() => {
     fetchAssetTypes();
@@ -36,8 +45,11 @@ const BreakdownSelection2 = () => {
   }, [location.state]);
 
   useEffect(() => {
-    if (myAssetsSubTab === "myAssets" || myAssetsSubTab === "select") {
+    if (myAssetsSubTab === "myAssets") {
       fetchMyAssets();
+    }
+    if (myAssetsSubTab === "select") {
+      fetchAllAssets();
     }
   }, [myAssetsSubTab]);
 
@@ -111,8 +123,29 @@ const BreakdownSelection2 = () => {
     }
   };
 
-  const handleAssetTypeChange = (e) => {
-    setSelectedAssetType(e.target.value);
+  const fetchAllAssets = async () => {
+    try {
+      setLoadingAllAssets(true);
+      const res = await API.get('/assets');
+      const list = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.rows)
+        ? res.data.rows
+        : Array.isArray(res.data?.data)
+        ? res.data.data
+        : [];
+      setAllAssets(list);
+    } catch (err) {
+      console.error("Failed to fetch all assets", err);
+      toast.error(t('assets.failedToFetchAssets'));
+      setAllAssets([]);
+    } finally {
+      setLoadingAllAssets(false);
+    }
+  };
+
+  const handleAssetTypeChange = (value) => {
+    setSelectedAssetType(value || null);
   };
 
   const startScanner = async () => {
@@ -223,18 +256,24 @@ const BreakdownSelection2 = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t('breakdownSelection.assetType')}
                 </label>
-                <select
-                  className="border px-3 py-2 text-sm w-full bg-white text-black focus:outline-none rounded"
+                <SearchableDropdown
+                  options={[
+                    { id: "", text: t('breakdownSelection.allAssetTypes'), count: allAssets.length },
+                    ...assetTypes.map((type) => ({
+                      id: type.asset_type_id,
+                      text: type.text || type.asset_type_name || type.asset_type_id,
+                      count: assetTypeCounts[type.asset_type_id] || 0
+                    }))
+                  ]}
                   value={selectedAssetType || ""}
                   onChange={handleAssetTypeChange}
-                >
-                  <option value="">{t('breakdownSelection.allAssetTypes')}</option>
-                  {assetTypes.map((type) => (
-                    <option key={type.asset_type_id} value={type.asset_type_id}>
-                      {type.text}
-                    </option>
-                  ))}
-                </select>
+                  placeholder={t('breakdownSelection.allAssetTypes')}
+                  searchPlaceholder={t('breakdownSelection.searchAssetType') || 'Search asset type...'}
+                  displayKey="text"
+                  valueKey="id"
+                  secondaryDisplayKey="count"
+                  className="w-full"
+                />
               </div>
             </div>
           ) : (
@@ -295,10 +334,10 @@ const BreakdownSelection2 = () => {
             </div>
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
               {(() => {
-                // Filter assets based on selected asset type if in select sub-tab
+                const sourceAssets = myAssetsSubTab === "select" ? allAssets : myAssets;
                 const displayAssets = myAssetsSubTab === "select" && selectedAssetType
-                  ? myAssets.filter(a => a.asset_type_id === selectedAssetType)
-                  : myAssets;
+                  ? sourceAssets.filter(a => a.asset_type_id === selectedAssetType)
+                  : sourceAssets;
                 
                 return (
                   <>
@@ -318,7 +357,11 @@ const BreakdownSelection2 = () => {
                         isMaximized ? "max-h-[60vh] overflow-y-auto" : ""
                       }`}
                     >
-                      {displayAssets.map((asset, i) => (
+                      {loadingAllAssets && myAssetsSubTab === "select" ? (
+                        <div className="px-4 py-6 text-center text-gray-500 col-span-4 bg-white rounded-b">
+                          {t('common.loading') || 'Loading...'}
+                        </div>
+                      ) : displayAssets.map((asset, i) => (
                         <div
                           key={asset.asset_id}
                           className={`grid px-4 py-2 items-center border-b ${
@@ -326,7 +369,7 @@ const BreakdownSelection2 = () => {
                           } text-gray-800 hover:bg-gray-200`}
                           style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
                         >
-                          <div>{asset.asset_type_name || "-"}</div>
+                          <div>{asset.asset_type_name || asset.text || "-"}</div>
                           <div title={asset.text || asset.description || ""}>
                             <button
                               className="text-blue-600 underline hover:text-blue-800 text-left"
@@ -355,11 +398,11 @@ const BreakdownSelection2 = () => {
                           </div>
                         </div>
                       ))}
-                      {displayAssets.length === 0 && (
+                      {!loadingAllAssets && displayAssets.length === 0 && (
                         <div className="px-4 py-6 text-center text-gray-500 col-span-4 bg-white rounded-b">
                           {myAssetsSubTab === "myAssets" 
                             ? "No assigned assets found"
-                            : t('breakdownSelection.noInactiveAssetsFound')}
+                            : (t('common.noDataFound') || 'No assets found')}
                         </div>
                       )}
                     </div>
