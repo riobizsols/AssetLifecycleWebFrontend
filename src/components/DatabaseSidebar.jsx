@@ -331,6 +331,13 @@ const DatabaseSidebar = () => {
     "PROPERTIES",
     "BREAKDOWNREASONCODES"
   ];
+  const employeeTechCertAppIds = ["TECHCERTUPLOAD", "TECHNICIANCERTIFICATES", "EMPLOYEE TECH CERTIFICATION"];
+
+  const hasEmployeeTechCertAccess = () =>
+    employeeTechCertAppIds.some((appId) => Boolean(getAccessLevel(appId)));
+
+  const getEmployeeTechCertAppId = () =>
+    employeeTechCertAppIds.find((appId) => Boolean(getAccessLevel(appId))) || "TECHCERTUPLOAD";
 
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
@@ -438,9 +445,15 @@ const DatabaseSidebar = () => {
             <ul className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
                 const isAdminSettingsOnlyChild = adminSettingsOnlyAppIds.includes(child.app_id);
+                const isEmployeeTechCertChild = employeeTechCertAppIds.includes(child.app_id);
                 
                 // Hide admin settings only items when NOT in admin settings mode
                 if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
+                  return null;
+                }
+
+                // Show Employee Tech Certificate as standalone top-level item
+                if (isEmployeeTechCertChild) {
                   return null;
                 }
                 
@@ -596,7 +609,16 @@ const DatabaseSidebar = () => {
             </div>
           </li>
         ) : (
-          navigation.map((item) => renderNavigationItem(item))
+          <>
+            {navigation.map((item) => renderNavigationItem(item))}
+            {!isAdminSettingsMode && hasEmployeeTechCertAccess() &&
+              renderNavigationItem({
+                id: "standalone-tech-certificates",
+                app_id: getEmployeeTechCertAppId(),
+                label: "Technician Certificates",
+                is_group: false
+              })}
+          </>
         )}
       </ul>
     </aside>

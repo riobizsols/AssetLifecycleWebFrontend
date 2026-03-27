@@ -167,8 +167,8 @@ const MaintenanceFrequency = () => {
   };
 
   const getMaintainedByLabel = (value) => {
-    const normalized = String(value || '').trim().toLowerCase();
-    if (normalized === 'self') return 'In-House';
+    const normalized = String(value || '').trim().toLowerCase().replace(/\s|-/g, '');
+    if (normalized === 'self' || normalized === 'inhouse') return 'In-House';
     if (normalized === 'vendor') return 'Vendor';
     return value || '-';
   };
