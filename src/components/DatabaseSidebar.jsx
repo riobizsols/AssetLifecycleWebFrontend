@@ -334,6 +334,12 @@ const DatabaseSidebar = () => {
 
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
+    // Hide known duplicate menu entries that point to the same screen
+    const hiddenDuplicateAppIds = ["EMPLOYEE TECH CERTIFICATION"];
+    if (hiddenDuplicateAppIds.includes(item.app_id)) {
+      return false;
+    }
+
     const isAdminSettingsOnlyItem = adminSettingsOnlyAppIds.includes(item.app_id);
     
     // Hide admin settings only items when NOT in admin settings mode
