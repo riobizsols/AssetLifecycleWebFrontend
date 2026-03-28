@@ -333,6 +333,16 @@ const DatabaseSidebar = () => {
   ];
   const employeeTechCertAppIds = ["TECHCERTUPLOAD", "TECHNICIANCERTIFICATES", "EMPLOYEE TECH CERTIFICATION"];
 
+  const normalizeNavAppId = (id) =>
+    id == null ? "" : String(id).trim().replace(/\s+/g, " ").toUpperCase();
+
+  const employeeTechCertIdSet = new Set(
+    employeeTechCertAppIds.map((id) => normalizeNavAppId(id))
+  );
+
+  const isEmployeeTechCertMenuId = (appId) =>
+    employeeTechCertIdSet.has(normalizeNavAppId(appId));
+
   const hasEmployeeTechCertAccess = () =>
     employeeTechCertAppIds.some((appId) => Boolean(getAccessLevel(appId)));
 
@@ -341,9 +351,12 @@ const DatabaseSidebar = () => {
 
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
-    // Hide known duplicate menu entries that point to the same screen
-    const hiddenDuplicateAppIds = ["EMPLOYEE TECH CERTIFICATION"];
-    if (hiddenDuplicateAppIds.includes(item.app_id)) {
+    // Same route as standalone "Technician Certificates"; hide raw nav rows so only one link shows
+    if (
+      item.id !== "standalone-tech-certificates" &&
+      !isAdminSettingsMode &&
+      isEmployeeTechCertMenuId(item.app_id)
+    ) {
       return false;
     }
 
@@ -403,6 +416,10 @@ const DatabaseSidebar = () => {
       const isAnyChildActive =
         hasChildren &&
         item.children.some((child) => {
+          // Tech cert routes are shown as a standalone item, not under this group — don't mark parent active
+          if (isEmployeeTechCertMenuId(child.app_id)) {
+            return false;
+          }
           const childPath = getPath(child.app_id);
           // For COLUMNACCESSCONFIG, check exact match since it shares path with ADMINSETTINGS
           if (child.app_id === "COLUMNACCESSCONFIG") {
@@ -445,7 +462,7 @@ const DatabaseSidebar = () => {
             <ul className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
                 const isAdminSettingsOnlyChild = adminSettingsOnlyAppIds.includes(child.app_id);
-                const isEmployeeTechCertChild = employeeTechCertAppIds.includes(child.app_id);
+                const isEmployeeTechCertChild = isEmployeeTechCertMenuId(child.app_id);
                 
                 // Hide admin settings only items when NOT in admin settings mode
                 if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
