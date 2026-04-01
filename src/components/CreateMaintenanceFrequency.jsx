@@ -372,7 +372,6 @@ const CreateMaintenanceFrequency = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Frequency <span className="text-red-500">*</span>
                     Frequency {isRecurring && <span className="text-red-500">*</span>}
                   </label>
                   <input
@@ -435,7 +434,7 @@ const CreateMaintenanceFrequency = () => {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Self / Vendor Managed <span className="text-red-500">*</span>
+                    In-House / Vendor Managed <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-4 mt-2">
                     <label className="flex items-center">

@@ -166,6 +166,13 @@ const MaintenanceFrequency = () => {
     return normalizedValue;
   };
 
+  const getMaintainedByLabel = (value) => {
+    const normalized = String(value || '').trim().toLowerCase().replace(/\s|-/g, '');
+    if (normalized === 'self' || normalized === 'inhouse') return 'In-House';
+    if (normalized === 'vendor') return 'Vendor';
+    return value || '-';
+  };
+
   // Fetch all maintenance frequencies
   const fetchFrequencies = async () => {
     setLoading(true);
@@ -1088,7 +1095,7 @@ const MaintenanceFrequency = () => {
                               </td>
                               <td className="px-4 py-3 text-sm border">
                                 <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                                  {freq.maintained_by}
+                                  {getMaintainedByLabel(freq.maintained_by)}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm border">
