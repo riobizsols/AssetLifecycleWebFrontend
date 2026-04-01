@@ -1513,8 +1513,20 @@ export default function ReportLayout({
              )}
              
              {/* Preview Table - Hidden if hideTable prop is true */}
-            {!hideTable && (
-            <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+             {!hideTable && (
+            <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative min-h-[200px]">
+              {(apiData?.loading || loading) && (
+                <div
+                  className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]"
+                  aria-busy="true"
+                  aria-live="polite"
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#143d65]" />
+                    <span className="text-sm text-slate-600">{t("reports.loadingData")}</span>
+                  </div>
+                </div>
+              )}
               <div className="p-3 border-b border-slate-200 flex items-center justify-between">
                 <div className="text-sm text-slate-600">{t('reports.previewTable')} • {filteredRows.length} {t('reports.rows')}</div>
                 {/* Column chooser (add/remove) */}
@@ -1633,10 +1645,22 @@ export default function ReportLayout({
                           
                           const cellValue = r[c] ?? '';
                           const isBreakdownIdLink = selectedReportId === 'breakdown-history' && c === 'Breakdown ID' && cellValue && String(cellValue) !== 'N/A';
+                          const isAmsIdLink =
+                            selectedReportId === 'reopened-breakdowns' &&
+                            c === 'AMS ID' &&
+                            cellValue &&
+                            String(cellValue) !== 'N/A';
                           return (
                             <td key={c} className={`px-3 py-2 border-b border-slate-100 whitespace-nowrap ${alignClass}`}>
                               {isBreakdownIdLink ? (
                                 <Link to={`/reports/breakdown-history/${encodeURIComponent(String(cellValue))}`} className="text-blue-600 hover:text-blue-800 hover:underline font-medium">
+                                  {String(cellValue)}
+                                </Link>
+                              ) : isAmsIdLink ? (
+                                <Link
+                                  to={`/reports/reopened-breakdowns/${encodeURIComponent(String(cellValue))}/history`}
+                                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                >
                                   {String(cellValue)}
                                 </Link>
                               ) : (

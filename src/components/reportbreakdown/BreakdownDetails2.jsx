@@ -23,6 +23,7 @@ const BreakdownDetails2 = () => {
   const isReadOnly = !!existingBreakdown;
 
   const [reasonCodes, setReasonCodes] = useState([]);
+  const [isLoadingReasonCodes, setIsLoadingReasonCodes] = useState(false);
   const [brCode, setBrCode] = useState("");
   const [description, setDescription] = useState("");
   const [reportedByType, setReportedByType] = useState("");
@@ -87,7 +88,12 @@ const BreakdownDetails2 = () => {
   }, [existingBreakdown, assetTypeDetails]);
 
   const fetchReasonCodes = async () => {
+    if (!assetTypeId || !user?.org_id) {
+      setReasonCodes([]);
+      return;
+    }
     try {
+      setIsLoadingReasonCodes(true);
       const res = await API.get("/reportbreakdown/reason-codes", {
         params: {
           asset_type_id: assetTypeId || undefined,
@@ -103,6 +109,8 @@ const BreakdownDetails2 = () => {
     } catch (err) {
       console.warn(t("breakdownDetails.failedToFetchReasonCodes"));
       setReasonCodes([]);
+    } finally {
+      setIsLoadingReasonCodes(false);
     }
   };
 
@@ -500,14 +508,18 @@ const BreakdownDetails2 = () => {
                   value={brCode}
                   onChange={handleBrCodeChange}
                   placeholder={t("breakdownDetails.selectBreakdownCode")}
-                  disabled={isReadOnly}
+                  disabled={isReadOnly || isLoadingReasonCodes}
                   required
                 />
-                {reasonCodes.length === 0 && (
+                {isLoadingReasonCodes ? (
+                  <p className="text-xs text-gray-500">
+                    {t("breakdownDetails.loading")}
+                  </p>
+                ) : reasonCodes.length === 0 ? (
                   <p className="text-xs text-red-500">
                     {t("breakdownDetails.noBreakdownReasonCodes")}
                   </p>
-                )}
+                ) : null}
               </div>
 
               <div className="space-y-1">

@@ -59,7 +59,10 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employ
                 item.asset_id === asset_id ? {
                   ...item,
                   asset_type: assetRes.data?.asset_type_id || '',
-                  description: assetRes.data?.description || '-'
+                  description:
+                    assetRes.data?.description ||
+                    assetRes.data?.text ||
+                    '-'
                 } : item
               )
             );

@@ -4,9 +4,48 @@ import { assetRegisterService } from "../../services/assetRegisterService";
 import { assetLifecycleService } from "../../services/assetLifecycleService";
 import { maintenanceHistoryService } from "../../services/maintenanceHistoryService";
 import { breakdownHistoryService } from "../../services/breakdownHistoryService";
+import { reopenedBreakdownsService } from "../../services/reopenedBreakdownsService";
 import assetWorkflowHistoryService from "../../services/assetWorkflowHistoryService";
 import { slaReportService } from "../../services/slaReportService";
 import { useAuthStore } from "../../store/useAuthStore";
+
+/**
+ * Serialized "effective" advanced filters for API-driven report fetches.
+ * Excludes empty rows (e.g. after clicking Add with val still null) so the fetch
+ * effect does not re-run until the user enters a value.
+ */
+function getAdvancedFetchKey(advanced) {
+  if (!advanced || advanced.length === 0) return "[]";
+  const valid = advanced.filter((condition) => {
+    if (!condition || !condition.field) return false;
+    if (condition.val === null || condition.val === undefined) return false;
+    if (Array.isArray(condition.val) && condition.val.length === 0) return false;
+    if (typeof condition.val === "string" && condition.val.trim() === "") return false;
+    if (
+      Array.isArray(condition.val) &&
+      condition.val.every(
+        (v) =>
+          v === null ||
+          v === undefined ||
+          (typeof v === "string" && v.trim() === "")
+      )
+    ) {
+      return false;
+    }
+    if (condition.field === "lastReopenedOn" && condition.val) {
+      const v = condition.val;
+      const from = Array.isArray(v) ? v[0] : v?.from;
+      const to = Array.isArray(v) ? v[1] : v?.to;
+      if (!from && !to) return false;
+    }
+    return true;
+  });
+  try {
+    return JSON.stringify(valid);
+  } catch {
+    return String(valid.length);
+  }
+}
 
 export function useReportState(reportId, report) {
   const [quick, setQuick] = useState({});
@@ -20,6 +59,8 @@ export function useReportState(reportId, report) {
   const [filterOptions, setFilterOptions] = useState(null);
   const [updatedReport, setUpdatedReport] = useState(null);
   const [forceUpdate, setForceUpdate] = useState(0);
+
+  const advancedFetchKey = useMemo(() => getAdvancedFetchKey(advanced), [advanced]);
 
   // Initialize quick filters with default values
   useEffect(() => {
@@ -418,17 +459,20 @@ export function useReportState(reportId, report) {
       };
 
       fetchFilterOptions();
-    } else if (reportId === "breakdown-history") {
+    } else if (reportId === "breakdown-history" || reportId === "reopened-breakdowns") {
       const fetchFilterOptions = async () => {
         try {
-          console.log('🔍 [useReportState] Fetching breakdown history filter options...');
+          console.log('🔍 [useReportState] Fetching breakdown filter options...');
           console.log('🔍 [useReportState] Auth token available:', !!useAuthStore.getState().token);
-          const response = await breakdownHistoryService.getFilterOptions();
+          const response =
+            reportId === "reopened-breakdowns"
+              ? await reopenedBreakdownsService.getFilterOptions()
+              : await breakdownHistoryService.getFilterOptions();
           console.log('🔍 [useReportState] Breakdown history filter options response:', response);
           console.log('🔍 [useReportState] Filter options data structure:', response.data);
           
           // The API returns the data in response.data.filter_options
-          const filterData = response.data?.filter_options || response.data || {};
+          const filterData = response?.filter_options || response?.data?.filter_options || response?.data || {};
           console.log('🔍 [useReportState] Filter data:', filterData);
           console.log('🔍 [useReportState] Asset options from API:', filterData.asset_options);
           
@@ -478,6 +522,24 @@ export function useReportState(reportId, report) {
                 label: user.full_name || user.user_name
               }));
               console.log('✅ [useReportState] Updated reported by options:', field.domain.length, 'users');
+            } else if (field.key === "assetType" && filterData.asset_type_options) {
+              field.domain = filterData.asset_type_options.map(assetType => ({
+                value: assetType.asset_type_id,
+                label: assetType.asset_type_name || assetType.text || assetType.asset_type_id
+              }));
+            } else if (field.key === "userId") {
+              // For reopened-breakdowns: user dropdown should be users whom the asset is assigned to
+              // For breakdown-history: fall back to reported_by_options
+              const source = filterData.user_options || filterData.reported_by_options || [];
+              field.domain = source.map(user => ({
+                value: user.user_id,
+                label: user.full_name || user.user_name || user.user_id
+              }));
+            } else if (field.key === "department" && filterData.department_options) {
+              field.domain = filterData.department_options.map(dept => ({
+                value: dept.dept_id || dept.department_name,
+                label: dept.department_name || dept.dept_id
+              }));
             }
           });
           
@@ -510,7 +572,7 @@ export function useReportState(reportId, report) {
           
           setUpdatedReport({ ...reportToUpdate });
         } catch (err) {
-          console.error('❌ [useReportState] Error fetching breakdown history filter options:', err);
+          console.error('❌ [useReportState] Error fetching breakdown filter options:', err);
         }
       };
 
@@ -560,6 +622,8 @@ export function useReportState(reportId, report) {
       };
 
       fetchAllBreakdownData();
+    } else if (reportId === "reopened-breakdowns") {
+      setAllAvailableAssets([]);
     } else if (reportId === "asset-workflow-history") {
       const fetchAllWorkflowData = async () => {
         try {
@@ -991,6 +1055,74 @@ export function useReportState(reportId, report) {
       };
 
       fetchBreakdownHistoryData();
+    } else if (reportId === "reopened-breakdowns") {
+      const fetchReopenedBreakdownsData = async () => {
+        setLoading(true);
+        setError(null);
+        setAllRows([]);
+        try {
+          const apiFilters = {};
+
+          Object.entries(quick).forEach(([key, value]) => {
+            if (!value || (Array.isArray(value) && value.length === 0)) return;
+
+            if (key === "assetId") {
+              apiFilters.assetId = typeof value === "string" ? value : value.value;
+            } else if (key === "assetType") {
+              const selected = Array.isArray(value) ? value[0] : value;
+              apiFilters.assetTypeId = typeof selected === "object" ? selected.value : selected;
+            } else if (key === "userId") {
+              const selected = Array.isArray(value) ? value[0] : value;
+              apiFilters.userId = typeof selected === "object" ? selected.value : selected;
+            } else if (key === "department") {
+              const selected = Array.isArray(value) ? value[0] : value;
+              apiFilters.deptId = typeof selected === "object" ? selected.value : selected;
+            }
+          });
+
+          // Advanced filters (Reopened Breakdowns)
+          // Shape: [{ field, op, val }]
+          if (Array.isArray(advanced) && advanced.length > 0) {
+            for (const cond of advanced) {
+              if (!cond || !cond.field) continue;
+              if (cond.field === "reopenCount" && cond.val !== null && cond.val !== undefined && `${cond.val}`.trim() !== "") {
+                // UI label says "Reopen Count (RO) ≥" so we treat it as a minimum.
+                apiFilters.reopenCountMin = cond.val;
+              }
+              if (cond.field === "lastReopenedOn" && cond.val) {
+                const v = cond.val;
+                const from = Array.isArray(v) ? v[0] : v.from;
+                const to = Array.isArray(v) ? v[1] : v.to;
+                if (from) apiFilters.lastReopenedOnFrom = from;
+                if (to) apiFilters.lastReopenedOnTo = to;
+              }
+            }
+          }
+
+          const response = await reopenedBreakdownsService.getReopenedBreakdowns(apiFilters);
+          const reopenedData = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
+
+          const transformedData = reopenedData.map((record) => ({
+            "AMS ID": record.ams_id || "N/A",
+            "Asset ID": record.asset_id || "N/A",
+            "Asset Name": record.asset_name || record.asset_description || "N/A",
+            "Serial Number": record.serial_number || "N/A",
+            "Asset Type": record.asset_type_name || "N/A",
+            "Reopen Count (RO)": record.ro_count ?? 0,
+            "Last Reopened On": record.last_reopened_on ? new Date(record.last_reopened_on).toLocaleString() : "N/A",
+          }));
+
+          setAllRows(transformedData);
+        } catch (err) {
+          console.error('❌ [useReportState] Error fetching reopened breakdown data:', err);
+          setError(err.response?.data?.message || 'Failed to fetch reopened breakdown data');
+          setAllRows([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchReopenedBreakdownsData();
     } else if (reportId === "asset-workflow-history") {
       const fetchAssetWorkflowHistoryData = async () => {
         console.log('🔍 [useReportState] Starting asset workflow history data fetch...');
@@ -1265,7 +1397,7 @@ export function useReportState(reportId, report) {
       console.log('🔄 [useReportState] Using fake data for report:', reportId);
       setAllRows(fakeRows(reportId, 12));
     }
-  }, [reportId, quick, advanced]);
+  }, [reportId, quick, advancedFetchKey]);
 
 
   // Update Asset ID and Work Order ID options dynamically
@@ -1746,7 +1878,7 @@ export function useReportState(reportId, report) {
   const filteredRows = useMemo(() => {
     // For asset-register, asset-lifecycle, maintenance-history, and breakdown-history, we're doing server-side filtering, so return allRows
     // For other reports, use client-side filtering
-    if (reportId === "asset-register" || reportId === "asset-lifecycle" || reportId === "asset-valuation" || reportId === "maintenance-history" || reportId === "breakdown-history" || reportId === "asset-workflow-history") {
+    if (reportId === "asset-register" || reportId === "asset-lifecycle" || reportId === "asset-valuation" || reportId === "maintenance-history" || reportId === "breakdown-history" || reportId === "asset-workflow-history" || reportId === "reopened-breakdowns") {
       return allRows;
     }
     return filterRows(allRows, reportId, quick, advanced);

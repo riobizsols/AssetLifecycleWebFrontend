@@ -1,16 +1,18 @@
 import { useAuthStore } from "../store/useAuthStore";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuditLog } from "../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../constants/authAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import RouteDataLoading from "../components/loading/RouteDataLoading";
 
 export default function Header() {
   const { user, logout, roles } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const dropdownRef = useRef(null);
   const { t } = useLanguage();
   
@@ -127,24 +129,43 @@ export default function Header() {
       title: t('navigation.qaAuditReport'),
       subtitle: "",
     },
+    "/reports/reopened-breakdowns": {
+      title: t("reports.reopenedBreakdowns.title"),
+      subtitle: "",
+    },
 
     // Add more routes as needed
   };
-  const pageInfo = Object.entries(pathTitleMap).find(([path]) =>
-    location.pathname.startsWith(path)
-  )?.[1] || { title: "", subtitle: "" };
+
+  const reopenedHistoryMatch = location.pathname.match(
+    /^\/reports\/reopened-breakdowns\/([^/]+)\/history$/,
+  );
+
+  const pageInfo = reopenedHistoryMatch
+    ? { title: "", subtitle: "" }
+    : Object.entries(pathTitleMap).find(([path]) =>
+        location.pathname.startsWith(path),
+      )?.[1] || { title: "", subtitle: "" };
 
   const handleLogout = async () => {
-    // Log audit event for logout
-    await recordActionByNameWithFetch('Logging Out', { 
-      action: 'User Logged Out Successfully',
-      userId: user?.user_id,
-      userEmail: user?.email,
-      org_id: user?.org_id
-    });
-    
-    logout();
-    navigate("/");
+    try {
+      setLoggingOut(true);
+      setOpen(false);
+      // Log audit event for logout
+      const audit = recordActionByNameWithFetch("Logging Out", {
+        action: "User Logged Out Successfully",
+        userId: user?.user_id,
+        userEmail: user?.email,
+        org_id: user?.org_id,
+      }).catch(() => {});
+
+      // Don't block logout UX on audit logging.
+      await Promise.race([audit, new Promise((r) => setTimeout(r, 300))]);
+    } finally {
+      logout();
+      navigate("/");
+      setLoggingOut(false);
+    }
   };
 
   const fullName = user?.full_name || "User Name";
@@ -175,21 +196,48 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="flex items-center justify-between bg-white px-6 py-3 shadow-sm relative">
-      {/* Page Title */}
-      <div className="flex flex-col">
-        {pageInfo.title && (
-          <div className="text-2xl font-bold text-[#0E2F4B]">
-            {pageInfo.title}
-          </div>
-        )}
-        {pageInfo.subtitle && (
-          <div className="text-sm text-gray-600">{pageInfo.subtitle}</div>
-        )}
-      </div>
+    <>
+      {loggingOut && (
+        <RouteDataLoading
+          variant="fullscreen"
+          message={t("auth.loggingOut") || "Logging out…"}
+        />
+      )}
+      <header className="flex items-center justify-between gap-4 bg-white px-6 py-3 shadow-sm relative">
+      {/* Breadcrumb or page title (left) — profile menu stays on the right */}
+      {reopenedHistoryMatch ? (
+        <nav
+          className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs sm:text-sm font-semibold text-[#0E2F4B] min-w-0"
+          aria-label="Breadcrumb"
+        >
+          <Link
+            to="/reports/reopened-breakdowns"
+            className="hover:underline text-[#0E2F4B]/80 hover:text-[#0E2F4B] shrink-0"
+          >
+            {t("reports.reopenedBreakdowns.title")}
+          </Link>
+          <span className="text-[#0E2F4B]/40 font-normal" aria-hidden>
+            /
+          </span>
+          <span className="truncate min-w-0">
+            {t("reports.reopenedBreakdownsHistory.title")}
+          </span>
+        </nav>
+      ) : (
+        <div className="flex flex-col min-w-0 flex-1">
+          {pageInfo.title && (
+            <div className="text-base sm:text-lg font-bold text-[#0E2F4B] truncate">
+              {pageInfo.title}
+            </div>
+          )}
+          {pageInfo.subtitle && (
+            <div className="text-xs text-gray-600">{pageInfo.subtitle}</div>
+          )}
+        </div>
+      )}
       
       {/* User Menu */}
-      <div className="relative" ref={dropdownRef}>
+      <div className="relative shrink-0" ref={dropdownRef}>
         {/* Avatar Button */}
         <button
           onClick={() => setOpen((prev) => !prev)}
@@ -228,6 +276,7 @@ export default function Header() {
             </div>
             <button
               onClick={handleLogout}
+              disabled={loggingOut}
               className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-100 text-gray-700"
             >
               <LogOut size={16} /> {t('auth.logout')}
@@ -235,6 +284,7 @@ export default function Header() {
           </div>
         )}
       </div>
-    </header>
+      </header>
+    </>
   );
 }

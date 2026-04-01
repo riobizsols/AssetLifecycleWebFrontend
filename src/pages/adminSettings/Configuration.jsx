@@ -1,7 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Settings, Sliders, Shield, Lock, Database, Users, Cog } from 'lucide-react';
+import API from '../../lib/axios';
 
 const Configuration = () => {
+  const [isRunningDefaultWfSeqJob, setIsRunningDefaultWfSeqJob] = useState(false);
+  const [defaultWfSeqJobResult, setDefaultWfSeqJobResult] = useState(null);
+  const [defaultWfSeqJobError, setDefaultWfSeqJobError] = useState('');
+
+  const runDefaultWorkflowSequenceJob = async () => {
+    if (isRunningDefaultWfSeqJob) return;
+    setIsRunningDefaultWfSeqJob(true);
+    setDefaultWfSeqJobError('');
+    setDefaultWfSeqJobResult(null);
+    try {
+      const response = await API.post('/cron-jobs/one-time/set-default-workflow-sequence');
+      setDefaultWfSeqJobResult(response.data?.result || null);
+    } catch (error) {
+      setDefaultWfSeqJobError(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          'Failed to run one-time workflow sequence job',
+      );
+    } finally {
+      setIsRunningDefaultWfSeqJob(false);
+    }
+  };
+
   const features = [
     {
       icon: Shield,
@@ -97,6 +121,49 @@ const Configuration = () => {
           <Lock className="w-4 h-4" />
           <span>Access is restricted based on your job role assignments</span>
         </div>
+      </div>
+
+      {/* One-Time Jobs */}
+      <div className="bg-white rounded-lg shadow-md p-8 mt-6 border border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">One Time Jobs</h2>
+        <p className="text-gray-600 mb-5">
+          Run manual jobs for initial configuration and data backfill.
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={runDefaultWorkflowSequenceJob}
+            disabled={isRunningDefaultWfSeqJob}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+              isRunningDefaultWfSeqJob
+                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                : 'bg-[#0E2F4B] text-white hover:bg-[#14395c]'
+            }`}
+          >
+            {isRunningDefaultWfSeqJob
+              ? 'Running...'
+              : 'Set Default Workflow Sequence for Asset Types'}
+          </button>
+        </div>
+
+        {defaultWfSeqJobError && (
+          <div className="mt-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+            {defaultWfSeqJobError}
+          </div>
+        )}
+
+        {defaultWfSeqJobResult && (
+          <div className="mt-4 p-3 rounded-md bg-green-50 border border-green-200 text-green-800 text-sm">
+            <div>Default workflow sequence job completed.</div>
+            <div className="mt-1">
+              Scanned: {defaultWfSeqJobResult.scanned ?? 0}, Inserted:{' '}
+              {defaultWfSeqJobResult.inserted ?? 0}, Skipped:{' '}
+              {defaultWfSeqJobResult.skipped ?? 0}, Errors:{' '}
+              {defaultWfSeqJobResult.errors ?? 0}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

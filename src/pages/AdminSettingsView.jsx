@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
 import { useLanguage } from "../contexts/LanguageContext";
+import API from "../lib/axios";
 import {
   Settings,
   Users,
@@ -19,12 +20,37 @@ import {
   Tag,
   AlertTriangle,
   FileCheck,
+  Info,
 } from "lucide-react";
 
 const AdminSettingsView = () => {
   const navigate = useNavigate();
   const { navigation, hasAccess, getAccessLevel, loading } = useNavigation();
   const { t } = useLanguage();
+  const [isRunningOneTimeJob, setIsRunningOneTimeJob] = useState(false);
+  const [oneTimeJobError, setOneTimeJobError] = useState("");
+  const [oneTimeJobResult, setOneTimeJobResult] = useState(null);
+
+  const runDefaultWorkflowSequenceJob = async () => {
+    if (isRunningOneTimeJob) return;
+    setIsRunningOneTimeJob(true);
+    setOneTimeJobError("");
+    setOneTimeJobResult(null);
+    try {
+      const response = await API.post(
+        "/cron-jobs/one-time/set-default-workflow-sequence",
+      );
+      setOneTimeJobResult(response.data?.result || null);
+    } catch (error) {
+      setOneTimeJobError(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Failed to run one-time job",
+      );
+    } finally {
+      setIsRunningOneTimeJob(false);
+    }
+  };
 
   // Get admin settings items from navigation
   const getAdminSettingsItems = () => {
@@ -340,33 +366,34 @@ const AdminSettingsView = () => {
             </div>
           </div>
         ) : (
-          <div
-            className={`grid gap-4 ${
-              itemsToShow.length <= 3
-                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                : itemsToShow.length <= 6
-                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-            }`}
-          >
-            {itemsToShow.map((item) => {
-              const Icon = getItemIcon(item.app_id);
-              const route = getItemRoute(item.app_id);
-              const accessLevel = getAccessLevel(item.app_id);
-              const isReadOnly = accessLevel === "D";
-              const colors = getItemColors(item.app_id);
-              const canAccess = route !== "#" && hasAccess(item.app_id);
+          <>
+            <div
+              className={`grid gap-4 ${
+                itemsToShow.length <= 3
+                  ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                  : itemsToShow.length <= 6
+                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+              }`}
+            >
+              {itemsToShow.map((item) => {
+                const Icon = getItemIcon(item.app_id);
+                const route = getItemRoute(item.app_id);
+                const accessLevel = getAccessLevel(item.app_id);
+                const isReadOnly = accessLevel === "D";
+                const colors = getItemColors(item.app_id);
+                const canAccess = route !== "#" && hasAccess(item.app_id);
 
-              return (
-                <div
-                  key={item.app_id}
-                  onClick={() => canAccess && handleItemClick(item.app_id)}
-                  className={`group relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border-2 ${colors.border} overflow-hidden transition-all duration-300 ${
-                    canAccess
-                      ? "cursor-pointer hover:shadow-xl hover:-translate-y-1 hover:scale-[1.02] hover:border-opacity-100"
-                      : "opacity-60 cursor-not-allowed"
-                  }`}
-                >
+                return (
+                  <div
+                    key={item.app_id}
+                    onClick={() => canAccess && handleItemClick(item.app_id)}
+                    className={`group relative bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border-2 ${colors.border} overflow-hidden transition-all duration-300 ${
+                      canAccess
+                        ? "cursor-pointer hover:shadow-xl hover:-translate-y-1 hover:scale-[1.02] hover:border-opacity-100"
+                        : "opacity-60 cursor-not-allowed"
+                    }`}
+                  >
                   {/* Animated Gradient Accent Bar */}
                   <div
                     className={`h-1 bg-gradient-to-r ${colors.gradient} ${canAccess ? `group-hover:${colors.hover}` : ""} transition-all duration-300 relative overflow-hidden`}
@@ -450,10 +477,77 @@ const AdminSettingsView = () => {
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
                     </div>
                   )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900">One Time Jobs</h3>
+              <p className="text-sm text-gray-600 mt-1 mb-4">
+                Run manual setup utilities for missing configuration.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={runDefaultWorkflowSequenceJob}
+                  disabled={isRunningOneTimeJob}
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                    isRunningOneTimeJob
+                      ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                      : "bg-[#0E2F4B] text-white hover:bg-[#14395c]"
+                  }`}
+                >
+                  {isRunningOneTimeJob
+                    ? "Running..."
+                    : "Set Default Workflow Sequence for Asset Types"}
+                </button>
+
+                <div className="relative group">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center text-gray-600 hover:text-gray-800"
+                    aria-label="Eligibility criteria"
+                    title="Eligibility criteria"
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
+                  <div className="absolute left-1/2 -translate-x-1/2 top-9 z-20 hidden group-hover:block w-[360px]">
+                    <div className="rounded-md border border-gray-200 bg-white shadow-lg p-3 text-xs text-gray-700 leading-5">
+                      <p className="font-semibold text-gray-900 mb-1">Eligibility Criteria</p>
+                      <ul className="list-disc pl-4 space-y-1">
+                        <li>Asset type is active (`int_status = 1`)</li>
+                        <li>Maintenance required is enabled (`maint_required = true`)</li>
+                        <li>Maintenance type is set (`maint_type_id` is not empty)</li>
+                        <li>At least one active maintenance frequency exists (`tblATMaintFreq.int_status = 1`)</li>
+                        <li>`maintained_by` is set in active frequency</li>
+                        <li>At least one active asset exists (`current_status = ACTIVE`)</li>
+                        <li>No existing workflow sequence row in `tblWFATSeqs` for that asset type/org</li>
+                      </ul>
+                      <p className="mt-2 text-gray-600">
+                        On match, inserts default: <span className="font-medium">Seq 10</span>, <span className="font-medium">WFS-06</span>.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+
+              {oneTimeJobError && (
+                <div className="mt-3 p-3 rounded-md border border-red-200 bg-red-50 text-red-700 text-sm">
+                  {oneTimeJobError}
+                </div>
+              )}
+
+              {oneTimeJobResult && (
+                <div className="mt-3 p-3 rounded-md border border-green-200 bg-green-50 text-green-800 text-sm">
+                  Scanned: {oneTimeJobResult.scanned ?? 0}, Inserted:{" "}
+                  {oneTimeJobResult.inserted ?? 0}, Skipped:{" "}
+                  {oneTimeJobResult.skipped ?? 0}, Errors:{" "}
+                  {oneTimeJobResult.errors ?? 0}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 

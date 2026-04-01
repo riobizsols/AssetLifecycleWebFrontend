@@ -90,6 +90,8 @@ import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
 import BreakdownHistory from "../pages/reports/BreakdownHistory";
 import BreakdownDetail from "../pages/reports/BreakdownDetail";
 import BreakdownReopenDetails from "../pages/reports/BreakdownReopenDetails";
+import ReopenedBreakdowns from "../pages/reports/ReopenedBreakdowns";
+import ReopenedBreakdownsHistory from "../pages/reports/ReopenedBreakdownsHistory";
 import UsageBasedAssetReport from "../pages/reports/UsageBasedAssetReport";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
 import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
@@ -500,6 +502,27 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
               <MainLayout>
                 <BreakdownReopenDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/reopened-breakdowns/:amsId/history"
+          element={
+            <ProtectedRoute requiredAppId="REOPENEDBREAKDOWNS">
+              <MainLayout>
+                <ReopenedBreakdownsHistory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/reopened-breakdowns"
+          element={
+            <ProtectedRoute requiredAppId="REOPENEDBREAKDOWNS">
+              <MainLayout>
+                <ReopenedBreakdowns />
               </MainLayout>
             </ProtectedRoute>
           }

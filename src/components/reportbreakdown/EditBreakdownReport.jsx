@@ -93,7 +93,8 @@ const EditBreakdownReport = () => {
     const fetchAssetTypeDetails = async () => {
       if (assetTypeId) {
         try {
-          const res = await API.get(`/dept-assets/asset-types/${assetTypeId}`);
+          // Correct endpoint: backend exposes GET /api/asset-types/:asset_type_id
+          const res = await API.get(`/asset-types/${assetTypeId}`);
           setAssetTypeDetails(res.data);
         } catch (err) {
           console.error(
@@ -286,13 +287,20 @@ const EditBreakdownReport = () => {
     const abr_id = abr_id_from_modal || breakdown?.abr_id;
     if (!abr_id) return;
 
+    const toastId = toast.loading(
+      t("breakdownDetails.reopeningBreakdown") || "Reopening breakdown…",
+    );
     try {
       await API.post(`/reportbreakdown/${abr_id}/reopen`, { notes });
-      toast.success(t("breakdownDetails.breakdownReopenedSuccessfully") || "Breakdown reopened successfully!");
+      toast.success(
+        t("breakdownDetails.breakdownReopenedSuccessfully") ||
+          "Breakdown reopened successfully!",
+        { id: toastId },
+      );
       navigate("/report-breakdown");
     } catch (err) {
       console.error("Failed to reopen breakdown", err);
-      toast.error(err.response?.data?.error || err.message);
+      toast.error(err.response?.data?.error || err.message, { id: toastId });
     } finally {
       setShowReopenModal(false);
     }

@@ -97,6 +97,7 @@ const AddAssetForm = ({ userRole }) => {
     expiryDateBeforePurchase: false,
     vendorRequired: false
   });
+  const [isVendorMaintainedType, setIsVendorMaintainedType] = useState(false);
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
@@ -395,6 +396,36 @@ const AddAssetForm = ({ userRole }) => {
     }
   }, [form.assetType]);
 
+  useEffect(() => {
+    const loadMaintainedByRule = async () => {
+      if (!form.assetType) {
+        setIsVendorMaintainedType(false);
+        return;
+      }
+      try {
+        // Source of truth: maintenance frequency maintained_by (Inhouse/Vendor).
+        const res = await API.get(`/maintenance-frequencies/asset-type/${form.assetType}`);
+        const rows = res.data?.data || res.data || [];
+        const byFrequencySetting = Array.isArray(rows) && rows.some((row) =>
+          String(row?.maintained_by || '')
+            .toLowerCase()
+            .replace(/\s|-/g, '')
+            .includes('vendor')
+        );
+        setIsVendorMaintainedType(byFrequencySetting);
+        if (!byFrequencySetting) {
+          setValidationErrors(prev => ({ ...prev, vendorRequired: false }));
+          setForm(prev => ({ ...prev, serviceSupply: '' }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch maintenance ownership for asset type:', error);
+        setIsVendorMaintainedType(false);
+        setForm(prev => ({ ...prev, serviceSupply: '' }));
+      }
+    };
+    loadMaintainedByRule();
+  }, [form.assetType]);
+
   // Add function to fetch parent assets
   const fetchParentAssets = async (assetTypeId) => {
     try {
@@ -447,7 +478,10 @@ const AddAssetForm = ({ userRole }) => {
       
       // Real-time validation for vendor requirement
       if (name === 'purchaseSupply' || name === 'serviceSupply') {
-        if (newForm.purchaseSupply || newForm.serviceSupply) {
+        const isServiceVendorSatisfied = isVendorMaintainedType
+          ? Boolean(newForm.serviceSupply)
+          : true;
+        if (isServiceVendorSatisfied) {
           setValidationErrors(prevErrors => ({
             ...prevErrors,
             vendorRequired: false
@@ -726,7 +760,10 @@ const AddAssetForm = ({ userRole }) => {
       
       // Real-time validation for vendor requirement
       if (name === 'purchaseSupply' || name === 'serviceSupply') {
-        if (newForm.purchaseSupply || newForm.serviceSupply) {
+        const isServiceVendorSatisfied = isVendorMaintainedType
+          ? Boolean(newForm.serviceSupply)
+          : true;
+        if (isServiceVendorSatisfied) {
           setValidationErrors(prev => ({
             ...prev,
             vendorRequired: false
@@ -973,8 +1010,8 @@ const AddAssetForm = ({ userRole }) => {
       }
     }
     
-    // Validate that at least one vendor (product or service) is selected
-    if (!form.purchaseSupply && !form.serviceSupply) {
+    // For vendor-maintained asset types, service vendor is mandatory.
+    if (isVendorMaintainedType && !form.serviceSupply) {
       errors.vendorRequired = true;
       hasErrors = true;
     }
@@ -996,7 +1033,7 @@ const AddAssetForm = ({ userRole }) => {
       } else if (errors.expiryDateBeforePurchase) {
         toast.error(t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date');
       } else if (errors.vendorRequired) {
-        toast.error(t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required');
+        toast.error(t('assets.serviceVendorIsRequired') || 'Service vendor is required for this asset type');
       } else {
         toast.error(t('assets.pleaseFillAllRequiredFields'));
       }
@@ -1692,11 +1729,11 @@ const AddAssetForm = ({ userRole }) => {
             <div className="grid grid-cols-5 gap-6 mb-4">
                 {/* Product Vendor Dropdown */}
                 <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')} <span className="text-red-500">*</span></label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')}</label>
                 <div className="relative w-full">
                   <button
                     type="button"
-                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired ? 'border-red-500' : ''}`}
+                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired && !isVendorMaintainedType ? 'border-red-500' : ''}`}
                     onClick={() => toggleDropdown('purchaseSupply')}
                   >
                     <span className="text-xs truncate">
@@ -1745,16 +1782,17 @@ const AddAssetForm = ({ userRole }) => {
                     </div>
                   )}
                 </div>
-                {validationErrors.vendorRequired && !form.purchaseSupply && (
+                {validationErrors.vendorRequired && !isVendorMaintainedType && !form.purchaseSupply && (
                   <p className="mt-1 text-sm text-red-600">
                     {t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required'}
                   </p>
                 )}
               </div>
 
-              {/* Service Vendor Dropdown */}
+              {/* Service Vendor Dropdown (visible only for vendor-maintained asset types) */}
+              {isVendorMaintainedType && (
               <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.serviceVendor')} <span className="text-red-500">*</span></label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.serviceVendor')} {isVendorMaintainedType && <span className="text-red-500">*</span>}</label>
                 <div className="relative w-full">
                   <button
                     type="button"
@@ -1809,10 +1847,13 @@ const AddAssetForm = ({ userRole }) => {
                 </div>
                 {validationErrors.vendorRequired && !form.serviceSupply && (
                   <p className="mt-1 text-sm text-red-600">
-                    {t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required'}
+                    {isVendorMaintainedType
+                      ? (t('assets.serviceVendorIsRequired') || 'Service vendor is required for this asset type')
+                      : (t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required')}
                   </p>
                 )}
               </div>
+              )}
 
 
               {/* Brand Dropdown */}
@@ -2129,7 +2170,9 @@ const AddAssetForm = ({ userRole }) => {
                   {/* First row: Document Type and Custom Name */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium mb-1">{t('assets.documentType')}</label>
+                      <label className="block text-xs font-medium mb-1">
+                        {t('assets.documentType')} <span className="text-red-500">*</span>
+                      </label>
                       <SearchableDropdown
                         options={documentTypes}
                         value={att.type}
@@ -2146,7 +2189,9 @@ const AddAssetForm = ({ userRole }) => {
                       const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                       return needsCustomName && (
                         <div>
-                          <label className="block text-xs font-medium mb-1">Custom Name</label>
+                          <label className="block text-xs font-medium mb-1">
+                            Custom Name <span className="text-red-500">*</span>
+                          </label>
                           <input
                             type="text"
                             className="w-full border rounded px-2 py-2 text-sm bg-white h-[38px]"
@@ -2161,7 +2206,9 @@ const AddAssetForm = ({ userRole }) => {
                   
                   {/* Second row: File input and buttons */}
                   <div>
-                    <label className="block text-xs font-medium mb-1">{t('assets.file')}</label>
+                    <label className="block text-xs font-medium mb-1">
+                      {t('assets.file')} <span className="text-red-500">*</span>
+                    </label>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative flex-1">
                         <input

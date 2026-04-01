@@ -219,7 +219,7 @@
     "scanAsset": "Scan Asset",
     "allAssetTypes": "All Asset Types",
     "availableAssets": "Available Assets",
-    "noInactiveAssetsFound": "No inactive assets found for this type.",
+    "noInactiveAssetsFound": "No assets found for the selected asset type.",
     "scanOrEnterAssetId": "Scan or enter asset ID",
     "scanBarcode": "Scan Barcode",
     "positionBarcodeInScanningArea": "Position the barcode within the scanning area",
@@ -681,6 +681,23 @@
       "noData": "No breakdowns have been reopened.",
       "loadFailed": "Failed to load reopen details.",
       "footer": "Click a row to open breakdown details."
+    },
+    "reopenedBreakdowns": {
+      "title": "Reopened Breakdowns",
+      "subtitle": "Breakdown maintenance schedules reopened more than once."
+    },
+    "reopenedBreakdownsHistory": {
+      "title": "Reopen history",
+      "subtitle": "All records in maintenance breakdown history for schedule {{id}}.",
+      "back": "Back to report",
+      "loading": "Loading history…",
+      "empty": "No history rows found for this schedule.",
+      "loadFailed": "Failed to load reopen history.",
+      "lineId": "Line ID",
+      "status": "Status",
+      "createdOn": "Created on",
+      "createdBy": "Created by",
+      "notes": "Notes"
     },
     "columnHeaders": {
       "assetId": "Asset ID",
@@ -1747,6 +1764,7 @@
     "failedToDeleteMaintenanceRecord": "Failed to delete maintenance record",
     "maintenanceApprovalsExportedSuccessfully": "Maintenance approvals exported successfully",
     "failedToExportMaintenanceApprovals": "Failed to export maintenance approvals",
+    "approving": "Approving…",
     "initiated": "Initiated",
     "inProgress": "In Progress",
     "completed": "Completed",
@@ -1798,6 +1816,7 @@
     "pleaseProvideApprovalNote": "Please provide an approval note...",
     "noteRequiredToApprove": "Note is required to approve.",
     "failedToApprove": "Failed to approve. Please try again.",
+    "approvedSuccessfully": "Approved successfully.",
     "failedToReject": "Failed to reject. Please try again.",
     "waitingForActionFrom": "Waiting for action from {{userName}}",
     "vendorName": "Vendor Name",
@@ -1902,6 +1921,7 @@
     "initiated": "Initiated",
     "inProgress": "In Progress",
     "completed": "Completed",
+    "reopened": "Reopened",
     "cancelled": "Cancelled",
     "days": "days",
     "dueToday": "Due today",
@@ -2173,7 +2193,7 @@
     "serviceVendorId": "Service Vendor ID",
     "productServiceId": "Product/Service ID",
     "actions": "Actions",
-    "noInactiveAssetsFound": "No inactive assets found for this type.",
+    "noInactiveAssetsFound": "No assets found for the selected asset type.",
     "scanBarcode": "Scan Barcode",
     "positionBarcodeInScanningArea": "Position the barcode within the scanning area",
     "assetIdScannedSuccessfully": "Asset ID scanned successfully",
@@ -2686,6 +2706,7 @@
   "auth": {
     "login": "Login",
     "logout": "Logout",
+    "loggingOut": "Logging out…",
     "username": "Username",
     "password": "Password",
     "email": "Email",

@@ -2,17 +2,25 @@ import React, { useState } from "react";
 
 const ReopenModal = ({ show, onClose, onConfirm, report }) => {
   const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   if (!show) return null;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!notes.trim()) {
       alert("Please enter notes for reopening.");
       return;
     }
-    // Pass notes and report id (defensive - parent may also have selectedReport)
-    onConfirm(notes, report?.abr_id);
-    setNotes("");
+    setSubmitting(true);
+    try {
+      // Close the popup immediately for better UX; the parent will navigate / toast.
+      onClose();
+      // Pass notes and report id (defensive - parent may also have selectedReport)
+      await onConfirm(notes, report?.abr_id);
+      setNotes("");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCancel = () => {
@@ -54,14 +62,16 @@ const ReopenModal = ({ show, onClose, onConfirm, report }) => {
           <button
             className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded transition-colors"
             onClick={handleCancel}
+            disabled={submitting}
           >
             Cancel
           </button>
           <button
-            className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-1.5 px-5 rounded shadow-sm transition-colors"
+            className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-1.5 px-5 rounded shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={handleConfirm}
+            disabled={submitting}
           >
-            Submit
+            {submitting ? "Submitting..." : "Submit"}
           </button>
         </div>
       </div>

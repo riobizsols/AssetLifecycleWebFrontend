@@ -37,6 +37,25 @@ const AssetAssignmentList = ({
   const { t } = useLanguage();
   const { getStatusText } = useAppData();
 
+  const getAssignmentActionLabel = (actionCode) => {
+    if (!actionCode) return '-';
+    if (actionCode === 'A') return 'Assigned';
+    if (actionCode === 'C') return 'Unassigned';
+    return getStatusText ? getStatusText(actionCode) : actionCode || '-';
+  };
+
+  const getAssetName = (item) => {
+    const desc = item?.description;
+    if (desc !== undefined && desc !== null && String(desc).toUpperCase() !== 'NULL' && String(desc).trim() !== '') {
+      return desc;
+    }
+    const fallback = item?.asset_text ?? item?.text;
+    if (fallback !== undefined && fallback !== null && String(fallback).trim() !== '' && String(fallback).toUpperCase() !== 'NULL') {
+      return fallback;
+    }
+    return '-';
+  };
+
   // Initialize audit logging based on entity type
   const appId = entityType === 'employee' ? EMP_ASSIGNMENT_APP_ID : DEPT_ASSIGNMENT_APP_ID;
   const { recordActionByNameWithFetch } = useAuditLog(appId);
@@ -244,7 +263,7 @@ const AssetAssignmentList = ({
                     >
                       <div className="min-w-0 truncate" title={item.asset_type_name || undefined}>{item.asset_type_name || '-'}</div>
                       <div className="min-w-0 truncate" title={item.description || undefined}>{item.description || '-'}</div>
-                      <div>{getStatusText ? getStatusText(item.action) : item.action || '-'}</div>
+                      <div>{getAssignmentActionLabel(item.action)}</div>
                       <div>{item.action_on ? new Date(item.action_on).toLocaleString() : '-'}</div>
                       <div>{item.action_by || '-'}</div>
                       {!isReadOnly && (
@@ -264,8 +283,9 @@ const AssetAssignmentList = ({
             </div>
           ) : (
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className={`grid ${isReadOnly ? 'grid-cols-3' : 'grid-cols-4'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
+              <div className={`grid ${isReadOnly ? 'grid-cols-4' : 'grid-cols-5'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
                 <div>{t('employees.action')}</div>
+                <div>{t('assets.assetName')}</div>
                 <div>{t('employees.assignmentDate')}</div>
                 <div>{t('employees.assignedBy')}</div>
                 {!isReadOnly && <div className="text-center">{t('common.actions')}</div>}
@@ -279,11 +299,14 @@ const AssetAssignmentList = ({
                 {assignmentList.map((item, i) => (
                   <div
                     key={item.asset_assign_id || `${item.asset_id}_${i}`}
-                    className={`grid ${isReadOnly ? 'grid-cols-3' : 'grid-cols-4'} px-4 py-2 items-center border-b ${
+                    className={`grid ${isReadOnly ? 'grid-cols-4' : 'grid-cols-5'} px-4 py-2 items-center border-b ${
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800`}
                   >
-                    <div>{getStatusText ? getStatusText(item.action) : item.action || '-'}</div>
+                    <div>{getAssignmentActionLabel(item.action)}</div>
+                    <div className="min-w-0 truncate" title={getAssetName(item)}>
+                      {getAssetName(item)}
+                    </div>
                     <div>{item.action_on ? new Date(item.action_on).toLocaleString() : ''}</div>
                     <div>{item.action_by}</div>
                     {!isReadOnly && (

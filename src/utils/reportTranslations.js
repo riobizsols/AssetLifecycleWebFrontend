@@ -87,6 +87,10 @@ export const getTranslatedReportInfo = (reportId) => {
       name: t('reports.breakdownHistoryReport.name'),
       description: t('reports.breakdownHistoryReport.description')
     },
+    'reopened-breakdowns': {
+      name: t('reports.reopenedBreakdowns.title'),
+      description: t('reports.reopenedBreakdowns.subtitle')
+    },
     'asset-valuation': {
       name: t('reports.assetValuationReport'),
       description: t('reports.assetValuationReport') // You may want to add a specific description

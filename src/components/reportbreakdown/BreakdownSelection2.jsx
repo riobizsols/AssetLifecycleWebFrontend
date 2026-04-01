@@ -117,8 +117,14 @@ const BreakdownSelection2 = () => {
       const assetsWithDetails = await Promise.all(assetDetailsPromises);
       setMyAssets(assetsWithDetails);
     } catch (err) {
-      console.error("Failed to fetch my assets", err);
-      toast.error("Failed to fetch my assets");
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+      console.error("Failed to fetch my assets", { status, data, err });
+      toast.error(
+        status
+          ? `Failed to fetch my assets (HTTP ${status})`
+          : "Failed to fetch my assets"
+      );
       setMyAssets([]);
     }
   };
@@ -370,7 +376,7 @@ const BreakdownSelection2 = () => {
                           style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
                         >
                           <div>{asset.asset_type_name || asset.text || "-"}</div>
-                          <div title={asset.text || asset.description || ""}>
+                          <div title={asset.description || asset.text || ""}>
                             <button
                               className="text-blue-600 underline hover:text-blue-800 text-left"
                               onClick={() =>
@@ -383,9 +389,9 @@ const BreakdownSelection2 = () => {
                                 })
                               }
                             >
-                              {(asset.text || asset.description) && (asset.text || asset.description).length > 15
-                                ? (asset.text || asset.description).slice(0, 15) + "..."
-                                : (asset.text || asset.description || "-")}
+                              {(asset.description || asset.text) && (asset.description || asset.text).length > 15
+                                ? (asset.description || asset.text).slice(0, 15) + "..."
+                                : (asset.description || asset.text || "-")}
                             </button>
                           </div>
                           <div className="flex justify-center">

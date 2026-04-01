@@ -56,14 +56,38 @@ const EmployeeWiseAssetAssignment = () => {
     }
   };
 
-  // Fetch employee assignments
+  // Fetch employee assignments — then enrich each row with GET /assets/:id like AssetAssignmentHistory
+  // so the Asset Name column matches the history popup (same source as tblAssets via getAssetWithDetails).
   const fetchAssignments = async () => {
     try {
       if (selectedEmployee) {
-        // Use the new endpoint to fetch active asset assignments for the selected employee
         const res = await API.get(`/asset-assignments/employee/${selectedEmployee}/active`);
-        setAssignmentList(res.data.data || []);
-        console.log('Assignments for selected employee:', res.data.data || []);
+        let rows = res.data.data || [];
+
+        const uniqueAssetIds = [...new Set(rows.map((item) => item.asset_id).filter(Boolean))];
+        const assetMap = {};
+        for (const asset_id of uniqueAssetIds) {
+          try {
+            const assetRes = await API.get(`/assets/${asset_id}`, {
+              params: { context: 'EMPASSIGNMENT' },
+            });
+            assetMap[asset_id] = assetRes.data;
+          } catch {
+            assetMap[asset_id] = null;
+          }
+        }
+
+        rows = rows.map((row) => {
+          const data = assetMap[row.asset_id];
+          if (!data) return row;
+          return {
+            ...row,
+            description: data.description ?? row.description,
+            asset_text: data.text ?? row.asset_text,
+          };
+        });
+
+        setAssignmentList(rows);
       } else {
         setAssignmentList([]);
       }

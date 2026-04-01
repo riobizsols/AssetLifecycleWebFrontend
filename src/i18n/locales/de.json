@@ -659,6 +659,23 @@
       "name": "Anlagen-Lebenszyklus-Bericht",
       "description": "Vollständige Ansicht der Anlagenhistorie und des aktuellen Status einschließlich Kauf, Inbetriebnahme, Nutzung und Entsorgungsinformationen."
     },
+    "reopenedBreakdowns": {
+      "title": "Wiedereröffnete Störungen",
+      "subtitle": "Wartungspläne mit Status Wiedereröffnung (RO)."
+    },
+    "reopenedBreakdownsHistory": {
+      "title": "Verlauf der Wiedereröffnung",
+      "subtitle": "Alle Einträge in der Störungs-Wartungshistorie für Plan {{id}}.",
+      "back": "Zurück zum Bericht",
+      "loading": "Verlauf wird geladen…",
+      "empty": "Keine Historieneinträge für diesen Plan gefunden.",
+      "loadFailed": "Verlauf konnte nicht geladen werden.",
+      "lineId": "Zeilen-ID",
+      "status": "Status",
+      "createdOn": "Erstellt am",
+      "createdBy": "Erstellt von",
+      "notes": "Notizen"
+    },
     "assetRegisterReport": {
       "name": "Anlagenregister",
       "description": "Detaillierte Ansicht von Anlagen basierend auf spezifischen Kriterien mit umfassenden Anlageninformationen."
@@ -1733,6 +1750,7 @@
     "failedToDeleteMaintenanceRecord": "Fehler beim Löschen des Wartungsdatensatzes",
     "maintenanceApprovalsExportedSuccessfully": "Wartungsgenehmigungen erfolgreich exportiert",
     "failedToExportMaintenanceApprovals": "Fehler beim Exportieren der Wartungsgenehmigungen",
+    "approving": "Wird genehmigt…",
     "initiated": "Eingeleitet",
     "inProgress": "In Bearbeitung",
     "completed": "Abgeschlossen",
@@ -1775,6 +1793,7 @@
     "pleaseProvideApprovalNote": "Bitte geben Sie einen Genehmigungshinweis an...",
     "noteRequiredToApprove": "Hinweis ist erforderlich zum Genehmigen.",
     "failedToApprove": "Genehmigung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "approvedSuccessfully": "Erfolgreich genehmigt.",
     "failedToReject": "Ablehnung fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "waitingForActionFrom": "Warten auf Aktion von {{userName}}",
     "vendorName": "Lieferantenname",
@@ -1844,6 +1863,7 @@
     "initiated": "Eingeleitet",
     "inProgress": "In Bearbeitung",
     "completed": "Abgeschlossen",
+    "reopened": "Wiedereröffnet",
     "cancelled": "Abgebrochen",
     "days": "Tage",
     "dueToday": "Heute fällig",
@@ -2630,6 +2650,7 @@
   "auth": {
     "login": "Anmelden",
     "logout": "Abmelden",
+    "loggingOut": "Abmeldung läuft…",
     "username": "Benutzername",
     "password": "Passwort",
     "email": "E-Mail",

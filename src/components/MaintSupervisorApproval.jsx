@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { createPortal } from "react-dom";
 import API from "../lib/axios";
+import { useAuthStore } from "../store/useAuthStore";
 import ChecklistModal from "./ChecklistModal";
 import SearchableDropdown from "./ui/SearchableDropdown";
 import { generateUUID } from '../utils/uuid';
@@ -14,6 +15,10 @@ export default function MaintSupervisorApproval() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const orgId =
+    useAuthStore((s) => s.user?.org_id) ||
+    localStorage.getItem("org_id") ||
+    undefined;
   
   // Access control
   const { getAccessLevel } = useNavigation();
@@ -121,7 +126,7 @@ export default function MaintSupervisorApproval() {
       fetchMaintenanceData();
       fetchDocumentTypes();
     }
-  }, [id]);
+  }, [id, orgId]);
 
   // Fetch checklist when maintenance data is available
   useEffect(() => {
@@ -172,14 +177,20 @@ export default function MaintSupervisorApproval() {
       const apiUrl = `/maintenance-schedules/${id}`;
       // Pass context so logs go to SUPERVISORAPPROVAL CSV
       const res = await API.get(apiUrl, {
-        params: { context: 'SUPERVISORAPPROVAL' }
+        params: {
+          context: "SUPERVISORAPPROVAL",
+          ...(orgId ? { orgId } : {}),
+        },
       });
       if (res.data.success) {
         setMaintenanceData(res.data.data);
         // Initialize form data with existing values
+        const rawStatus = res.data.data.status || "";
+        // RO was removed from the supervisor dropdown; map legacy rows so the select stays valid
+        const normalizedStatus = rawStatus === "RO" ? "IN" : rawStatus;
         setFormData({
           notes: res.data.data.notes || "",
-          status: res.data.data.status || "",
+          status: normalizedStatus,
           po_number: res.data.data.po_number || "",
           invoice: res.data.data.invoice || "",
           technician_name: res.data.data.technician_name || "",
@@ -1206,7 +1217,10 @@ export default function MaintSupervisorApproval() {
       // CA = Payment Cancelled
       
       const res = await API.put(`/maintenance-schedules/${id}`, updateData, {
-        params: { context: 'SUPERVISORAPPROVAL' }
+        params: {
+          context: "SUPERVISORAPPROVAL",
+          ...(orgId ? { orgId } : {}),
+        },
       });
       
       if (res.data.success) {

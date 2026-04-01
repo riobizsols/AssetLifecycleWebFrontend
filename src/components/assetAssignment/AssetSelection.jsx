@@ -748,7 +748,9 @@ const AssetSelection = () => {
                 ))}
                 {inactiveAssets.length === 0 && (
                   <div className="px-4 py-6 text-center text-gray-500 col-span-4 bg-white rounded-b">
-                    {t('assets.noInactiveAssetsFound')}
+                    {selectedAssetType
+                      ? t('assets.noInactiveAssetsFound')
+                      : t('assets.pleaseSelectAssetTypeFirst')}
                   </div>
                 )}
               </div>
