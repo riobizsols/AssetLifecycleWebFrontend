@@ -265,8 +265,14 @@ const Certifications = () => {
     try {
       const response = await API.get(`/maintenance-schedules/frequency/${assetTypeId}`);
       const rows = Array.isArray(response.data) ? response.data : response.data?.data || [];
-      const ids = rows.map((row) => row.maint_type_id).filter(Boolean);
-      setAssetTypeMaintTypeIds(Array.from(new Set(ids)));
+      const ids = Array.from(new Set(rows.map((row) => row.maint_type_id).filter(Boolean)));
+      if (ids.length > 0) {
+        setAssetTypeMaintTypeIds(ids);
+      } else {
+        // Fallback: use maint_type_id from asset type master if frequency rows are missing.
+        const assetTypeRow = assetTypes.find((type) => String(type.asset_type_id) === String(assetTypeId));
+        setAssetTypeMaintTypeIds(assetTypeRow?.maint_type_id ? [assetTypeRow.maint_type_id] : []);
+      }
     } catch (error) {
       console.error("Failed to fetch maintenance types for asset type:", error);
       toast.error(t("certifications.failedToLoadMaintTypesForAssetType"));
@@ -362,7 +368,19 @@ const Certifications = () => {
         const rows = Array.isArray(response.data) ? response.data : response.data?.data || [];
         const ids = Array.from(new Set(rows.map((row) => row.maint_type_id).filter(Boolean)));
         if (!cancelled) {
-          setUpdateModalMaintTypes(maintTypes.filter((t) => ids.includes(t.maint_type_id)));
+          if (ids.length > 0) {
+            setUpdateModalMaintTypes(maintTypes.filter((t) => ids.includes(t.maint_type_id)));
+          } else {
+            const assetTypeRow = assetTypes.find(
+              (type) => String(type.asset_type_id) === String(updateCertAssetType),
+            );
+            const fallbackMaintTypeId = assetTypeRow?.maint_type_id;
+            setUpdateModalMaintTypes(
+              fallbackMaintTypeId
+                ? maintTypes.filter((t) => String(t.maint_type_id) === String(fallbackMaintTypeId))
+                : [],
+            );
+          }
         }
       } catch (err) {
         if (!cancelled) setUpdateModalMaintTypes([]);
@@ -370,7 +388,7 @@ const Certifications = () => {
     };
     load();
     return () => { cancelled = true; };
-  }, [showUpdateModal, updateModalSource, updateCertAssetType, maintTypes]);
+  }, [showUpdateModal, updateModalSource, updateCertAssetType, maintTypes, assetTypes]);
 
   // When mapping form is open and user selects an asset type, load its maintenance types and mapped certs
   useEffect(() => {
@@ -393,7 +411,19 @@ const Certifications = () => {
         if (cancelled) return;
         const rows = Array.isArray(freqRes.data) ? freqRes.data : freqRes.data?.data || [];
         const maintIds = Array.from(new Set(rows.map((r) => r.maint_type_id).filter(Boolean)));
-        setMappingFormMaintTypes(maintTypes.filter((t) => maintIds.includes(t.maint_type_id)));
+        if (maintIds.length > 0) {
+          setMappingFormMaintTypes(maintTypes.filter((t) => maintIds.includes(t.maint_type_id)));
+        } else {
+          const assetTypeRow = assetTypes.find(
+            (type) => String(type.asset_type_id) === String(mappingFormAssetType),
+          );
+          const fallbackMaintTypeId = assetTypeRow?.maint_type_id;
+          setMappingFormMaintTypes(
+            fallbackMaintTypeId
+              ? maintTypes.filter((t) => String(t.maint_type_id) === String(fallbackMaintTypeId))
+              : [],
+          );
+        }
         const mapData = mapRes.data?.data || [];
         setMappingFormMappedCertificates(mapData);
         setMappingFormMappedLoaded(true);
@@ -407,7 +437,7 @@ const Certifications = () => {
     };
     load();
     return () => { cancelled = true; };
-  }, [showMappingForm, mappingFormAssetType, maintTypes]);
+  }, [showMappingForm, mappingFormAssetType, maintTypes, assetTypes]);
 
   // Sync Mapping Form lists (Available vs Selected) only after mapped certs for this asset type are loaded
   useEffect(() => {
