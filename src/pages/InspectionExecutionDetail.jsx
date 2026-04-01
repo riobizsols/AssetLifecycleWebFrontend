@@ -196,9 +196,10 @@ const InspectionExecutionDetail = () => {
 
       if (shouldSendRecPayload) {
         const recRes = await API.post('/inspection/records', recPayload);
-        if (res.data.success) {
+        if (recRes.data.success) {
           toast.success("Inspection updated successfully");
           navigate('/inspection-view');
+          return;
         }
       }
 
@@ -209,7 +210,6 @@ const InspectionExecutionDetail = () => {
         trigger_maintenance: triggerMaintenance,
         act_insp_end_date: status === 'CO' ? new Date().toISOString() : null
       };
-        setSaving(false);
       const res = await API.put(`/inspection/${id}`, payload);
       if (res.data.success) {
         toast.success("Inspection updated successfully");
@@ -223,6 +223,8 @@ const InspectionExecutionDetail = () => {
       } else {
         toast.error("Failed to update inspection");
       }
+    } finally {
+      setSaving(false);
     }
   };
 
