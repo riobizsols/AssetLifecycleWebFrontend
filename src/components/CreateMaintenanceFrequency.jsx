@@ -4,8 +4,16 @@ import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import { Save, X } from 'lucide-react';
 
+const MAINT_CONFIG_PATH = '/adminsettings/configuration/maintenance-config';
+
 const CreateMaintenanceFrequency = () => {
   const navigate = useNavigate();
+
+  const goToMaintenanceFrequencyList = () => {
+    navigate(MAINT_CONFIG_PATH, {
+      state: { maintenanceConfigTab: 'maintenanceFrequency' },
+    });
+  };
   
   const [assetTypes, setAssetTypes] = useState([]);
   const [maintenanceTypes, setMaintenanceTypes] = useState([]);
@@ -261,7 +269,7 @@ const CreateMaintenanceFrequency = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate('/admin-settings-view')}
+              onClick={goToMaintenanceFrequencyList}
               className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
             >
               <X size={20} />
@@ -520,7 +528,7 @@ const CreateMaintenanceFrequency = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/admin-settings-view')}
+                  onClick={goToMaintenanceFrequencyList}
                   className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                 >
                   Cancel

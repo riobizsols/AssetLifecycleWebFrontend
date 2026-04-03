@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import MaintenanceDetails from '../../components/MaintenanceDetails';
 import MaintenanceFrequency from '../../components/MaintenanceFrequency';
 
 const MaintenanceConfiguration = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('maintenanceDetails');
+
+  useEffect(() => {
+    if (location.state?.maintenanceConfigTab === 'maintenanceFrequency') {
+      setActiveTab('maintenanceFrequency');
+    }
+  }, [location.state]);
 
   return (
     <div className="min-h-screen bg-gray-50">
