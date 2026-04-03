@@ -168,6 +168,15 @@ const MaintenanceFrequency = () => {
     return normalizedValue;
   };
 
+  const formatFrequencyCell = (freq) => {
+    if (freq.is_recurring === false) {
+      return 'On demand';
+    }
+    const f = freq.frequency != null && freq.frequency !== '' ? String(freq.frequency) : '';
+    const u = getUomText(freq.uom);
+    return `${f} ${u}`.trim() || '—';
+  };
+
   const getMaintainedByLabel = (value) => {
     const normalized = String(value || '').trim().toLowerCase().replace(/\s|-/g, '');
     if (normalized === 'self' || normalized === 'inhouse') return 'In-House';
@@ -466,16 +475,10 @@ const MaintenanceFrequency = () => {
         maint_type_id: editingFormData.maint_type_id
       };
 
-      // Only include frequency, uom, and text for recurring maintenance
       if (isRecurring) {
         requestData.frequency = parseFloat(editingFormData.frequency);
         requestData.uom = editingFormData.uom;
         requestData.text = editingFormData.text?.trim() || `${editingFormData.frequency} ${editingFormData.uom}`;
-      } else {
-        // For on-demand, set these to null
-        requestData.frequency = null;
-        requestData.uom = null;
-        requestData.text = 'On Demand';
       }
 
       // In-house rows should persist selected technician.
@@ -1005,61 +1008,54 @@ const MaintenanceFrequency = () => {
                                       </p>
                                     </div>
 
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                                        Frequency {editingFormData.is_recurring && <span className="text-red-500">*</span>}
-                                      </label>
-                                      <input
-                                        type="number"
-                                        value={editingFormData.frequency}
-                                        onChange={(e) => setEditingFormData({...editingFormData, frequency: e.target.value})}
-                                        placeholder={editingFormData.is_recurring ? "Enter frequency" : "Not required for on-demand"}
-                                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm ${
-                                          !editingFormData.is_recurring ? 'bg-gray-100 cursor-not-allowed' : ''
-                                        }`}
-                                        disabled={!editingFormData.is_recurring}
-                                      />
-                                    </div>
+                                    {editingFormData.is_recurring && (
+                                      <>
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Frequency <span className="text-red-500">*</span>
+                                          </label>
+                                          <input
+                                            type="number"
+                                            value={editingFormData.frequency}
+                                            onChange={(e) => setEditingFormData({...editingFormData, frequency: e.target.value})}
+                                            placeholder="Enter frequency"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
+                                          />
+                                        </div>
 
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                                        Unit of Measure (UOM) {editingFormData.is_recurring && <span className="text-red-500">*</span>}
-                                      </label>
-                                      <select
-                                        value={editingFormData.uom || ''}
-                                        onChange={(e) => setEditingFormData({...editingFormData, uom: e.target.value})}
-                                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm ${
-                                          !editingFormData.is_recurring ? 'bg-gray-100 cursor-not-allowed' : ''
-                                        }`}
-                                        disabled={!editingFormData.is_recurring}
-                                      >
-                                        <option value="">{editingFormData.is_recurring ? "-- Select UOM --" : "Not required for on-demand"}</option>
-                                        {uomOptions.map((option) => (
-                                          <option key={option.id} value={option.id}>
-                                            {option.text}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </div>
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                                            Unit of Measure (UOM) <span className="text-red-500">*</span>
+                                          </label>
+                                          <select
+                                            value={editingFormData.uom || ''}
+                                            onChange={(e) => setEditingFormData({...editingFormData, uom: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
+                                          >
+                                            <option value="">-- Select UOM --</option>
+                                            {uomOptions.map((option) => (
+                                              <option key={option.id} value={option.id}>
+                                                {option.text}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </div>
 
-                                    <div>
-                                      <label className="block text-xs font-medium text-gray-700 mb-1">Text</label>
-                                      <input
-                                        type="text"
-                                        value={editingFormData.text || ''}
-                                        onChange={(e) => setEditingFormData({...editingFormData, text: e.target.value})}
-                                        placeholder={editingFormData.is_recurring ? "Enter description" : "Will be set as 'On Demand'"}
-                                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm ${
-                                          !editingFormData.is_recurring ? 'bg-gray-100 cursor-not-allowed' : ''
-                                        }`}
-                                        disabled={!editingFormData.is_recurring}
-                                      />
-                                      <p className="mt-1 text-xs text-gray-500">
-                                        {editingFormData.is_recurring 
-                                          ? 'Leave empty to auto-generate from frequency and UOM'
-                                          : 'Will automatically be set to "On Demand"'}
-                                      </p>
-                                    </div>
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">Text</label>
+                                          <input
+                                            type="text"
+                                            value={editingFormData.text || ''}
+                                            onChange={(e) => setEditingFormData({...editingFormData, text: e.target.value})}
+                                            placeholder="Enter description"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
+                                          />
+                                          <p className="mt-1 text-xs text-gray-500">
+                                            Leave empty to auto-generate from frequency and UOM
+                                          </p>
+                                        </div>
+                                      </>
+                                    )}
 
                                     <div>
                                       <label className="block text-xs font-medium text-gray-700 mb-1">Inhouse / Vendor Managed</label>
@@ -1152,7 +1148,7 @@ const MaintenanceFrequency = () => {
                                 {freq.asset_type_name || 'N/A'}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-900 border">
-                                {freq.frequency} {getUomText(freq.uom)}
+                                {formatFrequencyCell(freq)}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-600 border">
                                 {freq.text || '-'}
@@ -1232,7 +1228,11 @@ const MaintenanceFrequency = () => {
                     <div className="flex flex-wrap items-center gap-4">
                       <div>
                         <span className="text-xs text-gray-600">Frequency:</span>
-                        <span className="ml-2 font-semibold text-gray-900">{selectedFrequencyData.frequency} {getUomText(selectedFrequencyData.uom)}</span>
+                        <span className="ml-2 font-semibold text-gray-900">
+                          {selectedFrequencyData.is_recurring === false
+                            ? 'On demand'
+                            : `${selectedFrequencyData.frequency ?? ''} ${getUomText(selectedFrequencyData.uom)}`.trim()}
+                        </span>
                       </div>
                       <div>
                       </div>
