@@ -224,27 +224,40 @@ const JobRoles = () => {
   
   const handleAddNewNav = () => {
     // Navigate to create route - use appropriate route based on admin settings mode
+    const navState = {
+      activeTab: activeTab,
+      adminFrom: { pathname: location.pathname, search: location.search },
+      parentAdminFrom: location.state?.adminFrom,
+    };
     if (isAdminSettingsMode) {
       navigate("/adminsettings/configuration/job-roles/create-navigation", {
-        state: { activeTab: activeTab }
+        state: navState,
       });
     } else {
       navigate("/master-data/job-roles/create-navigation", {
-        state: { activeTab: activeTab }
+        state: { activeTab: activeTab },
       });
     }
   };
 
   const handleEditNav = (nav) => {
     // Navigate to update route with navId - use appropriate route based on admin settings mode
+    const navState = {
+      activeTab: activeTab,
+      navigation: nav,
+      adminFrom: { pathname: location.pathname, search: location.search },
+      parentAdminFrom: location.state?.adminFrom,
+    };
     if (isAdminSettingsMode) {
-      navigate(`/adminsettings/configuration/job-roles/update-navigation/${nav.job_role_nav_id}`, {
-        state: { activeTab: activeTab }
-      });
+      navigate(
+        `/adminsettings/configuration/job-roles/update-navigation/${nav.job_role_nav_id}`,
+        { state: navState },
+      );
     } else {
-      navigate(`/master-data/job-roles/update-navigation/${nav.job_role_nav_id}`, {
-        state: { activeTab: activeTab }
-      });
+      navigate(
+        `/master-data/job-roles/update-navigation/${nav.job_role_nav_id}`,
+        { state: { activeTab: activeTab, navigation: nav } },
+      );
     }
   };
 

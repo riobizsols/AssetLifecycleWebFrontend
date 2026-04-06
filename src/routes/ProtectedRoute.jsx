@@ -2,7 +2,13 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNavigation } from "../hooks/useNavigation";
 
-export default function ProtectedRoute({ children, allowedRoles = [], requiredAppId = null }) {
+export default function ProtectedRoute({
+  children,
+  allowedRoles = [],
+  requiredAppId = null,
+  /** If set, user needs access to at least one of these app IDs (e.g. ONETIMECRON or ADMINSETTINGS). */
+  requiredAnyOfAppIds = null,
+}) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const roles = useAuthStore((state) => state.roles) || [];
@@ -33,7 +39,7 @@ export default function ProtectedRoute({ children, allowedRoles = [], requiredAp
   }
 
   // Wait for navigation to load before checking permissions
-  if (requiredAppId && loading) {
+  if ((requiredAppId || (requiredAnyOfAppIds && requiredAnyOfAppIds.length)) && loading) {
     // Show a loading state while navigation permissions are being fetched
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -45,10 +51,18 @@ export default function ProtectedRoute({ children, allowedRoles = [], requiredAp
     );
   }
 
-  // Check navigation permissions if requiredAppId is provided
-  if (requiredAppId && !hasAccess(requiredAppId)) {
-    console.log('Access denied. User does not have access to app:', requiredAppId);
-    return <Navigate to="/not-authorized" />; // Redirect to not authorized page
+  if (requiredAnyOfAppIds && requiredAnyOfAppIds.length > 0) {
+    const allowed = requiredAnyOfAppIds.some((id) => hasAccess(id));
+    if (!allowed) {
+      console.log(
+        "Access denied. User needs one of:",
+        requiredAnyOfAppIds,
+      );
+      return <Navigate to="/not-authorized" />;
+    }
+  } else if (requiredAppId && !hasAccess(requiredAppId)) {
+    console.log("Access denied. User does not have access to app:", requiredAppId);
+    return <Navigate to="/not-authorized" />;
   }
 
   return children;

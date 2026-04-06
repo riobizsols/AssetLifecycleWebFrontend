@@ -102,6 +102,7 @@ import QAAuditReport from "../pages/reports/QAAuditReport";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
+import OneTimeCron from "../pages/adminSettings/OneTimeCron";
 import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
 import Certifications from "../pages/adminSettings/Certifications";
 import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
@@ -1149,6 +1150,18 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="ADMINSETTINGS">
               <AdminSettingsLayout>
                 <MaintenanceConfiguration />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/one-time-cron"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={["ONETIMECRON", "ADMINSETTINGS"]}
+            >
+              <AdminSettingsLayout>
+                <OneTimeCron />
               </AdminSettingsLayout>
             </ProtectedRoute>
           }

@@ -9,6 +9,7 @@
     "users": "Users",
     "userRoles": "User Roles",
     "columnAccessConfig": "Column Access Config",
+    "oneTimeCron": "One Time Cron",
     "bulkUpload": "Bulk Upload",
     "roles": "Roles",
     "reports": "Reports",
@@ -2755,8 +2756,38 @@
     "properties": "Properties",
     "breakdownReasonCodes": "Breakdown Reason Codes"
   },
+  "adminSettingsBreadcrumb": {
+    "createNavigation": "Create navigation",
+    "updateNavigation": "Edit navigation"
+  },
   "columnAccessConfig": {
-    "pageTitle": "Column Access Configuration"
+    "pageTitle": "Column Access Configuration",
+    "pageDescription": "Configure column-level access for different job roles. AUTH access provides full access and doesn't need to be configured.",
+    "breadcrumbCurrent": "Data config",
+    "breadcrumbBulkSerialPrint": "Bulk Serial Number Print",
+    "breadcrumbConfigurationHub": "Configuration",
+    "breadcrumbMaintenanceConfig": "Maintenance Configuration",
+    "breadcrumbJobRoles": "Job Roles",
+    "breadcrumbPreviousPage": "Previous"
+  },
+  "oneTimeCron": {
+    "pageTitle": "One time cron",
+    "pageSubtitle": "Run workflow backfill jobs manually. The same jobs also run on a daily schedule at different times.",
+    "cardDescription": "Manual triggers for maintenance and scrap workflow backfill jobs",
+    "maintenanceTitle": "Maintenance workflow",
+    "maintenanceDesc": "Adds default maintenance approval sequence (WFS-06, sequence 10) for each asset type that has no maintenance workflow sequence configured. Scheduled daily at 1:00 AM IST.",
+    "scrapTitle": "Scrap workflow",
+    "scrapDesc": "Adds one-level scrap approval (WFS-02, sequence 10) for each asset type that has no scrap workflow sequence configured. Scheduled daily at 3:30 AM IST.",
+    "runMaintenanceBackfill": "Run maintenance workflow backfill",
+    "runScrapBackfill": "Run scrap workflow backfill",
+    "running": "Running…",
+    "maintenanceSuccess": "Maintenance workflow backfill completed",
+    "scrapSuccess": "Scrap workflow backfill completed",
+    "scanned": "Scanned",
+    "inserted": "Inserted",
+    "skippedMissingStep": "Skipped (missing WF step)",
+    "skippedAlreadyExists": "Skipped (already exists)",
+    "errors": "Errors"
   },
   "inspectionChecklists": {
     "pageTitle": "Inspection Checklists List",

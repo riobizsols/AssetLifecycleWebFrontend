@@ -19,10 +19,12 @@ const AdminSettingsLayoutContent = ({ children }) => {
       {/* Database-driven Sidebar on the left */}
       <DatabaseSidebar />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main Content Area — min-w-0 lets the pane use full remaining width next to the sidebar */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header />
-        <main className="flex-1 p-2 sm:p-4 lg:p-6 overflow-auto bg-gray-200">{children}</main>
+        <main className="flex min-h-0 min-w-0 w-full flex-1 overflow-y-auto overflow-x-auto bg-gray-200 p-2 sm:p-3 md:p-4 lg:p-5">
+          <div className="min-w-0 w-full max-w-none flex-1">{children}</div>
+        </main>
       </div>
     </div>
   );

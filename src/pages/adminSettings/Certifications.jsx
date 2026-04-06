@@ -1012,8 +1012,11 @@ const Certifications = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <nav className="flex flex-wrap -mb-px" aria-label="Tabs">
+        <div className="w-full min-w-0 px-6">
+          <nav
+            className="flex flex-wrap justify-start -mb-px"
+            aria-label="Tabs"
+          >
             <button
               onClick={() => setActiveTab("create")}
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${

@@ -6,6 +6,10 @@ import { useAuditLog } from "../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../constants/authAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import RouteDataLoading from "../components/loading/RouteDataLoading";
+import {
+  getAdminSettingsBreadcrumbLabel,
+  shouldShowAdminSettingsBreadcrumb,
+} from "../utils/adminSettingsBreadcrumb";
 
 export default function Header() {
   const { user, logout, roles } = useAuthStore();
@@ -111,6 +115,10 @@ export default function Header() {
     "/master-data/roles": {
       title: t('masterDataTitles.roleManagement'),
     },
+    "/adminsettings/configuration": {
+      title: t("columnAccessConfig.breadcrumbConfigurationHub"),
+      subtitle: "",
+    },
     "/adminsettings/configuration/properties": {
       title: t('masterDataTitles.properties'),
     },
@@ -133,19 +141,60 @@ export default function Header() {
       title: t("reports.reopenedBreakdowns.title"),
       subtitle: "",
     },
+    "/adminsettings/configuration/data-config": {
+      title: t("columnAccessConfig.pageTitle"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/maintenance-config": {
+      title: t("columnAccessConfig.breadcrumbMaintenanceConfig"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/bulk-serial-number-print": {
+      title: t("columnAccessConfig.breadcrumbBulkSerialPrint"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/one-time-cron": {
+      title: t("oneTimeCron.pageTitle"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/job-roles": {
+      title: t("columnAccessConfig.breadcrumbJobRoles"),
+      subtitle: "",
+    },
 
     // Add more routes as needed
   };
+
+  const adminFrom = location.state?.adminFrom;
+  const showAdminBreadcrumb = shouldShowAdminSettingsBreadcrumb(location, adminFrom);
 
   const reopenedHistoryMatch = location.pathname.match(
     /^\/reports\/reopened-breakdowns\/([^/]+)\/history$/,
   );
 
-  const pageInfo = reopenedHistoryMatch
-    ? { title: "", subtitle: "" }
-    : Object.entries(pathTitleMap).find(([path]) =>
-        location.pathname.startsWith(path),
-      )?.[1] || { title: "", subtitle: "" };
+  const pageInfo =
+    showAdminBreadcrumb || reopenedHistoryMatch
+      ? { title: "", subtitle: "" }
+      : Object.entries(pathTitleMap)
+          .sort((a, b) => b[0].length - a[0].length)
+          .find(([path]) => location.pathname.startsWith(path))?.[1] || {
+            title: "",
+            subtitle: "",
+          };
+
+  const adminFromLabel = showAdminBreadcrumb
+    ? getAdminSettingsBreadcrumbLabel(adminFrom.pathname, t) ||
+      adminFrom.pathname.split("/").filter(Boolean).pop() ||
+      t("columnAccessConfig.breadcrumbPreviousPage")
+    : "";
+  const adminFromTo = showAdminBreadcrumb
+    ? `${adminFrom.pathname}${adminFrom.search || ""}`
+    : "";
+  const adminCurrentLabel = showAdminBreadcrumb
+    ? getAdminSettingsBreadcrumbLabel(location.pathname, t) ||
+      location.pathname.split("/").filter(Boolean).pop() ||
+      t("columnAccessConfig.breadcrumbPreviousPage")
+    : "";
 
   const handleLogout = async () => {
     try {
@@ -205,7 +254,33 @@ export default function Header() {
       )}
       <header className="flex items-center justify-between gap-4 bg-white px-6 py-3 shadow-sm relative">
       {/* Breadcrumb or page title (left) — profile menu stays on the right */}
-      {reopenedHistoryMatch ? (
+      {showAdminBreadcrumb ? (
+        <nav
+          className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs font-semibold text-[#0E2F4B] sm:text-sm"
+          aria-label="Breadcrumb"
+        >
+          <Link
+            to={adminFromTo}
+            {...(location.state?.parentAdminFrom
+              ? {
+                  state: {
+                    adminFrom: location.state.parentAdminFrom,
+                    parentAdminFrom: location.state.grandparentAdminFrom,
+                  },
+                }
+              : {})}
+            className="shrink-0 text-[#0E2F4B]/80 hover:text-[#0E2F4B] hover:underline"
+          >
+            {adminFromLabel}
+          </Link>
+          <span className="font-normal text-[#0E2F4B]/40" aria-hidden>
+            /
+          </span>
+          <span className="min-w-0 truncate text-[#0E2F4B]">
+            {adminCurrentLabel}
+          </span>
+        </nav>
+      ) : reopenedHistoryMatch ? (
         <nav
           className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs sm:text-sm font-semibold text-[#0E2F4B] min-w-0"
           aria-label="Breadcrumb"

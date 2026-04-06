@@ -157,10 +157,10 @@ const CreateInspectionChecklist = ({ isOpen, onClose, onSuccess, responseTypes =
   const isQT = isQuantitative(form.irtd_id);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-      <div className="bg-white w-full max-w-lg rounded shadow-lg flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50 p-3 sm:p-5">
+      <div className="bg-white w-full max-w-5xl rounded-lg shadow-xl flex flex-col h-[min(90vh,56rem)] max-h-[calc(100dvh-1.5rem)]">
         {/* Header - Simple with no blue background */}
-        <div className="px-6 py-3 border-b border-gray-200 flex justify-between items-center">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
           <h3 className="text-base font-semibold text-gray-900">Create Inspection Checklist</h3>
           <button
             onClick={handleClose}
@@ -172,25 +172,12 @@ const CreateInspectionChecklist = ({ isOpen, onClose, onSuccess, responseTypes =
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-3 max-h-80 overflow-y-auto">
-          {/* Inspection Question and Response Type - Same Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm mb-1 font-medium text-gray-700">
-                Inspection Question
-              </label>
-              <input
-                type="text"
-                name="inspection_question"
-                value={form.inspection_question}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border text-sm bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#003b6f] ${
-                  isFieldInvalid("question") ? "border-red-500" : "border-gray-300"
-                }`}
-                placeholder="Enter inspection question"
-              />
-            </div>
-
+        <form
+          onSubmit={handleSubmit}
+          className="px-6 py-6 space-y-6 flex-1 min-h-0 overflow-y-auto"
+        >
+          {/* Response Type first, then Inspection Question below */}
+          <div className="space-y-5">
             <div>
               <label className="block text-sm mb-1 font-medium text-gray-700">
                 Response Type
@@ -199,7 +186,7 @@ const CreateInspectionChecklist = ({ isOpen, onClose, onSuccess, responseTypes =
                 name="irtd_id"
                 value={form.irtd_id}
                 onChange={handleResponseTypeChange}
-                className={`w-full px-3 py-2 border text-sm bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#003b6f] ${
+                className={`w-full px-3 py-2.5 border text-sm bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#003b6f] ${
                   isFieldInvalid("responseType") ? "border-red-500" : "border-gray-300"
                 }`}
               >
@@ -210,6 +197,22 @@ const CreateInspectionChecklist = ({ isOpen, onClose, onSuccess, responseTypes =
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm mb-1 font-medium text-gray-700">
+                Inspection Question
+              </label>
+              <textarea
+                name="inspection_question"
+                value={form.inspection_question}
+                onChange={handleInputChange}
+                rows={4}
+                className={`w-full min-h-[7rem] px-3 py-2.5 border text-sm bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#003b6f] resize-y ${
+                  isFieldInvalid("question") ? "border-red-500" : "border-gray-300"
+                }`}
+                placeholder="Enter inspection question"
+              />
             </div>
           </div>
 
@@ -234,7 +237,7 @@ const CreateInspectionChecklist = ({ isOpen, onClose, onSuccess, responseTypes =
 
           {/* Min/Max Range - Show for Quantitative types */}
           {isQT && form.irtd_id && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-sm mb-1 font-medium text-gray-700">
                   Min Range
@@ -288,7 +291,7 @@ const CreateInspectionChecklist = ({ isOpen, onClose, onSuccess, responseTypes =
         </form>
 
         {/* Footer */}
-        <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 flex-shrink-0">
           <button
             type="button"
             onClick={handleClose}

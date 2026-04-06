@@ -31,6 +31,18 @@ const CreateJobRoleNavigation = () => {
       : "/master-data/job-roles";
   };
 
+  /** Restore header breadcrumb on Job Roles list after create/edit */
+  const getBackState = () => {
+    if (isAdminSettingsMode) {
+      return {
+        activeTab: "navigation",
+        adminFrom:
+          location.state?.parentAdminFrom ?? location.state?.adminFrom,
+      };
+    }
+    return { activeTab: "navigation" };
+  };
+
   // Check if we're in edit mode or create mode
   const isEditMode = !!(editingNav || navId);
   const isCreateMode = !isEditMode;
@@ -235,7 +247,7 @@ const CreateJobRoleNavigation = () => {
         response.data.message ||
           `Successfully created ${entries.length} navigation ${entries.length === 1 ? "entry" : "entries"}`,
       );
-      navigate(getBackRoute(), { state: { activeTab: "navigation" } });
+      navigate(getBackRoute(), { state: getBackState() });
     } catch (error) {
       console.error("Error creating navigation entries:", error);
       toast.error(
@@ -264,7 +276,7 @@ const CreateJobRoleNavigation = () => {
         int_status: formData.int_status ? 1 : 0,
       });
       toast.success("Navigation updated successfully");
-      navigate(getBackRoute(), { state: { activeTab: "navigation" } });
+      navigate(getBackRoute(), { state: getBackState() });
     } catch (error) {
       console.error("Error saving navigation:", error);
       toast.error(error.response?.data?.message || "Failed to save navigation");
@@ -577,11 +589,7 @@ const CreateJobRoleNavigation = () => {
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
             <button
-              onClick={() =>
-                navigate("/master-data/job-roles", {
-                  state: { activeTab: "navigation" },
-                })
-              }
+              onClick={() => navigate(getBackRoute(), { state: getBackState() })}
               className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
             >
               Cancel
@@ -846,11 +854,7 @@ const CreateJobRoleNavigation = () => {
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
           <button
-            onClick={() =>
-              navigate("/master-data/job-roles", {
-                state: { activeTab: "navigation" },
-              })
-            }
+            onClick={() => navigate(getBackRoute(), { state: getBackState() })}
             className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
           >
             Cancel

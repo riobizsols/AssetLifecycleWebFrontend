@@ -300,8 +300,8 @@ const CreateAssetTypeChecklistMapping = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-2 px-4 pb-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="w-full min-w-0">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           {/* Section Header */}
           <div className="bg-[#003b6f] text-white font-semibold px-6 py-4 border-b-4 border-[#ffc107]">
@@ -389,7 +389,7 @@ const CreateAssetTypeChecklistMapping = () => {
                         </div>
                       </div>
                     ) : (
-                      <form onSubmit={handleScan} className="max-w-2xl">
+                      <form onSubmit={handleScan} className="w-full">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Scan Asset / Enter Asset ID
                         </label>

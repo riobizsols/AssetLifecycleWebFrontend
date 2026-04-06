@@ -39,6 +39,7 @@
     "breakdownHistory": "Ausfallverlauf",
     "certifications": "Zertifizierungen",
     "columnAccessConfig": "Spaltenzugriff-Konfiguration",
+    "oneTimeCron": "Einmal-Cron",
     "assetTypeChecklistMapping": "Assettyp–Inspektions-Checklisten-Zuordnung",
     "usageBasedAssetReport": "Nutzungsbasierter Anlagenbericht",
     "slaReport": "SLA-Berichte",
@@ -2699,8 +2700,38 @@
     "properties": "Eigenschaften",
     "breakdownReasonCodes": "Störungsgrund-Codes"
   },
+  "adminSettingsBreadcrumb": {
+    "createNavigation": "Navigation anlegen",
+    "updateNavigation": "Navigation bearbeiten"
+  },
   "columnAccessConfig": {
-    "pageTitle": "Spaltenzugriff-Konfiguration"
+    "pageTitle": "Spaltenzugriff-Konfiguration",
+    "pageDescription": "Konfigurieren Sie den Spaltenzugriff für verschiedene Jobrollen. AUTH gewährt vollen Zugriff und muss nicht konfiguriert werden.",
+    "breadcrumbCurrent": "Datenkonfiguration",
+    "breadcrumbBulkSerialPrint": "Massendruck Seriennummern",
+    "breadcrumbConfigurationHub": "Konfiguration",
+    "breadcrumbMaintenanceConfig": "Wartungskonfiguration",
+    "breadcrumbJobRoles": "Jobrollen",
+    "breadcrumbPreviousPage": "Zurück"
+  },
+  "oneTimeCron": {
+    "pageTitle": "Einmal-Cron",
+    "pageSubtitle": "Workflow-Backfill-Jobs manuell ausführen. Dieselben Jobs laufen täglich zu anderen Zeiten automatisch.",
+    "cardDescription": "Manuelle Auslösung für Wartungs- und Schrott-Workflow-Backfill",
+    "maintenanceTitle": "Wartungs-Workflow",
+    "maintenanceDesc": "Fügt die Standard-Wartungsfreigabesequenz (WFS-06, Sequenz 10) für jeden Asset-Typ ohne konfigurierte Wartungs-Workflow-Sequenz hinzu. Täglich 1:00 Uhr IST.",
+    "scrapTitle": "Schrott-Workflow",
+    "scrapDesc": "Fügt eine einstufige Schrottfreigabe (WFS-02, Sequenz 10) für jeden Asset-Typ ohne konfigurierte Schrott-Workflow-Sequenz hinzu. Täglich 3:30 Uhr IST.",
+    "runMaintenanceBackfill": "Wartungs-Workflow-Backfill ausführen",
+    "runScrapBackfill": "Schrott-Workflow-Backfill ausführen",
+    "running": "Läuft…",
+    "maintenanceSuccess": "Wartungs-Workflow-Backfill abgeschlossen",
+    "scrapSuccess": "Schrott-Workflow-Backfill abgeschlossen",
+    "scanned": "Geprüft",
+    "inserted": "Eingefügt",
+    "skippedMissingStep": "Übersprungen (WF-Schritt fehlt)",
+    "skippedAlreadyExists": "Übersprungen (bereits vorhanden)",
+    "errors": "Fehler"
   },
   "inspectionChecklists": {
     "pageTitle": "Inspektions-Checklisten-Liste",

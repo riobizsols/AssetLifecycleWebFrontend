@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useMemo } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -33,7 +33,41 @@ import {
   AlertTriangle,
   Gauge,
   Printer,
+  Clock,
 } from "lucide-react";
+
+/** Injects synthetic "One Time Cron" nav row under Master Data (admin settings mode). */
+function injectOneTimeCronUnderMasterData(items) {
+  if (!items?.length) return items;
+  return items.map((item) => {
+    const children = item.children?.length
+      ? injectOneTimeCronUnderMasterData(item.children)
+      : item.children;
+    if (item.app_id === "MASTERDATA" && item.is_group) {
+      const ch = children || [];
+      if (ch.some((c) => c.app_id === "ONETIMECRON")) {
+        return { ...item, children: ch };
+      }
+      return {
+        ...item,
+        children: [
+          ...ch,
+          {
+            id: "synthetic-onetime-cron",
+            app_id: "ONETIMECRON",
+            label: "One Time Cron",
+            access_level: "A",
+            is_group: false,
+          },
+        ],
+      };
+    }
+    if (children !== item.children) {
+      return { ...item, children };
+    }
+    return item;
+  });
+}
 
 const DatabaseSidebar = () => {
   const {
@@ -52,11 +86,27 @@ const DatabaseSidebar = () => {
   const adminSettingsContext = useContext(AdminSettingsContext);
   const isAdminSettingsMode = adminSettingsContext?.isAdminSettingsMode || false;
 
+  const navigationForRender = useMemo(() => {
+    if (!isAdminSettingsMode) return navigation;
+    return injectOneTimeCronUnderMasterData(navigation);
+  }, [navigation, isAdminSettingsMode]);
+
   const toggleDropdown = (id) => {
     setOpenDropdown(openDropdown === id ? null : id);
   };
 
   const toggleSidebar = () => setCollapsed(!collapsed);
+
+  /**
+   * Passed to NavLink so admin screens can show a header breadcrumb.
+   * parentAdminFrom preserves the chain (e.g. Configuration) when drilling hub → A → B
+   * so the breadcrumb link from B → A restores A’s own “from” state.
+   */
+  const navLinkState = {
+    adminFrom: { pathname: location.pathname, search: location.search },
+    parentAdminFrom: location.state?.adminFrom,
+    grandparentAdminFrom: location.state?.parentAdminFrom,
+  };
 
   // Translate navigation labels
   const translateLabel = (label) => {
@@ -76,6 +126,7 @@ const DatabaseSidebar = () => {
       'Users': t('navigation.users'),
       'User Roles': t('navigation.userRoles'),
       'Column Access Config': t('navigation.columnAccessConfig'),
+      'One Time Cron': t('navigation.oneTimeCron'),
       'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
       'Cost Center Transfer': t('navigation.costCenterTransfer'),
@@ -212,6 +263,7 @@ const DatabaseSidebar = () => {
     TECHNICIANCERTIFICATES: "/technician-certificates",
     PROPERTIES: "/adminsettings/configuration/properties", // Properties route
     BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes", // Breakdown Reason Codes route
+    ONETIMECRON: "/adminsettings/configuration/one-time-cron",
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
@@ -267,6 +319,7 @@ const DatabaseSidebar = () => {
       AUDITLOGS: History,
       AUDITLOGCONFIG: Settings,
       COLUMNACCESSCONFIG: Settings,
+      ONETIMECRON: Clock,
       CERTIFICATIONS: FileText,
       TECHCERTUPLOAD: FileText,
       TECHNICIANCERTIFICATES: FileText,
@@ -304,6 +357,7 @@ const DatabaseSidebar = () => {
         "MAINTENANCECONFIG": "/adminsettings/configuration/maintenance-config",
         "PROPERTIES": "/adminsettings/configuration/properties",
         "BREAKDOWNREASONCODES": "/adminsettings/configuration/breakdown-reason-codes",
+        "ONETIMECRON": "/adminsettings/configuration/one-time-cron",
         // Add more mappings here as you add more admin settings menu items
         // Example: "NEW_APP_ID": "/adminsettings/configuration/new-path",
       };
@@ -330,7 +384,8 @@ const DatabaseSidebar = () => {
     "COLUMNACCESSCONFIG",
     "MAINTENANCECONFIG",
     "PROPERTIES",
-    "BREAKDOWNREASONCODES"
+    "BREAKDOWNREASONCODES",
+    "ONETIMECRON",
   ];
   const employeeTechCertAppIds = ["TECHCERTUPLOAD", "TECHNICIANCERTIFICATES", "EMPLOYEE TECH CERTIFICATION"];
 
@@ -481,14 +536,19 @@ const DatabaseSidebar = () => {
                 }
 
                 const childPath = getPath(child.app_id);
-                const childAccessLevel = getAccessLevel(child.app_id);
+                const childAccessLevel =
+                  child.app_id === "ONETIMECRON"
+                    ? getAccessLevel("ONETIMECRON") ||
+                      getAccessLevel("ADMINSETTINGS") ||
+                      getAccessLevel("MASTERDATA")
+                    : getAccessLevel(child.app_id);
                 const ChildIconComponent = getIconComponent(child.app_id);
 
                 // Only show children that have access
                 if (!childAccessLevel) return null;
 
                 // For admin settings routes, use exact path matching to prevent multiple items being active
-                const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES"];
+                const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON"];
                 const requiresExactMatch = adminSettingsRoutes.includes(child.app_id);
                 const isActiveForAdminRoute = requiresExactMatch 
                   ? location.pathname === childPath
@@ -498,6 +558,7 @@ const DatabaseSidebar = () => {
                   <li key={child.id} className="mb-1">
                     <NavLink
                       to={childPath || "/dashboard"}
+                      state={navLinkState}
                       end={requiresExactMatch} // Use exact match for admin settings routes
                       className={({ isActive }) => {
                         // Use exact match check for admin settings routes
@@ -530,11 +591,16 @@ const DatabaseSidebar = () => {
         </li>
       );
     } else {
-      // Only show items that have access
-      if (!accessLevel) return null;
+      const effectiveAccess =
+        item.app_id === "ONETIMECRON"
+          ? getAccessLevel("ONETIMECRON") ||
+            getAccessLevel("ADMINSETTINGS") ||
+            getAccessLevel("MASTERDATA")
+          : accessLevel;
+      if (!effectiveAccess) return null;
 
       // For admin settings routes, check exact path match
-      const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES"];
+      const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON"];
       const requiresExactMatch = adminSettingsRoutes.includes(item.app_id);
       const isActiveForAdminRoute = requiresExactMatch 
         ? location.pathname === path
@@ -544,6 +610,7 @@ const DatabaseSidebar = () => {
         <li key={item.id} className="mb-2">
           <NavLink
             to={path || "/dashboard"}
+            state={navLinkState}
             end={requiresExactMatch} // Use exact match for admin settings routes
             className={({ isActive }) => {
               // Use exact match check for admin settings routes
@@ -554,7 +621,7 @@ const DatabaseSidebar = () => {
                 active
                   ? "bg-[#FFC107] text-white"
                   : "hover:bg-[#143d65] text-white"
-              } ${getAccessColorClass(accessLevel)}`;
+              } ${getAccessColorClass(effectiveAccess)}`;
             }}
               title={!collapsed ? translateLabel(item.label) : ""}
             >
@@ -566,7 +633,7 @@ const DatabaseSidebar = () => {
               )}
             {!collapsed && (
               <span className="flex-shrink-0">
-                {getAccessIcon(accessLevel)}
+                {getAccessIcon(effectiveAccess)}
               </span>
             )}
           </NavLink>
@@ -619,7 +686,7 @@ const DatabaseSidebar = () => {
 
       {/* Navigation Items */}
       <ul className="px-2 pb-4 overflow-y-auto no-scrollbar">
-        {navigation.length === 0 ? (
+        {navigationForRender.length === 0 ? (
           <li className="text-center py-4 text-gray-300">
             <div className="text-sm">
               <p>No navigation items found.</p>
@@ -628,7 +695,7 @@ const DatabaseSidebar = () => {
           </li>
         ) : (
           <>
-            {navigation.map((item) => renderNavigationItem(item))}
+            {navigationForRender.map((item) => renderNavigationItem(item))}
             {!isAdminSettingsMode && hasEmployeeTechCertAccess() &&
               renderNavigationItem({
                 id: "standalone-tech-certificates",
