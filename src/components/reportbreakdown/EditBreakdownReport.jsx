@@ -267,7 +267,9 @@ const EditBreakdownReport = () => {
   };
 
   const handleCancel = () => {
-    navigate("/report-breakdown");
+    navigate(
+      hideDecisionCode ? "/employee-report-breakdown" : "/report-breakdown",
+    );
   };
 
   const processConfirmAction = async (abr_id) => {

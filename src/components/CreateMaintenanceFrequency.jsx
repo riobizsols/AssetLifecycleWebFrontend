@@ -4,8 +4,16 @@ import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import { Save, X } from 'lucide-react';
 
+const MAINT_CONFIG_PATH = '/adminsettings/configuration/maintenance-config';
+
 const CreateMaintenanceFrequency = () => {
   const navigate = useNavigate();
+
+  const goToMaintenanceFrequencyList = () => {
+    navigate(MAINT_CONFIG_PATH, {
+      state: { maintenanceConfigTab: 'maintenanceFrequency' },
+    });
+  };
   
   const [assetTypes, setAssetTypes] = useState([]);
   const [maintenanceTypes, setMaintenanceTypes] = useState([]);
@@ -211,16 +219,11 @@ const CreateMaintenanceFrequency = () => {
         maint_lead_type: maintLeadType.trim() || null
       };
 
-      // Only include frequency, uom, and text for recurring maintenance
+      // On-demand: server persists NOT NULL sentinels (no user input for these fields)
       if (isRecurring) {
         requestData.frequency = parseFloat(frequency);
         requestData.uom = uom;
         requestData.text = text.trim() || `${frequency} ${uom}`;
-      } else {
-        // For on-demand, set these to null or empty
-        requestData.frequency = null;
-        requestData.uom = null;
-        requestData.text = 'On Demand';
       }
 
       // For in-house/self maintenance, persist selected technician as emp_int_id
@@ -261,7 +264,7 @@ const CreateMaintenanceFrequency = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate('/admin-settings-view')}
+              onClick={goToMaintenanceFrequencyList}
               className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
             >
               <X size={20} />
@@ -370,67 +373,60 @@ const CreateMaintenanceFrequency = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Frequency {isRecurring && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    value={frequency}
-                    onChange={(e) => setFrequency(e.target.value)}
-                    placeholder={isRecurring ? "Enter frequency (e.g., 30, 90, 180)" : "Not required for on-demand"}
-                    className={`w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent ${
-                      !isRecurring ? 'bg-gray-100 cursor-not-allowed' : ''
-                    }`}
-                    required={isRecurring}
-                    disabled={!isRecurring}
-                  />
-                </div>
+                {isRecurring && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Frequency <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.01"
+                        value={frequency}
+                        onChange={(e) => setFrequency(e.target.value)}
+                        placeholder="Enter frequency (e.g., 30, 90, 180)"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                        required
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Unit of Measure (UOM) {isRecurring && <span className="text-red-500">*</span>}
-                  </label>
-                  <select
-                    value={uom}
-                    onChange={(e) => setUom(e.target.value)}
-                    className={`w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent ${
-                      !isRecurring ? 'bg-gray-100 cursor-not-allowed' : ''
-                    }`}
-                    required={isRecurring}
-                    disabled={!isRecurring}
-                  >
-                    <option value="">{isRecurring ? "-- Select UOM --" : "Not required for on-demand"}</option>
-                    {uomOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.text}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Unit of Measure (UOM) <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={uom}
+                        onChange={(e) => setUom(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                        required
+                      >
+                        <option value="">-- Select UOM --</option>
+                        {uomOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.text}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Text
-                  </label>
-                  <input
-                    type="text"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder={isRecurring ? "Enter description (e.g., Quarterly, Monthly)" : "Will be set as 'On Demand'"}
-                    className={`w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent ${
-                      !isRecurring ? 'bg-gray-100 cursor-not-allowed' : ''
-                    }`}
-                    disabled={!isRecurring}
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    {isRecurring 
-                      ? 'Leave empty to auto-generate from frequency and UOM'
-                      : 'Will automatically be set to "On Demand"'}
-                  </p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Text
+                      </label>
+                      <input
+                        type="text"
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                        placeholder="Enter description (e.g., Quarterly, Monthly)"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Leave empty to auto-generate from frequency and UOM
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -520,7 +516,7 @@ const CreateMaintenanceFrequency = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/admin-settings-view')}
+                  onClick={goToMaintenanceFrequencyList}
                   className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                 >
                   Cancel
