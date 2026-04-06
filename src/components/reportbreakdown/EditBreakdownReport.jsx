@@ -188,6 +188,14 @@ const EditBreakdownReport = () => {
         toast.error(t("breakdownDetails.pleaseSelectDecisionCode"));
         return;
       }
+      if (!description?.trim()) {
+        toast.error(t("breakdownDetails.pleaseEnterDescription"));
+        return;
+      }
+      if (description.trim().length > 500) {
+        toast.error(t("breakdownDetails.descriptionCannotExceed500Characters"));
+        return;
+      }
 
       const breakdownData = {
         atbrrc_id: brCode,
@@ -534,7 +542,10 @@ const EditBreakdownReport = () => {
               </label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) =>
+                  setDescription(e.target.value.slice(0, 500))
+                }
+                maxLength={500}
                 disabled={isReadOnly}
                 className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? "bg-gray-50 text-gray-600 cursor-not-allowed" : ""}`}
                 rows={3}
