@@ -37,7 +37,7 @@ const MaintenanceApprovalDetail = () => {
     { label: t('maintenanceApproval.department'), name: "department", visible: false },
     { label: t('maintenanceApproval.maintenanceType'), name: "maintenance_type", visible: true },
     { label: t('maintenanceApproval.status'), name: "status", visible: true },
-    { label: t('maintenanceApproval.daysUntilDue'), name: "days_until_due", visible: true },
+    { label: t('maintenanceApproval.daysUntilDue'), name: "days_until_due", visible: false },
   ]);
 
   useEffect(() => {
