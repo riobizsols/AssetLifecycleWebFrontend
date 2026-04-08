@@ -56,7 +56,13 @@ const EditBreakdownReport = () => {
       // Populate form with existing breakdown data
       setBrCode(breakdown.atbrrc_id || "");
       setDescription(breakdown.description || "");
-      setDecisionCode(breakdown.decision_code || "");
+
+      // Compatibility: older records could be auto-saved as BF03 while still CR.
+      // For CR records, treat BF03 as "not selected yet" so user must choose explicitly.
+      const incomingDecisionCode = breakdown.decision_code || "";
+      const isLegacyDefaultDecision =
+        breakdown.status === "CR" && incomingDecisionCode === "BF03";
+      setDecisionCode(isLegacyDefaultDecision ? "" : incomingDecisionCode);
 
       // Set asset type ID if available in breakdown
       if (breakdown.asset_type_id) {
