@@ -357,8 +357,8 @@ const TechnicianCertificates = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-2 px-4 pb-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 pt-2 px-1 md:px-2 pb-4">
+      <div className="w-full max-w-none">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-gray-200">
             <div>

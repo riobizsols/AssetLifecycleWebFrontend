@@ -292,8 +292,8 @@ const TechCertApprovals = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 p-2 md:p-4">
+      <div className="w-full max-w-none space-y-6">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
           <div className="p-6 border-b border-gray-200">
             <h1 className="text-xl font-semibold text-gray-900">
