@@ -6,6 +6,23 @@ import { generateUUID } from '../utils/uuid';
 import { useLanguage } from '../contexts/LanguageContext';
 import { X } from 'lucide-react';
 
+/** HTML date inputs only accept yyyy-MM-dd; API/DB may return ISO strings or Date objects. */
+function formatDateForInput(value) {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') {
+    const trim = value.trim();
+    if (!trim) return '';
+    const ymd = trim.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (ymd) return ymd[1];
+  }
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false }) => {
   const { t } = useLanguage();
   
@@ -57,8 +74,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         city: vendor.city || '',
         state: vendor.state || '',
         pincode: vendor.pincode || '',
-        contract_start_date: vendor.contract_start_date || '',
-        contract_end_date: vendor.contract_end_date || '',
+        contract_start_date: formatDateForInput(vendor.contract_start_date),
+        contract_end_date: formatDateForInput(vendor.contract_end_date),
         int_status: vendor.int_status === 'Active' ? 1 : 
                     vendor.int_status === 'CRApproved' ? 3 :
                     vendor.int_status === 'Blocked' ? 4 : 0
@@ -94,8 +111,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             city: vendorData.city || '',
             state: vendorData.state || '',
             pincode: vendorData.pincode || '',
-            contract_start_date: vendorData.contract_start_date || '',
-            contract_end_date: vendorData.contract_end_date || '',
+            contract_start_date: formatDateForInput(vendorData.contract_start_date),
+            contract_end_date: formatDateForInput(vendorData.contract_end_date),
             int_status: vendorData.int_status === 'Active' ? 1 :
                         vendorData.int_status === 'CRApproved' ? 3 :
                         vendorData.int_status === 'Blocked' ? 4 :

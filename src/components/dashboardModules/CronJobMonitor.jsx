@@ -85,6 +85,7 @@ const CronJobMonitor = () => {
     try {
       setIsTriggeringVendor(true);
       setError(null);
+      setLastVendorTriggerResult(null);
       const response = await API.post("/cron/trigger-vendor-contract-renewal");
       setLastVendorTriggerResult(response.data);
       
@@ -110,6 +111,11 @@ const CronJobMonitor = () => {
                           "Failed to trigger vendor contract renewal";
       
       setError(errorMessage);
+      setLastVendorTriggerResult({
+        success: false,
+        message: errorMessage,
+        result: err.response?.data?.result || err.response?.data || null,
+      });
     } finally {
       setIsTriggeringVendor(false);
     }
@@ -295,14 +301,43 @@ const CronJobMonitor = () => {
             </div>
 
             {lastVendorTriggerResult && (
-              <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                <h5 className="font-medium text-green-900 mb-2">Last Vendor Renewal Trigger Result</h5>
-                <div className="text-sm text-green-700 space-y-1">
+              <div
+                className={`rounded-md p-3 border ${
+                  lastVendorTriggerResult.success === false
+                    ? "bg-red-50 border-red-200"
+                    : "bg-green-50 border-green-200"
+                }`}
+              >
+                <h5
+                  className={`font-medium mb-2 ${
+                    lastVendorTriggerResult.success === false
+                      ? "text-red-900"
+                      : "text-green-900"
+                  }`}
+                >
+                  Last Vendor Renewal Trigger Result
+                </h5>
+                <div
+                  className={`text-sm space-y-1 ${
+                    lastVendorTriggerResult.success === false
+                      ? "text-red-700"
+                      : "text-green-700"
+                  }`}
+                >
                   <div>Message: {lastVendorTriggerResult.message}</div>
                   {lastVendorTriggerResult.result && (
-                    <div className="text-xs bg-green-100 p-2 rounded">
+                    <div
+                      className={`text-xs p-2 rounded ${
+                        lastVendorTriggerResult.success === false
+                          ? "bg-red-100"
+                          : "bg-green-100"
+                      }`}
+                    >
                       <div className="space-y-1">
                         <div>Workflows Created: {lastVendorTriggerResult.result.workflowsCreated || 0}</div>
+                        {lastVendorTriggerResult.result.workflowFailures !== undefined && (
+                          <div>Workflow Failures: {lastVendorTriggerResult.result.workflowFailures}</div>
+                        )}
                         <div>Vendors Deactivated: {lastVendorTriggerResult.result.vendorsDeactivated || 0}</div>
                         <div>Duration: {lastVendorTriggerResult.result.duration || 0}ms</div>
                       </div>

@@ -189,11 +189,19 @@ const MaintenanceApprovalDetail = () => {
   const isVendorContractRenewal = useMemo(() => {
     if (!approvalDetails) return false;
     const maintType = (approvalDetails.maintenanceType || '').toLowerCase();
-    const maintTypeId = approvalDetails.maint_type_id || '';
-    const result = maintType.includes('vendor contract') || maintType.includes('contract renewal') || maintTypeId === 'MT005';
-    console.log('Vendor contract renewal check:', { maintType, maintTypeId, result, approvalDetails });
-    return result;
+    const maintTypeId = String(
+      approvalDetails.maint_type_id ?? approvalDetails.maintTypeId ?? ''
+    )
+      .trim()
+      .toUpperCase();
+    return (
+      maintTypeId === 'MT005' ||
+      maintType.includes('vendor contract') ||
+      maintType.includes('contract renewal')
+    );
   }, [approvalDetails]);
+
+  const showMaintenanceChecklist = !isVendorContractRenewal;
   
   // Reset active tab if it's vendor contract renewal and user is on asset tab
   useEffect(() => {
@@ -214,6 +222,8 @@ const MaintenanceApprovalDetail = () => {
   // Reset active tab when switching between vendor and in-house maintenance
   useEffect(() => {
     if (!approvalDetails) return;
+    // MT005 vendor contract renewal: API used to default maintained_by to Inhouse when at_main_freq is null; never force tab away from Vendor
+    if (isVendorContractRenewal) return;
     const hasEmpIntId = approvalDetails?.header_emp_int_id;
     const maint = (approvalDetails?.maintained_by || '').toString().toLowerCase();
     const isInhouse = hasEmpIntId || (maint && (maint.includes('inhouse') || maint.includes('in-house')));
@@ -225,7 +235,11 @@ const MaintenanceApprovalDetail = () => {
       console.log('Resetting tab from technician to approval for vendor maintenance');
       setActiveTab('approval');
     }
-  }, [approvalDetails?.header_emp_int_id, approvalDetails?.maintained_by, activeTab]);
+  }, [approvalDetails?.header_emp_int_id, approvalDetails?.maintained_by, activeTab, isVendorContractRenewal]);
+
+  useEffect(() => {
+    if (isVendorContractRenewal) setShowChecklist(false);
+  }, [isVendorContractRenewal]);
 
   // Set current user from auth store
   useEffect(() => {
@@ -1050,6 +1064,7 @@ const MaintenanceApprovalDetail = () => {
                            label={t('maintenanceApproval.notes')} 
                            value={approvalDetails?.notes || "-"} 
                          />
+                        {showMaintenanceChecklist && (
                         <div className="flex flex-col justify-end">
                           <label className="block text-sm font-medium mb-1 text-gray-700">{t('maintenanceApproval.checklist')}</label>
                           <button
@@ -1065,15 +1080,18 @@ const MaintenanceApprovalDetail = () => {
                             {t('maintenanceApproval.viewChecklist')}
                           </button>
                         </div>
+                        )}
                       </div>
                     )}
                   </div>
+                  {showMaintenanceChecklist && (
                   <ChecklistModal
                     assetType={approvalDetails?.assetTypeName || "Asset"}
                     open={showChecklist}
                     onClose={() => setShowChecklist(false)}
                     checklist={approvalDetails?.checklist || []}
                   />
+                  )}
                 </>
               )}
               {activeTab === 'vendor' && (
