@@ -1251,6 +1251,19 @@ export default function MaintSupervisorApproval() {
     );
   }
 
+  const hoursRequiredForNotes = parseFloat(maintenanceData?.hours_required || 0);
+  const hoursSpentForNotes = parseFloat(formData.hours_spent || 0);
+  const actualHoursExceedStandard =
+    hoursRequiredForNotes > 0 && hoursSpentForNotes > hoursRequiredForNotes;
+  /** Hidden until actual hours exceed standard hours; always show in read-only if remarks were saved */
+  const showMandatoryMaintNotesField =
+    actualHoursExceedStandard ||
+    (isReadOnly && String(formData.maint_notes ?? "").trim() !== "");
+  /** Additional notes: only when actual hours do not exceed standard (read-only: still show if notes exist) */
+  const showAdditionalNotesField =
+    !actualHoursExceedStandard ||
+    (isReadOnly && String(formData.notes ?? "").trim() !== "");
+
   return (
     <div className="max-w-7xl mx-auto min-h-[600px] overflow-y-auto p-8 bg-white md:rounded shadow-lg mt-155">
       {/* Header with Back Button */}
@@ -2303,40 +2316,44 @@ export default function MaintSupervisorApproval() {
                </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {parseFloat(formData.hours_spent || 0) > parseFloat(maintenanceData?.hours_required || 0) && parseFloat(maintenanceData?.hours_required || 0) > 0 
-                  ? <span className="text-red-700 font-bold flex items-center gap-1">{t('maintenanceSupervisor.reasonForDelay')} <span className="text-red-500">*</span></span>
-                  : t('maintenanceSupervisor.maintenanceNotesOptional')}
-              </label>
-              <textarea
-                name="maint_notes"
-                value={formData.maint_notes}
-                onChange={handleInputChange}
-                rows={3}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border ${validationErrors.maint_notes ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                placeholder={parseFloat(formData.hours_spent || 0) > parseFloat(maintenanceData?.hours_required || 0) && parseFloat(maintenanceData?.hours_required || 0) > 0 
-                  ? t('maintenanceSupervisor.explainWhyLonger') 
-                  : t('maintenanceSupervisor.enterMaintRemarks')}
-              />
-              {validationErrors.maint_notes && (
-                <p className="mt-1 text-sm text-red-600 font-medium italic">{t('maintenanceSupervisor.maintNotesMandatoryDelay')}</p>
-              )}
-            </div>
+            {showMandatoryMaintNotesField && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('maintenanceSupervisor.reasonForDelay')}
+                  <span className="text-red-500 ml-0.5" aria-hidden="true">
+                    *
+                  </span>
+                </label>
+                <textarea
+                  name="maint_notes"
+                  value={formData.maint_notes}
+                  onChange={handleInputChange}
+                  rows={3}
+                  disabled={isReadOnly}
+                  required={actualHoursExceedStandard && !isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.maint_notes ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  placeholder={t('maintenanceSupervisor.explainWhyLonger')}
+                />
+                {validationErrors.maint_notes && (
+                  <p className="mt-1 text-sm text-red-600 font-medium italic">{t('maintenanceSupervisor.maintNotesMandatoryDelay')}</p>
+                )}
+              </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')}</label>
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleInputChange}
-                rows={3}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                placeholder={t('maintenanceSupervisor.enterAdditionalNotes')}
-              />
-            </div>
+            {showAdditionalNotesField && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')}</label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  rows={3}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  placeholder={t('maintenanceSupervisor.enterAdditionalNotes')}
+                />
+              </div>
+            )}
 
             {/* Status Dropdown - Highlighted */}
             <div>

@@ -217,8 +217,8 @@ const BreakdownDetails2 = () => {
       toast.error(t("breakdownDetails.pleaseEnterDescription"));
       return;
     }
-    if (description.trim().length > 50) {
-      toast.error(t("breakdownDetails.descriptionCannotExceed50Characters"));
+    if (description.trim().length > 500) {
+      toast.error(t("breakdownDetails.descriptionCannotExceed500Characters"));
       return;
     }
 
@@ -582,8 +582,8 @@ const BreakdownDetails2 = () => {
               </label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value.slice(0, 50))}
-                maxLength={50}
+                onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+                maxLength={500}
                 className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 focus:outline-none transition-all min-h-[120px]"
                 placeholder={t("breakdownDetails.maxCharacters")}
                 disabled={isReadOnly}

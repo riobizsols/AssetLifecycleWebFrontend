@@ -56,7 +56,13 @@ const EditBreakdownReport = () => {
       // Populate form with existing breakdown data
       setBrCode(breakdown.atbrrc_id || "");
       setDescription(breakdown.description || "");
-      setDecisionCode(breakdown.decision_code || "");
+
+      // Compatibility: older records could be auto-saved as BF03 while still CR.
+      // For CR records, treat BF03 as "not selected yet" so user must choose explicitly.
+      const incomingDecisionCode = breakdown.decision_code || "";
+      const isLegacyDefaultDecision =
+        breakdown.status === "CR" && incomingDecisionCode === "BF03";
+      setDecisionCode(isLegacyDefaultDecision ? "" : incomingDecisionCode);
 
       // Set asset type ID if available in breakdown
       if (breakdown.asset_type_id) {
@@ -186,6 +192,14 @@ const EditBreakdownReport = () => {
     try {
       if (!hideDecisionCode && !decisionCode) {
         toast.error(t("breakdownDetails.pleaseSelectDecisionCode"));
+        return;
+      }
+      if (!description?.trim()) {
+        toast.error(t("breakdownDetails.pleaseEnterDescription"));
+        return;
+      }
+      if (description.trim().length > 500) {
+        toast.error(t("breakdownDetails.descriptionCannotExceed500Characters"));
         return;
       }
 
@@ -534,7 +548,10 @@ const EditBreakdownReport = () => {
               </label>
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) =>
+                  setDescription(e.target.value.slice(0, 500))
+                }
+                maxLength={500}
                 disabled={isReadOnly}
                 className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? "bg-gray-50 text-gray-600 cursor-not-allowed" : ""}`}
                 rows={3}

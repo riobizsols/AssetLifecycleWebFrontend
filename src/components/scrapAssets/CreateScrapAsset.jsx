@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Plus, Search, QrCode, X, Maximize, Minimize } from 'lucide-react';
+import { ArrowLeft, Search, QrCode, X, Maximize, Minimize } from 'lucide-react';
 import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 import { Html5Qrcode } from "html5-qrcode";
@@ -511,9 +511,6 @@ const CreateScrapAsset = () => {
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-blue-600 text-white">
-              <Plus className="w-6 h-6" />
-            </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{t('createScrapAsset.createScrapAsset')}</h1>
             </div>

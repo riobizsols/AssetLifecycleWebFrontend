@@ -34,10 +34,10 @@ const MaintenanceApprovalDetail = () => {
     { label: t('maintenanceApproval.serialNumber'), name: "serial_number", visible: true },
     { label: t('maintenanceApproval.scheduledDate'), name: "scheduled_date", visible: true },
     { label: t('maintenanceApproval.vendor'), name: "vendor", visible: true },
-    { label: t('maintenanceApproval.department'), name: "department", visible: true },
+    { label: t('maintenanceApproval.department'), name: "department", visible: false },
     { label: t('maintenanceApproval.maintenanceType'), name: "maintenance_type", visible: true },
     { label: t('maintenanceApproval.status'), name: "status", visible: true },
-    { label: t('maintenanceApproval.daysUntilDue'), name: "days_until_due", visible: true },
+    { label: t('maintenanceApproval.daysUntilDue'), name: "days_until_due", visible: false },
   ]);
 
   useEffect(() => {
@@ -249,6 +249,7 @@ const MaintenanceApprovalDetail = () => {
   const filters = columns.map((col) => ({
     label: col.label,
     name: col.name,
+    visible: col.visible,
     options: col.name === 'status' ? [
       { label: t('maintenanceApproval.initiated'), value: "IN" },
       { label: t('maintenanceApproval.inProgress'), value: "IP" },

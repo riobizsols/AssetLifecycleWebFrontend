@@ -294,8 +294,8 @@ export default function ProdServ() {
   return (
     <>
       <style>{placeholderStyle}</style>
-      <div className='p-3'>
-        <div className="max-w-7xl mx-auto bg-white rounded shadow-lg">
+      <div className='px-1 md:px-2 py-3'>
+        <div className="w-full max-w-none bg-white rounded shadow-lg">
           <div className="bg-[#0E2F4B] text-white text-base font-semibold py-3 px-6 rounded-t flex items-center justify-center border-b-4 border-[#FFC107]">
             {t('prodServ.title')}
           </div>
