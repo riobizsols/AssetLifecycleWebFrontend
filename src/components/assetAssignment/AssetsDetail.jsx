@@ -10,6 +10,7 @@ const AssetsDetail = () => {
   const { t } = useLanguage();
   const { user } = useAuthStore();
   const [assetDetails, setAssetDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
   // Get asset_id from URL params
   const { asset_id } = useParams();
   const location = useLocation();
@@ -117,13 +118,28 @@ const AssetsDetail = () => {
 
   useEffect(() => {
     if (asset_id) {
+      setLoading(true);
       // Pass context parameter to API if available
       const params = contextFromUrl ? { context: contextFromUrl } : {};
       API.get(`/assets/${asset_id}`, { params })
         .then(res => setAssetDetails(res.data))
-        .catch(() => toast.error(t('assetsDetail.failedToFetchAssetDetails')));
+        .catch(() => toast.error(t('assetsDetail.failedToFetchAssetDetails')))
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
   }, [asset_id, contextFromUrl, t]);
+
+  if (loading) {
+    return (
+      <div className="min-h-[55vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-gray-600">
+          <div className="h-10 w-10 rounded-full border-4 border-gray-200 border-t-[#0E2F4B] animate-spin" />
+          <p className="text-sm font-medium">Loading asset details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto mt-8 bg-[#F5F8FA] rounded-xl shadow">
@@ -173,7 +189,7 @@ const AssetsDetail = () => {
                       .map(([propKey, propValue]) => `${propKey}: ${propValue}`)
                       .join(', ');
                   }
-                } else if (key === 'purchased_on' || key === 'expiry_date') {
+                } else if (key === 'purchased_on' || key === 'expiry_date' || key === 'warranty_period') {
                   // Format date fields to human readable format
                   try {
                     const date = new Date(value);

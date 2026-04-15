@@ -250,7 +250,9 @@ const InspectionExecutionDetail = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="p-6 max-w-6xl mx-auto">
+      <div className="p-3 max-w-6xl mx-auto">
+      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
+      <div className="flex-1 overflow-y-auto p-6">
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Asset Information */}
@@ -405,9 +407,11 @@ const InspectionExecutionDetail = () => {
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-4 border-t">
+      </div>
+      </div>
+      <div className="shrink-0 border-t border-gray-200 bg-white">
+        <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            {/* Trigger Maintenance */}
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -417,8 +421,6 @@ const InspectionExecutionDetail = () => {
               />
               <span className="text-sm font-medium text-gray-700">Trigger Maintenance</span>
             </label>
-
-            {/* Status Dropdown */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-gray-700">Status:</label>
               <select
@@ -437,7 +439,7 @@ const InspectionExecutionDetail = () => {
           <button
             onClick={handleFinalSave}
             disabled={(String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) || saving}
-            className={`flex items-center px-6 py-2 rounded-lg transition shadow-sm ${((String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) || saving) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+            className={`flex items-center px-6 py-2 rounded-lg transition shadow-sm ${((String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) || saving) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-[#0E2F4B] text-white hover:bg-[#1a4a76]'}`}
           >
             {saving ? (
               <span className="flex items-center">
@@ -522,6 +524,7 @@ const InspectionExecutionDetail = () => {
           </div>
         </div>
       )}
+      </div>
       </div>
     </div>
   );

@@ -364,12 +364,13 @@ const AddAssetType = () => {
   const isFieldInvalid = (val) => submitAttempted && !val.trim();
 
   return (
-    <div className="max-w-6xl mx-auto bg-white rounded-xl shadow">
+    <div className="max-w-6xl mx-auto bg-white rounded-xl shadow overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
       <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
         {/* <h1 className="text-2xl font-semibold">Add Asset Type</h1> */}
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6">
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="flex-1 overflow-y-auto p-6">
         {/* First Row: Asset Type, Assignment Type, Status, Depreciation Method */}
         <div className="grid grid-cols-4 gap-6 mb-6">
           {/* Asset Type Input */}
@@ -587,8 +588,10 @@ const AddAssetType = () => {
           </div>
         </div>
 
+        </div>
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mt-20">
+        <div className="shrink-0 border-t border-gray-200 bg-white">
+        <div className="px-4 py-3 flex justify-end gap-3">
           <button
             type="button"
             onClick={handleCancel}
@@ -604,6 +607,7 @@ const AddAssetType = () => {
           >
             {isSubmitting ? t('assetTypes.saving') : t('common.save')}
           </button>
+        </div>
         </div>
       </form>
     </div>

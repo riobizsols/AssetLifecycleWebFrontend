@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   FileCheck,
   Clock,
+  Activity,
 } from "lucide-react";
 
 const AdminSettingsView = () => {
@@ -137,6 +138,18 @@ const AdminSettingsView = () => {
       borderColor: "border-emerald-200",
     },
     {
+      app_id: "JOBMONITOR",
+      label: "Job Monitor",
+      description:
+        "Monitor cron jobs, update frequencies, trigger runs, and inspect execution history",
+      icon: Activity,
+      route: "/adminsettings/configuration/job-monitor",
+      color: "from-cyan-500 to-cyan-600",
+      bgColor: "bg-cyan-50",
+      iconColor: "text-cyan-700",
+      borderColor: "border-cyan-200",
+    },
+    {
       app_id: "ONETIMECRON",
       label: t("navigation.oneTimeCron"),
       description:
@@ -154,7 +167,9 @@ const AdminSettingsView = () => {
   const canAccessAdminItem = (appId) =>
     appId === "ONETIMECRON"
       ? hasAccess("ONETIMECRON") || hasAccess("ADMINSETTINGS")
-      : hasAccess(appId);
+      : appId === "JOBMONITOR"
+        ? hasAccess("JOBMONITOR") || hasAccess("ADMINSETTINGS")
+        : hasAccess(appId);
 
   // Use navigation items if available, otherwise use defaults (filtered by access)
   let itemsToShow =
@@ -179,6 +194,13 @@ const AdminSettingsView = () => {
     const cronCard = defaultItems.find((d) => d.app_id === "ONETIMECRON");
     if (cronCard) itemsToShow = [...itemsToShow, cronCard];
   }
+  if (
+    (hasAccess("ADMINSETTINGS") || hasAccess("JOBMONITOR")) &&
+    !itemsToShow.some((i) => i.app_id === "JOBMONITOR")
+  ) {
+    const monitorCard = defaultItems.find((d) => d.app_id === "JOBMONITOR");
+    if (monitorCard) itemsToShow = [...itemsToShow, monitorCard];
+  }
 
   // Map app IDs to routes and icons
   const getItemRoute = (appId) => {
@@ -193,6 +215,7 @@ const AdminSettingsView = () => {
         "/adminsettings/configuration/breakdown-reason-codes",
       CERTIFICATIONS: "/certifications",
       ONETIMECRON: "/adminsettings/configuration/one-time-cron",
+      JOBMONITOR: "/adminsettings/configuration/job-monitor",
     };
     return routeMap[appId] || "#";
   };
@@ -207,6 +230,7 @@ const AdminSettingsView = () => {
       BREAKDOWNREASONCODES: AlertTriangle,
       CERTIFICATIONS: FileCheck,
       ONETIMECRON: Clock,
+      JOBMONITOR: Activity,
     };
     return iconMap[appId] || Settings;
   };
@@ -268,6 +292,13 @@ const AdminSettingsView = () => {
         icon: "text-slate-700",
         border: "border-slate-200",
         hover: "hover:from-slate-600 hover:to-slate-700",
+      },
+      JOBMONITOR: {
+        gradient: "from-cyan-500 to-cyan-600",
+        bg: "bg-cyan-50",
+        icon: "text-cyan-700",
+        border: "border-cyan-200",
+        hover: "hover:from-cyan-600 hover:to-cyan-700",
       },
     };
     return (

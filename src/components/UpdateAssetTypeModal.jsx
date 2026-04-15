@@ -611,10 +611,10 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       }}
     >
       <div
-        className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-6">
+        <div className="p-6 flex justify-between items-center border-b border-gray-200">
           <h2 className="text-xl font-semibold">{t('assetTypes.editAssetType')}</h2>
           <button
             type="button"
@@ -627,7 +627,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto p-6">
           {/* First Row: Asset Type, Assignment Type, Status */}
           <div className="grid grid-cols-3 gap-6 mb-6">
             {/* Asset Type Input */}
@@ -1189,9 +1190,11 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
               )}
             </div>
           </div>
+          </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="shrink-0 px-2 py-3 border-t border-gray-200 bg-white">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -1209,6 +1212,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                 {isSubmitting ? t('assetTypes.updating') : t('common.update')}
               </button>
             )}
+          </div>
           </div>
         </form>
       </div>

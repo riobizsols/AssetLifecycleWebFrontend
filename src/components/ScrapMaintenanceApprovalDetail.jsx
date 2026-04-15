@@ -441,7 +441,7 @@ const ScrapMaintenanceApprovalDetail = () => {
                       <ReadOnlyInput label="Serial Number" value={assetDetails.serial_number || "-"} />
                       <ReadOnlyInput label="Asset ID" value={assetDetails.asset_id || "-"} />
                       <ReadOnlyInput label="Expiry Date" value={formatDate(assetDetails.expiry_date) || "-"} />
-                      <ReadOnlyInput label="Warranty Period" value={assetDetails.warranty_period || "-"} />
+                      <ReadOnlyInput label="Warranty Period" value={formatDate(assetDetails.warranty_period) || "-"} />
                     </div>
                     <div className="grid grid-cols-5 gap-6 mb-6">
                       <ReadOnlyInput label="Purchase Date" value={formatDate(assetDetails.purchased_on) || "-"} />

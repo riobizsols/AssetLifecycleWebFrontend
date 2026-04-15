@@ -106,6 +106,7 @@ import OneTimeCron from "../pages/adminSettings/OneTimeCron";
 import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
 import Certifications from "../pages/adminSettings/Certifications";
 import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
+import JobMonitor from "../pages/adminSettings/JobMonitor";
 import AssetTypeChecklistMapping from "../pages/masterData/AssetTypeChecklistMapping";
 import CreateAssetTypeChecklistMapping from "../pages/masterData/CreateAssetTypeChecklistMapping";
 import InspectionFrequency from "../pages/masterData/InspectionFrequency";
@@ -1162,6 +1163,16 @@ export default function AppRoutes() {
             >
               <AdminSettingsLayout>
                 <OneTimeCron />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/job-monitor"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <JobMonitor />
               </AdminSettingsLayout>
             </ProtectedRoute>
           }

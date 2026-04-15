@@ -406,55 +406,11 @@ const BreakdownDetails = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-0">
       <div className="bg-[#0E2F4B] text-white py-4 px-8 rounded-t-xl border-b-4 border-[#FFC107] flex justify-center items-center">
         <span className="text-2xl font-semibold text-center w-full">{t('breakdownDetails.title')}</span>
       </div>
-      <div className="bg-white rounded-b-lg shadow p-6">
-        {(selectedAsset || existingBreakdown) && (
-          <div className="mb-8 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#0E2F4B]">
-                {t('breakdownDetails.assetDetails')}
-              </h2>
-              <div className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
-                ID: {assetId}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  {t('breakdownDetails.assetType')}
-                </div>
-                <div className="text-base font-medium text-gray-900">
-                  {selectedAsset?.text ||
-                    existingBreakdown?.asset_type_name ||
-                    "-"}
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  {t('breakdownDetails.assetName')}
-                </div>
-                <div className="text-base font-medium text-gray-900">
-                  {selectedAsset?.description ||
-                    existingBreakdown?.asset_name ||
-                    "-"}
-                </div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                  {t('breakdownDetails.assetId')}
-                </div>
-                <div className="text-base font-medium text-gray-900">
-                  {selectedAsset?.asset_id ||
-                    existingBreakdown?.asset_name ||
-                    "-"}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="bg-white rounded-b-lg shadow overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
 
         {/* Create New Reason Code Modal */}
         {showCreateModal && (
@@ -511,7 +467,54 @@ const BreakdownDetails = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-6">
+          {(selectedAsset || existingBreakdown) && (
+            <div className="pt-6">
+            <div className="mb-6 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-[#0E2F4B]">
+                  {t('breakdownDetails.assetDetails')}
+                </h2>
+                <div className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                  ID: {assetId}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                    {t('breakdownDetails.assetType')}
+                  </div>
+                  <div className="text-base font-medium text-gray-900">
+                    {selectedAsset?.text ||
+                      existingBreakdown?.asset_type_name ||
+                      "-"}
+                  </div>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                    {t('breakdownDetails.assetName')}
+                  </div>
+                  <div className="text-base font-medium text-gray-900">
+                    {selectedAsset?.description ||
+                      existingBreakdown?.asset_name ||
+                      "-"}
+                  </div>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                    {t('breakdownDetails.assetId')}
+                  </div>
+                  <div className="text-base font-medium text-gray-900">
+                    {selectedAsset?.asset_id ||
+                      existingBreakdown?.asset_name ||
+                      "-"}
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
+          )}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-[#0E2F4B] mb-4">
               {t('breakdownDetails.breakdownInformation')}
@@ -695,8 +698,10 @@ const BreakdownDetails = () => {
               </div>
             </div>
           </div>
+          </div>
 
-          <div className="flex items-center justify-end gap-4 pt-6">
+          <div className="shrink-0 border-t border-gray-200 bg-white">
+          <div className="px-4 py-3 flex items-center justify-end gap-4">
             <button
               type="button"
               onClick={() => navigate(-1)}
@@ -723,6 +728,7 @@ const BreakdownDetails = () => {
                 </button>
               </>
             )}
+          </div>
           </div>
         </form>
       </div>

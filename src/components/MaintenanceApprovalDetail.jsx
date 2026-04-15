@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useParams, useLocation, useSearchParams } from "react-router-dom";
+import { useParams, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "./ui/card";
 import { Clock, CheckCircle2 } from "lucide-react";
 import ChecklistModal from "./ChecklistModal";
@@ -141,6 +141,7 @@ const getActionColor = (type) => {
 const MaintenanceApprovalDetail = () => {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   const { t } = useLanguage();
@@ -1240,7 +1241,7 @@ const MaintenanceApprovalDetail = () => {
                         <ReadOnlyInput label={t('maintenanceApproval.serialNumber')} value={assetDetails.serial_number || "-"} />
                         <ReadOnlyInput label={t('maintenanceApproval.assetID')} value={assetDetails.asset_id || "-"} />
                         <ReadOnlyInput label={t('maintenanceApproval.expiryDate')} value={formatDate(assetDetails.expiry_date) || "-"} />
-                        <ReadOnlyInput label={t('maintenanceApproval.warrantyPeriod')} value={assetDetails.warranty_period || "-"} />
+                        <ReadOnlyInput label={t('maintenanceApproval.warrantyPeriod')} value={formatDate(assetDetails.warranty_period) || "-"} />
                       </div>
                       <div className="grid grid-cols-5 gap-6 mb-6">
                         <ReadOnlyInput label={t('maintenanceApproval.purchaseDate')} value={formatDate(assetDetails.purchased_on) || "-"} />
@@ -1381,6 +1382,12 @@ const MaintenanceApprovalDetail = () => {
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-4 mt-8">
+              <button
+                onClick={() => navigate(-1)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+              >
+                Back
+              </button>
               {isCurrentActionUser && (
                 <>
                   <button

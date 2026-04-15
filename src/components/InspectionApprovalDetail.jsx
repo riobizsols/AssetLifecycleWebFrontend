@@ -782,7 +782,7 @@ const InspectionApprovalDetail = () => {
                       <ReadOnlyInput label="Purchase Cost" value={assetDetails.purchased_cost || "-"} />
                       <ReadOnlyInput label="Purchase By" value={assetDetails.purchased_by_name || assetDetails.purchased_by || "-"} />
                       <ReadOnlyInput label="Purchase Vendor" value={assetDetails.purchase_vendor_name || assetDetails.purchase_vendor_id || "-"} />
-                      <ReadOnlyInput label="Warranty Period" value={assetDetails.warranty_period || "-"} />
+                      <ReadOnlyInput label="Warranty Period" value={formatDate(assetDetails.warranty_period) || "-"} />
                     </div>
                     <div className="grid grid-cols-3 gap-6 mb-6">
                       <ReadOnlyInput label="Product/Service ID" value={assetDetails.prod_serv_id || "-"} />

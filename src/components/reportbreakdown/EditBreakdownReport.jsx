@@ -384,9 +384,9 @@ const EditBreakdownReport = () => {
   ];
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-6">
+    <div className="p-3 max-w-4xl mx-auto">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
+        <div className="px-6 pt-6 pb-4 border-b border-gray-200 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">
             {t("breakdownDetails.editTitle")}
           </h1>
@@ -457,7 +457,8 @@ const EditBreakdownReport = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Asset Information */}
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -579,9 +580,10 @@ const EditBreakdownReport = () => {
               </div>
             </div>
           )}
-
+          </div>
           {/* Submit Buttons */}
-          <div className="flex justify-end items-center space-x-4 pt-6 border-t">
+          <div className="shrink-0 border-t border-gray-200 bg-white">
+          <div className="px-4 py-3 flex justify-end items-center space-x-4">
             {(breakdown?.status === "CO" || breakdown?.status === "Completed") && (
               <div className="relative">
                 <button
@@ -675,6 +677,7 @@ const EditBreakdownReport = () => {
                   : t("breakdownDetails.updateBreakdownReport")}
               </button>
             )}
+          </div>
           </div>
         </form>
       </div>

@@ -4,7 +4,7 @@ import CustomTable from "../components/CustomTable";
 import ChildItemsDropdown from "../components/ChildItemsDropdown";
 import { filterData } from "../utils/filterData";
 import { exportToExcel } from "../utils/exportToExcel";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/assets/UpdateAssetModal";
@@ -19,6 +19,7 @@ import useColumnAccess from "../hooks/useColumnAccess";
 const Assets = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useLanguage();
   
   // Get navigation permissions
@@ -98,6 +99,21 @@ const Assets = () => {
   }, []);
 
   useEffect(() => {
+    const editAssetId = searchParams.get("editAssetId");
+    const notifyId = searchParams.get("notifyId");
+    const warrantyAction = searchParams.get("warrantyAction");
+    if (!editAssetId || updateModalOpen) return;
+
+    const matched = data.find((row) => row.asset_id === editAssetId);
+    setSelectedAsset({
+      ...(matched || { asset_id: editAssetId }),
+      warranty_notify_id: notifyId || null,
+      warranty_action: warrantyAction || null,
+    });
+    setUpdateModalOpen(true);
+  }, [searchParams, data, updateModalOpen]);
+
+  useEffect(() => {
     const fetchAssetTypes = async () => {
       try {
         const res = await API.get("/asset-types");
@@ -140,6 +156,7 @@ const Assets = () => {
           ...item,
           purchased_on: formatDate(item.purchased_on),
           expiry_date: formatDate(item.expiry_date),
+          warranty_period: formatDate(item.warranty_period),
           created_on: formatDate(item.created_on),
           changed_on: formatDate(item.changed_on),
           purchased_cost: item.purchased_cost ? `₹${item.purchased_cost.toLocaleString()}` : ''
@@ -310,6 +327,13 @@ const Assets = () => {
   const handleUpdateModalClose = (wasUpdated) => {
     setUpdateModalOpen(false);
     setSelectedAsset(null);
+    if (searchParams.get("editAssetId")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("editAssetId");
+      next.delete("warrantyAction");
+      next.delete("notifyId");
+      setSearchParams(next, { replace: true });
+    }
     if (wasUpdated) {
       fetchAssets(); // Refresh the list if update was successful
     }

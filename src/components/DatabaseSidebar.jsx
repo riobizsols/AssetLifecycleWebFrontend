@@ -34,6 +34,7 @@ import {
   Gauge,
   Printer,
   Clock,
+  Activity,
 } from "lucide-react";
 
 /** Injects synthetic "One Time Cron" nav row under Master Data (admin settings mode). */
@@ -127,6 +128,7 @@ const DatabaseSidebar = () => {
       'User Roles': t('navigation.userRoles'),
       'Column Access Config': t('navigation.columnAccessConfig'),
       'One Time Cron': t('navigation.oneTimeCron'),
+      'Job Monitor': 'Job Monitor',
       'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
       'Cost Center Transfer': t('navigation.costCenterTransfer'),
@@ -264,6 +266,7 @@ const DatabaseSidebar = () => {
     PROPERTIES: "/adminsettings/configuration/properties", // Properties route
     BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes", // Breakdown Reason Codes route
     ONETIMECRON: "/adminsettings/configuration/one-time-cron",
+    JOBMONITOR: "/adminsettings/configuration/job-monitor",
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
@@ -320,6 +323,7 @@ const DatabaseSidebar = () => {
       AUDITLOGCONFIG: Settings,
       COLUMNACCESSCONFIG: Settings,
       ONETIMECRON: Clock,
+      JOBMONITOR: Activity,
       CERTIFICATIONS: FileText,
       TECHCERTUPLOAD: FileText,
       TECHNICIANCERTIFICATES: FileText,
@@ -358,6 +362,7 @@ const DatabaseSidebar = () => {
         "PROPERTIES": "/adminsettings/configuration/properties",
         "BREAKDOWNREASONCODES": "/adminsettings/configuration/breakdown-reason-codes",
         "ONETIMECRON": "/adminsettings/configuration/one-time-cron",
+        "JOBMONITOR": "/adminsettings/configuration/job-monitor",
         // Add more mappings here as you add more admin settings menu items
         // Example: "NEW_APP_ID": "/adminsettings/configuration/new-path",
       };
@@ -386,6 +391,7 @@ const DatabaseSidebar = () => {
     "PROPERTIES",
     "BREAKDOWNREASONCODES",
     "ONETIMECRON",
+    "JOBMONITOR",
   ];
   const employeeTechCertAppIds = ["TECHCERTUPLOAD", "TECHNICIANCERTIFICATES", "EMPLOYEE TECH CERTIFICATION"];
 
@@ -548,7 +554,7 @@ const DatabaseSidebar = () => {
                 if (!childAccessLevel) return null;
 
                 // For admin settings routes, use exact path matching to prevent multiple items being active
-                const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON"];
+                const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON", "JOBMONITOR"];
                 const requiresExactMatch = adminSettingsRoutes.includes(child.app_id);
                 const isActiveForAdminRoute = requiresExactMatch 
                   ? location.pathname === childPath
@@ -600,7 +606,7 @@ const DatabaseSidebar = () => {
       if (!effectiveAccess) return null;
 
       // For admin settings routes, check exact path match
-      const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON"];
+      const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON", "JOBMONITOR"];
       const requiresExactMatch = adminSettingsRoutes.includes(item.app_id);
       const isActiveForAdminRoute = requiresExactMatch 
         ? location.pathname === path
@@ -686,6 +692,30 @@ const DatabaseSidebar = () => {
 
       {/* Navigation Items */}
       <ul className="px-2 pb-4 overflow-y-auto no-scrollbar">
+        {isAdminSettingsMode && (
+          <li className="mb-2">
+            <NavLink
+              to="/adminsettings/configuration"
+              state={navLinkState}
+              end
+              className={({ isActive }) =>
+                `group flex items-center gap-2 px-4 py-2 rounded ${
+                  isActive
+                    ? "bg-[#FFC107] text-white"
+                    : "hover:bg-[#143d65] text-white"
+                }`
+              }
+              title={!collapsed ? "Admin Dashboard" : ""}
+            >
+              <Settings size={16} className="flex-shrink-0" />
+              {!collapsed && (
+                <span className="truncate flex-1 min-w-0 text-sm font-medium">
+                  Admin Dashboard
+                </span>
+              )}
+            </NavLink>
+          </li>
+        )}
         {navigationForRender.length === 0 ? (
           <li className="text-center py-4 text-gray-300">
             <div className="text-sm">

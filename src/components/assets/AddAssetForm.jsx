@@ -1254,11 +1254,12 @@ const AddAssetForm = ({ userRole }) => {
 
   // UI
   return (
-    <div className="max-w-6xl mx-auto mt-8 bg-[#F5F8FA] rounded-xl shadow">
+    <div className="max-w-6xl mx-auto mt-8 bg-[#F5F8FA] rounded-xl shadow overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
       {/* Header */}
       <div className="bg-[#0E2F4B] text-white py-4 px-8 rounded-t-xl border-b-4 border-[#FFC107] flex justify-center items-center">
         {/* <span className="text-2xl font-semibold text-center w-full">Add Asset</span> */}
       </div>
+      <div className="flex-1 min-h-0 overflow-y-auto">
       {/* Tabs */}
       <div className="px-8 pt-6">
         <div className="flex border-b border-gray-200 mb-6 gap-6">
@@ -1614,8 +1615,7 @@ const AddAssetForm = ({ userRole }) => {
                   <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
                   <input 
                     name="warrantyPeriod" 
-                    type="text" 
-                    placeholder="e.g., 2 years" 
+                    type="date" 
                     onChange={handleChange} 
                     value={form.warrantyPeriod} 
                     className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
@@ -2134,6 +2134,7 @@ const AddAssetForm = ({ userRole }) => {
         )}
       </form>
       )}
+      </div>
       {activeTab === 'Attachments' && (
         <div className="px-8 pt-8 pb-4">
           {/* Header row: Add File button */}
@@ -2310,7 +2311,8 @@ const AddAssetForm = ({ userRole }) => {
       )}
       
       {/* Unified Save and Cancel Buttons */}
-      <div className="px-8 py-4 border-t border-gray-200 bg-gray-50">
+      <div className="shrink-0 border-t border-gray-200 bg-white">
+        <div className="px-8 py-4">
         <div className="flex justify-end gap-3">
           <button
             type="button"
@@ -2338,6 +2340,7 @@ const AddAssetForm = ({ userRole }) => {
               t('common.save')
             )}
           </button>
+        </div>
         </div>
       </div>
       <style>{`

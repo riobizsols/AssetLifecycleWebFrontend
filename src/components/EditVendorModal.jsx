@@ -882,7 +882,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
           )}
 
           {/* Footer */}
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="sticky bottom-0 z-30 mt-6 px-2 py-3 border-t border-gray-200 bg-white">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -893,11 +894,12 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             {!isReadOnly && (
               <button
                 type="submit"
-                className="bg-[#ffc107] hover:bg-[#e0a800] text-white text-sm font-medium py-1.5 px-5 rounded"
+                className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
               >
                 {t('common.update')}
               </button>
             )}
+          </div>
           </div>
         </form>
 

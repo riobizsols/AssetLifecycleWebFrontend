@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
+import toast from "react-hot-toast";
 
 const mockAlerts = [
   {
@@ -32,6 +33,7 @@ const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
   "Inspection": "bg-green-100 text-green-800",
   "Vendor Contract Renewal": "bg-orange-100 text-orange-800",
+  "Warranty Expiry": "bg-amber-100 text-amber-800",
   Urgent: "bg-red-100 text-red-800",
 };
 
@@ -41,6 +43,15 @@ const NotificationsPanel = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [openActionMenuId, setOpenActionMenuId] = useState(null);
+  const [openSnoozeMenuId, setOpenSnoozeMenuId] = useState(null);
+  const [snoozeDrafts, setSnoozeDrafts] = useState({});
+  const [openingNotifyIds, setOpeningNotifyIds] = useState({});
+
+  const isUnreadWarranty = (status) => {
+    const normalized = String(status || "").toUpperCase();
+    return normalized === "NEW" || normalized === "UNREAD";
+  };
 
   // Debug: Log user data
   useEffect(() => {
@@ -69,6 +80,8 @@ const NotificationsPanel = () => {
         let alertType = "Regular Maintenance";
         if (notification.workflowType === 'INSPECTION') {
           alertType = "Inspection";
+        } else if (notification.workflowType === "WARRANTY") {
+          alertType = "Warranty Expiry";
         } else if (notification.maintenanceType) {
           alertType = notification.maintenanceType;
         }
@@ -77,6 +90,10 @@ const NotificationsPanel = () => {
         
         if (alertType === 'Inspection') {
            alertText = `${notification.assetTypeName} Inspection`;
+        } else if (alertType === "Warranty Expiry") {
+           alertText = `${notification.assetId} - ${notification.title || "Warranty Expiry"}`;
+        } else if (String(notification.maintenanceType || "").toLowerCase().includes("subscription")) {
+           alertText = `${notification.assetTypeName}`;
         } else if (alertType === 'Vendor Contract Renewal') {
            alertText = `${notification.assetTypeName}`; 
         } else if (notification.isGroupMaintenance && notification.groupName) {
@@ -105,6 +122,10 @@ const NotificationsPanel = () => {
         groupName: notification.groupName,
         groupAssetCount: notification.groupAssetCount,
         assetTypeName: notification.assetTypeName
+        ,
+        notifyId: notification.notifyId,
+        notificationStatus: notification.notificationStatus,
+        canChangeVendor: !!notification.canChangeVendor
       }});
       
       // Filter to show up to 2 notifications with smart fallback
@@ -153,6 +174,46 @@ const NotificationsPanel = () => {
   };
 
   const handleAlertClick = (alert) => {
+    if (alert.workflowType === "WARRANTY" && alert.notifyId) {
+      const currentStatus = String(alert.notificationStatus || "").toUpperCase();
+      if (!isUnreadWarranty(currentStatus) || openingNotifyIds[alert.notifyId]) {
+        return;
+      }
+
+      // Optimistic row update for immediate bold -> normal feedback.
+      setAlerts((prev) =>
+        prev.map((item) => {
+          const sameNotification =
+            (item.notifyId && item.notifyId === alert.notifyId) ||
+            (!item.notifyId && item.id === alert.id);
+          return sameNotification ? { ...item, notificationStatus: "OPEN" } : item;
+        })
+      );
+
+      setOpeningNotifyIds((prev) => ({ ...prev, [alert.notifyId]: true }));
+      API.put(`/notifications/warranty/${alert.notifyId}/open`)
+        .catch(() => {
+          setAlerts((prev) =>
+            prev.map((item) => {
+              const sameNotification =
+                (item.notifyId && item.notifyId === alert.notifyId) ||
+                (!item.notifyId && item.id === alert.id);
+              return sameNotification
+                ? { ...item, notificationStatus: alert.notificationStatus || "NEW" }
+                : item;
+            })
+          );
+        })
+        .finally(() => {
+          setOpeningNotifyIds((prev) => {
+            const next = { ...prev };
+            delete next[alert.notifyId];
+            return next;
+          });
+        });
+      return;
+    }
+
     console.log("Navigating from alert:", alert);
     if (alert.route) {
       navigate(alert.route);
@@ -174,7 +235,37 @@ const NotificationsPanel = () => {
       return;
     }
     if (alert.assetId) {
-      navigate(`/approval-detail/${alert.assetId}`);
+      navigate(`/asset-detail/${alert.assetId}`);
+    }
+  };
+
+  const handleWarrantyAction = async (e, alert, action) => {
+    e.stopPropagation();
+    try {
+      if (action === "discard") {
+        await API.put(`/notifications/warranty/${alert.notifyId}/discard`);
+        setAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
+        return;
+      }
+      if (action === "snooze") {
+        const draft = snoozeDrafts[alert.notifyId] || { option: "5", custom: "" };
+        const days = draft.option === "custom" ? Number(draft.custom) : Number(draft.option);
+        if (!Number.isFinite(days) || days < 0) {
+          toast.error("Invalid snooze value");
+          return;
+        }
+        await API.put(`/notifications/warranty/${alert.notifyId}/snooze`, { snooze_days: days });
+        setAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
+        return;
+      }
+      if (action === "extend") {
+        navigate(`/assets?editAssetId=${alert.assetId}&warrantyAction=warranty&notifyId=${alert.notifyId}`);
+      }
+      if (action === "vendor") {
+        navigate(`/assets?editAssetId=${alert.assetId}&warrantyAction=vendor&notifyId=${alert.notifyId}`);
+      }
+    } catch (error) {
+      toast.error("Failed to process action");
     }
   };
 
@@ -221,7 +312,7 @@ const NotificationsPanel = () => {
                     Group Maintenance
                   </span>
                 )}
-                <span className="font-semibold text-gray-800">{alert.alertText}</span>
+                <span className={isUnreadWarranty(alert.notificationStatus) ? "font-bold text-gray-900" : "font-normal text-gray-800"}>{alert.alertText}</span>
                 {alert.daysUntilCutoff !== undefined && (
                   <span className={`text-xs px-2 py-1 rounded ml-auto ${
                     alert.isUrgent 
@@ -250,6 +341,87 @@ const NotificationsPanel = () => {
                   <b className={alert.isUrgent ? "text-red-600" : ""}>{alert.cutoffDate}</b>
                 </span>
               </div>
+              {alert.workflowType === "WARRANTY" && (
+                <div className="pt-1 text-xs" onClick={(e) => e.stopPropagation()}>
+                  <div className="relative inline-block">
+                    <button
+                      onClick={() =>
+                        setOpenActionMenuId((prev) =>
+                          prev === alert.notifyId ? null : alert.notifyId
+                        )
+                      }
+                      className="px-2 py-1 rounded-full border bg-white hover:bg-gray-50 font-semibold"
+                    >
+                      Actions
+                    </button>
+                    {openActionMenuId === alert.notifyId && (
+                      <div className="absolute z-20 mt-2 w-52 rounded-lg border bg-white shadow-lg p-2 space-y-1">
+                        <button onClick={(e) => handleWarrantyAction(e, alert, "discard")} className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100">Discard</button>
+                        <button
+                          onClick={() =>
+                            setOpenSnoozeMenuId((prev) =>
+                              prev === alert.notifyId ? null : alert.notifyId
+                            )
+                          }
+                          className="w-full text-left px-2 py-1.5 rounded hover:bg-blue-50 text-blue-700"
+                        >
+                          Remind Again
+                        </button>
+                        {openSnoozeMenuId === alert.notifyId && (
+                          <div className="px-2 py-2 rounded bg-blue-50 border border-blue-100 space-y-2">
+                            <select
+                              value={(snoozeDrafts[alert.notifyId] || { option: "5" }).option}
+                              onChange={(e) =>
+                                setSnoozeDrafts((prev) => ({
+                                  ...prev,
+                                  [alert.notifyId]: {
+                                    ...(prev[alert.notifyId] || { custom: "" }),
+                                    option: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="w-full px-2 py-1 border rounded bg-white"
+                            >
+                              <option value="5">5 days</option>
+                              <option value="10">10 days</option>
+                              <option value="20">20 days</option>
+                              <option value="custom">Custom</option>
+                            </select>
+                            {(snoozeDrafts[alert.notifyId] || { option: "5" }).option === "custom" && (
+                              <input
+                                type="number"
+                                min="0"
+                                value={(snoozeDrafts[alert.notifyId] || { custom: "" }).custom}
+                                onChange={(e) =>
+                                  setSnoozeDrafts((prev) => ({
+                                    ...prev,
+                                    [alert.notifyId]: {
+                                      ...(prev[alert.notifyId] || { option: "custom" }),
+                                      custom: e.target.value,
+                                    },
+                                  }))
+                                }
+                                placeholder="Days"
+                                className="w-full px-2 py-1 border rounded"
+                              />
+                            )}
+                            <button
+                              onClick={(e) => handleWarrantyAction(e, alert, "snooze")}
+                              className="w-full px-2 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700"
+                            >
+                              Apply Snooze
+                            </button>
+                          </div>
+                        )}
+                        <button onClick={(e) => handleWarrantyAction(e, alert, "extend")} className="w-full text-left px-2 py-1.5 rounded hover:bg-green-50 text-green-700">Extend Warranty</button>
+                        {alert.canChangeVendor && (
+                          <button onClick={(e) => handleWarrantyAction(e, alert, "vendor")} className="w-full text-left px-2 py-1.5 rounded hover:bg-purple-50 text-purple-700">Change Vendor</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

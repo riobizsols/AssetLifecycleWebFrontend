@@ -369,15 +369,18 @@ const BreakdownDetails2 = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-3">
       <div className="bg-[#0E2F4B] text-white py-4 px-8 rounded-t-xl border-b-4 border-[#FFC107] flex justify-center items-center">
         <span className="text-2xl font-semibold text-center w-full">
           {t("breakdownDetails.title")}
         </span>
       </div>
-      <div className="bg-white rounded-b-lg shadow p-6">
-        {(selectedAsset || existingBreakdown) && (
-          <div className="mb-8 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-b-lg shadow overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-6">
+          {(selectedAsset || existingBreakdown) && (
+            <div className="pt-6">
+            <div className="mb-6 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#0E2F4B]">
                 {t("breakdownDetails.assetDetails")}
@@ -417,6 +420,7 @@ const BreakdownDetails2 = () => {
                     "-"}
                 </div>
               </div>
+            </div>
             </div>
           </div>
         )}
@@ -479,7 +483,6 @@ const BreakdownDetails2 = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-[#0E2F4B] mb-4">
               {t("breakdownDetails.breakdownInformation")}
@@ -594,8 +597,9 @@ const BreakdownDetails2 = () => {
               </p>
             </div>
           </div>
-
-          <div className="flex items-center justify-end gap-4 pt-6">
+          </div>
+          <div className="shrink-0 border-t border-gray-200 bg-white">
+          <div className="px-4 py-3 flex items-center justify-end gap-4">
             <button
               type="button"
               onClick={() => navigate(-1)}
@@ -624,6 +628,7 @@ const BreakdownDetails2 = () => {
                 </button>
               </>
             )}
+          </div>
           </div>
         </form>
       </div>

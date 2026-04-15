@@ -22,8 +22,6 @@ const MaintenanceFrequency = () => {
   // Edit state
   const [editingFrequency, setEditingFrequency] = useState(null);
   const [editingFormData, setEditingFormData] = useState({});
-  const [editTechnicians, setEditTechnicians] = useState([]);
-  const [editTechLoading, setEditTechLoading] = useState(false);
 
   // Filter state
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
@@ -433,8 +431,7 @@ const MaintenanceFrequency = () => {
       uom: uomId || '',
       text: freq.text || '',
       maintained_by: freq.maintained_by,
-      maint_type_id: freq.maint_type_id,
-      emp_int_id: freq.emp_int_id || ''
+      maint_type_id: freq.maint_type_id
     });
   };
 
@@ -442,7 +439,6 @@ const MaintenanceFrequency = () => {
   const handleCancelEdit = () => {
     setEditingFrequency(null);
     setEditingFormData({});
-    setEditTechnicians([]);
   };
 
   // Handle update maintenance frequency
@@ -481,13 +477,6 @@ const MaintenanceFrequency = () => {
         requestData.text = editingFormData.text?.trim() || `${editingFormData.frequency} ${editingFormData.uom}`;
       }
 
-      // In-house rows should persist selected technician.
-      if (!isVendorManaged(editingFormData.maintained_by)) {
-        requestData.emp_int_id = editingFormData.emp_int_id || null;
-      } else {
-        requestData.emp_int_id = null;
-      }
-
       const res = await API.put(`/maintenance-frequencies/${id}`, requestData);
 
       if (res.data && res.data.success) {
@@ -502,34 +491,6 @@ const MaintenanceFrequency = () => {
       setIsSubmitting(false);
     }
   };
-
-  // Load certified technicians for edit form when row is in-house.
-  useEffect(() => {
-    const fetchEditTechnicians = async () => {
-      if (!editingFrequency || !editingFormData.asset_type_id || isVendorManaged(editingFormData.maintained_by)) {
-        setEditTechnicians([]);
-        return;
-      }
-      try {
-        setEditTechLoading(true);
-        const resp = await API.get(`/inspection-approval/technicians/${editingFormData.asset_type_id}`);
-        const data = resp.data?.data ?? resp.data ?? [];
-        const list = Array.isArray(data) ? data : [];
-        setEditTechnicians(
-          list.map((t) => ({
-            emp_int_id: t.emp_int_id || t.employee_id,
-            name: t.full_name || t.name || t.emp_int_id || '',
-          })),
-        );
-      } catch (e) {
-        console.error('Error fetching edit technicians:', e);
-        setEditTechnicians([]);
-      } finally {
-        setEditTechLoading(false);
-      }
-    };
-    fetchEditTechnicians();
-  }, [editingFrequency, editingFormData.asset_type_id, editingFormData.maintained_by]);
 
   // Handle delete maintenance frequency
   const handleDeleteFrequency = async (id, text) => {
@@ -1101,26 +1062,6 @@ const MaintenanceFrequency = () => {
                                       </select>
                                     </div>
 
-                                    {!isVendorManaged(editingFormData.maintained_by) && (
-                                      <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">Technician</label>
-                                        <select
-                                          value={editingFormData.emp_int_id || ''}
-                                          onChange={(e) => setEditingFormData({ ...editingFormData, emp_int_id: e.target.value })}
-                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
-                                          disabled={editTechLoading}
-                                        >
-                                          <option value="">
-                                            {editTechLoading ? 'Loading technicians...' : '-- Select Technician --'}
-                                          </option>
-                                          {editTechnicians.map((tech) => (
-                                            <option key={tech.emp_int_id} value={tech.emp_int_id}>
-                                              {tech.name} ({tech.emp_int_id})
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    )}
                                   </div>
                                   <div className="flex gap-2">
                                     <button
