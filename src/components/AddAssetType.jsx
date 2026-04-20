@@ -364,12 +364,13 @@ const AddAssetType = () => {
   const isFieldInvalid = (val) => submitAttempted && !val.trim();
 
   return (
-    <div className="max-w-6xl mx-auto bg-white rounded-xl shadow">
+    <div className="max-w-6xl mx-auto bg-white rounded-xl shadow overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
       <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
         {/* <h1 className="text-2xl font-semibold">Add Asset Type</h1> */}
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6">
+      <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="flex-1 overflow-y-auto p-6">
         {/* First Row: Asset Type, Assignment Type, Status, Depreciation Method */}
         <div className="grid grid-cols-4 gap-6 mb-6">
           {/* Asset Type Input */}
@@ -547,174 +548,7 @@ const AddAssetType = () => {
             <span>{t('assetTypes.requireInspection')}</span>
           </label>
 
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={requireMaintenance}
-              onChange={(e) => setRequireMaintenance(e.target.checked)}
-              className="form-checkbox text-blue-500 rounded"
-            />
-            <span>{t('assetTypes.requireMaintenance')}</span>
-          </label>
         </div>
-
-        {/* Maintenance Fields - Conditional Rendering */}
-        {requireMaintenance && (
-          <div className="mt-6 grid grid-cols-2 gap-6">
-            {/* Maintenance Type Dropdown */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                {t('assetTypes.selectMaintenanceType')} <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={selectedMaintenanceType}
-                onChange={(e) => setSelectedMaintenanceType(e.target.value)}
-                className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${submitAttempted && requireMaintenance && !selectedMaintenanceType ? 'border-red-500' : 'border-gray-300'}`}
-              >
-                <option value="">{t('assetTypes.selectMaintenanceTypeOption')}</option>
-                {maintenanceTypes
-                  .filter((type) => !type.text?.toLowerCase().includes('vendor contract renewal'))
-                  .map((type) => (
-                    <option key={type.maint_type_id} value={type.maint_type_id}>
-                      {type.text}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            {/* Maintenance Lead Type Input */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                {t('assetTypes.maintenanceLeadType')}
-              </label>
-              <input
-                type="text"
-                value={maintenanceLeadType}
-                onChange={(e) => setMaintenanceLeadType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={t('assetTypes.enterMaintenanceLeadType')}
-              />
-            </div>
-
-            {/* Checklist upload with improved UI */}
-            <div className="col-span-2 mt-4">
-              <div className="flex items-center justify-between mb-4">
-                <label className="text-sm font-medium text-gray-900">{t('assetTypes.docUpload')}</label>
-                <button 
-                  type="button" 
-                  className="px-4 py-2 bg-[#0E2F4B] text-white rounded text-sm flex items-center gap-2 hover:bg-[#1a4971] transition-colors"
-                  onClick={addChecklistUpload}
-                >
-                  <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  {t('assetTypes.addDocument')}
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                {checklistUploads.length === 0 && <div className="text-sm text-gray-500">{t('assetTypes.noChecklistDocuments')}</div>}
-                {checklistUploads.map(upload => (
-                  <div key={upload.id} className="bg-white border rounded p-3 space-y-3">
-                    {/* First row: Document Type and Custom Name */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium mb-1">{t('assetTypes.documentType')}</label>
-                        <select 
-                          className="w-full border rounded h-[38px] px-2 text-sm" 
-                          value={upload.type} 
-                          onChange={e => updateChecklistUpload(upload.id, { type: e.target.value })}
-                        >
-                          <option value="">{t('assetTypes.selectType')}</option>
-                          {documentTypes.map(docType => (
-                            <option key={docType.id} value={docType.id}>
-                              {docType.text}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      {(() => {
-                        const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
-                        const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
-                        return needsCustomName && (
-                          <div>
-                            <label className="block text-xs font-medium mb-1">{t('assetTypes.customName')}</label>
-                            <input 
-                              className="w-full border rounded h-[38px] px-2 text-sm" 
-                              value={upload.docTypeName} 
-                              onChange={e => updateChecklistUpload(upload.id, { docTypeName: e.target.value })} 
-                              placeholder={t('assetTypes.enterCustomName', { type: selectedDocType?.text })}
-                            />
-                          </div>
-                        );
-                      })()}
-                    </div>
-                    
-                    {/* Second row: File input and buttons */}
-                    <div>
-                      <label className="block text-xs font-medium mb-1">{t('assetTypes.fileMaxSize')}</label>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <div className="relative flex-1">
-                          <input
-                            type="file"
-                            id={`file-${upload.id}`}
-                            onChange={e => {
-                              const f = e.target.files?.[0] || null;
-                              if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                toast.error(t('assetTypes.fileSizeExceeds'));
-                                e.target.value = '';
-                                return;
-                              }
-                              onSelectChecklistFile(upload.id, f);
-                            }}
-                            className="hidden"
-                            accept=".pdf,.doc,.docx,.xls,.xlsx"
-                          />
-                          <label
-                            htmlFor={`file-${upload.id}`}
-                            className="flex items-center h-[38px] px-4 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer w-full"
-                          >
-                            <svg className="flex-shrink-0 w-5 h-4 mr-2 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
-                            <span className="truncate">
-                              {upload.file ? upload.file.name : t('assetTypes.chooseFile')}
-                            </span>
-                          </label>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          {upload.previewUrl && (
-                            <a 
-                              href={upload.previewUrl} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="h-[38px] inline-flex items-center px-3 bg-[#0E2F4B] text-white rounded shadow-sm text-sm font-medium hover:bg-[#1a4971] transition-colors whitespace-nowrap"
-                            >
-                              {t('assetTypes.preview')}
-                            </a>
-                          )}
-                          <button 
-                            type="button" 
-                            onClick={() => removeChecklistUpload(upload.id)}
-                            className="h-[38px] inline-flex items-center px-3 border border-gray-300 rounded shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors whitespace-nowrap"
-                          >
-                            {t('assetTypes.remove')}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-2 text-xs text-gray-500">
-                {t('assetTypes.uploadMaintenanceDocuments')}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Parent/Child Selection */}
         <div className="mt-6">
           <div className="flex gap-6">
@@ -754,8 +588,10 @@ const AddAssetType = () => {
           </div>
         </div>
 
+        </div>
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mt-20">
+        <div className="shrink-0 border-t border-gray-200 bg-white">
+        <div className="px-4 py-3 flex justify-end gap-3">
           <button
             type="button"
             onClick={handleCancel}
@@ -771,6 +607,7 @@ const AddAssetType = () => {
           >
             {isSubmitting ? t('assetTypes.saving') : t('common.save')}
           </button>
+        </div>
         </div>
       </form>
     </div>

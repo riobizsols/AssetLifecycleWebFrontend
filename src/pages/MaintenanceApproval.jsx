@@ -34,10 +34,10 @@ const MaintenanceApprovalDetail = () => {
     { label: t('maintenanceApproval.serialNumber'), name: "serial_number", visible: true },
     { label: t('maintenanceApproval.scheduledDate'), name: "scheduled_date", visible: true },
     { label: t('maintenanceApproval.vendor'), name: "vendor", visible: true },
-    { label: t('maintenanceApproval.department'), name: "department", visible: true },
+    { label: t('maintenanceApproval.department'), name: "department", visible: false },
     { label: t('maintenanceApproval.maintenanceType'), name: "maintenance_type", visible: true },
     { label: t('maintenanceApproval.status'), name: "status", visible: true },
-    { label: t('maintenanceApproval.daysUntilDue'), name: "days_until_due", visible: true },
+    { label: t('maintenanceApproval.daysUntilDue'), name: "days_until_due", visible: false },
   ]);
 
   useEffect(() => {
@@ -55,7 +55,9 @@ const MaintenanceApprovalDetail = () => {
           try {
             const date = new Date(dateString);
             if (isNaN(date.getTime())) return ''; // Invalid date
-            return date.toLocaleDateString();
+            // If it's a date-only string (length 10 like '2023-10-01'), keep it as a date
+            if (dateString.length <= 10) return date.toLocaleDateString();
+            return date.toLocaleString();
           } catch (err) {
             console.error('Error formatting date:', err);
             return '';
@@ -64,6 +66,8 @@ const MaintenanceApprovalDetail = () => {
 
         return {
           ...item,
+          raw_created_on: item.maintenance_created_on,
+          raw_changed_on: item.maintenance_changed_on,
           scheduled_date: formatDate(item.scheduled_date),
           actual_date: formatDate(item.actual_date),
           maintenance_created_on: formatDate(item.maintenance_created_on),
@@ -75,7 +79,13 @@ const MaintenanceApprovalDetail = () => {
                         'text-gray-600'
         };
       });
-      setData(formattedData);
+      // Sort by most recent first (descending order by maintenance_created_on or maintenance_changed_on)
+      const sortedData = formattedData.sort((a, b) => {
+        const dateA = new Date(a.raw_changed_on || a.raw_created_on || 0);
+        const dateB = new Date(b.raw_changed_on || b.raw_created_on || 0);
+        return dateB - dateA; // Descending order (newest first)
+      });
+      setData(sortedData);
     } catch (err) {
       console.error("Failed to fetch maintenance approvals", err);
       toast.error(t('maintenanceApproval.failedToFetchMaintenanceApprovals'));
@@ -239,6 +249,7 @@ const MaintenanceApprovalDetail = () => {
   const filters = columns.map((col) => ({
     label: col.label,
     name: col.name,
+    visible: col.visible,
     options: col.name === 'status' ? [
       { label: t('maintenanceApproval.initiated'), value: "IN" },
       { label: t('maintenanceApproval.inProgress'), value: "IP" },

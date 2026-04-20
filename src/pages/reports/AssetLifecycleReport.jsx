@@ -29,6 +29,8 @@ export default function AssetLifecycleReport() {
     loading,
     error,
     setQuickField,
+    filterOptions,
+    report: updatedReport,
   } = useReportState(selectedReportId, report);
 
   // Debug logging
@@ -67,7 +69,7 @@ export default function AssetLifecycleReport() {
 
   return (
     <ReportLayout
-      report={report}
+      report={updatedReport || report}
       selectedReportId={selectedReportId}
       allRows={allRows}
       allAvailableAssets={allAvailableAssets}
@@ -83,6 +85,7 @@ export default function AssetLifecycleReport() {
       setViews={setViews}
       loading={loading}
       error={error}
+      apiData={filterOptions ? { filterOptions } : undefined}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
     />

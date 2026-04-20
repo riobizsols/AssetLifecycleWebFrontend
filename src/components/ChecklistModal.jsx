@@ -6,13 +6,36 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
   const { t } = useLanguage();
   if (!open) return null;
 
-  // Function to translate common checklist items
+  // Function to translate checklist items
   const translateChecklistItem = (itemText) => {
+    if (!itemText || typeof itemText !== 'string') {
+      return itemText;
+    }
+
+    // If the text looks like a translation key (contains dots and starts with a namespace)
+    if (itemText.includes('.') && itemText.match(/^[a-zA-Z]+\.[a-zA-Z]+/)) {
+      try {
+        // Try to translate it directly
+        const translated = t(itemText);
+        // If translation returns the key itself, it means the key doesn't exist
+        // Return the original text or a fallback
+        return translated !== itemText ? translated : itemText;
+      } catch (error) {
+        // If translation fails, return original text
+        return itemText;
+      }
+    }
+
+    // Fallback: try to match against known translations
     const translations = {
       'Battery health check': t('maintenanceApproval.batteryHealthCheck'),
       'OS & software installed': t('maintenanceApproval.osAndSoftwareInstalled'),
       'Physical damage inspection': t('maintenanceApproval.physicalDamageInspection'),
+      'Physical Condition Check': t('maintenanceApproval.physicalConditionCheck'),
+      'Accessibility & Labeling': t('maintenanceApproval.accessibilityAndLabeling'),
+      'Pressure Gauge & Seal Verification': t('maintenanceApproval.pressureGaugeAndSealVerification'),
     };
+    
     return translations[itemText] || itemText;
   };
 
@@ -21,29 +44,35 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
   console.log('Checklist length:', checklist?.length);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg relative">
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg relative max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="text-[#0E2F4B] w-7 h-7" />
-            <div>
-              <h3 className="text-xl font-bold">{t('maintenanceApproval.assetMaintenanceChecklist')}</h3>
-              <div className="text-xs text-gray-500">
-                {t('maintenanceApproval.assetType')}: <span className="font-semibold">{assetType}</span>
+        <div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <CheckCircle className="text-[#0E2F4B] w-6 h-6 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg font-bold text-gray-900 leading-tight">
+                {t('maintenanceApproval.assetMaintenanceChecklist')}
+              </h3>
+              <div className="text-xs text-gray-500 mt-1">
+                {t('maintenanceApproval.assetType')}: <span className="font-semibold text-gray-700">{assetType}</span>
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-700 flex-shrink-0 ml-2 transition-colors"
+            aria-label="Close"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
 
         {/* Checklist */}
-        <div className="px-6 pb-6 pt-2 max-h-80 overflow-y-auto">
-          <ul className="list-disc pl-6">
-            {checklist && checklist.length > 0 ? (
-              checklist.map((checklistItem, idx) => {
+        <div className="px-6 py-4 overflow-y-auto flex-1">
+          {checklist && checklist.length > 0 ? (
+            <ul className="space-y-2">
+              {checklist.map((checklistItem, idx) => {
                 console.log('Rendering checklist item:', checklistItem);
                 // Handle different possible data structures
                 const itemText = checklistItem.item || 
@@ -54,22 +83,25 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
                                (typeof checklistItem === 'string' ? checklistItem : JSON.stringify(checklistItem));
                 
                 return (
-                  <li key={checklistItem.id || checklistItem.checklist_id || idx} className="mb-1 text-gray-800">
-                    {translateChecklistItem(itemText)}
+                  <li key={checklistItem.id || checklistItem.checklist_id || idx} className="flex items-start gap-2 text-gray-800">
+                    <span className="text-[#0E2F4B] mt-1 flex-shrink-0">•</span>
+                    <span className="flex-1 leading-relaxed">{translateChecklistItem(itemText)}</span>
                   </li>
                 );
-              })
-            ) : (
-              <li className="text-gray-400 italic">{t('maintenanceApproval.noChecklistItemsFound')}</li>
-            )}
-          </ul>
+              })}
+            </ul>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-400 italic">{t('maintenanceApproval.noChecklistItemsFound')}</p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t flex justify-end">
+        <div className="px-6 py-4 border-t flex justify-end flex-shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-medium"
+            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 font-medium transition-colors"
           >
             {t('maintenanceApproval.close')}
           </button>

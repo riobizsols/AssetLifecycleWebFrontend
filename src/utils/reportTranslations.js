@@ -49,6 +49,10 @@ export const getTranslatedFieldLabel = (key) => {
     'actualScheduleDateRange': t('reports.fieldLabels.actualScheduleDateRange'),
     'breakdownDateRange': t('reports.fieldLabels.breakdownDateRange'),
     'reportedBy': t('reports.fieldLabels.reportedBy'),
+    // Quick filter labels (shared and QA Audit Report)
+    'dateRange': t('reports.dateRange'),
+    'assetType': t('reports.qaAuditReport.filterAssetType'),
+    'assets': t('reports.qaAuditReport.filterAssets'),
   };
   
   return fieldLabelMap[key] || key;
@@ -83,9 +87,17 @@ export const getTranslatedReportInfo = (reportId) => {
       name: t('reports.breakdownHistoryReport.name'),
       description: t('reports.breakdownHistoryReport.description')
     },
+    'reopened-breakdowns': {
+      name: t('reports.reopenedBreakdowns.title'),
+      description: t('reports.reopenedBreakdowns.subtitle')
+    },
     'asset-valuation': {
       name: t('reports.assetValuationReport'),
       description: t('reports.assetValuationReport') // You may want to add a specific description
+    },
+    'qa-audit-report': {
+      name: t('reports.qaAuditReport.reportName'),
+      description: t('reports.qaAuditReport.reportDescription')
     }
   };
   
@@ -186,6 +198,17 @@ export const getTranslatedColumnHeader = (columnName, t = null) => {
     'Recorded Date': t('reports.columnHeaders.recordedDate'),
     'Employee Name': t('reports.columnHeaders.employeeName'),
     'Asset Description': t('reports.columnHeaders.assetDescription'),
+    // SLA Report columns
+    'Company Name': t('reports.columnHeaders.companyName'),
+    'Company Email': t('reports.columnHeaders.companyEmail'),
+    'Contact Person': t('reports.columnHeaders.contactPerson'),
+    'Contact Number': t('reports.columnHeaders.contactNumber'),
+    'Contract Start': t('reports.columnHeaders.contractStart'),
+    'Contract End': t('reports.columnHeaders.contractEnd'),
+    'Asset Type ID': t('reports.columnHeaders.assetTypeId'),
+    'SLA ID': t('reports.columnHeaders.slaId'),
+    'SLA Description': t('reports.columnHeaders.slaDescription'),
+    'SLA Value (hrs)': t('reports.columnHeaders.slaValueHrs'),
   };
   
   // If translation is missing, the t() function might return the key itself

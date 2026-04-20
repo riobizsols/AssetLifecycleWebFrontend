@@ -14,25 +14,57 @@ const SearchableDropdown = ({
   disabled = false,
   className = "",
   displayKey = "text",
-  valueKey = "id"
+  valueKey = "id",
+  secondaryDisplayKey = null,
+  secondaryLoading = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [openUpwards, setOpenUpwards] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const navigate = useNavigate();
 
-  // Update dropdown position when opening
+  const updateDropdownPosition = () => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+
+    // Estimate dropdown height. (Search header + list; list itself is max-h-48)
+    const estimatedDropdownHeight = 260;
+    const viewportPadding = 12;
+
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    const shouldOpenUp = spaceBelow < estimatedDropdownHeight + viewportPadding && spaceAbove > spaceBelow;
+    setOpenUpwards(shouldOpenUp);
+
+    const top = shouldOpenUp
+      ? rect.top + window.scrollY - estimatedDropdownHeight
+      : rect.bottom + window.scrollY;
+
+    setDropdownPosition({
+      top: Math.max(viewportPadding + window.scrollY, top),
+      left: rect.left + window.scrollX,
+      width: rect.width
+    });
+  };
+
+  // Update dropdown position when opening + keep it correct on scroll/resize
   useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width
-      });
-    }
+    if (!isOpen) return;
+    updateDropdownPosition();
+
+    const handleScroll = () => updateDropdownPosition();
+    const handleResize = () => updateDropdownPosition();
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Close dropdown when clicking outside
@@ -64,7 +96,15 @@ const SearchableDropdown = ({
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={() => {
+          if (disabled) return;
+          const next = !isOpen;
+          setIsOpen(next);
+          if (next) {
+            // Position immediately to avoid flicker
+            setTimeout(() => updateDropdownPosition(), 0);
+          }
+        }}
         className={`w-full px-3 py-2 text-left border rounded-md flex items-center justify-between min-w-0 ${disabled
             ? 'bg-gray-100 cursor-not-allowed text-gray-500'
             : 'bg-white hover:bg-gray-50'
@@ -109,7 +149,18 @@ const SearchableDropdown = ({
                 className={`px-3 py-2 cursor-pointer hover:bg-gray-100 text-sm ${option[valueKey] === value ? 'bg-gray-100' : ''
                   }`}
               >
-                {option[displayKey]}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate">{option[displayKey]}</span>
+                  {secondaryDisplayKey && secondaryLoading && (
+                    <span
+                      className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"
+                      aria-label="Loading"
+                    />
+                  )}
+                  {secondaryDisplayKey && !secondaryLoading && option[secondaryDisplayKey] !== undefined && option[secondaryDisplayKey] !== null && (
+                    <span className="text-gray-500 whitespace-nowrap text-right">({option[secondaryDisplayKey]})</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>

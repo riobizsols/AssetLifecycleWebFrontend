@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useMemo } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -33,7 +33,42 @@ import {
   AlertTriangle,
   Gauge,
   Printer,
+  Clock,
+  Activity,
 } from "lucide-react";
+
+/** Injects synthetic "One Time Cron" nav row under Master Data (admin settings mode). */
+function injectOneTimeCronUnderMasterData(items) {
+  if (!items?.length) return items;
+  return items.map((item) => {
+    const children = item.children?.length
+      ? injectOneTimeCronUnderMasterData(item.children)
+      : item.children;
+    if (item.app_id === "MASTERDATA" && item.is_group) {
+      const ch = children || [];
+      if (ch.some((c) => c.app_id === "ONETIMECRON")) {
+        return { ...item, children: ch };
+      }
+      return {
+        ...item,
+        children: [
+          ...ch,
+          {
+            id: "synthetic-onetime-cron",
+            app_id: "ONETIMECRON",
+            label: "One Time Cron",
+            access_level: "A",
+            is_group: false,
+          },
+        ],
+      };
+    }
+    if (children !== item.children) {
+      return { ...item, children };
+    }
+    return item;
+  });
+}
 
 const DatabaseSidebar = () => {
   const {
@@ -52,11 +87,27 @@ const DatabaseSidebar = () => {
   const adminSettingsContext = useContext(AdminSettingsContext);
   const isAdminSettingsMode = adminSettingsContext?.isAdminSettingsMode || false;
 
+  const navigationForRender = useMemo(() => {
+    if (!isAdminSettingsMode) return navigation;
+    return injectOneTimeCronUnderMasterData(navigation);
+  }, [navigation, isAdminSettingsMode]);
+
   const toggleDropdown = (id) => {
     setOpenDropdown(openDropdown === id ? null : id);
   };
 
   const toggleSidebar = () => setCollapsed(!collapsed);
+
+  /**
+   * Passed to NavLink so admin screens can show a header breadcrumb.
+   * parentAdminFrom preserves the chain (e.g. Configuration) when drilling hub → A → B
+   * so the breadcrumb link from B → A restores A’s own “from” state.
+   */
+  const navLinkState = {
+    adminFrom: { pathname: location.pathname, search: location.search },
+    parentAdminFrom: location.state?.adminFrom,
+    grandparentAdminFrom: location.state?.parentAdminFrom,
+  };
 
   // Translate navigation labels
   const translateLabel = (label) => {
@@ -76,12 +127,16 @@ const DatabaseSidebar = () => {
       'Users': t('navigation.users'),
       'User Roles': t('navigation.userRoles'),
       'Column Access Config': t('navigation.columnAccessConfig'),
+      'One Time Cron': t('navigation.oneTimeCron'),
+      'Job Monitor': 'Job Monitor',
       'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
+      'Cost Center Transfer': t('navigation.costCenterTransfer'),
       'Department Assignment': t('navigation.departmentAssignment'),
       'Employee Assignment': t('navigation.employeeAssignment'),
       'Workorder Management': t('navigation.workorderManagement'),
       'Maintenance Approval': t('navigation.maintenanceApproval'),
+      'Maintenance List': t('maintenance.maintenanceList'),
       'Maintenance Schedule': t('navigation.maintenanceSchedule'),
       'Maintenance Sche...': t('navigation.maintenanceSchedule'),
       'Supervisor Approval': t('navigation.supervisorApproval'),
@@ -90,10 +145,24 @@ const DatabaseSidebar = () => {
       'Reports': t('navigation.reports'),
       'Admin Settings': t('navigation.adminSettings'),
       'Master Data': t('navigation.masterData'),
+      'Asset Type - Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
+      'Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
+      'Inspection Frequency': 'Inspection Frequency',
       'Scrap Sales': t('navigation.scrapSales'),
       'Scrap Assets': t('navigation.scrapAssets'),
       'Group Asset': t('navigation.groupAsset'),
       'Audit Logs': t('navigation.auditLogs'),
+      'Certifications': t('navigation.certifications'),
+      'Technician Certificates': t('navigation.employeeTechCertificate'),
+      'Employee Tech Certification': t('navigation.employeeTechCertificate'),
+      'Technician Certificate Approvals': t('navigation.hrManagerApproval'),
+      'HR/Manager Approval': t('navigation.hrManagerApproval'),
+      'Scrap Approval': t('navigation.scrapApproval'),
+      'Inspection': t('navigation.inspection'),
+      'Inspection Approval': t('navigation.inspectionApproval'),
+      'Inspection List': t('navigation.inspectionList'),
+      'Employee Report Breakdown': t('navigation.employeeReportBreakdown'),
+      'Vendor Renewal Approval': t('navigation.vendorRenewalApproval'),
       // Report sub-items
       'Asset Lifecycle Report': t('navigation.assetLifecycleReport'),
       'Asset Lifecycle Re...': t('navigation.assetLifecycleReport'),
@@ -143,14 +212,23 @@ const DatabaseSidebar = () => {
     ASSETS: "/assets", //done
     ADDASSET: "/assets/add", //done
     ASSETASSIGNMENT: "/assign-department-assets",
+    COSTCENTERTRANSFER: "/cost-center-transfer",
     VENDORS: "/master-data/vendors", //done
+    INSPECTIONCHECKLISTS: "/master-data/inspection-checklists",
+    INSPECTIONFREQUENCY: "/master-data/inspection-frequency",
+    ASSETTYPECHECKLISTMAPPING: "/master-data/asset-type-checklist-mapping",
     DEPTASSIGNMENT: "/assign-department-assets",
     EMPASSIGNMENT: "/assign-employee-assets",
     WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance  //done
-    INSPECTION: "/inspection-view", // Separate route for inspection
+    INSPECTION: "/inspection-view", // Legacy inspection ID
+    INSPECTIONVIEW: "/inspection-view", // New Inspection Execution ID
+    INSPECTIONAPPROVAL: "/inspection-approval", // New Inspection Approval ID
     MAINTENANCEAPPROVAL: "/maintenance-approval",
-    SUPERVISORAPPROVAL: "/supervisor-approval", //done
+    VENDORRENEWALAPPROVAL: "/vendor-renewal-approval",
+    SCRAPMAINTENANCEAPPROVAL: "/scrap-approval",
+    SUPERVISORAPPROVAL: "/maintenance-list", //done
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
+    "EMPLOYEE REPORT BREAKDOWN": "/employee-report-breakdown", // Employee Report Breakdown route //done
     // Report routes
     ASSETLIFECYCLEREPORT: "/reports/asset-lifecycle-report",  //done
     ASSETREPORT: "/reports/asset-report",  //done
@@ -160,6 +238,8 @@ const DatabaseSidebar = () => {
     SERIALNUMBERPRINT: "/serial-number-print", //not required
     BULKSERIALNUMBERPRINT: "/bulk-serial-number-print", // Bulk Serial Number Print route
     BREAKDOWNHISTORY: "/reports/breakdown-history",  //done
+    BREAKDOWNREOPENDETAILS: "/reports/breakdown-reopen-details",
+    REOPENEDBREAKDOWNS: "/reports/reopened-breakdowns",
     USAGEBASEDASSETREPORT: "/reports/usage-based-asset",  //done
     SLAREPORT: "/reports/sla-report",  //done
     QAAUDITREPORT: "/reports/qa-audit-report",  //done
@@ -180,12 +260,19 @@ const DatabaseSidebar = () => {
     AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route  //done
     COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config", // Column Access Config route
     MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config", // Maintenance Configuration route
+    CERTIFICATIONS: "/certifications", // Certifications route
+    TECHCERTUPLOAD: "/technician-certificates",
+    TECHNICIANCERTIFICATES: "/technician-certificates",
     PROPERTIES: "/adminsettings/configuration/properties", // Properties route
     BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes", // Breakdown Reason Codes route
+    ONETIMECRON: "/adminsettings/configuration/one-time-cron",
+    JOBMONITOR: "/adminsettings/configuration/job-monitor",
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
     SCRAPASSETS: "/scrap-assets", // Scrap Assets route  //done
+    "EMPLOYEE TECH CERTIFICATION": "/technician-certificates",
+    "HR/MANAGERAPPROVAL": "/tech-cert-approvals",
   };
 
   // Dynamic icon component
@@ -195,13 +282,18 @@ const DatabaseSidebar = () => {
       ASSETS: Package,
       ADDASSET: Package,
       ASSETASSIGNMENT: Users,
+      COSTCENTERTRANSFER: GitBranch,
       DEPTASSIGNMENT: Building,
       EMPASSIGNMENT: UserCheck,
       WORKORDERMANAGEMENT: Wrench,
       INSPECTION: CheckSquare,
+      INSPECTIONVIEW: CheckSquare, // Execution
+      INSPECTIONAPPROVAL: ClipboardList, // Approval
       MAINTENANCEAPPROVAL: ClipboardList,
+      SCRAPMAINTENANCEAPPROVAL: ClipboardList,
       SUPERVISORAPPROVAL: UserCheck,
       REPORTBREAKDOWN: BarChart3,
+      "EMPLOYEE REPORT BREAKDOWN": BarChart3,
       // Report icons
       ASSETLIFECYCLEREPORT: FileText,
       ASSETREPORT: FileText,
@@ -222,6 +314,7 @@ const DatabaseSidebar = () => {
       DEPARTMENTSASSET: Package,
       BRANCHES: Home,
       VENDORS: Truck,
+      INSPECTIONCHECKLISTS: ClipboardList,
       PRODSERV: Briefcase,
       ROLES: Shield,
       USERS: Users,
@@ -229,9 +322,16 @@ const DatabaseSidebar = () => {
       AUDITLOGS: History,
       AUDITLOGCONFIG: Settings,
       COLUMNACCESSCONFIG: Settings,
+      ONETIMECRON: Clock,
+      JOBMONITOR: Activity,
+      CERTIFICATIONS: FileText,
+      TECHCERTUPLOAD: FileText,
+      TECHNICIANCERTIFICATES: FileText,
       GROUPASSET: Package,
       SCRAPSALES: Package,
       SCRAPASSETS: Package,
+      "EMPLOYEE TECH CERTIFICATION": FileText,
+      "HR/MANAGERAPPROVAL": FileText,
     };
 
     const IconComponent = iconMap[appId] || Building;
@@ -261,6 +361,8 @@ const DatabaseSidebar = () => {
         "MAINTENANCECONFIG": "/adminsettings/configuration/maintenance-config",
         "PROPERTIES": "/adminsettings/configuration/properties",
         "BREAKDOWNREASONCODES": "/adminsettings/configuration/breakdown-reason-codes",
+        "ONETIMECRON": "/adminsettings/configuration/one-time-cron",
+        "JOBMONITOR": "/adminsettings/configuration/job-monitor",
         // Add more mappings here as you add more admin settings menu items
         // Example: "NEW_APP_ID": "/adminsettings/configuration/new-path",
       };
@@ -287,11 +389,39 @@ const DatabaseSidebar = () => {
     "COLUMNACCESSCONFIG",
     "MAINTENANCECONFIG",
     "PROPERTIES",
-    "BREAKDOWNREASONCODES"
+    "BREAKDOWNREASONCODES",
+    "ONETIMECRON",
+    "JOBMONITOR",
   ];
+  const employeeTechCertAppIds = ["TECHCERTUPLOAD", "TECHNICIANCERTIFICATES", "EMPLOYEE TECH CERTIFICATION"];
+
+  const normalizeNavAppId = (id) =>
+    id == null ? "" : String(id).trim().replace(/\s+/g, " ").toUpperCase();
+
+  const employeeTechCertIdSet = new Set(
+    employeeTechCertAppIds.map((id) => normalizeNavAppId(id))
+  );
+
+  const isEmployeeTechCertMenuId = (appId) =>
+    employeeTechCertIdSet.has(normalizeNavAppId(appId));
+
+  const hasEmployeeTechCertAccess = () =>
+    employeeTechCertAppIds.some((appId) => Boolean(getAccessLevel(appId)));
+
+  const getEmployeeTechCertAppId = () =>
+    employeeTechCertAppIds.find((appId) => Boolean(getAccessLevel(appId))) || "TECHCERTUPLOAD";
 
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
+    // Same route as standalone "Technician Certificates"; hide raw nav rows so only one link shows
+    if (
+      item.id !== "standalone-tech-certificates" &&
+      !isAdminSettingsMode &&
+      isEmployeeTechCertMenuId(item.app_id)
+    ) {
+      return false;
+    }
+
     const isAdminSettingsOnlyItem = adminSettingsOnlyAppIds.includes(item.app_id);
     
     // Hide admin settings only items when NOT in admin settings mode
@@ -348,6 +478,10 @@ const DatabaseSidebar = () => {
       const isAnyChildActive =
         hasChildren &&
         item.children.some((child) => {
+          // Tech cert routes are shown as a standalone item, not under this group — don't mark parent active
+          if (isEmployeeTechCertMenuId(child.app_id)) {
+            return false;
+          }
           const childPath = getPath(child.app_id);
           // For COLUMNACCESSCONFIG, check exact match since it shares path with ADMINSETTINGS
           if (child.app_id === "COLUMNACCESSCONFIG") {
@@ -390,9 +524,15 @@ const DatabaseSidebar = () => {
             <ul className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
                 const isAdminSettingsOnlyChild = adminSettingsOnlyAppIds.includes(child.app_id);
+                const isEmployeeTechCertChild = isEmployeeTechCertMenuId(child.app_id);
                 
                 // Hide admin settings only items when NOT in admin settings mode
                 if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
+                  return null;
+                }
+
+                // Show Employee Tech Certificate as standalone top-level item
+                if (isEmployeeTechCertChild) {
                   return null;
                 }
                 
@@ -402,14 +542,19 @@ const DatabaseSidebar = () => {
                 }
 
                 const childPath = getPath(child.app_id);
-                const childAccessLevel = getAccessLevel(child.app_id);
+                const childAccessLevel =
+                  child.app_id === "ONETIMECRON"
+                    ? getAccessLevel("ONETIMECRON") ||
+                      getAccessLevel("ADMINSETTINGS") ||
+                      getAccessLevel("MASTERDATA")
+                    : getAccessLevel(child.app_id);
                 const ChildIconComponent = getIconComponent(child.app_id);
 
                 // Only show children that have access
                 if (!childAccessLevel) return null;
 
                 // For admin settings routes, use exact path matching to prevent multiple items being active
-                const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES"];
+                const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON", "JOBMONITOR"];
                 const requiresExactMatch = adminSettingsRoutes.includes(child.app_id);
                 const isActiveForAdminRoute = requiresExactMatch 
                   ? location.pathname === childPath
@@ -419,6 +564,7 @@ const DatabaseSidebar = () => {
                   <li key={child.id} className="mb-1">
                     <NavLink
                       to={childPath || "/dashboard"}
+                      state={navLinkState}
                       end={requiresExactMatch} // Use exact match for admin settings routes
                       className={({ isActive }) => {
                         // Use exact match check for admin settings routes
@@ -451,11 +597,16 @@ const DatabaseSidebar = () => {
         </li>
       );
     } else {
-      // Only show items that have access
-      if (!accessLevel) return null;
+      const effectiveAccess =
+        item.app_id === "ONETIMECRON"
+          ? getAccessLevel("ONETIMECRON") ||
+            getAccessLevel("ADMINSETTINGS") ||
+            getAccessLevel("MASTERDATA")
+          : accessLevel;
+      if (!effectiveAccess) return null;
 
       // For admin settings routes, check exact path match
-      const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES"];
+      const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON", "JOBMONITOR"];
       const requiresExactMatch = adminSettingsRoutes.includes(item.app_id);
       const isActiveForAdminRoute = requiresExactMatch 
         ? location.pathname === path
@@ -465,6 +616,7 @@ const DatabaseSidebar = () => {
         <li key={item.id} className="mb-2">
           <NavLink
             to={path || "/dashboard"}
+            state={navLinkState}
             end={requiresExactMatch} // Use exact match for admin settings routes
             className={({ isActive }) => {
               // Use exact match check for admin settings routes
@@ -475,7 +627,7 @@ const DatabaseSidebar = () => {
                 active
                   ? "bg-[#FFC107] text-white"
                   : "hover:bg-[#143d65] text-white"
-              } ${getAccessColorClass(accessLevel)}`;
+              } ${getAccessColorClass(effectiveAccess)}`;
             }}
               title={!collapsed ? translateLabel(item.label) : ""}
             >
@@ -487,7 +639,7 @@ const DatabaseSidebar = () => {
               )}
             {!collapsed && (
               <span className="flex-shrink-0">
-                {getAccessIcon(accessLevel)}
+                {getAccessIcon(effectiveAccess)}
               </span>
             )}
           </NavLink>
@@ -540,7 +692,31 @@ const DatabaseSidebar = () => {
 
       {/* Navigation Items */}
       <ul className="px-2 pb-4 overflow-y-auto no-scrollbar">
-        {navigation.length === 0 ? (
+        {isAdminSettingsMode && (
+          <li className="mb-2">
+            <NavLink
+              to="/adminsettings/configuration"
+              state={navLinkState}
+              end
+              className={({ isActive }) =>
+                `group flex items-center gap-2 px-4 py-2 rounded ${
+                  isActive
+                    ? "bg-[#FFC107] text-white"
+                    : "hover:bg-[#143d65] text-white"
+                }`
+              }
+              title={!collapsed ? "Admin Dashboard" : ""}
+            >
+              <Settings size={16} className="flex-shrink-0" />
+              {!collapsed && (
+                <span className="truncate flex-1 min-w-0 text-sm font-medium">
+                  Admin Dashboard
+                </span>
+              )}
+            </NavLink>
+          </li>
+        )}
+        {navigationForRender.length === 0 ? (
           <li className="text-center py-4 text-gray-300">
             <div className="text-sm">
               <p>No navigation items found.</p>
@@ -548,7 +724,16 @@ const DatabaseSidebar = () => {
             </div>
           </li>
         ) : (
-          navigation.map((item) => renderNavigationItem(item))
+          <>
+            {navigationForRender.map((item) => renderNavigationItem(item))}
+            {!isAdminSettingsMode && hasEmployeeTechCertAccess() &&
+              renderNavigationItem({
+                id: "standalone-tech-certificates",
+                app_id: getEmployeeTechCertAppId(),
+                label: "Technician Certificates",
+                is_group: false
+              })}
+          </>
         )}
       </ul>
     </aside>

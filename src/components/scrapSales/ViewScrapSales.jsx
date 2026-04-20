@@ -229,14 +229,6 @@ const ViewScrapSales = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">Scrap ID</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{scrapData.scrap_id}</td>
-                </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">Asset ID</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{scrapData.asset_id}</td>
-                </tr>
-                <tr className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-900">Scrap Value</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{scrapData.scrap_value}</td>
                 </tr>

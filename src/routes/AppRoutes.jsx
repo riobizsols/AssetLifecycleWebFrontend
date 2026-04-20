@@ -34,15 +34,24 @@ import EmployeeWiseAssetAssignment from "../pages/EmployeeWiseAssetAssignment";
 import AssetSelection from "../components/assetAssignment/AssetSelection";
 import AssetsDetail from "../components/assetAssignment/AssetsDetail";
 import MaintenanceApproval from "../pages/MaintenanceApproval";
+import VendorRenewalApproval from "../pages/VendorRenewalApproval";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import AllNotifications from "../components/AllNotifications";
 import MaintenanceApprovalDetail from "../components/MaintenanceApprovalDetail";
+import InspectionApproval from "../pages/InspectionApproval";
+import InspectionApprovalDetail from "../components/InspectionApprovalDetail";
+import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
+import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
+import CreateManualMaintenance from "../pages/CreateManualMaintenance";
 import CronJobManagement from "../pages/CronJobManagement";
 import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
 import ReportsBreakdown from "../pages/ReportsBreakdown";
+import ReportsBreakdown2 from "../pages/ReportsBreakdown2";
 import BreakdownSelection from "../components/reportbreakdown/BreakdownSelection";
+import BreakdownSelection2 from "../components/reportbreakdown/BreakdownSelection2";
 import BreakdownDetails from "../components/reportbreakdown/BreakdownDetails";
+import BreakdownDetails2 from "../components/reportbreakdown/BreakdownDetails2";
 import EditBreakdownReport from "../components/reportbreakdown/EditBreakdownReport";
 import AdminSettingsView from "../pages/AdminSettingsView";
 import CreateMaintenanceFrequency from "../components/CreateMaintenanceFrequency";
@@ -51,6 +60,8 @@ import AuditLogsView from "../pages/AuditLogsView";
 import AuditLogConfig from "../components/AuditLogConfig";
 import AuditLogConfigPage from "../pages/AuditLogConfigPage";
 import InspectionView from "../pages/InspectionView";
+import CreateManualInspection from "../pages/CreateManualInspection";
+import InspectionExecutionDetail from "../pages/InspectionExecutionDetail";
 import GroupAsset from "../pages/GroupAsset";
 import CreateGroupAsset from "../components/groupAsset/CreateGroupAsset";
 import EditGroupAsset from "../components/groupAsset/EditGroupAsset";
@@ -67,6 +78,7 @@ import ExpiringByCategory from "../components/scrapAssets/ExpiringByCategory";
 import CategoryAssets from "../components/scrapAssets/CategoryAssets";
 import CategoriesOverview from "../components/scrapAssets/CategoriesOverview";
 import CreateScrapAsset from "../components/scrapAssets/CreateScrapAsset";
+import ScrapGroupedAssets from "../pages/ScrapGroupedAssets";
 import WorkorderManagement from "../pages/WorkorderManagement";
 import WorkOrderDetail from "../pages/WorkOrderDetail";
 import AssetReport from "../pages/reports/AssetReport";
@@ -75,6 +87,10 @@ import MaintenanceHistory from "../pages/reports/MaintenanceHistory";
 import AssetValuation from "../pages/reports/AssetValuation";
 import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
 import BreakdownHistory from "../pages/reports/BreakdownHistory";
+import BreakdownDetail from "../pages/reports/BreakdownDetail";
+import BreakdownReopenDetails from "../pages/reports/BreakdownReopenDetails";
+import ReopenedBreakdowns from "../pages/reports/ReopenedBreakdowns";
+import ReopenedBreakdownsHistory from "../pages/reports/ReopenedBreakdownsHistory";
 import UsageBasedAssetReport from "../pages/reports/UsageBasedAssetReport";
 import ReportBuilder from "../components/reportModels/ReportBuilder";
 import SerialNumberPrint from "../pages/reports/SerialNumberPrint";
@@ -85,7 +101,20 @@ import QAAuditReport from "../pages/reports/QAAuditReport";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
+import OneTimeCron from "../pages/adminSettings/OneTimeCron";
 import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
+import Certifications from "../pages/adminSettings/Certifications";
+import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
+import JobMonitor from "../pages/adminSettings/JobMonitor";
+import TextMessages from "../pages/adminSettings/TextMessages";
+import AssetTypeChecklistMapping from "../pages/masterData/AssetTypeChecklistMapping";
+import CreateAssetTypeChecklistMapping from "../pages/masterData/CreateAssetTypeChecklistMapping";
+import InspectionFrequency from "../pages/masterData/InspectionFrequency";
+import CreateInspectionFrequency from "../components/CreateInspectionFrequency";
+import TechnicianCertificates from "../pages/TechnicianCertificates";
+import TechCertApprovals from "../pages/TechCertApprovals";
+import CostCenterTransfer from "../pages/CostCenterTransfer";
+import DatabaseConnectionSwitcher from "../pages/internal/DatabaseConnectionSwitcher";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -99,7 +128,11 @@ export default function AppRoutes() {
         <Route path="/tenant-setup" element={<TenantSetup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/request-password-change" element={<RequestPasswordChange />} />
+        <Route path="/internal/db-switcher" element={<DatabaseConnectionSwitcher />} />
+        <Route
+          path="/request-password-change"
+          element={<RequestPasswordChange />}
+        />
         <Route
           path="/change-password"
           element={
@@ -108,27 +141,54 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route path="/not-authorized" element={
-          <div className="flex items-center justify-center min-h-screen bg-gray-50">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🚫</div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-              <p className="text-gray-600 mb-4">You don't have permission to access this page.</p>
-              <button 
-                onClick={() => window.history.back()} 
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Go Back
-              </button>
+        <Route
+          path="/not-authorized"
+          element={
+            <div className="flex items-center justify-center min-h-screen bg-gray-50">
+              <div className="text-center">
+                <div className="text-6xl mb-4">🚫</div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  Access Denied
+                </h1>
+                <p className="text-gray-600 mb-4">
+                  You don't have permission to access this page.
+                </p>
+                <button
+                  onClick={() => window.history.back()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Go Back
+                </button>
+              </div>
             </div>
-          </div>
-        } />
+          }
+        />
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
               <MainLayout>
                 <Dashboard />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/technician-certificates"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TechnicianCertificates />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tech-cert-approvals"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TechCertApprovals />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -195,6 +255,46 @@ export default function AppRoutes() {
           }
         />
         <Route
+          path="/inspection-approval"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <InspectionApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/inspection-approval-detail/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <InspectionApprovalDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/scrap-approval"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ScrapMaintenanceApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vendor-renewal-approval"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <VendorRenewalApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/approval-detail/:id"
           element={
             <ProtectedRoute>
@@ -205,7 +305,17 @@ export default function AppRoutes() {
           }
         />
         <Route
-          path="/supervisor-approval"
+          path="/scrap-approval-detail/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ScrapMaintenanceApprovalDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/maintenance-list"
           element={
             <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>
@@ -214,9 +324,19 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/maintenance-list/create"
+          element={
+            <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
+              <MainLayout>
+                <CreateManualMaintenance />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
-          path="/supervisor-approval-detail/:id"
+          path="/maintenance-list-detail/:id"
           element={
             <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>
@@ -243,6 +363,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="REPORTBREAKDOWN">
               <MainLayout>
                 <ReportsBreakdown />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/employee-report-breakdown"
+          element={
+            <ProtectedRoute requiredAppId="EMPLOYEE REPORT BREAKDOWN">
+              <MainLayout>
+                <ReportsBreakdown2 />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -356,6 +487,47 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/reports/breakdown-history/:breakdownId"
+          element={
+            <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
+              <MainLayout>
+                <BreakdownDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/breakdown-reopen-details"
+          element={
+            <ProtectedRoute requiredAppId="BREAKDOWNHISTORY">
+              <MainLayout>
+                <BreakdownReopenDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/reopened-breakdowns/:amsId/history"
+          element={
+            <ProtectedRoute requiredAppId="REOPENEDBREAKDOWNS">
+              <MainLayout>
+                <ReopenedBreakdownsHistory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/reopened-breakdowns"
+          element={
+            <ProtectedRoute requiredAppId="REOPENEDBREAKDOWNS">
+              <MainLayout>
+                <ReopenedBreakdowns />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/reports/usage-based-asset"
@@ -402,6 +574,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/breakdown-selection2"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <BreakdownSelection2 />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/edit-breakdown"
           element={
             <ProtectedRoute requiredAppId="REPORTBREAKDOWN">
@@ -418,6 +601,17 @@ export default function AppRoutes() {
             <ProtectedRoute>
               <MainLayout>
                 <BreakdownDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/breakdown-details2"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <BreakdownDetails2 />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -467,10 +661,6 @@ export default function AppRoutes() {
           }
         />
 
-
-
-
-        
         <Route
           path="report-modal"
           element={
@@ -549,6 +739,28 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/inspection-view/create"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONVIEW">
+              <MainLayout>
+                <CreateManualInspection />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inspection-view/:id"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONVIEW">
+              <MainLayout>
+                <InspectionExecutionDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/group-asset"
           element={
             <ProtectedRoute requiredAppId="GROUPASSET">
@@ -592,7 +804,7 @@ export default function AppRoutes() {
         <Route
           path="/assets"
           element={
-            <ProtectedRoute requiredAppId="ASSETS" >
+            <ProtectedRoute requiredAppId="ASSETS">
               <MainLayout>
                 <Outlet />
               </MainLayout>
@@ -602,6 +814,17 @@ export default function AppRoutes() {
           <Route index element={<Assets />} />
           <Route path="add" element={<AddAssetForm />} />
         </Route>
+
+        <Route
+          path="/cost-center-transfer"
+          element={
+            <ProtectedRoute requiredAppId="COSTCENTERTRANSFER">
+              <MainLayout>
+                <CostCenterTransfer />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/master-data/asset-types"
@@ -748,15 +971,15 @@ export default function AppRoutes() {
         </Route>
 
         <Route
-  path="/master-data/add-vendor"
-  element={
-    <ProtectedRoute requiredAppId="VENDORS">
-      <MainLayout>
-        <AddEntityForm />
-      </MainLayout>
-    </ProtectedRoute>
-  }
-/>
+          path="/master-data/add-vendor"
+          element={
+            <ProtectedRoute requiredAppId="VENDORS">
+              <MainLayout>
+                <AddEntityForm />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         {/* nesting routing  branches and add department  */}
 
@@ -888,12 +1111,19 @@ export default function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/scrap-assets/group-scrap/:groupId"
+          element={
+            <ProtectedRoute requiredAppId="SCRAPASSETS">
+              <MainLayout>
+                <ScrapGroupedAssets />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Admin Settings Routes */}
-        <Route
-          path="/adminsettings"
-          element={<AdminSettingsRedirect />}
-        />
+        <Route path="/adminsettings" element={<AdminSettingsRedirect />} />
         <Route
           path="/adminsettings/configuration"
           element={
@@ -921,6 +1151,98 @@ export default function AppRoutes() {
               <AdminSettingsLayout>
                 <MaintenanceConfiguration />
               </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/one-time-cron"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={["ONETIMECRON", "ADMINSETTINGS"]}
+            >
+              <AdminSettingsLayout>
+                <OneTimeCron />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/job-monitor"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <JobMonitor />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/text-messages"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <TextMessages />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/inspection-checklists"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONCHECKLISTS">
+              <MainLayout>
+                <InspectionChecklists />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/asset-type-checklist-mapping"
+          element={
+            <ProtectedRoute requiredAppId="ASSETTYPECHECKLISTMAPPING">
+              <MainLayout>
+                <AssetTypeChecklistMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/asset-type-checklist-mapping/create"
+          element={
+            <ProtectedRoute requiredAppId="ASSETTYPECHECKLISTMAPPING">
+              <MainLayout>
+                <CreateAssetTypeChecklistMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/inspection-frequency"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONFREQUENCY">
+              <MainLayout>
+                <InspectionFrequency />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/master-data/inspection-frequency/create"
+          element={
+            <ProtectedRoute requiredAppId="INSPECTIONFREQUENCY">
+              <MainLayout>
+                <CreateInspectionFrequency />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/certifications"
+          element={
+            <ProtectedRoute requiredAppId="CERTIFICATIONS">
+              <MainLayout>
+                <Certifications />
+              </MainLayout>
             </ProtectedRoute>
           }
         />

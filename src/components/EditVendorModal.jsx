@@ -4,6 +4,24 @@ import { toast } from 'react-hot-toast';
 import API from '../lib/axios';
 import { generateUUID } from '../utils/uuid';
 import { useLanguage } from '../contexts/LanguageContext';
+import { X } from 'lucide-react';
+
+/** HTML date inputs only accept yyyy-MM-dd; API/DB may return ISO strings or Date objects. */
+function formatDateForInput(value) {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') {
+    const trim = value.trim();
+    if (!trim) return '';
+    const ymd = trim.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (ymd) return ymd[1];
+  }
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false }) => {
   const { t } = useLanguage();
@@ -56,9 +74,11 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         city: vendor.city || '',
         state: vendor.state || '',
         pincode: vendor.pincode || '',
-        contract_start_date: vendor.contract_start_date || '',
-        contract_end_date: vendor.contract_end_date || '',
-        int_status: vendor.int_status === 'Active' ? 1 : 0
+        contract_start_date: formatDateForInput(vendor.contract_start_date),
+        contract_end_date: formatDateForInput(vendor.contract_end_date),
+        int_status: vendor.int_status === 'Active' ? 1 : 
+                    vendor.int_status === 'CRApproved' ? 3 :
+                    vendor.int_status === 'Blocked' ? 4 : 0
       };
       
       setFormData({ ...baseFormData });
@@ -91,9 +111,12 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             city: vendorData.city || '',
             state: vendorData.state || '',
             pincode: vendorData.pincode || '',
-            contract_start_date: vendorData.contract_start_date || '',
-            contract_end_date: vendorData.contract_end_date || '',
-            int_status: vendorData.int_status === 'Active' ? 1 : 0
+            contract_start_date: formatDateForInput(vendorData.contract_start_date),
+            contract_end_date: formatDateForInput(vendorData.contract_end_date),
+            int_status: vendorData.int_status === 'Active' ? 1 :
+                        vendorData.int_status === 'CRApproved' ? 3 :
+                        vendorData.int_status === 'Blocked' ? 4 :
+                        (typeof vendorData.int_status === 'number' ? vendorData.int_status : 0)
           }));
           
           // Store vendor with SLAs for later use
@@ -147,6 +170,16 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [activeDropdown]);
+
+  // Close modal on ESC key
+  useEffect(() => {
+    if (!show) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [show, onClose]);
 
   const fetchDocumentTypes = async () => {
     try {
@@ -492,16 +525,23 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50">
-      <div className="bg-white w-[1000px] rounded shadow-lg max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="bg-white w-[1000px] rounded shadow-lg max-h-[90vh] overflow-y-auto" onMouseDown={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t sticky top-0">
           <span>{t('vendors.editVendor')}</span>
           <button
             onClick={onClose}
-            className="text-yellow-400 text-xl font-bold"
+            className="text-yellow-400 hover:text-yellow-300"
+            aria-label="Close"
+            title="Close"
           >
-            ×
+            <X size={18} />
           </button>
         </div>
 
@@ -599,7 +639,10 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                 >
                   <option value={1}>Active</option>
                   <option value={0}>Inactive</option>
-                  <option value={4}>Blacklist</option>
+                  <option value={4}>Blocked</option>
+                  {formData.int_status === 3 && (
+                    <option value={3} disabled>CRApproved</option>
+                  )}
                 </select>
               </div>
 
@@ -839,7 +882,8 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
           )}
 
           {/* Footer */}
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="sticky bottom-0 z-30 mt-6 px-2 py-3 border-t border-gray-200 bg-white">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -850,11 +894,12 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             {!isReadOnly && (
               <button
                 type="submit"
-                className="bg-[#ffc107] hover:bg-[#e0a800] text-white text-sm font-medium py-1.5 px-5 rounded"
+                className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
               >
                 {t('common.update')}
               </button>
             )}
+          </div>
           </div>
         </form>
 

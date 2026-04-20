@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import API from '../../lib/axios';
 import toast from 'react-hot-toast';
 import { MdKeyboardArrowRight, MdKeyboardArrowDown } from 'react-icons/md';
+import { Html5Qrcode } from 'html5-qrcode';
+import { QrCode, X } from 'lucide-react';
 import SearchableDropdown from '../ui/SearchableDropdown';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +16,9 @@ import { useLanguage } from '../../contexts/LanguageContext';
 
 const initialForm = {
   assetType: '',
+  serialNumberMode: 'generate', // generate | existing | none
   serialNumber: '',
+  serialNumberNotRequired: false, // New field to mark serial number as optional
   description: '',
   expiryDate: '',
   warrantyPeriod: '',
@@ -59,6 +63,7 @@ const AddAssetForm = ({ userRole }) => {
     vendors, 
     assetTypes, 
     loading: appDataLoading,
+    fetchAssetTypes,
     getUserBranchId,
     getUserBranchName,
     getUserDepartmentName 
@@ -87,8 +92,12 @@ const AddAssetForm = ({ userRole }) => {
     purchaseCost: false,
     parentAsset: false,
     purchaseBy: false,
-    expiryDate: false
+    expiryDate: false,
+    dateMismatch: false,
+    expiryDateBeforePurchase: false,
+    vendorRequired: false
   });
+  const [isVendorMaintainedType, setIsVendorMaintainedType] = useState(false);
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
@@ -146,6 +155,10 @@ const AddAssetForm = ({ userRole }) => {
 
   // Add state for serial number generation
   const [isGeneratingSerial, setIsGeneratingSerial] = useState(false);
+
+  // Serial number scanner (camera)
+  const [showSerialScanner, setShowSerialScanner] = useState(false);
+  const serialScannerRef = useRef(null);
   
   // Add state for fetched prod_serv_id
   const [fetchedProdServId, setFetchedProdServId] = useState(null);
@@ -157,6 +170,69 @@ const AddAssetForm = ({ userRole }) => {
   useEffect(() => {
     console.log('🔍 Form state changed:', form);
   }, [form]);
+
+  // Initialize/cleanup serial-number scanner
+  useEffect(() => {
+    if (!showSerialScanner) return;
+
+    const init = async () => {
+      try {
+        if (serialScannerRef.current) return;
+        const scanner = new Html5Qrcode('serial-qr-reader');
+        serialScannerRef.current = scanner;
+
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+          },
+          (decodedText) => {
+            // Stop scanner immediately on success
+            if (serialScannerRef.current) {
+              serialScannerRef.current.stop().catch(console.error);
+              serialScannerRef.current = null;
+            }
+            setForm(prev => ({
+              ...prev,
+              serialNumberMode: 'existing',
+              serialNumber: decodedText
+            }));
+            setValidationErrors(prev => ({ ...prev, serialNumber: false }));
+            setTouched(prev => ({ ...prev, serialNumber: true }));
+            setShowSerialScanner(false);
+            toast.success(t('assets.serialNumberScannedSuccessfully'));
+          },
+          (err) => {
+            // Handle scan error silently
+            console.warn('Scan error:', err);
+          }
+        );
+      } catch (err) {
+        console.error('Error starting serial scanner:', err);
+        toast.error(t('assets.couldNotAccessCamera'));
+        setShowSerialScanner(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      if (serialScannerRef.current) {
+        serialScannerRef.current.stop().catch(console.error);
+        serialScannerRef.current = null;
+      }
+    };
+  }, [showSerialScanner, t]);
+
+  const stopSerialScanner = () => {
+    if (serialScannerRef.current) {
+      serialScannerRef.current.stop().catch(console.error);
+      serialScannerRef.current = null;
+    }
+    setShowSerialScanner(false);
+  };
 
   // Add useEffect to filter models when brand changes
   useEffect(() => {
@@ -196,7 +272,7 @@ const AddAssetForm = ({ userRole }) => {
 
   useEffect(() => {
     console.log('Component mounted, fetching asset types...');
-    fetchAssetTypes();
+    fetchAssetTypes?.();
     fetchUsers();
     fetchProdServs();
     fetchVendors();
@@ -320,6 +396,36 @@ const AddAssetForm = ({ userRole }) => {
     }
   }, [form.assetType]);
 
+  useEffect(() => {
+    const loadMaintainedByRule = async () => {
+      if (!form.assetType) {
+        setIsVendorMaintainedType(false);
+        return;
+      }
+      try {
+        // Source of truth: maintenance frequency maintained_by (Inhouse/Vendor).
+        const res = await API.get(`/maintenance-frequencies/asset-type/${form.assetType}`);
+        const rows = res.data?.data || res.data || [];
+        const byFrequencySetting = Array.isArray(rows) && rows.some((row) =>
+          String(row?.maintained_by || '')
+            .toLowerCase()
+            .replace(/\s|-/g, '')
+            .includes('vendor')
+        );
+        setIsVendorMaintainedType(byFrequencySetting);
+        if (!byFrequencySetting) {
+          setValidationErrors(prev => ({ ...prev, vendorRequired: false }));
+          setForm(prev => ({ ...prev, serviceSupply: '' }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch maintenance ownership for asset type:', error);
+        setIsVendorMaintainedType(false);
+        setForm(prev => ({ ...prev, serviceSupply: '' }));
+      }
+    };
+    loadMaintainedByRule();
+  }, [form.assetType]);
+
   // Add function to fetch parent assets
   const fetchParentAssets = async (assetTypeId) => {
     try {
@@ -328,12 +434,24 @@ const AddAssetForm = ({ userRole }) => {
       console.log('📦 Parent assets response:', res.data);
       console.log('📊 Response data type:', typeof res.data);
       console.log('📊 Response data length:', Array.isArray(res.data) ? res.data.length : 'Not an array');
-      setParentAssets(Array.isArray(res.data) ? res.data : []);
+      const arr = Array.isArray(res.data) ? res.data : [];
+      setParentAssets(arr);
+
+      // Auto-select a parent asset when child asset type is chosen.
+      // If there are multiple possible parents, default to the first one (user can change it).
+      setForm((prev) => {
+        const current = prev.parentAsset;
+        const stillValid = current && arr.some((p) => p.asset_id === current);
+        if (stillValid) return prev;
+        if (arr.length > 0) return { ...prev, parentAsset: arr[0].asset_id };
+        return { ...prev, parentAsset: '' };
+      });
     } catch (err) {
       console.error('❌ Error fetching parent assets:', err);
       console.error('❌ Error response:', err.response?.data);
       toast.error('Failed to fetch parent assets');
       setParentAssets([]);
+      setForm((prev) => ({ ...prev, parentAsset: '' }));
     }
   };
 
@@ -355,21 +473,26 @@ const AddAssetForm = ({ userRole }) => {
 
   // Helper function to handle option selection
   const handleOptionSelect = (name, value, label) => {
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(prev => {
+      const newForm = { ...prev, [name]: value };
+      
+      // Real-time validation for vendor requirement
+      if (name === 'purchaseSupply' || name === 'serviceSupply') {
+        const isServiceVendorSatisfied = isVendorMaintainedType
+          ? Boolean(newForm.serviceSupply)
+          : true;
+        if (isServiceVendorSatisfied) {
+          setValidationErrors(prevErrors => ({
+            ...prevErrors,
+            vendorRequired: false
+          }));
+        }
+      }
+      
+      return newForm;
+    });
     setDropdownStates(prev => ({ ...prev, [name]: false }));
     updateSearch(name, '');
-  };
-
-  const fetchAssetTypes = async () => {
-    try {
-      console.log('Fetching asset types...');
-      const res = await API.get('/dept-assets/asset-types');
-      console.log('Asset types raw response:', res.data);
-      setAssetTypes(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error('Error fetching asset types:', err);
-      setAssetTypes([]);
-    }
   };
 
   const fetchUsers = async () => {
@@ -442,30 +565,27 @@ const AddAssetForm = ({ userRole }) => {
 
   const fetchVendors = async () => {
     try {
-      console.log('Fetching vendors from API...');
-      const res = await API.get('/get-vendors');
-      console.log('Vendors response:', res.data);
+      console.log('Fetching product-based and service-based vendors...');
+      // Product Vendor: only vendors linked to prod_serv with ps_type = 'product'
+      const productRes = await API.get('/get-vendors', { params: { type: 'product' } });
+      // Service Vendor: only vendors linked to prod_serv with ps_type = 'service'
+      const serviceRes = await API.get('/get-vendors', { params: { type: 'service' } });
 
-      if (res.data && Array.isArray(res.data)) {
-        // Transform API data to dropdown format - only show active vendors
-        const vendors = [
-          { value: '', label: 'Select' },
-          ...res.data
-            .filter(vendor => vendor.int_status === 1) // Only active vendors
-            .map(vendor => ({
-              value: vendor.vendor_id,
-              label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
-            }))
-        ];
-        setPurchaseSupplyOptions(vendors);
-        setServiceSupplyOptions(vendors);
-      }
+      const toOptions = (data) => [
+        { value: '', label: 'Select' },
+        ...(Array.isArray(data) ? data : [])
+          .filter(v => v && (v.int_status === 1 || v.int_status == null))
+          .map(vendor => ({
+            value: vendor.vendor_id,
+            label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
+          }))
+      ];
+      setPurchaseSupplyOptions(toOptions(productRes.data || []));
+      setServiceSupplyOptions(toOptions(serviceRes.data || []));
     } catch (err) {
       console.error('Error fetching vendors:', err);
-      console.log('Using dummy vendors as fallback');
-      // Keep using dummy data if API fails
-      setPurchaseSupplyOptions([]);
-      setServiceSupplyOptions([]);
+      setPurchaseSupplyOptions([{ value: '', label: 'Select' }]);
+      setServiceSupplyOptions([{ value: '', label: 'Select' }]);
     }
   };
 
@@ -605,12 +725,58 @@ const AddAssetForm = ({ userRole }) => {
         newForm[name] = value;
       }
       console.log('🔍 Form updated:', newForm);
+      
+      // Real-time validation for date mismatch and expiry before purchase
+      if ((name === 'expiryDate' || name === 'purchaseDate') && newForm.expiryDate && newForm.purchaseDate) {
+        const expiryDateObj = new Date(newForm.expiryDate);
+        const purchaseDateObj = new Date(newForm.purchaseDate);
+        
+        if (newForm.expiryDate === newForm.purchaseDate) {
+          setValidationErrors(prev => ({
+            ...prev,
+            dateMismatch: true,
+            expiryDateBeforePurchase: false,
+            expiryDate: true,
+            purchaseDate: true
+          }));
+        } else if (expiryDateObj < purchaseDateObj) {
+          setValidationErrors(prev => ({
+            ...prev,
+            dateMismatch: false,
+            expiryDateBeforePurchase: true,
+            expiryDate: true,
+            purchaseDate: false
+          }));
+        } else {
+          setValidationErrors(prev => ({
+            ...prev,
+            dateMismatch: false,
+            expiryDateBeforePurchase: false,
+            expiryDate: prev.expiryDate && name !== 'expiryDate' ? prev.expiryDate : false,
+            purchaseDate: prev.purchaseDate && name !== 'purchaseDate' ? prev.purchaseDate : false
+          }));
+        }
+      }
+      
+      // Real-time validation for vendor requirement
+      if (name === 'purchaseSupply' || name === 'serviceSupply') {
+        const isServiceVendorSatisfied = isVendorMaintainedType
+          ? Boolean(newForm.serviceSupply)
+          : true;
+        if (isServiceVendorSatisfied) {
+          setValidationErrors(prev => ({
+            ...prev,
+            vendorRequired: false
+          }));
+        }
+      }
+      
       return newForm;
     });
     setTouched((prev) => ({ ...prev, [name]: true }));
     
-    // Clear validation error when user starts typing
-    if (validationErrors[name]) {
+    // Clear validation error when user starts typing (for non-date fields)
+    if (validationErrors[name] && name !== 'expiryDate' && name !== 'purchaseDate') {
       setValidationErrors(prev => ({
         ...prev,
         [name]: false
@@ -740,7 +906,7 @@ const AddAssetForm = ({ userRole }) => {
 
       if (response.data.success) {
         const serialNumber = response.data.data.serialNumber;
-        setForm(prev => ({ ...prev, serialNumber }));
+        setForm(prev => ({ ...prev, serialNumberMode: 'generate', serialNumber }));
         toast.success(t('assets.serialNumberPreview', { serialNumber }));
         console.log(`👀 Preview serial number: ${serialNumber} (Will be saved when asset is created)`);
         
@@ -755,6 +921,24 @@ const AddAssetForm = ({ userRole }) => {
     } finally {
       setIsGeneratingSerial(false);
     }
+  };
+
+  const handleSerialNumberModeChange = (e) => {
+    const mode = e.target.value;
+    setForm(prev => ({
+      ...prev,
+      serialNumberMode: mode,
+      serialNumber:
+        mode === 'none'
+          ? ''
+          : mode === 'generate'
+            ? ''
+            : (prev.serialNumberMode === 'generate' && mode === 'existing')
+              ? ''
+              : prev.serialNumber
+    }));
+    setTouched(prev => ({ ...prev, serialNumberMode: true }));
+    setValidationErrors(prev => ({ ...prev, serialNumber: false }));
   };
 
   const isFieldInvalid = (field) => {
@@ -782,7 +966,7 @@ const AddAssetForm = ({ userRole }) => {
       hasErrors = true;
     }
     
-    if (!form.serialNumber || form.serialNumber.trim() === '') {
+    if (form.serialNumberMode !== 'none' && (!form.serialNumber || form.serialNumber.trim() === '')) {
       errors.serialNumber = true;
       hasErrors = true;
     }
@@ -807,6 +991,31 @@ const AddAssetForm = ({ userRole }) => {
       hasErrors = true;
     }
     
+    // Validate that expiry date and purchase date are not the same
+    if (form.expiryDate && form.purchaseDate && form.expiryDate === form.purchaseDate) {
+      errors.dateMismatch = true;
+      errors.expiryDate = true;
+      errors.purchaseDate = true;
+      hasErrors = true;
+    }
+    
+    // Validate that expiry date is not before purchase date
+    if (form.expiryDate && form.purchaseDate && form.expiryDate !== form.purchaseDate) {
+      const expiryDateObj = new Date(form.expiryDate);
+      const purchaseDateObj = new Date(form.purchaseDate);
+      if (expiryDateObj < purchaseDateObj) {
+        errors.expiryDateBeforePurchase = true;
+        errors.expiryDate = true;
+        hasErrors = true;
+      }
+    }
+    
+    // For vendor-maintained asset types, service vendor is mandatory.
+    if (isVendorMaintainedType && !form.serviceSupply) {
+      errors.vendorRequired = true;
+      hasErrors = true;
+    }
+    
     // Parent asset validation for child asset types
     const selectedType = assetTypes.find(at => at.asset_type_id === form.assetType);
     const isChild = (selectedType?.is_child === true || selectedType?.is_child === 'true') && !!selectedType?.parent_asset_type_id;
@@ -819,7 +1028,15 @@ const AddAssetForm = ({ userRole }) => {
     setValidationErrors(errors);
     
     if (hasErrors) {
-      toast.error(t('assets.pleaseFillAllRequiredFields'));
+      if (errors.dateMismatch) {
+        toast.error(t('assets.expiryDateCannotBeSameAsPurchaseDate') || 'Expiry date cannot be the same as purchase date');
+      } else if (errors.expiryDateBeforePurchase) {
+        toast.error(t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date');
+      } else if (errors.vendorRequired) {
+        toast.error(t('assets.serviceVendorIsRequired') || 'Service vendor is required for this asset type');
+      } else {
+        toast.error(t('assets.pleaseFillAllRequiredFields'));
+      }
       return;
     }
 
@@ -843,7 +1060,7 @@ const AddAssetForm = ({ userRole }) => {
         asset_type_id: form.assetType,
         asset_id: '', // Will be auto-generated by backend
         text: assetTypeText, // Asset type name like "Laptop", "Router", etc.
-        serial_number: form.serialNumber,
+        serial_number: form.serialNumberMode === 'none' ? null : (form.serialNumber?.trim() || null),
         description: form.description,
         branch_id: getUserBranchId(user?.user_id), // Auto-populate user's branch
         purchase_vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
@@ -920,17 +1137,19 @@ const AddAssetForm = ({ userRole }) => {
           action: 'Asset Saved Successfully'
         });
         
-        // Add serial number to print queue
-        try {
-          console.log('🖨️ Adding serial number to print queue:', form.serialNumber);
-          const printQueueResponse = await API.post('/asset-serial-print/', {
-            serial_no: form.serialNumber,
-            status: 'New',
-            reason: null
-          });
-          console.log('✅ Serial number added to print queue:', printQueueResponse.data);
-        } catch (printError) {
-          console.error('❌ Error adding to print queue:', printError);
+        // Add serial number to print queue (only when a serial number exists)
+        if (form.serialNumberMode !== 'none' && form.serialNumber?.trim()) {
+          try {
+            console.log('🖨️ Adding serial number to print queue:', form.serialNumber);
+            const printQueueResponse = await API.post('/asset-serial-print/', {
+              serial_no: form.serialNumber.trim(),
+              status: 'New',
+              reason: null
+            });
+            console.log('✅ Serial number added to print queue:', printQueueResponse.data);
+          } catch (printError) {
+            console.error('❌ Error adding to print queue:', printError);
+          }
         }
         
         // Now handle attachments if any
@@ -1035,11 +1254,12 @@ const AddAssetForm = ({ userRole }) => {
 
   // UI
   return (
-    <div className="max-w-6xl mx-auto mt-8 bg-[#F5F8FA] rounded-xl shadow">
+    <div className="max-w-6xl mx-auto mt-8 bg-[#F5F8FA] rounded-xl shadow overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
       {/* Header */}
       <div className="bg-[#0E2F4B] text-white py-4 px-8 rounded-t-xl border-b-4 border-[#FFC107] flex justify-center items-center">
         {/* <span className="text-2xl font-semibold text-center w-full">Add Asset</span> */}
       </div>
+      <div className="flex-1 min-h-0 overflow-y-auto">
       {/* Tabs */}
       <div className="px-8 pt-6">
         <div className="flex border-b border-gray-200 mb-6 gap-6">
@@ -1115,7 +1335,11 @@ const AddAssetForm = ({ userRole }) => {
                             onClick={() => {
                               console.log('Selected asset type:', at);
                               console.log('Selected group_required:', at.group_required);
-                              setForm((prev) => ({ ...prev, assetType: at.asset_type_id }));
+                              setForm((prev) => ({ 
+                                ...prev, 
+                                assetType: at.asset_type_id,
+                                serialNumber: prev.serialNumberMode === 'generate' ? '' : prev.serialNumber
+                              }));
                               setAssetTypeDropdownOpen(false);
                               setSearchAssetType("");
                               // Fetch dynamic properties for the selected asset type
@@ -1261,33 +1485,80 @@ const AddAssetForm = ({ userRole }) => {
                 </div>
               )}
 
-              <div>
+              <div className="col-span-2">
                 <label className="block text-sm mb-1 font-medium">
-                  {t('assets.serialNumber')} <span className="text-red-500">*</span>
+                  {t('assets.serialNumber')}
+                  {form.serialNumberMode !== 'none' && <span className="text-red-500"> *</span>}
                 </label>
-                              <div className="flex items-center">
-                <input 
-                  name="serialNumber" 
-                  placeholder="" 
-                  onChange={handleChange} 
-                  value={form.serialNumber} 
-                  className={`w-full px-3 py-2 rounded bg-white text-sm h-9 border ${validationErrors.serialNumber ? 'border-red-500' : 'border-gray-300'}`} 
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsGeneratingSerial(true);
-                    generateSerialNumber();
-                  }}
-                  className="ml-2 px-3 bg-[#0E2F4B] text-white rounded text-sm h-9 transition"
-                  disabled={isGeneratingSerial || !form.assetType}
-                >
-                  {isGeneratingSerial ? t('common.loading') : t('assets.generate')}
-                </button>
-              </div>
-              {validationErrors.serialNumber && (
-                <p className="mt-1 text-sm text-red-600">{t('assets.serialNumberIsRequired')}</p>
-              )}
+                <div className="flex items-center gap-2 w-full">
+                  <select
+                    name="serialNumberMode"
+                    value={form.serialNumberMode}
+                    onChange={handleSerialNumberModeChange}
+                    className="px-2 py-2 border border-gray-300 rounded bg-white text-sm h-9 w-48 shrink-0"
+                  >
+                    <option value="generate">{t('assets.serialNumberModeGenerateNew') || 'Generate New'}</option>
+                    <option value="existing">{t('assets.serialNumberModeUseExisting') || 'Use existing one'}</option>
+                    <option value="none">{t('assets.serialNumberModeNone') || 'No serial number'}</option>
+                  </select>
+
+                  {form.serialNumberMode !== 'none' && (
+                    <div className="relative flex-1 min-w-0">
+                      <input
+                        name="serialNumber"
+                        placeholder={
+                          form.serialNumberMode === 'existing'
+                            ? (t('assets.serialNumberUseExistingPlaceholder') || 'Scan or type serial number')
+                            : ''
+                        }
+                        onChange={handleChange}
+                        value={form.serialNumber}
+                        readOnly={form.serialNumberMode === 'generate'}
+                        className={`w-full min-w-0 px-3 py-2 rounded text-sm h-9 border ${
+                          validationErrors.serialNumber ? 'border-red-500' : 'border-gray-300'
+                        } ${
+                          form.serialNumberMode === 'generate'
+                            ? 'cursor-not-allowed bg-gray-50 text-gray-600'
+                            : 'bg-white'
+                        } ${
+                          form.serialNumberMode === 'existing' ? 'pr-10' : ''
+                        }`}
+                      />
+
+                      {form.serialNumberMode === 'existing' && (
+                        <button
+                          type="button"
+                          onClick={() => setShowSerialScanner(true)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          title={t('assets.scanBarcode')}
+                        >
+                          <QrCode size={18} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {form.serialNumberMode === 'generate' && (
+                    <button
+                      type="button"
+                      onClick={generateSerialNumber}
+                      className="px-5 bg-[#0E2F4B] text-white rounded text-sm h-9 transition shrink-0"
+                      disabled={isGeneratingSerial || !form.assetType}
+                    >
+                      {isGeneratingSerial ? t('common.loading') : t('assets.generate')}
+                    </button>
+                  )}
+                </div>
+
+                {form.serialNumberMode === 'none' && (
+                  <p className="mt-1 text-xs text-gray-600">
+                    {t('assets.serialNumberNoSerialHelper') || 'This asset will be created without a serial number.'}
+                  </p>
+                )}
+
+                {validationErrors.serialNumber && form.serialNumberMode !== 'none' && (
+                  <p className="mt-1 text-sm text-red-600">{t('assets.serialNumberIsRequired')}</p>
+                )}
               </div>
               <div className="col-span-4">
                 <label className="block text-sm mb-1 font-medium">{t('assets.assetName')}</label>
@@ -1331,15 +1602,20 @@ const AddAssetForm = ({ userRole }) => {
                     className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.expiryDate ? 'border-red-500' : 'border-gray-300'}`} 
                   />
                   {validationErrors.expiryDate && (
-                    <p className="mt-1 text-sm text-red-600">{t('assets.expiryDateIsRequired')}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {validationErrors.dateMismatch 
+                        ? (t('assets.expiryDateCannotBeSameAsPurchaseDate') || 'Expiry date cannot be the same as purchase date')
+                        : validationErrors.expiryDateBeforePurchase
+                        ? (t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date')
+                        : (t('assets.expiryDateIsRequired') || 'Expiry date is required')}
+                    </p>
                   )}
                 </div>
                 <div>
                   <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
                   <input 
                     name="warrantyPeriod" 
-                    type="text" 
-                    placeholder="e.g., 2 years" 
+                    type="date" 
                     onChange={handleChange} 
                     value={form.warrantyPeriod} 
                     className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
@@ -1355,7 +1631,11 @@ const AddAssetForm = ({ userRole }) => {
                     className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseDate ? 'border-red-500' : 'border-gray-300'}`} 
                   />
                   {validationErrors.purchaseDate && (
-                    <p className="mt-1 text-sm text-red-600">{t('assets.purchaseDateIsRequired')}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {validationErrors.dateMismatch 
+                        ? (t('assets.purchaseDateCannotBeSameAsExpiryDate') || 'Purchase date cannot be the same as expiry date')
+                        : (t('assets.purchaseDateIsRequired') || 'Purchase date is required')}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -1453,7 +1733,7 @@ const AddAssetForm = ({ userRole }) => {
                 <div className="relative w-full">
                   <button
                     type="button"
-                    className="border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9"
+                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired && !isVendorMaintainedType ? 'border-red-500' : ''}`}
                     onClick={() => toggleDropdown('purchaseSupply')}
                   >
                     <span className="text-xs truncate">
@@ -1502,15 +1782,21 @@ const AddAssetForm = ({ userRole }) => {
                     </div>
                   )}
                 </div>
+                {validationErrors.vendorRequired && !isVendorMaintainedType && !form.purchaseSupply && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required'}
+                  </p>
+                )}
               </div>
 
-              {/* Service Vendor Dropdown */}
+              {/* Service Vendor Dropdown (visible only for vendor-maintained asset types) */}
+              {isVendorMaintainedType && (
               <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.serviceVendor')}</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.serviceVendor')} {isVendorMaintainedType && <span className="text-red-500">*</span>}</label>
                 <div className="relative w-full">
                   <button
                     type="button"
-                    className="border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9"
+                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired ? 'border-red-500' : ''}`}
                     onClick={() => toggleDropdown('serviceSupply')}
                   >
                     <span className="text-xs truncate">
@@ -1559,7 +1845,15 @@ const AddAssetForm = ({ userRole }) => {
                     </div>
                   )}
                 </div>
+                {validationErrors.vendorRequired && !form.serviceSupply && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {isVendorMaintainedType
+                      ? (t('assets.serviceVendorIsRequired') || 'Service vendor is required for this asset type')
+                      : (t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required')}
+                  </p>
+                )}
               </div>
+              )}
 
 
               {/* Brand Dropdown */}
@@ -1840,6 +2134,7 @@ const AddAssetForm = ({ userRole }) => {
         )}
       </form>
       )}
+      </div>
       {activeTab === 'Attachments' && (
         <div className="px-8 pt-8 pb-4">
           {/* Header row: Add File button */}
@@ -1876,7 +2171,9 @@ const AddAssetForm = ({ userRole }) => {
                   {/* First row: Document Type and Custom Name */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium mb-1">{t('assets.documentType')}</label>
+                      <label className="block text-xs font-medium mb-1">
+                        {t('assets.documentType')} <span className="text-red-500">*</span>
+                      </label>
                       <SearchableDropdown
                         options={documentTypes}
                         value={att.type}
@@ -1893,7 +2190,9 @@ const AddAssetForm = ({ userRole }) => {
                       const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                       return needsCustomName && (
                         <div>
-                          <label className="block text-xs font-medium mb-1">Custom Name</label>
+                          <label className="block text-xs font-medium mb-1">
+                            Custom Name <span className="text-red-500">*</span>
+                          </label>
                           <input
                             type="text"
                             className="w-full border rounded px-2 py-2 text-sm bg-white h-[38px]"
@@ -1908,7 +2207,9 @@ const AddAssetForm = ({ userRole }) => {
                   
                   {/* Second row: File input and buttons */}
                   <div>
-                    <label className="block text-xs font-medium mb-1">{t('assets.file')}</label>
+                    <label className="block text-xs font-medium mb-1">
+                      {t('assets.file')} <span className="text-red-500">*</span>
+                    </label>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative flex-1">
                         <input
@@ -1964,9 +2265,54 @@ const AddAssetForm = ({ userRole }) => {
           )}
         </div>
       )}
+
+      {/* Serial Number Scanner Modal */}
+      {showSerialScanner && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">
+                {t('assets.scanBarcode')}
+              </h3>
+              <button
+                type="button"
+                onClick={stopSerialScanner}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="relative">
+              <div id="serial-qr-reader" className="aspect-[4/3] bg-black">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-64 h-64 border-2 border-white rounded-lg"></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 text-center">
+              <p className="text-sm text-gray-600">
+                {t('assets.positionBarcodeInScanningArea')}
+              </p>
+            </div>
+
+            <div className="p-4 border-t flex justify-end">
+              <button
+                type="button"
+                onClick={stopSerialScanner}
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-300"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Unified Save and Cancel Buttons */}
-      <div className="px-8 py-4 border-t border-gray-200 bg-gray-50">
+      <div className="shrink-0 border-t border-gray-200 bg-white">
+        <div className="px-8 py-4">
         <div className="flex justify-end gap-3">
           <button
             type="button"
@@ -1994,6 +2340,7 @@ const AddAssetForm = ({ userRole }) => {
               t('common.save')
             )}
           </button>
+        </div>
         </div>
       </div>
       <style>{`

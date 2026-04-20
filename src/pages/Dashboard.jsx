@@ -17,6 +17,8 @@ import AssetTypeChart from "../components/dashboardModules/AssetTypeChart";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import CronJobMonitor from "../components/dashboardModules/CronJobMonitor";
 import DashboardCronJobTrigger from "../components/DashboardCronJobTrigger";
+import DashboardInspectionTrigger from "../components/DashboardInspectionTrigger";
+import DashboardMaintenanceTrigger from "../components/DashboardMaintenanceTrigger";
 import DashboardWorkflowEscalationTrigger from "../components/DashboardWorkflowEscalationTrigger";
 import { useLanguage } from "../contexts/LanguageContext";
 import API from "../lib/axios";
@@ -211,6 +213,16 @@ const Dashboard = () => {
         {/* Depreciation Cron Job Trigger */}
         <div className="grid grid-cols-1 gap-4 sm:gap-6">
           <DashboardCronJobTrigger />
+        </div>
+
+        {/* Inspection Trigger */}
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          <DashboardInspectionTrigger />
+        </div>
+
+        {/* Maintenance Trigger */}
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          <DashboardMaintenanceTrigger />
         </div>
 
         {/* Workflow Escalation Trigger */}

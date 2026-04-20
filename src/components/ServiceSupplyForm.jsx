@@ -163,7 +163,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
           <tbody className="bg-white divide-y divide-gray-200">
             {services.map((p, idx) => (
               <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                <td className="px-6 py-2 text-sm text-gray-900">{p.asset_type_text || p.asset_type_id}</td>
+                <td className="px-6 py-2 text-sm text-gray-900">{p.asset_type_text || "N/A"}</td>
                 <td className="px-6 py-2 text-sm text-gray-900">{p.description}</td>
                 <td className="px-6 py-2 text-center">
                   <button 

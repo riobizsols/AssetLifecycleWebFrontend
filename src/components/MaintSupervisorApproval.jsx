@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { createPortal } from "react-dom";
 import API from "../lib/axios";
+import { useAuthStore } from "../store/useAuthStore";
 import ChecklistModal from "./ChecklistModal";
 import SearchableDropdown from "./ui/SearchableDropdown";
 import { generateUUID } from '../utils/uuid';
@@ -14,6 +15,10 @@ export default function MaintSupervisorApproval() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const orgId =
+    useAuthStore((s) => s.user?.org_id) ||
+    localStorage.getItem("org_id") ||
+    undefined;
   
   // Access control
   const { getAccessLevel } = useNavigation();
@@ -25,6 +30,8 @@ export default function MaintSupervisorApproval() {
   const [loadingData, setLoadingData] = useState(true);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+  const [softwareAtId, setSoftwareAtId] = useState(null);
+  const [resolvedAssetTypeId, setResolvedAssetTypeId] = useState(null);
 
   // NULL VALIDATION
   const [empty, setEmpty] = useState(false);
@@ -75,6 +82,65 @@ export default function MaintSupervisorApproval() {
   // Check if this is a subscription renewal (MT001)
   const isSubscriptionRenewal = maintenanceData?.maint_type_id === 'MT001' || 
                                  maintenanceData?.maintenance_type_name?.toLowerCase().includes('subscription');
+
+  const effectiveAssetTypeId =
+    maintenanceData?.asset_type_id || resolvedAssetTypeId || null;
+
+  const isSoftwareMaintenance =
+    !!softwareAtId && String(effectiveAssetTypeId || "") === String(softwareAtId);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await API.get("/org-settings/software-asset-type");
+        if (cancelled) return;
+        setSoftwareAtId(resp.data?.data?.software_at_id || null);
+      } catch {
+        if (cancelled) return;
+        setSoftwareAtId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // tblAssetMaintSch may not store asset_type_id; resolve via asset_id when needed
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const assetId = maintenanceData?.asset_id;
+        if (!assetId) {
+          setResolvedAssetTypeId(null);
+          return;
+        }
+
+        // If backend already provided asset_type_id, no need to resolve.
+        if (maintenanceData?.asset_type_id) {
+          setResolvedAssetTypeId(null);
+          return;
+        }
+
+        const res = await API.get(`/assets/${encodeURIComponent(assetId)}`, {
+          params: { context: "SUPERVISORAPPROVAL" },
+        });
+        if (cancelled) return;
+
+        const asset = res.data?.data || res.data;
+        const atId = asset?.asset_type_id || asset?.assetTypeId || null;
+        setResolvedAssetTypeId(atId || null);
+      } catch {
+        if (cancelled) return;
+        setResolvedAssetTypeId(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [maintenanceData?.asset_id, maintenanceData?.asset_type_id]);
   
   // Filter document types - exclude work order for subscription renewal
   const filteredMaintenanceDocTypes = useMemo(() => {
@@ -98,7 +164,9 @@ export default function MaintSupervisorApproval() {
     technician_name: "",
     technician_email: "",
     technician_phno: "",
-    cost: ""
+    cost: "",
+    hours_spent: "",
+    maint_notes: ""
   });
 
   // Validation state for each field
@@ -109,7 +177,9 @@ export default function MaintSupervisorApproval() {
     technician_name: false,
     technician_email: false,
     technician_phno: false,
-    cost: false
+    cost: false,
+    hours_spent: false,
+    maint_notes: false
   });
 
   useEffect(() => {
@@ -117,15 +187,22 @@ export default function MaintSupervisorApproval() {
       fetchMaintenanceData();
       fetchDocumentTypes();
     }
-  }, [id]);
+  }, [id, orgId]);
 
-  // Fetch checklist when maintenance data is available
+  // Fetch checklist when maintenance data is available (skip for software asset type)
   useEffect(() => {
-    if (maintenanceData?.asset_type_id) {
-      fetchChecklist();
+    if (!effectiveAssetTypeId) return;
+
+    if (isSoftwareMaintenance) {
+      setChecklist([]);
+      setLoadingChecklist(false);
       fetchMaintenanceDocuments();
+      return;
     }
-  }, [maintenanceData]);
+
+    fetchChecklist();
+    fetchMaintenanceDocuments();
+  }, [maintenanceData, isSoftwareMaintenance, effectiveAssetTypeId]);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -168,20 +245,28 @@ export default function MaintSupervisorApproval() {
       const apiUrl = `/maintenance-schedules/${id}`;
       // Pass context so logs go to SUPERVISORAPPROVAL CSV
       const res = await API.get(apiUrl, {
-        params: { context: 'SUPERVISORAPPROVAL' }
+        params: {
+          context: "SUPERVISORAPPROVAL",
+          ...(orgId ? { orgId } : {}),
+        },
       });
       if (res.data.success) {
         setMaintenanceData(res.data.data);
         // Initialize form data with existing values
+        const rawStatus = res.data.data.status || "";
+        // RO was removed from the supervisor dropdown; map legacy rows so the select stays valid
+        const normalizedStatus = rawStatus === "RO" ? "IN" : rawStatus;
         setFormData({
           notes: res.data.data.notes || "",
-          status: res.data.data.status || "",
+          status: normalizedStatus,
           po_number: res.data.data.po_number || "",
           invoice: res.data.data.invoice || "",
           technician_name: res.data.data.technician_name || "",
           technician_email: res.data.data.technician_email || "",
           technician_phno: res.data.data.technician_phno || "",
-          cost: res.data.data.cost || ""
+          cost: res.data.data.cost || "",
+          hours_spent: res.data.data.hours_spent || "",
+          maint_notes: res.data.data.maint_notes || ""
         });
       } else {
         toast.error(res.data.message || t('maintenanceSupervisor.failedToFetchMaintenanceData'));
@@ -1164,6 +1249,18 @@ export default function MaintSupervisorApproval() {
         hasErrors = true;
       }
     }
+
+    // Time Tracking Validation
+    const hoursSpent = parseFloat(formData.hours_spent || 0);
+    const hoursRequired = parseFloat(maintenanceData?.hours_required || 0);
+    
+    // Check if delayed
+    if (hoursSpent > hoursRequired && hoursRequired > 0) {
+      if (!formData.maint_notes || formData.maint_notes.trim() === '') {
+        errors.maint_notes = true;
+        hasErrors = true;
+      }
+    }
     
     // Set validation errors
     setValidationErrors(errors);
@@ -1177,7 +1274,8 @@ export default function MaintSupervisorApproval() {
       // Prepare update data
       const updateData = {
         ...formData,
-        cost: formData.cost ? parseFloat(formData.cost) : null
+        cost: formData.cost ? parseFloat(formData.cost) : null,
+        hours_spent: formData.hours_spent ? parseFloat(formData.hours_spent) : null
       };
       
       // For subscription renewal, status represents payment status:
@@ -1187,12 +1285,15 @@ export default function MaintSupervisorApproval() {
       // CA = Payment Cancelled
       
       const res = await API.put(`/maintenance-schedules/${id}`, updateData, {
-        params: { context: 'SUPERVISORAPPROVAL' }
+        params: {
+          context: "SUPERVISORAPPROVAL",
+          ...(orgId ? { orgId } : {}),
+        },
       });
       
       if (res.data.success) {
         toast.success(t('maintenanceSupervisor.maintenanceScheduleUpdatedSuccessfully'));
-        navigate("/supervisor-approval");
+        navigate("/maintenance-list");
       } else {
         toast.error(res.data.message || t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'));
       }
@@ -1218,12 +1319,25 @@ export default function MaintSupervisorApproval() {
     );
   }
 
+  const hoursRequiredForNotes = parseFloat(maintenanceData?.hours_required || 0);
+  const hoursSpentForNotes = parseFloat(formData.hours_spent || 0);
+  const actualHoursExceedStandard =
+    hoursRequiredForNotes > 0 && hoursSpentForNotes > hoursRequiredForNotes;
+  /** Hidden until actual hours exceed standard hours; always show in read-only if remarks were saved */
+  const showMandatoryMaintNotesField =
+    actualHoursExceedStandard ||
+    (isReadOnly && String(formData.maint_notes ?? "").trim() !== "");
+  /** Additional notes: only when actual hours do not exceed standard (read-only: still show if notes exist) */
+  const showAdditionalNotesField =
+    !actualHoursExceedStandard ||
+    (isReadOnly && String(formData.notes ?? "").trim() !== "");
+
   return (
     <div className="max-w-7xl mx-auto min-h-[600px] overflow-y-auto p-8 bg-white md:rounded shadow-lg mt-155">
       {/* Header with Back Button */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate("/supervisor-approval")}
+          onClick={() => navigate("/maintenance-list")}
           className="flex items-center gap-2 text-[#0E2F4B] hover:text-blue-700"
         >
           <ArrowLeft size={20} />
@@ -1280,26 +1394,28 @@ export default function MaintSupervisorApproval() {
       {/* Main Content */}
       <div className="space-y-6">
         {/* Checklist Section - At the Top */}
-        <div className="p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.maintenanceChecklist')}</h2>
-              {maintenanceData?.is_group_maintenance && (
-                <p className="text-sm text-gray-600 mt-1">Applies to all {maintenanceData.group_asset_count} assets in the group</p>
-              )}
+        {!isSoftwareMaintenance && (
+          <div className="p-6 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.maintenanceChecklist')}</h2>
+                {maintenanceData?.is_group_maintenance && (
+                  <p className="text-sm text-gray-600 mt-1">Applies to all {maintenanceData.group_asset_count} assets in the group</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowChecklist(true)}
+                disabled={loadingChecklist || checklist.length === 0}
+                className="px-4 py-2 border border-blue-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title="View and complete the asset maintenance checklist"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                {loadingChecklist ? t('maintenanceSupervisor.loading') : t('maintenanceSupervisor.viewChecklist')}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowChecklist(true)}
-              disabled={loadingChecklist || checklist.length === 0}
-              className="px-4 py-2 border border-blue-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              title="View and complete the asset maintenance checklist"
-            >
-              <ClipboardCheck className="w-4 h-4" />
-              {loadingChecklist ? t('maintenanceSupervisor.loading') : t('maintenanceSupervisor.viewChecklist')}
-            </button>
           </div>
-        </div>
+        )}
 
         {/* View Manual Section - Hide for subscription renewal */}
         {!isSubscriptionRenewal && (
@@ -2249,18 +2365,65 @@ export default function MaintSupervisorApproval() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')}</label>
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleInputChange}
-                rows={3}
-                disabled={isReadOnly}
-                className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                placeholder={t('maintenanceSupervisor.enterAdditionalNotes')}
-              />
+            {/* Time Tracking Section */}
+            <div className="p-4 bg-blue-50 rounded-md border border-blue-100">
+               <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.actualHoursSpent')} <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    name="hours_spent"
+                    value={formData.hours_spent}
+                    onChange={handleInputChange}
+                    disabled={isReadOnly}
+                    step="0.1"
+                    min="0"
+                    placeholder={t('maintenanceSupervisor.enterHours')}
+                    className={`w-full px-3 py-2 border ${validationErrors.hours_spent ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  />
+                   {validationErrors.hours_spent && (
+                    <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.hoursSpentIsRequired')}</p>
+                  )}
+               </div>
             </div>
+
+            {showMandatoryMaintNotesField && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('maintenanceSupervisor.reasonForDelay')}
+                  <span className="text-red-500 ml-0.5" aria-hidden="true">
+                    *
+                  </span>
+                </label>
+                <textarea
+                  name="maint_notes"
+                  value={formData.maint_notes}
+                  onChange={handleInputChange}
+                  rows={3}
+                  disabled={isReadOnly}
+                  required={actualHoursExceedStandard && !isReadOnly}
+                  className={`w-full px-3 py-2 border ${validationErrors.maint_notes ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  placeholder={t('maintenanceSupervisor.explainWhyLonger')}
+                />
+                {validationErrors.maint_notes && (
+                  <p className="mt-1 text-sm text-red-600 font-medium italic">{t('maintenanceSupervisor.maintNotesMandatoryDelay')}</p>
+                )}
+              </div>
+            )}
+
+            {showAdditionalNotesField && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')}</label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  rows={3}
+                  disabled={isReadOnly}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  placeholder={t('maintenanceSupervisor.enterAdditionalNotes')}
+                />
+              </div>
+            )}
 
             {/* Status Dropdown - Highlighted */}
             <div>
@@ -2292,7 +2455,7 @@ export default function MaintSupervisorApproval() {
             <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
-                onClick={() => navigate("/supervisor-approval")}
+                onClick={() => navigate("/maintenance-list")}
                 className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 {t('maintenanceSupervisor.cancel')}
@@ -2311,12 +2474,14 @@ export default function MaintSupervisorApproval() {
       </div>
 
       {/* Checklist Modal */}
-      <ChecklistModal
-        assetType={maintenanceData?.asset_type_name || "Asset"}
-        open={showChecklist}
-        onClose={() => setShowChecklist(false)}
-        checklist={checklist}
-      />
+      {!isSoftwareMaintenance && (
+        <ChecklistModal
+          assetType={maintenanceData?.asset_type_name || "Asset"}
+          open={showChecklist}
+          onClose={() => setShowChecklist(false)}
+          checklist={checklist}
+        />
+      )}
 
     </div>
   );

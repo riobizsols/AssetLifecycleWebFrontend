@@ -19,6 +19,8 @@ export const AppDataProvider = ({ children }) => {
   const [branches, setBranches] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
+  const [statusCodes, setStatusCodes] = useState([]); // [{id, status_code, text}]
+  const [statusCodeMap, setStatusCodeMap] = useState({}); // { IN: "Initiated", ... }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -103,6 +105,27 @@ export const AppDataProvider = ({ children }) => {
     }
   }, [isAuthenticated]);
 
+  // Fetch status codes
+  const fetchStatusCodes = useCallback(async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const response = await API.get('/status-codes');
+      const rows = response.data?.data;
+      if (response.data?.success && Array.isArray(rows)) {
+        setStatusCodes(rows);
+        const map = rows.reduce((acc, r) => {
+          if (r?.status_code) acc[r.status_code] = r.text || r.status_code;
+          return acc;
+        }, {});
+        setStatusCodeMap(map);
+      }
+    } catch (err) {
+      console.error('Error fetching status codes:', err);
+      // Don't block app for this
+    }
+  }, [isAuthenticated]);
+
   // Get user's branch ID
   const getUserBranchId = (userId) => {
     const user = users.find(u => u.user_id === userId);
@@ -156,7 +179,8 @@ export const AppDataProvider = ({ children }) => {
         fetchDepartments(),
         fetchBranches(),
         fetchVendors(),
-        fetchAssetTypes()
+        fetchAssetTypes(),
+        fetchStatusCodes()
       ]);
     } catch (err) {
       console.error('Error loading app data:', err);
@@ -177,6 +201,8 @@ export const AppDataProvider = ({ children }) => {
       setBranches([]);
       setVendors([]);
       setAssetTypes([]);
+      setStatusCodes([]);
+      setStatusCodeMap({});
       setError(null);
     }
   }, [isAuthenticated]); // Only run when authentication status changes
@@ -188,6 +214,8 @@ export const AppDataProvider = ({ children }) => {
     branches,
     vendors,
     assetTypes,
+    statusCodes,
+    statusCodeMap,
     loading,
     error,
     
@@ -198,11 +226,20 @@ export const AppDataProvider = ({ children }) => {
     fetchBranches,
     fetchVendors,
     fetchAssetTypes,
+    fetchStatusCodes,
     
     // Helper functions
     getUserBranchId,
     getUserBranchName,
     getUserDepartmentName,
+
+    // Status helper
+    getStatusText: (code) => {
+      if (!code) return "";
+      // Prefer exact match by code (e.g., IN, IP, CO, CA)
+      const t = statusCodeMap?.[code];
+      return t || String(code);
+    },
   };
 
   return (

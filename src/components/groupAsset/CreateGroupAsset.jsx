@@ -42,6 +42,8 @@ const CreateGroupAsset = () => {
   // New state for API data
   const [assetTypes, setAssetTypes] = useState([]);
   const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
+  const [loadingAssetTypeCounts, setLoadingAssetTypeCounts] = useState(false);
+  const [assetTypeCounts, setAssetTypeCounts] = useState({});
   const [loadingAssets, setLoadingAssets] = useState(false);
   
   // Document upload states
@@ -77,7 +79,7 @@ const CreateGroupAsset = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('createGroupAsset.failedToLoadDocumentTypes'));
+      toast.error(t('groupAsset.createGroupAsset.failedToLoadDocumentTypes'));
       setDocumentTypes([]);
     }
   };
@@ -90,15 +92,51 @@ const CreateGroupAsset = () => {
       if (response.data && response.data.success) {
         setAssetTypes(response.data.data || []);
       } else {
-        toast.error(t('createGroupAsset.failedToFetchAssetTypes'));
+        toast.error(t('groupAsset.createGroupAsset.failedToFetchAssetTypes'));
       }
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      toast.error(t('createGroupAsset.failedToFetchAssetTypes'));
+      toast.error(t('groupAsset.createGroupAsset.failedToFetchAssetTypes'));
     } finally {
       setLoadingAssetTypes(false);
     }
   };
+
+  useEffect(() => {
+    const fetchAssetTypeCounts = async () => {
+      try {
+        if (!Array.isArray(assetTypes) || assetTypes.length === 0) {
+          setAssetTypeCounts({});
+          return;
+        }
+
+        setLoadingAssetTypeCounts(true);
+        const responses = await Promise.all(
+          assetTypes.map((type) => API.get(`/group-assets/available/${type.asset_type_id}`))
+        );
+
+        const counts = {};
+        assetTypes.forEach((type, index) => {
+          const list = Array.isArray(responses[index]?.data?.assets)
+            ? responses[index].data.assets
+            : Array.isArray(responses[index]?.data?.data)
+            ? responses[index].data.data
+            : Array.isArray(responses[index]?.data)
+            ? responses[index].data
+            : [];
+          counts[type.asset_type_id] = list.length;
+        });
+        setAssetTypeCounts(counts);
+      } catch (error) {
+        console.error('Error fetching group asset type counts:', error);
+        setAssetTypeCounts({});
+      } finally {
+        setLoadingAssetTypeCounts(false);
+      }
+    };
+
+    fetchAssetTypeCounts();
+  }, [assetTypes]);
 
   // Fetch assets by asset type
   const fetchAssetsByType = async (assetTypeId) => {
@@ -117,11 +155,11 @@ const CreateGroupAsset = () => {
           return [...prev, ...uniqueNewAssets];
         });
       } else {
-        toast.error(t('createGroupAsset.failedToFetchAssets'));
+        toast.error(t('groupAsset.createGroupAsset.failedToFetchAssets'));
       }
     } catch (error) {
       console.error('Error fetching assets:', error);
-      toast.error(t('createGroupAsset.failedToFetchAssets'));
+      toast.error(t('groupAsset.createGroupAsset.failedToFetchAssets'));
     } finally {
       setLoadingAssets(false);
     }
@@ -174,7 +212,7 @@ const CreateGroupAsset = () => {
       setAvailableAssets(filteredList);
     } catch (error) {
       console.error('Error fetching assets:', error);
-      toast.error(t('createGroupAsset.failedToFetchAssets'));
+      toast.error(t('groupAsset.createGroupAsset.failedToFetchAssets'));
     } finally {
       setLoadingAssets(false);
     }
@@ -249,17 +287,17 @@ const CreateGroupAsset = () => {
 
   const handleSave = async () => {
     if (!groupName.trim()) {
-      toast.error(t('createGroupAsset.pleaseEnterGroupName'));
+      toast.error(t('groupAsset.createGroupAsset.pleaseEnterGroupName'));
       return;
     }
 
     if (!selectedAssetType) {
-      toast.error(t('createGroupAsset.pleaseSelectAssetType'));
+      toast.error(t('groupAsset.createGroupAsset.pleaseSelectAssetType'));
       return;
     }
 
     if (selectedAssets.length === 0) {
-      toast.error(t('createGroupAsset.pleaseSelectAtLeastOneAsset'));
+      toast.error(t('groupAsset.createGroupAsset.pleaseSelectAtLeastOneAsset'));
       return;
     }
 
@@ -334,14 +372,14 @@ const CreateGroupAsset = () => {
           console.log('CreateGroupAsset - uploadRows.length:', uploadRows.length);
         }
         
-        toast.success(t('createGroupAsset.assetGroupCreatedSuccessfully'));
+        toast.success(t('groupAsset.createGroupAsset.assetGroupCreatedSuccessfully'));
         navigate('/group-asset');
       } else {
-        toast.error(response.data?.message || t('createGroupAsset.failedToCreateAssetGroup'));
+        toast.error(response.data?.message || t('groupAsset.createGroupAsset.failedToCreateAssetGroup'));
       }
     } catch (error) {
       console.error('Error creating group:', error);
-      toast.error(t('createGroupAsset.failedToCreateAssetGroup'));
+      toast.error(t('groupAsset.createGroupAsset.failedToCreateAssetGroup'));
     } finally {
       setLoading(false);
     }
@@ -354,20 +392,20 @@ const CreateGroupAsset = () => {
   // Handle batch upload for group asset documents
   const handleBatchUpload = async () => {
     if (uploadRows.length === 0) {
-      toast.error(t('createGroupAsset.addAtLeastOneFile'));
+      toast.error(t('groupAsset.createGroupAsset.addAtLeastOneFile'));
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error(t('createGroupAsset.selectDocumentTypeAndChooseFile'));
+        toast.error(t('groupAsset.createGroupAsset.selectDocumentTypeAndChooseFile'));
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-        toast.error(t('createGroupAsset.enterCustomNameFor', { docType: selectedDocType.text }));
+        toast.error(t('groupAsset.createGroupAsset.enterCustomNameFor', { docType: selectedDocType.text }));
         return;
       }
     }
@@ -397,17 +435,17 @@ const CreateGroupAsset = () => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('createGroupAsset.allFilesProcessedSuccessfully'));
+          toast.success(t('groupAsset.createGroupAsset.allFilesProcessedSuccessfully'));
         } else {
-          toast.success(t('createGroupAsset.filesProcessed', { successCount, failCount }));
+          toast.success(t('groupAsset.createGroupAsset.filesProcessed', { successCount, failCount }));
         }
         // Don't clear attachments - they'll be uploaded with the group asset
       } else {
-        toast.error(t('createGroupAsset.failedToProcessAnyFiles'));
+        toast.error(t('groupAsset.createGroupAsset.failedToProcessAnyFiles'));
       }
     } catch (err) {
       console.error('Process error:', err);
-      toast.error(t('createGroupAsset.processFailed'));
+      toast.error(t('groupAsset.createGroupAsset.processFailed'));
     } finally {
       setIsUploading(false);
     }
@@ -420,7 +458,7 @@ const CreateGroupAsset = () => {
 
   // Get display text for dropdown button
   const getDropdownDisplayText = () => {
-    if (!selectedAssetType) return t('createGroupAsset.selectAssetType');
+    if (!selectedAssetType) return t('groupAsset.createGroupAsset.selectAssetType');
     const type = assetTypes.find(t => t.asset_type_id === selectedAssetType);
     return type ? `${type.asset_type_id} - ${type.text}` : selectedAssetType;
   };
@@ -450,13 +488,13 @@ const CreateGroupAsset = () => {
           <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6 flex-shrink-0">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <label className="text-sm font-medium text-gray-700 min-w-[80px] sm:min-w-[100px]">
-                {t('createGroupAsset.groupName')}:
+                {t('groupAsset.createGroupAsset.groupName')}
               </label>
               <input
                 type="text"
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                placeholder={t('createGroupAsset.enterGroupName')}
+                placeholder={t('groupAsset.createGroupAsset.enterGroupName')}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
               />
             </div>
@@ -467,7 +505,7 @@ const CreateGroupAsset = () => {
             {/* Available Assets - Fixed height */}
             <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 lg:flex-[2] h-[500px]">
               <div className="p-4 border-b flex-shrink-0">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('createGroupAsset.assetsList')}</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('groupAsset.createGroupAsset.assetsList')}</h2>
                 
                 {/* Asset Type Filter - Searchable Dropdown */}
                 <div className="mb-0">
@@ -495,7 +533,7 @@ const CreateGroupAsset = () => {
                             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                             <input
                               type="text"
-                              placeholder={t('createGroupAsset.searchAssetTypes')}
+                              placeholder={t('groupAsset.createGroupAsset.selectAssetType')}
                               value={dropdownSearchTerm}
                               onChange={(e) => setDropdownSearchTerm(e.target.value)}
                               className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -507,7 +545,7 @@ const CreateGroupAsset = () => {
                         {/* Dropdown Options */}
                         <div className="max-h-48 overflow-y-auto">
                           {loadingAssetTypes ? (
-                            <div className="px-3 py-2 text-sm text-gray-500">{t('createGroupAsset.loadingAssetTypes')}</div>
+                            <div className="px-3 py-2 text-sm text-gray-500">{t('groupAsset.createGroupAsset.loadingAssetTypes')}</div>
                           ) : filteredAssetTypes.length > 0 ? (
                             filteredAssetTypes.map((type) => {
                               return (
@@ -516,18 +554,32 @@ const CreateGroupAsset = () => {
                                   onClick={() => handleAssetTypeSelect(type)}
                                   className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between"
                                 >
-                                  <span className="text-sm text-gray-900">
-                                    {type.asset_type_id} - {type.text}
-                                  </span>
-                                  {selectedAssetType === type.asset_type_id && (
-                                    <Check size={16} className="text-blue-600" />
-                                  )}
+                                  <div className="flex items-center justify-between w-full gap-2">
+                                    <span className="text-sm text-gray-900 truncate">
+                                      {type.asset_type_id} - {type.text}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      {loadingAssetTypeCounts ? (
+                                        <span
+                                          className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"
+                                          aria-label="Loading"
+                                        />
+                                      ) : (
+                                        <span className="text-xs text-gray-500 whitespace-nowrap text-right">
+                                          ({assetTypeCounts[type.asset_type_id] || 0})
+                                        </span>
+                                      )}
+                                      {selectedAssetType === type.asset_type_id && (
+                                        <Check size={16} className="text-blue-600" />
+                                      )}
+                                    </div>
+                                  </div>
                                 </button>
                               );
                             })
                           ) : (
                             <div className="px-3 py-2 text-sm text-gray-500">
-                              {t('createGroupAsset.noAssetTypesFound')}
+                              {t('groupAsset.createGroupAsset.noAssetTypesFound')}
                             </div>
                           )}
                         </div>
@@ -543,7 +595,7 @@ const CreateGroupAsset = () => {
                             className="w-full px-3 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md flex items-center justify-center gap-2 font-medium"
                           >
                             <Plus size={16} />
-                            {t('createGroupAsset.createNewAssetType')}
+                            {t('groupAsset.createGroupAsset.createNewAssetType')}
                           </button>
                         </div>
                       </div>
@@ -559,27 +611,24 @@ const CreateGroupAsset = () => {
                 <div className="h-full overflow-auto">
                   {loadingAssets ? (
                     <div className="flex items-center justify-center h-32">
-                      <div className="text-gray-500">{t('createGroupAsset.loadingAssets')}</div>
+                      <div className="text-gray-500">{t('groupAsset.createGroupAsset.loadingAssets')}</div>
                     </div>
                   ) : availableAssets.length === 0 ? (
                     <div className="flex items-center justify-center h-32">
-                      <div className="text-gray-500">{selectedAssetType ? t('createGroupAsset.noAssetsFoundForSelectedType') : t('createGroupAsset.pleaseSelectAssetTypeToViewAssets')}</div>
+                      <div className="text-gray-500">{selectedAssetType ? t('groupAsset.createGroupAsset.noAssetsFoundForSelectedType') : t('groupAsset.createGroupAsset.pleaseSelectAssetTypeToViewAssets')}</div>
                     </div>
                   ) : (
                     <table className="w-full">
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr>
                           <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('createGroupAsset.assetId')}
+                            {t('groupAsset.createGroupAsset.name')}
                           </th>
                           <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('createGroupAsset.name')}
+                            {t('groupAsset.createGroupAsset.description')}
                           </th>
                           <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('createGroupAsset.description')}
-                          </th>
-                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('createGroupAsset.purchasedOn')}
+                            {t('groupAsset.createGroupAsset.purchasedOn')}
                           </th>
                         </tr>
                       </thead>
@@ -590,7 +639,6 @@ const CreateGroupAsset = () => {
                             className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                             onClick={() => handleSelectAsset(asset)}
                           >
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_id}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.name || asset.asset_name || asset.text || 'N/A'}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.description || asset.asset_description || 'N/A'}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{formatDate(asset.purchased_on || asset.purchase_date || asset.purchased_cost)}</td>
@@ -611,7 +659,7 @@ const CreateGroupAsset = () => {
                   onClick={() => handleSelectAsset(filteredAvailableAssets[0])}
                   disabled={filteredAvailableAssets.length === 0}
                   className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={t('createGroupAsset.addOneAsset')}
+                  title={t('groupAsset.createGroupAsset.addOneAsset')}
                 >
                   <span className="text-lg font-bold">→</span>
                 </button>
@@ -619,7 +667,7 @@ const CreateGroupAsset = () => {
                   onClick={handleSelectAll}
                   disabled={filteredAvailableAssets.length === 0}
                   className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={t('createGroupAsset.addAllAssets')}
+                  title={t('groupAsset.createGroupAsset.addAllAssets')}
                 >
                   <span className="text-lg font-bold">{'>>'}</span>
                 </button>
@@ -627,7 +675,7 @@ const CreateGroupAsset = () => {
                   onClick={() => handleDeselectAsset(filteredSelectedAssets[0])}
                   disabled={filteredSelectedAssets.length === 0}
                   className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={t('createGroupAsset.removeOneAsset')}
+                  title={t('groupAsset.createGroupAsset.removeOneAsset')}
                 >
                   <span className="text-lg font-bold">←</span>
                 </button>
@@ -635,7 +683,7 @@ const CreateGroupAsset = () => {
                   onClick={handleDeselectAll}
                   disabled={filteredSelectedAssets.length === 0}
                   className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={t('createGroupAsset.removeAllAssets')}
+                  title={t('groupAsset.createGroupAsset.removeAllAssets')}
                 >
                   <span className="text-lg font-bold">{'<<'}</span>
                 </button>
@@ -648,31 +696,31 @@ const CreateGroupAsset = () => {
                 onClick={handleSelectAll}
                 disabled={filteredAvailableAssets.length === 0}
                 className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-300 rounded"
-                title={t('createGroupAsset.addAllAssets')}
+                title={t('groupAsset.createGroupAsset.addAllAssets')}
               >
-                {t('createGroupAsset.addAll')}
+                {t('groupAsset.createGroupAsset.addAll')}
               </button>
               <button
                 onClick={handleDeselectAll}
                 disabled={filteredSelectedAssets.length === 0}
                 className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-300 rounded"
-                title={t('createGroupAsset.removeAllAssets')}
+                title={t('groupAsset.createGroupAsset.removeAllAssets')}
               >
-                {t('createGroupAsset.removeAll')}
+                {t('groupAsset.createGroupAsset.removeAll')}
               </button>
             </div>
 
             {/* Selected Assets - Fixed height */}
             <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 lg:flex-[2] h-[500px]">
               <div className="p-4 border-b flex-shrink-0">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('createGroupAsset.selectedAssets')}</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('groupAsset.createGroupAsset.selectedAssets')}</h2>
                 
-                {/* Search */}
-                <div className="relative">
+                {/* Search in selected assets */}
+                <div className="relative mb-0">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                   <input
                     type="text"
-                    placeholder={t('createGroupAsset.searchSelectedAssets')}
+                    placeholder={t('groupAsset.createGroupAsset.searchSelectedAssets')}
                     value={filterTerm}
                     onChange={(e) => setFilterTerm(e.target.value)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -687,16 +735,13 @@ const CreateGroupAsset = () => {
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
                         <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Asset Id
-                        </th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Description
-                        </th>
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Purchased On
+                            {t('groupAsset.createGroupAsset.name')}
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {t('groupAsset.createGroupAsset.description')}
+                          </th>
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {t('groupAsset.createGroupAsset.purchasedOn')}
                         </th>
                       </tr>
                     </thead>
@@ -707,7 +752,6 @@ const CreateGroupAsset = () => {
                             className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                             onClick={() => handleDeselectAsset(asset)}
                           >
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.asset_id}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.name || asset.asset_name || asset.text || 'N/A'}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{asset.description || asset.asset_description || 'N/A'}</td>
                             <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">{formatDate(asset.purchased_on || asset.purchase_date || asset.purchased_cost)}</td>
@@ -723,35 +767,35 @@ const CreateGroupAsset = () => {
           {/* Documents Section */}
           <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-sm border p-4 flex-shrink-0">
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('createGroupAsset.documents')}</h3>
-              <div className="text-sm text-gray-600 mb-3">{t('createGroupAsset.documentTypesLoadedFromSystem')}</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('groupAsset.createGroupAsset.documents')}</h3>
+              <div className="text-sm text-gray-600 mb-3">{t('groupAsset.createGroupAsset.documentTypesLoadedFromSystem')}</div>
               
               <div className="flex items-center justify-between mb-4">
-                <div className="text-sm font-medium text-gray-700">{t('createGroupAsset.uploadDocuments')}</div>
+                <div className="text-sm font-medium text-gray-700">{t('groupAsset.createGroupAsset.uploadDocuments')}</div>
                 <button 
                   type="button" 
                   onClick={() => setUploadRows(prev => ([...prev, { id: generateUUID(), type:'', docTypeName:'', file:null, previewUrl:'' }]))}
                   className="h-[38px] px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 inline-flex items-center"
                 >
                   <Plus size={16} className="mr-2" />
-                  {t('createGroupAsset.addDocument')}
+                  {t('groupAsset.createGroupAsset.addDocument')}
                 </button>
               </div>
               
               {uploadRows.length === 0 ? (
-                <div className="text-sm text-gray-500">{t('createGroupAsset.noDocumentsAdded')}</div>
+                <div className="text-sm text-gray-500">{t('groupAsset.createGroupAsset.noDocumentsAdded')}</div>
               ) : (
                 <div className="space-y-3">
                   {uploadRows.map(r => (
                     <div key={r.id} className="grid grid-cols-12 gap-3 items-start bg-white border border-gray-200 rounded p-3">
                       <div className="col-span-3">
-                        <label className="block text-xs font-medium mb-1">{t('createGroupAsset.documentType')}</label>
+                        <label className="block text-xs font-medium mb-1">{t('groupAsset.createGroupAsset.documentType')}</label>
                         <SearchableDropdown
                           options={documentTypes}
                           value={r.type}
                           onChange={(value) => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,type:value}:x))}
-                          placeholder={t('createGroupAsset.selectType')}
-                          searchPlaceholder={t('createGroupAsset.searchTypes')}
+                          placeholder={t('groupAsset.createGroupAsset.selectType')}
+                          searchPlaceholder={t('groupAsset.createGroupAsset.searchTypes')}
                           className="w-full"
                           displayKey="text"
                           valueKey="id"
@@ -763,12 +807,12 @@ const CreateGroupAsset = () => {
                         const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                         return needsCustomName && (
                           <div className="col-span-3">
-                            <label className="block text-xs font-medium mb-1">{t('createGroupAsset.customName')}</label>
+                            <label className="block text-xs font-medium mb-1">{t('groupAsset.createGroupAsset.customName')}</label>
                             <input
                               className="w-full border rounded px-2 py-2 text-sm h-[38px]"
                               value={r.docTypeName}
                               onChange={e => setUploadRows(prev => prev.map(x => x.id===r.id?{...x,docTypeName:e.target.value}:x))}
-                              placeholder={t('createGroupAsset.enterCustomNameFor', { docType: selectedDocType?.text })}
+                              placeholder={t('groupAsset.createGroupAsset.enterCustomNameFor', { docType: selectedDocType?.text })}
                             />
                           </div>
                         );
@@ -779,7 +823,7 @@ const CreateGroupAsset = () => {
                         const needsCustomName = selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT');
                         return needsCustomName ? 'col-span-4' : 'col-span-7';
                       })()}>
-                        <label className="block text-xs font-medium mb-1">{t('createGroupAsset.fileMaxSize')}</label>
+                        <label className="block text-xs font-medium mb-1">{t('groupAsset.createGroupAsset.fileMaxSize')}</label>
                         <div className="flex items-center gap-2">
                           <div className="relative flex-1 max-w-md">
                             <input
@@ -788,7 +832,7 @@ const CreateGroupAsset = () => {
                               onChange={e => {
                                 const f = e.target.files?.[0] || null;
                                 if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                  toast.error(t('createGroupAsset.fileSizeExceedsLimit'));
+                                  toast.error(t('groupAsset.createGroupAsset.fileSizeExceedsLimit'));
                                   e.target.value = '';
                                   return;
                                 }
@@ -805,7 +849,7 @@ const CreateGroupAsset = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                               </svg>
                               <span className="truncate max-w-[200px] inline-block">
-                                {r.file ? r.file.name : t('createGroupAsset.chooseFile')}
+                                {r.file ? r.file.name : t('groupAsset.createGroupAsset.chooseFile')}
                               </span>
                             </label>
                           </div>
@@ -821,7 +865,7 @@ const CreateGroupAsset = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542 7z" />
                               </svg>
-                              {t('createGroupAsset.preview')}
+                              {t('groupAsset.createGroupAsset.preview')}
                             </a>
                           )}
                           <button 
@@ -832,7 +876,7 @@ const CreateGroupAsset = () => {
                             <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            {t('createGroupAsset.remove')}
+                            {t('groupAsset.createGroupAsset.remove')}
                           </button>
                         </div>
                       </div>
@@ -861,14 +905,14 @@ const CreateGroupAsset = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        {t('createGroupAsset.processing')}
+                        {t('groupAsset.createGroupAsset.processing')}
                       </span>
                     ) : (
                       <>
                         <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                         </svg>
-                        {t('createGroupAsset.processAllFiles')}
+                        {t('groupAsset.createGroupAsset.processAllFiles')}
                       </>
                     )}
                   </button>
@@ -882,7 +926,7 @@ const CreateGroupAsset = () => {
             <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">
               <div>
                 <p className="text-sm text-gray-600">
-                  {t('createGroupAsset.totalAssetsSelected')}: <span className="font-semibold text-gray-900">{selectedAssets.length}</span>
+                  {t('groupAsset.createGroupAsset.totalAssetsSelected', { count: selectedAssets.length })}
                 </p>
               </div>
               <div className="flex gap-2 sm:gap-3">
@@ -890,7 +934,7 @@ const CreateGroupAsset = () => {
                   onClick={handleCancel}
                   className="px-3 sm:px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm sm:text-base"
                 >
-                  {t('createGroupAsset.cancel')}
+                  {t('groupAsset.createGroupAsset.cancel')}
                 </button>
                 <button
                   onClick={handleSave}
@@ -902,7 +946,7 @@ const CreateGroupAsset = () => {
                   ) : (
                     <Save size={16} />
                   )}
-                  {t('createGroupAsset.save')}
+                  {t('groupAsset.createGroupAsset.save')}
                 </button>
               </div>
             </div>

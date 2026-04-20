@@ -1,6 +1,18 @@
 import { Pencil, Eye, Plus } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 
+// Hide internal/database IDs from all UI tables by default.
+// IDs are still present in `row` for internal usage, but not displayed.
+const isIdColumnName = (name) => {
+  const n = String(name || "").toLowerCase().trim();
+  if (!n) return false;
+  if (n === "id") return true;
+  if (n.endsWith("_id")) return true;
+  if (n === "org_id") return true;
+  if (n.endsWith("_uuid") || n === "uuid") return true;
+  return false;
+};
+
 const CustomTable = ({
   visibleColumns,
   data,
@@ -20,8 +32,9 @@ const CustomTable = ({
   showAddButton = false,
   addButtonTitle = "Add",
   isReadOnly = false,
+  renderActions,
 }) => {
-  const visible = visibleColumns.filter((col) => col.visible);
+  const visible = visibleColumns.filter((col) => col.visible && !isIdColumnName(col.name));
 
   const toggleRow = (keyValue) => {
     setSelectedRows((prev) =>
@@ -68,6 +81,11 @@ const CustomTable = ({
       return row[col.name];
     }
     
+    // Handle formatter if provided
+    if (col.formatter && typeof col.formatter === 'function') {
+      return col.formatter(row[col.name], col.name, row);
+    }
+    
     // Handle other columns
     return row[col.name];
   };
@@ -83,7 +101,7 @@ const CustomTable = ({
           onClick={onRowClick ? () => onRowClick(row) : undefined}
         >
           {visible.map((col, colIndex) => (
-            <td key={colIndex} className="border text-xs px-4 py-2">
+            <td key={colIndex} className="text-xs px-4 py-2">
               {colIndex === 0 ? (
                 <div className="flex items-center gap-2">
                   {showActions && showCheckbox && !isReadOnly && (
@@ -98,16 +116,16 @@ const CustomTable = ({
                       className="accent-yellow-400"
                     />
                   )}
-                  {renderCell ? renderCell(col, row) : renderCellContent(col, row)}
+                  {renderCell ? (renderCell(col, row) ?? renderCellContent(col, row)) : renderCellContent(col, row)}
                 </div>
               ) : (
-                renderCell ? renderCell(col, row) : renderCellContent(col, row)
+                renderCell ? (renderCell(col, row) ?? renderCellContent(col, row)) : renderCellContent(col, row)
               )}
             </td>
           ))}
 
           {showActions && (
-            <td className="border px-4 py-2 flex gap-2 justify-center">
+            <td className="px-4 py-2 flex gap-2 justify-center items-center">
               {/* {onView && (
                 <button 
                   onClick={(e) => {
@@ -156,6 +174,7 @@ const CustomTable = ({
                   <Pencil size={16} />
                 </button>
               )}
+              {renderActions && renderActions(row)}
             </td>
           )}
         </tr>

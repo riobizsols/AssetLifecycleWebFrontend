@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown,
   Download,
@@ -15,16 +16,124 @@ import DeleteConfirmModal from "./DeleteConfirmModal";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 
+// Hide internal/database IDs from all UI tables by default.
+// IDs are still present in data for row keys and API calls, but not displayed or selectable.
+const isIdColumnName = (name) => {
+  const n = String(name || "").toLowerCase().trim();
+  if (!n) return false;
+  if (n === "id") return true;
+  if (n.endsWith("_id")) return true;
+  if (n === "org_id") return true;
+  if (n.endsWith("_uuid") || n === "uuid") return true;
+  // Common workflow IDs still end with _id, but keep explicit for clarity.
+  if (n === "wfamsh_id" || n === "wfamsd_id" || n === "wfscrap_h_id") return true;
+  return false;
+};
+
+// Columns sub-menu that stays within viewport - rendered via portal to avoid parent overflow clipping
+const DROPDOWN_WIDTH = 260;
+const DROPDOWN_GAP = 4;
+
+const ColumnsSubmenu = ({ visibleColumns, toggleColumn, isIdColumnName, triggerButtonRef }) => {
+  const elRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const el = elRef.current;
+    const button = triggerButtonRef?.current ?? el?.parentElement?.querySelector("button");
+    if (!el || !button) return;
+
+    const rect = button.getBoundingClientRect();
+    const padding = 12;
+    const maxHeight = Math.min(320, window.innerHeight - padding * 2);
+    const spaceBelow = window.innerHeight - rect.bottom - padding;
+    const spaceAbove = rect.top - padding;
+    const spaceRight = window.innerWidth - rect.right - padding;
+    const spaceLeft = rect.left - padding;
+
+    // Horizontal: prefer right of button; if not enough space, open to the left
+    if (spaceRight >= DROPDOWN_WIDTH + DROPDOWN_GAP) {
+      el.style.left = `${rect.right + DROPDOWN_GAP}px`;
+      el.style.right = "auto";
+    } else if (spaceLeft >= DROPDOWN_WIDTH + DROPDOWN_GAP) {
+      el.style.left = "auto";
+      el.style.right = `${window.innerWidth - rect.left + DROPDOWN_GAP}px`;
+    } else {
+      el.style.left = `${padding}px`;
+      el.style.right = "auto";
+      el.style.maxWidth = `${window.innerWidth - padding * 2}px`;
+    }
+
+    el.style.bottom = "auto";
+
+    // Vertical: constrain height so dropdown stays in viewport
+    const availableHeight = Math.max(spaceBelow, spaceAbove, 150);
+    const height = Math.min(maxHeight, availableHeight);
+
+    if (spaceBelow >= Math.min(maxHeight, 180)) {
+      el.style.top = `${rect.top}px`;
+      el.style.maxHeight = `${Math.min(height, spaceBelow)}px`;
+    } else if (spaceAbove > spaceBelow) {
+      el.style.top = "auto";
+      el.style.bottom = `${window.innerHeight - rect.top}px`;
+      el.style.maxHeight = `${Math.min(height, spaceAbove)}px`;
+    } else {
+      el.style.top = `${rect.top}px`;
+      el.style.maxHeight = `${Math.min(height, Math.max(spaceBelow, 120))}px`;
+    }
+  }, [visibleColumns, triggerButtonRef]);
+
+  const menuContent = (
+    <div
+      ref={elRef}
+      className="fixed bg-white shadow-lg border border-gray-300 z-[60] overflow-y-auto overscroll-contain"
+      style={{
+        top: 0,
+        width: DROPDOWN_WIDTH,
+        minWidth: DROPDOWN_WIDTH,
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.nativeEvent.stopImmediatePropagation();
+      }}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      {visibleColumns
+        .filter((col) => !isIdColumnName(col.name))
+        .map((col, i) => (
+          <label
+            key={i}
+            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer whitespace-nowrap"
+          >
+            <input
+              type="checkbox"
+              checked={col.visible}
+              onChange={(e) => toggleColumn(col.name)}
+              className="flex-shrink-0"
+            />
+            <span>{col.label}</span>
+          </label>
+        ))}
+    </div>
+  );
+
+  return typeof document !== "undefined"
+    ? createPortal(menuContent, document.body)
+    : menuContent;
+};
+
 const ContentBox = ({
   title,
   filters = [], // This represents the available columns for filtering/display
   onFilterChange, // This function is called to apply filters to the parent data
   onSort,
   sortConfig = { sorts: [] }, // Add default value
+  rowKey = "id", // Row identifier used for select-all and bulk actions
   selectedRows = [],
   setSelectedRows = () => {},
   onDeleteSelected = () => {},
   data = [], // The actual data to be displayed and filtered
+  // Optional: provide IDs for "select all" (useful when the table is filtered/sorted in the page)
+  getSelectAllIds,
   onDownload,
   onRefresh, // Add onRefresh prop
   children,
@@ -36,6 +145,7 @@ const ContentBox = ({
   onAdd, // Add onAdd prop
   customHeaderActions, // Custom header actions
   isReadOnly = false, // Add isReadOnly prop
+  onHeaderClick, // Add onHeaderClick prop
 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -51,7 +161,9 @@ const ContentBox = ({
   const [searchableDropdownOpen, setSearchableDropdownOpen] = useState({});
   const [searchableDropdownSearch, setSearchableDropdownSearch] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [showAddFilterSubmenu, setShowAddFilterSubmenu] = useState(null); // Track which column's add filter submenu is open
   const dropdownRef = useRef({});
+  const columnsButtonRef = useRef(null);
 
   // Handle refresh with animation
   const handleRefresh = async () => {
@@ -73,9 +185,51 @@ const ContentBox = ({
     // If 'search' is already an active filter, ensure columnFilters is initialized with at least one filter
     const searchFilterActive = activeFilters.some((f) => f.type === "search");
     if (searchFilterActive && columnFilters.length === 0) {
-      setColumnFilters([{ column: "", value: "" }]);
+      setColumnFilters([{ column: "", value: [], locked: false }]);
     }
   }, [activeFilters]); // Run when activeFilters change
+
+  // Auto-add and update special filter types
+  useEffect(() => {
+    const specialFilters = filters.filter(f => f.type && [].includes(f.type));
+    
+    if (specialFilters.length > 0) {
+      setActiveFilters(prev => {
+        const newActiveFilters = [...prev];
+        
+        specialFilters.forEach(filter => {
+          const existingIndex = newActiveFilters.findIndex(af => af.type === filter.type);
+          
+          if (existingIndex >= 0) {
+            // Update existing filter
+            newActiveFilters[existingIndex] = {
+              ...newActiveFilters[existingIndex],
+              value: filter.value,
+              options: filter.options,
+              label: filter.label
+            };
+          } else {
+            // Add new filter
+            newActiveFilters.push({
+              type: filter.type,
+              label: filter.label,
+              value: filter.value,
+              options: filter.options
+            });
+          }
+        });
+        
+        return newActiveFilters;
+      });
+    }
+  }, [filters]);
+
+  // Close add filter submenu when column dropdown closes
+  useEffect(() => {
+    if (openDropdown === null) {
+      setShowAddFilterSubmenu(null);
+    }
+  }, [openDropdown]);
 
   // Handle click outside to close searchable dropdowns
   useEffect(() => {
@@ -94,35 +248,55 @@ const ContentBox = ({
           }));
         }
       });
+      
+      // Close add filter submenu if clicking outside
+      if (showAddFilterSubmenu !== null) {
+        const addFilterButton = document.querySelector(`[data-add-filter-index="${showAddFilterSubmenu}"]`);
+        if (addFilterButton && !addFilterButton.contains(event.target)) {
+          const submenu = document.querySelector(`[data-add-filter-submenu="${showAddFilterSubmenu}"]`);
+          if (submenu && !submenu.contains(event.target)) {
+            setShowAddFilterSubmenu(null);
+          }
+        }
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [searchableDropdownOpen]);
+  }, [searchableDropdownOpen, showAddFilterSubmenu]);
 
   const handleColumnChange = (index, column) => {
     const updated = [...columnFilters];
+    // Don't allow column change if it's locked (from column dropdown)
+    if (updated[index].locked) {
+      return;
+    }
     updated[index].column = column;
-    updated[index].value = ""; // Reset value when column changes
+    updated[index].value = []; // Reset value to empty array when column changes
     setColumnFilters(updated);
 
-    const validFilters = updated.filter((f) => f.column && f.value);
+    const validFilters = updated.filter((f) => f.column && f.value && f.value.length > 0);
     onFilterChange("columnFilters", validFilters);
   };
 
   const handleValueChange = (index, value) => {
     const updated = [...columnFilters];
-    updated[index].value = value;
+    // Ensure value is always an array
+    if (!Array.isArray(value)) {
+      updated[index].value = value ? [value] : [];
+    } else {
+      updated[index].value = value;
+    }
     setColumnFilters(updated);
 
-    const validFilters = updated.filter((f) => f.column && f.value);
+    const validFilters = updated.filter((f) => f.column && f.value && f.value.length > 0);
     onFilterChange("columnFilters", validFilters); // Pass valid filters to parent
   };
 
   const addColumnFilter = () => {
-    setColumnFilters([...columnFilters, { column: "", value: "" }]);
+    setColumnFilters([...columnFilters, { column: "", value: [], locked: false }]);
   };
 
   const removeColumnFilter = (index) => {
@@ -135,7 +309,7 @@ const ContentBox = ({
     ) {
       setActiveFilters((prev) => prev.filter((f) => f.type !== "search"));
     }
-    const validFilters = updated.filter((f) => f.column && f.value);
+    const validFilters = updated.filter((f) => f.column && f.value && f.value.length > 0);
     onFilterChange("columnFilters", validFilters); // Update parent's filter state
   };
 
@@ -154,16 +328,28 @@ const ContentBox = ({
     }));
   };
 
-  const selectSearchableValue = (index, value) => {
-    handleValueChange(index, value);
-    setSearchableDropdownOpen(prev => ({
-      ...prev,
-      [index]: false
-    }));
-    setSearchableDropdownSearch(prev => ({
-      ...prev,
-      [index]: ""
-    }));
+  const toggleValueSelection = (index, value) => {
+    const currentFilter = columnFilters[index];
+    const currentValues = Array.isArray(currentFilter.value) ? currentFilter.value : (currentFilter.value ? [currentFilter.value] : []);
+    
+    // Toggle value in array
+    let newValues;
+    if (currentValues.includes(value)) {
+      // Remove value if already selected
+      newValues = currentValues.filter(v => v !== value);
+    } else {
+      // Add value if not selected
+      newValues = [...currentValues, value];
+    }
+    
+    handleValueChange(index, newValues);
+  };
+
+  const removeSelectedValue = (index, valueToRemove) => {
+    const currentFilter = columnFilters[index];
+    const currentValues = Array.isArray(currentFilter.value) ? currentFilter.value : (currentFilter.value ? [currentFilter.value] : []);
+    const newValues = currentValues.filter(v => v !== valueToRemove);
+    handleValueChange(index, newValues);
   };
 
   const availableFilterTypes = ["date", "search", "simpleSearch"];
@@ -172,18 +358,35 @@ const ContentBox = ({
     (type) => !selectedTypes.includes(type)
   );
 
-  const handleAddFilter = (type) => {
+  const handleAddFilter = (type, preSelectedColumn = null) => {
     const labelMap = {
       date: t('assets.expiryDate'),
       search: t('common.searchByColumn'),
     };
-    const newFilter = { type, label: labelMap[type] };
-    setActiveFilters([...activeFilters, newFilter]);
-    // If 'search by column' is added, initialize with one empty column filter
-    if (type === "search" && columnFilters.length === 0) {
-      setColumnFilters([{ column: "", value: "" }]);
+    
+    // Check if filter type already exists
+    const filterExists = activeFilters.some((f) => f.type === type);
+    
+    if (!filterExists) {
+      // Add new filter type if it doesn't exist
+      const newFilter = { type, label: labelMap[type] };
+      setActiveFilters([...activeFilters, newFilter]);
     }
+    
+    // If 'search by column' is added (or already exists), handle column filter
+    if (type === "search") {
+      if (preSelectedColumn) {
+        // Pre-select the column if provided (from column dropdown)
+        // Add a new column filter with the pre-selected column and mark it as locked
+        setColumnFilters([...columnFilters, { column: preSelectedColumn, value: [], locked: true }]);
+      } else if (columnFilters.length === 0) {
+        // Otherwise, initialize with empty column filter (not locked)
+        setColumnFilters([{ column: "", value: [], locked: false }]);
+      }
+    }
+    
     setFilterMenuOpen(false);
+    setShowAddFilterSubmenu(null); // Close submenu if open
   };
 
   const handleRemoveFilter = (index) => {
@@ -210,13 +413,19 @@ const ContentBox = ({
   };
 
   const [visibleColumns, setVisibleColumns] = useState(
-    filters.map((f, i) => ({
-      ...f,
-      // Preserve existing visible property if set (e.g., from column access control)
-      // If visible is explicitly false (NONE access), always keep it false
-      // Otherwise, use default visibility logic
-      visible: f.visible === false ? false : (f.visible !== undefined ? f.visible : (i < 7 || f.name === "status")), // Always show Status column
-    }))
+    filters
+      .filter(f => !f.type || ![].includes(f.type)) // Exclude special filter types from columns
+      .map((f, i) => ({
+        ...f,
+        // Preserve existing visible property if set (e.g., from column access control)
+        // If visible is explicitly false (NONE access), always keep it false
+        // Otherwise, use default visibility logic
+        visible: isIdColumnName(f.name)
+          ? false
+          : (f.visible === false
+            ? false
+            : (f.visible !== undefined ? f.visible : (i < 7 || f.name === "status" || f.name === "int_status"))), // Always show Status column
+      }))
   );
 
   // Sync visibleColumns when incoming filters change
@@ -225,30 +434,40 @@ const ContentBox = ({
       // Create a map of previous visibility for user-toggled columns
       const prevVisibilityMap = new Map(prevVisibleColumns.map(col => [col.name, col.visible]));
       
-      return filters.map((f, i) => {
-        // If filter has visible=false (from column access NONE), always keep it false
-        if (f.visible === false) {
-          return { ...f, visible: false };
-        }
-        
-        // If filter has visible=true (from column access), use it
-        if (f.visible === true) {
-          // Preserve user's manual toggle if they changed it (unless it was forced to false)
+      return filters
+        .filter(f => !f.type || ![].includes(f.type)) // Exclude special filter types from columns
+        .map((f, i) => {
+          // Never allow ID columns to be visible in UI
+          if (isIdColumnName(f.name)) {
+            return { ...f, visible: false };
+          }
+
+          // If filter has visible=false (from column access NONE), always keep it false
+          if (f.visible === false) {
+            return { ...f, visible: false };
+          }
+          
+          // If filter has visible=true (from column access), use it
+          if (f.visible === true) {
+            // Preserve user's manual toggle if they changed it (unless it was forced to false)
+            const prevVisible = prevVisibilityMap.get(f.name);
+            return { ...f, visible: prevVisible === false ? false : true };
+          }
+          
+          // Otherwise, preserve previous visibility or use default
           const prevVisible = prevVisibilityMap.get(f.name);
-          return { ...f, visible: prevVisible === false ? false : true };
-        }
-        
-        // Otherwise, preserve previous visibility or use default
-        const prevVisible = prevVisibilityMap.get(f.name);
-        return {
-        ...f,
-          visible: prevVisible !== undefined ? prevVisible : (i < 7 || f.name === "status"),
-        };
-      });
+          return {
+          ...f,
+            visible: prevVisible !== undefined ? prevVisible : (i < 7 || f.name === "status" || f.name === "int_status"),
+          };
+        });
     });
   }, [filters]);
 
   const toggleColumn = (name) => {
+    // Never allow toggling ID columns to visible
+    if (isIdColumnName(name)) return;
+
     // Find the original filter to check if it has forced visibility (from column access)
     const originalFilter = filters.find(f => f.name === name);
     // If the original filter has visible=false (NONE access), don't allow toggling
@@ -275,15 +494,26 @@ const ContentBox = ({
         : { label: col.label, name: col.name, options: [], onChange: () => {} };
     });
 
+  const getRowId = (item) => {
+    if (!item || typeof item !== "object") return undefined;
+    if (rowKey && item[rowKey] !== undefined && item[rowKey] !== null) return item[rowKey];
+    // Backwards-compatible fallbacks for older pages that don't pass rowKey
+    return item.branch_id ?? item.user_id ?? item.id;
+  };
+
+  const dataIdSet = new Set(
+    (Array.isArray(data) ? data : [])
+      .map(getRowId)
+      .filter((v) => v !== undefined && v !== null)
+  );
+  const selectedIdSet = new Set(Array.isArray(selectedRows) ? selectedRows : []);
+
   const isAllSelected =
-    selectedRows.length > 0 && selectedRows.length === data.length;
+    dataIdSet.size > 0 && Array.from(dataIdSet).every((id) => selectedIdSet.has(id));
 
   const toggleAll = (e) => {
     if (e.target.checked) {
-      const allIds = data.map(
-        (item) => item.branch_id || item.user_id || item.id
-      ); // Support different ID fields
-      setSelectedRows(allIds);
+      setSelectedRows(Array.from(dataIdSet));
     } else {
       setSelectedRows([]);
     }
@@ -316,7 +546,7 @@ const ContentBox = ({
             >
               <button
                 onClick={() => handleRemoveFilter(idx)}
-                className="bg-[#0E2F4B] text-[#FFC107] px-1 h-full"
+                className="bg-[#0E2F4B] text-[#FFC107] flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px]"
               >
                 <Minus size={14} />
               </button>
@@ -325,7 +555,9 @@ const ContentBox = ({
                 <div className="flex flex-wrap items-center gap-2 ml-2">
                   {columnFilters.map((cf, index) => {
                     // Get options for the column dropdown
-                    const columnOptions = filters.map((f) => (
+                    const columnOptions = filters
+                      .filter((f) => !isIdColumnName(f.name))
+                      .map((f) => (
                       <option key={f.name} value={f.name}>
                         {f.label}
                       </option>
@@ -366,18 +598,20 @@ const ContentBox = ({
                         {columnFilters.length > 1 && (
                           <button
                             onClick={() => removeColumnFilter(index)}
-                            className="bg-gray-300 text-gray-700 px-1 rounded-full"
+                            className="bg-gray-300 text-gray-700 flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px] rounded-full"
                             title="Remove this column filter"
                           >
                             <Minus size={12} />
                           </button>
                         )}
                         <select
-                          className="border text-sm px-2 py-1"
+                          className={`border text-sm px-2 py-1 ${cf.locked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                           value={cf.column}
                           onChange={(e) =>
                             handleColumnChange(index, e.target.value)
                           }
+                          disabled={cf.locked}
+                          title={cf.locked ? 'Column is locked (selected from column dropdown)' : 'Select column'}
                         >
                           <option value="">Select column</option>
                           {columnOptions}
@@ -388,17 +622,19 @@ const ContentBox = ({
                           <div className="relative" ref={el => dropdownRef.current[index] = el}>
                             <button
                               type="button"
-                              className="border text-sm px-2 py-1 bg-white w-40 text-left flex items-center justify-between"
+                              className="border text-sm px-2 py-1 bg-white min-w-[200px] text-left flex items-center justify-between"
                               onClick={() => toggleSearchableDropdown(index)}
                             >
-                              <span className={cf.value ? "" : "text-gray-500"}>
-                                {cf.value || "Select value"}
+                              <span className={Array.isArray(cf.value) && cf.value.length > 0 ? "" : "text-gray-500"}>
+                                {Array.isArray(cf.value) && cf.value.length > 0 
+                                  ? `${cf.value.length} selected` 
+                                  : "Select values"}
                               </span>
                               <ChevronDown size={14} />
                             </button>
                             
                             {searchableDropdownOpen[index] && (
-                              <div className="absolute z-50 mt-1 bg-white border rounded shadow-lg w-40 max-h-60 overflow-hidden">
+                              <div className="absolute z-50 mt-1 bg-white border rounded shadow-lg min-w-[200px] max-h-60 overflow-hidden">
                                 <div className="p-2 border-b">
                                   <input
                                     type="text"
@@ -410,26 +646,33 @@ const ContentBox = ({
                                   />
                                 </div>
                                 <div className="max-h-48 overflow-y-auto">
-                                  <div
-                                    className="px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 cursor-pointer"
-                                    onClick={() => selectSearchableValue(index, "")}
-                                  >
-                                    Select value
-                                  </div>
                                   {valueOptions
                                     .filter(val => 
                                       !searchableDropdownSearch[index] || 
                                       val.toLowerCase().includes(searchableDropdownSearch[index].toLowerCase())
                                     )
-                                    .map((val, i) => (
-                                    <div
-                                      key={i}
-                                      className="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer"
-                                      onClick={() => selectSearchableValue(index, val)}
-                                    >
-                                      {val}
-                                    </div>
-                                  ))}
+                                    .map((val, i) => {
+                                      const isSelected = Array.isArray(cf.value) && cf.value.includes(val);
+                                      return (
+                                        <div
+                                          key={i}
+                                          className="px-2 py-1 text-sm hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                                          onClick={() => toggleValueSelection(index, val)}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            readOnly
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              toggleValueSelection(index, val);
+                                            }}
+                                            className="accent-[#0E2F4B] cursor-pointer"
+                                          />
+                                          <span className={isSelected ? "font-medium" : ""}>{val}</span>
+                                        </div>
+                                      );
+                                    })}
                                 </div>
                               </div>
                             )}
@@ -440,7 +683,7 @@ const ContentBox = ({
                         {index === columnFilters.length - 1 && (
                           <button
                             onClick={addColumnFilter}
-                            className="text-[#FFC107] bg-[#0E2F4B] px-1"
+                            className="text-[#FFC107] bg-[#0E2F4B] flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px]"
                             title="Add another column filter"
                           >
                             <Plus size={14} />
@@ -537,8 +780,17 @@ const ContentBox = ({
         <div className="flex gap-2 justify-end">
           {showAddButton && (
             <button
-              onClick={onAdd || (() => navigate("add"))}
-              className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onAdd) {
+                  onAdd();
+                } else {
+                  navigate("add");
+                }
+              }}
+              className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B] cursor-pointer"
             >
               <Plus size={16} />
             </button>
@@ -610,7 +862,13 @@ const ContentBox = ({
                     <div className="flex items-center justify-between gap-2">
                       <span
                         className="flex items-center gap-2 cursor-pointer flex-grow"
-                        onClick={() => onSort(filter.name)}
+                        onClick={() => {
+                          if (onHeaderClick) {
+                            onHeaderClick(filter);
+                          } else {
+                            onSort(filter.name);
+                          }
+                        }}
                       >
                         {index === 0 && showActions && showHeaderCheckbox && !isReadOnly && (
                           <input
@@ -704,6 +962,7 @@ const ContentBox = ({
                         )}
                         <div className="relative border-t">
                           <button
+                            ref={openDropdown === index ? columnsButtonRef : undefined}
                             className="flex items-center justify-between w-full px-3 py-2 font-semibold hover:bg-gray-100 cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -714,34 +973,45 @@ const ContentBox = ({
                             <ChevronRight size={16} />
                           </button>
                           {showColumnsDropdown && (
+                            <ColumnsSubmenu
+                              visibleColumns={visibleColumns}
+                              toggleColumn={toggleColumn}
+                              isIdColumnName={isIdColumnName}
+                              triggerButtonRef={columnsButtonRef}
+                            />
+                          )}
+                        </div>
+                        <div className="relative border-t">
+                          <button
+                            data-add-filter-index={index}
+                            className="flex items-center justify-between w-full px-3 py-2 font-semibold hover:bg-gray-100 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAddFilterSubmenu(showAddFilterSubmenu === index ? null : index);
+                            }}
+                          >
+                            <span>{t('common.addFilter')}</span>
+                            <ChevronRight size={16} />
+                          </button>
+                          {showAddFilterSubmenu === index && (
                             <div
-                              className="fixed bg-white shadow-lg border border-gray-300 w-48 z-50 max-h-[300px] overflow-y-auto"
+                              data-add-filter-submenu={index}
+                              className="fixed bg-white shadow-lg border border-gray-300 w-48 z-50"
                               style={{
                                 top: "0px",
                                 left: "0px",
                               }}
                               ref={(el) => {
                                 if (el) {
-                                  // Position the dropdown next to the button
-                                  const button =
-                                    el.parentElement?.querySelector("button");
+                                  const button = el.parentElement?.querySelector("button");
                                   if (button) {
                                     const rect = button.getBoundingClientRect();
                                     el.style.top = `${rect.top}px`;
-                                    el.style.left = `${rect.right + 4}px`; // 4px gap
-
-                                    // Adjust vertical position if dropdown would go off screen
-                                    const dropdownRect =
-                                      el.getBoundingClientRect();
-                                    if (
-                                      dropdownRect.bottom > window.innerHeight
-                                    ) {
-                                      const topOffset =
-                                        dropdownRect.bottom -
-                                        window.innerHeight;
-                                      el.style.top = `${
-                                        rect.top - topOffset
-                                      }px`;
+                                    el.style.left = `${rect.right + 4}px`;
+                                    const dropdownRect = el.getBoundingClientRect();
+                                    if (dropdownRect.bottom > window.innerHeight) {
+                                      const topOffset = dropdownRect.bottom - window.innerHeight;
+                                      el.style.top = `${rect.top - topOffset}px`;
                                     }
                                   }
                                 }
@@ -750,54 +1020,26 @@ const ContentBox = ({
                                 e.stopPropagation();
                                 e.nativeEvent.stopImmediatePropagation();
                               }}
-                              onWheel={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                const element = e.currentTarget;
-                                const scrollSpeed = 30; // Adjust scroll speed
-                                const atTop = element.scrollTop === 0;
-                                const atBottom =
-                                  element.scrollTop + element.clientHeight ===
-                                  element.scrollHeight;
-
-                                // Only scroll if we're not at the limits or we're scrolling away from them
-                                if (!atTop || (atTop && e.deltaY > 0)) {
-                                  if (!atBottom || (atBottom && e.deltaY < 0)) {
-                                    element.scrollTop +=
-                                      e.deltaY > 0 ? scrollSpeed : -scrollSpeed;
-                                  }
-                                }
-                              }}
-                              onMouseEnter={(e) => {
-                                // Prevent scrolling of parent elements while hovering
-                                document.body.style.overflow = "hidden";
-                              }}
-                              onMouseLeave={(e) => {
-                                // Restore scrolling when leaving dropdown
-                                document.body.style.overflow = "";
-                              }}
                             >
-                              {visibleColumns.map((col, i) => (
-                                <label
-                                  key={i}
-                                  className="flex items-center px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                              {/* Show only "Search by Column" option when adding filter from column dropdown */}
+                              {nextAvailableFilters.includes("search") ? (
+                                <div
+                                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                                  onClick={() => {
+                                    // Pre-select the current column when adding search filter
+                                    handleAddFilter("search", filter.name);
+                                    setOpenDropdown(null);
+                                  }}
                                 >
-                                  <input
-                                    type="checkbox"
-                                    checked={col.visible}
-                                    onChange={(e) => {
-                                      toggleColumn(col.name);
-                                    }}
-                                    className="mr-2"
-                                  />
-                                  {col.label}
-                                </label>
-                              ))}
+                                  {t('common.searchByColumn')}
+                                </div>
+                              ) : (
+                                <div className="px-3 py-2 text-gray-500 text-sm">
+                                  {t('common.noFiltersAvailable') || 'No filters available'}
+                                </div>
+                              )}
                             </div>
                           )}
-                        </div>
-                        <div className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold">
-                          {t('common.addFilter')}
                         </div>
                       </div>
                     )}

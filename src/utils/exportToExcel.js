@@ -3,7 +3,18 @@ import * as XLSX from 'xlsx';
 export const exportToExcel = (data, columns, filename) => {
   try {
     // Filter visible columns and map their labels
-    const visibleColumns = columns.filter(col => col.visible);
+    // Also remove any internal/database ID columns from exports.
+    const isIdColumnName = (name) => {
+      const n = String(name || "").toLowerCase().trim();
+      if (!n) return false;
+      if (n === "id") return true;
+      if (n.endsWith("_id")) return true;
+      if (n === "org_id") return true;
+      if (n.endsWith("_uuid") || n === "uuid") return true;
+      return false;
+    };
+
+    const visibleColumns = columns.filter(col => col.visible && !isIdColumnName(col.name));
     
     // Create worksheet data
     const worksheetData = [

@@ -38,7 +38,9 @@ const JobRoles = () => {
     text: "",
     job_function: "",
     org_id: "",
-    int_status: 1
+    int_status: 1,
+    notif_warranty: false,
+    notif_scrap: false
   });
   
   const { user } = useAuthStore();
@@ -151,7 +153,9 @@ const JobRoles = () => {
       text: "",
       job_function: "",
       org_id: user?.org_id || "",
-      int_status: 1
+      int_status: 1,
+      notif_warranty: false,
+      notif_scrap: false
     });
     setShowRoleModal(true);
   };
@@ -163,7 +167,9 @@ const JobRoles = () => {
       text: role.text,
       job_function: role.job_function || "",
       org_id: role.org_id || user?.org_id || "",
-      int_status: role.int_status !== undefined ? role.int_status : 1
+      int_status: role.int_status !== undefined ? role.int_status : 1,
+      notif_warranty: !!role.notif_warranty,
+      notif_scrap: !!role.notif_scrap
     });
     setShowRoleModal(true);
   };
@@ -193,14 +199,18 @@ const JobRoles = () => {
         await API.put(`/job-roles/${roleFormData.job_role_id}`, {
           text: roleFormData.text,
           job_function: roleFormData.job_function,
-          int_status: roleFormData.int_status ? 1 : 0
+          int_status: roleFormData.int_status ? 1 : 0,
+          notif_warranty: !!roleFormData.notif_warranty,
+          notif_scrap: !!roleFormData.notif_scrap
         });
         toast.success("Job role updated successfully");
       } else {
         // For create, don't send job_role_id (backend will generate)
         await API.post("/job-roles", {
           text: roleFormData.text,
-          job_function: roleFormData.job_function
+          job_function: roleFormData.job_function,
+          notif_warranty: !!roleFormData.notif_warranty,
+          notif_scrap: !!roleFormData.notif_scrap
         });
         toast.success("Job role created successfully");
       }
@@ -224,27 +234,40 @@ const JobRoles = () => {
   
   const handleAddNewNav = () => {
     // Navigate to create route - use appropriate route based on admin settings mode
+    const navState = {
+      activeTab: activeTab,
+      adminFrom: { pathname: location.pathname, search: location.search },
+      parentAdminFrom: location.state?.adminFrom,
+    };
     if (isAdminSettingsMode) {
       navigate("/adminsettings/configuration/job-roles/create-navigation", {
-        state: { activeTab: activeTab }
+        state: navState,
       });
     } else {
       navigate("/master-data/job-roles/create-navigation", {
-        state: { activeTab: activeTab }
+        state: { activeTab: activeTab },
       });
     }
   };
 
   const handleEditNav = (nav) => {
     // Navigate to update route with navId - use appropriate route based on admin settings mode
+    const navState = {
+      activeTab: activeTab,
+      navigation: nav,
+      adminFrom: { pathname: location.pathname, search: location.search },
+      parentAdminFrom: location.state?.adminFrom,
+    };
     if (isAdminSettingsMode) {
-      navigate(`/adminsettings/configuration/job-roles/update-navigation/${nav.job_role_nav_id}`, {
-        state: { activeTab: activeTab }
-      });
+      navigate(
+        `/adminsettings/configuration/job-roles/update-navigation/${nav.job_role_nav_id}`,
+        { state: navState },
+      );
     } else {
-      navigate(`/master-data/job-roles/update-navigation/${nav.job_role_nav_id}`, {
-        state: { activeTab: activeTab }
-      });
+      navigate(
+        `/master-data/job-roles/update-navigation/${nav.job_role_nav_id}`,
+        { state: { activeTab: activeTab, navigation: nav } },
+      );
     }
   };
 
@@ -408,7 +431,7 @@ const JobRoles = () => {
       {/* Job Role Modal */}
       {showRoleModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl">
             {/* Modal Header */}
             <div className="bg-[#0E2F4B] text-white px-6 py-4 flex justify-between items-center rounded-t-lg">
               <h2 className="text-xl font-bold">
@@ -485,6 +508,38 @@ const JobRoles = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g., dept_admin"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notifications
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="notif_warranty"
+                        checked={!!roleFormData.notif_warranty}
+                        onChange={handleRoleFormChange}
+                        className="mr-3 h-5 w-5 text-[#0E2F4B] focus:ring-[#0E2F4B] border-gray-300 rounded"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Send Warranty Alert
+                      </span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="notif_scrap"
+                        checked={!!roleFormData.notif_scrap}
+                        onChange={handleRoleFormChange}
+                        className="mr-3 h-5 w-5 text-[#0E2F4B] focus:ring-[#0E2F4B] border-gray-300 rounded"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Send Scrap Alert
+                      </span>
+                    </label>
+                  </div>
                 </div>
 
                 {/* Status Toggle - Only show when editing */}

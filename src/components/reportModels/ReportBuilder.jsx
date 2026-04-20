@@ -212,7 +212,7 @@ function Select({ value, onChange, options, placeholder = "Select" }) {
         <span className="text-slate-500">▼</span>
       </button>
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full top-full left-0 mt-0 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
             {options.map((opt) => (
               <div
@@ -270,7 +270,7 @@ function DropdownMultiSelect({ values = [], onChange, options, placeholder = "Se
         <span className="text-slate-500">▼</span>
       </button>
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-full top-full left-0 mt-0 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
           <div className="p-2 border-b border-slate-200">
             <input
               type="text"
@@ -865,9 +865,10 @@ export default function ReportBuilder() {
                   <div className="text-sm text-slate-500">{report.description}</div>
                 </div>
                 <div>
-                  <button onClick={() => showToast("In-app, a schedule with current filters would be configured.")} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm whitespace-nowrap">
+                  {/* Schedule button hidden temporarily */}
+                  {/* <button onClick={() => showToast("In-app, a schedule with current filters would be configured.")} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm whitespace-nowrap">
                     Schedule…
-                  </button>
+                  </button> */}
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-12 gap-4">

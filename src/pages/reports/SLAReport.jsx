@@ -26,6 +26,8 @@ export default function SLAReport() {
     allRows,
     filteredRows,
     setQuickField,
+    filterOptions,
+    report: updatedReport,
   } = useReportState(selectedReportId, report);
 
   // Audit logging handlers
@@ -48,7 +50,7 @@ export default function SLAReport() {
 
   return (
     <ReportLayout
-      report={report}
+      report={updatedReport || report}
       selectedReportId={selectedReportId}
       allRows={allRows}
       filteredRows={filteredRows}
@@ -61,6 +63,7 @@ export default function SLAReport() {
       setColumns={setColumns}
       views={views}
       setViews={setViews}
+      apiData={filterOptions ? { filterOptions } : undefined}
       onGenerateReport={handleGenerateReport}
       onExportReport={handleExportReport}
     />

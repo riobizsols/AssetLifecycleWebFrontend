@@ -31,13 +31,11 @@ const MaintenanceDetails = () => {
 
   // Job Roles
   const [jobRoles, setJobRoles] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [selectedStepForJobRole, setSelectedStepForJobRole] = useState('');
   const [jobRolesForStep, setJobRolesForStep] = useState([]);
   const [loadingJobRoles, setLoadingJobRoles] = useState(false);
   const [newJobRole, setNewJobRole] = useState({
-    job_role_id: '',
-    dept_id: ''
+    job_role_id: ''
   });
 
   // Fetch workflow steps
@@ -75,18 +73,6 @@ const MaintenanceDetails = () => {
       toast.error('Failed to fetch job roles');
     }
   };
-
-  // Fetch departments
-  const fetchDepartments = async () => {
-    try {
-      const res = await API.get('/departments');
-      setDepartments(res.data || []);
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-      toast.error('Failed to fetch departments');
-    }
-  };
-
 
   // Fetch sequences for asset type
   const fetchSequences = async () => {
@@ -128,7 +114,6 @@ const MaintenanceDetails = () => {
     fetchWorkflowSteps();
     fetchAssetTypes();
     fetchJobRoles();
-    fetchDepartments();
   }, []);
 
   useEffect(() => {
@@ -248,8 +233,8 @@ const MaintenanceDetails = () => {
       toast.error('Please select a workflow step');
       return;
     }
-    if (!newSequence.seqs_no || parseInt(newSequence.seqs_no) % 5 !== 0) {
-      toast.error('Sequence number must be a multiple of 5 (e.g., 5, 10, 15, 20)');
+    if (!newSequence.seqs_no || parseInt(newSequence.seqs_no) < 1) {
+      toast.error('Sequence number must be a positive integer (e.g., 1, 2, 3)');
       return;
     }
 
@@ -295,19 +280,14 @@ const MaintenanceDetails = () => {
       toast.error('Please select a job role');
       return;
     }
-    if (!newJobRole.dept_id) {
-      toast.error('Please select a department');
-      return;
-    }
 
     try {
       await API.post('/maintenance-details/workflow-job-roles', {
         wf_steps_id: selectedStepForJobRole,
         job_role_id: newJobRole.job_role_id,
-        dept_id: newJobRole.dept_id
       });
       toast.success('Job role assigned successfully');
-      setNewJobRole({ job_role_id: '', dept_id: '' });
+      setNewJobRole({ job_role_id: '' });
       fetchJobRolesForStep(selectedStepForJobRole);
     } catch (error) {
       console.error('Error assigning job role:', error);
@@ -564,8 +544,8 @@ const MaintenanceDetails = () => {
                           toast.error('Please fill in both Workflow Step and Sequence Number');
                           return;
                         }
-                        if (parseInt(newSequence.seqs_no) % 5 !== 0) {
-                          toast.error('Sequence number must be a multiple of 5 (e.g., 5, 10, 15, 20)');
+                        if (parseInt(newSequence.seqs_no) < 1) {
+                          toast.error('Sequence number must be a positive integer (e.g., 1, 2, 3)');
                           return;
                         }
                         try {
@@ -618,12 +598,12 @@ const MaintenanceDetails = () => {
                           type="number"
                           value={newSequence.seqs_no}
                           onChange={(e) => setNewSequence({ ...newSequence, seqs_no: e.target.value })}
-                          placeholder="5, 10, 15, 20, etc."
-                          min="5"
-                          step="5"
+                          placeholder="1, 2, 3, etc."
+                          min="1"
+                          step="1"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
                         />
-                        <p className="mt-1 text-xs text-gray-500">Must be a multiple of 5</p>
+                        <p className="mt-1 text-xs text-gray-500">Enter sequential number (1, 2, 3...)</p>
                       </div>
                     </div>
                   </div>
@@ -710,18 +690,17 @@ const MaintenanceDetails = () => {
                     <h3 className="font-semibold text-gray-900 text-lg">Assigned Job Roles</h3>
                     <button
                       onClick={async () => {
-                        if (!newJobRole.job_role_id || !newJobRole.dept_id) {
-                          toast.error('Please fill in both Job Role and Department');
+                        if (!newJobRole.job_role_id) {
+                          toast.error('Please select a job role');
                           return;
                         }
                         try {
                           await API.post('/maintenance-details/workflow-job-roles', {
                             wf_steps_id: selectedStepForJobRole,
                             job_role_id: newJobRole.job_role_id,
-                            dept_id: newJobRole.dept_id
                           });
                           toast.success('Job role assigned successfully');
-                          setNewJobRole({ job_role_id: '', dept_id: '' });
+                          setNewJobRole({ job_role_id: '' });
                           fetchJobRolesForStep(selectedStepForJobRole);
                         } catch (error) {
                           console.error('Error assigning job role:', error);
@@ -756,23 +735,6 @@ const MaintenanceDetails = () => {
                           ))}
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Department <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={newJobRole.dept_id}
-                          onChange={(e) => setNewJobRole({ ...newJobRole, dept_id: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
-                        >
-                          <option value="">-- Select Department --</option>
-                          {departments.map((dept) => (
-                            <option key={dept.dept_id} value={dept.dept_id}>
-                              {dept.text}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                     </div>
                   </div>
 
@@ -793,7 +755,6 @@ const MaintenanceDetails = () => {
                         <thead className="sticky top-0 z-10 bg-[#0E2F4B] border-b-4 border-[#FFC107]">
                           <tr className="text-white text-sm font-medium">
                             <th className="px-4 py-3 text-left">Job Role</th>
-                            <th className="px-4 py-3 text-left">Department</th>
                             <th className="px-4 py-3 text-right">Actions</th>
                           </tr>
                         </thead>
@@ -802,11 +763,6 @@ const MaintenanceDetails = () => {
                             <tr key={jr.wf_job_role_id} className="hover:bg-gray-50 transition-colors">
                               <td className="px-4 py-3">
                                 <span className="font-medium text-gray-900">{jr.job_role_name || 'N/A'}</span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                                  {jr.department_name || 'N/A'}
-                                </span>
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center justify-end gap-2">

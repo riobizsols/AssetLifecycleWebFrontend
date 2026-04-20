@@ -30,6 +30,7 @@ export default function MaintenanceHistory() {
     loading,
     error,
     report: updatedReport,
+    filterOptions,
   } = useReportState(selectedReportId, report);
 
   // Audit logging handlers
@@ -134,6 +135,7 @@ export default function MaintenanceHistory() {
       setViews={setViews}
       loading={loading}
       error={error}
+      apiData={filterOptions ? { filterOptions } : undefined}
       onExport={handleExport}
       exportFormats={['pdf', 'csv']}
       onGenerateReport={handleGenerateReport}

@@ -2,12 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
-import { useLanguage } from '../contexts/LanguageContext';
 import { Save, X } from 'lucide-react';
 
+const MAINT_CONFIG_PATH = '/adminsettings/configuration/maintenance-config';
+
 const CreateMaintenanceFrequency = () => {
-  const { t } = useLanguage();
   const navigate = useNavigate();
+
+  const goToMaintenanceFrequencyList = () => {
+    navigate(MAINT_CONFIG_PATH, {
+      state: { maintenanceConfigTab: 'maintenanceFrequency' },
+    });
+  };
   
   const [assetTypes, setAssetTypes] = useState([]);
   const [maintenanceTypes, setMaintenanceTypes] = useState([]);
@@ -16,11 +22,13 @@ const CreateMaintenanceFrequency = () => {
   
   // Form state
   const [selectedAssetType, setSelectedAssetType] = useState('');
+  const [isRecurring, setIsRecurring] = useState(true); // New state for recurring/on-demand
   const [frequency, setFrequency] = useState('');
   const [uom, setUom] = useState('');
   const [text, setText] = useState('');
   const [maintainedBy, setMaintainedBy] = useState('Self');
   const [selectedMaintenanceType, setSelectedMaintenanceType] = useState('');
+  const [maintLeadType, setMaintLeadType] = useState('');
 
   // Fetch asset types (only those with maint_required = true)
   const fetchAssetTypes = async () => {
@@ -46,11 +54,11 @@ const CreateMaintenanceFrequency = () => {
       console.log('Maintenance types data:', res.data);
       
       let types = [];
-      if (Array.isArray(res.data)) {
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        types = res.data.data;
+      } else if (Array.isArray(res.data)) {
         types = res.data;
       } else if (res.data && Array.isArray(res.data.data)) {
-        types = res.data.data;
-      } else if (res.data && res.data.success && Array.isArray(res.data.data)) {
         types = res.data.data;
       }
       
@@ -120,6 +128,17 @@ const CreateMaintenanceFrequency = () => {
     fetchUOM();
   }, []);
 
+  useEffect(() => {
+    if (!selectedAssetType) {
+      return;
+    }
+
+    const selected = assetTypes.find((at) => at.asset_type_id === selectedAssetType);
+    if (selected?.maint_type_id) {
+      setSelectedMaintenanceType(selected.maint_type_id);
+    }
+  }, [selectedAssetType, assetTypes]);
+
   // Handle form submission
   const handleCreateFrequency = async (e) => {
     e.preventDefault();
@@ -129,14 +148,17 @@ const CreateMaintenanceFrequency = () => {
       return;
     }
 
-    if (!frequency || isNaN(frequency) || parseFloat(frequency) <= 0) {
-      toast.error('Please enter a valid frequency');
-      return;
-    }
+    // Validation only for recurring maintenance
+    if (isRecurring) {
+      if (!frequency || isNaN(frequency) || parseFloat(frequency) <= 0) {
+        toast.error('Please enter a valid frequency');
+        return;
+      }
 
-    if (!uom) {
-      toast.error('Please select Unit of Measure (UOM)');
-      return;
+      if (!uom) {
+        toast.error('Please select Unit of Measure (UOM)');
+        return;
+      }
     }
 
     if (!selectedMaintenanceType) {
@@ -146,23 +168,24 @@ const CreateMaintenanceFrequency = () => {
 
     setIsSubmitting(true);
     try {
-      console.log('Submitting maintenance frequency with data:', {
+      const requestData = {
         asset_type_id: selectedAssetType,
-        frequency: parseFloat(frequency),
-        uom: uom,
-        text: text.trim() || `${frequency} ${uom}`,
+        is_recurring: isRecurring,
         maintained_by: maintainedBy,
-        maint_type_id: selectedMaintenanceType
-      });
+        maint_type_id: selectedMaintenanceType,
+        maint_lead_type: maintLeadType.trim() || null
+      };
+
+      // On-demand: server persists NOT NULL sentinels (no user input for these fields)
+      if (isRecurring) {
+        requestData.frequency = parseFloat(frequency);
+        requestData.uom = uom;
+        requestData.text = text.trim() || `${frequency} ${uom}`;
+      }
+
+      console.log('Submitting maintenance frequency with data:', requestData);
       
-      const res = await API.post('/maintenance-frequencies', {
-        asset_type_id: selectedAssetType,
-        frequency: parseFloat(frequency),
-        uom: uom,
-        text: text.trim() || `${frequency} ${uom}`,
-        maintained_by: maintainedBy,
-        maint_type_id: selectedMaintenanceType
-      });
+      const res = await API.post('/maintenance-frequencies', requestData);
 
       if (res.data && res.data.success) {
         toast.success('Maintenance frequency created successfully');
@@ -190,7 +213,7 @@ const CreateMaintenanceFrequency = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate('/admin-settings-view')}
+              onClick={goToMaintenanceFrequencyList}
               className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
             >
               <X size={20} />
@@ -208,7 +231,7 @@ const CreateMaintenanceFrequency = () => {
           <div className="p-4 sm:p-6">
             <form onSubmit={handleCreateFrequency}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Asset Type <span className="text-red-500">*</span>
                   </label>
@@ -227,86 +250,45 @@ const CreateMaintenanceFrequency = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Frequency <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    value={frequency}
-                    onChange={(e) => setFrequency(e.target.value)}
-                    placeholder="Enter frequency (e.g., 30, 90, 180)"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Unit of Measure (UOM) <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={uom}
-                    onChange={(e) => setUom(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
-                    required
-                  >
-                    <option value="">-- Select UOM --</option>
-                    {uomOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.text}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Text
-                  </label>
-                  <input
-                    type="text"
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Enter description (e.g., Quarterly, Monthly)"
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Leave empty to auto-generate from frequency and UOM</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Self / Vendor Managed <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-4 mt-2">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="maintainedBy"
-                        value="Self"
-                        checked={maintainedBy === 'Self'}
-                        onChange={(e) => setMaintainedBy(e.target.value)}
-                        className="mr-2"
-                        required
-                      />
-                      <span>Self</span>
+                {/* Recurring / On-Demand Selection */}
+                {selectedAssetType && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maintenance Type <span className="text-red-500">*</span>
                     </label>
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="maintainedBy"
-                        value="vendor"
-                        checked={maintainedBy === 'vendor'}
-                        onChange={(e) => setMaintainedBy(e.target.value)}
-                        className="mr-2"
-                        required
-                      />
-                      <span>Vendor</span>
-                    </label>
+                    <div className="flex gap-4 mt-2">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="maintenanceScheduleType"
+                          value="recurring"
+                          checked={isRecurring === true}
+                          onChange={() => setIsRecurring(true)}
+                          className="mr-2 w-4 h-4 text-[#0E2F4B] focus:ring-[#0E2F4B]"
+                          required
+                        />
+                        <span className="font-medium">Recurring</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="maintenanceScheduleType"
+                          value="ondemand"
+                          checked={isRecurring === false}
+                          onChange={() => setIsRecurring(false)}
+                          className="mr-2 w-4 h-4 text-[#0E2F4B] focus:ring-[#0E2F4B]"
+                          required
+                        />
+                        <span className="font-medium">On Demand</span>
+                      </label>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {isRecurring 
+                        ? 'Recurring maintenance requires frequency and UOM' 
+                        : 'On-demand maintenance does not require frequency configuration'}
+                    </p>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -326,6 +308,107 @@ const CreateMaintenanceFrequency = () => {
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maintenance Lead Time
+                  </label>
+                  <input
+                    type="text"
+                    value={maintLeadType}
+                    onChange={(e) => setMaintLeadType(e.target.value)}
+                    placeholder="Enter maintenance lead time"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                  />
+                </div>
+
+                {isRecurring && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Frequency <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="0.01"
+                        value={frequency}
+                        onChange={(e) => setFrequency(e.target.value)}
+                        placeholder="Enter frequency (e.g., 30, 90, 180)"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Unit of Measure (UOM) <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={uom}
+                        onChange={(e) => setUom(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                        required
+                      >
+                        <option value="">-- Select UOM --</option>
+                        {uomOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.text}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Text
+                      </label>
+                      <input
+                        type="text"
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                        placeholder="Enter description (e.g., Quarterly, Monthly)"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Leave empty to auto-generate from frequency and UOM
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    In-House / Vendor Managed <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-4 mt-2">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="maintainedBy"
+                        value="Self"
+                        checked={maintainedBy === 'Self'}
+                        onChange={(e) => setMaintainedBy(e.target.value)}
+                        className="mr-2"
+                        required
+                      />
+                      <span>In-House</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="maintainedBy"
+                        value="vendor"
+                        checked={maintainedBy === 'vendor'}
+                        onChange={(e) => setMaintainedBy(e.target.value)}
+                        className="mr-2"
+                        required
+                      />
+                      <span>Vendor</span>
+                    </label>
+                  </div>
+                </div>
+
               </div>
 
               <div className="flex gap-4 mt-6">
@@ -339,7 +422,7 @@ const CreateMaintenanceFrequency = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/admin-settings-view')}
+                  onClick={goToMaintenanceFrequencyList}
                   className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                 >
                   Cancel

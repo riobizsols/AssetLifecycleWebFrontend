@@ -49,6 +49,17 @@ export const breakdownHistoryService = {
     }
   },
 
+  // Get single breakdown by ID (for detail page)
+  getBreakdownById: async (breakdownId, orgId = 'ORG001') => {
+    try {
+      const response = await API.get(`/breakdown-history/${encodeURIComponent(breakdownId)}?orgId=${orgId}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [BreakdownHistoryService] Error fetching breakdown by ID:', error);
+      throw error;
+    }
+  },
+
   // Get breakdown history by asset ID
   getBreakdownHistoryByAsset: async (assetId, orgId = 'ORG001') => {
     try {
@@ -75,6 +86,17 @@ export const breakdownHistoryService = {
       return response.data;
     } catch (error) {
       console.error('❌ [BreakdownHistoryService] Error fetching breakdown history summary:', error);
+      throw error;
+    }
+  },
+
+  // Get breakdowns that have been reopened more than once (for Reopen Details screen)
+  getReopenedMultiple: async (orgId = 'ORG001') => {
+    try {
+      const response = await API.get(`/breakdown-history/reopened-multiple?orgId=${orgId}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ [BreakdownHistoryService] Error fetching reopened-multiple:', error);
       throw error;
     }
   },

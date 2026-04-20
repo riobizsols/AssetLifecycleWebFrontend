@@ -53,10 +53,11 @@ export const ALL_COLUMNS = {
     "Accumulated Depreciation", "Net Book Value", "Depreciation Method", "Useful Life"
   ],
   "depreciation-schedule": ["Asset Code", "Name", "Book", "Method", "Depn for Period", "Accum Depn", "Net Book Value"],
-  "maintenance-history": ["Work Order ID", "Asset ID", "Asset Name", "Maintenance Start Date", "Maintenance End Date", "Notes", "Vendor ID", "Vendor Name", "Work Order Status", "Maintenance Type", "Cost (₹)", "Downtime (h)"],
+  "maintenance-history": ["Work Order ID", "Asset ID", "Asset Name", "Maintenance Start Date", "Maintenance End Date", "Notes", "Vendor ID", "Vendor Name", "Work Order Status", "Maintenance Type", "Cost (₹)", "Downtime (h)", "Standard Hours", "Actual Hours", "Variance", "Maint Remarks"],
   "asset-workflow-history": ["Work Order ID", "Asset ID", "Asset Name", "Workflow Step", "Planned Schedule Date", "Actual Schedule Date", "Notes", "Vendor ID", "Vendor Name", "Workflow Status", "Step Status", "Assigned To", "Maintenance Type", "Asset Type", "Department", "Serial Number", "Asset Status", "Purchased On", "Purchased Cost", "Vendor Contact", "Vendor Email", "Vendor Phone", "Vendor Address", "User Name", "User Email", "Job Role", "Sequence", "History Count", "Latest Action", "Latest Action Date", "Latest Action By", "History ID", "Action By", "Action On", "Action", "History Notes", "Action By Email", "Step User", "Step User Email"],
   "usage-based-asset": ["Usage ID", "Asset ID", "Asset Name", "Serial Number", "Asset Type", "Department", "Branch", "Usage Counter", "Recorded By", "Recorded Date", "Employee Name", "Asset Description"],
   "breakdown-history": ["Breakdown ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Work Order Status", "Breakdown Status", "Breakdown Reason", "Asset Type", "Department", "Branch", "Serial Number", "Asset Status", "Purchased On", "Purchased Cost", "Vendor Contact", "Vendor Email", "Vendor Phone", "Vendor Address", "Reported By Email", "Reported By Phone"],
+  "reopened-breakdowns": ["AMS ID", "Asset ID", "Asset Name", "Serial Number", "Asset Type", "Reopen Count (RO)", "Last Reopened On"],
   "warranty-amc-expiry": ["Asset", "Category", "Vendor", "Coverage", "Start", "End", "Days Left"],
   "spares-inventory": ["Part Code", "Description", "UoM", "On Hand", "Safety", "Reorder", "Non‑Moving (days)", "Preferred Vendor"],
   "vendor-performance": ["Vendor", "Jobs", "On‑time %", "Avg TAT (hrs)", "FTF %", "Defect %"],
@@ -127,7 +128,11 @@ export const FIELD_TO_COLUMN_MAP = {
     workOrderStatus: "Work Order Status",
     maintenanceType: "Maintenance Type",
     cost: "Cost (₹)",
-    downtime: "Downtime (h)"
+    downtime: "Downtime (h)",
+    hours_required: "Standard Hours",
+    hours_spent: "Actual Hours",
+    variance: "Variance",
+    maint_notes: "Maint Remarks"
   },
   "sla-report": {
     assetType: "Asset Type ID",  // Use ID column since filter values are IDs
@@ -154,6 +159,14 @@ export const FIELD_TO_COLUMN_MAP = {
     branch: "Branch",
     reportedByEmail: "Reported By Email",
     vendorEmail: "Vendor Email"
+  },
+  "reopened-breakdowns": {
+    assetId: "Asset ID",
+    assetType: "Asset Type",
+    userId: "Changed By",
+    department: "Department",
+    reopenCount: "Reopen Count (RO)",
+    lastReopenedOn: "Last Reopened On",
   },
   "asset-workflow-history": {
     assetId: "Asset ID",
@@ -212,6 +225,7 @@ export const REPORTS = [
       { key: "currentStatus", label: "Current Status", type: "multiselect", domain: ASSET_STATUSES },
       { key: "cost", label: "Cost ≥ (₹)", type: "number" },
       { key: "status", label: "Status", type: "multiselect", domain: ["Active", "In Use", "Under Maintenance", "Disposed"] },
+      { key: "property", label: "Property", type: "propertyValue", domain: [] },
     ],
     defaultColumns: [
       "Asset ID", "Asset Name", "Department", "Assigned Employee", "Vendor", 
@@ -350,6 +364,23 @@ export const REPORTS = [
     ],
     defaultColumns: ["Breakdown ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Breakdown Status", "Breakdown Reason", "Asset Type", "Department", "Branch", "Serial Number", "Asset Status"],
     allColumns: ALL_COLUMNS["breakdown-history"] || [],
+  },
+  {
+    id: "reopened-breakdowns",
+    name: "Reopened Breakdowns",
+    description: "Breakdown maintenance schedules reopened more than once (RO count > 1).",
+    quickFields: [
+      { key: "assetId", label: "Asset ID", type: "searchable", domain: [], placeholder: "Search Asset ID..." },
+      { key: "assetType", label: "Asset Type", type: "multiselect", domain: [] },
+      { key: "userId", label: "Employee", type: "multiselect", domain: [] },
+      { key: "department", label: "Department", type: "multiselect", domain: [] },
+    ],
+    fields: [
+      { key: "reopenCount", label: "Reopen Count (RO) ≥", type: "number" },
+      { key: "lastReopenedOn", label: "Last Reopened On", type: "daterange" },
+    ],
+    defaultColumns: ["AMS ID", "Asset ID", "Asset Name", "Serial Number", "Asset Type", "Reopen Count (RO)", "Last Reopened On"],
+    allColumns: ALL_COLUMNS["reopened-breakdowns"] || [],
   },
   {
     id: "asset-workflow-history",

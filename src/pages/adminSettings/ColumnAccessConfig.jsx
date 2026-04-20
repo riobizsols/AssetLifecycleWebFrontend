@@ -183,7 +183,7 @@ const ColumnAccessConfig = () => {
     try {
       // Prepare configs array
       const configsArray = Object.entries(configs)
-        .filter(([_, accessLevel]) => accessLevel && accessLevel !== 'AUTH') // Don't save AUTH
+        .filter(([, accessLevel]) => accessLevel && accessLevel !== 'AUTH') // Don't save AUTH
         .map(([fieldName, accessLevel]) => ({
           jobRoleId: selectedJobRole,
           tableName: selectedTable,
@@ -222,19 +222,19 @@ const ColumnAccessConfig = () => {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="box-border min-h-full min-w-0 w-full max-w-none bg-gray-50 px-2 py-3 sm:px-3 sm:py-4 lg:px-4 lg:py-5">
+      <div className="box-border min-w-0 w-full max-w-none">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Column Access Configuration</h1>
-          <p className="text-gray-600">
-            Configure column-level access for different job roles. AUTH access provides full access and doesn't need to be configured.
+        <div className="mb-4 w-full rounded-lg border border-gray-100 bg-white p-4 shadow-md sm:mb-6 sm:p-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('columnAccessConfig.pageTitle')}</h1>
+          <p className="text-xs text-gray-600 leading-relaxed sm:text-sm">
+            {t('columnAccessConfig.pageDescription')}
           </p>
         </div>
 
         {/* Selection Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="mb-4 w-full rounded-lg border border-gray-100 bg-white p-4 shadow-md sm:mb-6 sm:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 w-full">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Job Role *
@@ -272,7 +272,7 @@ const ColumnAccessConfig = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={loadConfigurations}
               disabled={loading || !selectedJobRole || !selectedTable}
@@ -294,7 +294,7 @@ const ColumnAccessConfig = () => {
 
         {/* Columns Configuration */}
         {selectedJobRole && selectedTable && (
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="min-w-0 w-full rounded-lg border border-gray-100 bg-white p-4 shadow-md sm:p-6">
             <div className="mb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -320,24 +320,24 @@ const ColumnAccessConfig = () => {
                 No columns found for this table.
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 w-full">
                 {filteredColumns.map((column) => {
                   const currentAccess = configs[column.name] || 'AUTH';
                   return (
                     <div
                       key={column.name}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 w-full min-w-0"
                     >
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{column.label}</div>
-                        <div className="text-sm text-gray-500">{column.name}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 break-words">{column.label}</div>
+                        <div className="text-sm text-gray-500 break-all">{column.name}</div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <div className="flex gap-2">
+                      <div className="flex items-stretch sm:items-center gap-2 sm:gap-3 shrink-0 w-full sm:w-auto">
+                        <div className="flex flex-wrap gap-2 justify-start sm:justify-end w-full sm:w-auto">
                           <button
                             onClick={() => handleAccessLevelChange(column.name, 'AUTH')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                               currentAccess === 'AUTH'
                                 ? 'bg-green-100 text-green-800 border-2 border-green-500'
                                 : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
@@ -348,7 +348,7 @@ const ColumnAccessConfig = () => {
                           </button>
                           <button
                             onClick={() => handleAccessLevelChange(column.name, 'DISPLAY')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                               currentAccess === 'DISPLAY'
                                 ? 'bg-blue-100 text-blue-800 border-2 border-blue-500'
                                 : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
@@ -359,7 +359,7 @@ const ColumnAccessConfig = () => {
                           </button>
                           <button
                             onClick={() => handleAccessLevelChange(column.name, 'NONE')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                               currentAccess === 'NONE'
                                 ? 'bg-red-100 text-red-800 border-2 border-red-500'
                                 : 'bg-gray-100 text-gray-700 border-2 border-transparent hover:bg-gray-200'
@@ -380,7 +380,7 @@ const ColumnAccessConfig = () => {
 
         {/* Info Box */}
         {selectedJobRole && selectedTable && (
-          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="mt-4 w-full rounded-lg border border-blue-200 bg-blue-50 p-4 sm:mt-6">
             <h3 className="font-semibold text-blue-900 mb-2">Access Level Information:</h3>
             <ul className="space-y-1 text-sm text-blue-800">
               <li>

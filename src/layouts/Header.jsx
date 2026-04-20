@@ -1,16 +1,22 @@
 import { useAuthStore } from "../store/useAuthStore";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAuditLog } from "../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../constants/authAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import RouteDataLoading from "../components/loading/RouteDataLoading";
+import {
+  getAdminSettingsBreadcrumbLabel,
+  shouldShowAdminSettingsBreadcrumb,
+} from "../utils/adminSettingsBreadcrumb";
 
 export default function Header() {
   const { user, logout, roles } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const dropdownRef = useRef(null);
   const { t } = useLanguage();
   
@@ -19,7 +25,10 @@ export default function Header() {
 
   // Map paths to page titles and subtitles using translations
   const pathTitleMap = {
-    "/supervisor-approval": { title: t('maintenance.supervisor'), subtitle: "" },
+    "/maintenance-list": { title: t('maintenance.maintenanceList'), subtitle: "" },
+    "/maintenance-list/create": { title: t('maintenanceSupervisor.createManualMaintenance'), subtitle: "" },
+    "/inspection-view": { title: t('inspectionView.title'), subtitle: "" },
+    "/inspection-view/create": { title: t('inspectionView.createManualInspection'), subtitle: "" },
     "/assets": { title: t('navigation.assets'), subtitle: "" },
     "/assign-department-assets": {
       title: t('departments.assignment'),
@@ -28,13 +37,21 @@ export default function Header() {
     "/assign-employee-assets": { title: t('navigation.employeeAssignment'), subtitle: "" },
     "/workorder-management": { title: t('maintenance.workOrder') + " Management", subtitle: "" },
     "/maintenance-approval": { title: t('maintenance.approval'), subtitle: "" },
-    "/report-breakdown": { title: "Report Breakdown", subtitle: "" },
+    "/report-breakdown": { title: t('navigation.reportBreakdown'), subtitle: "" },
+    "/employee-report-breakdown": { title: t('navigation.employeeReportBreakdown'), subtitle: "" },
     "/dashboard": { title: t('navigation.dashboard'), subtitle: "" },
+    "/technician-certificates": { title: t('technicianCertificates.title'), subtitle: "" },
+    "/tech-cert-approvals": { title: t('technicianCertificates.approvalsTitle'), subtitle: "" },
     "/assets/add": { title: t('assets.addAsset'), subtitle: "" },
     "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },
     "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
-    "/master-data/prod-serv": { title: "Product / Service", subtitle: "" },
+    "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
+    "/master-data/inspection-checklists": { title: t('masterDataTitles.inspectionChecklists'), subtitle: "" },
+    "/master-data/inspection-frequency": { title: t('masterDataTitles.inspectionFrequency'), subtitle: "" },
+    "/master-data/uploads": { title: t('bulkUpload.title'), subtitle: "" },
+    "/master-data/asset-type-checklist-mapping/create": { title: "", subtitle: "" },
+    "/master-data/asset-type-checklist-mapping": { title: t('navigation.assetTypeChecklistMapping'), subtitle: "" },
     "/group-asset": { title: t('navigation.groupAsset'), subtitle: "" },
     "/group-asset/create": {
       title: t('navigation.groupAsset'),
@@ -52,9 +69,13 @@ export default function Header() {
       title: t('scrapSales.title'),
       subtitle: t('scrapSales.subtitle'),
     },
+    "/scrap-sales/create": {
+      title: t('scrapSales.createScrapSale'),
+      subtitle: "",
+    },
     "/scrap-assets": {
       title: t('scrapAssets.title'),
-      subtitle: t('scrapAssets.subtitle'),
+      subtitle: "",
     },
 
     "/scrap-assets/nearing-expiry": {
@@ -89,33 +110,111 @@ export default function Header() {
       title: t('auditLogs.config'),
       subtitle: t('auditLogs.configSubtitle'),
     },
+    "/certifications": { title: t('navigation.certifications'), subtitle: "" },
+    "/vendor-renewal-approval": { title: t('vendorRenewalApproval.title'), subtitle: "" },
     "/master-data/roles": {
-      title: "Role Management",
+      title: t('masterDataTitles.roleManagement'),
+    },
+    "/adminsettings/configuration": {
+      title: t("columnAccessConfig.breadcrumbConfigurationHub"),
+      subtitle: "",
     },
     "/adminsettings/configuration/properties": {
-      title: "Properties",
+      title: t('masterDataTitles.properties'),
     },
     "/adminsettings/configuration/breakdown-reason-codes": {
-      title: "Breakdown Reason Codes",
+      title: t('masterDataTitles.breakdownReasonCodes'),
+    },
+    "/reports/usage-based-asset": {
+      title: t('navigation.usageBasedAssetReport'),
+      subtitle: "",
+    },
+    "/reports/sla-report": {
+      title: t('navigation.slaReport'),
+      subtitle: "",
+    },
+    "/reports/qa-audit-report": {
+      title: t('navigation.qaAuditReport'),
+      subtitle: "",
+    },
+    "/reports/reopened-breakdowns": {
+      title: t("reports.reopenedBreakdowns.title"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/data-config": {
+      title: t("columnAccessConfig.pageTitle"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/maintenance-config": {
+      title: t("columnAccessConfig.breadcrumbMaintenanceConfig"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/bulk-serial-number-print": {
+      title: t("columnAccessConfig.breadcrumbBulkSerialPrint"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/one-time-cron": {
+      title: t("oneTimeCron.pageTitle"),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/job-roles": {
+      title: t("columnAccessConfig.breadcrumbJobRoles"),
+      subtitle: "",
     },
 
     // Add more routes as needed
   };
-  const pageInfo = Object.entries(pathTitleMap).find(([path]) =>
-    location.pathname.startsWith(path)
-  )?.[1] || { title: "", subtitle: "" };
+
+  const adminFrom = location.state?.adminFrom;
+  const showAdminBreadcrumb = shouldShowAdminSettingsBreadcrumb(location, adminFrom);
+
+  const reopenedHistoryMatch = location.pathname.match(
+    /^\/reports\/reopened-breakdowns\/([^/]+)\/history$/,
+  );
+
+  const pageInfo =
+    showAdminBreadcrumb || reopenedHistoryMatch
+      ? { title: "", subtitle: "" }
+      : Object.entries(pathTitleMap)
+          .sort((a, b) => b[0].length - a[0].length)
+          .find(([path]) => location.pathname.startsWith(path))?.[1] || {
+            title: "",
+            subtitle: "",
+          };
+
+  const adminFromLabel = showAdminBreadcrumb
+    ? getAdminSettingsBreadcrumbLabel(adminFrom.pathname, t) ||
+      adminFrom.pathname.split("/").filter(Boolean).pop() ||
+      t("columnAccessConfig.breadcrumbPreviousPage")
+    : "";
+  const adminFromTo = showAdminBreadcrumb
+    ? `${adminFrom.pathname}${adminFrom.search || ""}`
+    : "";
+  const adminCurrentLabel = showAdminBreadcrumb
+    ? getAdminSettingsBreadcrumbLabel(location.pathname, t) ||
+      location.pathname.split("/").filter(Boolean).pop() ||
+      t("columnAccessConfig.breadcrumbPreviousPage")
+    : "";
 
   const handleLogout = async () => {
-    // Log audit event for logout
-    await recordActionByNameWithFetch('Logging Out', { 
-      action: 'User Logged Out Successfully',
-      userId: user?.user_id,
-      userEmail: user?.email,
-      org_id: user?.org_id
-    });
-    
-    logout();
-    navigate("/");
+    try {
+      setLoggingOut(true);
+      setOpen(false);
+      // Log audit event for logout
+      const audit = recordActionByNameWithFetch("Logging Out", {
+        action: "User Logged Out Successfully",
+        userId: user?.user_id,
+        userEmail: user?.email,
+        org_id: user?.org_id,
+      }).catch(() => {});
+
+      // Don't block logout UX on audit logging.
+      await Promise.race([audit, new Promise((r) => setTimeout(r, 300))]);
+    } finally {
+      logout();
+      navigate("/");
+      setLoggingOut(false);
+    }
   };
 
   const fullName = user?.full_name || "User Name";
@@ -146,19 +245,74 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="flex items-center justify-between bg-white px-6 py-3 shadow-sm relative">
-      {/* Page Title */}
-      <div className="flex flex-col">
-        <div className="text-2xl font-bold text-[#0E2F4B]">
-          {pageInfo.title}
+    <>
+      {loggingOut && (
+        <RouteDataLoading
+          variant="fullscreen"
+          message={t("auth.loggingOut") || "Logging out…"}
+        />
+      )}
+      <header className="flex items-center justify-between gap-4 bg-white px-6 py-3 shadow-sm relative">
+      {/* Breadcrumb or page title (left) — profile menu stays on the right */}
+      {showAdminBreadcrumb ? (
+        <nav
+          className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs font-semibold text-[#0E2F4B] sm:text-sm"
+          aria-label="Breadcrumb"
+        >
+          <Link
+            to={adminFromTo}
+            {...(location.state?.parentAdminFrom
+              ? {
+                  state: {
+                    adminFrom: location.state.parentAdminFrom,
+                    parentAdminFrom: location.state.grandparentAdminFrom,
+                  },
+                }
+              : {})}
+            className="shrink-0 text-[#0E2F4B]/80 hover:text-[#0E2F4B] hover:underline"
+          >
+            {adminFromLabel}
+          </Link>
+          <span className="font-normal text-[#0E2F4B]/40" aria-hidden>
+            /
+          </span>
+          <span className="min-w-0 truncate text-[#0E2F4B]">
+            {adminCurrentLabel}
+          </span>
+        </nav>
+      ) : reopenedHistoryMatch ? (
+        <nav
+          className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs sm:text-sm font-semibold text-[#0E2F4B] min-w-0"
+          aria-label="Breadcrumb"
+        >
+          <Link
+            to="/reports/reopened-breakdowns"
+            className="hover:underline text-[#0E2F4B]/80 hover:text-[#0E2F4B] shrink-0"
+          >
+            {t("reports.reopenedBreakdowns.title")}
+          </Link>
+          <span className="text-[#0E2F4B]/40 font-normal" aria-hidden>
+            /
+          </span>
+          <span className="truncate min-w-0">
+            {t("reports.reopenedBreakdownsHistory.title")}
+          </span>
+        </nav>
+      ) : (
+        <div className="flex flex-col min-w-0 flex-1">
+          {pageInfo.title && (
+            <div className="text-base sm:text-lg font-bold text-[#0E2F4B] truncate">
+              {pageInfo.title}
+            </div>
+          )}
+          {pageInfo.subtitle && (
+            <div className="text-xs text-gray-600">{pageInfo.subtitle}</div>
+          )}
         </div>
-        {pageInfo.subtitle && (
-          <div className="text-sm text-gray-600">{pageInfo.subtitle}</div>
-        )}
-      </div>
+      )}
       
       {/* User Menu */}
-      <div className="relative" ref={dropdownRef}>
+      <div className="relative shrink-0" ref={dropdownRef}>
         {/* Avatar Button */}
         <button
           onClick={() => setOpen((prev) => !prev)}
@@ -197,6 +351,7 @@ export default function Header() {
             </div>
             <button
               onClick={handleLogout}
+              disabled={loggingOut}
               className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-100 text-gray-700"
             >
               <LogOut size={16} /> {t('auth.logout')}
@@ -204,6 +359,7 @@ export default function Header() {
           </div>
         )}
       </div>
-    </header>
+      </header>
+    </>
   );
 }

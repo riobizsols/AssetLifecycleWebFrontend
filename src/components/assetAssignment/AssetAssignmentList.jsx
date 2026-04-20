@@ -9,6 +9,7 @@ import { DEPT_ASSIGNMENT_APP_ID } from '../../constants/deptAssignmentAuditEvent
 import { EMP_ASSIGNMENT_APP_ID } from '../../constants/empAssignmentAuditEvents';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useNavigation } from '../../hooks/useNavigation';
+import { useAppData } from '../../contexts/AppDataContext';
 import SearchableDropdown from '../ui/SearchableDropdown';
 
 const AssetAssignmentList = ({
@@ -34,6 +35,26 @@ const AssetAssignmentList = ({
   const [showHistory, setShowHistory] = useState(false);
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { getStatusText } = useAppData();
+
+  const getAssignmentActionLabel = (actionCode) => {
+    if (!actionCode) return '-';
+    if (actionCode === 'A') return 'Assigned';
+    if (actionCode === 'C') return 'Unassigned';
+    return getStatusText ? getStatusText(actionCode) : actionCode || '-';
+  };
+
+  const getAssetName = (item) => {
+    const desc = item?.description;
+    if (desc !== undefined && desc !== null && String(desc).toUpperCase() !== 'NULL' && String(desc).trim() !== '') {
+      return desc;
+    }
+    const fallback = item?.asset_text ?? item?.text;
+    if (fallback !== undefined && fallback !== null && String(fallback).trim() !== '' && String(fallback).toUpperCase() !== 'NULL') {
+      return fallback;
+    }
+    return '-';
+  };
 
   // Initialize audit logging based on entity type
   const appId = entityType === 'employee' ? EMP_ASSIGNMENT_APP_ID : DEPT_ASSIGNMENT_APP_ID;
@@ -178,7 +199,7 @@ const AssetAssignmentList = ({
           isMaximized ? "fixed inset-0 z-50 p-6 m-6 overflow-auto" : ""
         }`}
       >
-        <div className="bg-white rounded shadow">
+        <div className="bg-white rounded shadow overflow-x-auto">
           <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
             <div className="flex items-center gap-3 w-full justify-between">
               <span>{title || 'Current Assets List'}</span>
@@ -219,10 +240,8 @@ const AssetAssignmentList = ({
             </div>
           </div>
           {entityType === 'department' ? (
-            <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
-                <div>{t('assets.assetId')}</div>
-                <div>{t('employees.departmentId')}</div>
+            <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden min-w-0">
+              <div className={`grid ${isReadOnly ? 'grid-cols-5' : 'grid-cols-6'} px-4 py-2 font-semibold border-b-4 border-yellow-400`} style={{ gridTemplateColumns: isReadOnly ? 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,0.8fr)' }}>
                 <div>{t('employees.assetTypeName')}</div>
                 <div>{t('assets.description')}</div>
                 <div>{t('employees.action')}</div>
@@ -237,15 +256,14 @@ const AssetAssignmentList = ({
                   {assignmentList.map((item, i) => (
                     <div
                       key={item.asset_assign_id || `${item.asset_id}_${i}`}
-                      className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 items-center border-b ${
+                      className={`grid ${isReadOnly ? 'grid-cols-5' : 'grid-cols-6'} px-4 py-2 items-center border-b ${
                         i % 2 === 0 ? "bg-white" : "bg-gray-100"
                       } text-gray-800`}
+                      style={{ gridTemplateColumns: isReadOnly ? 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,1fr) minmax(0,0.8fr)' }}
                     >
-                      <div>{item.asset_id}</div>
-                      <div>{departmentId || '-'}</div>
-                      <div>{item.asset_type_name || '-'}</div>
-                      <div>{item.description || '-'}</div>
-                      <div>{item.action || '-'}</div>
+                      <div className="min-w-0 truncate" title={item.asset_type_name || undefined}>{item.asset_type_name || '-'}</div>
+                      <div className="min-w-0 truncate" title={item.description || undefined}>{item.description || '-'}</div>
+                      <div>{getAssignmentActionLabel(item.action)}</div>
                       <div>{item.action_on ? new Date(item.action_on).toLocaleString() : '-'}</div>
                       <div>{item.action_by || '-'}</div>
                       {!isReadOnly && (
@@ -265,12 +283,9 @@ const AssetAssignmentList = ({
             </div>
           ) : (
             <div className="bg-[#0E2F4B] text-white text-sm overflow-hidden">
-              <div className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
-                <div>{t('assets.assetId')}</div>
-                <div>{t('employees.departmentId')}</div>
-                <div>{t('employees.orgId')}</div>
-                <div>{t('employees.employeeIntId')}</div>
+              <div className={`grid ${isReadOnly ? 'grid-cols-4' : 'grid-cols-5'} px-4 py-2 font-semibold border-b-4 border-yellow-400`}>
                 <div>{t('employees.action')}</div>
+                <div>{t('assets.assetName')}</div>
                 <div>{t('employees.assignmentDate')}</div>
                 <div>{t('employees.assignedBy')}</div>
                 {!isReadOnly && <div className="text-center">{t('common.actions')}</div>}
@@ -284,15 +299,14 @@ const AssetAssignmentList = ({
                 {assignmentList.map((item, i) => (
                   <div
                     key={item.asset_assign_id || `${item.asset_id}_${i}`}
-                    className={`grid ${isReadOnly ? 'grid-cols-7' : 'grid-cols-8'} px-4 py-2 items-center border-b ${
+                    className={`grid ${isReadOnly ? 'grid-cols-4' : 'grid-cols-5'} px-4 py-2 items-center border-b ${
                       i % 2 === 0 ? "bg-white" : "bg-gray-100"
                     } text-gray-800`}
                   >
-                    <div>{item.asset_id}</div>
-                    <div>{item.dept_id}</div>
-                    <div>{item.org_id}</div>
-                    <div>{item.employee_int_id}</div>
-                    <div>{item.action}</div>
+                    <div>{getAssignmentActionLabel(item.action)}</div>
+                    <div className="min-w-0 truncate" title={getAssetName(item)}>
+                      {getAssetName(item)}
+                    </div>
                     <div>{item.action_on ? new Date(item.action_on).toLocaleString() : ''}</div>
                     <div>{item.action_by}</div>
                     {!isReadOnly && (

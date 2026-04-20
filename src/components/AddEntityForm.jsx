@@ -499,13 +499,13 @@ const AddEntityForm = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto mt-1 bg-white shadow rounded">
+    <div className="max-w-7xl mx-auto mt-1 bg-white shadow rounded overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
       {/* Card Header */}
       <div className="bg-[#0E2F4B] text-white py-3 px-6 rounded-t border-b-4 border-[#FFC107] flex justify-center items-center">
         {/* <span className="text-2xl font-semibold text-center w-full">Vendor Details</span> */}
       </div>
 
-      <div className="px-8 pt-8">
+      <div className="px-8 pt-8 flex-1 min-h-0 overflow-y-auto">
         {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-8">
           {tabs.map((tab) => (
@@ -833,8 +833,8 @@ const AddEntityForm = () => {
       </div>
 
       {/* Unified Save and Cancel Buttons */}
-      <div className="px-8 pb-8">
-        <div className="flex justify-end gap-3 border-t border-gray-200 pt-6">
+      <div className="shrink-0 border-t border-gray-200 bg-white">
+        <div className="flex justify-end gap-3 px-6 py-4">
           <button
             type="button"
             onClick={handleUnifiedCancel}

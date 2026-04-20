@@ -7,6 +7,7 @@ import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import { X } from "lucide-react";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }) => {
   const [assetType, setAssetType] = useState("");
@@ -112,6 +113,18 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeDropdown]);
+
+  // Close modal on ESC key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const fetchChecklist = async () => {
     if (!assetData?.asset_type_id) return;
@@ -591,19 +604,31 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose(false);
+      }}
+    >
+      <div
+        className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="p-6 flex justify-between items-center border-b border-gray-200">
           <h2 className="text-xl font-semibold">{t('assetTypes.editAssetType')}</h2>
           <button
-            onClick={onClose}
+            type="button"
+            onClick={() => onClose(false)}
             className="text-gray-500 hover:text-gray-700"
+            aria-label="Close"
+            title="Close"
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto p-6">
           {/* First Row: Asset Type, Assignment Type, Status */}
           <div className="grid grid-cols-3 gap-6 mb-6">
             {/* Asset Type Input */}
@@ -786,6 +811,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
               />
               <span>{t('assetTypes.requireMaintenance')}</span>
             </label>
+
           </div>
 
           {/* Maintenance Fields - Conditional Rendering */}
@@ -813,7 +839,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                 </select>
               </div>
 
-              {/* Maintenance Lead Type Input */}
+              {/* Maintenance Lead Time Input */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   {t('assetTypes.maintenanceLeadType')}
@@ -1164,9 +1190,11 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
               )}
             </div>
           </div>
+          </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 mt-6">
+          <div className="shrink-0 px-2 py-3 border-t border-gray-200 bg-white">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -1184,6 +1212,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                 {isSubmitting ? t('assetTypes.updating') : t('common.update')}
               </button>
             )}
+          </div>
           </div>
         </form>
       </div>

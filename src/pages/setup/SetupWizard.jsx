@@ -22,6 +22,7 @@ import {
   fetchSetupCatalog,
   testSetupConnection,
   runSetupWizard,
+  syncDatabaseKeys,
 } from "../../services/setupWizardService";
 
 const wizardSteps = [
@@ -124,6 +125,8 @@ const SetupWizard = () => {
   const [setupComplete, setSetupComplete] = useState(false);
   const [adminCredentials, setAdminCredentials] = useState(null);
   const [lastAddedBranchId, setLastAddedBranchId] = useState(null);
+  const [isSyncingKeys, setIsSyncingKeys] = useState(false);
+  const [keysSyncResult, setKeysSyncResult] = useState(null);
   const branchRefs = useRef({});
 
   useEffect(() => {
@@ -548,6 +551,40 @@ API_BASE_URL=http://localhost:5000/api
     toast.success(`${field === "password" ? "Password" : field === "username" ? "Username" : "Email"} copied to clipboard!`);
   };
 
+  const handleSyncDatabaseKeys = async () => {
+    if (!dbConfig.host || !dbConfig.database || !dbConfig.user || !dbConfig.password) {
+      toast.error("Database configuration is missing. Cannot sync keys.");
+      return;
+    }
+
+    setIsSyncingKeys(true);
+    setKeysSyncResult(null);
+
+    try {
+      const result = await syncDatabaseKeys(dbConfig);
+      
+      if (result.success) {
+        setKeysSyncResult({
+          success: true,
+          message: result.message || "Database keys synchronized successfully",
+          summary: result.summary || {},
+        });
+        toast.success("Foreign and primary key relationships generated successfully!");
+      } else {
+        throw new Error(result.message || "Failed to synchronize database keys");
+      }
+    } catch (error) {
+      console.error("Sync keys failed", error);
+      setKeysSyncResult({
+        success: false,
+        message: error.response?.data?.message || error.message || "Failed to synchronize database keys",
+      });
+      toast.error(error.response?.data?.message || error.message || "Failed to synchronize database keys");
+    } finally {
+      setIsSyncingKeys(false);
+    }
+  };
+
   const renderStep = () => {
     // Completion screen
     if (setupComplete && currentStep >= wizardSteps.length) {
@@ -709,6 +746,71 @@ API_BASE_URL=http://localhost:5000/api
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <Database className="h-5 w-5 text-indigo-600" />
+              Database Relationships
+            </h3>
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600">
+                Generate foreign key and primary key relationships from the source database to your newly created database.
+                This will ensure proper data integrity and relationships between tables.
+              </p>
+              
+              {keysSyncResult && (
+                <div className={`rounded-lg p-4 ${
+                  keysSyncResult.success 
+                    ? "bg-emerald-50 border border-emerald-200" 
+                    : "bg-red-50 border border-red-200"
+                }`}>
+                  <div className="flex items-start gap-2">
+                    {keysSyncResult.success ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <p className={`text-sm font-semibold ${
+                        keysSyncResult.success ? "text-emerald-900" : "text-red-900"
+                      }`}>
+                        {keysSyncResult.success ? "Success!" : "Error"}
+                      </p>
+                      <p className={`text-xs mt-1 ${
+                        keysSyncResult.success ? "text-emerald-700" : "text-red-700"
+                      }`}>
+                        {keysSyncResult.message}
+                      </p>
+                      {keysSyncResult.summary && keysSyncResult.summary.primaryKeysApplied !== undefined && (
+                        <div className="mt-2 text-xs text-emerald-700">
+                          <p>Primary Keys Applied: {keysSyncResult.summary.primaryKeysApplied || 0}</p>
+                          <p>Foreign Keys Applied: {keysSyncResult.summary.foreignKeysApplied || 0}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleSyncDatabaseKeys}
+                disabled={isSyncingKeys}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSyncingKeys ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating Relationships...
+                  </>
+                ) : (
+                  <>
+                    <Database className="h-4 w-4" />
+                    Generate Foreign & Primary Key Relationships
+                  </>
+                )}
+              </button>
             </div>
           </div>
 

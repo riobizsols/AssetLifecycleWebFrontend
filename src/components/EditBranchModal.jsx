@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { useLanguage } from '../contexts/LanguageContext';
+import { X } from 'lucide-react';
 
 const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
   const { t } = useLanguage();
@@ -20,6 +21,16 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
       });
     }
   }, [branch]);
+
+  // Close modal on ESC key
+  useEffect(() => {
+    if (!show) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [show, onClose]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -44,16 +55,23 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50">
-      <div className="bg-white w-[500px] rounded shadow-lg">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="bg-white w-[500px] rounded shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
           <span>{t('branches.editBranch')}</span>
           <button
             onClick={onClose}
-            className="text-yellow-400 text-xl font-bold"
+            className="text-yellow-400 hover:text-yellow-300"
+            aria-label="Close"
+            title="Close"
           >
-            ×
+            <X size={18} />
           </button>
         </div>
 
