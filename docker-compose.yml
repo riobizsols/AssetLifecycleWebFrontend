@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   alm-frontend:
-    container_name: alm-frontend
+    container_name: alm-main-frontend
     build:
       context: .
       dockerfile: Dockerfile
