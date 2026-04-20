@@ -21,6 +21,7 @@ import {
   FileCheck,
   Clock,
   Activity,
+  MessageSquareText,
 } from "lucide-react";
 
 const AdminSettingsView = () => {
@@ -57,6 +58,17 @@ const AdminSettingsView = () => {
 
   // Default items to show even if navigation is empty (for better UX)
   const defaultItems = [
+    {
+      app_id: "TEXTMESSAGES",
+      label: "Text Messages",
+      description: "Manage English and other language (e.g., Chinese) text messages",
+      icon: MessageSquareText,
+      route: "/adminsettings/configuration/text-messages",
+      color: "from-teal-500 to-teal-600",
+      bgColor: "bg-teal-50",
+      iconColor: "text-teal-700",
+      borderColor: "border-teal-200",
+    },
     {
       app_id: "USERROLES",
       label: "Job Roles",
@@ -165,6 +177,9 @@ const AdminSettingsView = () => {
   ];
 
   const canAccessAdminItem = (appId) =>
+    appId === "TEXTMESSAGES"
+      ? hasAccess("ADMINSETTINGS")
+      :
     appId === "ONETIMECRON"
       ? hasAccess("ONETIMECRON") || hasAccess("ADMINSETTINGS")
       : appId === "JOBMONITOR"
@@ -205,6 +220,7 @@ const AdminSettingsView = () => {
   // Map app IDs to routes and icons
   const getItemRoute = (appId) => {
     const routeMap = {
+      TEXTMESSAGES: "/adminsettings/configuration/text-messages",
       USERROLES: "/adminsettings/configuration/job-roles",
       COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config",
       BULKSERIALNUMBERPRINT:
@@ -222,6 +238,7 @@ const AdminSettingsView = () => {
 
   const getItemIcon = (appId) => {
     const iconMap = {
+      TEXTMESSAGES: MessageSquareText,
       USERROLES: Users,
       COLUMNACCESSCONFIG: Shield,
       BULKSERIALNUMBERPRINT: Printer,
@@ -237,6 +254,13 @@ const AdminSettingsView = () => {
 
   const getItemColors = (appId) => {
     const colorMap = {
+      TEXTMESSAGES: {
+        gradient: "from-teal-500 to-teal-600",
+        bg: "bg-teal-50",
+        icon: "text-teal-700",
+        border: "border-teal-200",
+        hover: "hover:from-teal-600 hover:to-teal-700",
+      },
       USERROLES: {
         gradient: "from-blue-500 to-blue-600",
         bg: "bg-blue-50",

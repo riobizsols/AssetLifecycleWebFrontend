@@ -160,6 +160,7 @@ const MaintenanceApprovalDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [approvalDetails, setApprovalDetails] = useState(null);
+  const [softwareAtId, setSoftwareAtId] = useState(null);
   const [technicians, setTechnicians] = useState([]);
   const [assignedTechnician, setAssignedTechnician] = useState(null);
   const [selectedTechnician, setSelectedTechnician] = useState(null);
@@ -202,23 +203,43 @@ const MaintenanceApprovalDetail = () => {
     );
   }, [approvalDetails]);
 
-  const showMaintenanceChecklist = !isVendorContractRenewal;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await API.get("/org-settings/software-asset-type");
+        if (cancelled) return;
+        setSoftwareAtId(resp.data?.data?.software_at_id || null);
+      } catch {
+        if (cancelled) return;
+        setSoftwareAtId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isSoftwareApproval =
+    !!softwareAtId && String(approvalDetails?.assetTypeId || "") === String(softwareAtId);
+
+  const showMaintenanceChecklist = !isVendorContractRenewal && !isSoftwareApproval;
   
   // Reset active tab if it's vendor contract renewal and user is on asset tab
   useEffect(() => {
-    if (isVendorContractRenewal && activeTab === 'asset') {
+    if (!isSoftwareApproval && isVendorContractRenewal && activeTab === 'asset') {
       console.log('Resetting tab from', activeTab, 'to approval for vendor contract renewal');
       setActiveTab('approval');
     }
-  }, [isVendorContractRenewal, activeTab]);
+  }, [isVendorContractRenewal, activeTab, isSoftwareApproval]);
   
   // Reset active tab if it's subscription renewal and user is on vendor/asset tab
   useEffect(() => {
-    if (isSubscriptionRenewal && (activeTab === 'vendor' || activeTab === 'asset')) {
+    if (!isSoftwareApproval && isSubscriptionRenewal && (activeTab === 'vendor' || activeTab === 'asset')) {
       console.log('Resetting tab from', activeTab, 'to approval for subscription renewal');
       setActiveTab('approval');
     }
-  }, [isSubscriptionRenewal, activeTab]);
+  }, [isSubscriptionRenewal, activeTab, isSoftwareApproval]);
 
   // Reset active tab when switching between vendor and in-house maintenance
   useEffect(() => {
@@ -956,11 +977,19 @@ const MaintenanceApprovalDetail = () => {
                 {(() => {
                   // For subscription renewal (MT001): show only approval and history
                   if (isSubscriptionRenewal) {
-                    return ['approval', 'history'];
+                    const base = ['approval', 'history'];
+                    if (isSoftwareApproval && !base.includes('asset')) {
+                      base.splice(base.length - 1, 0, 'asset');
+                    }
+                    return base;
                   }
                   // For vendor contract renewal (MT005): show approval, vendor, and history (no asset)
                   if (isVendorContractRenewal) {
-                    return ['approval', 'vendor', 'history'];
+                    const base = ['approval', 'vendor', 'history'];
+                    if (isSoftwareApproval && !base.includes('asset')) {
+                      base.splice(base.length - 1, 0, 'asset');
+                    }
+                    return base;
                   }
                   // For regular maintenance: show technician tab when has emp_int_id (in-house), otherwise vendor
                   const hasEmpIntId = approvalDetails?.header_emp_int_id;
@@ -972,9 +1001,17 @@ const MaintenanceApprovalDetail = () => {
                     approvalDetails
                   });
                   if (hasEmpIntId || (maint && (maint.includes('inhouse') || maint.includes('in-house')))) {
-                    return ['approval', 'technician', 'asset', 'history'];
+                    const base = ['approval', 'technician', 'asset', 'history'];
+                    if (isSoftwareApproval && !base.includes('asset')) {
+                      base.splice(base.length - 1, 0, 'asset');
+                    }
+                    return base;
                   }
-                  return ['approval', 'vendor', 'asset', 'history'];
+                  const base = ['approval', 'vendor', 'asset', 'history'];
+                  if (isSoftwareApproval && !base.includes('asset')) {
+                    base.splice(base.length - 1, 0, 'asset');
+                  }
+                  return base;
                 })().map((tab) => (
                   <button
                     key={tab}
@@ -1057,10 +1094,12 @@ const MaintenanceApprovalDetail = () => {
                          />
                           </>
                         )}
-                         <ReadOnlyInput 
-                           label="Workflow ID" 
-                           value={approvalDetails?.wfamshId || "-"} 
-                         />
+                         {!isSoftwareApproval && (
+                           <ReadOnlyInput 
+                             label="Workflow ID" 
+                             value={approvalDetails?.wfamshId || "-"} 
+                           />
+                         )}
                          <ReadOnlyInput 
                            label={t('maintenanceApproval.notes')} 
                            value={approvalDetails?.notes || "-"} 

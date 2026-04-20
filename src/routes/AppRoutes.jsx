@@ -107,6 +107,7 @@ import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfigur
 import Certifications from "../pages/adminSettings/Certifications";
 import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
 import JobMonitor from "../pages/adminSettings/JobMonitor";
+import TextMessages from "../pages/adminSettings/TextMessages";
 import AssetTypeChecklistMapping from "../pages/masterData/AssetTypeChecklistMapping";
 import CreateAssetTypeChecklistMapping from "../pages/masterData/CreateAssetTypeChecklistMapping";
 import InspectionFrequency from "../pages/masterData/InspectionFrequency";
@@ -1173,6 +1174,16 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="ADMINSETTINGS">
               <AdminSettingsLayout>
                 <JobMonitor />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/text-messages"
+          element={
+            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+              <AdminSettingsLayout>
+                <TextMessages />
               </AdminSettingsLayout>
             </ProtectedRoute>
           }

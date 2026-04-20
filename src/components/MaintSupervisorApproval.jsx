@@ -30,6 +30,8 @@ export default function MaintSupervisorApproval() {
   const [loadingData, setLoadingData] = useState(true);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+  const [softwareAtId, setSoftwareAtId] = useState(null);
+  const [resolvedAssetTypeId, setResolvedAssetTypeId] = useState(null);
 
   // NULL VALIDATION
   const [empty, setEmpty] = useState(false);
@@ -80,6 +82,65 @@ export default function MaintSupervisorApproval() {
   // Check if this is a subscription renewal (MT001)
   const isSubscriptionRenewal = maintenanceData?.maint_type_id === 'MT001' || 
                                  maintenanceData?.maintenance_type_name?.toLowerCase().includes('subscription');
+
+  const effectiveAssetTypeId =
+    maintenanceData?.asset_type_id || resolvedAssetTypeId || null;
+
+  const isSoftwareMaintenance =
+    !!softwareAtId && String(effectiveAssetTypeId || "") === String(softwareAtId);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await API.get("/org-settings/software-asset-type");
+        if (cancelled) return;
+        setSoftwareAtId(resp.data?.data?.software_at_id || null);
+      } catch {
+        if (cancelled) return;
+        setSoftwareAtId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // tblAssetMaintSch may not store asset_type_id; resolve via asset_id when needed
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const assetId = maintenanceData?.asset_id;
+        if (!assetId) {
+          setResolvedAssetTypeId(null);
+          return;
+        }
+
+        // If backend already provided asset_type_id, no need to resolve.
+        if (maintenanceData?.asset_type_id) {
+          setResolvedAssetTypeId(null);
+          return;
+        }
+
+        const res = await API.get(`/assets/${encodeURIComponent(assetId)}`, {
+          params: { context: "SUPERVISORAPPROVAL" },
+        });
+        if (cancelled) return;
+
+        const asset = res.data?.data || res.data;
+        const atId = asset?.asset_type_id || asset?.assetTypeId || null;
+        setResolvedAssetTypeId(atId || null);
+      } catch {
+        if (cancelled) return;
+        setResolvedAssetTypeId(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [maintenanceData?.asset_id, maintenanceData?.asset_type_id]);
   
   // Filter document types - exclude work order for subscription renewal
   const filteredMaintenanceDocTypes = useMemo(() => {
@@ -128,13 +189,20 @@ export default function MaintSupervisorApproval() {
     }
   }, [id, orgId]);
 
-  // Fetch checklist when maintenance data is available
+  // Fetch checklist when maintenance data is available (skip for software asset type)
   useEffect(() => {
-    if (maintenanceData?.asset_type_id) {
-      fetchChecklist();
+    if (!effectiveAssetTypeId) return;
+
+    if (isSoftwareMaintenance) {
+      setChecklist([]);
+      setLoadingChecklist(false);
       fetchMaintenanceDocuments();
+      return;
     }
-  }, [maintenanceData]);
+
+    fetchChecklist();
+    fetchMaintenanceDocuments();
+  }, [maintenanceData, isSoftwareMaintenance, effectiveAssetTypeId]);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -1326,26 +1394,28 @@ export default function MaintSupervisorApproval() {
       {/* Main Content */}
       <div className="space-y-6">
         {/* Checklist Section - At the Top */}
-        <div className="p-6 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.maintenanceChecklist')}</h2>
-              {maintenanceData?.is_group_maintenance && (
-                <p className="text-sm text-gray-600 mt-1">Applies to all {maintenanceData.group_asset_count} assets in the group</p>
-              )}
+        {!isSoftwareMaintenance && (
+          <div className="p-6 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">{t('maintenanceSupervisor.maintenanceChecklist')}</h2>
+                {maintenanceData?.is_group_maintenance && (
+                  <p className="text-sm text-gray-600 mt-1">Applies to all {maintenanceData.group_asset_count} assets in the group</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowChecklist(true)}
+                disabled={loadingChecklist || checklist.length === 0}
+                className="px-4 py-2 border border-blue-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title="View and complete the asset maintenance checklist"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                {loadingChecklist ? t('maintenanceSupervisor.loading') : t('maintenanceSupervisor.viewChecklist')}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowChecklist(true)}
-              disabled={loadingChecklist || checklist.length === 0}
-              className="px-4 py-2 border border-blue-300 rounded bg-[#0E2F4B] text-white text-sm font-semibold flex items-center gap-2 justify-center hover:bg-[#14395c] transition disabled:opacity-50 disabled:cursor-not-allowed"
-              title="View and complete the asset maintenance checklist"
-            >
-              <ClipboardCheck className="w-4 h-4" />
-              {loadingChecklist ? t('maintenanceSupervisor.loading') : t('maintenanceSupervisor.viewChecklist')}
-            </button>
           </div>
-        </div>
+        )}
 
         {/* View Manual Section - Hide for subscription renewal */}
         {!isSubscriptionRenewal && (
@@ -2404,12 +2474,14 @@ export default function MaintSupervisorApproval() {
       </div>
 
       {/* Checklist Modal */}
-      <ChecklistModal
-        assetType={maintenanceData?.asset_type_name || "Asset"}
-        open={showChecklist}
-        onClose={() => setShowChecklist(false)}
-        checklist={checklist}
-      />
+      {!isSoftwareMaintenance && (
+        <ChecklistModal
+          assetType={maintenanceData?.asset_type_name || "Asset"}
+          open={showChecklist}
+          onClose={() => setShowChecklist(false)}
+          checklist={checklist}
+        />
+      )}
 
     </div>
   );
