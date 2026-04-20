@@ -1,9 +1,8 @@
 node_modules
-dist
 npm-debug.log
-yarn-error.log
 .git
 .gitignore
+dist
 .env
-coverage
+.env.*
 
