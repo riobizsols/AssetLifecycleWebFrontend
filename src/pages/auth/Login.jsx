@@ -170,7 +170,7 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-[#0E2F4B] text-white py-2 rounded-md hover:bg-[#123b5d] transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? t('common.loading') : t('auth.login')}
+              {loading ? t('common.loading') : "Tenant Login"}
             </button>
           </form>
         </div>
