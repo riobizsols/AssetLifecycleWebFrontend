@@ -1146,14 +1146,14 @@ const MaintenanceFrequency = () => {
           <div>
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Frequency Text <span className="text-red-500">*</span>
+                  Select Asset Type <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedFreqId}
                   onChange={(e) => setSelectedFreqId(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
                 >
-                  <option value="">-- Select Frequency --</option>
+                  <option value="">-- Select Asset Type --</option>
                    {frequencies.map((freq) => (
                       <option key={freq.at_main_freq_id} value={freq.at_main_freq_id}>
                         {freq.asset_type_name}
