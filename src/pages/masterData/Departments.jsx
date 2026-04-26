@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
@@ -80,7 +81,7 @@ const Departments = () => {
   const handleCreate = async () => {
     setSubmitAttempted(true);
     if (!newDeptName.trim()) {
-      toast.error(t('departments.departmentNameRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTNAMEREQUIRED_43518C3B', fallbackText: t('departments.departmentNameRequired'), type: 'error' });
       return;
     }
     try {
@@ -96,7 +97,7 @@ const Departments = () => {
       setNewDeptName("");
       fetchDepartments();
       fetchNextDeptId();
-      toast.success(t('departments.departmentCreatedSuccessfully', { name: newDeptName }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTCREATEDSUCCESSFULLY_3510E42C', fallbackText: t('departments.departmentCreatedSuccessfully', { name: newDeptName }), type: 'success' });
       setSubmitAttempted(false);
     } catch (err) {
       console.error("Error creating department:", err);
@@ -130,7 +131,7 @@ const Departments = () => {
       setShowDeleteModal(false);
       fetchDepartments();
       fetchNextDeptId();
-      toast.success(t('departments.departmentDeletedSuccessfully', { name: selectedDept.text }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTDELETEDSUCCESSFULLY_581D8B85', fallbackText: t('departments.departmentDeletedSuccessfully', { name: selectedDept.text }), type: 'success' });
     } catch (err) {
       console.error("Error deleting department:", err);
       
@@ -165,7 +166,7 @@ const Departments = () => {
   const confirmUpdate = async () => {
     setSubmitAttempted(true);
     if (!editName.trim()) {
-      toast.error(t('departments.departmentNameRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTNAMEREQUIRED_43518C3B', fallbackText: t('departments.departmentNameRequired'), type: 'error' });
       return;
     }
     try {
@@ -184,7 +185,7 @@ const Departments = () => {
       
       setShowEditModal(false);
       fetchDepartments();
-      toast.success(t('departments.departmentUpdatedSuccessfully', { name: editName }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTUPDATEDSUCCESSFULLY_671C5927', fallbackText: t('departments.departmentUpdatedSuccessfully', { name: editName }), type: 'success' });
       setSubmitAttempted(false);
     } catch (err) {
       console.error("Error updating department:", err);

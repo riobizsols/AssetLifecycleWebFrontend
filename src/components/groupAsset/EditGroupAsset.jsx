@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -191,7 +192,7 @@ const EditGroupAsset = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('groupAssets.editGroupAsset.failedToLoadDocumentTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOLOADDOCUMENT_2EBE9EB5', fallbackText: t('groupAssets.editGroupAsset.failedToLoadDocumentTypes'), type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -226,7 +227,7 @@ const EditGroupAsset = () => {
       }
     } catch (error) {
       console.error('Error fetching group details:', error);
-      toast.error(t('groupAssets.editGroupAsset.failedToFetchGroupDetails'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOFETCHGROUPDE_12015786', fallbackText: t('groupAssets.editGroupAsset.failedToFetchGroupDetails'), type: 'error' });
     } finally {
       setLoadingGroupData(false);
     }
@@ -240,11 +241,11 @@ const EditGroupAsset = () => {
       if (response.data && response.data.success) {
         setAssetTypes(response.data.data || []);
     } else {
-        toast.error(t('groupAssets.editGroupAsset.failedToFetchAssetTypes'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOFETCHASSETTY_29D69920', fallbackText: t('groupAssets.editGroupAsset.failedToFetchAssetTypes'), type: 'error' });
       }
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      toast.error(t('groupAssets.editGroupAsset.failedToFetchAssetTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOFETCHASSETTY_29D69920', fallbackText: t('groupAssets.editGroupAsset.failedToFetchAssetTypes'), type: 'error' });
     } finally {
       setLoadingAssetTypes(false);
     }
@@ -298,7 +299,7 @@ const EditGroupAsset = () => {
       });
     } catch (error) {
       console.error('Error fetching assets:', error);
-      toast.error(t('groupAssets.editGroupAsset.failedToFetchAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOFETCHASSETS_15D4A586', fallbackText: t('groupAssets.editGroupAsset.failedToFetchAssets'), type: 'error' });
     } finally {
       setLoadingAssets(false);
     }
@@ -342,7 +343,7 @@ const EditGroupAsset = () => {
       setAvailableAssets(uniqueAssets);
     } catch (error) {
       console.error('Error fetching assets for all types:', error);
-      toast.error(t('groupAssets.editGroupAsset.failedToFetchAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOFETCHASSETS_15D4A586', fallbackText: t('groupAssets.editGroupAsset.failedToFetchAssets'), type: 'error' });
     } finally {
       setLoadingAssets(false);
     }
@@ -370,7 +371,7 @@ const EditGroupAsset = () => {
   // Asset type selection handlers
   const handleAssetTypeSelect = (assetType) => {
     if (selectedAssetTypes.includes(assetType.asset_type_id)) {
-      toast.error(t('groupAssets.editGroupAsset.assetTypeAlreadySelected'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_ASSETTYPEALREADYSELE_630971CC', fallbackText: t('groupAssets.editGroupAsset.assetTypeAlreadySelected'), type: 'error' });
       return;
     }
     
@@ -434,17 +435,17 @@ const EditGroupAsset = () => {
   // Update asset group
   const handleUpdate = async () => {
     if (!groupName.trim()) {
-      toast.error(t('groupAssets.editGroupAsset.pleaseEnterGroupName'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_PLEASEENTERGROUPNAME_0EDFF087', fallbackText: t('groupAssets.editGroupAsset.pleaseEnterGroupName'), type: 'error' });
       return;
     }
 
     if (selectedAssetTypes.length === 0) {
-      toast.error(t('groupAssets.editGroupAsset.pleaseSelectAtLeastOneAssetType'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_PLEASESELECTATLEASTO_480A2309', fallbackText: t('groupAssets.editGroupAsset.pleaseSelectAtLeastOneAssetType'), type: 'error' });
       return;
     }
 
     if (selectedAssets.length === 0) {
-      toast.error(t('groupAssets.editGroupAsset.pleaseSelectAtLeastOneAsset'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_PLEASESELECTATLEASTO_5674B0D1', fallbackText: t('groupAssets.editGroupAsset.pleaseSelectAtLeastOneAsset'), type: 'error' });
       return;
     }
 
@@ -466,14 +467,14 @@ const EditGroupAsset = () => {
           action: 'Group Asset Updated Successfully'
         });
         
-        toast.success(t('groupAssets.editGroupAsset.assetGroupUpdatedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_ASSETGROUPUPDATEDSUC_223B1BD8', fallbackText: t('groupAssets.editGroupAsset.assetGroupUpdatedSuccessfully'), type: 'success' });
         navigate('/group-asset');
       } else {
-        toast.error(t('groupAssets.editGroupAsset.failedToUpdateAssetGroup'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOUPDATEASSETG_66EDB19B', fallbackText: t('groupAssets.editGroupAsset.failedToUpdateAssetGroup'), type: 'error' });
       }
     } catch (error) {
       console.error('Error updating group:', error);
-      toast.error(t('groupAssets.editGroupAsset.failedToUpdateAssetGroup'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOUPDATEASSETG_66EDB19B', fallbackText: t('groupAssets.editGroupAsset.failedToUpdateAssetGroup'), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -520,7 +521,7 @@ const EditGroupAsset = () => {
           action: 'Document Archived in Group Asset'
         });
         
-        toast.success(t('groupAssets.editGroupAsset.documentArchivedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_DOCUMENTARCHIVEDSUCC_3FE37651', fallbackText: t('groupAssets.editGroupAsset.documentArchivedSuccessfully'), type: 'success' });
         // Refresh documents
         const res = await API.get(`/asset-group-docs/${groupId}`);
         const allDocs = res.data?.documents || [];
@@ -542,7 +543,7 @@ const EditGroupAsset = () => {
           action: 'Document Unarchived in Group Asset'
         });
         
-        toast.success(t('groupAssets.editGroupAsset.documentUnarchivedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_DOCUMENTUNARCHIVEDSU_603EA848', fallbackText: t('groupAssets.editGroupAsset.documentUnarchivedSuccessfully'), type: 'success' });
         // Refresh documents
         const res = await API.get(`/asset-group-docs/${groupId}`);
         const allDocs = res.data?.documents || [];
@@ -554,27 +555,27 @@ const EditGroupAsset = () => {
     } catch (error) {
       console.error('Document action failed:', error);
       console.error('Error details:', error.response?.data);
-      toast.error(t('groupAssets.editGroupAsset.failedToActionDocument', { action }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOACTIONDOCUME_692C4B4C', fallbackText: t('groupAssets.editGroupAsset.failedToActionDocument', { action }), type: 'error' });
     }
   };
 
   // Handle batch upload for group asset documents
   const handleBatchUpload = async () => {
     if (uploadRows.length === 0) {
-      toast.error(t('groupAssets.editGroupAsset.addAtLeastOneFile'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_ADDATLEASTONEFILE_6D70533E', fallbackText: t('groupAssets.editGroupAsset.addAtLeastOneFile'), type: 'error' });
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error(t('groupAssets.editGroupAsset.selectDocumentTypeAndChooseFile'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_SELECTDOCUMENTTYPEAN_55F3E1AE', fallbackText: t('groupAssets.editGroupAsset.selectDocumentTypeAndChooseFile'), type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-        toast.error(t('groupAssets.editGroupAsset.enterCustomNameFor', { docType: selectedDocType.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_ENTERCUSTOMNAMEFOR_1AFFFCA0', fallbackText: t('groupAssets.editGroupAsset.enterCustomNameFor', { docType: selectedDocType.text }), type: 'error' });
         return;
       }
     }
@@ -614,9 +615,9 @@ const EditGroupAsset = () => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('groupAssets.editGroupAsset.allFilesUploadedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_ALLFILESUPLOADEDSUCC_6561EC18', fallbackText: t('groupAssets.editGroupAsset.allFilesUploadedSuccessfully'), type: 'success' });
         } else {
-          toast.success(t('groupAssets.editGroupAsset.filesUploaded', { successCount, failCount }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FILESUPLOADED_6239EC0C', fallbackText: t('groupAssets.editGroupAsset.filesUploaded', { successCount, failCount }), type: 'success' });
         }
         setUploadRows([]); // Clear all attachments after upload
         // Refresh the documents list
@@ -627,11 +628,11 @@ const EditGroupAsset = () => {
         setDocs(active);
         setArchivedDocs(archived);
       } else {
-        toast.error(t('groupAssets.editGroupAsset.failedToUploadAnyFiles'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOUPLOADANYFIL_28561C4F', fallbackText: t('groupAssets.editGroupAsset.failedToUploadAnyFiles'), type: 'error' });
       }
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error(t('groupAssets.editGroupAsset.uploadFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_UPLOADFAILED_423B1CE9', fallbackText: t('groupAssets.editGroupAsset.uploadFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -1134,7 +1135,7 @@ const EditGroupAsset = () => {
                               onChange={e => {
                                 const f = e.target.files?.[0] || null;
                                 if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                  toast.error(t('groupAssets.editGroupAsset.fileSizeExceedsLimit'));
+                                  showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FILESIZEEXCEEDSLIMIT_0CE493BC', fallbackText: t('groupAssets.editGroupAsset.fileSizeExceedsLimit'), type: 'error' });
                                   e.target.value = '';
                                   return;
                                 }

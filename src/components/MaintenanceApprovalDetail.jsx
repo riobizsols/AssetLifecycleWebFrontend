@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "./ui/card";
@@ -435,9 +436,10 @@ const MaintenanceApprovalDetail = () => {
     
     try {
       // Show loading toast
-      loadingToastId = toast.loading(t('maintenanceApproval.approving') || "Approving maintenance...", {
-        duration: Infinity, // Keep it until we dismiss it
-      });
+      loadingToastId = toast.loading(
+        t('maintenanceApproval.approving') || "Approving maintenance...",
+        { duration: Infinity },
+      );
       
       console.log("Approving maintenance for asset:", id, "by emp:", currentUserEmpId);
       
@@ -640,7 +642,7 @@ const MaintenanceApprovalDetail = () => {
     try {
       const resp = await API.put(`/approval-detail/workflow-header/${approvalDetails.wfamshId}`, { technicianId: newTechnicianId });
       if (resp.data?.success) {
-        toast.success('Technician updated');
+        showBackendTextToast({ toast, tmdId: 'TMD_TECHNICIAN_UPDATED_2F615E1F', fallbackText: 'Technician updated', type: 'success' });
         setSelectedTechnician(newTechnicianId);
         try {
           const assignedResp = await API.get(`/inspection-approval/technician-header/${newTechnicianId}`);
@@ -655,7 +657,7 @@ const MaintenanceApprovalDetail = () => {
       }
     } catch (e) {
       console.error('Error saving technician change:', e);
-      toast.error('Failed to update technician');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_TECHNICIAN_6DD97967', fallbackText: 'Failed to update technician', type: 'error' });
     }
   };
 
@@ -722,7 +724,7 @@ const MaintenanceApprovalDetail = () => {
   // Save vendor change independently
   const saveVendorChange = async (newVendorId) => {
     if (!approvalDetails?.wfamshId) {
-      toast.error("Workflow ID not found");
+      showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_ID_NOT_FOUND_3BCB762F', fallbackText: 'Workflow ID not found', type: 'error' });
       return;
     }
     
@@ -732,7 +734,7 @@ const MaintenanceApprovalDetail = () => {
       });
       
       if (response.data.success) {
-        toast.success("Vendor updated successfully");
+        showBackendTextToast({ toast, tmdId: 'TMD_VENDOR_UPDATED_SUCCESSFULLY_616EBF5C', fallbackText: 'Vendor updated successfully', type: 'success' });
         // Refresh approval details to show updated vendor
         fetchApprovalDetails(true);
       } else {
@@ -747,7 +749,7 @@ const MaintenanceApprovalDetail = () => {
   // Save maintenance date change independently
   const saveMaintenanceDateChange = async (newDate) => {
     if (!approvalDetails?.wfamshId) {
-      toast.error("Workflow ID not found");
+      showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_ID_NOT_FOUND_3BCB762F', fallbackText: 'Workflow ID not found', type: 'error' });
       return;
     }
     
@@ -757,7 +759,7 @@ const MaintenanceApprovalDetail = () => {
       });
       
       if (response.data.success) {
-        toast.success("Maintenance date updated successfully");
+        showBackendTextToast({ toast, tmdId: 'TMD_MAINTENANCE_DATE_UPDATED_SUCCESSFULLY_42670F31', fallbackText: 'Maintenance date updated successfully', type: 'success' });
         // Refresh approval details to show updated date
         fetchApprovalDetails(true);
       } else {
@@ -1446,7 +1448,7 @@ const MaintenanceApprovalDetail = () => {
                       if (!approvalDetails?.maintained_by || !approvalDetails.maintained_by.toLowerCase().includes('inhouse')) {
                         // If vendor is inactive (0) or CR Approved (3), prevent approval
                         if (currentVendorId && (vendorStatus === 0 || vendorStatus === 3)) {
-                          toast.error("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
+                          showBackendTextToast({ toast, tmdId: 'TMD_THE_SPECIFIED_SERVICE_VENDOR_IS_INACTIVE_OR_CR_APPRO_2051F472', fallbackText: 'The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.', type: 'error' });
                           // Switch to vendor tab to show the message
                           setActiveTab('vendor');
                           setVendorStatusError("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
@@ -1455,7 +1457,7 @@ const MaintenanceApprovalDetail = () => {
                       }
                       // If no vendor selected, also prevent
                       if (!currentVendorId) {
-                        toast.error("Please select a vendor before approving.");
+                        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_VENDOR_BEFORE_APPROVING_72E3B706', fallbackText: 'Please select a vendor before approving.', type: 'error' });
                         setActiveTab('vendor');
                         return;
                       }

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -92,23 +93,23 @@ const CreateInspectionChecklist = ({ isOpen, onClose, onSuccess, responseTypes =
     const isMaxRangeValid = !isQuantitativeCheck || (form.max_range !== "" && form.max_range !== null);
 
     if (!isQuestionValid) {
-      toast.error("Inspection Question is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_QUESTION_IS_REQUIRED_132AEBC7', fallbackText: 'Inspection Question is required', type: 'error' });
       return false;
     }
     if (!isResponseTypeValid) {
-      toast.error("Response Type is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_RESPONSE_TYPE_IS_REQUIRED_6B856412', fallbackText: 'Response Type is required', type: 'error' });
       return false;
     }
     if (!isExpectedValueValid) {
-      toast.error("Expected Value is required for Qualitative response types");
+      showBackendTextToast({ toast, tmdId: 'TMD_EXPECTED_VALUE_IS_REQUIRED_FOR_QUALITATIVE_RESPONSE__74E52B48', fallbackText: 'Expected Value is required for Qualitative response types', type: 'error' });
       return false;
     }
     if (!isMinRangeValid) {
-      toast.error("Min Range is required for Quantitative response types");
+      showBackendTextToast({ toast, tmdId: 'TMD_MIN_RANGE_IS_REQUIRED_FOR_QUANTITATIVE_RESPONSE_TYPE_20AFC210', fallbackText: 'Min Range is required for Quantitative response types', type: 'error' });
       return false;
     }
     if (!isMaxRangeValid) {
-      toast.error("Max Range is required for Quantitative response types");
+      showBackendTextToast({ toast, tmdId: 'TMD_MAX_RANGE_IS_REQUIRED_FOR_QUANTITATIVE_RESPONSE_TYPE_555A18A2', fallbackText: 'Max Range is required for Quantitative response types', type: 'error' });
       return false;
     }
 
@@ -136,7 +137,7 @@ const CreateInspectionChecklist = ({ isOpen, onClose, onSuccess, responseTypes =
         trigger_maintenance: form.trigger_maintenance,
       });
 
-      toast.success("Inspection Checklist created successfully!");
+      showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_CHECKLIST_CREATED_SUCCESSFULLY_4E5F7584', fallbackText: 'Inspection Checklist created successfully!', type: 'success' });
       handleReset();
       onSuccess();
       handleClose();

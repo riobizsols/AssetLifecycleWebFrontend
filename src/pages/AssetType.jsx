@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
@@ -93,7 +94,7 @@ const AssetType = () => {
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch asset types:", err);
-      toast.error(t('assetTypes.failedToFetchAssetTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOFETCHASSETTYPES_4E9FF19E', fallbackText: t('assetTypes.failedToFetchAssetTypes'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -290,7 +291,7 @@ const AssetType = () => {
       return true; // Return success for ContentBox
     } catch (error) {
       console.error("Error in delete operation:", error);
-      toast.error(t('assetTypes.unexpectedDeleteError'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_UNEXPECTEDDELETEERROR_14A0B0DD', fallbackText: t('assetTypes.unexpectedDeleteError'), type: 'error' });
       return false; // Return failure for ContentBox
     }
   };

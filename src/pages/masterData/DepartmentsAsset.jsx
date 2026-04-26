@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState, useRef } from "react";
 import API from "../../lib/axios";
 import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
@@ -78,7 +79,7 @@ const DepartmentsAsset = () => {
   const handleAdd = async () => {
     setSubmitAttempted(true);
     if (!selectedDeptId || !selectedAssetTypeId) {
-      toast.error(t('departments.pleaseSelectBothDepartmentAndAssetType'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDASSETT_0FEC304B', fallbackText: t('departments.pleaseSelectBothDepartmentAndAssetType'), type: 'error' });
       return;
     }
     
@@ -104,7 +105,7 @@ const DepartmentsAsset = () => {
       setSelectedAssetTypeId("");
       setSubmitAttempted(false); // Reset submit attempt flag to remove red border
       fetchDeptAssets();
-      toast.success(t('departments.assetMappingAddedSuccessfully', { assetTypeName: selectedAssetTypeName, deptName: selectedDeptName }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGADDEDSUCCESSFULLY_0D092680', fallbackText: t('departments.assetMappingAddedSuccessfully', { assetTypeName: selectedAssetTypeName, deptName: selectedDeptName }), type: 'success' });
     } catch (err) {
       console.error("Failed to add asset", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
@@ -145,7 +146,7 @@ const DepartmentsAsset = () => {
       
       setShowDeleteModal(false);
       fetchDeptAssets();
-      toast.success(t('departments.assetMappingRemovedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGREMOVEDSUCCESSFULLY_2C0043A0', fallbackText: t('departments.assetMappingRemovedSuccessfully'), type: 'success' });
     } catch (err) {
       console.error("Failed to delete", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";

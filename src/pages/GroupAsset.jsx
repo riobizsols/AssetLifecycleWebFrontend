@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
@@ -51,11 +52,11 @@ const GroupAsset = () => {
         setGroupAssets(transformedData);
       } else {
         setGroupAssets([]);
-        toast.error(t("groupAssets.failedToFetchAssetGroups"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTOFETCHASSETGROUPS_25C4A6EA', fallbackText: t("groupAssets.failedToFetchAssetGroups"), type: 'error' });
       }
     } catch (error) {
       console.error("Error fetching asset groups:", error);
-      toast.error(t("groupAssets.failedToFetchAssetGroups"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTOFETCHASSETGROUPS_25C4A6EA', fallbackText: t("groupAssets.failedToFetchAssetGroups"), type: 'error' });
       setGroupAssets([]);
     } finally {
       setLoading(false);
@@ -166,18 +167,18 @@ const GroupAsset = () => {
         action: "Group Asset Deleted Successfully",
       });
 
-      toast.success(t("groupAssets.assetGroupDeletedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_ASSETGROUPDELETEDSUCCESSFULLY_32EB5DF7', fallbackText: t("groupAssets.assetGroupDeletedSuccessfully"), type: 'success' });
       // Refresh the data
       fetchAssetGroups();
     } catch (error) {
       console.error("Error deleting asset group:", error);
-      toast.error(t("groupAssets.failedToDeleteAssetGroup"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETEASSETGROUP_59E22566', fallbackText: t("groupAssets.failedToDeleteAssetGroup"), type: 'error' });
     }
   };
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t("groupAssets.pleaseSelectAssetGroupsToDelete"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_PLEASESELECTASSETGROUPSTODELETE_4A5C073C', fallbackText: t("groupAssets.pleaseSelectAssetGroupsToDelete"), type: 'error' });
       return;
     }
 
@@ -196,11 +197,14 @@ const GroupAsset = () => {
         action: "Multiple Group Assets Deleted Successfully",
       });
 
-      toast.success(
-        t("groupAssets.assetGroupsDeletedSuccessfully", {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_GROUPASSETS_ASSETGROUPSDELETEDSUCCESSFULLY_23CAB444',
+        fallbackText: t("groupAssets.assetGroupsDeletedSuccessfully", {
           count: selectedRows.length,
         }),
-      );
+        type: 'success',
+      });
 
       // Clear selection and refresh data
       setSelectedRows([]);

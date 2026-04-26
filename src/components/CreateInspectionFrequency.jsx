@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -44,7 +45,7 @@ const CreateInspectionFrequency = () => {
       }
     } catch (error) {
       console.error('Error fetching checklist mappings:', error);
-      toast.error('Failed to fetch asset type mappings');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPE_MAPPINGS_4279A773', fallbackText: 'Failed to fetch asset type mappings', type: 'error' });
       setAssetTypeChecklistMappings([]);
     }
   };
@@ -67,7 +68,7 @@ const CreateInspectionFrequency = () => {
       })));
     } catch (error) {
       console.error('Error fetching UOM values:', error);
-      toast.error('Failed to fetch UOM values');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_UOM_VALUES_1CC35F29', fallbackText: 'Failed to fetch UOM values', type: 'error' });
       setUomOptions([]);
     }
   };
@@ -160,19 +161,19 @@ const CreateInspectionFrequency = () => {
     e.preventDefault();
     
     if (!selectedMapping) {
-      toast.error('Please select an asset type mapping');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ASSET_TYPE_MAPPING_4D3C67E3', fallbackText: 'Please select an asset type mapping', type: 'error' });
       return;
     }
 
     // Validation only for recurring inspections
     if (isRecurring) {
       if (!frequency || isNaN(frequency) || parseFloat(frequency) <= 0) {
-        toast.error('Please enter a valid frequency for recurring inspections');
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_VALID_FREQUENCY_FOR_RECURRING_INSPECT_1B7A2020', fallbackText: 'Please enter a valid frequency for recurring inspections', type: 'error' });
         return;
       }
 
       if (!uom) {
-        toast.error('Please select a Unit of Measure for recurring inspections');
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_UNIT_OF_MEASURE_FOR_RECURRING_INSPEC_6765A2E9', fallbackText: 'Please select a Unit of Measure for recurring inspections', type: 'error' });
         return;
       }
     }
@@ -183,7 +184,7 @@ const CreateInspectionFrequency = () => {
       const mapping = assetTypeChecklistMappings.find(m => m.rowId === selectedMapping);
       
       if (!mapping) {
-        toast.error('Selected mapping not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_SELECTED_MAPPING_NOT_FOUND_28E9BF02', fallbackText: 'Selected mapping not found', type: 'error' });
         setIsSubmitting(false);
         return;
       }
@@ -195,7 +196,7 @@ const CreateInspectionFrequency = () => {
       
       const detailedItems = mappingDetails.data?.data || [];
       if (detailedItems.length === 0) {
-        toast.error('No checklist items found for this mapping');
+        showBackendTextToast({ toast, tmdId: 'TMD_NO_CHECKLIST_ITEMS_FOUND_FOR_THIS_MAPPING_0CEAE826', fallbackText: 'No checklist items found for this mapping', type: 'error' });
         setIsSubmitting(false);
         return;
       }
@@ -215,7 +216,7 @@ const CreateInspectionFrequency = () => {
 
       await API.post('/inspection-frequencies', payload);
       
-      toast.success('Inspection frequency created successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_FREQUENCY_CREATED_SUCCESSFULLY_6D268C2F', fallbackText: 'Inspection frequency created successfully', type: 'success' });
       navigate('/master-data/inspection-frequency');
     } catch (error) {
       console.error('Error creating inspection frequency:', error);
@@ -243,7 +244,7 @@ const CreateInspectionFrequency = () => {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      toast.error("Could not access camera");
+      showBackendTextToast({ toast, tmdId: 'TMD_COULD_NOT_ACCESS_CAMERA_6B3B6D15', fallbackText: 'Could not access camera', type: 'error' });
       setShowScanner(false);
     }
   };
@@ -256,7 +257,7 @@ const CreateInspectionFrequency = () => {
     setScannedAssetId(decodedText);
     setSelectedMapping(decodedText);
     setShowScanner(false);
-    toast.success('Asset ID scanned successfully');
+    showBackendTextToast({ toast, tmdId: 'TMD_ASSET_ID_SCANNED_SUCCESSFULLY_01D7D66C', fallbackText: 'Asset ID scanned successfully', type: 'success' });
   };
 
   const onScanError = (error) => {
@@ -280,7 +281,7 @@ const CreateInspectionFrequency = () => {
     e.preventDefault();
     
     if (!scannedAssetId.trim()) {
-      toast.error('Please scan or enter an asset ID');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SCAN_OR_ENTER_AN_ASSET_ID_2DA0963A', fallbackText: 'Please scan or enter an asset ID', type: 'error' });
       return;
     }
 
@@ -296,7 +297,7 @@ const CreateInspectionFrequency = () => {
       setActiveTab('manual');
       setScannedAssetId('');
     } else {
-      toast.error('No matching asset type found for the scanned ID');
+      showBackendTextToast({ toast, tmdId: 'TMD_NO_MATCHING_ASSET_TYPE_FOUND_FOR_THE_SCANNED_ID_344357DF', fallbackText: 'No matching asset type found for the scanned ID', type: 'error' });
     }
   };
 

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
@@ -61,7 +62,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error(t('scrapAssets.failedToFetchTotalAssetsCount'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPASSETS_FAILEDTOFETCHTOTALASSETSCOUNT_47E47B74', fallbackText: t('scrapAssets.failedToFetchTotalAssetsCount'), type: 'error' });
       return 0;
     }
   };
@@ -87,7 +88,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error(t('scrapAssets.failedToFetchNearingExpiryCount'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPASSETS_FAILEDTOFETCHNEARINGEXPIRYCOUNT_0892238E', fallbackText: t('scrapAssets.failedToFetchNearingExpiryCount'), type: 'error' });
       return 0;
     }
   };
@@ -113,7 +114,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error(t('scrapAssets.failedToFetchExpiredAssetsCount'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPASSETS_FAILEDTOFETCHEXPIREDASSETSCOUNT_05D3D5F3', fallbackText: t('scrapAssets.failedToFetchExpiredAssetsCount'), type: 'error' });
       return 0;
     }
   };
@@ -143,7 +144,7 @@ const ScrapAssets = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error(t('scrapAssets.failedToFetchExpiringAssetsData'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPASSETS_FAILEDTOFETCHEXPIRINGASSETSDATA_09833C15', fallbackText: t('scrapAssets.failedToFetchExpiringAssetsData'), type: 'error' });
       return [];
     }
   };

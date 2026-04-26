@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
@@ -67,7 +68,7 @@ const Branches = () => {
         setData(formattedData);
       } catch (error) {
         console.error("Error fetching branches:", error);
-        toast.error(t('branches.failedToFetchBranches'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_FAILEDTOFETCHBRANCHES_65E26530', fallbackText: t('branches.failedToFetchBranches'), type: 'error' });
       } finally {
         setIsLoading(false);
       }
@@ -181,7 +182,7 @@ const Branches = () => {
       
       setShowEditModal(false);
       setEditingBranch(null);
-      toast.success(t('branches.branchUpdatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_BRANCHUPDATEDSUCCESSFULLY_5B5376C2', fallbackText: t('branches.branchUpdatedSuccessfully'), type: 'success' });
     } catch (error) {
       console.error("Error updating branch:", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t('branches.failedToUpdateBranch');
@@ -207,7 +208,7 @@ const Branches = () => {
         prev.filter((branch) => !selectedRows.includes(branch.branch_id))
       );
       setSelectedRows([]);
-      toast.success(t('branches.branchesDeletedSuccessfully', { count: selectedRows.length }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_BRANCHESDELETEDSUCCESSFULLY_05CD82D2', fallbackText: t('branches.branchesDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
     } catch (error) {
       console.error("Error deleting branches:", error);
       const errorMessage = error.response?.data?.error || t('branches.failedToDeleteBranches');

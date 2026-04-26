@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Maximize, Minimize, QrCode, X } from "lucide-react";
@@ -85,7 +86,7 @@ const CostCenterSelection = () => {
       setAssetTypes(response.data.assetTypes || []);
     } catch (error) {
       console.error("Failed to fetch asset types:", error);
-      toast.error("Failed to load asset types");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_ASSET_TYPES_7F953DD1', fallbackText: 'Failed to load asset types', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -97,7 +98,7 @@ const CostCenterSelection = () => {
       setBranches(response.data.branches || []);
     } catch (error) {
       console.error("Failed to fetch branches:", error);
-      toast.error("Failed to load branches");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_BRANCHES_1CAC3BB8', fallbackText: 'Failed to load branches', type: 'error' });
     }
   };
 
@@ -108,7 +109,7 @@ const CostCenterSelection = () => {
       setAssets(response.data.assets || []);
     } catch (error) {
       console.error("Failed to fetch assets:", error);
-      toast.error("Failed to load assets");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_ASSETS_2A9223FB', fallbackText: 'Failed to load assets', type: 'error' });
       setAssets([]);
     } finally {
       setLoading(false);
@@ -122,7 +123,7 @@ const CostCenterSelection = () => {
       setCostCenters(response.data.costCenters || []);
     } catch (error) {
       console.error("Failed to fetch cost centers:", error);
-      toast.error("Failed to load cost centers");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_COST_CENTERS_78ED9C1D', fallbackText: 'Failed to load cost centers', type: 'error' });
       setCostCenters([]);
     } finally {
       setLoading(false);
@@ -146,7 +147,7 @@ const CostCenterSelection = () => {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      toast.error("Could not access camera");
+      showBackendTextToast({ toast, tmdId: 'TMD_COULD_NOT_ACCESS_CAMERA_6B3B6D15', fallbackText: 'Could not access camera', type: 'error' });
       setShowScanner(false);
     }
   };
@@ -162,7 +163,7 @@ const CostCenterSelection = () => {
     }
     setScannedAssetId(decodedText);
     setShowScanner(false);
-    toast.success("Asset ID scanned successfully");
+    showBackendTextToast({ toast, tmdId: 'TMD_ASSET_ID_SCANNED_SUCCESSFULLY_01D7D66C', fallbackText: 'Asset ID scanned successfully', type: 'success' });
   };
 
   const onScanError = (error) => {
@@ -179,12 +180,12 @@ const CostCenterSelection = () => {
 
   const handleTransferAsset = async (asset) => {
     if (!selectedBranch) {
-      toast.error("Please select a target branch");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_TARGET_BRANCH_5B0AECBC', fallbackText: 'Please select a target branch', type: 'error' });
       return;
     }
 
     if (!selectedCostCenter) {
-      toast.error("Please select a cost center");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_COST_CENTER_3E40B0FB', fallbackText: 'Please select a cost center', type: 'error' });
       return;
     }
 
@@ -211,7 +212,7 @@ const CostCenterSelection = () => {
       };
 
       await API.post("/cost-center-transfer/transfer", payload);
-      toast.success("Asset transferred successfully");
+      showBackendTextToast({ toast, tmdId: 'TMD_ASSET_TRANSFERRED_SUCCESSFULLY_3CD749EF', fallbackText: 'Asset transferred successfully', type: 'success' });
       
       // Refresh assets list
       if (selectedAssetType) {
@@ -236,17 +237,17 @@ const CostCenterSelection = () => {
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
-      toast.error("Please enter an asset ID");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_AN_ASSET_ID_3EF9EB00', fallbackText: 'Please enter an asset ID', type: 'error' });
       return;
     }
 
     if (!selectedBranch) {
-      toast.error("Please select a target branch");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_TARGET_BRANCH_5B0AECBC', fallbackText: 'Please select a target branch', type: 'error' });
       return;
     }
 
     if (!selectedCostCenter) {
-      toast.error("Please select a cost center");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_COST_CENTER_3E40B0FB', fallbackText: 'Please select a cost center', type: 'error' });
       return;
     }
 
@@ -257,7 +258,7 @@ const CostCenterSelection = () => {
       const assetData = response.data;
 
       if (!assetData.asset) {
-        toast.error("Asset not found");
+        showBackendTextToast({ toast, tmdId: 'TMD_ASSET_NOT_FOUND_6AE286A5', fallbackText: 'Asset not found', type: 'error' });
         setLoading(false);
         return;
       }
@@ -296,7 +297,7 @@ const CostCenterSelection = () => {
       };
 
       await API.post("/cost-center-transfer/transfer", payload);
-      toast.success("Asset transferred successfully");
+      showBackendTextToast({ toast, tmdId: 'TMD_ASSET_TRANSFERRED_SUCCESSFULLY_3CD749EF', fallbackText: 'Asset transferred successfully', type: 'success' });
       setScannedAssetId("");
       
       // Refresh assets list if asset type is selected

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
@@ -22,7 +23,7 @@ const DepartmentWiseAssetAssignment = () => {
       setDepartments(formattedDepts);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error(t('departments.failedToFetchDepartments'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHDEPARTMENTS_4D03E1C8', fallbackText: t('departments.failedToFetchDepartments'), type: 'error' });
     }
   };
 
@@ -38,7 +39,7 @@ const DepartmentWiseAssetAssignment = () => {
       setAssignmentList(res.data.assignedAssets || []);
     } catch (err) {
       console.error("Failed to fetch assignments", err);
-      toast.error(t('departments.failedToFetchAssetList'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHASSETLIST_2C553FD5', fallbackText: t('departments.failedToFetchAssetList'), type: 'error' });
       setAssignmentList([]);
     } finally {
       setLoading(false);

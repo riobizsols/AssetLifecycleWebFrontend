@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
@@ -46,7 +47,7 @@ const MaintenanceDetails = () => {
       setWorkflowSteps(res.data.data || []);
     } catch (error) {
       console.error('Error fetching workflow steps:', error);
-      toast.error('Failed to fetch workflow steps');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_WORKFLOW_STEPS_6E793492', fallbackText: 'Failed to fetch workflow steps', type: 'error' });
     } finally {
       setLoadingSteps(false);
     }
@@ -59,7 +60,7 @@ const MaintenanceDetails = () => {
       setAssetTypes(res.data || []);
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      toast.error('Failed to fetch asset types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPES_02F89461', fallbackText: 'Failed to fetch asset types', type: 'error' });
     }
   };
 
@@ -70,7 +71,7 @@ const MaintenanceDetails = () => {
       setJobRoles(res.data.roles || []);
     } catch (error) {
       console.error('Error fetching job roles:', error);
-      toast.error('Failed to fetch job roles');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_ROLES_20AF53B2', fallbackText: 'Failed to fetch job roles', type: 'error' });
     }
   };
 
@@ -86,7 +87,7 @@ const MaintenanceDetails = () => {
       setSequences(res.data.data || []);
     } catch (error) {
       console.error('Error fetching sequences:', error);
-      toast.error('Failed to fetch sequences');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_SEQUENCES_0DE2E816', fallbackText: 'Failed to fetch sequences', type: 'error' });
     } finally {
       setLoadingSequences(false);
     }
@@ -104,7 +105,7 @@ const MaintenanceDetails = () => {
       setJobRolesForStep(res.data.data || []);
     } catch (error) {
       console.error('Error fetching job roles for step:', error);
-      toast.error('Failed to fetch job roles');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_ROLES_20AF53B2', fallbackText: 'Failed to fetch job roles', type: 'error' });
     } finally {
       setLoadingJobRoles(false);
     }
@@ -132,7 +133,7 @@ const MaintenanceDetails = () => {
   const handleCreateStep = async (e) => {
     e.preventDefault();
     if (!newStepName.trim()) {
-      toast.error('Step name is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_STEP_NAME_IS_REQUIRED_47BC298C', fallbackText: 'Step name is required', type: 'error' });
       return;
     }
 
@@ -140,7 +141,7 @@ const MaintenanceDetails = () => {
       const res = await API.post('/maintenance-details/workflow-steps', {
         text: newStepName.trim()
       });
-      toast.success('Workflow step created successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_CREATED_SUCCESSFULLY_2EB9244E', fallbackText: 'Workflow step created successfully', type: 'success' });
       setNewStepName('');
       fetchWorkflowSteps();
     } catch (error) {
@@ -152,7 +153,7 @@ const MaintenanceDetails = () => {
   // Create workflow step from modal
   const handleCreateStepFromModal = async () => {
     if (!stepNameInput.trim()) {
-      toast.error('Step name is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_STEP_NAME_IS_REQUIRED_47BC298C', fallbackText: 'Step name is required', type: 'error' });
       return;
     }
 
@@ -160,7 +161,7 @@ const MaintenanceDetails = () => {
       await API.post('/maintenance-details/workflow-steps', {
         text: stepNameInput.trim()
       });
-      toast.success('Workflow step created successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_CREATED_SUCCESSFULLY_2EB9244E', fallbackText: 'Workflow step created successfully', type: 'success' });
       setStepNameInput('');
       setShowAddStepModal(false);
       fetchWorkflowSteps();
@@ -185,7 +186,7 @@ const MaintenanceDetails = () => {
   // Update workflow step
   const handleUpdateStep = async (id) => {
     if (!editingStepName.trim()) {
-      toast.error('Step name is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_STEP_NAME_IS_REQUIRED_47BC298C', fallbackText: 'Step name is required', type: 'error' });
       return;
     }
 
@@ -193,7 +194,7 @@ const MaintenanceDetails = () => {
       await API.put(`/maintenance-details/workflow-steps/${id}`, {
         text: editingStepName.trim()
       });
-      toast.success('Workflow step updated successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_UPDATED_SUCCESSFULLY_453EB741', fallbackText: 'Workflow step updated successfully', type: 'success' });
       setEditingStep(null);
       setEditingStepName('');
       fetchWorkflowSteps();
@@ -211,7 +212,7 @@ const MaintenanceDetails = () => {
 
     try {
       await API.delete(`/maintenance-details/workflow-steps/${id}`);
-      toast.success('Workflow step deleted successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_DELETED_SUCCESSFULLY_16199DDF', fallbackText: 'Workflow step deleted successfully', type: 'success' });
       fetchWorkflowSteps();
       if (selectedStepForJobRole === id) {
         setSelectedStepForJobRole('');
@@ -226,15 +227,15 @@ const MaintenanceDetails = () => {
   const handleCreateSequence = async (e) => {
     e.preventDefault();
     if (!selectedAssetType) {
-      toast.error('Please select an asset type');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ASSET_TYPE_35E7C26F', fallbackText: 'Please select an asset type', type: 'error' });
       return;
     }
     if (!newSequence.wf_steps_id) {
-      toast.error('Please select a workflow step');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_WORKFLOW_STEP_74FCCAC0', fallbackText: 'Please select a workflow step', type: 'error' });
       return;
     }
     if (!newSequence.seqs_no || parseInt(newSequence.seqs_no) < 1) {
-      toast.error('Sequence number must be a positive integer (e.g., 1, 2, 3)');
+      showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_NUMBER_MUST_BE_A_POSITIVE_INTEGER_E_G_1_2_3_7ECDD8D7', fallbackText: 'Sequence number must be a positive integer (e.g., 1, 2, 3)', type: 'error' });
       return;
     }
 
@@ -244,7 +245,7 @@ const MaintenanceDetails = () => {
         wf_steps_id: newSequence.wf_steps_id,
         seqs_no: newSequence.seqs_no
       });
-      toast.success('Sequence created successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_CREATED_SUCCESSFULLY_28D6FEBE', fallbackText: 'Sequence created successfully', type: 'success' });
       setNewSequence({ wf_steps_id: '', seqs_no: '' });
       fetchSequences();
     } catch (error) {
@@ -261,7 +262,7 @@ const MaintenanceDetails = () => {
 
     try {
       await API.delete(`/maintenance-details/workflow-sequences/${id}`);
-      toast.success('Sequence deleted successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_DELETED_SUCCESSFULLY_4176852D', fallbackText: 'Sequence deleted successfully', type: 'success' });
       fetchSequences();
     } catch (error) {
       console.error('Error deleting sequence:', error);
@@ -273,11 +274,11 @@ const MaintenanceDetails = () => {
   const handleCreateJobRole = async (e) => {
     e.preventDefault();
     if (!selectedStepForJobRole) {
-      toast.error('Please select a workflow step');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_WORKFLOW_STEP_74FCCAC0', fallbackText: 'Please select a workflow step', type: 'error' });
       return;
     }
     if (!newJobRole.job_role_id) {
-      toast.error('Please select a job role');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_JOB_ROLE_0B641D1A', fallbackText: 'Please select a job role', type: 'error' });
       return;
     }
 
@@ -286,7 +287,7 @@ const MaintenanceDetails = () => {
         wf_steps_id: selectedStepForJobRole,
         job_role_id: newJobRole.job_role_id,
       });
-      toast.success('Job role assigned successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_ASSIGNED_SUCCESSFULLY_6F7A530E', fallbackText: 'Job role assigned successfully', type: 'success' });
       setNewJobRole({ job_role_id: '' });
       fetchJobRolesForStep(selectedStepForJobRole);
     } catch (error) {
@@ -303,7 +304,7 @@ const MaintenanceDetails = () => {
 
     try {
       await API.delete(`/maintenance-details/workflow-job-roles/${id}`);
-      toast.success('Job role removed successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_REMOVED_SUCCESSFULLY_1BB0EFF2', fallbackText: 'Job role removed successfully', type: 'success' });
       fetchJobRolesForStep(selectedStepForJobRole);
     } catch (error) {
       console.error('Error removing job role:', error);
@@ -541,11 +542,11 @@ const MaintenanceDetails = () => {
                     <button
                       onClick={async () => {
                         if (!newSequence.wf_steps_id || !newSequence.seqs_no) {
-                          toast.error('Please fill in both Workflow Step and Sequence Number');
+                          showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_FILL_IN_BOTH_WORKFLOW_STEP_AND_SEQUENCE_NUMBE_2A829D21', fallbackText: 'Please fill in both Workflow Step and Sequence Number', type: 'error' });
                           return;
                         }
                         if (parseInt(newSequence.seqs_no) < 1) {
-                          toast.error('Sequence number must be a positive integer (e.g., 1, 2, 3)');
+                          showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_NUMBER_MUST_BE_A_POSITIVE_INTEGER_E_G_1_2_3_7ECDD8D7', fallbackText: 'Sequence number must be a positive integer (e.g., 1, 2, 3)', type: 'error' });
                           return;
                         }
                         try {
@@ -554,7 +555,7 @@ const MaintenanceDetails = () => {
                             wf_steps_id: newSequence.wf_steps_id,
                             seqs_no: newSequence.seqs_no
                           });
-                          toast.success('Sequence created successfully');
+                          showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_CREATED_SUCCESSFULLY_28D6FEBE', fallbackText: 'Sequence created successfully', type: 'success' });
                           setNewSequence({ wf_steps_id: '', seqs_no: '' });
                           fetchSequences();
                         } catch (error) {
@@ -691,7 +692,7 @@ const MaintenanceDetails = () => {
                     <button
                       onClick={async () => {
                         if (!newJobRole.job_role_id) {
-                          toast.error('Please select a job role');
+                          showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_JOB_ROLE_0B641D1A', fallbackText: 'Please select a job role', type: 'error' });
                           return;
                         }
                         try {
@@ -699,7 +700,7 @@ const MaintenanceDetails = () => {
                             wf_steps_id: selectedStepForJobRole,
                             job_role_id: newJobRole.job_role_id,
                           });
-                          toast.success('Job role assigned successfully');
+                          showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_ASSIGNED_SUCCESSFULLY_6F7A530E', fallbackText: 'Job role assigned successfully', type: 'success' });
                           setNewJobRole({ job_role_id: '' });
                           fetchJobRolesForStep(selectedStepForJobRole);
                         } catch (error) {

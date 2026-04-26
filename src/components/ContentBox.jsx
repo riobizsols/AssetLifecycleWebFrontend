@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -806,7 +807,7 @@ const ContentBox = ({
             <button
               onClick={() => {
                 if (selectedRows.length === 0) {
-                  toast.error(t('common.pleaseSelectItemsToDelete'));
+                  showBackendTextToast({ toast, tmdId: 'TMD_I18N_COMMON_PLEASESELECTITEMSTODELETE_47ECAC67', fallbackText: t('common.pleaseSelectItemsToDelete'), type: 'error' });
                   return;
                 }
                 setShowDeleteModal(true);

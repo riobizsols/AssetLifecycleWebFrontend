@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -242,9 +243,9 @@ const AllNotifications = () => {
     try {
       await API.put(`/notifications/warranty/${alert.notifyId}/discard`);
       setAlerts((prev) => prev.filter((item) => item.notifyId !== alert.notifyId));
-      toast.success("Warranty alert resolved");
+      showBackendTextToast({ toast, tmdId: 'TMD_WARRANTY_ALERT_RESOLVED_6D0661C0', fallbackText: 'Warranty alert resolved', type: 'success' });
     } catch (error) {
-      toast.error("Failed to resolve alert");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_RESOLVE_ALERT_274B32A6', fallbackText: 'Failed to resolve alert', type: 'error' });
     }
   };
 
@@ -254,7 +255,7 @@ const AllNotifications = () => {
     const days =
       draft.option === "custom" ? Number(draft.custom) : Number(draft.option);
     if (!Number.isFinite(days) || days < 0) {
-      toast.error("Enter a valid non-negative number");
+      showBackendTextToast({ toast, tmdId: 'TMD_ENTER_A_VALID_NON_NEGATIVE_NUMBER_44D7F409', fallbackText: 'Enter a valid non-negative number', type: 'error' });
       return;
     }
     try {
@@ -269,7 +270,7 @@ const AllNotifications = () => {
       });
       toast.success(`Snoozed for ${days} day(s)`);
     } catch (error) {
-      toast.error("Failed to snooze alert");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SNOOZE_ALERT_4DC3EA64', fallbackText: 'Failed to snooze alert', type: 'error' });
     }
   };
 

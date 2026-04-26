@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useEffect, useMemo, useState, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -139,7 +140,7 @@ const SetupWizard = () => {
         setCatalog(data);
       } catch (error) {
         console.error("Failed to fetch setup catalog", error);
-        toast.error("Unable to load default catalog. Please retry.");
+        showBackendTextToast({ toast, tmdId: 'TMD_UNABLE_TO_LOAD_DEFAULT_CATALOG_PLEASE_RETRY_40CBE6F2', fallbackText: 'Unable to load default catalog. Please retry.', type: 'error' });
       } finally {
         setLoadingCatalog(false);
       }
@@ -335,7 +336,7 @@ const SetupWizard = () => {
       const updated = [...prev.branches];
       const branch = updated[branchIndex];
       if (branch.departments.length === 1) {
-        toast.error("Each branch must have at least one department.");
+        showBackendTextToast({ toast, tmdId: 'TMD_EACH_BRANCH_MUST_HAVE_AT_LEAST_ONE_DEPARTMENT_15AACC5E', fallbackText: 'Each branch must have at least one department.', type: 'error' });
         return prev;
       }
       const deptToRemove = branch.departments[deptIndex];
@@ -356,7 +357,7 @@ const SetupWizard = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
-      toast.error("Logo must be smaller than 3 MB.");
+      showBackendTextToast({ toast, tmdId: 'TMD_LOGO_MUST_BE_SMALLER_THAN_3_MB_278A4BD4', fallbackText: 'Logo must be smaller than 3 MB.', type: 'error' });
       return;
     }
     const reader = new FileReader();
@@ -418,7 +419,7 @@ const SetupWizard = () => {
 
   const handleRunSetup = async () => {
     if (!testResult?.connected) {
-      toast.error("Please test and confirm the database connection before running the wizard.");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_TEST_AND_CONFIRM_THE_DATABASE_CONNECTION_BEFO_59D31AE1', fallbackText: 'Please test and confirm the database connection before running the wizard.', type: 'error' });
       setCurrentStep(0);
       return;
     }
@@ -528,7 +529,7 @@ API_BASE_URL=http://localhost:5000/api
   const handleCopyEnv = () => {
     const envContent = generateEnvFile();
     navigator.clipboard.writeText(envContent);
-    toast.success("Environment file copied to clipboard!");
+    showBackendTextToast({ toast, tmdId: 'TMD_ENVIRONMENT_FILE_COPIED_TO_CLIPBOARD_52688415', fallbackText: 'Environment file copied to clipboard!', type: 'success' });
   };
 
   const handleDownloadEnv = () => {
@@ -542,7 +543,7 @@ API_BASE_URL=http://localhost:5000/api
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success("Environment file downloaded!");
+    showBackendTextToast({ toast, tmdId: 'TMD_ENVIRONMENT_FILE_DOWNLOADED_20447C3D', fallbackText: 'Environment file downloaded!', type: 'success' });
   };
 
   const handleCopyCredentials = (field) => {
@@ -553,7 +554,7 @@ API_BASE_URL=http://localhost:5000/api
 
   const handleSyncDatabaseKeys = async () => {
     if (!dbConfig.host || !dbConfig.database || !dbConfig.user || !dbConfig.password) {
-      toast.error("Database configuration is missing. Cannot sync keys.");
+      showBackendTextToast({ toast, tmdId: 'TMD_DATABASE_CONFIGURATION_IS_MISSING_CANNOT_SYNC_KEYS_376E2781', fallbackText: 'Database configuration is missing. Cannot sync keys.', type: 'error' });
       return;
     }
 
@@ -569,7 +570,7 @@ API_BASE_URL=http://localhost:5000/api
           message: result.message || "Database keys synchronized successfully",
           summary: result.summary || {},
         });
-        toast.success("Foreign and primary key relationships generated successfully!");
+        showBackendTextToast({ toast, tmdId: 'TMD_FOREIGN_AND_PRIMARY_KEY_RELATIONSHIPS_GENERATED_SUCC_0A926890', fallbackText: 'Foreign and primary key relationships generated successfully!', type: 'success' });
       } else {
         throw new Error(result.message || "Failed to synchronize database keys");
       }

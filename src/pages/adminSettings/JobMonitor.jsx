@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Play, Edit2, Save, X, Copy, Loader2 } from "lucide-react";
 import API from "../../lib/axios";
@@ -34,7 +35,7 @@ const JobMonitor = () => {
       }
     } catch (err) {
       console.error("Failed to fetch jobs", err);
-      toast.error("Failed to fetch jobs");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOBS_5407363E', fallbackText: 'Failed to fetch jobs', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -48,7 +49,7 @@ const JobMonitor = () => {
       setHistory(res.data?.data || []);
     } catch (err) {
       console.error("Failed to fetch history", err);
-      toast.error("Failed to fetch job history");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_HISTORY_68A8BFB7', fallbackText: 'Failed to fetch job history', type: 'error' });
     } finally {
       setHistoryLoading(false);
     }
@@ -66,7 +67,7 @@ const JobMonitor = () => {
     setRunningJobId(job.job_id);
     try {
       await API.post(`/job-monitor/jobs/${job.job_id}/run`);
-      toast.success("Job triggered successfully");
+      showBackendTextToast({ toast, tmdId: 'TMD_JOB_TRIGGERED_SUCCESSFULLY_6107414D', fallbackText: 'Job triggered successfully', type: 'success' });
       await fetchHistory(job.job_id);
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to run job";
@@ -96,7 +97,7 @@ const JobMonitor = () => {
         frequency: editState.frequency,
         status: editState.status,
       });
-      toast.success("Job updated");
+      showBackendTextToast({ toast, tmdId: 'TMD_JOB_UPDATED_59AD4CC8', fallbackText: 'Job updated', type: 'success' });
       onCancelEdit();
       await fetchJobs();
     } catch (err) {
@@ -104,6 +105,15 @@ const JobMonitor = () => {
       toast.error(err.response?.data?.message || "Failed to update job");
     }
   };
+
+  const frequencyPresets = [
+    { label: "Every 5 minutes", value: "*/5 * * * *" },
+    { label: "Every 15 minutes", value: "*/15 * * * *" },
+    { label: "Every 30 minutes", value: "*/30 * * * *" },
+    { label: "Every hour", value: "0 * * * *" },
+    { label: "Daily at 12:00 AM", value: "0 0 * * *" },
+    { label: "Daily at 8:00 AM", value: "0 8 * * *" },
+  ];
 
   const onCleanupWarrantyNotifications = async () => {
     setIsCleaningWarranty(true);
@@ -142,9 +152,9 @@ const JobMonitor = () => {
     const text = JSON.stringify(value || {}, null, 2);
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("JSON copied");
+      showBackendTextToast({ toast, tmdId: 'TMD_JSON_COPIED_0E52DB04', fallbackText: 'JSON copied', type: 'success' });
     } catch (_) {
-      toast.error("Failed to copy");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_COPY_1A2BD537', fallbackText: 'Failed to copy', type: 'error' });
     }
   };
 
@@ -192,6 +202,86 @@ const JobMonitor = () => {
     return history.filter((h) => formatDate(h.execution_timestamp) === historyDateText);
   }, [history, historyDateText]);
 
+  const formatJobFrequency = (frequency) => {
+    const raw = String(frequency || "").trim();
+    if (!raw) return { label: "-", raw: "" };
+
+    const lowered = raw.toLowerCase();
+
+    // Common readable values first
+    if (lowered === "on demand" || lowered === "ondemand") {
+      return { label: "On demand", raw };
+    }
+    if (lowered === "daily") return { label: "Daily", raw };
+    if (lowered === "weekly") return { label: "Weekly", raw };
+    if (lowered === "monthly") return { label: "Monthly", raw };
+
+    const formatHour12 = (hour24, minute = 0) => {
+      const h = Number(hour24);
+      const m = Number(minute);
+      if (Number.isNaN(h) || Number.isNaN(m)) return null;
+      const suffix = h >= 12 ? "PM" : "AM";
+      const hour12 = h % 12 === 0 ? 12 : h % 12;
+      const min = String(m).padStart(2, "0");
+      return `${hour12}:${min} ${suffix}`;
+    };
+
+    // Cron patterns (minute hour day month weekday)
+    const cronParts = raw.split(/\s+/).filter(Boolean);
+    if (cronParts.length === 5) {
+      const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
+
+      // Every N minutes
+      if (/^\*\/\d+$/.test(minute) && hour === "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+        const n = Number(minute.replace("*/", ""));
+        return { label: `Every ${n} minutes`, raw };
+      }
+
+      // Every hour at mm minutes
+      if (/^\d+$/.test(minute) && hour === "*" && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+        const mm = String(Number(minute)).padStart(2, "0");
+        return { label: `Every hour at :${mm}`, raw };
+      }
+
+      // Daily at hh:mm
+      if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && dayOfMonth === "*" && month === "*" && dayOfWeek === "*") {
+        const time = formatHour12(hour, minute);
+        return { label: time ? `Daily at ${time}` : "Daily", raw };
+      }
+
+      // Weekly at hh:mm (specific weekday 0-6)
+      if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && dayOfMonth === "*" && month === "*" && /^[0-6]$/.test(dayOfWeek)) {
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const dayName = days[Number(dayOfWeek)];
+        const time = formatHour12(hour, minute);
+        return { label: `${dayName}${time ? ` at ${time}` : ""}`, raw };
+      }
+
+      // Monthly (specific day of month) at hh:mm
+      if (/^\d+$/.test(minute) && /^\d+$/.test(hour) && /^\d+$/.test(dayOfMonth) && month === "*" && dayOfWeek === "*") {
+        const dayNum = Number(dayOfMonth);
+        const time = formatHour12(hour, minute);
+        return { label: `Monthly on day ${dayNum}${time ? ` at ${time}` : ""}`, raw };
+      }
+    }
+
+    // Milliseconds/seconds fallback (some jobs store interval values)
+    if (/^\d+$/.test(raw)) {
+      const value = Number(raw);
+      if (value >= 60000) {
+        const mins = Math.round(value / 60000);
+        return { label: `Every ${mins} minute${mins === 1 ? "" : "s"}`, raw };
+      }
+      if (value >= 1000) {
+        const secs = Math.round(value / 1000);
+        return { label: `Every ${secs} second${secs === 1 ? "" : "s"}`, raw };
+      }
+      return { label: `Every ${value} ms`, raw };
+    }
+
+    return { label: raw, raw };
+  };
+
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
       <div>
@@ -237,15 +327,36 @@ const JobMonitor = () => {
                       <td className="px-4 py-3">{job.job_name}</td>
                       <td className="px-4 py-3">
                         {isEditing ? (
-                          <input
-                            value={editState.frequency}
-                            onChange={(e) => setEditState((p) => ({ ...p, frequency: e.target.value }))}
-                            className="px-2 py-1 border rounded w-44"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : (
-                          job.frequency || "-"
-                        )}
+                          <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              value={editState.frequency}
+                              onChange={(e) => setEditState((p) => ({ ...p, frequency: e.target.value }))}
+                              className="px-2 py-1 border rounded w-52"
+                              placeholder="Enter cron or use preset"
+                            />
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (!e.target.value) return;
+                                setEditState((p) => ({ ...p, frequency: e.target.value }));
+                              }}
+                              className="px-2 py-1 border rounded w-52 text-xs bg-white"
+                            >
+                              <option value="">Select preset...</option>
+                              {frequencyPresets.map((preset) => (
+                                <option key={preset.value} value={preset.value}>
+                                  {preset.label}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="text-[11px] text-gray-500">
+                              Tip: use preset if you do not know cron format.
+                            </p>
+                          </div>
+                        ) : (() => {
+                          const formatted = formatJobFrequency(job.frequency);
+                          return <span className="font-medium text-gray-900">{formatted.label}</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         {isEditing ? (

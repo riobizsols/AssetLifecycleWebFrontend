@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useMemo, useState, useEffect } from "react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import ReportLayout from "../../components/reportModels/ReportLayout";
@@ -58,7 +59,7 @@ export default function AssetValuation() {
         }
       } catch (error) {
         console.error('Error loading filter options:', error);
-        toast.error('Failed to load filter options');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_FILTER_OPTIONS_644C5192', fallbackText: 'Failed to load filter options', type: 'error' });
       }
     };
 
@@ -78,7 +79,7 @@ export default function AssetValuation() {
         }
       } catch (error) {
         console.error('Error loading summary:', error);
-        toast.error('Failed to load summary data');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_SUMMARY_DATA_4F69865C', fallbackText: 'Failed to load summary data', type: 'error' });
       }
     };
 

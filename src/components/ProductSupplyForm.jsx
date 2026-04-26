@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import { Maximize, Minimize, Trash2 } from "lucide-react";
 import API from "../lib/axios";
@@ -114,7 +115,12 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     // Find the selected asset type object by asset_type_id
     const selectedAsset = assetTypes.find((t) => String(t.asset_type_id) === String(form.assetType));
     if (!selectedAsset) {
-      toast.error(t('vendors.invalidAssetTypeSelected') || 'Invalid asset type selected');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_INVALIDASSETTYPESELECTED_5E93A00D',
+        fallbackText: t('vendors.invalidAssetTypeSelected') || 'Invalid asset type selected',
+        type: 'error',
+      });
       return;
     }
 
@@ -139,9 +145,9 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       sessionStorage.setItem('products', JSON.stringify(newProducts));
       setForm({ assetType: "", brand: "", model: "", description: "" });
       setSubmitAttempted(false); // Reset validation state after successful add
-      toast.success("Product added to list");
+      showBackendTextToast({ toast, tmdId: 'TMD_PRODUCT_ADDED_TO_LIST_5E27998E', fallbackText: 'Product added to list', type: 'success' });
     } catch (err) {
-      toast.error(t('vendors.failedToAddProductSupply') + ': ' + (err.response?.data?.error || err.message) || 'Failed to add product supply: ' + (err.response?.data?.error || err.message));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOADDPRODUCTSUPPLY_32A38E6C', fallbackText: t('vendors.failedToAddProductSupply') + ': ' + (err.response?.data?.error || err.message) || 'Failed to add product supply: ' + (err.response?.data?.error || err.message), type: 'error' });
     }
   };
 
@@ -220,7 +226,12 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       
       // Check vendor dependency
       if (!vendorSaved) {
-        toast.error(t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving products.');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_PLEASESAVEVENDORFIRST_4D3BFE9E',
+          fallbackText: t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving products.',
+          type: 'error',
+        });
         return;
       }
       
@@ -240,7 +251,12 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       }
       if (!Array.isArray(productsFromStorage)) {
         console.error('productsFromStorage is not an array:', productsFromStorage);
-        toast.error(t('vendors.internalErrorProductsDataInvalid') || 'Internal error: products data is invalid.');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_INTERNALERRORPRODUCTSDATAINVALID_40DB8923',
+          fallbackText: t('vendors.internalErrorProductsDataInvalid') || 'Internal error: products data is invalid.',
+          type: 'error',
+        });
         return;
       }
       let prodServIds = [];
@@ -299,7 +315,7 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
         } else if (duplicateCount > 0 && successCount === 0) {
           toast.success(`All ${duplicateCount} products were already linked to this vendor`);
         } else {
-          toast.success('All products linked successfully');
+          showBackendTextToast({ toast, tmdId: 'TMD_ALL_PRODUCTS_LINKED_SUCCESSFULLY_4723C1D1', fallbackText: 'All products linked successfully', type: 'success' });
         }
         // Clear form and storage
         setProducts([]);

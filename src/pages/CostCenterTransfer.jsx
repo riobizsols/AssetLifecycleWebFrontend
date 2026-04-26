@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
@@ -223,7 +224,7 @@ const CostCenterTransfer = () => {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      toast.error("Could not access camera");
+      showBackendTextToast({ toast, tmdId: 'TMD_COULD_NOT_ACCESS_CAMERA_6B3B6D15', fallbackText: 'Could not access camera', type: 'error' });
       setShowScanner(false);
     }
   };
@@ -239,7 +240,7 @@ const CostCenterTransfer = () => {
     }
     setScannedAssetId(decodedText);
     setShowScanner(false);
-    toast.success("Asset ID scanned successfully");
+    showBackendTextToast({ toast, tmdId: 'TMD_ASSET_ID_SCANNED_SUCCESSFULLY_01D7D66C', fallbackText: 'Asset ID scanned successfully', type: 'success' });
   };
 
   const onScanError = (error) => {
@@ -261,7 +262,7 @@ const CostCenterTransfer = () => {
       setAssetTypes(response.data);
     } catch (error) {
       console.error("Error fetching asset types:", error);
-      toast.error("Failed to fetch asset types");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPES_02F89461', fallbackText: 'Failed to fetch asset types', type: 'error' });
     } finally {
       setIsLoadingAssetTypes(false);
     }
@@ -274,7 +275,7 @@ const CostCenterTransfer = () => {
       setAssets(response.data);
     } catch (error) {
       console.error("Error fetching assets:", error);
-      toast.error("Failed to fetch assets");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSETS_5FF6F36B', fallbackText: 'Failed to fetch assets', type: 'error' });
     } finally {
       setIsLoadingAssets(false);
     }
@@ -286,7 +287,7 @@ const CostCenterTransfer = () => {
       setAssetDetails(response.data);
     } catch (error) {
       console.error("Error fetching asset details:", error);
-      toast.error("Failed to fetch asset details");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_DETAILS_49292BD6', fallbackText: 'Failed to fetch asset details', type: 'error' });
     }
   };
 
@@ -297,7 +298,7 @@ const CostCenterTransfer = () => {
       setBranches(response.data);
     } catch (error) {
       console.error("Error fetching branches:", error);
-      toast.error("Failed to fetch branches");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_BRANCHES_52C277B8', fallbackText: 'Failed to fetch branches', type: 'error' });
     } finally {
       setIsLoadingBranches(false);
     }
@@ -310,7 +311,7 @@ const CostCenterTransfer = () => {
       setCostCenters(response.data);
     } catch (error) {
       console.error("Error fetching cost centers:", error);
-      toast.error(t('costCenterTransfer.failedToFetchCostCenters'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_COSTCENTERTRANSFER_FAILEDTOFETCHCOSTCENTERS_339C7A4C', fallbackText: t('costCenterTransfer.failedToFetchCostCenters'), type: 'error' });
     } finally {
       setIsLoadingCostCenters(false);
     }
@@ -320,7 +321,7 @@ const CostCenterTransfer = () => {
     e.preventDefault();
 
     if (!selectedAsset || !selectedBranch) {
-      toast.error(t('costCenterTransfer.selectAssetAndBranch'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_COSTCENTERTRANSFER_SELECTASSETANDBRANCH_5CB8ED36', fallbackText: t('costCenterTransfer.selectAssetAndBranch'), type: 'error' });
       return;
     }
 
@@ -383,12 +384,12 @@ const CostCenterTransfer = () => {
     e.preventDefault();
     
     if (!scannedAssetId) {
-      toast.error(t('costCenterTransfer.pleaseEnterAssetId'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_COSTCENTERTRANSFER_PLEASEENTERASSETID_2EA4FDE2', fallbackText: t('costCenterTransfer.pleaseEnterAssetId'), type: 'error' });
       return;
     }
 
     if (!selectedBranch) {
-      toast.error(t('costCenterTransfer.pleaseSelectTargetBranch'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_COSTCENTERTRANSFER_PLEASESELECTTARGETBRANCH_5F3C25E2', fallbackText: t('costCenterTransfer.pleaseSelectTargetBranch'), type: 'error' });
       return;
     }
 
@@ -399,7 +400,7 @@ const CostCenterTransfer = () => {
       const assetData = response.data;
 
       if (!assetData.asset) {
-        toast.error(t('costCenterTransfer.assetNotFound'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_COSTCENTERTRANSFER_ASSETNOTFOUND_48A5AA46', fallbackText: t('costCenterTransfer.assetNotFound'), type: 'error' });
         return;
       }
 
@@ -730,7 +731,7 @@ const CostCenterTransfer = () => {
                             const newCostCenter = selectedCostCenter;
 
                             if (!selectedBranch) {
-                              toast.error(t('costCenterTransfer.pleaseSelectTargetBranch'));
+                              showBackendTextToast({ toast, tmdId: 'TMD_I18N_COSTCENTERTRANSFER_PLEASESELECTTARGETBRANCH_5F3C25E2', fallbackText: t('costCenterTransfer.pleaseSelectTargetBranch'), type: 'error' });
                               return;
                             }
 

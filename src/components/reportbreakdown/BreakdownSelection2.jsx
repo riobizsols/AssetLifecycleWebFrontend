@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
@@ -61,7 +62,7 @@ const BreakdownSelection2 = () => {
       setAssetTypes(Array.isArray(assetTypesData) ? assetTypesData : []);
     } catch (err) {
       console.error(t('breakdownSelection.failedToFetchAssetTypes'), err);
-      toast.error(t('breakdownSelection.failedToFetchAssetTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_FAILEDTOFETCHASSETTYPES_1293C69C', fallbackText: t('breakdownSelection.failedToFetchAssetTypes'), type: 'error' });
       setAssetTypes([]);
     }
   };
@@ -71,7 +72,7 @@ const BreakdownSelection2 = () => {
       // Get employee ID from auth store
       const employeeId = user?.emp_int_id;
       if (!employeeId) {
-        toast.error("User employee ID not found");
+        showBackendTextToast({ toast, tmdId: 'TMD_USER_EMPLOYEE_ID_NOT_FOUND_04F7B713', fallbackText: 'User employee ID not found', type: 'error' });
         setMyAssets([]);
         return;
       }
@@ -143,7 +144,7 @@ const BreakdownSelection2 = () => {
       setAllAssets(list);
     } catch (err) {
       console.error("Failed to fetch all assets", err);
-      toast.error(t('assets.failedToFetchAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETS_59117016', fallbackText: t('assets.failedToFetchAssets'), type: 'error' });
       setAllAssets([]);
     } finally {
       setLoadingAllAssets(false);
@@ -170,14 +171,14 @@ const BreakdownSelection2 = () => {
             }
             setMyAssetsScannedId(decodedText);
             setShowScanner(false);
-            toast.success(t('breakdownSelection.assetIdScannedSuccessfully'));
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_ASSETIDSCANNEDSUCCESSFULLY_6C9AD093', fallbackText: t('breakdownSelection.assetIdScannedSuccessfully'), type: 'success' });
           },
           (err) => console.warn("Scan error", err)
         );
       }
     } catch (err) {
       console.error("Error starting scanner", err);
-      toast.error(t('breakdownSelection.couldNotAccessCamera'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_COULDNOTACCESSCAMERA_2130FA9E', fallbackText: t('breakdownSelection.couldNotAccessCamera'), type: 'error' });
       setShowScanner(false);
     }
   };
@@ -197,13 +198,13 @@ const BreakdownSelection2 = () => {
   const handleScanSubmit = (e) => {
     e.preventDefault();
     if (!myAssetsScannedId) {
-      toast.error(t('breakdownSelection.pleaseEnterAssetId'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_PLEASEENTERASSETID_7158E6BC', fallbackText: t('breakdownSelection.pleaseEnterAssetId'), type: 'error' });
       return;
     }
     
     const asset = myAssets.find((a) => a.asset_id === myAssetsScannedId);
     if (!asset) {
-      toast.error(t('breakdownSelection.assetNotFoundOrNotAvailable'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_ASSETNOTFOUNDORNOTAVAILABLE_771AB60F', fallbackText: t('breakdownSelection.assetNotFoundOrNotAvailable'), type: 'error' });
       return;
     }
     goToBreakdownDetails(asset);

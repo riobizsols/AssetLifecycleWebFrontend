@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
@@ -26,7 +27,7 @@ const EmployeeWiseAssetAssignment = () => {
       setDepartments(formattedDepts);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error(t('departments.failedToFetchDepartments'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHDEPARTMENTS_4D03E1C8', fallbackText: t('departments.failedToFetchDepartments'), type: 'error' });
     }
   };
 
@@ -50,7 +51,7 @@ const EmployeeWiseAssetAssignment = () => {
       setSelectedEmployee(null); // Reset selected employee when department changes
     } catch (err) {
       console.error("Failed to fetch employees", err);
-      toast.error(t('employees.failedToFetchEmployees'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_EMPLOYEES_FAILEDTOFETCHEMPLOYEES_4CD36E08', fallbackText: t('employees.failedToFetchEmployees'), type: 'error' });
       setEmployees([]);
       setSelectedEmployee(null);
     }
@@ -93,7 +94,7 @@ const EmployeeWiseAssetAssignment = () => {
       }
     } catch (err) {
       console.error("Failed to fetch assignments", err);
-      toast.error(t('departments.failedToFetchAssetList'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHASSETLIST_2C553FD5', fallbackText: t('departments.failedToFetchAssetList'), type: 'error' });
     }
   };
                   
@@ -132,12 +133,12 @@ const EmployeeWiseAssetAssignment = () => {
         setSelectedEmployeeIntId(empIntId);
       } else {
         console.error('emp_int_id not found in API response:', res.data);
-        toast.error("Employee internal ID not found. Please try selecting the employee again.");
+        showBackendTextToast({ toast, tmdId: 'TMD_EMPLOYEE_INTERNAL_ID_NOT_FOUND_PLEASE_TRY_SELECTING__5C9BB4D1', fallbackText: 'Employee internal ID not found. Please try selecting the employee again.', type: 'error' });
         setSelectedEmployeeIntId(null);
       }
     } catch (err) {
       console.error("Failed to fetch employee details:", err);
-      toast.error("Failed to fetch employee details");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_EMPLOYEE_DETAILS_6F4B5B48', fallbackText: 'Failed to fetch employee details', type: 'error' });
       setSelectedEmployeeIntId(null);
     }
   };

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import ContentBox from "../../components/ContentBox";
@@ -108,7 +109,7 @@ const JobRoles = () => {
       setRolesData(response.data.roles || []);
     } catch (error) {
       console.error("Error fetching job roles:", error);
-      toast.error("Failed to fetch job roles");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_ROLES_20AF53B2', fallbackText: 'Failed to fetch job roles', type: 'error' });
     } finally {
       setIsLoadingRoles(false);
     }
@@ -128,7 +129,7 @@ const JobRoles = () => {
       setNavData(navigationData);
     } catch (error) {
       console.error("Error fetching job role navigation:", error);
-      toast.error("Failed to fetch navigation data");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_NAVIGATION_DATA_59C9E74E', fallbackText: 'Failed to fetch navigation data', type: 'error' });
     } finally {
       setIsLoadingNav(false);
     }
@@ -186,14 +187,14 @@ const JobRoles = () => {
     try {
       // Validation - job_role_id not required for new entries (auto-generated)
       if (!roleFormData.text) {
-        toast.error("Role Name is required");
+        showBackendTextToast({ toast, tmdId: 'TMD_ROLE_NAME_IS_REQUIRED_20A9EA2A', fallbackText: 'Role Name is required', type: 'error' });
         return;
       }
 
       if (editingRole) {
         // For edit, job_role_id is required
         if (!roleFormData.job_role_id) {
-          toast.error("Job Role ID is required for updates");
+          showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_ID_IS_REQUIRED_FOR_UPDATES_7FAC57EA', fallbackText: 'Job Role ID is required for updates', type: 'error' });
           return;
         }
         await API.put(`/job-roles/${roleFormData.job_role_id}`, {
@@ -203,7 +204,7 @@ const JobRoles = () => {
           notif_warranty: !!roleFormData.notif_warranty,
           notif_scrap: !!roleFormData.notif_scrap
         });
-        toast.success("Job role updated successfully");
+        showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_UPDATED_SUCCESSFULLY_5BF7F393', fallbackText: 'Job role updated successfully', type: 'success' });
       } else {
         // For create, don't send job_role_id (backend will generate)
         await API.post("/job-roles", {
@@ -212,7 +213,7 @@ const JobRoles = () => {
           notif_warranty: !!roleFormData.notif_warranty,
           notif_scrap: !!roleFormData.notif_scrap
         });
-        toast.success("Job role created successfully");
+        showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_CREATED_SUCCESSFULLY_727D8686', fallbackText: 'Job role created successfully', type: 'success' });
       }
 
       setShowRoleModal(false);

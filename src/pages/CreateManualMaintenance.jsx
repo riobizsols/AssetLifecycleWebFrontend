@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QrCode, Maximize, Minimize, X } from 'lucide-react';
@@ -56,7 +57,12 @@ const CreateManualMaintenance = () => {
       );
     } catch (err) {
       console.error('Error starting scanner:', err);
-      toast.error(t('assets.couldNotAccessCamera') || 'Could not access camera');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_ASSETS_COULDNOTACCESSCAMERA_7EF238B6',
+        fallbackText: t('assets.couldNotAccessCamera') || 'Could not access camera',
+        type: 'error',
+      });
       setShowScanner(false);
     }
   };
@@ -132,7 +138,12 @@ const CreateManualMaintenance = () => {
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId?.trim()) {
-      toast.error(t('assets.pleaseEnterAssetId') || 'Please enter or scan asset ID');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_ASSETS_PLEASEENTERASSETID_5202CAD4',
+        fallbackText: t('assets.pleaseEnterAssetId') || 'Please enter or scan asset ID',
+        type: 'error',
+      });
       return;
     }
     setSubmitting(true);
@@ -140,7 +151,12 @@ const CreateManualMaintenance = () => {
       const res = await API.get(`/assets/${encodeURIComponent(scannedAssetId.trim())}`);
       const asset = res.data;
       if (!asset?.asset_id) {
-        toast.error(t('assets.assetNotFoundOrNotAvailable') || 'Asset not found');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSETS_ASSETNOTFOUNDORNOTAVAILABLE_6BCC1309',
+          fallbackText: t('assets.assetNotFoundOrNotAvailable') || 'Asset not found',
+          type: 'error',
+        });
         setSubmitting(false);
         return;
       }

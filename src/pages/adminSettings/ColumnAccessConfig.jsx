@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
@@ -32,11 +33,11 @@ const ColumnAccessConfig = () => {
         setColumns(response.data.data);
       } else {
         setColumns([]);
-        toast.error('Failed to fetch table columns');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_TABLE_COLUMNS_295AF35D', fallbackText: 'Failed to fetch table columns', type: 'error' });
       }
     } catch (error) {
       console.error('Error fetching table columns:', error);
-      toast.error('Failed to fetch table columns');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_TABLE_COLUMNS_295AF35D', fallbackText: 'Failed to fetch table columns', type: 'error' });
       setColumns([]);
     } finally {
       setLoading(false);
@@ -51,7 +52,7 @@ const ColumnAccessConfig = () => {
         setJobRoles(response.data.roles || []);
       } catch (error) {
         console.error('Error fetching job roles:', error);
-        toast.error('Failed to fetch job roles');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_ROLES_20AF53B2', fallbackText: 'Failed to fetch job roles', type: 'error' });
       }
     };
     fetchJobRoles();
@@ -98,7 +99,7 @@ const ColumnAccessConfig = () => {
       setConfigs(existingConfigs);
     } catch (error) {
       console.error('Error loading configurations:', error);
-      toast.error('Failed to load configurations');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_CONFIGURATIONS_12DF1D4B', fallbackText: 'Failed to load configurations', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -106,7 +107,7 @@ const ColumnAccessConfig = () => {
 
   const handleAccessLevelChange = async (fieldName, accessLevel) => {
     if (!selectedJobRole || !selectedTable) {
-      toast.error('Please select a job role and table first');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_JOB_ROLE_AND_TABLE_FIRST_0DD64225', fallbackText: 'Please select a job role and table first', type: 'error' });
       return;
     }
 
@@ -159,7 +160,7 @@ const ColumnAccessConfig = () => {
             ...prev,
             [fieldName]: previousAccess,
           }));
-          toast.error('Failed to update access level');
+          showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_ACCESS_LEVEL_2FEAF243', fallbackText: 'Failed to update access level', type: 'error' });
         }
       }
     } catch (error) {
@@ -175,7 +176,7 @@ const ColumnAccessConfig = () => {
 
   const handleSave = async () => {
     if (!selectedJobRole || !selectedTable) {
-      toast.error('Please select a job role and table');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_JOB_ROLE_AND_TABLE_1B19EB8B', fallbackText: 'Please select a job role and table', type: 'error' });
       return;
     }
 
@@ -192,7 +193,7 @@ const ColumnAccessConfig = () => {
         }));
 
       if (configsArray.length === 0) {
-        toast.error('No configurations to save');
+        showBackendTextToast({ toast, tmdId: 'TMD_NO_CONFIGURATIONS_TO_SAVE_63CDBDC2', fallbackText: 'No configurations to save', type: 'error' });
         setSaving(false);
         return;
       }

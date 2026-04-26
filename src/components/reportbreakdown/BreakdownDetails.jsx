@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -154,12 +155,12 @@ const BreakdownDetails = () => {
   // Handle create new reason code
   const handleCreateNewReasonCode = async () => {
     if (!newReasonCodeText.trim()) {
-      toast.error('Please enter a breakdown reason code');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_BREAKDOWN_REASON_CODE_2D303A93', fallbackText: 'Please enter a breakdown reason code', type: 'error' });
       return;
     }
 
     if (!assetTypeId) {
-      toast.error('Asset type is required to create a reason code');
+      showBackendTextToast({ toast, tmdId: 'TMD_ASSET_TYPE_IS_REQUIRED_TO_CREATE_A_REASON_CODE_50D89E76', fallbackText: 'Asset type is required to create a reason code', type: 'error' });
       return;
     }
 
@@ -171,7 +172,7 @@ const BreakdownDetails = () => {
       });
 
       if (res.data && res.data.success) {
-        toast.success('Breakdown reason code created successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODE_CREATED_SUCCESSFULLY_75EC1395', fallbackText: 'Breakdown reason code created successfully', type: 'success' });
         setNewReasonCodeText('');
         setShowCreateModal(false);
         
@@ -222,53 +223,53 @@ const BreakdownDetails = () => {
     
     // Validate required fields
     if (!assetId) {
-      toast.error(t('breakdownDetails.assetIdRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ASSETIDREQUIRED_7DBD2FB9', fallbackText: t('breakdownDetails.assetIdRequired'), type: 'error' });
       return;
     }
     if (!assetTypeId) {
-      toast.error(t('breakdownDetails.assetTypeIdRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ASSETTYPEIDREQUIRED_307F5313', fallbackText: t('breakdownDetails.assetTypeIdRequired'), type: 'error' });
       return;
     }
     if (!user?.org_id) {
-      toast.error(t('breakdownDetails.organizationIdRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ORGANIZATIONIDREQUIRED_10178242', fallbackText: t('breakdownDetails.organizationIdRequired'), type: 'error' });
       return;
     }
     if (reasonCodes.length === 0) {
-      toast.error(t('breakdownDetails.noBreakdownReasonCodesAvailable'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_NOBREAKDOWNREASONCODESAVAILABL_39D2A6F6', fallbackText: t('breakdownDetails.noBreakdownReasonCodesAvailable'), type: 'error' });
       return;
     }
     if (!brCode) {
-      toast.error(t('breakdownDetails.pleaseSelectBreakdownCode'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_PLEASESELECTBREAKDOWNCODE_281A2829', fallbackText: t('breakdownDetails.pleaseSelectBreakdownCode'), type: 'error' });
       return;
     }
     if (!description.trim()) {
-      toast.error(t('breakdownDetails.pleaseEnterDescription'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_PLEASEENTERDESCRIPTION_53FCC7A1', fallbackText: t('breakdownDetails.pleaseEnterDescription'), type: 'error' });
       return;
     }
     if (description.trim().length > 500) {
-      toast.error(t('breakdownDetails.descriptionCannotExceed500Characters'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_DESCRIPTIONCANNOTEXCEED500CHAR_22128BFD', fallbackText: t('breakdownDetails.descriptionCannotExceed500Characters'), type: 'error' });
       return;
     }
     if (!decisionCode) {
-      toast.error(t('breakdownDetails.pleaseSelectDecisionCode'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_PLEASESELECTDECISIONCODE_4D7612A0', fallbackText: t('breakdownDetails.pleaseSelectDecisionCode'), type: 'error' });
       return;
     }
     if (!priority) {
-      toast.error(t('breakdownDetails.pleaseSelectPriority'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_PLEASESELECTPRIORITY_09FC8425', fallbackText: t('breakdownDetails.pleaseSelectPriority'), type: 'error' });
       return;
     }
 
     // Validate breakdown code exists in reason codes
     const selectedReasonCode = reasonCodes.find(rc => rc.id === brCode || rc.atbrrc_id === brCode);
     if (!selectedReasonCode) {
-      toast.error(t('breakdownDetails.selectedBreakdownCodeInvalid'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_SELECTEDBREAKDOWNCODEINVALID_5B27D4CB', fallbackText: t('breakdownDetails.selectedBreakdownCodeInvalid'), type: 'error' });
       return;
     }
 
     // Validate decision code is valid
     const validDecisionCodes = ['BF01', 'BF02', 'BF03'];
     if (!validDecisionCodes.includes(decisionCode)) {
-      toast.error(t('breakdownDetails.invalidDecisionCode'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_INVALIDDECISIONCODE_0FB4ED31', fallbackText: t('breakdownDetails.invalidDecisionCode'), type: 'error' });
       return;
     }
 
@@ -280,7 +281,7 @@ const BreakdownDetails = () => {
     };
     
     if (!validPriorities[decisionCode].includes(priority)) {
-      toast.error(t('breakdownDetails.invalidPriorityForDecisionCode', { decisionCode }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_INVALIDPRIORITYFORDECISIONCODE_05C4F998', fallbackText: t('breakdownDetails.invalidPriorityForDecisionCode', { decisionCode }), type: 'error' });
       return;
     }
 
@@ -289,7 +290,7 @@ const BreakdownDetails = () => {
     try {
       // Validate asset type details are loaded
       if (!assetTypeDetails) {
-        toast.error(t('breakdownDetails.assetTypeDetailsNotLoaded'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ASSETTYPEDETAILSNOTLOADED_7BC7270F', fallbackText: t('breakdownDetails.assetTypeDetailsNotLoaded'), type: 'error' });
         return;
       }
 
@@ -299,27 +300,27 @@ const BreakdownDetails = () => {
       if (assetTypeDetails?.assignment_type === 'User') {
         reportedBy = reportedByUserId || user?.user_id || user?.emp_int_id || 'SYSTEM';
         if (!reportedByUserId && !user?.user_id && !user?.emp_int_id) {
-          toast.error(t('breakdownDetails.userIdRequiredForUserAssignment'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_USERIDREQUIREDFORUSERASSIGNMEN_151CD695', fallbackText: t('breakdownDetails.userIdRequiredForUserAssignment'), type: 'error' });
           return;
         }
       } else if (assetTypeDetails?.assignment_type === 'Department') {
         reportedBy = reportedByDeptId || user?.dept_id || 'SYSTEM';
         if (!reportedByDeptId && !user?.dept_id) {
-          toast.error(t('breakdownDetails.departmentIdRequiredForDepartmentAssignment'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_DEPARTMENTIDREQUIREDFORDEPARTM_75F0F00B', fallbackText: t('breakdownDetails.departmentIdRequiredForDepartmentAssignment'), type: 'error' });
           return;
         }
       } else {
         // Default to current user
         reportedBy = user?.user_id || user?.emp_int_id || 'SYSTEM';
         if (!user?.user_id && !user?.emp_int_id) {
-          toast.error(t('breakdownDetails.userIdRequired'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_USERIDREQUIRED_76EEFF56', fallbackText: t('breakdownDetails.userIdRequired'), type: 'error' });
           return;
         }
       }
 
       // Validate reported_by field is not empty
       if (!reportedBy || reportedBy === 'SYSTEM') {
-        toast.error(t('breakdownDetails.reportedByFieldRequired'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_REPORTEDBYFIELDREQUIRED_3BDDB61E', fallbackText: t('breakdownDetails.reportedByFieldRequired'), type: 'error' });
         return;
       }
 
@@ -333,7 +334,7 @@ const BreakdownDetails = () => {
 
       // Validate payload structure
       if (!payload.asset_id || !payload.atbrrc_id || !payload.reported_by || !payload.description || !payload.decision_code) {
-        toast.error(t('breakdownDetails.invalidPayloadStructure'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_INVALIDPAYLOADSTRUCTURE_0E8A8895', fallbackText: t('breakdownDetails.invalidPayloadStructure'), type: 'error' });
         console.error("Invalid payload:", payload);
         return;
       }
@@ -361,12 +362,12 @@ const BreakdownDetails = () => {
       
       // Validate response structure
       if (!response.data) {
-        toast.error("Invalid response from server");
+        showBackendTextToast({ toast, tmdId: 'TMD_INVALID_RESPONSE_FROM_SERVER_0A5EAA3D', fallbackText: 'Invalid response from server', type: 'error' });
         return;
       }
       
       if (response.data.success) {
-        toast.success(t('breakdownDetails.breakdownReportCreatedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_BREAKDOWNREPORTCREATEDSUCCESSF_1C23148B', fallbackText: t('breakdownDetails.breakdownReportCreatedSuccessfully'), type: 'success' });
         resetForm(); // Reset the form
         try {
           navigate("/report-breakdown");
@@ -385,16 +386,16 @@ const BreakdownDetails = () => {
       console.error("Error data:", error.response?.data);
       
       if (error.message === 'Request timeout') {
-        toast.error(t('breakdownDetails.requestTimeout'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_REQUESTTIMEOUT_7C4354DD', fallbackText: t('breakdownDetails.requestTimeout'), type: 'error' });
         resetForm(); // Reset form on timeout
       } else if (error.response?.status === 400) {
         toast.error(error.response.data.error || t('breakdownDetails.invalidRequestData'));
         resetForm(); // Reset form on validation error
       } else if (error.response?.status === 401) {
-        toast.error(t('breakdownDetails.unauthorized'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_UNAUTHORIZED_7475E085', fallbackText: t('breakdownDetails.unauthorized'), type: 'error' });
         resetForm(); // Reset form on unauthorized error
       } else if (error.response?.status === 500) {
-        toast.error(t('breakdownDetails.serverError'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_SERVERERROR_267E86D4', fallbackText: t('breakdownDetails.serverError'), type: 'error' });
         resetForm(); // Reset form on server error
       } else {
         toast.error(error.response?.data?.error || t('breakdownDetails.failedToCreateBreakdownReport'));

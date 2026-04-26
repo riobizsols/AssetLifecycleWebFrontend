@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -46,7 +47,7 @@ const NearingExpiry = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error(t('scrapAssets.failedToFetchAssetsNearingExpiry'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPASSETS_FAILEDTOFETCHASSETSNEARINGEXPIRY_4B0D47C2', fallbackText: t('scrapAssets.failedToFetchAssetsNearingExpiry'), type: 'error' });
       setScrapAssets([]);
     } finally {
       setLoading(false);
@@ -83,7 +84,7 @@ const NearingExpiry = () => {
       
       // Validate that user has emp_int_id
       if (!user?.emp_int_id) {
-        toast.error(t('createScrapAsset.userEmployeeIdNotFound'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_USEREMPLOYEEIDNOTFOUND_23D9D95A', fallbackText: t('createScrapAsset.userEmployeeIdNotFound'), type: 'error' });
         return;
       }
       
@@ -105,7 +106,7 @@ const NearingExpiry = () => {
       });
       
       if (response.data.success) {
-        toast.success(t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETSUCCESSFULLYMARKEDFORSCRA_601EDB7A', fallbackText: t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.text }), type: 'success' });
         
         // Remove the asset from the list since it's now scrapped
         setScrapAssets(prev => prev.filter(asset => asset.asset_id !== selectedAsset.asset_id));
@@ -115,7 +116,7 @@ const NearingExpiry = () => {
         setSelectedAsset(null);
         setNotes('');
       } else {
-        toast.error(t('createScrapAsset.failedToMarkAssetForScrapping'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_FAILEDTOMARKASSETFORSCRAPPING_627A62EE', fallbackText: t('createScrapAsset.failedToMarkAssetForScrapping'), type: 'error' });
       }
     } catch (error) {
       console.error('❌ Error submitting scrap asset:', error);
@@ -125,16 +126,16 @@ const NearingExpiry = () => {
         console.error('Response data:', error.response.data);
         
         if (error.response.status === 400) {
-          toast.error(t('createScrapAsset.validationError', { error: error.response.data.error || '' }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_VALIDATIONERROR_609EBEB8', fallbackText: t('createScrapAsset.validationError', { error: error.response.data.error || '' }), type: 'error' });
         } else if (error.response.status === 401) {
-          toast.error(t('createScrapAsset.unauthorizedPleaseLogInAgain'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_UNAUTHORIZEDPLEASELOGINAGAIN_67901914', fallbackText: t('createScrapAsset.unauthorizedPleaseLogInAgain'), type: 'error' });
         } else if (error.response.status === 500) {
-          toast.error(t('createScrapAsset.serverErrorPleaseTryAgainLater'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_SERVERERRORPLEASETRYAGAINLATER_69979231', fallbackText: t('createScrapAsset.serverErrorPleaseTryAgainLater'), type: 'error' });
         } else {
-          toast.error(t('createScrapAsset.error', { error: error.response.data.error || t('createScrapAsset.failedToMarkAssetForScrapping') }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ERROR_592EE2F1', fallbackText: t('createScrapAsset.error', { error: error.response.data.error || t('createScrapAsset.failedToMarkAssetForScrapping') }), type: 'error' });
         }
       } else {
-        toast.error(t('createScrapAsset.networkErrorPleaseCheckConnection'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_NETWORKERRORPLEASECHECKCONNECT_3B254235', fallbackText: t('createScrapAsset.networkErrorPleaseCheckConnection'), type: 'error' });
       }
     }
   };

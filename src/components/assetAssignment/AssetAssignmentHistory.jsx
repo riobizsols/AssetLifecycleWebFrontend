@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
@@ -82,7 +83,7 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employ
         }
       })
       .catch(err => {
-        toast.error(t('employees.failedToFetchAssignmentHistory', { type }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_EMPLOYEES_FAILEDTOFETCHASSIGNMENTHISTORY_18048F76', fallbackText: t('employees.failedToFetchAssignmentHistory', { type }), type: 'error' });
         setHistory([]);
         setLoading(false);
       });

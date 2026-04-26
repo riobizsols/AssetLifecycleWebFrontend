@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -69,7 +70,7 @@ const CreateScrapSales = () => {
       } catch (error) {
         console.error("Error fetching asset types:", error);
         setAssetTypes([]);
-        toast.error(t("scrapSales.failedToLoadAssetTypes"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_FAILEDTOLOADASSETTYPES_0F81B022', fallbackText: t("scrapSales.failedToLoadAssetTypes"), type: 'error' });
       } finally {
         setLoadingAssetTypes(false);
       }
@@ -141,7 +142,7 @@ const CreateScrapSales = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t("scrapSales.failedToLoadDocumentTypes"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_FAILEDTOLOADDOCUMENTTYPES_49C8BC77', fallbackText: t("scrapSales.failedToLoadDocumentTypes"), type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -376,7 +377,7 @@ const CreateScrapSales = () => {
   const handleAssetTypeSelect = (assetType) => {
     // Avoid duplicates
     if (selectedAssetTypes.includes(assetType.asset_type_id)) {
-      toast.error(t("scrapSales.assetAlreadySelected"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_ASSETALREADYSELECTED_0FEABCFA', fallbackText: t("scrapSales.assetAlreadySelected"), type: 'error' });
       return;
     }
     setSelectedAssetTypes((prev) => [...prev, assetType.asset_type_id]);
@@ -450,7 +451,7 @@ const CreateScrapSales = () => {
     );
 
     if (!hasTotalValue && !hasIndividualValues) {
-      toast.error(t("scrapSales.pleaseProvideTotalOrIndividualValues"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_PLEASEPROVIDETOTALORINDIVIDUALVALUES_4869CF22', fallbackText: t("scrapSales.pleaseProvideTotalOrIndividualValues"), type: 'error' });
       return false;
     }
 
@@ -465,12 +466,10 @@ const CreateScrapSales = () => {
 
       if (Math.abs(total - individualTotal) > 0.01) {
         // Allow for small floating point differences
-        toast.error(
-          t("scrapSales.totalDoesNotMatchIndividualValues", {
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_TOTALDOESNOTMATCHINDIVIDUALVALUES_431AD753', fallbackText: t("scrapSales.totalDoesNotMatchIndividualValues", {
             total: String(total),
             individualTotal: String(individualTotal),
-          })
-        );
+          }), type: 'error' });
         return false;
       }
     }
@@ -480,7 +479,7 @@ const CreateScrapSales = () => {
 
   const handleSave = async () => {
     if (selectedAssets.length === 0) {
-      toast.error(t("scrapSales.pleaseSelectAtLeastOneAsset"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_PLEASESELECTATLEASTONEASSET_356E0F03', fallbackText: t("scrapSales.pleaseSelectAtLeastOneAsset"), type: 'error' });
       return;
     }
 
@@ -489,12 +488,12 @@ const CreateScrapSales = () => {
     }
 
     if (!buyerDetails.buyer_name || !buyerDetails.buyer_contact) {
-      toast.error(t("scrapSales.pleaseFillInRequiredBuyerDetails"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_PLEASEFILLINREQUIREDBUYERDETAILS_7B73E077', fallbackText: t("scrapSales.pleaseFillInRequiredBuyerDetails"), type: 'error' });
       return;
     }
 
     if (!collectionDate) {
-      toast.error(t("scrapSales.pleaseEnterCollectionDate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_PLEASEENTERCOLLECTIONDATE_5B1F1783', fallbackText: t("scrapSales.pleaseEnterCollectionDate"), type: 'error' });
       return;
     }
 
@@ -534,7 +533,7 @@ const CreateScrapSales = () => {
             // Check if the selected document type requires a custom name
             const selectedDocType = documentTypes.find(dt => dt.id === r.type);
             if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-              toast.error(t("scrapSales.enterCustomNameBeforeUpload", { docType: selectedDocType.text }));
+              showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_ENTERCUSTOMNAMEBEFOREUPLOAD_07F16FC3', fallbackText: t("scrapSales.enterCustomNameBeforeUpload", { docType: selectedDocType.text }), type: 'error' });
               continue;
             }
             const fd = new FormData();
@@ -1258,7 +1257,7 @@ const CreateScrapSales = () => {
                         onChange={e => {
                           const f = e.target.files?.[0] || null;
                           if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                            toast.error(t("scrapSales.fileSizeExceedsLimit"));
+                            showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_FILESIZEEXCEEDSLIMIT_659C12F0', fallbackText: t("scrapSales.fileSizeExceedsLimit"), type: 'error' });
                             e.target.value = '';
                             return;
                           }

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -101,7 +102,7 @@ const ScrapMaintenanceApprovalDetail = () => {
       });
     } catch (e) {
       console.error("Failed to load scrap workflow detail", e);
-      toast.error("Failed to load scrap workflow detail");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_SCRAP_WORKFLOW_DETAIL_3D5229F5', fallbackText: 'Failed to load scrap workflow detail', type: 'error' });
       setDetail(null);
     } finally {
       setLoading(false);

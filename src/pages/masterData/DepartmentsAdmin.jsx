@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import API from "../../lib/axios";
 import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
@@ -40,7 +41,7 @@ const DepartmentsAdmin = () => {
       setDepartments(res.data);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error(t('departments.failedToFetchDepartments'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHDEPARTMENTS_4D03E1C8', fallbackText: t('departments.failedToFetchDepartments'), type: 'error' });
     }
   };
 
@@ -51,7 +52,7 @@ const DepartmentsAdmin = () => {
       setAdminList(res.data);
     } catch (err) {
       console.error("Failed to fetch all admins", err);
-      toast.error(t('departments.failedToFetchAdminList'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHADMINLIST_20C2EF4C', fallbackText: t('departments.failedToFetchAdminList'), type: 'error' });
     }
   };
 
@@ -66,14 +67,14 @@ const DepartmentsAdmin = () => {
       setUsersToAdd(usersData);
     } catch (err) {
       console.error("Failed to fetch users to add", err);
-      toast.error(t('departments.failedToFetchUsersList'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHUSERSLIST_0CC86913', fallbackText: t('departments.failedToFetchUsersList'), type: 'error' });
     }
   };
 
   const handleAddAdmin = async () => {
     setSubmitAttempted(true);
     if (!selectedUser || !selectedDept) {
-      toast.error(t('departments.pleaseSelectBothDepartmentAndUser'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDUSER_2DFB9B80', fallbackText: t('departments.pleaseSelectBothDepartmentAndUser'), type: 'error' });
       return;
     }
     
@@ -97,7 +98,7 @@ const DepartmentsAdmin = () => {
       
       fetchAllAdmins();
       setSelectedUser(null);
-      toast.success(t('departments.adminAddedSuccessfully', { userName: selectedUserName, deptName: selectedDeptName }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINADDEDSUCCESSFULLY_3FB28B41', fallbackText: t('departments.adminAddedSuccessfully', { userName: selectedUserName, deptName: selectedDeptName }), type: 'success' });
     } catch (err) {
       console.error("Failed to add admin", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
@@ -129,7 +130,7 @@ const DepartmentsAdmin = () => {
 
       fetchAllAdmins();
       setShowDeleteModal(false);
-      toast.success(t('departments.adminRemovedSuccessfully', { userName: userToDelete.full_name, deptName: userToDelete.dept_name }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINREMOVEDSUCCESSFULLY_59E37C21', fallbackText: t('departments.adminRemovedSuccessfully', { userName: userToDelete.full_name, deptName: userToDelete.dept_name }), type: 'success' });
     } catch (err) {
       console.error("Failed to delete admin", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";

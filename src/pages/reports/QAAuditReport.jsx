@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import ReportLayout from "../../components/reportModels/ReportLayout";
@@ -87,7 +88,7 @@ export default function QAAuditReport() {
         }
       } catch (error) {
         console.error("Error fetching filter options:", error);
-        toast.error(t("reports.qaAuditReport.failedToLoadFilterOptions"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_FAILEDTOLOADFILTEROPTIONS_499D390E', fallbackText: t("reports.qaAuditReport.failedToLoadFilterOptions"), type: 'error' });
       }
     };
 
@@ -163,7 +164,7 @@ export default function QAAuditReport() {
         }
       } catch (error) {
         console.error("Error fetching documents:", error);
-        toast.error(t("reports.qaAuditReport.failedToFetchDocuments"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_FAILEDTOFETCHDOCUMENTS_2E0EBC70', fallbackText: t("reports.qaAuditReport.failedToFetchDocuments"), type: 'error' });
         setDocuments([]);
       } finally {
         setLoadingDocuments(false);
@@ -489,7 +490,7 @@ export default function QAAuditReport() {
           fileName: fileName
         });
         
-        toast.success(t("reports.qaAuditReport.documentDownloadStarted"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_DOCUMENTDOWNLOADSTARTED_3C70953C', fallbackText: t("reports.qaAuditReport.documentDownloadStarted"), type: 'success' });
       } else if (convertableExtensions.includes(fileExtension)) {
         try {
           // Request file content directly from backend (avoids CORS issues with presigned URLs)
@@ -548,7 +549,7 @@ export default function QAAuditReport() {
               pdfFileName = await convertImageToPdf(fileContent, fileName);
             }
             
-            toast.success(t("reports.qaAuditReport.convertedToPdfAndDownloaded", { format: fileExtension.toUpperCase() }));
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_CONVERTEDTOPDFANDDOWNLOAD_44017A21', fallbackText: t("reports.qaAuditReport.convertedToPdfAndDownloaded", { format: fileExtension.toUpperCase() }), type: 'success' });
             
             await recordActionByNameWithFetch("Download Maintenance Document", {
               documentId: doc.id,
@@ -577,7 +578,7 @@ export default function QAAuditReport() {
               pdfFileName = await convertImageToPdf(contentResponse.data.content, fileName);
             }
             
-            toast.success(t("reports.qaAuditReport.convertedToPdfAndDownloaded", { format: fileExtension.toUpperCase() }));
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_CONVERTEDTOPDFANDDOWNLOAD_44017A21', fallbackText: t("reports.qaAuditReport.convertedToPdfAndDownloaded", { format: fileExtension.toUpperCase() }), type: 'success' });
             
             await recordActionByNameWithFetch("Download Maintenance Document", {
               documentId: doc.id,
@@ -617,7 +618,7 @@ export default function QAAuditReport() {
             error: conversionError.message
           });
           
-          toast.success(t("reports.qaAuditReport.documentDownloadStarted"));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_DOCUMENTDOWNLOADSTARTED_3C70953C', fallbackText: t("reports.qaAuditReport.documentDownloadStarted"), type: 'success' });
         }
       } else {
         // For other file types, download as-is
@@ -628,11 +629,11 @@ export default function QAAuditReport() {
           fileName: fileName
         });
         
-        toast.success(t("reports.qaAuditReport.documentDownloadStarted"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_DOCUMENTDOWNLOADSTARTED_3C70953C', fallbackText: t("reports.qaAuditReport.documentDownloadStarted"), type: 'success' });
       }
     } catch (error) {
       console.error("Error downloading document:", error);
-      toast.error(t("reports.qaAuditReport.failedToDownloadDocument"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_FAILEDTODOWNLOADDOCUMENT_628EF84B', fallbackText: t("reports.qaAuditReport.failedToDownloadDocument"), type: 'error' });
       } finally {
       setLoadingDocuments(false);
     }
@@ -641,7 +642,7 @@ export default function QAAuditReport() {
   // Download all documents as a zip file
   const handleDownloadAllDocuments = async () => {
     if (documents.length === 0) {
-      toast.error(t("reports.qaAuditReport.noDocumentsToDownload"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_NODOCUMENTSTODOWNLOAD_2F61CE80', fallbackText: t("reports.qaAuditReport.noDocumentsToDownload"), type: 'error' });
       return;
     }
 
@@ -723,7 +724,7 @@ export default function QAAuditReport() {
           method: "individual"
         });
 
-        toast.success(t("reports.qaAuditReport.downloadedIndividually", { count: downloadedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_DOWNLOADEDINDIVIDUALLY_45C3D367', fallbackText: t("reports.qaAuditReport.downloadedIndividually", { count: downloadedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }), type: 'success' });
         return;
       }
 
@@ -934,13 +935,13 @@ export default function QAAuditReport() {
           failed: failedCount
       });
       
-        toast.success(t("reports.qaAuditReport.downloadedCount", { count: downloadedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_DOWNLOADEDCOUNT_40485552', fallbackText: t("reports.qaAuditReport.downloadedCount", { count: downloadedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }), type: 'success' });
       } else {
-        toast.error(t("reports.qaAuditReport.failedToDownloadAny"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_FAILEDTODOWNLOADANY_57380B12', fallbackText: t("reports.qaAuditReport.failedToDownloadAny"), type: 'error' });
       }
     } catch (error) {
       console.error("Error downloading documents:", error);
-      toast.error(t("reports.qaAuditReport.failedToDownloadDocuments"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_FAILEDTODOWNLOADDOCUMENTS_10AFEF5E', fallbackText: t("reports.qaAuditReport.failedToDownloadDocuments"), type: 'error' });
     } finally {
       setLoadingDocuments(false);
     }
@@ -949,13 +950,13 @@ export default function QAAuditReport() {
   // Download all documents as a single merged PDF
   const handleDownloadAllAsSinglePdf = async () => {
     if (documents.length === 0) {
-      toast.error(t("reports.qaAuditReport.noDocumentsToDownload"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_NODOCUMENTSTODOWNLOAD_2F61CE80', fallbackText: t("reports.qaAuditReport.noDocumentsToDownload"), type: 'error' });
       return;
     }
 
     try {
       setLoadingDocuments(true);
-      toast.loading(t("reports.qaAuditReport.convertingToPdf", { count: documents.length }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_CONVERTINGTOPDF_09F69F12', fallbackText: t("reports.qaAuditReport.convertingToPdf", { count: documents.length }), type: 'loading' });
 
       const mergedPdf = await PDFDocument.create();
       const convertableExtensions = ['csv', 'txt', 'xlsx', 'xls', 'jpg', 'jpeg', 'png'];
@@ -1197,7 +1198,7 @@ export default function QAAuditReport() {
         window.URL.revokeObjectURL(url);
 
         toast.dismiss();
-        toast.success(t("reports.qaAuditReport.mergedIntoSinglePdf", { count: processedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_MERGEDINTOSINGLEPDF_696DCD3C', fallbackText: t("reports.qaAuditReport.mergedIntoSinglePdf", { count: processedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }), type: 'success' });
 
         await recordActionByNameWithFetch("Download All Maintenance Documents as Single PDF", {
           count: processedCount,
@@ -1205,12 +1206,12 @@ export default function QAAuditReport() {
         });
       } else {
         toast.dismiss();
-        toast.error(t("reports.qaAuditReport.noDocumentsProcessed"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_NODOCUMENTSPROCESSED_0BAE75AF', fallbackText: t("reports.qaAuditReport.noDocumentsProcessed"), type: 'error' });
       }
     } catch (error) {
       console.error("Error merging documents:", error);
       toast.dismiss();
-      toast.error(t("reports.qaAuditReport.failedToMergeDocuments"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_FAILEDTOMERGEDOCUMENTS_6654F3D2', fallbackText: t("reports.qaAuditReport.failedToMergeDocuments"), type: 'error' });
     } finally {
       setLoadingDocuments(false);
     }
@@ -1243,7 +1244,7 @@ export default function QAAuditReport() {
   // Handle preview - merge all documents into a single PDF and show in modal
   const handlePreviewReport = async () => {
     if (documents.length === 0) {
-      toast.error(t("reports.qaAuditReport.noDocumentsToPreview"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_NODOCUMENTSTOPREVIEW_40878430', fallbackText: t("reports.qaAuditReport.noDocumentsToPreview"), type: 'error' });
       return;
     }
 
@@ -1260,7 +1261,7 @@ export default function QAAuditReport() {
       setShowPreviewModal(true);
       setPreviewProgress({ current: 0, total: documents.length, currentFile: t("reports.qaAuditReport.initializing") });
       
-      const loadingToast = toast.loading(t("reports.qaAuditReport.preparingForPreview", { count: documents.length }));
+      const loadingToast = showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_PREPARINGFORPREVIEW_5DFB2097', fallbackText: t("reports.qaAuditReport.preparingForPreview", { count: documents.length }), type: 'loading' });
 
       const mergedPdf = await PDFDocument.create();
       const convertableExtensions = ['csv', 'txt', 'xlsx', 'xls', 'jpg', 'jpeg', 'png'];
@@ -1291,10 +1292,16 @@ export default function QAAuditReport() {
           });
           
           // Update toast with progress
-          toast.loading(
-            t("reports.qaAuditReport.processingProgress", { current: processedCount + 1, total: documents.length, fileName: fileName.substring(0, 30) }),
-            { id: loadingToast }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_PROCESSINGPROGRESS_33D33FE6',
+            fallbackText: t("reports.qaAuditReport.processingProgress", {
+              current: processedCount + 1,
+              total: documents.length,
+              fileName: fileName.substring(0, 30),
+            }),
+            type: 'loading',
+          });
 
           const urlResponse = await API.get(`/qa-audit/certificates/${doc.id}/download`, {
             params: { type: doc.type || 'maintenance', mode: 'download' }
@@ -1333,10 +1340,16 @@ export default function QAAuditReport() {
           });
           
           // Update toast with progress
-          toast.loading(
-            t("reports.qaAuditReport.convertingProgress", { current: processedCount + 1, total: documents.length, fileName: fileName.substring(0, 30) }),
-            { id: loadingToast }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_CONVERTINGPROGRESS_3E53B1AA',
+            fallbackText: t("reports.qaAuditReport.convertingProgress", {
+              current: processedCount + 1,
+              total: documents.length,
+              fileName: fileName.substring(0, 30),
+            }),
+            type: 'loading',
+          });
 
           // Get file content
           const contentResponse = await API.get(`/qa-audit/certificates/${doc.id}/download`, {
@@ -1531,7 +1544,12 @@ export default function QAAuditReport() {
           total: documents.length, 
           currentFile: t("reports.qaAuditReport.finalizingPreview") 
         });
-        toast.loading(t("reports.qaAuditReport.finalizingPreview"), { id: loadingToast });
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_FINALIZINGPREVIEW_5501E70D',
+          fallbackText: t("reports.qaAuditReport.finalizingPreview"),
+          type: 'loading',
+        });
         
         const mergedPdfBytes = await mergedPdf.save();
         const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
@@ -1539,16 +1557,21 @@ export default function QAAuditReport() {
         setPreviewPdfUrl(url);
         setPreviewProgress({ current: documents.length, total: documents.length, currentFile: '' });
         toast.dismiss(loadingToast);
-        toast.success(t("reports.qaAuditReport.previewReady", { count: processedCount, failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '' }));
+        toast.success(
+          t("reports.qaAuditReport.previewReady", {
+            count: processedCount,
+            failed: failedCount > 0 ? t("reports.qaAuditReport.failedCountSuffix", { count: failedCount }) : '',
+          }),
+        );
       } else {
         toast.dismiss(loadingToast);
-        toast.error(t("reports.qaAuditReport.noDocumentsProcessedForPreview"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_NODOCUMENTSPROCESSEDFORPR_6FEDE010', fallbackText: t("reports.qaAuditReport.noDocumentsProcessedForPreview"), type: 'error' });
         setShowPreviewModal(false);
       }
     } catch (error) {
       console.error("Error preparing preview:", error);
       toast.dismiss();
-      toast.error(t("reports.qaAuditReport.failedToPreparePreview"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_QAAUDITREPORT_FAILEDTOPREPAREPREVIEW_2DA910CD', fallbackText: t("reports.qaAuditReport.failedToPreparePreview"), type: 'error' });
       setShowPreviewModal(false);
       setPreviewProgress({ current: 0, total: 0, currentFile: '' });
     } finally {

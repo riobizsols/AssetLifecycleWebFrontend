@@ -1,4 +1,5 @@
 import i18n from '../i18n/config';
+import { getTextMessageById } from "../services/textMessagesService";
 
 /**
  * Translate common error messages from backend
@@ -58,4 +59,30 @@ export const showTranslatedError = (toast, errorMessage) => {
 export const showTranslatedSuccess = (toast, successMessage, translationKey = null) => {
   const message = translationKey ? i18n.t(translationKey) : successMessage;
   toast.success(message);
+};
+
+/**
+ * Resolve toast/popup text from backend multilingual tables by tmd_id.
+ * Falls back to the provided text if lookup fails.
+ */
+export const resolveBackendTextMessage = async (tmdId, fallbackText = "") => {
+  return getTextMessageById(tmdId, fallbackText);
+};
+
+/**
+ * Show multilingual toast text by tmd_id.
+ * type can be: success | error | loading | default
+ */
+export const showBackendTextToast = async ({
+  toast,
+  tmdId,
+  fallbackText = "",
+  type = "default",
+}) => {
+  const message = await resolveBackendTextMessage(tmdId, fallbackText);
+
+  if (type === "success") return toast.success(message);
+  if (type === "error") return toast.error(message);
+  if (type === "loading") return toast.loading(message);
+  return toast(message);
 };

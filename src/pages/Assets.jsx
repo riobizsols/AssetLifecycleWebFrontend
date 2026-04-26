@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
@@ -128,7 +129,7 @@ const Assets = () => {
   // Prevent access to /assets/add for read-only users
   useEffect(() => {
     if (location.pathname === '/assets/add' && !hasCreateAccess) {
-      toast.error(t('assets.noPermissionToAddAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_NOPERMISSIONTOADDASSETS_254881D6', fallbackText: t('assets.noPermissionToAddAssets'), type: 'error' });
       navigate('/assets');
     }
   }, [location.pathname, hasCreateAccess, navigate, t]);
@@ -166,7 +167,7 @@ const Assets = () => {
       
     } catch (err) {
       console.error("Failed to fetch assets", err);
-      toast.error(t('assets.failedToFetchAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETS_59117016', fallbackText: t('assets.failedToFetchAssets'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -224,13 +225,13 @@ const Assets = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t('assets.pleaseSelectAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASESELECTASSETS_59BE7698', fallbackText: t('assets.pleaseSelectAssets'), type: 'error' });
       return false;
     }
     
     try {
       await API.post("/assets/delete", { asset_ids: selectedRows });
-      toast.success(t('assets.assetsDeletedSuccessfully', { count: selectedRows.length }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETSDELETEDSUCCESSFULLY_1180A8F2', fallbackText: t('assets.assetsDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
       
       // Log bulk delete action
       await recordActionByNameWithFetch('Delete', { 
@@ -263,7 +264,7 @@ const Assets = () => {
   const handleDelete = async (row) => {
     try {
       await API.delete(`/assets/${row.asset_id}`);
-      toast.success(t('assets.assetDeletedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETDELETEDSUCCESSFULLY_473B7DFF', fallbackText: t('assets.assetDeletedSuccessfully'), type: 'success' });
       
       // Log delete action
       await recordActionByNameWithFetch('Delete', { assetId: row.asset_id });
@@ -289,7 +290,7 @@ const Assets = () => {
       // Single asset delete
       try {
         await API.delete(`/assets/${selectedAsset.asset_id}`);
-        toast.success(t('assets.assetDeletedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETDELETEDSUCCESSFULLY_473B7DFF', fallbackText: t('assets.assetDeletedSuccessfully'), type: 'success' });
         
         // Log delete action only when confirmed
         await recordActionByNameWithFetch('Delete', { assetId: selectedAsset.asset_id });
@@ -342,7 +343,7 @@ const Assets = () => {
   const handleDownload = async () => {
     try {
       if (selectedRows.length === 0) {
-        toast.error(t('assets.pleaseSelectAssetsToDownload'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASESELECTASSETSTODOWNLOAD_612784DB', fallbackText: t('assets.pleaseSelectAssetsToDownload'), type: 'error' });
         return;
       }
 

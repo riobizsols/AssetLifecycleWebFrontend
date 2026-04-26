@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -79,7 +80,7 @@ const CreateGroupAsset = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('groupAsset.createGroupAsset.failedToLoadDocumentTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FAILEDTOLOADDOCUMEN_11539540', fallbackText: t('groupAsset.createGroupAsset.failedToLoadDocumentTypes'), type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -92,11 +93,11 @@ const CreateGroupAsset = () => {
       if (response.data && response.data.success) {
         setAssetTypes(response.data.data || []);
       } else {
-        toast.error(t('groupAsset.createGroupAsset.failedToFetchAssetTypes'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FAILEDTOFETCHASSETT_1610842B', fallbackText: t('groupAsset.createGroupAsset.failedToFetchAssetTypes'), type: 'error' });
       }
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      toast.error(t('groupAsset.createGroupAsset.failedToFetchAssetTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FAILEDTOFETCHASSETT_1610842B', fallbackText: t('groupAsset.createGroupAsset.failedToFetchAssetTypes'), type: 'error' });
     } finally {
       setLoadingAssetTypes(false);
     }
@@ -155,11 +156,11 @@ const CreateGroupAsset = () => {
           return [...prev, ...uniqueNewAssets];
         });
       } else {
-        toast.error(t('groupAsset.createGroupAsset.failedToFetchAssets'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FAILEDTOFETCHASSETS_4332D545', fallbackText: t('groupAsset.createGroupAsset.failedToFetchAssets'), type: 'error' });
       }
     } catch (error) {
       console.error('Error fetching assets:', error);
-      toast.error(t('groupAsset.createGroupAsset.failedToFetchAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FAILEDTOFETCHASSETS_4332D545', fallbackText: t('groupAsset.createGroupAsset.failedToFetchAssets'), type: 'error' });
     } finally {
       setLoadingAssets(false);
     }
@@ -212,7 +213,7 @@ const CreateGroupAsset = () => {
       setAvailableAssets(filteredList);
     } catch (error) {
       console.error('Error fetching assets:', error);
-      toast.error(t('groupAsset.createGroupAsset.failedToFetchAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FAILEDTOFETCHASSETS_4332D545', fallbackText: t('groupAsset.createGroupAsset.failedToFetchAssets'), type: 'error' });
     } finally {
       setLoadingAssets(false);
     }
@@ -287,17 +288,17 @@ const CreateGroupAsset = () => {
 
   const handleSave = async () => {
     if (!groupName.trim()) {
-      toast.error(t('groupAsset.createGroupAsset.pleaseEnterGroupName'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_PLEASEENTERGROUPNAM_293830E4', fallbackText: t('groupAsset.createGroupAsset.pleaseEnterGroupName'), type: 'error' });
       return;
     }
 
     if (!selectedAssetType) {
-      toast.error(t('groupAsset.createGroupAsset.pleaseSelectAssetType'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_PLEASESELECTASSETTY_7D448B7C', fallbackText: t('groupAsset.createGroupAsset.pleaseSelectAssetType'), type: 'error' });
       return;
     }
 
     if (selectedAssets.length === 0) {
-      toast.error(t('groupAsset.createGroupAsset.pleaseSelectAtLeastOneAsset'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_PLEASESELECTATLEAST_3ABCCEFA', fallbackText: t('groupAsset.createGroupAsset.pleaseSelectAtLeastOneAsset'), type: 'error' });
       return;
     }
 
@@ -372,14 +373,14 @@ const CreateGroupAsset = () => {
           console.log('CreateGroupAsset - uploadRows.length:', uploadRows.length);
         }
         
-        toast.success(t('groupAsset.createGroupAsset.assetGroupCreatedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_ASSETGROUPCREATEDSU_4C685FE0', fallbackText: t('groupAsset.createGroupAsset.assetGroupCreatedSuccessfully'), type: 'success' });
         navigate('/group-asset');
       } else {
         toast.error(response.data?.message || t('groupAsset.createGroupAsset.failedToCreateAssetGroup'));
       }
     } catch (error) {
       console.error('Error creating group:', error);
-      toast.error(t('groupAsset.createGroupAsset.failedToCreateAssetGroup'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FAILEDTOCREATEASSET_22C2BDDD', fallbackText: t('groupAsset.createGroupAsset.failedToCreateAssetGroup'), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -392,20 +393,20 @@ const CreateGroupAsset = () => {
   // Handle batch upload for group asset documents
   const handleBatchUpload = async () => {
     if (uploadRows.length === 0) {
-      toast.error(t('groupAsset.createGroupAsset.addAtLeastOneFile'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_ADDATLEASTONEFILE_5FC2A1B3', fallbackText: t('groupAsset.createGroupAsset.addAtLeastOneFile'), type: 'error' });
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error(t('groupAsset.createGroupAsset.selectDocumentTypeAndChooseFile'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_SELECTDOCUMENTTYPEA_10857C07', fallbackText: t('groupAsset.createGroupAsset.selectDocumentTypeAndChooseFile'), type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-        toast.error(t('groupAsset.createGroupAsset.enterCustomNameFor', { docType: selectedDocType.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_ENTERCUSTOMNAMEFOR_3CF7838B', fallbackText: t('groupAsset.createGroupAsset.enterCustomNameFor', { docType: selectedDocType.text }), type: 'error' });
         return;
       }
     }
@@ -435,17 +436,17 @@ const CreateGroupAsset = () => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('groupAsset.createGroupAsset.allFilesProcessedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_ALLFILESPROCESSEDSU_542C0D7F', fallbackText: t('groupAsset.createGroupAsset.allFilesProcessedSuccessfully'), type: 'success' });
         } else {
-          toast.success(t('groupAsset.createGroupAsset.filesProcessed', { successCount, failCount }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FILESPROCESSED_2A6B6577', fallbackText: t('groupAsset.createGroupAsset.filesProcessed', { successCount, failCount }), type: 'success' });
         }
         // Don't clear attachments - they'll be uploaded with the group asset
       } else {
-        toast.error(t('groupAsset.createGroupAsset.failedToProcessAnyFiles'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FAILEDTOPROCESSANYF_06264A1E', fallbackText: t('groupAsset.createGroupAsset.failedToProcessAnyFiles'), type: 'error' });
       }
     } catch (err) {
       console.error('Process error:', err);
-      toast.error(t('groupAsset.createGroupAsset.processFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_PROCESSFAILED_643294AC', fallbackText: t('groupAsset.createGroupAsset.processFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -832,7 +833,7 @@ const CreateGroupAsset = () => {
                               onChange={e => {
                                 const f = e.target.files?.[0] || null;
                                 if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                  toast.error(t('groupAsset.createGroupAsset.fileSizeExceedsLimit'));
+                                  showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FILESIZEEXCEEDSLIMI_44FCB527', fallbackText: t('groupAsset.createGroupAsset.fileSizeExceedsLimit'), type: 'error' });
                                   e.target.value = '';
                                   return;
                                 }

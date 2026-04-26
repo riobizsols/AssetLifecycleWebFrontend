@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
@@ -157,7 +158,7 @@ const InspectionApprovalDetail = () => {
       }
     } catch (e) {
       console.error("Failed to load inspection approval detail", e);
-      toast.error("Failed to load inspection approval detail");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_INSPECTION_APPROVAL_DETAIL_0EE1C166', fallbackText: 'Failed to load inspection approval detail', type: 'error' });
       setDetail(null);
     } finally {
       setLoading(false);
@@ -348,7 +349,7 @@ const InspectionApprovalDetail = () => {
     try {
       const resp = await API.put(`/inspection-approval/workflow-header/${detail.header.wfaiish_id}`, { vendorId: newVendorId });
       if (resp.data?.success) {
-        toast.success('Vendor updated');
+        showBackendTextToast({ toast, tmdId: 'TMD_VENDOR_UPDATED_525C2603', fallbackText: 'Vendor updated', type: 'success' });
         setSelectedVendorId(newVendorId);
         // Refresh detail
         await fetchDetail();
@@ -364,7 +365,7 @@ const InspectionApprovalDetail = () => {
       }
     } catch (e) {
       console.error('Error saving inspection vendor change:', e);
-      toast.error('Failed to update vendor');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_VENDOR_3F2744FD', fallbackText: 'Failed to update vendor', type: 'error' });
     } finally {
       setLoadingVendorDetails(false);
     }
@@ -377,7 +378,7 @@ const InspectionApprovalDetail = () => {
     try {
       const resp = await API.put(`/inspection-approval/workflow-header/${detail.header.wfaiish_id}`, { technicianId: newTechnicianId });
       if (resp.data?.success) {
-        toast.success('Technician updated');
+        showBackendTextToast({ toast, tmdId: 'TMD_TECHNICIAN_UPDATED_2F615E1F', fallbackText: 'Technician updated', type: 'success' });
         // Update local selected and fetch details
         setSelectedTechnician(newTechnicianId);
         try {
@@ -393,7 +394,7 @@ const InspectionApprovalDetail = () => {
       }
     } catch (e) {
       console.error('Error saving technician change:', e);
-      toast.error('Failed to update technician');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_TECHNICIAN_6DD97967', fallbackText: 'Failed to update technician', type: 'error' });
     }
   };
 
@@ -547,13 +548,13 @@ const InspectionApprovalDetail = () => {
     // Validation for internal maintenance - check if technician is assigned
     if (isInternalMaintenance) {
       if (!assignedTechnician && !selectedTechnician) {
-        toast.error('Technician assignment is required for internal maintenance inspections.');
+        showBackendTextToast({ toast, tmdId: 'TMD_TECHNICIAN_ASSIGNMENT_IS_REQUIRED_FOR_INTERNAL_MAINT_2698B69A', fallbackText: 'Technician assignment is required for internal maintenance inspections.', type: 'error' });
         return;
       }
     } else if (isVendorMaintenance) {
       // Validation for vendor maintenance - check if technician is selected
       if (technicians.length > 0 && !selectedTechnician) {
-        toast.error('Please select a technician to proceed with the approval.');
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_TECHNICIAN_TO_PROCEED_WITH_THE_APPRO_5E6998D6', fallbackText: 'Please select a technician to proceed with the approval.', type: 'error' });
         return;
       }
     }
@@ -561,7 +562,7 @@ const InspectionApprovalDetail = () => {
     // Find current step
     const currentStep = detail?.workflowSteps?.find(step => step.status === 'AP');
     if (!currentStep) {
-      toast.error("No pending step found for approval");
+      showBackendTextToast({ toast, tmdId: 'TMD_NO_PENDING_STEP_FOUND_FOR_APPROVAL_00A1A05C', fallbackText: 'No pending step found for approval', type: 'error' });
       return;
     }
 
@@ -608,7 +609,7 @@ const InspectionApprovalDetail = () => {
     // Find current step
     const currentStep = detail?.workflowSteps?.find(step => step.status === 'AP');
     if (!currentStep) {
-      toast.error("No pending step found for rejection");
+      showBackendTextToast({ toast, tmdId: 'TMD_NO_PENDING_STEP_FOUND_FOR_REJECTION_05F24138', fallbackText: 'No pending step found for rejection', type: 'error' });
       return;
     }
 

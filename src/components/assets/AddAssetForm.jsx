@@ -1,4 +1,5 @@
 // AssetFormPage.jsx
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import API from '../../lib/axios';
 import toast from 'react-hot-toast';
@@ -202,7 +203,7 @@ const AddAssetForm = ({ userRole }) => {
             setValidationErrors(prev => ({ ...prev, serialNumber: false }));
             setTouched(prev => ({ ...prev, serialNumber: true }));
             setShowSerialScanner(false);
-            toast.success(t('assets.serialNumberScannedSuccessfully'));
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_SERIALNUMBERSCANNEDSUCCESSFULLY_54736C8B', fallbackText: t('assets.serialNumberScannedSuccessfully'), type: 'success' });
           },
           (err) => {
             // Handle scan error silently
@@ -211,7 +212,7 @@ const AddAssetForm = ({ userRole }) => {
         );
       } catch (err) {
         console.error('Error starting serial scanner:', err);
-        toast.error(t('assets.couldNotAccessCamera'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_COULDNOTACCESSCAMERA_7EF238B6', fallbackText: t('assets.couldNotAccessCamera'), type: 'error' });
         setShowSerialScanner(false);
       }
     };
@@ -449,7 +450,7 @@ const AddAssetForm = ({ userRole }) => {
     } catch (err) {
       console.error('❌ Error fetching parent assets:', err);
       console.error('❌ Error response:', err.response?.data);
-      toast.error('Failed to fetch parent assets');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_PARENT_ASSETS_1968EAD1', fallbackText: 'Failed to fetch parent assets', type: 'error' });
       setParentAssets([]);
       setForm((prev) => ({ ...prev, parentAsset: '' }));
     }
@@ -610,7 +611,7 @@ const AddAssetForm = ({ userRole }) => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENT_TYPES_002075AC', fallbackText: 'Failed to load document types', type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -679,7 +680,7 @@ const AddAssetForm = ({ userRole }) => {
     } catch (err) {
       console.error('❌ Error fetching prod_serv_id:', err);
       setFetchedProdServId(null);
-      toast.error('Failed to fetch product service ID');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_PRODUCT_SERVICE_ID_2E99961F', fallbackText: 'Failed to fetch product service ID', type: 'error' });
     }
   };
 
@@ -851,7 +852,7 @@ const AddAssetForm = ({ userRole }) => {
       }
     } catch (error) {
       console.error('Error adding property value:', error);
-      toast.error('Failed to add property value');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_ADD_PROPERTY_VALUE_470CACF9', fallbackText: 'Failed to add property value', type: 'error' });
       throw error;
     }
   };
@@ -890,7 +891,7 @@ const AddAssetForm = ({ userRole }) => {
 
   const generateSerialNumber = async () => {
     if (!form.assetType) {
-      toast.error(t('assets.pleaseSelectAssetTypeFirst'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASESELECTASSETTYPEFIRST_49CE689B', fallbackText: t('assets.pleaseSelectAssetTypeFirst'), type: 'error' });
       return;
     }
 
@@ -907,7 +908,7 @@ const AddAssetForm = ({ userRole }) => {
       if (response.data.success) {
         const serialNumber = response.data.data.serialNumber;
         setForm(prev => ({ ...prev, serialNumberMode: 'generate', serialNumber }));
-        toast.success(t('assets.serialNumberPreview', { serialNumber }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_SERIALNUMBERPREVIEW_1DB66D64', fallbackText: t('assets.serialNumberPreview', { serialNumber }), type: 'success' });
         console.log(`👀 Preview serial number: ${serialNumber} (Will be saved when asset is created)`);
         
         // Note: Serial number generation logging removed as requested
@@ -1010,8 +1011,12 @@ const AddAssetForm = ({ userRole }) => {
       }
     }
     
-    // For vendor-maintained asset types, service vendor is mandatory.
-    if (isVendorMaintainedType && !form.serviceSupply) {
+    // Vendor validation:
+    // - Purchase vendor is mandatory (DB constraint: purchase_vendor_id NOT NULL)
+    // - Vendor-maintained asset type also requires service vendor
+    const isPurchaseVendorMissing = !form.purchaseSupply;
+    const isServiceVendorMissingForVendorMaintained = isVendorMaintainedType && !form.serviceSupply;
+    if (isPurchaseVendorMissing || isServiceVendorMissingForVendorMaintained) {
       errors.vendorRequired = true;
       hasErrors = true;
     }
@@ -1029,11 +1034,17 @@ const AddAssetForm = ({ userRole }) => {
     
     if (hasErrors) {
       if (errors.dateMismatch) {
-        toast.error(t('assets.expiryDateCannotBeSameAsPurchaseDate') || 'Expiry date cannot be the same as purchase date');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSETS_EXPIRYDATECANNOTBESAMEASPURCHASEDATE_7908677D',
+          fallbackText: t('assets.expiryDateCannotBeSameAsPurchaseDate') || 'Expiry date cannot be the same as purchase date',
+          type: 'error',
+        });
       } else if (errors.expiryDateBeforePurchase) {
         toast.error(t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date');
       } else if (errors.vendorRequired) {
-        toast.error(t('assets.serviceVendorIsRequired') || 'Service vendor is required for this asset type');
+        toast.error(t('assets.vendorDetailsAreMissing') || 'Vendor details are missing');
+        setCollapsedSections(prev => ({ ...prev, vendor: false }));
       } else {
         toast.error(t('assets.pleaseFillAllRequiredFields'));
       }
@@ -1161,7 +1172,7 @@ const AddAssetForm = ({ userRole }) => {
           // Validate all attachments
           for (const a of attachments) {
             if (!a.type || !a.file) {
-              toast.error('Select document type and choose a file for all rows');
+              showBackendTextToast({ toast, tmdId: 'TMD_SELECT_DOCUMENT_TYPE_AND_CHOOSE_A_FILE_FOR_ALL_ROWS_58610967', fallbackText: 'Select document type and choose a file for all rows', type: 'error' });
               return;
             }
             // Check if the selected document type requires a custom name (like OT - Others)
@@ -1206,28 +1217,46 @@ const AddAssetForm = ({ userRole }) => {
             } else if (successCount > 0 && failCount > 0) {
               toast.success(`Asset saved and ${successCount} document(s) uploaded successfully. ${failCount} document(s) failed to upload.`);
             } else {
-              toast.success('Asset saved successfully, but document uploads failed.');
+              showBackendTextToast({ toast, tmdId: 'TMD_ASSET_SAVED_SUCCESSFULLY_BUT_DOCUMENT_UPLOADS_FAILED_42AB8EDF', fallbackText: 'Asset saved successfully, but document uploads failed.', type: 'success' });
             }
           } catch (err) {
             console.error('❌ Error uploading documents:', err);
-            toast.success('Asset saved successfully, but document uploads failed.');
+            showBackendTextToast({ toast, tmdId: 'TMD_ASSET_SAVED_SUCCESSFULLY_BUT_DOCUMENT_UPLOADS_FAILED_42AB8EDF', fallbackText: 'Asset saved successfully, but document uploads failed.', type: 'success' });
           } finally {
             setIsUploading(false);
           }
         } else {
-          toast.success('Asset created successfully!');
+          showBackendTextToast({ toast, tmdId: 'TMD_ASSET_CREATED_SUCCESSFULLY_7C8B8AD2', fallbackText: 'Asset created successfully!', type: 'success' });
         }
         
         // Navigate to assets list after successful save
         navigate('/assets');
       } else {
         console.error('No asset ID returned from server:', response.data);
-        toast.error('Asset created but no ID returned. Please refresh and try again.');
+        showBackendTextToast({ toast, tmdId: 'TMD_ASSET_CREATED_BUT_NO_ID_RETURNED_PLEASE_REFRESH_AND__1B019729', fallbackText: 'Asset created but no ID returned. Please refresh and try again.', type: 'error' });
       }
     } catch (err) {
       console.error('❌ Error creating asset:', err);
-      const errorMessage = err.response?.data?.error || 'Failed to create asset';
-      toast.error(errorMessage);
+      const backendError = (err.response?.data?.error || err.response?.data?.message || '').toString();
+      const hasPurchaseVendorSelection = Boolean(form.purchaseSupply);
+      const looksLikeGenericInternalError = backendError.toLowerCase().includes('internal server error');
+
+      if (!hasPurchaseVendorSelection && looksLikeGenericInternalError) {
+        setValidationErrors(prev => ({ ...prev, vendorRequired: true }));
+        setCollapsedSections(prev => ({ ...prev, vendor: false }));
+        toast.error(t('assets.vendorDetailsAreMissing') || 'Vendor details are missing');
+      } else if (backendError.toLowerCase().includes('service vendor is required')) {
+        setValidationErrors(prev => ({ ...prev, vendorRequired: true }));
+        setCollapsedSections(prev => ({ ...prev, vendor: false }));
+        toast.error(t('assets.vendorDetailsAreMissing') || 'Vendor details are missing');
+      } else if (backendError.toLowerCase().includes('purchase vendor is required')) {
+        setValidationErrors(prev => ({ ...prev, vendorRequired: true }));
+        setCollapsedSections(prev => ({ ...prev, vendor: false }));
+        toast.error(t('assets.vendorDetailsAreMissing') || 'Vendor details are missing');
+      } else {
+        const errorMessage = backendError || 'Failed to create asset';
+        toast.error(errorMessage);
+      }
     } finally {
       setIsSubmitting(false);
       console.log('🏁 Unified asset submission completed');
@@ -1733,7 +1762,7 @@ const AddAssetForm = ({ userRole }) => {
                 <div className="relative w-full">
                   <button
                     type="button"
-                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired && !isVendorMaintainedType ? 'border-red-500' : ''}`}
+                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired && !form.purchaseSupply ? 'border-red-500' : ''}`}
                     onClick={() => toggleDropdown('purchaseSupply')}
                   >
                     <span className="text-xs truncate">
@@ -1782,9 +1811,9 @@ const AddAssetForm = ({ userRole }) => {
                     </div>
                   )}
                 </div>
-                {validationErrors.vendorRequired && !isVendorMaintainedType && !form.purchaseSupply && (
+                {validationErrors.vendorRequired && !form.purchaseSupply && (
                   <p className="mt-1 text-sm text-red-600">
-                    {t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required'}
+                    {t('assets.purchaseVendorIsRequired') || 'Purchase vendor is required'}
                   </p>
                 )}
               </div>

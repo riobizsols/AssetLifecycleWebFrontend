@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
@@ -47,7 +48,7 @@ const BreakdownReasonCodes = () => {
       }
     } catch (error) {
       console.error('Error fetching breakdown reason codes:', error);
-      toast.error('Failed to fetch breakdown reason codes');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_BREAKDOWN_REASON_CODES_66AA4AD1', fallbackText: 'Failed to fetch breakdown reason codes', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -64,7 +65,7 @@ const BreakdownReasonCodes = () => {
       }
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      toast.error('Failed to fetch asset types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPES_02F89461', fallbackText: 'Failed to fetch asset types', type: 'error' });
     }
   };
 
@@ -78,12 +79,12 @@ const BreakdownReasonCodes = () => {
     e.preventDefault();
     
     if (!newReasonCode.asset_type_id) {
-      toast.error('Please select an asset type');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ASSET_TYPE_35E7C26F', fallbackText: 'Please select an asset type', type: 'error' });
       return;
     }
 
     if (!newReasonCode.text.trim()) {
-      toast.error('Reason code text is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_REASON_CODE_TEXT_IS_REQUIRED_19880387', fallbackText: 'Reason code text is required', type: 'error' });
       return;
     }
 
@@ -95,7 +96,7 @@ const BreakdownReasonCodes = () => {
       });
 
       if (res.data && res.data.success) {
-        toast.success('Breakdown reason code created successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODE_CREATED_SUCCESSFULLY_75EC1395', fallbackText: 'Breakdown reason code created successfully', type: 'success' });
         setNewReasonCode({ asset_type_id: '', text: '' });
         setShowCreateModal(false);
         fetchReasonCodes();
@@ -125,7 +126,7 @@ const BreakdownReasonCodes = () => {
   // Handle update reason code
   const handleUpdateReasonCode = async (atbrrcId) => {
     if (!editingReasonCodeText.trim()) {
-      toast.error('Reason code text is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_REASON_CODE_TEXT_IS_REQUIRED_19880387', fallbackText: 'Reason code text is required', type: 'error' });
       return;
     }
 
@@ -136,7 +137,7 @@ const BreakdownReasonCodes = () => {
       });
 
       if (res.data && res.data.success) {
-        toast.success('Breakdown reason code updated successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODE_UPDATED_SUCCESSFULLY_5F6680A2', fallbackText: 'Breakdown reason code updated successfully', type: 'success' });
         handleCancelEdit();
         fetchReasonCodes();
       }
@@ -157,7 +158,7 @@ const BreakdownReasonCodes = () => {
     try {
       const res = await API.delete(`/breakdown-reason-codes/${atbrrcId}`);
       if (res.data && res.data.success) {
-        toast.success('Breakdown reason code deleted successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODE_DELETED_SUCCESSFULLY_717465FC', fallbackText: 'Breakdown reason code deleted successfully', type: 'success' });
         fetchReasonCodes();
       }
     } catch (error) {
@@ -169,7 +170,7 @@ const BreakdownReasonCodes = () => {
   // Handle delete selected
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error('Please select at least one reason code to delete');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AT_LEAST_ONE_REASON_CODE_TO_DELETE_2324F9C9', fallbackText: 'Please select at least one reason code to delete', type: 'error' });
       return;
     }
 
@@ -187,7 +188,7 @@ const BreakdownReasonCodes = () => {
       fetchReasonCodes();
     } catch (error) {
       console.error('Error deleting reason codes:', error);
-      toast.error('Failed to delete some reason codes');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_SOME_REASON_CODES_72CCFF7D', fallbackText: 'Failed to delete some reason codes', type: 'error' });
     }
   };
 
@@ -216,10 +217,10 @@ const BreakdownReasonCodes = () => {
       link.click();
       document.body.removeChild(link);
       
-      toast.success('Breakdown reason codes exported successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODES_EXPORTED_SUCCESSFULLY_0808437D', fallbackText: 'Breakdown reason codes exported successfully', type: 'success' });
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast.error('Failed to export breakdown reason codes');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_EXPORT_BREAKDOWN_REASON_CODES_3FA53D53', fallbackText: 'Failed to export breakdown reason codes', type: 'error' });
     }
   };
 

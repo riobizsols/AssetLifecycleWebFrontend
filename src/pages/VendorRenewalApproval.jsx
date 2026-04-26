@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
@@ -75,7 +76,7 @@ const VendorRenewalApproval = () => {
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch vendor renewal approvals", err);
-      toast.error(t('vendorRenewalApproval.failedToFetchApprovals'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORRENEWALAPPROVAL_FAILEDTOFETCHAPPROVALS_48EBF89B', fallbackText: t('vendorRenewalApproval.failedToFetchApprovals'), type: 'error' });
     } finally {
       setIsLoading(false);
     }

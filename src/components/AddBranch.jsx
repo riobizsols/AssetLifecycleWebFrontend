@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -25,15 +26,15 @@ const AddBranch = () => {
 
     // Validate form fields
     if (!form.text.trim()) {
-      toast.error("Branch name is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_BRANCH_NAME_IS_REQUIRED_4349065E', fallbackText: 'Branch name is required', type: 'error' });
       return;
     }
     if (!form.branch_code.trim()) {
-      toast.error("Branch code is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_BRANCH_CODE_IS_REQUIRED_74C7C940', fallbackText: 'Branch code is required', type: 'error' });
       return;
     }
     if (!form.city.trim()) {
-      toast.error("City is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_CITY_IS_REQUIRED_2EB7EEC0', fallbackText: 'City is required', type: 'error' });
       return;
     }
 
@@ -41,7 +42,7 @@ const AddBranch = () => {
       setLoading(true);
       const response = await API.post("/branches", form);
 
-      toast.success("Branch created successfully!");
+      showBackendTextToast({ toast, tmdId: 'TMD_BRANCH_CREATED_SUCCESSFULLY_62640044', fallbackText: 'Branch created successfully!', type: 'success' });
       navigate("/master-data/branches");
     } catch (error) {
       console.error("Error creating branch:", error);

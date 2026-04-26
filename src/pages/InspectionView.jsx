@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
@@ -87,7 +88,7 @@ const InspectionView = () => {
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch inspection schedules", err);
-      toast.error(t('inspectionView.failedToFetchInspectionSchedules'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOFETCHINSPECTIONSCHEDULES_1030DBFF', fallbackText: t('inspectionView.failedToFetchInspectionSchedules'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -144,13 +145,13 @@ const InspectionView = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t('inspectionView.pleaseSelectInspectionRecords'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_PLEASESELECTINSPECTIONRECORDS_303143D1', fallbackText: t('inspectionView.pleaseSelectInspectionRecords'), type: 'error' });
       return false;
     }
 
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAAT_Insp_Sch
-      toast.error(t('inspectionView.deleteNotImplemented'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: t('inspectionView.deleteNotImplemented'), type: 'error' });
       return false;
     } catch (err) {
       console.error("Failed to delete inspection records", err);
@@ -162,7 +163,7 @@ const InspectionView = () => {
   const handleDelete = async (row) => {
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAAT_Insp_Sch
-      toast.error(t('inspectionView.deleteNotImplemented'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: t('inspectionView.deleteNotImplemented'), type: 'error' });
     } catch (err) {
       console.error("Failed to delete inspection record", err);
       toast.error(err.response?.data?.message || t('inspectionView.failedToDeleteInspectionRecord'));

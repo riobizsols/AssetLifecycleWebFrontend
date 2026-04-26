@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from "react";
 import API from "../lib/axios";
 import { useNavigate } from "react-router-dom";
@@ -69,7 +70,7 @@ const AddAssetType = () => {
       setParentAssetTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching parent asset types:', err);
-      toast.error(t('assetTypes.failedToFetchParentAssetTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOFETCHPARENTASSETTYPES_54ADC7EC', fallbackText: t('assetTypes.failedToFetchParentAssetTypes'), type: 'error' });
       setParentAssetTypes([]);
     }
   };
@@ -80,7 +81,7 @@ const AddAssetType = () => {
       setMaintenanceTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching maintenance types:', err);
-      toast.error(t('assetTypes.failedToFetchMaintenanceTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOFETCHMAINTENANCETYPES_70273AA1', fallbackText: t('assetTypes.failedToFetchMaintenanceTypes'), type: 'error' });
       setMaintenanceTypes([]);
     }
   };
@@ -106,7 +107,7 @@ const AddAssetType = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('assetTypes.failedToLoadDocumentTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOLOADDOCUMENTTYPES_16E96DB7', fallbackText: t('assetTypes.failedToLoadDocumentTypes'), type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -132,7 +133,7 @@ const AddAssetType = () => {
       }
     } catch (err) {
       console.error('Error fetching properties:', err);
-      toast.error(t('assetTypes.failedToLoadProperties'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOLOADPROPERTIES_068941C6', fallbackText: t('assetTypes.failedToLoadProperties'), type: 'error' });
       setProperties([]);
     }
   };

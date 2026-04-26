@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentBox from "../components/ContentBox";
@@ -62,7 +63,7 @@ const ReportsBreakdown = () => {
       setData(formatted);
     } catch (err) {
       console.error("Failed to fetch breakdowns", err);
-      toast.error(t("breakdownDetails.failedToFetchBreakdownReports"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOFETCHBREAKDOWNREPORTS_5D1574F1', fallbackText: t("breakdownDetails.failedToFetchBreakdownReports"), type: 'error' });
       setData([]);
     } finally {
       setIsLoading(false);
@@ -75,12 +76,12 @@ const ReportsBreakdown = () => {
 
   const handleDeleteSelected = async () => {
     if (!hasDeleteAccess) {
-      toast.error(t("breakdownDetails.noPermissionToDeleteBreakdownReports"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_NOPERMISSIONTODELETEBREAKDOWNR_5186D85B', fallbackText: t("breakdownDetails.noPermissionToDeleteBreakdownReports"), type: 'error' });
       return false;
     }
 
     if (selectedRows.length === 0) {
-      toast.error(t("breakdownDetails.pleaseSelectBreakdownReportsToDelete"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_PLEASESELECTBREAKDOWNREPORTSTO_64B45EBB', fallbackText: t("breakdownDetails.pleaseSelectBreakdownReportsToDelete"), type: 'error' });
       return false;
     }
 
@@ -95,7 +96,7 @@ const ReportsBreakdown = () => {
       const failureCount = results.length - successCount;
       
       if (successCount > 0) {
-        toast.success(t("breakdownDetails.successfullyDeletedBreakdownReports", { count: successCount }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_SUCCESSFULLYDELETEDBREAKDOWNRE_2BD8D9C1', fallbackText: t("breakdownDetails.successfullyDeletedBreakdownReports", { count: successCount }), type: 'success' });
         setSelectedRows([]);
         await fetchBreakdowns(); // Refresh the data
       }
@@ -109,7 +110,7 @@ const ReportsBreakdown = () => {
           return r.value.data?.details || r.value.data?.error || t("breakdownDetails.failedToDeleteGeneric");
         });
         
-        toast.error(t("breakdownDetails.failedToDeleteReportsCount", { count: failureCount, message: errorMessages[0] }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTODELETEREPORTSCOUNT_77D2009C', fallbackText: t("breakdownDetails.failedToDeleteReportsCount", { count: failureCount, message: errorMessages[0] }), type: 'error' });
       }
       
       return successCount > 0;

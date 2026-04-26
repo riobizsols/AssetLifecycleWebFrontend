@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -57,7 +58,7 @@ export default function BreakdownDetail() {
     try {
       const res = await API.get(`/asset-maint-docs/${amdId}/download?mode=${mode}`);
       if (res?.data?.url) window.open(res.data.url, "_blank");
-      else toast.error(t("reports.breakdownDetail.noUrl"));
+      else showBackendTextToast({ toast, tmdId: 'TMD_I18N_REPORTS_BREAKDOWNDETAIL_NOURL_4C378A79', fallbackText: t("reports.breakdownDetail.noUrl"), type: 'error' });
     } catch (e) {
       toast.error(e.response?.data?.message || t("reports.breakdownDetail.openFailed"));
     } finally {

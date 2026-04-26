@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -69,7 +70,7 @@ export default function TenantSetup() {
 
   const checkOrgId = async () => {
     if (!form.orgId || form.orgId.length < 3) {
-      toast.error("Please enter a valid Organization ID (at least 3 characters)");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_VALID_ORGANIZATION_ID_AT_LEAST_3_CHAR_206E103D', fallbackText: 'Please enter a valid Organization ID (at least 3 characters)', type: 'error' });
       return;
     }
 
@@ -109,33 +110,33 @@ export default function TenantSetup() {
     if (currentStep === 0) {
       // Validate step 1
       if (!form.orgId || form.orgId.length < 3) {
-        toast.error("Organization ID is required (minimum 3 characters)");
+        showBackendTextToast({ toast, tmdId: 'TMD_ORGANIZATION_ID_IS_REQUIRED_MINIMUM_3_CHARACTERS_29CA119B', fallbackText: 'Organization ID is required (minimum 3 characters)', type: 'error' });
         return;
       }
       if (!form.orgName) {
-        toast.error("Organization Name is required");
+        showBackendTextToast({ toast, tmdId: 'TMD_ORGANIZATION_NAME_IS_REQUIRED_1149F0F3', fallbackText: 'Organization Name is required', type: 'error' });
         return;
       }
       if (orgIdAvailable === null) {
-        toast.error("Please check if Organization ID is available");
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_CHECK_IF_ORGANIZATION_ID_IS_AVAILABLE_63437D20', fallbackText: 'Please check if Organization ID is available', type: 'error' });
         return;
       }
       if (!orgIdAvailable) {
-        toast.error("Organization ID is not available. Please choose a different one.");
+        showBackendTextToast({ toast, tmdId: 'TMD_ORGANIZATION_ID_IS_NOT_AVAILABLE_PLEASE_CHOOSE_A_DIF_711BF5EF', fallbackText: 'Organization ID is not available. Please choose a different one.', type: 'error' });
         return;
       }
     } else if (currentStep === 1) {
       // Validate step 2 (Admin User)
       if (!adminUser.email) {
-        toast.error("Admin email is required");
+        showBackendTextToast({ toast, tmdId: 'TMD_ADMIN_EMAIL_IS_REQUIRED_166924A0', fallbackText: 'Admin email is required', type: 'error' });
         return;
       }
       if (!adminUser.password || adminUser.password.length < 6) {
-        toast.error("Password is required (minimum 6 characters)");
+        showBackendTextToast({ toast, tmdId: 'TMD_PASSWORD_IS_REQUIRED_MINIMUM_6_CHARACTERS_52E91375', fallbackText: 'Password is required (minimum 6 characters)', type: 'error' });
         return;
       }
       if (adminUser.password !== adminUser.confirmPassword) {
-        toast.error("Passwords do not match");
+        showBackendTextToast({ toast, tmdId: 'TMD_PASSWORDS_DO_NOT_MATCH_7D02CAEB', fallbackText: 'Passwords do not match', type: 'error' });
         return;
       }
     }
@@ -169,7 +170,7 @@ export default function TenantSetup() {
       const response = await API.post("/tenant-setup/create", payload);
 
       if (response.data.success) {
-        toast.success("Tenant created successfully!");
+        showBackendTextToast({ toast, tmdId: 'TMD_TENANT_CREATED_SUCCESSFULLY_17F24D4C', fallbackText: 'Tenant created successfully!', type: 'success' });
         setCreatedTenant(response.data.data);
         
         // Redirect to subdomain URL after 5 seconds (give user time to see credentials)

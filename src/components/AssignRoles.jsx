@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
@@ -53,7 +54,7 @@ const AssignRoles = () => {
       setEmployees(employeesData);
     } catch (error) {
       console.error('Error fetching employees:', error);
-      toast.error('Failed to fetch employees');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_EMPLOYEES_2E477963', fallbackText: 'Failed to fetch employees', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -70,7 +71,7 @@ const AssignRoles = () => {
       setAvailableRoles(rolesData);
     } catch (error) {
       console.error('Error fetching roles:', error);
-      toast.error('Failed to fetch roles');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ROLES_2D5071D5', fallbackText: 'Failed to fetch roles', type: 'error' });
     } finally {
       setRolesLoading(false);
     }
@@ -208,7 +209,7 @@ const AssignRoles = () => {
 
   const handleRoleAssignment = async () => {
     if (!selectedEmployee || selectedRoles.length === 0) {
-      toast.error('Please select an employee and at least one role');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_EMPLOYEE_AND_AT_LEAST_ONE_ROLE_29FF6922', fallbackText: 'Please select an employee and at least one role', type: 'error' });
       return;
     }
 
@@ -216,7 +217,7 @@ const AssignRoles = () => {
       // Get the emp_int_id for the selected employee
       const selectedEmp = employees.find(emp => emp.employee_id === selectedEmployee);
       if (!selectedEmp || !selectedEmp.emp_int_id) {
-        toast.error('Employee internal ID not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_EMPLOYEE_INTERNAL_ID_NOT_FOUND_3A05781F', fallbackText: 'Employee internal ID not found', type: 'error' });
         return;
       }
 
@@ -256,7 +257,7 @@ const AssignRoles = () => {
       setCurrentEmployeeRoles([]);
     } catch (error) {
       console.error('Error assigning roles:', error);
-      toast.error('Failed to assign roles');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_ASSIGN_ROLES_2A9BB80E', fallbackText: 'Failed to assign roles', type: 'error' });
     }
   };
 

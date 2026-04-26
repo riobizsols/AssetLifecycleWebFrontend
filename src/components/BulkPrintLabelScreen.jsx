@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Printer, 
@@ -146,11 +147,11 @@ const BulkPrintLabelScreen = ({
 
   const handlePreview = () => {
     if (!printSettings.printerId || !printSettings.template) {
-      toast.error('Please select printer name and template');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_PRINTER_NAME_AND_TEMPLATE_75509CC4', fallbackText: 'Please select printer name and template', type: 'error' });
       return;
     }
     if (selectedAssets.length === 0) {
-      toast.error('No assets selected');
+      showBackendTextToast({ toast, tmdId: 'TMD_NO_ASSETS_SELECTED_3AC079A7', fallbackText: 'No assets selected', type: 'error' });
       return;
     }
     setShowPreviewModal(true);
@@ -341,12 +342,12 @@ const BulkPrintLabelScreen = ({
 
   const handleBulkPrint = async () => {
     if (!printSettings.printerId || !printSettings.template) {
-      toast.error('Please select printer name and template');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_PRINTER_NAME_AND_TEMPLATE_75509CC4', fallbackText: 'Please select printer name and template', type: 'error' });
       return;
     }
 
     if (selectedAssets.length === 0) {
-      toast.error('No assets selected');
+      showBackendTextToast({ toast, tmdId: 'TMD_NO_ASSETS_SELECTED_3AC079A7', fallbackText: 'No assets selected', type: 'error' });
       return;
     }
 
@@ -356,14 +357,14 @@ const BulkPrintLabelScreen = ({
 
       const selectedTemplate = getAvailableTemplates().find(t => t.id === printSettings.template);
       if (!selectedTemplate) {
-        toast.error('Template not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_TEMPLATE_NOT_FOUND_0FE487EF', fallbackText: 'Template not found', type: 'error' });
         setIsPrinting(false);
         return;
       }
 
       const selectedPrinter = printers.find(p => String(p.id) === String(printSettings.printerId));
       if (!selectedPrinter) {
-        toast.error('Printer not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_PRINTER_NOT_FOUND_7899FF4F', fallbackText: 'Printer not found', type: 'error' });
         setIsPrinting(false);
         return;
       }
@@ -399,7 +400,7 @@ const BulkPrintLabelScreen = ({
       setPrintProgress({ current: 0, total: 0 });
     } catch (error) {
       console.error('Error in bulk print:', error);
-      toast.error('Failed to generate PDFs');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_GENERATE_PDFS_0BEF69D6', fallbackText: 'Failed to generate PDFs', type: 'error' });
       setIsPrinting(false);
       setPrintProgress({ current: 0, total: 0 });
     }
@@ -460,7 +461,7 @@ const BulkPrintLabelScreen = ({
 
   const handleBulkStatusUpdate = async (status) => {
     if (selectedAssets.length === 0) {
-      toast.error('No assets selected');
+      showBackendTextToast({ toast, tmdId: 'TMD_NO_ASSETS_SELECTED_3AC079A7', fallbackText: 'No assets selected', type: 'error' });
       return;
     }
 
@@ -487,18 +488,18 @@ const BulkPrintLabelScreen = ({
       setShowStatusModal(false);
     } catch (error) {
       console.error('Error in bulk status update:', error);
-      toast.error('Failed to update statuses');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_STATUSES_2106D16B', fallbackText: 'Failed to update statuses', type: 'error' });
     }
   };
 
   const handleBulkDownload = async () => {
     if (!printSettings.template) {
-      toast.error('Please select template');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_TEMPLATE_608D44F8', fallbackText: 'Please select template', type: 'error' });
       return;
     }
 
     if (selectedAssets.length === 0) {
-      toast.error('No assets selected');
+      showBackendTextToast({ toast, tmdId: 'TMD_NO_ASSETS_SELECTED_3AC079A7', fallbackText: 'No assets selected', type: 'error' });
       return;
     }
 
@@ -508,7 +509,7 @@ const BulkPrintLabelScreen = ({
 
       const selectedTemplate = getAvailableTemplates().find(t => t.id === printSettings.template);
       if (!selectedTemplate) {
-        toast.error('Template not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_TEMPLATE_NOT_FOUND_0FE487EF', fallbackText: 'Template not found', type: 'error' });
         setIsPrinting(false);
         return;
       }
@@ -538,7 +539,7 @@ const BulkPrintLabelScreen = ({
       setPrintProgress({ current: 0, total: 0 });
     } catch (error) {
       console.error('Error in bulk download:', error);
-      toast.error('Failed to generate PDFs');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_GENERATE_PDFS_0BEF69D6', fallbackText: 'Failed to generate PDFs', type: 'error' });
       setIsPrinting(false);
       setPrintProgress({ current: 0, total: 0 });
     }

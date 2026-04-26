@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
@@ -52,7 +53,7 @@ const Properties = () => {
       }
     } catch (error) {
       console.error('Error fetching properties:', error);
-      toast.error('Failed to fetch properties');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_PROPERTIES_2421D91B', fallbackText: 'Failed to fetch properties', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -97,7 +98,7 @@ const Properties = () => {
     e.preventDefault();
     
     if (!propertyName.trim()) {
-      toast.error('Property name is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_IS_REQUIRED_4FAAE28B', fallbackText: 'Property name is required', type: 'error' });
       return;
     }
 
@@ -161,7 +162,7 @@ const Properties = () => {
   // Handle update property
   const handleUpdateProperty = async (propId) => {
     if (!editingPropertyName.trim()) {
-      toast.error('Property name is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_IS_REQUIRED_4FAAE28B', fallbackText: 'Property name is required', type: 'error' });
       return;
     }
 
@@ -172,7 +173,7 @@ const Properties = () => {
         property: editingPropertyName.trim()
       });
 
-      toast.success('Property name updated successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_UPDATED_SUCCESSFULLY_48F2170A', fallbackText: 'Property name updated successfully', type: 'success' });
       handleCancelEdit();
       fetchProperties();
     } catch (error) {
@@ -211,7 +212,7 @@ const Properties = () => {
 
     try {
       await API.delete(`/properties/${propId}`);
-      toast.success('Property deleted successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_DELETED_SUCCESSFULLY_1BF88C67', fallbackText: 'Property deleted successfully', type: 'success' });
       fetchProperties();
     } catch (error) {
       console.error('Error deleting property:', error);
@@ -222,7 +223,7 @@ const Properties = () => {
   // Handle add list value to existing property
   const handleAddListValue = async (propId, value) => {
     if (!value || !value.trim()) {
-      toast.error('Value is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_VALUE_IS_REQUIRED_04140986', fallbackText: 'Value is required', type: 'error' });
       return;
     }
 
@@ -231,7 +232,7 @@ const Properties = () => {
         propId: propId,
         value: value.trim()
       });
-      toast.success('List value added successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_ADDED_SUCCESSFULLY_78135CF8', fallbackText: 'List value added successfully', type: 'success' });
       fetchProperties();
     } catch (error) {
       console.error('Error adding list value:', error);
@@ -247,7 +248,7 @@ const Properties = () => {
 
     try {
       await API.delete(`/properties/list-values/${aplvId}`);
-      toast.success('List value deleted successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_DELETED_SUCCESSFULLY_118BD63F', fallbackText: 'List value deleted successfully', type: 'success' });
       fetchProperties();
     } catch (error) {
       console.error('Error deleting list value:', error);
@@ -658,7 +659,7 @@ const AddListValueForm = ({ propId, onAdd }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!value.trim()) {
-      toast.error('Value is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_VALUE_IS_REQUIRED_04140986', fallbackText: 'Value is required', type: 'error' });
       return;
     }
 

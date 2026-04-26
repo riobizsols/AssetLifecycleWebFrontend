@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import { Edit2, Trash2, Filter, Plus, Minus } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -46,7 +47,7 @@ const TechnicianCertificates = () => {
       if (!Array.isArray(data)) {
         console.error("Certificate data is not an array:", data);
         setCertificates([]);
-        toast.error(t("technicianCertificates.invalidCertificateData"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_INVALIDCERTIFICATEDATA_15D2B104', fallbackText: t("technicianCertificates.invalidCertificateData"), type: 'error' });
         return;
       }
       
@@ -63,7 +64,7 @@ const TechnicianCertificates = () => {
         status: error.response?.status,
         data: error.response?.data
       });
-      toast.error(t("technicianCertificates.failedToLoadCertificates"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOLOADCERTIFICATES_4738AEF4', fallbackText: t("technicianCertificates.failedToLoadCertificates"), type: 'error' });
     } finally {
       setLoadingOptions(false);
     }
@@ -88,7 +89,7 @@ const TechnicianCertificates = () => {
       }
     } catch (error) {
       console.error("Failed to fetch uploaded certificates:", error);
-      toast.error(t("technicianCertificates.failedToLoadUploaded"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOLOADUPLOADED_6B54DA50', fallbackText: t("technicianCertificates.failedToLoadUploaded"), type: 'error' });
     } finally {
       setLoadingList(false);
     }
@@ -105,7 +106,7 @@ const TechnicianCertificates = () => {
         setEmployees(data);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
-        toast.error(t("technicianCertificates.failedToLoadEmployees"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOLOADEMPLOYEES_54185235', fallbackText: t("technicianCertificates.failedToLoadEmployees"), type: 'error' });
       } finally {
         setLoadingEmployees(false);
       }
@@ -191,15 +192,15 @@ const TechnicianCertificates = () => {
   const handleUpdate = async () => {
     if (!editingId) return;
     if (!editCertId) {
-      toast.error(t("technicianCertificates.pleaseSelectCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_PLEASESELECTCERTIFICATE_18F12A5F', fallbackText: t("technicianCertificates.pleaseSelectCertificate"), type: 'error' });
       return;
     }
     if (!editCertificateDate) {
-      toast.error(t("technicianCertificates.pleaseSelectCertificateDate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_PLEASESELECTCERTIFICATED_7258B953', fallbackText: t("technicianCertificates.pleaseSelectCertificateDate"), type: 'error' });
       return;
     }
     if (!editCertificateExpiry) {
-      toast.error(t("technicianCertificates.pleaseSelectExpiryDate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_PLEASESELECTEXPIRYDATE_3FFB6DB9', fallbackText: t("technicianCertificates.pleaseSelectExpiryDate"), type: 'error' });
       return;
     }
 
@@ -210,7 +211,7 @@ const TechnicianCertificates = () => {
         certificate_date: editCertificateDate,
         certificate_expiry: editCertificateExpiry
       });
-      toast.success(t("technicianCertificates.certificateUpdatedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATEUPDATEDSUCCES_5E07D703', fallbackText: t("technicianCertificates.certificateUpdatedSuccessfully"), type: 'success' });
       cancelEdit();
       await fetchUploadedCertificates();
     } catch (error) {
@@ -228,7 +229,7 @@ const TechnicianCertificates = () => {
     setIsDeleting(true);
     try {
       await API.delete(`/employee-tech-certificates/${id}`);
-      toast.success(t("technicianCertificates.certificateDeletedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATEDELETEDSUCCES_6D06A4A5', fallbackText: t("technicianCertificates.certificateDeletedSuccessfully"), type: 'success' });
       await fetchUploadedCertificates();
     } catch (error) {
       console.error("Failed to delete certificate:", error);
@@ -240,7 +241,7 @@ const TechnicianCertificates = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t("technicianCertificates.selectAtLeastOneToDelete"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_SELECTATLEASTONETODELETE_5432419C', fallbackText: t("technicianCertificates.selectAtLeastOneToDelete"), type: 'error' });
       return;
     }
 
@@ -250,12 +251,12 @@ const TechnicianCertificates = () => {
     setIsDeleting(true);
     try {
       await Promise.all(selectedRows.map((id) => API.delete(`/employee-tech-certificates/${id}`)));
-      toast.success(t("technicianCertificates.certificatesDeletedSuccessfully", { count: selectedRows.length }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATESDELETEDSUCCE_1A7D2532', fallbackText: t("technicianCertificates.certificatesDeletedSuccessfully", { count: selectedRows.length }), type: 'success' });
       setSelectedRows([]);
       await fetchUploadedCertificates();
     } catch (error) {
       console.error("Failed to delete selected certificates:", error);
-      toast.error(t("technicianCertificates.failedToDeleteSome"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTODELETESOME_3514AFF7', fallbackText: t("technicianCertificates.failedToDeleteSome"), type: 'error' });
     } finally {
       setIsDeleting(false);
     }
@@ -268,7 +269,7 @@ const TechnicianCertificates = () => {
       const response = await API.get(`/employee-tech-certificates/${id}/download`);
       const url = response.data?.url;
       if (!url) {
-        toast.error(t("technicianCertificates.noFileForDownload"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_NOFILEFORDOWNLOAD_6CD279FE', fallbackText: t("technicianCertificates.noFileForDownload"), type: 'error' });
         return;
       }
       window.open(url, "_blank", "noopener,noreferrer");
@@ -282,27 +283,27 @@ const TechnicianCertificates = () => {
 
   const handleSubmit = async () => {
     if (!selectedEmployeeId) {
-      toast.error(t("technicianCertificates.pleaseSelectEmployee"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_PLEASESELECTEMPLOYEE_59610D1A', fallbackText: t("technicianCertificates.pleaseSelectEmployee"), type: 'error' });
       return;
     }
 
     if (!selectedCertId) {
-      toast.error(t("technicianCertificates.pleaseSelectCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_PLEASESELECTCERTIFICATE_18F12A5F', fallbackText: t("technicianCertificates.pleaseSelectCertificate"), type: 'error' });
       return;
     }
 
     if (!certificateDate) {
-      toast.error(t("technicianCertificates.pleaseSelectCertificateDate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_PLEASESELECTCERTIFICATED_7258B953', fallbackText: t("technicianCertificates.pleaseSelectCertificateDate"), type: 'error' });
       return;
     }
 
     if (!certificateExpiry) {
-      toast.error(t("technicianCertificates.pleaseSelectExpiryDate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_PLEASESELECTEXPIRYDATE_3FFB6DB9', fallbackText: t("technicianCertificates.pleaseSelectExpiryDate"), type: 'error' });
       return;
     }
 
     if (!certificateFile) {
-      toast.error(t("technicianCertificates.pleaseChooseFileToUpload"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_PLEASECHOOSEFILETOUPLOAD_2FB1BECB', fallbackText: t("technicianCertificates.pleaseChooseFileToUpload"), type: 'error' });
       return;
     }
 
@@ -323,7 +324,7 @@ const TechnicianCertificates = () => {
         }
       });
 
-      toast.success(t("technicianCertificates.certificateUploadedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATEUPLOADEDSUCCE_7CCB808C', fallbackText: t("technicianCertificates.certificateUploadedSuccessfully"), type: 'success' });
       resetForm();
       setShowAddForm(false);
       await fetchUploadedCertificates();

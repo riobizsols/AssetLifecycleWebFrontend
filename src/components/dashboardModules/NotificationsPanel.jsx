@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -251,7 +252,7 @@ const NotificationsPanel = () => {
         const draft = snoozeDrafts[alert.notifyId] || { option: "5", custom: "" };
         const days = draft.option === "custom" ? Number(draft.custom) : Number(draft.option);
         if (!Number.isFinite(days) || days < 0) {
-          toast.error("Invalid snooze value");
+          showBackendTextToast({ toast, tmdId: 'TMD_INVALID_SNOOZE_VALUE_167A15A0', fallbackText: 'Invalid snooze value', type: 'error' });
           return;
         }
         await API.put(`/notifications/warranty/${alert.notifyId}/snooze`, { snooze_days: days });
@@ -265,7 +266,7 @@ const NotificationsPanel = () => {
         navigate(`/assets?editAssetId=${alert.assetId}&warrantyAction=vendor&notifyId=${alert.notifyId}`);
       }
     } catch (error) {
-      toast.error("Failed to process action");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_PROCESS_ACTION_4490D849', fallbackText: 'Failed to process action', type: 'error' });
     }
   };
 

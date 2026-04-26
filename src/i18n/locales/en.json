@@ -261,7 +261,9 @@
     "expiryDateCannotBeSameAsPurchaseDate": "Expiry date cannot be the same as purchase date",
     "expiryDateCannotBeBeforePurchaseDate": "Expiry date cannot be before purchase date",
     "purchaseDateCannotBeSameAsExpiryDate": "Purchase date cannot be the same as expiry date",
-    "atLeastOneVendorRequired": "At least one vendor (Product or Service) is required"
+    "atLeastOneVendorRequired": "At least one vendor (Product or Service) is required",
+    "purchaseVendorIsRequired": "Purchase vendor is required",
+    "vendorDetailsAreMissing": "Vendor details are missing"
   },
   "assetTypes": {
     "title": "Asset Types",

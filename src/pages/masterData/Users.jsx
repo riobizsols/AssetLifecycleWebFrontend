@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
@@ -124,7 +125,7 @@ const Users = () => {
       setDepartments(deptData);
     } catch (err) {
       console.error("❌ [Users] Failed to fetch departments", err);
-      toast.error(t('users.failedToFetchDepartments'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHDEPARTMENTS_35788A01', fallbackText: t('users.failedToFetchDepartments'), type: 'error' });
     }
   };
 
@@ -173,7 +174,7 @@ const Users = () => {
       } catch (error) {
         console.error("❌ [Users] Error fetching users:", error);
         console.error("❌ [Users] Error response:", error.response);
-        toast.error(t('users.failedToFetchUsers'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHUSERS_46749758', fallbackText: t('users.failedToFetchUsers'), type: 'error' });
       }
     };
     fetchUsers();
@@ -262,7 +263,7 @@ const Users = () => {
 
   const handleDelete = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t('users.pleaseSelectUsersToDelete'), {
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_PLEASESELECTUSERSTODELETE_35751C86', fallbackText: t('users.pleaseSelectUsersToDelete'), {
         duration: 3000,
         style: { backgroundColor: '#FEE2E2', color: '#DC2626' }
       });
@@ -270,7 +271,7 @@ const Users = () => {
     }
 
     // Show loading toast
-    const loadingToast = toast.loading("Deleting selected users...");
+    const loadingToast = showBackendTextToast({ toast, tmdId: 'TMD_DELETING_SELECTED_USERS_2F9A230D', fallbackText: 'Deleting selected users...', type: 'loading' });
 
     try {
             const response = await API.delete("/users/delete-users", {
@@ -279,7 +280,7 @@ const Users = () => {
         console.log('Delete error response:', error.response?.data);
         // Handle foreign key constraint errors
         if (error.response?.data?.code === '23503' || 
-            (error.response?.data?.error && error.response?.data?.error.includes('foreign key constraint'))) {
+            (error.response?.data?.error && error.response?.data?.error.includes('foreign key constraint'), type: 'error' })) {
             const detail = error.response.data.detail;
             const table = error.response.data.table;
                           const userId = detail.match(/\((.*?)\)/)?.[1] || 'user';
@@ -563,7 +564,7 @@ const Users = () => {
           }
           return user;
         }));
-        toast.success("User updated successfully");
+        showBackendTextToast({ toast, tmdId: 'TMD_USER_UPDATED_SUCCESSFULLY_67F84DFF', fallbackText: 'User updated successfully', type: 'success' });
         setShowEditModal(false);
         setEditingUser(null);
       }

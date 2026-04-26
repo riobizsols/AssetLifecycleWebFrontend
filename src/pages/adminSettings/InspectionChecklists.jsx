@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState, useMemo } from "react";
 import { Edit2, Trash2, Filter, Plus, Minus, X } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -60,7 +61,7 @@ const InspectionChecklists = () => {
       setChecklists(data);
     } catch (error) {
       console.error("Failed to fetch checklists:", error);
-      toast.error(t('inspectionChecklists.failedToLoadChecklists'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOLOADCHECKLISTS_4672B024', fallbackText: t('inspectionChecklists.failedToLoadChecklists'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +74,7 @@ const InspectionChecklists = () => {
       setResponseTypes(data);
     } catch (error) {
       console.error("Failed to fetch response types:", error);
-      toast.error(t('inspectionChecklists.failedToLoadResponseTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOLOADRESPONSETYPES_6AA55209', fallbackText: t('inspectionChecklists.failedToLoadResponseTypes'), type: 'error' });
     }
   };
 
@@ -101,10 +102,10 @@ const InspectionChecklists = () => {
 
     if (!isQuestionValid || !isResponseTypeValid || !isMinRangeValid || !isMaxRangeValid) {
       setShowErrors(true);
-      if (!isQuestionValid) toast.error(t('inspectionChecklists.pleaseEnterInspectionQuestion'));
-      else if (!isResponseTypeValid) toast.error(t('inspectionChecklists.pleaseSelectResponseType'));
-      else if (!isMinRangeValid) toast.error(t('inspectionChecklists.minRangeMandatoryQuantitative'));
-      else if (!isMaxRangeValid) toast.error(t('inspectionChecklists.maxRangeMandatoryQuantitative'));
+      if (!isQuestionValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASEENTERINSPECTIONQUEST_3D4780F7', fallbackText: t('inspectionChecklists.pleaseEnterInspectionQuestion'), type: 'error' });
+      else if (!isResponseTypeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASESELECTRESPONSETYPE_76540B6E', fallbackText: t('inspectionChecklists.pleaseSelectResponseType'), type: 'error' });
+      else if (!isMinRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MINRANGEMANDATORYQUANTITAT_4C1263D4', fallbackText: t('inspectionChecklists.minRangeMandatoryQuantitative'), type: 'error' });
+      else if (!isMaxRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MAXRANGEMANDATORYQUANTITAT_02B4D066', fallbackText: t('inspectionChecklists.maxRangeMandatoryQuantitative'), type: 'error' });
       return;
     }
 
@@ -119,7 +120,7 @@ const InspectionChecklists = () => {
         trigger_maintenance: triggerMaintenance
       });
 
-      toast.success(t('inspectionChecklists.checklistCreatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTCREATEDSUCCESSFUL_57EEBA86', fallbackText: t('inspectionChecklists.checklistCreatedSuccessfully'), type: 'success' });
       clearForm();
       setShowCreateModal(false);
       await fetchChecklists();
@@ -156,11 +157,11 @@ const InspectionChecklists = () => {
 
     if (!isQuestionValid || !isResponseTypeValid || !isExpectedValueValid || !isMinRangeValid || !isMaxRangeValid) {
       setShowEditErrors(true);
-      if (!isQuestionValid) toast.error(t('inspectionChecklists.pleaseEnterInspectionQuestion'));
-      else if (!isResponseTypeValid) toast.error(t('inspectionChecklists.pleaseSelectResponseType'));
-      else if (!isExpectedValueValid) toast.error(t('inspectionChecklists.expectedValueMandatoryQualitative'));
-      else if (!isMinRangeValid) toast.error(t('inspectionChecklists.minRangeMandatoryQuantitative'));
-      else if (!isMaxRangeValid) toast.error(t('inspectionChecklists.maxRangeMandatoryQuantitative'));
+      if (!isQuestionValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASEENTERINSPECTIONQUEST_3D4780F7', fallbackText: t('inspectionChecklists.pleaseEnterInspectionQuestion'), type: 'error' });
+      else if (!isResponseTypeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASESELECTRESPONSETYPE_76540B6E', fallbackText: t('inspectionChecklists.pleaseSelectResponseType'), type: 'error' });
+      else if (!isExpectedValueValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_EXPECTEDVALUEMANDATORYQUAL_18B8A0C6', fallbackText: t('inspectionChecklists.expectedValueMandatoryQualitative'), type: 'error' });
+      else if (!isMinRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MINRANGEMANDATORYQUANTITAT_4C1263D4', fallbackText: t('inspectionChecklists.minRangeMandatoryQuantitative'), type: 'error' });
+      else if (!isMaxRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MAXRANGEMANDATORYQUANTITAT_02B4D066', fallbackText: t('inspectionChecklists.maxRangeMandatoryQuantitative'), type: 'error' });
       return;
     }
 
@@ -175,7 +176,7 @@ const InspectionChecklists = () => {
         trigger_maintenance: editTriggerMaintenance
       });
 
-      toast.success(t('inspectionChecklists.checklistUpdatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTUPDATEDSUCCESSFUL_443E82CD', fallbackText: t('inspectionChecklists.checklistUpdatedSuccessfully'), type: 'success' });
       cancelEdit();
       await fetchChecklists();
     } catch (error) {
@@ -200,12 +201,12 @@ const InspectionChecklists = () => {
         for (const id of selectedRows) {
           await API.delete(`/inspection-checklists/${id}`);
         }
-        toast.success(t('inspectionChecklists.successfullyDeletedCount', { count: selectedRows.length }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_SUCCESSFULLYDELETEDCOUNT_30A7708E', fallbackText: t('inspectionChecklists.successfullyDeletedCount', { count: selectedRows.length }), type: 'success' });
         setSelectedRows([]);
       } else if (itemToDelete) {
         // Single delete via top button (if itemToDelete was set)
         await API.delete(`/inspection-checklists/${itemToDelete.ic_id}`);
-        toast.success(t('inspectionChecklists.checklistDeletedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTDELETEDSUCCESSFUL_353FB52B', fallbackText: t('inspectionChecklists.checklistDeletedSuccessfully'), type: 'success' });
       }
       setShowDeleteModal(false);
       setItemToDelete(null);
@@ -220,7 +221,7 @@ const InspectionChecklists = () => {
 
   const handleDeleteSelected = () => {
     if (selectedRows.length === 0) {
-      toast.error(t('inspectionChecklists.pleaseSelectAtLeastOneItem'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASESELECTATLEASTONEITEM_38D30486', fallbackText: t('inspectionChecklists.pleaseSelectAtLeastOneItem'), type: 'error' });
       return;
     }
     setShowDeleteModal(true);

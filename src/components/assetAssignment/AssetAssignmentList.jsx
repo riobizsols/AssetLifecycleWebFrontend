@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState } from "react";
 import { Maximize, Minimize, Trash2, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -107,7 +108,7 @@ const AssetAssignmentList = ({
       
       fetchAssignments();
       setShowDeleteModal(false);
-      toast.success(t('departments.assetUnassignedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ASSETUNASSIGNEDSUCCESSFULLY_3A64C755', fallbackText: t('departments.assetUnassignedSuccessfully'), type: 'success' });
     } catch (err) {
       console.error('Failed to unassign asset', err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'An error occurred';

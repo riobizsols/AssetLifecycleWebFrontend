@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Maximize, Minimize, QrCode, X } from "lucide-react";
@@ -73,7 +74,7 @@ const AssetSelection = () => {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      toast.error(t('assets.couldNotAccessCamera'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_COULDNOTACCESSCAMERA_7EF238B6', fallbackText: t('assets.couldNotAccessCamera'), type: 'error' });
       setShowScanner(false);
     }
   };
@@ -89,7 +90,7 @@ const AssetSelection = () => {
     }
     setScannedAssetId(decodedText);
     setShowScanner(false);
-    toast.success(t('assets.assetIdScannedSuccessfully'));
+    showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETIDSCANNEDSUCCESSFULLY_6BAA847B', fallbackText: t('assets.assetIdScannedSuccessfully'), type: 'success' });
   };
 
   const onScanError = (error) => {
@@ -112,7 +113,7 @@ const AssetSelection = () => {
     console.log("AssetSelection - entityType:", entityType);
     
     if (!entityId || !entityType) {
-      toast.error(t('assets.invalidNavigation'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_INVALIDNAVIGATION_0D0D5F9C', fallbackText: t('assets.invalidNavigation'), type: 'error' });
       navigate(-1);
       return;
     }
@@ -208,7 +209,7 @@ const AssetSelection = () => {
       console.log('Final asset types:', incoming);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
-      toast.error(t('assets.failedToFetchAssetTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETTYPES_6D6CB184', fallbackText: t('assets.failedToFetchAssetTypes'), type: 'error' });
       setAssetTypes([]);
     }
   };
@@ -260,7 +261,7 @@ const AssetSelection = () => {
       setAssets(res.data);
     } catch (err) {
       console.error("Failed to fetch available assets", err);
-      toast.error(t('assets.failedToFetchAvailableAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHAVAILABLEASSETS_7E326879', fallbackText: t('assets.failedToFetchAvailableAssets'), type: 'error' });
     }
   };
 
@@ -288,7 +289,7 @@ const AssetSelection = () => {
       );
     } catch (err) {
       console.error("Failed to fetch inactive assets", err);
-      toast.error(t('assets.failedToFetchInactiveAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
       setInactiveAssets([]);
     }
   };
@@ -320,7 +321,7 @@ const AssetSelection = () => {
       setInactiveAssetsRaw(combined);
     } catch (err) {
       console.error("Failed to fetch all inactive assets", err);
-      toast.error(t('assets.failedToFetchInactiveAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
       setInactiveAssets([]);
       setInactiveAssetsRaw([]);
     }
@@ -331,12 +332,12 @@ const AssetSelection = () => {
 
   const handleAssignAsset = async (asset) => {
     if (!asset) {
-      toast.error(t('assets.pleaseSelectAssetFromList'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASESELECTASSETFROMLIST_5C6301C3', fallbackText: t('assets.pleaseSelectAssetFromList'), type: 'error' });
       return;
     }
   
     if (!asset.asset_type_id) {
-      toast.error(t('assets.assetTypeInformationMissing'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETTYPEINFORMATIONMISSING_3F87B575', fallbackText: t('assets.assetTypeInformationMissing'), type: 'error' });
       return;
     }
   
@@ -346,20 +347,20 @@ const AssetSelection = () => {
       const assetType = typeRes.data;
   
       if (!assetType) {
-        toast.error(t('assets.failedToValidateAssetType'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOVALIDATEASSETTYPE_4ADF3BB3', fallbackText: t('assets.failedToValidateAssetType'), type: 'error' });
         return;
       }
   
       if (entityType === "employee") {
         // Logic for Employee Assignment
         if (assetType.assignment_type !== "user") {
-          toast.error(t('assets.assetTypeCanOnlyBeAssignedToDepartments'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETTYPECANONLYBEASSIGNEDTODEPARTMENTS_1397F954', fallbackText: t('assets.assetTypeCanOnlyBeAssignedToDepartments'), type: 'error' });
           return;
         }
         // Use local state if entityIntId from props is missing
         const finalEntityIntId = entityIntIdLocal || entityIntId;
         if (!finalEntityIntId) {
-          toast.error(t('assets.employeeInternalIdMissing'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_EMPLOYEEINTERNALIDMISSING_12C6E04F', fallbackText: t('assets.employeeInternalIdMissing'), type: 'error' });
           return;
         }
   
@@ -382,17 +383,17 @@ const AssetSelection = () => {
           action: 'Asset Assigned to Employee'
         });
         
-        toast.success(t('assets.assetAssignedToEmployeeSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETASSIGNEDTOEMPLOYEESUCCESSFULLY_06EBA501', fallbackText: t('assets.assetAssignedToEmployeeSuccessfully'), type: 'success' });
   
       } else if (entityType === "department") {
         // Logic for Department Assignment
         // CORRECTED: Check for 'department' assignment type
         if (assetType.assignment_type !== "department") {
-          toast.error(t('assets.assetTypeCanOnlyBeAssignedToUsers'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETTYPECANONLYBEASSIGNEDTOUSERS_4279923B', fallbackText: t('assets.assetTypeCanOnlyBeAssignedToUsers'), type: 'error' });
           return;
         }
         if (!entityId && !departmentId) {
-          toast.error(t('assets.departmentIdMissing'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_DEPARTMENTIDMISSING_3C595776', fallbackText: t('assets.departmentIdMissing'), type: 'error' });
           return;
         }
   
@@ -413,7 +414,7 @@ const AssetSelection = () => {
           action: 'Asset Assigned to Department'
         });
         
-        toast.success(t('assets.assetAssignedToDepartmentSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETASSIGNEDTODEPARTMENTSUCCESSFULLY_439AD8DD', fallbackText: t('assets.assetAssignedToDepartmentSuccessfully'), type: 'success' });
       }
       
       // Redirect after successful assignment
@@ -429,19 +430,19 @@ const AssetSelection = () => {
 
   // const handleAssignAsset = async (asset) => {
   //   if (!asset) {
-  //     toast.error("Please select an asset from the list");
+  //     showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ASSET_FROM_THE_LIST_5BA720F2', fallbackText: 'Please select an asset from the list', type: 'error' });
   //     return;
   //   }
 
   //   // Check if asset type exists and has assignment_type
   //   if (!asset.asset_type_id) {
-  //     toast.error("Asset type information is missing");
+  //     showBackendTextToast({ toast, tmdId: 'TMD_ASSET_TYPE_INFORMATION_IS_MISSING_1E3E363A', fallbackText: 'Asset type information is missing', type: 'error' });
   //     return;
   //   }
 
   //   if (entityType === "employee") {
   //     if (!entityIntId) {
-  //       toast.error("Employee internal ID is missing");
+  //       showBackendTextToast({ toast, tmdId: 'TMD_EMPLOYEE_INTERNAL_ID_IS_MISSING_5DAC0204', fallbackText: 'Employee internal ID is missing', type: 'error' });
   //       return;
   //     }
 
@@ -451,12 +452,12 @@ const AssetSelection = () => {
   //       const assetType = typeRes.data;
 
   //       if (!assetType) {
-  //         toast.error("Failed to validate asset type");
+  //         showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_VALIDATE_ASSET_TYPE_366FE24E', fallbackText: 'Failed to validate asset type', type: 'error' });
   //         return;
   //       }
 
   //       if (assetType.assignment_type !== "User") {
-  //         toast.error("This asset type can only be assigned to departments");
+  //         showBackendTextToast({ toast, tmdId: 'TMD_THIS_ASSET_TYPE_CAN_ONLY_BE_ASSIGNED_TO_DEPARTMENTS_6A267081', fallbackText: 'This asset type can only be assigned to departments', type: 'error' });
   //         return;
   //       }
 
@@ -470,7 +471,7 @@ const AssetSelection = () => {
   //         action: "A",
   //       };
   //       await API.post("/asset-assignments/employee", payload);
-  //       toast.success("Asset assigned to employee successfully");
+  //       showBackendTextToast({ toast, tmdId: 'TMD_ASSET_ASSIGNED_TO_EMPLOYEE_SUCCESSFULLY_539B6D4A', fallbackText: 'Asset assigned to employee successfully', type: 'success' });
   //       navigate(-1);
   //     } catch (err) {
   //       console.error("Failed to assign asset to employee", err);
@@ -483,7 +484,7 @@ const AssetSelection = () => {
   //     }
   //   } else if (entityType === "department") {
   //     if (!entityId && !departmentId) {
-  //       toast.error("Department ID missing");
+  //       showBackendTextToast({ toast, tmdId: 'TMD_DEPARTMENT_ID_MISSING_71A4A731', fallbackText: 'Department ID missing', type: 'error' });
   //       return;
   //     }
 
@@ -493,12 +494,12 @@ const AssetSelection = () => {
   //       const assetType = typeRes.data;
 
   //       if (!assetType) {
-  //         toast.error("Failed to validate asset type");
+  //         showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_VALIDATE_ASSET_TYPE_366FE24E', fallbackText: 'Failed to validate asset type', type: 'error' });
   //         return;
   //       }
 
   //       if (assetType.assignment_type !== "Department") {
-  //         toast.error("This asset type can only be assigned to users");
+  //         showBackendTextToast({ toast, tmdId: 'TMD_THIS_ASSET_TYPE_CAN_ONLY_BE_ASSIGNED_TO_USERS_19B7D0D8', fallbackText: 'This asset type can only be assigned to users', type: 'error' });
   //         return;
   //       }
 
@@ -511,7 +512,7 @@ const AssetSelection = () => {
   //         action: "A",
   //       };
   //       await API.post("/asset-assignments", payload);
-  //       toast.success("Asset assigned to department successfully");
+  //       showBackendTextToast({ toast, tmdId: 'TMD_ASSET_ASSIGNED_TO_DEPARTMENT_SUCCESSFULLY_6021E2AE', fallbackText: 'Asset assigned to department successfully', type: 'success' });
   //       navigate(-1);
   //     } catch (err) {
   //       console.error("Failed to assign asset to department", err);
@@ -528,13 +529,13 @@ const AssetSelection = () => {
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
-      toast.error(t('assets.pleaseEnterAssetId'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASEENTERASSETID_5202CAD4', fallbackText: t('assets.pleaseEnterAssetId'), type: 'error' });
       return;
     }
     // Find the asset in inactiveAssets by asset_id
     const asset = inactiveAssets.find((a) => a.asset_id === scannedAssetId);
     if (!asset) {
-      toast.error(t('assets.assetNotFoundOrNotAvailable'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETNOTFOUNDORNOTAVAILABLE_6BCC1309', fallbackText: t('assets.assetNotFoundOrNotAvailable'), type: 'error' });
       return;
     }
     handleAssignAsset(asset);

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import API from "../../lib/axios";
@@ -127,7 +128,7 @@ const CreateJobRoleNavigation = () => {
       }
     } catch (error) {
       console.error("Error fetching navigation:", error);
-      toast.error("Failed to load navigation data");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_NAVIGATION_DATA_7C1458BE', fallbackText: 'Failed to load navigation data', type: 'error' });
     }
   };
 
@@ -152,7 +153,7 @@ const CreateJobRoleNavigation = () => {
       setAvailableRoles(response.data.roles || []);
     } catch (error) {
       console.error("Error fetching roles:", error);
-      toast.error("Failed to fetch job roles");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_ROLES_20AF53B2', fallbackText: 'Failed to fetch job roles', type: 'error' });
     }
   };
 
@@ -162,7 +163,7 @@ const CreateJobRoleNavigation = () => {
       setAvailableAppIds(response.data.appIds || []);
     } catch (error) {
       console.error("Error fetching app IDs:", error);
-      toast.error("Failed to fetch app IDs");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_APP_IDS_66815AAF', fallbackText: 'Failed to fetch app IDs', type: 'error' });
     }
   };
 
@@ -204,7 +205,7 @@ const CreateJobRoleNavigation = () => {
     if (navigationRows.length > 1) {
       setNavigationRows((prev) => prev.filter((_, i) => i !== index));
     } else {
-      toast.error("At least one row is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_AT_LEAST_ONE_ROW_IS_REQUIRED_6F152111', fallbackText: 'At least one row is required', type: 'error' });
     }
   };
 
@@ -217,14 +218,14 @@ const CreateJobRoleNavigation = () => {
   const handleSaveMultiple = async () => {
     try {
       if (!selectedJobRole) {
-        toast.error("Please select a Job Role");
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_JOB_ROLE_079844DA', fallbackText: 'Please select a Job Role', type: 'error' });
         return;
       }
 
       // Validate all rows
       const invalidRows = navigationRows.filter((row) => !row.app_id);
       if (invalidRows.length > 0) {
-        toast.error("All rows must have an App ID selected");
+        showBackendTextToast({ toast, tmdId: 'TMD_ALL_ROWS_MUST_HAVE_AN_APP_ID_SELECTED_4040C6E9', fallbackText: 'All rows must have an App ID selected', type: 'error' });
         return;
       }
 
@@ -261,13 +262,13 @@ const CreateJobRoleNavigation = () => {
   const handleSave = async () => {
     try {
       if (!formData.job_role_id || !formData.app_id) {
-        toast.error("Job Role and App ID are required");
+        showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_AND_APP_ID_ARE_REQUIRED_3EFBA701', fallbackText: 'Job Role and App ID are required', type: 'error' });
         return;
       }
 
       const navIdToUpdate = navId || formData.job_role_nav_id;
       if (!navIdToUpdate) {
-        toast.error("Navigation ID is required for updates");
+        showBackendTextToast({ toast, tmdId: 'TMD_NAVIGATION_ID_IS_REQUIRED_FOR_UPDATES_791C17F1', fallbackText: 'Navigation ID is required for updates', type: 'error' });
         return;
       }
 
@@ -275,7 +276,7 @@ const CreateJobRoleNavigation = () => {
         ...formData,
         int_status: formData.int_status ? 1 : 0,
       });
-      toast.success("Navigation updated successfully");
+      showBackendTextToast({ toast, tmdId: 'TMD_NAVIGATION_UPDATED_SUCCESSFULLY_3E75DCA8', fallbackText: 'Navigation updated successfully', type: 'success' });
       navigate(getBackRoute(), { state: getBackState() });
     } catch (error) {
       console.error("Error saving navigation:", error);

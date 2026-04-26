@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Printer, 
@@ -130,7 +131,7 @@ const PrintLabelScreen = ({
 
   const generatePDF = async () => {
     if (!selectedItem || !printSettings.printerId || !printSettings.template) {
-      toast.error('Please select printer name and template');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_PRINTER_NAME_AND_TEMPLATE_75509CC4', fallbackText: 'Please select printer name and template', type: 'error' });
       return;
     }
 
@@ -329,11 +330,11 @@ const PrintLabelScreen = ({
       const fileName = `label_${selectedItem.serial_number}_${template.id}.pdf`;
       pdf.save(fileName);
       
-      toast.success('PDF generated successfully!');
+      showBackendTextToast({ toast, tmdId: 'TMD_PDF_GENERATED_SUCCESSFULLY_0F045D3B', fallbackText: 'PDF generated successfully!', type: 'success' });
       
     } catch (error) {
       console.error('Error generating PDF:', error);
-      toast.error('Failed to generate PDF');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_GENERATE_PDF_733A5769', fallbackText: 'Failed to generate PDF', type: 'error' });
     }
   };
 

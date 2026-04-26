@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -41,7 +42,7 @@ const ExpiringByCategory = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error('Failed to fetch expiring assets data');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_EXPIRING_ASSETS_DATA_28EC9FF5', fallbackText: 'Failed to fetch expiring assets data', type: 'error' });
       return [];
     }
   };
@@ -54,7 +55,7 @@ const ExpiringByCategory = () => {
         setAssetTypes(data);
       } catch (error) {
         console.error('Error fetching data:', error);
-        toast.error('Failed to fetch data');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_DATA_54044992', fallbackText: 'Failed to fetch data', type: 'error' });
       } finally {
         setLoading(false);
       }

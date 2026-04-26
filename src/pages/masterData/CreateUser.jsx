@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -37,7 +38,7 @@ const CreateUser = () => {
       setDepartments(res.data || []);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error("Failed to fetch departments");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_DEPARTMENTS_2E6F5879', fallbackText: 'Failed to fetch departments', type: 'error' });
     }
   };
 
@@ -48,7 +49,7 @@ const CreateUser = () => {
       setBranches(response.data || []);
     } catch (err) {
       console.error("Failed to fetch branches", err);
-      toast.error("Failed to fetch branches");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_BRANCHES_52C277B8', fallbackText: 'Failed to fetch branches', type: 'error' });
     }
   };
 
@@ -68,25 +69,25 @@ const CreateUser = () => {
 
     // Validate form fields
     if (!form.first_name.trim()) {
-      toast.error("First name is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_FIRST_NAME_IS_REQUIRED_184F2B50', fallbackText: 'First name is required', type: 'error' });
       return;
     }
     
     
     if (!form.email.trim()) {
-      toast.error("Email is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_EMAIL_IS_REQUIRED_4E64DB31', fallbackText: 'Email is required', type: 'error' });
       return;
     }
     if (!form.phone.trim()) {
-      toast.error("Phone number is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_PHONE_NUMBER_IS_REQUIRED_08E22B90', fallbackText: 'Phone number is required', type: 'error' });
       return;
     }
     if (!form.dept_id) {
-      toast.error("Department is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_DEPARTMENT_IS_REQUIRED_1C5EA1D9', fallbackText: 'Department is required', type: 'error' });
       return;
     }
     if (!form.branch_id) {
-      toast.error("Branch is required");
+      showBackendTextToast({ toast, tmdId: 'TMD_BRANCH_IS_REQUIRED_21EC5877', fallbackText: 'Branch is required', type: 'error' });
       return;
     }
 
@@ -136,7 +137,7 @@ const CreateUser = () => {
         action: 'Employee Created'
       });
 
-      toast.success("Employee created successfully!");
+      showBackendTextToast({ toast, tmdId: 'TMD_EMPLOYEE_CREATED_SUCCESSFULLY_090057B0', fallbackText: 'Employee created successfully!', type: 'success' });
       navigate("/master-data/user-roles");
     } catch (error) {
       console.error("Error creating user:", error);

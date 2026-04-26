@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
@@ -88,7 +89,7 @@ const MaintenanceApprovalDetail = () => {
       setData(sortedData);
     } catch (err) {
       console.error("Failed to fetch maintenance approvals", err);
-      toast.error(t('maintenanceApproval.failedToFetchMaintenanceApprovals'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCEAPPROVAL_FAILEDTOFETCHMAINTENANCEAPP_7688480B', fallbackText: t('maintenanceApproval.failedToFetchMaintenanceApprovals'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -145,13 +146,13 @@ const MaintenanceApprovalDetail = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t('maintenanceApproval.pleaseSelectMaintenanceRecords'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCEAPPROVAL_PLEASESELECTMAINTENANCERECO_322436D7', fallbackText: t('maintenanceApproval.pleaseSelectMaintenanceRecords'), type: 'error' });
       return false;
     }
 
     try {
       await API.post("/maintenance-approval/delete", { wfamsh_ids: selectedRows });
-      toast.success(t('maintenanceApproval.maintenanceRecordsDeletedSuccessfully', { count: selectedRows.length }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCEAPPROVAL_MAINTENANCERECORDSDELETEDSU_294557A3', fallbackText: t('maintenanceApproval.maintenanceRecordsDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
       setSelectedRows([]);
       fetchMaintenanceApprovals();
       return true;
@@ -165,7 +166,7 @@ const MaintenanceApprovalDetail = () => {
   const handleDelete = async (row) => {
     try {
       await API.delete(`/maintenance-approval/${row.wfamsh_id}`);
-      toast.success(t('maintenanceApproval.maintenanceRecordDeletedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCEAPPROVAL_MAINTENANCERECORDDELETEDSUC_4EB946D0', fallbackText: t('maintenanceApproval.maintenanceRecordDeletedSuccessfully'), type: 'success' });
       fetchMaintenanceApprovals();
     } catch (err) {
       console.error("Failed to delete maintenance record", err);

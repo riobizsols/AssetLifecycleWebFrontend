@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentBox from "../components/ContentBox";
@@ -63,7 +64,7 @@ const WorkorderManagement = () => {
         setData(formatted);
       } catch (err) {
         console.error("Failed to fetch work orders", err);
-        toast.error(t('workorderManagement.failedToFetchWorkOrders'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_WORKORDERMANAGEMENT_FAILEDTOFETCHWORKORDERS_46EB10AE', fallbackText: t('workorderManagement.failedToFetchWorkOrders'), type: 'error' });
         setData([]);
       } finally {
         setIsLoading(false);

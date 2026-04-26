@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -60,7 +61,7 @@ const BulkSerialNumberPrint = () => {
       })));
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      toast.error('Failed to load asset types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_ASSET_TYPES_7F953DD1', fallbackText: 'Failed to load asset types', type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +92,7 @@ const BulkSerialNumberPrint = () => {
       setFilteredAssets(transformedAssets);
     } catch (error) {
       console.error('Error fetching assets:', error);
-      toast.error('Failed to load assets');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_ASSETS_2A9223FB', fallbackText: 'Failed to load assets', type: 'error' });
       setAssets([]);
       setFilteredAssets([]);
     } finally {
@@ -160,7 +161,7 @@ const BulkSerialNumberPrint = () => {
 
   const handleProceedToPrint = async () => {
     if (selectedAssets.length === 0) {
-      toast.error('Please select at least one asset');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AT_LEAST_ONE_ASSET_26BAA2E0', fallbackText: 'Please select at least one asset', type: 'error' });
       return;
     }
 
@@ -219,7 +220,7 @@ const BulkSerialNumberPrint = () => {
       }
     } catch (error) {
       console.error('Error adding assets to print queue:', error);
-      toast.error('Failed to add assets to print queue');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_ADD_ASSETS_TO_PRINT_QUEUE_416928CB', fallbackText: 'Failed to add assets to print queue', type: 'error' });
     } finally {
       setIsAddingToQueue(false);
     }

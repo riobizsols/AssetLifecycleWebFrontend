@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -172,7 +173,7 @@ const SerialNumberPrint = () => {
       }
     } catch (error) {
       console.error('Error fetching print queue:', error);
-      toast.error(t('serialNumberPrint.failedToLoadPrintQueue'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SERIALNUMBERPRINT_FAILEDTOLOADPRINTQUEUE_10B9F0DC', fallbackText: t('serialNumberPrint.failedToLoadPrintQueue'), type: 'error' });
       setPrintQueue([]);
       setFilteredQueue([]);
     } finally {
@@ -287,7 +288,7 @@ const SerialNumberPrint = () => {
         handleSelectItem(asset);
       } else {
         console.log('Asset not found with ID:', assetId);
-        toast.error('Asset not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_ASSET_NOT_FOUND_6AE286A5', fallbackText: 'Asset not found', type: 'error' });
       }
     }
   }, [assetId, printQueue]);
@@ -399,7 +400,7 @@ const SerialNumberPrint = () => {
 
   const handlePreview = () => {
     if (!selectedItem || !printSettings.printerId || !printSettings.template) {
-      toast.error('Please select printer name and template');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_PRINTER_NAME_AND_TEMPLATE_75509CC4', fallbackText: 'Please select printer name and template', type: 'error' });
       return;
     }
     setShowPreviewModal(true);
@@ -407,7 +408,7 @@ const SerialNumberPrint = () => {
 
   const handlePrint = async () => {
     if (!selectedItem || !printSettings.printerId || !printSettings.template) {
-      toast.error('Please select printer name and template');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_PRINTER_NAME_AND_TEMPLATE_75509CC4', fallbackText: 'Please select printer name and template', type: 'error' });
       return;
     }
 
@@ -420,7 +421,7 @@ const SerialNumberPrint = () => {
           printSettingsPrinterIdType: typeof printSettings.printerId,
           availablePrinters: printers.map(p => ({ id: p.id, idType: typeof p.id, name: p.name }))
         });
-        toast.error('Selected printer not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_SELECTED_PRINTER_NOT_FOUND_14C1BEB6', fallbackText: 'Selected printer not found', type: 'error' });
         return;
       }
 
@@ -448,7 +449,7 @@ const SerialNumberPrint = () => {
       fetchPrintQueue();
     } catch (error) {
       console.error('Error printing:', error);
-      toast.error('Failed to send print job');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SEND_PRINT_JOB_7524BF8C', fallbackText: 'Failed to send print job', type: 'error' });
     }
   };
 
@@ -628,7 +629,7 @@ const SerialNumberPrint = () => {
       return true; // Success
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error('Failed to update status');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_STATUS_3AD66FA7', fallbackText: 'Failed to update status', type: 'error' });
       return false; // Failure
     }
   };

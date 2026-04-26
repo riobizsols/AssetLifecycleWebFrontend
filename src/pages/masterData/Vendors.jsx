@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
@@ -92,7 +93,7 @@ const Vendors = () => {
         setData(formattedData);
       } catch (error) {
         console.error("Error fetching vendors:", error);
-        toast.error(t('vendors.failedToFetchVendors'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOFETCHVENDORS_00D2C278', fallbackText: t('vendors.failedToFetchVendors'), type: 'error' });
       } finally {
         setIsLoading(false);
       }
@@ -195,7 +196,7 @@ const Vendors = () => {
         prev.filter((vendor) => !selectedRows.includes(vendor.vendor_id))
       );
       setSelectedRows([]);
-      toast.success(t('vendors.vendorsDeletedSuccessfully', { count: selectedRows.length }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORSDELETEDSUCCESSFULLY_58F50B4C', fallbackText: t('vendors.vendorsDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
       return true; // Return true to indicate successful deletion
     } catch (error) {
       console.error("Error deleting vendors:", error);
@@ -280,7 +281,7 @@ const Vendors = () => {
       
       setShowEditModal(false);
       setEditingVendor(null);
-      toast.success(t('vendors.vendorUpdatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORUPDATEDSUCCESSFULLY_176E9EC5', fallbackText: t('vendors.vendorUpdatedSuccessfully'), type: 'success' });
     } catch (error) {
       console.error("Error updating vendor:", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t('vendors.failedToUpdateVendor');

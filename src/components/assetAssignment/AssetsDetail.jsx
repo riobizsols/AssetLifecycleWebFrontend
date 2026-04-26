@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import API from '../../lib/axios';
 import toast from 'react-hot-toast';
@@ -72,23 +73,23 @@ const AssetsDetail = () => {
     
     // Validate required fields based on assignment type
     if (!assetDetails) {
-      toast.error('Asset details not loaded');
+      showBackendTextToast({ toast, tmdId: 'TMD_ASSET_DETAILS_NOT_LOADED_43389DE0', fallbackText: 'Asset details not loaded', type: 'error' });
       return;
     }
     
     if (!finalDeptId) {
-      toast.error('Department ID is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_DEPARTMENT_ID_IS_REQUIRED_43F4D742', fallbackText: 'Department ID is required', type: 'error' });
       return;
     }
     
     if (!finalOrgId) {
-      toast.error('Organization ID is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_ORGANIZATION_ID_IS_REQUIRED_11D71743', fallbackText: 'Organization ID is required', type: 'error' });
       return;
     }
     
     // For employee assignments, employee_int_id is required
     if (!isDepartmentAssignment && !employee_int_id) {
-      toast.error('Employee ID is required for employee assignments');
+      showBackendTextToast({ toast, tmdId: 'TMD_EMPLOYEE_ID_IS_REQUIRED_FOR_EMPLOYEE_ASSIGNMENTS_77A4BBB7', fallbackText: 'Employee ID is required for employee assignments', type: 'error' });
       return;
     }
     
@@ -107,7 +108,7 @@ const AssetsDetail = () => {
       console.log('[AssetsDetail] Sending assignment payload:', payload);
       
       await API.post('/asset-assignments', payload);
-      toast.success(t('assetsDetail.assetAssignedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETSDETAIL_ASSETASSIGNEDSUCCESSFULLY_1B8D62C7', fallbackText: t('assetsDetail.assetAssignedSuccessfully'), type: 'success' });
       navigate(-1);
     } catch (err) {
       console.error('[AssetsDetail] Failed to assign asset:', err);
@@ -123,7 +124,7 @@ const AssetsDetail = () => {
       const params = contextFromUrl ? { context: contextFromUrl } : {};
       API.get(`/assets/${asset_id}`, { params })
         .then(res => setAssetDetails(res.data))
-        .catch(() => toast.error(t('assetsDetail.failedToFetchAssetDetails')))
+        .catch(() => showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETSDETAIL_FAILEDTOFETCHASSETDETAILS_02EE968A', fallbackText: t('assetsDetail.failedToFetchAssetDetails'), type: 'error' }))
         .finally(() => setLoading(false));
     } else {
       setLoading(false);

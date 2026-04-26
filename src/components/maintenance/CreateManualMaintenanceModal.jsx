@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, QrCode, Maximize, Minimize } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -63,7 +64,7 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
       );
     } catch (err) {
       console.error('Error starting scanner:', err);
-      toast.error(t('assets.couldNotAccessCamera') || 'Could not access camera');
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_COULDNOTACCESSCAMERA_7EF238B6', fallbackText: t('assets.couldNotAccessCamera') || 'Could not access camera');
       setShowScanner(false);
     }
   };
@@ -127,7 +128,7 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
         onSuccess?.();
         onClose();
       } else {
-        toast.error(res.data?.message || (t('maintenanceSupervisor.failedToCreateMaintenance') || 'Failed to create maintenance'));
+        toast.error(res.data?.message || (t('maintenanceSupervisor.failedToCreateMaintenance') || 'Failed to create maintenance'), type: 'error' });
       }
     } catch (err) {
       console.error('Failed to create maintenance:', err);
@@ -140,15 +141,15 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId?.trim()) {
-      toast.error(t('assets.pleaseEnterAssetId') || 'Please enter or scan asset ID');
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASEENTERASSETID_5202CAD4', fallbackText: t('assets.pleaseEnterAssetId') || 'Please enter or scan asset ID');
       return;
     }
     setSubmitting(true);
     try {
-      const res = await API.get(`/assets/${encodeURIComponent(scannedAssetId.trim())}`);
+      const res = await API.get(`/assets/${encodeURIComponent(scannedAssetId.trim(), type: 'error' })}`);
       const asset = res.data;
       if (!asset?.asset_id) {
-        toast.error(t('assets.assetNotFoundOrNotAvailable') || 'Asset not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETNOTFOUNDORNOTAVAILABLE_6BCC1309', fallbackText: t('assets.assetNotFoundOrNotAvailable') || 'Asset not found');
         setSubmitting(false);
         return;
       }
@@ -171,7 +172,7 @@ const CreateManualMaintenanceModal = ({ isOpen, onClose, onSuccess }) => {
     ...(assetTypes || []).map((at) => ({
       id: at.asset_type_id,
       text: at.text || at.asset_type_name || at.name || at.asset_type_id,
-    })),
+    }), type: 'error' }),
   ];
 
   return (

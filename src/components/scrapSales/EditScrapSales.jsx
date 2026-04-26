@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -103,7 +104,7 @@ const EditScrapSales = () => {
         
         const scrapSale = res.data?.scrap_sale || res.data?.data;
         if (!scrapSale) {
-          toast.error('Scrap sale not found');
+          showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_SALE_NOT_FOUND_07A66455', fallbackText: 'Scrap sale not found', type: 'error' });
           navigate('/scrap-sales');
           return;
         }
@@ -221,7 +222,7 @@ const EditScrapSales = () => {
 
       } catch (error) {
         console.error('Error fetching scrap sale:', error);
-        toast.error('Failed to load scrap sale data');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_SCRAP_SALE_DATA_4277DB24', fallbackText: 'Failed to load scrap sale data', type: 'error' });
         navigate('/scrap-sales');
       } finally {
         setLoading(false);
@@ -331,7 +332,7 @@ const EditScrapSales = () => {
     const hasIndividualValues = Object.values(individualValues).some(value => value && parseFloat(value) > 0);
     
     if (!hasTotalValue && !hasIndividualValues) {
-      toast.error('Please provide either total scrap value or individual asset values');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_PROVIDE_EITHER_TOTAL_SCRAP_VALUE_OR_INDIVIDUA_4DC69D84', fallbackText: 'Please provide either total scrap value or individual asset values', type: 'error' });
       return false;
     }
     
@@ -350,7 +351,7 @@ const EditScrapSales = () => {
 
   const handleSave = async () => {
     if (selectedAssets.length === 0) {
-      toast.error('Please select at least one asset');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AT_LEAST_ONE_ASSET_26BAA2E0', fallbackText: 'Please select at least one asset', type: 'error' });
       return;
     }
 
@@ -359,7 +360,7 @@ const EditScrapSales = () => {
     }
 
     if (!buyerDetails.buyer_name || !buyerDetails.buyer_contact) {
-      toast.error('Please fill in buyer name and contact number');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_FILL_IN_BUYER_NAME_AND_CONTACT_NUMBER_7BEFB15A', fallbackText: 'Please fill in buyer name and contact number', type: 'error' });
       return;
     }
 
@@ -391,7 +392,7 @@ const EditScrapSales = () => {
       });
 
       if (response.data.success) {
-        toast.success('Scrap sale updated successfully!');
+        showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_SALE_UPDATED_SUCCESSFULLY_2BF07B6B', fallbackText: 'Scrap sale updated successfully!', type: 'success' });
         navigate('/scrap-sales');
       } else {
         throw new Error(response.data.message || 'Update failed');
@@ -449,7 +450,7 @@ const EditScrapSales = () => {
         }, {
           params: { context: 'SCRAPSALES' }
         });
-        toast.success('Document archived successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_DOCUMENT_ARCHIVED_SUCCESSFULLY_35F87400', fallbackText: 'Document archived successfully', type: 'success' });
         // Refresh documents
         const res = await API.get(`/scrap-sales-docs/${scrapId}`, {
           params: { context: 'SCRAPSALES' }
@@ -466,7 +467,7 @@ const EditScrapSales = () => {
         }, {
           params: { context: 'SCRAPSALES' }
         });
-        toast.success('Document unarchived successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_DOCUMENT_UNARCHIVED_SUCCESSFULLY_26CD7C47', fallbackText: 'Document unarchived successfully', type: 'success' });
         // Refresh documents
         const res = await API.get(`/scrap-sales-docs/${scrapId}`, {
           params: { context: 'SCRAPSALES' }
@@ -487,14 +488,14 @@ const EditScrapSales = () => {
   // Handle document uploads
   const handleUploadDocuments = async () => {
     if (uploadRows.length === 0) {
-      toast.error('Add at least one file');
+      showBackendTextToast({ toast, tmdId: 'TMD_ADD_AT_LEAST_ONE_FILE_76BB747B', fallbackText: 'Add at least one file', type: 'error' });
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error('Select document type and choose a file for all rows');
+        showBackendTextToast({ toast, tmdId: 'TMD_SELECT_DOCUMENT_TYPE_AND_CHOOSE_A_FILE_FOR_ALL_ROWS_58610967', fallbackText: 'Select document type and choose a file for all rows', type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
@@ -533,7 +534,7 @@ const EditScrapSales = () => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files uploaded successfully');
+          showBackendTextToast({ toast, tmdId: 'TMD_ALL_FILES_UPLOADED_SUCCESSFULLY_2B7F645F', fallbackText: 'All files uploaded successfully', type: 'success' });
         } else {
           toast.success(`${successCount} files uploaded, ${failCount} failed`);
         }
@@ -548,11 +549,11 @@ const EditScrapSales = () => {
         setDocs(active);
         setArchivedDocs(archived);
       } else {
-        toast.error('Failed to upload any files');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPLOAD_ANY_FILES_7C811EA6', fallbackText: 'Failed to upload any files', type: 'error' });
       }
     } catch (err) {
       console.error('Upload process error:', err);
-      toast.error('Upload process failed');
+      showBackendTextToast({ toast, tmdId: 'TMD_UPLOAD_PROCESS_FAILED_55943AED', fallbackText: 'Upload process failed', type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -640,7 +641,7 @@ const EditScrapSales = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENT_TYPES_002075AC', fallbackText: 'Failed to load document types', type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -1162,7 +1163,7 @@ const EditScrapSales = () => {
                           onChange={e => {
                             const f = e.target.files?.[0] || null;
                             if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                              toast.error('File size exceeds 15MB limit');
+                              showBackendTextToast({ toast, tmdId: 'TMD_FILE_SIZE_EXCEEDS_15MB_LIMIT_5CCBDF10', fallbackText: 'File size exceeds 15MB limit', type: 'error' });
                               e.target.value = '';
                               return;
                             }

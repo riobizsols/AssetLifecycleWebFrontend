@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
@@ -79,7 +80,7 @@ const Users = () => {
       setDepartments(res.data);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error(t("users.failedToFetchDepartments"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHDEPARTMENTS_35788A01', fallbackText: t("users.failedToFetchDepartments"), type: 'error' });
     }
   };
 
@@ -90,7 +91,7 @@ const Users = () => {
       setAvailableRoles(response.data.roles || []);
     } catch (err) {
       console.error("Failed to fetch job roles", err);
-      toast.error(t("users.failedToFetchJobRoles"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHJOBROLES_4AFF8DA0', fallbackText: t("users.failedToFetchJobRoles"), type: 'error' });
     }
   };
 
@@ -102,7 +103,7 @@ const Users = () => {
       setUserRoles(response.data.data || []);
     } catch (error) {
       console.error("Error fetching user roles:", error);
-      toast.error(t("users.failedToFetchUserRoles"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHUSERROLES_42C61BAE', fallbackText: t("users.failedToFetchUserRoles"), type: 'error' });
       setUserRoles([]);
     } finally {
       setLoadingRoles(false);
@@ -124,7 +125,7 @@ const Users = () => {
         console.log('Loaded available roles:', response.data.roles);
       } catch (error) {
         console.error('Error loading available roles:', error);
-        toast.error(t("users.failedToLoadAvailableRoles"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOLOADAVAILABLEROLES_35AE4334', fallbackText: t("users.failedToLoadAvailableRoles"), type: 'error' });
       } finally {
         setLoadingAvailableRoles(false);
       }
@@ -149,9 +150,9 @@ const Users = () => {
               ? { ...user, int_status: 'Inactive' }
               : user
           ));
-          toast.success(t("users.roleDeletedAndUserDeactivated"));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_ROLEDELETEDANDUSERDEACTIVATED_19B28A2F', fallbackText: t("users.roleDeletedAndUserDeactivated"), type: 'success' });
         } else {
-          toast.success(t("users.roleDeletedSuccessfully"));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_ROLEDELETEDSUCCESSFULLY_6811ADC8', fallbackText: t("users.roleDeletedSuccessfully"), type: 'success' });
         }
 
         // Log the action
@@ -163,7 +164,7 @@ const Users = () => {
       }
     } catch (error) {
       console.error("Error deleting role:", error);
-      toast.error(t("users.failedToDeleteRole"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTODELETEROLE_110859FB', fallbackText: t("users.failedToDeleteRole"), type: 'error' });
     }
   };
 
@@ -186,7 +187,7 @@ const Users = () => {
       if (response.data.success) {
         // Refresh user roles
         await fetchUserRoles(selectedUser.user_id);
-        toast.success(t("users.roleUpdatedSuccessfully"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_ROLEUPDATEDSUCCESSFULLY_77107B6A', fallbackText: t("users.roleUpdatedSuccessfully"), type: 'success' });
 
         // Log the action
         await recordActionByNameWithFetch('Update', {
@@ -198,7 +199,7 @@ const Users = () => {
       }
     } catch (error) {
       console.error("Error updating role:", error);
-      toast.error(t("users.failedToUpdateRole"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOUPDATEROLE_69C8B1E7', fallbackText: t("users.failedToUpdateRole"), type: 'error' });
     }
   };
 
@@ -221,7 +222,7 @@ const Users = () => {
         setData(formattedData);
       } catch (error) {
         console.error("Error fetching users:", error);
-        toast.error(t("users.failedToFetchUsers"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHUSERS_46749758', fallbackText: t("users.failedToFetchUsers"), type: 'error' });
       } finally {
         setIsLoading(false);
       }
@@ -331,9 +332,11 @@ const Users = () => {
 
   const handleDelete = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t("users.pleaseSelectUsersToDelete"), {
-        duration: 3000,
-        style: { backgroundColor: '#FEE2E2', color: '#DC2626' }
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_USERS_PLEASESELECTUSERSTODELETE_35751C86',
+        fallbackText: t("users.pleaseSelectUsersToDelete"),
+        type: 'error',
       });
       return false;
     }
@@ -507,12 +510,11 @@ const Users = () => {
 
         // Show success message
         toast.dismiss(loadingToast);
-        toast.success(t("users.successfullyDeletedUsers", { count: selectedRows.length }), {
-          duration: 3000,
-          style: {
-            backgroundColor: '#DCFCE7',
-            color: '#166534'
-          }
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_USERS_SUCCESSFULLYDELETEDUSERS_22501D48',
+          fallbackText: t("users.successfullyDeletedUsers", { count: selectedRows.length }),
+          type: 'success',
         });
         return true;
       }
@@ -635,7 +637,7 @@ const Users = () => {
             dept_name: departments.find(d => d.dept_id === response.data.dept_id)?.text || t("users.notAssigned")
           } : user
         ));
-        toast.success(t("users.userUpdatedSuccessfully"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_USERUPDATEDSUCCESSFULLY_253AA20B', fallbackText: t("users.userUpdatedSuccessfully"), type: 'success' });
         setShowEditModal(false);
         setEditingUser(null);
       }

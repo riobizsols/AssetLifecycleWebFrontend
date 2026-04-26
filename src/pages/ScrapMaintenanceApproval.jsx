@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentBox from "../components/ContentBox";
@@ -67,7 +68,7 @@ const ScrapMaintenanceApproval = () => {
       setData(formatted);
     } catch (err) {
       console.error("Failed to fetch scrap approvals", err);
-      toast.error(t('scrapApproval.failedToFetch'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPAPPROVAL_FAILEDTOFETCH_2CE34094', fallbackText: t('scrapApproval.failedToFetch'), type: 'error' });
     } finally {
       setIsLoading(false);
     }

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import API from '../../lib/axios';
@@ -310,7 +311,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       } catch (err) {
         // Only show error for non-404 errors (network issues, etc.)
         console.error('Document fetch error:', err);
-        toast.error('Failed to load documents due to network error');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENTS_DUE_TO_NETWORK_ERROR_3B79E1C3', fallbackText: 'Failed to load documents due to network error', type: 'error' });
         setDocs([]);
       } finally {
         setDocsLoading(false);
@@ -495,7 +496,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENT_TYPES_002075AC', fallbackText: 'Failed to load document types', type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -679,7 +680,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         action: 'Asset Updated Successfully'
       });
       
-      toast.success(t('assets.assetUpdatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETUPDATEDSUCCESSFULLY_563A4BA1', fallbackText: t('assets.assetUpdatedSuccessfully'), type: 'success' });
       onClose(true);
     } catch (err) {
       console.error('Error updating asset:', err);
@@ -693,14 +694,14 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Handle document uploads
   const handleUploadDocuments = async () => {
     if (uploadRows.length === 0) {
-      toast.error('Add at least one file');
+      showBackendTextToast({ toast, tmdId: 'TMD_ADD_AT_LEAST_ONE_FILE_76BB747B', fallbackText: 'Add at least one file', type: 'error' });
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error('Select document type and choose a file for all rows');
+        showBackendTextToast({ toast, tmdId: 'TMD_SELECT_DOCUMENT_TYPE_AND_CHOOSE_A_FILE_FOR_ALL_ROWS_58610967', fallbackText: 'Select document type and choose a file for all rows', type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
@@ -752,7 +753,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files uploaded successfully');
+          showBackendTextToast({ toast, tmdId: 'TMD_ALL_FILES_UPLOADED_SUCCESSFULLY_2B7F645F', fallbackText: 'All files uploaded successfully', type: 'success' });
         } else {
           toast.success(`${successCount} files uploaded, ${failCount} failed`);
         }
@@ -762,11 +763,11 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         const arr = Array.isArray(res.data) ? res.data : [];
         setDocs(arr);
       } else {
-        toast.error('Failed to upload any files');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPLOAD_ANY_FILES_7C811EA6', fallbackText: 'Failed to upload any files', type: 'error' });
       }
     } catch (err) {
       console.error('Upload process error:', err);
-      toast.error('Upload process failed');
+      showBackendTextToast({ toast, tmdId: 'TMD_UPLOAD_PROCESS_FAILED_55943AED', fallbackText: 'Upload process failed', type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -1412,7 +1413,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                             onChange={e => {
                               const f = e.target.files?.[0] || null;
                               if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                toast.error('File size exceeds 15MB limit');
+                                showBackendTextToast({ toast, tmdId: 'TMD_FILE_SIZE_EXCEEDS_15MB_LIMIT_5CCBDF10', fallbackText: 'File size exceeds 15MB limit', type: 'error' });
                                 e.target.value = '';
                                 return;
                               }
@@ -1669,7 +1670,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                   if (isQSNPrintLoading) return; // Prevent multiple clicks
                   
                   if (!qsnPrintReason.trim()) {
-                    toast.error(t('assets.pleaseEnterReasonForQsn'));
+                    showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASEENTERREASONFORQSN_01F00806', fallbackText: t('assets.pleaseEnterReasonForQsn'), type: 'error' });
                     return;
                   }
                   
@@ -1698,7 +1699,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                       reason: qsnPrintReason.trim()
                     });
                     
-                    toast.success('QSN print request submitted successfully');
+                    showBackendTextToast({ toast, tmdId: 'TMD_QSN_PRINT_REQUEST_SUBMITTED_SUCCESSFULLY_34A3E19C', fallbackText: 'QSN print request submitted successfully', type: 'success' });
                     setShowQSNPrintModal(false);
                     setQsnPrintReason("");
                   } catch (error) {
@@ -1707,7 +1708,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                     // Handle specific cases
                     if (error.response?.status === 409) {
                       // Serial number already exists in print queue
-                      toast.error('This serial number is already in the print queue');
+                      showBackendTextToast({ toast, tmdId: 'TMD_THIS_SERIAL_NUMBER_IS_ALREADY_IN_THE_PRINT_QUEUE_44EAC51B', fallbackText: 'This serial number is already in the print queue', type: 'error' });
                     } else {
                       // Other errors
                       const errorMessage = error.response?.data?.message || 'Failed to submit QSN print request';

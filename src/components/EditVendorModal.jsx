@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-hot-toast';
@@ -202,7 +203,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('vendors.failedToLoadDocumentTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOLOADDOCUMENTTYPES_739C25C1', fallbackText: t('vendors.failedToLoadDocumentTypes'), type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -251,7 +252,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       }
     } catch (err) {
       console.error('Error fetching SLA descriptions:', err);
-      toast.error('Failed to load SLA descriptions');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_SLA_DESCRIPTIONS_620C0D79', fallbackText: 'Failed to load SLA descriptions', type: 'error' });
       setSlaDescriptions([]);
     }
   };
@@ -288,7 +289,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       // Check if already selected
       if (prev.find(s => s.sla_id === selectedSlaId)) {
         console.warn('[EditVendorModal] SLA already exists:', selectedSlaId);
-        toast.error('This SLA is already selected');
+        showBackendTextToast({ toast, tmdId: 'TMD_THIS_SLA_IS_ALREADY_SELECTED_3D476F1F', fallbackText: 'This SLA is already selected', type: 'error' });
         e.target.value = '';
         return prev;
       }
@@ -296,7 +297,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       // Add to selectedSLAs with next available index (1-10)
       const nextIndex = prev.length + 1;
       if (nextIndex > 10) {
-        toast.error('Maximum 10 SLAs can be selected');
+        showBackendTextToast({ toast, tmdId: 'TMD_MAXIMUM_10_SLAS_CAN_BE_SELECTED_2E0B6914', fallbackText: 'Maximum 10 SLAs can be selected', type: 'error' });
         e.target.value = '';
         return prev;
       }
@@ -342,30 +343,30 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
     
     // Validate required fields
     if (!formData.vendor_name || !formData.company_name || !formData.company_email) {
-      toast.error(t('vendors.vendorNameCompanyNameEmailRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORNAMECOMPANYNAMEEMAILREQUIRED_0B5E19DB', fallbackText: t('vendors.vendorNameCompanyNameEmailRequired'), type: 'error' });
       return;
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.company_email)) {
-      toast.error(t('vendors.pleaseEnterValidCompanyEmail'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_PLEASEENTERVALIDCOMPANYEMAIL_0D1EF28C', fallbackText: t('vendors.pleaseEnterValidCompanyEmail'), type: 'error' });
       return;
     }
     if (formData.contact_person_email && !emailRegex.test(formData.contact_person_email)) {
-      toast.error(t('vendors.pleaseEnterValidContactPersonEmail'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_PLEASEENTERVALIDCONTACTPERSONEMAIL_4349BB4C', fallbackText: t('vendors.pleaseEnterValidContactPersonEmail'), type: 'error' });
       return;
     }
 
     // Validate phone number format
     if (formData.contact_person_number && !/^\d{10}$/.test(formData.contact_person_number)) {
-      toast.error(t('vendors.contactNumberShouldBe10Digits'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_CONTACTNUMBERSHOULDBE10DIGITS_7A7B6605', fallbackText: t('vendors.contactNumberShouldBe10Digits'), type: 'error' });
       return;
     }
 
     // Validate pincode format
     if (formData.pincode && !/^\d{6}$/.test(formData.pincode)) {
-      toast.error(t('vendors.pincodeShouldBe6Digits'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_PINCODESHOULDBE6DIGITS_12E27B43', fallbackText: t('vendors.pincodeShouldBe6Digits'), type: 'error' });
       return;
     }
 
@@ -385,20 +386,20 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
   // Handle document uploads
   const handleUploadDocuments = async () => {
     if (uploadRows.length === 0) {
-      toast.error(t('vendors.addAtLeastOneFile'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ADDATLEASTONEFILE_70C50032', fallbackText: t('vendors.addAtLeastOneFile'), type: 'error' });
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error(t('vendors.selectDocumentTypeAndFile'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_SELECTDOCUMENTTYPEANDFILE_38B5DA43', fallbackText: t('vendors.selectDocumentTypeAndFile'), type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-        toast.error(t('vendors.enterCustomNameForDocuments', { type: selectedDocType.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ENTERCUSTOMNAMEFORDOCUMENTS_00699E04', fallbackText: t('vendors.enterCustomNameForDocuments', { type: selectedDocType.text }), type: 'error' });
         return;
       }
     }
@@ -429,7 +430,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files uploaded successfully');
+          showBackendTextToast({ toast, tmdId: 'TMD_ALL_FILES_UPLOADED_SUCCESSFULLY_2B7F645F', fallbackText: 'All files uploaded successfully', type: 'success' });
         } else {
           toast.success(`${successCount} files uploaded, ${failCount} failed`);
         }
@@ -439,11 +440,11 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         const arr = Array.isArray(res.data?.documents) ? res.data.documents : [];
         setDocs(arr);
       } else {
-        toast.error(t('vendors.failedToUploadAnyFiles'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOUPLOADANYFILES_1540D0C3', fallbackText: t('vendors.failedToUploadAnyFiles'), type: 'error' });
       }
     } catch (err) {
       console.error('Upload process error:', err);
-      toast.error(t('vendors.uploadProcessFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_UPLOADPROCESSFAILED_6D52D294', fallbackText: t('vendors.uploadProcessFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -489,7 +490,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       } else if (action === 'archive') {
         console.log('Archiving document:', doc.vd_id);
         await API.put(`/vendor-docs/${doc.vd_id}/archive-status`, { is_archived: true });
-        toast.success('Document archived successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_DOCUMENT_ARCHIVED_SUCCESSFULLY_35F87400', fallbackText: 'Document archived successfully', type: 'success' });
         // Refresh documents
         const res = await API.get(`/vendor-docs/${vendor.vendor_id}`);
         const allDocs = Array.isArray(res.data?.documents) ? res.data.documents : [];
@@ -503,7 +504,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       } else if (action === 'unarchive') {
         console.log('Unarchiving document:', doc.vd_id);
         await API.put(`/vendor-docs/${doc.vd_id}/archive-status`, { is_archived: false });
-        toast.success('Document unarchived successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_DOCUMENT_UNARCHIVED_SUCCESSFULLY_26CD7C47', fallbackText: 'Document unarchived successfully', type: 'success' });
         // Refresh documents
         const res = await API.get(`/vendor-docs/${vendor.vendor_id}`);
         const allDocs = Array.isArray(res.data?.documents) ? res.data.documents : [];
@@ -517,7 +518,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       }
     } catch (err) {
       console.error(`Failed to ${action} document:`, err);
-      toast.error(t('vendors.failedToActionDocument', { action }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOACTIONDOCUMENT_7C4196D8', fallbackText: t('vendors.failedToActionDocument', { action }), type: 'error' });
     }
     setActiveDropdown(null);
   };
@@ -1029,7 +1030,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                           onChange={e => {
                             const f = e.target.files?.[0] || null;
                             if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                              toast.error(t('vendors.fileSizeExceeds15MB'));
+                              showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FILESIZEEXCEEDS15MB_580A7304', fallbackText: t('vendors.fileSizeExceeds15MB'), type: 'error' });
                               e.target.value = '';
                               return;
                             }

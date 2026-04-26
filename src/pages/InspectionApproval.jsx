@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
@@ -54,7 +55,7 @@ const InspectionApproval = () => {
       }
     } catch (err) {
       console.error("Failed to fetch inspection approvals", err);
-      toast.error(t('inspectionApproval.failedToFetch'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONAPPROVAL_FAILEDTOFETCH_6A59C607', fallbackText: t('inspectionApproval.failedToFetch'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +118,7 @@ const InspectionApproval = () => {
       const filteredData = filterData(data, filterValues, columns);
       const dataToExport = sortData(filteredData);
       exportToExcel(dataToExport, columns, "Inspection_Approvals");
-      toast.success(t('common.exportSuccess'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_COMMON_EXPORTSUCCESS_0C579D38', fallbackText: t('common.exportSuccess'), type: 'success' });
   };
 
   const filters = columns.map((col) => ({

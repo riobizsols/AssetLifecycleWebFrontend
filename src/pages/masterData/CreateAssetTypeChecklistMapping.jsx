@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from "react";
 import { 
   Plus, Save, X, Search, 
@@ -103,7 +104,7 @@ const CreateAssetTypeChecklistMapping = () => {
       setMappingRows(detailedRows);
     } catch (error) {
       console.error("Error loading mapping details:", error);
-      toast.error("Failed to load mapping details");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_MAPPING_DETAILS_24CAB088', fallbackText: 'Failed to load mapping details', type: 'error' });
     } finally {
       setModalLoading(false);
     }
@@ -137,7 +138,7 @@ const CreateAssetTypeChecklistMapping = () => {
       const qrReaderElement = document.getElementById("qr-reader");
       if (!qrReaderElement) {
         console.error("QR reader DOM element not found");
-        toast.error("Scanner initialization failed: UI element not ready");
+        showBackendTextToast({ toast, tmdId: 'TMD_SCANNER_INITIALIZATION_FAILED_UI_ELEMENT_NOT_READY_21FCB7B9', fallbackText: 'Scanner initialization failed: UI element not ready', type: 'error' });
         setShowScanner(false);
         return;
       }
@@ -145,7 +146,7 @@ const CreateAssetTypeChecklistMapping = () => {
       // Check for camera support
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         console.error("Camera access not supported in this browser");
-        toast.error("Camera access not supported. Please use HTTPS and a modern browser (Chrome, Firefox, Safari, Edge).");
+        showBackendTextToast({ toast, tmdId: 'TMD_CAMERA_ACCESS_NOT_SUPPORTED_PLEASE_USE_HTTPS_AND_A_M_5E513414', fallbackText: 'Camera access not supported. Please use HTTPS and a modern browser (Chrome, Firefox, Safari, Edge).', type: 'error' });
         setShowScanner(false);
         return;
       }
@@ -169,11 +170,11 @@ const CreateAssetTypeChecklistMapping = () => {
       
       // Handle specific error types
       if (err?.message?.includes("NotAllowedError") || err?.message?.includes("Permission denied")) {
-        toast.error("Camera access denied. Please allow camera permissions in your browser settings.");
+        showBackendTextToast({ toast, tmdId: 'TMD_CAMERA_ACCESS_DENIED_PLEASE_ALLOW_CAMERA_PERMISSIONS_24903117', fallbackText: 'Camera access denied. Please allow camera permissions in your browser settings.', type: 'error' });
       } else if (err?.message?.includes("NotFoundError") || err?.message?.includes("no camera") || err?.message?.includes("NotFoundException")) {
-        toast.error("No camera found on this device. Please check your device has a working camera.");
+        showBackendTextToast({ toast, tmdId: 'TMD_NO_CAMERA_FOUND_ON_THIS_DEVICE_PLEASE_CHECK_YOUR_DEV_7769C78D', fallbackText: 'No camera found on this device. Please check your device has a working camera.', type: 'error' });
       } else if (err?.message?.includes("NotSupportedError")) {
-        toast.error("Camera API not supported. Please use HTTPS connection.");
+        showBackendTextToast({ toast, tmdId: 'TMD_CAMERA_API_NOT_SUPPORTED_PLEASE_USE_HTTPS_CONNECTION_782F8222', fallbackText: 'Camera API not supported. Please use HTTPS connection.', type: 'error' });
       } else {
         toast.error("Could not access camera: " + (err?.message?.substring(0, 50) || "Unknown error"));
       }
@@ -193,7 +194,7 @@ const CreateAssetTypeChecklistMapping = () => {
   const onScanSuccess = (decodedText) => {
     stopScanner();
     setScannedAssetId(decodedText);
-    toast.success("Asset ID scanned successfully");
+    showBackendTextToast({ toast, tmdId: 'TMD_ASSET_ID_SCANNED_SUCCESSFULLY_01D7D66C', fallbackText: 'Asset ID scanned successfully', type: 'success' });
   };
 
   const onScanError = (error) => console.warn("Scan error:", error);
@@ -201,7 +202,7 @@ const CreateAssetTypeChecklistMapping = () => {
   const handleScan = async (e) => {
     e.preventDefault();
     if (!scannedAssetId.trim()) {
-      toast.error("Please enter or scan an Asset ID");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_OR_SCAN_AN_ASSET_ID_3C9A7F66', fallbackText: 'Please enter or scan an Asset ID', type: 'error' });
       return;
     }
     setIsScanning(true);
@@ -209,7 +210,7 @@ const CreateAssetTypeChecklistMapping = () => {
       const response = await API.get(`/assets/${scannedAssetId}`);
       const asset = response.data?.data || response.data;
       if (!asset || !asset.asset_id) {
-        toast.error("Asset not found");
+        showBackendTextToast({ toast, tmdId: 'TMD_ASSET_NOT_FOUND_6AE286A5', fallbackText: 'Asset not found', type: 'error' });
         return;
       }
       setSelectedAssetTypeId(asset.asset_type_id);
@@ -221,7 +222,7 @@ const CreateAssetTypeChecklistMapping = () => {
       toast.success(`Asset ${asset.asset_id} loaded successfully`);
     } catch (error) {
       console.error("Error scanning asset:", error);
-      toast.error("Asset not found");
+      showBackendTextToast({ toast, tmdId: 'TMD_ASSET_NOT_FOUND_6AE286A5', fallbackText: 'Asset not found', type: 'error' });
     } finally {
       setIsScanning(false);
     }
@@ -274,12 +275,12 @@ const CreateAssetTypeChecklistMapping = () => {
 
   const handleSaveMapping = async () => {
     if (!selectedAssetTypeId) {
-      toast.error("Asset Type is mandatory");
+      showBackendTextToast({ toast, tmdId: 'TMD_ASSET_TYPE_IS_MANDATORY_1D6A57E7', fallbackText: 'Asset Type is mandatory', type: 'error' });
       return;
     }
     const validRows = mappingRows.filter(row => row.insp_check_id);
     if (validRows.length === 0) {
-      toast.error("Please add at least one question mapping");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ADD_AT_LEAST_ONE_QUESTION_MAPPING_5A33249D', fallbackText: 'Please add at least one question mapping', type: 'error' });
       return;
     }
     setSaving(true);
@@ -289,11 +290,11 @@ const CreateAssetTypeChecklistMapping = () => {
         assetId: selectedAssetId,
         overrideData: validRows
       });
-      toast.success("Mapping saved successfully");
+      showBackendTextToast({ toast, tmdId: 'TMD_MAPPING_SAVED_SUCCESSFULLY_08452B52', fallbackText: 'Mapping saved successfully', type: 'success' });
       navigate("/master-data/asset-type-checklist-mapping");
     } catch (error) {
       console.error("Error saving mapping:", error);
-      toast.error("Failed to save mapping");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_MAPPING_3344ECED', fallbackText: 'Failed to save mapping', type: 'error' });
     } finally {
       setSaving(false);
     }

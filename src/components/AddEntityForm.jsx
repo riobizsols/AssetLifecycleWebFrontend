@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
@@ -90,7 +91,7 @@ const AddEntityForm = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('vendors.failedToLoadDocumentTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOLOADDOCUMENTTYPES_739C25C1', fallbackText: t('vendors.failedToLoadDocumentTypes'), type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -108,7 +109,7 @@ const AddEntityForm = () => {
       } else {
         console.warn('No SLA descriptions found or invalid response format:', res.data);
         setSlaDescriptions([]);
-        toast.error('No SLA descriptions found in database');
+        showBackendTextToast({ toast, tmdId: 'TMD_NO_SLA_DESCRIPTIONS_FOUND_IN_DATABASE_40BFC0BA', fallbackText: 'No SLA descriptions found in database', type: 'error' });
       }
     } catch (err) {
       console.error('Error fetching SLA descriptions:', err);
@@ -169,7 +170,7 @@ const AddEntityForm = () => {
       // Check if already selected
       if (prev.find(s => s.sla_id === selectedSlaId)) {
         console.warn('[AddEntityForm] SLA already exists:', selectedSlaId);
-        toast.error('This SLA is already selected');
+        showBackendTextToast({ toast, tmdId: 'TMD_THIS_SLA_IS_ALREADY_SELECTED_3D476F1F', fallbackText: 'This SLA is already selected', type: 'error' });
         e.target.value = '';
         return prev;
       }
@@ -177,7 +178,7 @@ const AddEntityForm = () => {
       // Add to selectedSLAs with next available index (1-10)
       const nextIndex = prev.length + 1;
       if (nextIndex > 10) {
-        toast.error('Maximum 10 SLAs can be selected');
+        showBackendTextToast({ toast, tmdId: 'TMD_MAXIMUM_10_SLAS_CAN_BE_SELECTED_2E0B6914', fallbackText: 'Maximum 10 SLAs can be selected', type: 'error' });
         e.target.value = '';
         return prev;
       }
@@ -249,7 +250,7 @@ const AddEntityForm = () => {
       setCreatedVendorId(vendorId || "");
       setVendorSaved(true); // Mark vendor as saved
       setSavedTabs(prev => new Set([...prev, "Vendor Details"])); // Mark vendor tab as saved
-      toast.success(t('vendors.vendorCreatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORCREATEDSUCCESSFULLY_4C6423E8', fallbackText: t('vendors.vendorCreatedSuccessfully'), type: 'success' });
       // Optionally: navigate("/master-data/vendors");
     } catch (error) {
       console.error(error);
@@ -390,7 +391,12 @@ const AddEntityForm = () => {
       
     } catch (error) {
       console.error('Error in unified save:', error);
-      toast.error(t('vendors.saveFailed') || 'Save failed');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_SAVEFAILED_08205C99',
+        fallbackText: t('vendors.saveFailed') || 'Save failed',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
       setSavingTab("");
@@ -429,26 +435,26 @@ const AddEntityForm = () => {
   // Handle batch upload for vendor documents
   const handleBatchUpload = async () => {
     if (uploadRows.length === 0) {
-      toast.error(t('vendors.addAtLeastOneFile'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ADDATLEASTONEFILE_70C50032', fallbackText: t('vendors.addAtLeastOneFile'), type: 'error' });
       return;
     }
 
     // Check if vendor has been created
     if (!createdVendorId) {
-      toast.error(t('vendors.pleaseCreateVendorFirst'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_PLEASECREATEVENDORFIRST_47C50D3D', fallbackText: t('vendors.pleaseCreateVendorFirst'), type: 'error' });
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error(t('vendors.selectDocumentTypeAndFile'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_SELECTDOCUMENTTYPEANDFILE_38B5DA43', fallbackText: t('vendors.selectDocumentTypeAndFile'), type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-        toast.error(t('vendors.enterCustomNameForDocuments', { type: selectedDocType.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ENTERCUSTOMNAMEFORDOCUMENTS_00699E04', fallbackText: t('vendors.enterCustomNameForDocuments', { type: selectedDocType.text }), type: 'error' });
         return;
       }
     }
@@ -481,18 +487,18 @@ const AddEntityForm = () => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('vendors.allFilesUploadedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ALLFILESUPLOADEDSUCCESSFULLY_75FB5EA4', fallbackText: t('vendors.allFilesUploadedSuccessfully'), type: 'success' });
           markTabAsSaved("Attachments"); // Mark attachments tab as saved
         } else {
-          toast.success(t('vendors.filesUploadedWithFailures', { successCount, failCount }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FILESUPLOADEDWITHFAILURES_25E0FBB9', fallbackText: t('vendors.filesUploadedWithFailures', { successCount, failCount }), type: 'success' });
         }
         setUploadRows([]); // Clear attachments after successful upload
       } else {
-        toast.error(t('vendors.failedToUploadAnyFiles'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOUPLOADANYFILES_1540D0C3', fallbackText: t('vendors.failedToUploadAnyFiles'), type: 'error' });
       }
     } catch (err) {
       console.error('Process error:', err);
-      toast.error(t('vendors.uploadProcessFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_UPLOADPROCESSFAILED_6D52D294', fallbackText: t('vendors.uploadProcessFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -776,7 +782,7 @@ const AddEntityForm = () => {
                             onChange={e => {
                               const f = e.target.files?.[0] || null;
                               if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                toast.error(t('vendors.fileSizeExceeds15MB'));
+                                showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FILESIZEEXCEEDS15MB_580A7304', fallbackText: t('vendors.fileSizeExceeds15MB'), type: 'error' });
                                 e.target.value = '';
                                 return;
                               }

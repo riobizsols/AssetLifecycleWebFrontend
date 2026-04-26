@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
@@ -41,7 +42,7 @@ const CreateMaintenanceFrequency = () => {
       }
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      toast.error('Failed to fetch asset types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPES_02F89461', fallbackText: 'Failed to fetch asset types', type: 'error' });
       setAssetTypes([]);
     }
   };
@@ -91,7 +92,7 @@ const CreateMaintenanceFrequency = () => {
       console.error('Error fetching maintenance types:', error);
       console.error('Error response:', error.response);
       console.error('Error details:', error.response?.data);
-      toast.error('Failed to fetch maintenance types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_MAINTENANCE_TYPES_775B8444', fallbackText: 'Failed to fetch maintenance types', type: 'error' });
       setMaintenanceTypes([]);
     }
   };
@@ -117,7 +118,7 @@ const CreateMaintenanceFrequency = () => {
       console.log('UOM options loaded:', uomData);
     } catch (error) {
       console.error('Error fetching UOM values:', error);
-      toast.error('Failed to fetch UOM values');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_UOM_VALUES_1CC35F29', fallbackText: 'Failed to fetch UOM values', type: 'error' });
       setUomOptions([]);
     }
   };
@@ -144,25 +145,25 @@ const CreateMaintenanceFrequency = () => {
     e.preventDefault();
     
     if (!selectedAssetType) {
-      toast.error('Please select an asset type');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ASSET_TYPE_35E7C26F', fallbackText: 'Please select an asset type', type: 'error' });
       return;
     }
 
     // Validation only for recurring maintenance
     if (isRecurring) {
       if (!frequency || isNaN(frequency) || parseFloat(frequency) <= 0) {
-        toast.error('Please enter a valid frequency');
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_VALID_FREQUENCY_65466B1B', fallbackText: 'Please enter a valid frequency', type: 'error' });
         return;
       }
 
       if (!uom) {
-        toast.error('Please select Unit of Measure (UOM)');
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_UNIT_OF_MEASURE_UOM_46F13EFF', fallbackText: 'Please select Unit of Measure (UOM)', type: 'error' });
         return;
       }
     }
 
     if (!selectedMaintenanceType) {
-      toast.error('Please select a maintenance type');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_MAINTENANCE_TYPE_07257CEC', fallbackText: 'Please select a maintenance type', type: 'error' });
       return;
     }
 
@@ -188,9 +189,9 @@ const CreateMaintenanceFrequency = () => {
       const res = await API.post('/maintenance-frequencies', requestData);
 
       if (res.data && res.data.success) {
-        toast.success('Maintenance frequency created successfully');
-        // Navigate back to the list page
-        navigate('/admin-settings-view');
+        showBackendTextToast({ toast, tmdId: 'TMD_MAINTENANCE_FREQUENCY_CREATED_SUCCESSFULLY_67439110', fallbackText: 'Maintenance frequency created successfully', type: 'success' });
+        // Stay in maintenance config flow and return to list tab
+        goToMaintenanceFrequencyList();
       }
     } catch (error) {
       console.error('Error creating maintenance frequency:', error);

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentBox from "../components/ContentBox";
@@ -91,7 +92,7 @@ const ReportsBreakdown2 = () => {
       setData(formatted);
     } catch (err) {
       console.error("Failed to fetch breakdowns", err);
-      toast.error(t("breakdownDetails.failedToFetchBreakdowns"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOFETCHBREAKDOWNS_406575E3', fallbackText: t("breakdownDetails.failedToFetchBreakdowns"), type: 'error' });
       setData([]);
     } finally {
       setIsLoading(false);
@@ -118,7 +119,7 @@ const ReportsBreakdown2 = () => {
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error("Failed to confirm breakdown", err);
-      toast.error(t("breakdownDetails.errorConfirmingBreakdown") + ": " + (err.response?.data?.error || err.message));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ERRORCONFIRMINGBREAKDOWN_123BEDF8', fallbackText: t("breakdownDetails.errorConfirmingBreakdown") + ": " + (err.response?.data?.error || err.message), type: 'error' });
     } finally {
       setShowConfirmModal(false);
       setSelectedConfirmReport(null);
@@ -130,7 +131,7 @@ const ReportsBreakdown2 = () => {
     const abr_id = abr_id_from_modal || selectedReport?.abr_id;
 
     if (!abr_id) {
-      toast.error(t("breakdownDetails.noReportSelectedOrIdMissing"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_NOREPORTSELECTEDORIDMISSING_683D7F47', fallbackText: t("breakdownDetails.noReportSelectedOrIdMissing"), type: 'error' });
       console.error('Reopen aborted: missing abr_id', { abr_id_from_modal, selectedReport });
       return;
     }
@@ -155,7 +156,7 @@ const ReportsBreakdown2 = () => {
       setSelectedReport(null);
     } catch (err) {
       console.error("Failed to reopen breakdown", err);
-      toast.error(t("breakdownDetails.errorReopeningBreakdown") + ": " + (err.response?.data?.error || err.message));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ERRORREOPENINGBREAKDOWN_65995BD3', fallbackText: t("breakdownDetails.errorReopeningBreakdown") + ": " + (err.response?.data?.error || err.message), type: 'error' });
     }
   };
 

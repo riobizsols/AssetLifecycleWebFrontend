@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -39,7 +40,7 @@ const CreateScrapAsset = () => {
     }
     setScannedAssetId(decodedText);
     setShowScanner(false);
-    toast.success(t('createScrapAsset.assetIdScannedSuccessfully'));
+    showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETIDSCANNEDSUCCESSFULLY_2BEEF843', fallbackText: t('createScrapAsset.assetIdScannedSuccessfully'), type: 'success' });
   }, [t]);
 
   const onScanError = useCallback((error) => {
@@ -64,7 +65,7 @@ const CreateScrapAsset = () => {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      toast.error(t('createScrapAsset.couldNotAccessCamera'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_COULDNOTACCESSCAMERA_1B86B112', fallbackText: t('createScrapAsset.couldNotAccessCamera'), type: 'error' });
       setShowScanner(false);
     }
   }, [t, onScanSuccess, onScanError]);
@@ -145,7 +146,7 @@ const CreateScrapAsset = () => {
       }
     } catch (error) {
       console.error('Error fetching available assets by type:', error);
-      toast.error(t('createScrapAsset.failedToLoadAssetsForSelectedType'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_FAILEDTOLOADASSETSFORSELECTEDT_34E0F146', fallbackText: t('createScrapAsset.failedToLoadAssetsForSelectedType'), type: 'error' });
       setScrapAssets([]);
       setColumns([]);
     }
@@ -184,7 +185,7 @@ const CreateScrapAsset = () => {
       setColumns(groupColumns);
     } catch (error) {
       console.error('Error fetching grouped assets:', error);
-      toast.error('Failed to load asset groups');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_ASSET_GROUPS_5C809F7C', fallbackText: 'Failed to load asset groups', type: 'error' });
       setGroupedAssetRows([]);
       setColumns([]);
     }
@@ -249,7 +250,7 @@ const CreateScrapAsset = () => {
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
-      toast.error(t('createScrapAsset.pleaseEnterAssetId'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_PLEASEENTERASSETID_2C4A0F0C', fallbackText: t('createScrapAsset.pleaseEnterAssetId'), type: 'error' });
       return;
     }
 
@@ -259,7 +260,7 @@ const CreateScrapAsset = () => {
         params: { context: 'SCRAPASSETS' }
       });
       if (!assetResp || !assetResp.data) {
-        toast.error(t('createScrapAsset.assetNotFound'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETNOTFOUND_2A3E3F68', fallbackText: t('createScrapAsset.assetNotFound'), type: 'error' });
         return;
       }
 
@@ -267,7 +268,7 @@ const CreateScrapAsset = () => {
       const data = assetResp.data;
       const asset = Array.isArray(data?.rows) ? data.rows[0] : (data.asset || data);
       if (!asset) {
-        toast.error(t('createScrapAsset.assetNotFound'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETNOTFOUND_2A3E3F68', fallbackText: t('createScrapAsset.assetNotFound'), type: 'error' });
         return;
       }
 
@@ -275,7 +276,7 @@ const CreateScrapAsset = () => {
         asset.asset_type_id || asset.asset_type || asset.asset_type_fk || asset.assetTypeId || ''
       );
       if (!typeId) {
-        toast.error(t('createScrapAsset.assetTypeNotFoundForThisAsset'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETTYPENOTFOUNDFORTHISASSET_13CA398B', fallbackText: t('createScrapAsset.assetTypeNotFoundForThisAsset'), type: 'error' });
         return;
       }
 
@@ -307,10 +308,10 @@ const CreateScrapAsset = () => {
       const actionCol = { key: 'action', name: 'action', label: 'ACTION', sortable: false, visible: true };
       setColumns([...derived, actionCol]);
       setScannedAssetId('');
-      toast.success(t('createScrapAsset.assetFoundAndDisplayed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETFOUNDANDDISPLAYED_5E20316D', fallbackText: t('createScrapAsset.assetFoundAndDisplayed'), type: 'success' });
     } catch (error) {
       console.error('Error finding asset by scan:', error);
-      toast.error(t('createScrapAsset.failedToFindAsset'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_FAILEDTOFINDASSET_04032C98', fallbackText: t('createScrapAsset.failedToFindAsset'), type: 'error' });
     }
   };
 
@@ -344,7 +345,7 @@ const CreateScrapAsset = () => {
       console.log('Submitting scrap asset:', selectedAsset, 'with notes:', notes);
       
       if (!selectedAsset) {
-        toast.error('Please select an item to scrap');
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ITEM_TO_SCRAP_321605CC', fallbackText: 'Please select an item to scrap', type: 'error' });
         return;
       }
 
@@ -370,9 +371,9 @@ const CreateScrapAsset = () => {
         if (response.data.workflowCreated) {
           toast.success(`Scrap request sent for approval (Workflow: ${response.data.wfscrap_h_id})`);
         } else if (response.data.scrapped) {
-          toast.success(t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETSUCCESSFULLYMARKEDFORSCRA_601EDB7A', fallbackText: t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }), type: 'success' });
         } else {
-          toast.success('Scrap request created');
+          showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_REQUEST_CREATED_06CB9FE8', fallbackText: 'Scrap request created', type: 'success' });
         }
 
         // Remove from list to prevent duplicate requests from this screen
@@ -398,14 +399,14 @@ const CreateScrapAsset = () => {
         if (error.response.status === 400) {
           toast.error(error.response.data?.message || t('createScrapAsset.validationError', { error: error.response.data.error }));
         } else if (error.response.status === 401) {
-          toast.error(t('createScrapAsset.unauthorizedPleaseLogInAgain'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_UNAUTHORIZEDPLEASELOGINAGAIN_67901914', fallbackText: t('createScrapAsset.unauthorizedPleaseLogInAgain'), type: 'error' });
         } else if (error.response.status === 500) {
-          toast.error(t('createScrapAsset.serverErrorPleaseTryAgainLater'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_SERVERERRORPLEASETRYAGAINLATER_69979231', fallbackText: t('createScrapAsset.serverErrorPleaseTryAgainLater'), type: 'error' });
         } else {
           toast.error(error.response.data?.message || t('createScrapAsset.failedToMarkAssetForScrapping'));
         }
       } else {
-        toast.error(t('createScrapAsset.networkErrorPleaseCheckConnection'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_NETWORKERRORPLEASECHECKCONNECT_3B254235', fallbackText: t('createScrapAsset.networkErrorPleaseCheckConnection'), type: 'error' });
       }
     }
   };

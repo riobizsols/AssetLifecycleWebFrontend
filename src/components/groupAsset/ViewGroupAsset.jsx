@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -65,11 +66,11 @@ const ViewGroupAsset = () => {
       try {
         // Mock API call
         await new Promise(resolve => setTimeout(resolve, 1000));
-        toast.success('Group deleted successfully!');
+        showBackendTextToast({ toast, tmdId: 'TMD_GROUP_DELETED_SUCCESSFULLY_547B3892', fallbackText: 'Group deleted successfully!', type: 'success' });
         navigate('/group-asset');
       } catch (error) {
         console.error('Error deleting group:', error);
-        toast.error('Failed to delete group');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_GROUP_78275874', fallbackText: 'Failed to delete group', type: 'error' });
       } finally {
         setLoading(false);
       }

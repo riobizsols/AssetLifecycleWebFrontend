@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
@@ -91,7 +92,7 @@ const MaintenanceSupervisor = () => {
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch maintenance schedules", err);
-      toast.error(t('maintenanceSupervisor.failedToFetchMaintenanceSchedules'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHMAINTENANCES_78A95FA4', fallbackText: t('maintenanceSupervisor.failedToFetchMaintenanceSchedules'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -148,13 +149,13 @@ const MaintenanceSupervisor = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t('maintenanceSupervisor.pleaseSelectMaintenanceRecords'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_PLEASESELECTMAINTENANCERE_692876DC', fallbackText: t('maintenanceSupervisor.pleaseSelectMaintenanceRecords'), type: 'error' });
       return false;
     }
 
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAssetMaintSch
-      toast.error(t('maintenanceSupervisor.deleteNotImplemented'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_DELETENOTIMPLEMENTED_05C8C6C9', fallbackText: t('maintenanceSupervisor.deleteNotImplemented'), type: 'error' });
       return false;
     } catch (err) {
       console.error("Failed to delete maintenance records", err);
@@ -166,7 +167,7 @@ const MaintenanceSupervisor = () => {
   const handleDelete = async (row) => {
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAssetMaintSch
-      toast.error(t('maintenanceSupervisor.deleteNotImplemented'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_DELETENOTIMPLEMENTED_05C8C6C9', fallbackText: t('maintenanceSupervisor.deleteNotImplemented'), type: 'error' });
     } catch (err) {
       console.error("Failed to delete maintenance record", err);
       toast.error(err.response?.data?.message || t('maintenanceSupervisor.failedToDeleteMaintenanceRecord'));

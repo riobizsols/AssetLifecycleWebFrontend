@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
@@ -64,7 +65,7 @@ const ScrapSales = () => {
       setScrapSales(normalized);
     } catch (error) {
       console.error(t('scrapSales.failedToFetchScrapSales'), error);
-      toast.error(t('scrapSales.failedToLoadScrapSales'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_FAILEDTOLOADSCRAPSALES_690537D0', fallbackText: t('scrapSales.failedToLoadScrapSales'), type: 'error' });
       setScrapSales([]);
     } finally {
       setLoading(false);
@@ -148,12 +149,11 @@ const ScrapSales = () => {
       });
       
       if (response.data.success) {
-        toast.success(t('scrapSales.scrapSaleDeletedSuccessfully'), {
-          style: {
-            borderRadius: '10px',
-            background: '#10B981',
-            color: '#fff',
-          },
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_SCRAPSALES_SCRAPSALEDELETEDSUCCESSFULLY_681E7681',
+          fallbackText: t('scrapSales.scrapSaleDeletedSuccessfully'),
+          type: 'success',
         });
         
         // Refresh the scrap sales list
@@ -203,12 +203,11 @@ const ScrapSales = () => {
       const failed = results.length - successful;
       
       if (successful > 0) {
-        toast.success(t('scrapSales.scrapSalesDeletedSuccessfully', { count: successful }), {
-          style: {
-            borderRadius: '10px',
-            background: '#10B981',
-            color: '#fff',
-          },
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_SCRAPSALES_SCRAPSALESDELETEDSUCCESSFULLY_4D654472',
+          fallbackText: t('scrapSales.scrapSalesDeletedSuccessfully', { count: successful }),
+          type: 'success',
         });
         
         // Refresh the scrap sales list

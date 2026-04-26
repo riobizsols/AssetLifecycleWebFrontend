@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
@@ -49,7 +50,7 @@ const BreakdownSelection = () => {
       setAssetTypes(Array.isArray(assetTypesData) ? assetTypesData : []);
     } catch (err) {
       console.error(t('breakdownSelection.failedToFetchAssetTypes'), err);
-      toast.error(t('breakdownSelection.failedToFetchAssetTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_FAILEDTOFETCHASSETTYPES_1293C69C', fallbackText: t('breakdownSelection.failedToFetchAssetTypes'), type: 'error' });
       setAssetTypes([]);
     }
   };
@@ -65,7 +66,7 @@ const BreakdownSelection = () => {
       setInactiveAssets(assetsArr);
     } catch (err) {
       console.error(t('breakdownSelection.failedToFetchInactiveAssets'), err);
-      toast.error(t('breakdownSelection.failedToFetchInactiveAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_FAILEDTOFETCHINACTIVEASSETS_5EE28FB7', fallbackText: t('breakdownSelection.failedToFetchInactiveAssets'), type: 'error' });
       setInactiveAssets([]);
     }
   };
@@ -90,14 +91,14 @@ const BreakdownSelection = () => {
             }
             setScannedAssetId(decodedText);
             setShowScanner(false);
-            toast.success(t('breakdownSelection.assetIdScannedSuccessfully'));
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_ASSETIDSCANNEDSUCCESSFULLY_6C9AD093', fallbackText: t('breakdownSelection.assetIdScannedSuccessfully'), type: 'success' });
           },
           (err) => console.warn("Scan error", err)
         );
       }
     } catch (err) {
       console.error("Error starting scanner", err);
-      toast.error(t('breakdownSelection.couldNotAccessCamera'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_COULDNOTACCESSCAMERA_2130FA9E', fallbackText: t('breakdownSelection.couldNotAccessCamera'), type: 'error' });
       setShowScanner(false);
     }
   };
@@ -117,12 +118,12 @@ const BreakdownSelection = () => {
   const handleScanSubmit = (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
-      toast.error(t('breakdownSelection.pleaseEnterAssetId'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_PLEASEENTERASSETID_7158E6BC', fallbackText: t('breakdownSelection.pleaseEnterAssetId'), type: 'error' });
       return;
     }
     const asset = inactiveAssets.find((a) => a.asset_id === scannedAssetId);
     if (!asset) {
-      toast.error(t('breakdownSelection.assetNotFoundOrNotAvailable'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNSELECTION_ASSETNOTFOUNDORNOTAVAILABLE_771AB60F', fallbackText: t('breakdownSelection.assetNotFoundOrNotAvailable'), type: 'error' });
       return;
     }
     goToBreakdownDetails(asset);

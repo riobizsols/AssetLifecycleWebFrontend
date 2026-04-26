@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { 
   RefreshCw,
@@ -69,7 +70,7 @@ const AuditLogConfig = () => {
       }
     } catch (error) {
       console.error('Error fetching audit log configs:', error);
-      toast.error(t('auditLogConfig.failedToLoadConfigurations'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_FAILEDTOLOADCONFIGURATIONS_47CF91E2', fallbackText: t('auditLogConfig.failedToLoadConfigurations'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -115,11 +116,11 @@ const AuditLogConfig = () => {
             ? { ...config, reporting_required: !currentValue }
             : config
         ));
-        toast.success(t('auditLogConfig.reportingRequirementUpdated'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_REPORTINGREQUIREMENTUPDATED_0AF2833F', fallbackText: t('auditLogConfig.reportingRequirementUpdated'), type: 'success' });
       }
     } catch (error) {
       console.error('Error updating reporting requirement:', error);
-      toast.error(t('auditLogConfig.failedToUpdateReportingRequirement'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_FAILEDTOUPDATEREPORTINGREQUIREME_2D00B5BD', fallbackText: t('auditLogConfig.failedToUpdateReportingRequirement'), type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -139,11 +140,11 @@ const AuditLogConfig = () => {
             ? { ...config, enabled: !currentValue }
             : config
         ));
-        toast.success(t('auditLogConfig.statusUpdated'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_STATUSUPDATED_0F5F61A2', fallbackText: t('auditLogConfig.statusUpdated'), type: 'success' });
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      toast.error(t('auditLogConfig.failedToUpdateStatus'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_FAILEDTOUPDATESTATUS_2D472186', fallbackText: t('auditLogConfig.failedToUpdateStatus'), type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -164,14 +165,14 @@ const AuditLogConfig = () => {
   // Save email
   const saveEmail = async (alcId) => {
     if (!emailValue.trim()) {
-      toast.error(t('auditLogConfig.emailCannotBeEmpty'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_EMAILCANNOTBEEMPTY_777D3072', fallbackText: t('auditLogConfig.emailCannotBeEmpty'), type: 'error' });
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailValue.trim())) {
-      toast.error(t('auditLogConfig.pleaseEnterValidEmail'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_PLEASEENTERVALIDEMAIL_15E36B19', fallbackText: t('auditLogConfig.pleaseEnterValidEmail'), type: 'error' });
       return;
     }
 
@@ -189,11 +190,11 @@ const AuditLogConfig = () => {
         ));
         setEditingEmail(null);
         setEmailValue('');
-        toast.success(t('auditLogConfig.emailUpdated'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_EMAILUPDATED_3D4AED26', fallbackText: t('auditLogConfig.emailUpdated'), type: 'success' });
       }
     } catch (error) {
       console.error('Error updating email:', error);
-      toast.error(t('auditLogConfig.failedToUpdateEmail'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_FAILEDTOUPDATEEMAIL_2B88B3EC', fallbackText: t('auditLogConfig.failedToUpdateEmail'), type: 'error' });
     } finally {
       setIsSaving(false);
     }

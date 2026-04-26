@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -55,7 +56,7 @@ const ViewScrapSales = () => {
 
   const handleEdit = () => {
     if (!scrapId) {
-      toast.error('Scrap sale ID not found');
+      showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_SALE_ID_NOT_FOUND_38982046', fallbackText: 'Scrap sale ID not found', type: 'error' });
       return;
     }
     navigate(`/scrap-sales/edit/${scrapId}`, {
@@ -72,11 +73,11 @@ const ViewScrapSales = () => {
       try {
         // Mock API call
         await new Promise(resolve => setTimeout(resolve, 1000));
-        toast.success('Scrap sale deleted successfully!');
+        showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_SALE_DELETED_SUCCESSFULLY_1E9171B7', fallbackText: 'Scrap sale deleted successfully!', type: 'success' });
         navigate('/scrap-sales');
       } catch (error) {
         console.error('Error deleting scrap sale:', error);
-        toast.error('Failed to delete scrap sale');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_SCRAP_SALE_626C9249', fallbackText: 'Failed to delete scrap sale', type: 'error' });
       } finally {
         setLoading(false);
       }

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { CheckCircle, ArrowLeft, ClipboardCheck, FileText, Upload, Eye, Download, X, Plus, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -273,7 +274,7 @@ export default function MaintSupervisorApproval() {
       }
     } catch (err) {
       console.error("Failed to fetch maintenance data:", err);
-      toast.error(t('maintenanceSupervisor.failedToFetchMaintenanceData'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHMAINTENANCED_556133F6', fallbackText: t('maintenanceSupervisor.failedToFetchMaintenanceData'), type: 'error' });
     } finally {
       setLoadingData(false);
     }
@@ -301,7 +302,7 @@ export default function MaintSupervisorApproval() {
       }
     } catch (err) {
       console.error("Failed to fetch checklist:", err);
-      toast.error(t('maintenanceSupervisor.failedToFetchChecklist'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHCHECKLIST_7827CE13', fallbackText: t('maintenanceSupervisor.failedToFetchChecklist'), type: 'error' });
       setChecklist([]);
     } finally {
       setLoadingChecklist(false);
@@ -356,7 +357,7 @@ export default function MaintSupervisorApproval() {
       
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('maintenanceSupervisor.failedToLoadDocumentTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOLOADDOCUMENTTYPES_7B15E28F', fallbackText: t('maintenanceSupervisor.failedToLoadDocumentTypes'), type: 'error' });
       setMaintenanceDocTypes([]);
       setPhotoDocTypes([]);
     }
@@ -560,7 +561,7 @@ export default function MaintSupervisorApproval() {
         records: recordsToSave
       });
       // Show error toast for auto-save failures so user knows something went wrong
-      toast.error("Failed to auto-save SLA records. Please try again.");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_AUTO_SAVE_SLA_RECORDS_PLEASE_TRY_AGAIN_7DE3DF8C', fallbackText: 'Failed to auto-save SLA records. Please try again.', type: 'error' });
     }
   };
 
@@ -861,7 +862,7 @@ export default function MaintSupervisorApproval() {
     } catch (err) {
       console.error("Failed to fetch documents:", err);
       console.error("Error details:", err.response?.data);
-      toast.error(t('maintenanceSupervisor.failedToFetchDocuments'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHDOCUMENTS_6767B0DB', fallbackText: t('maintenanceSupervisor.failedToFetchDocuments'), type: 'error' });
       setMaintenanceDocs([]);
       setArchivedDocs([]);
       setManualDocs([]);
@@ -944,11 +945,11 @@ export default function MaintSupervisorApproval() {
         });
         console.log('Archive response:', res.data);
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
-          toast.success(t('maintenanceSupervisor.documentArchivedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_DOCUMENTARCHIVEDSUCCESSFU_6FADC173', fallbackText: t('maintenanceSupervisor.documentArchivedSuccessfully'), type: 'success' });
           // Refresh documents
           fetchMaintenanceDocuments();
         } else {
-          toast.error(t('maintenanceSupervisor.failedToArchiveDocument'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOARCHIVEDOCUMENT_1FE782D6', fallbackText: t('maintenanceSupervisor.failedToArchiveDocument'), type: 'error' });
         }
       } else if (action === 'unarchive') {
         // Use maintenance document API if amd_id exists, otherwise use asset document API
@@ -960,11 +961,11 @@ export default function MaintSupervisorApproval() {
         });
         console.log('Unarchive response:', res.data);
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
-          toast.success(t('maintenanceSupervisor.documentUnarchivedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_DOCUMENTUNARCHIVEDSUCCESS_7060FF0C', fallbackText: t('maintenanceSupervisor.documentUnarchivedSuccessfully'), type: 'success' });
           // Refresh documents
           fetchMaintenanceDocuments();
         } else {
-          toast.error(t('maintenanceSupervisor.failedToUnarchiveDocument'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUNARCHIVEDOCUMENT_049EFCDD', fallbackText: t('maintenanceSupervisor.failedToUnarchiveDocument'), type: 'error' });
         }
       }
     } catch (err) {
@@ -1046,20 +1047,20 @@ export default function MaintSupervisorApproval() {
 
   const handleInvoiceUpload = async () => {
     if (invoiceUploads.length === 0) {
-      toast.error(t('maintenanceSupervisor.addAtLeastOneInvoiceFile'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ADDATLEASTONEINVOICEFILE_134AB607', fallbackText: t('maintenanceSupervisor.addAtLeastOneInvoiceFile'), type: 'error' });
       return;
     }
 
     // Validate all uploads
     for (const upload of invoiceUploads) {
       if (!upload.type || !upload.file) {
-        toast.error(t('maintenanceSupervisor.selectDocumentTypeAndChooseFile'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_SELECTDOCUMENTTYPEANDCHOO_4A1C636A', fallbackText: t('maintenanceSupervisor.selectDocumentTypeAndChooseFile'), type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !upload.docTypeName?.trim()) {
-        toast.error(t('maintenanceSupervisor.enterCustomNameForDocument', { docType: selectedDocType.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ENTERCUSTOMNAMEFORDOCUMEN_5A84EA9F', fallbackText: t('maintenanceSupervisor.enterCustomNameForDocument', { docType: selectedDocType.text }), type: 'error' });
         return;
       }
     }
@@ -1093,19 +1094,19 @@ export default function MaintSupervisorApproval() {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('maintenanceSupervisor.allInvoiceFilesUploadedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ALLINVOICEFILESUPLOADEDSU_2653579D', fallbackText: t('maintenanceSupervisor.allInvoiceFilesUploadedSuccessfully'), type: 'success' });
         } else {
-          toast.success(t('maintenanceSupervisor.filesUploadedFailed', { successCount, failCount }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FILESUPLOADEDFAILED_74B090DB', fallbackText: t('maintenanceSupervisor.filesUploadedFailed', { successCount, failCount }), type: 'success' });
         }
         setInvoiceUploads([]); // Clear uploads after successful upload
         // Refresh maintenance documents
         fetchMaintenanceDocuments();
       } else {
-        toast.error(t('maintenanceSupervisor.failedToUploadAnyFiles'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPLOADANYFILES_4C0D7713', fallbackText: t('maintenanceSupervisor.failedToUploadAnyFiles'), type: 'error' });
       }
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error(t('maintenanceSupervisor.uploadFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_UPLOADFAILED_441C5CAD', fallbackText: t('maintenanceSupervisor.uploadFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -1113,20 +1114,20 @@ export default function MaintSupervisorApproval() {
 
   const handleBeforeAfterUpload = async () => {
     if (beforeAfterUploads.length === 0) {
-      toast.error(t('maintenanceSupervisor.addAtLeastOneImageFile'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ADDATLEASTONEIMAGEFILE_4158D34B', fallbackText: t('maintenanceSupervisor.addAtLeastOneImageFile'), type: 'error' });
       return;
     }
 
     // Validate all uploads
     for (const upload of beforeAfterUploads) {
       if (!upload.type || !upload.file) {
-        toast.error(t('maintenanceSupervisor.selectImageTypeAndChooseFile'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_SELECTIMAGETYPEANDCHOOSEF_1351C960', fallbackText: t('maintenanceSupervisor.selectImageTypeAndChooseFile'), type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = photoDocTypes.find(dt => dt.id === upload.type);
       if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !upload.docTypeName?.trim()) {
-        toast.error(t('maintenanceSupervisor.enterCustomNameForImage', { docType: selectedDocType.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ENTERCUSTOMNAMEFORIMAGE_5A109E57', fallbackText: t('maintenanceSupervisor.enterCustomNameForImage', { docType: selectedDocType.text }), type: 'error' });
         return;
       }
     }
@@ -1160,19 +1161,19 @@ export default function MaintSupervisorApproval() {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('maintenanceSupervisor.allImagesUploadedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ALLIMAGESUPLOADEDSUCCESSF_40259211', fallbackText: t('maintenanceSupervisor.allImagesUploadedSuccessfully'), type: 'success' });
         } else {
-          toast.success(t('maintenanceSupervisor.imagesUploadedFailed', { successCount, failCount }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_IMAGESUPLOADEDFAILED_1D440764', fallbackText: t('maintenanceSupervisor.imagesUploadedFailed', { successCount, failCount }), type: 'success' });
         }
         setBeforeAfterUploads([]); // Clear uploads after successful upload
         // Refresh maintenance documents
         fetchMaintenanceDocuments();
       } else {
-        toast.error(t('maintenanceSupervisor.failedToUploadAnyImages'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPLOADANYIMAGES_3AF3595C', fallbackText: t('maintenanceSupervisor.failedToUploadAnyImages'), type: 'error' });
       }
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error(t('maintenanceSupervisor.uploadFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_UPLOADFAILED_441C5CAD', fallbackText: t('maintenanceSupervisor.uploadFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -1266,7 +1267,7 @@ export default function MaintSupervisorApproval() {
     setValidationErrors(errors);
     
     if (hasErrors) {
-      toast.error(t('maintenanceSupervisor.pleaseFillAllRequiredFields'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_PLEASEFILLALLREQUIREDFIEL_12125B3D', fallbackText: t('maintenanceSupervisor.pleaseFillAllRequiredFields'), type: 'error' });
       return;
     }
     
@@ -1292,14 +1293,14 @@ export default function MaintSupervisorApproval() {
       });
       
       if (res.data.success) {
-        toast.success(t('maintenanceSupervisor.maintenanceScheduleUpdatedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_MAINTENANCESCHEDULEUPDATE_396CC527', fallbackText: t('maintenanceSupervisor.maintenanceScheduleUpdatedSuccessfully'), type: 'success' });
         navigate("/maintenance-list");
       } else {
         toast.error(res.data.message || t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'));
       }
     } catch (err) {
       console.error("Failed to update maintenance schedule:", err);
-      toast.error(t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPDATEMAINTENANCE_1A285ADA', fallbackText: t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'), type: 'error' });
     }
   };
 

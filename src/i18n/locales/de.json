@@ -262,7 +262,9 @@
     "expiryDateCannotBeSameAsPurchaseDate": "Ablaufdatum darf nicht dasselbe wie das Kaufdatum sein",
     "expiryDateCannotBeBeforePurchaseDate": "Ablaufdatum darf nicht vor dem Kaufdatum liegen",
     "purchaseDateCannotBeSameAsExpiryDate": "Kaufdatum darf nicht dasselbe wie das Ablaufdatum sein",
-    "atLeastOneVendorRequired": "Mindestens ein Lieferant (Produkt oder Service) ist erforderlich"
+    "atLeastOneVendorRequired": "Mindestens ein Lieferant (Produkt oder Service) ist erforderlich",
+    "purchaseVendorIsRequired": "Einkaufslieferant ist erforderlich",
+    "vendorDetailsAreMissing": "Lieferantendetails fehlen"
   },
   "assetTypes": {
     "title": "Anlagentypen",

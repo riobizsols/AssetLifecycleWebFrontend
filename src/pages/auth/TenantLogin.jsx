@@ -62,13 +62,15 @@ export default function TenantLogin() {
       // Store user + token in Zustand (including requiresPasswordChange flag)
       login({ ...user, token, requiresPasswordChange });
 
-      // Log audit event for successful login
-      await recordActionByNameWithFetch('Logging In', { 
+      // Do not block login UX on audit logging network delays/failures.
+      recordActionByNameWithFetch('Logging In', {
         action: 'User Logged In Successfully (Multi-Tenant)',
         userId: user?.user_id,
         userEmail: user?.email,
         userRole: user?.job_role_id,
         org_id: user?.org_id
+      }).catch((auditError) => {
+        console.warn('Tenant login audit log failed (non-blocking):', auditError);
       });
 
       // Navigate immediately based on password change requirement

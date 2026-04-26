@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../lib/axios";
@@ -60,7 +61,7 @@ const InspectionExecutionDetail = () => {
       }
     } catch (error) {
       console.error("Error fetching inspection:", error);
-      toast.error("Failed to load inspection details");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_INSPECTION_DETAILS_75F3A40E', fallbackText: 'Failed to load inspection details', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -140,7 +141,7 @@ const InspectionExecutionDetail = () => {
 
   const handleAddRecord = async () => {
     if (!recordedValue.trim()) {
-      toast.error("Please enter a value");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_VALUE_2C0B41EC', fallbackText: 'Please enter a value', type: 'error' });
       return;
     }
 
@@ -166,7 +167,7 @@ const InspectionExecutionDetail = () => {
       return [...without, { insp_check_id: selectedQuestion.insp_check_id, recorded_value: recordedValue }];
     });
 
-    toast.success("Value saved locally. Click Save to persist all values.");
+    showBackendTextToast({ toast, tmdId: 'TMD_VALUE_SAVED_LOCALLY_CLICK_SAVE_TO_PERSIST_ALL_VALUES_02259CFB', fallbackText: 'Value saved locally. Click Save to persist all values.', type: 'success' });
     setShowModal(false);
     setRecordedValue('');
     setSelectedQuestion(null);
@@ -197,7 +198,7 @@ const InspectionExecutionDetail = () => {
       if (shouldSendRecPayload) {
         const recRes = await API.post('/inspection/records', recPayload);
         if (recRes.data.success) {
-          toast.success("Inspection updated successfully");
+          showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: 'Inspection updated successfully', type: 'success' });
           navigate('/inspection-view');
           return;
         }
@@ -212,7 +213,7 @@ const InspectionExecutionDetail = () => {
       };
       const res = await API.put(`/inspection/${id}`, payload);
       if (res.data.success) {
-        toast.success("Inspection updated successfully");
+        showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: 'Inspection updated successfully', type: 'success' });
         navigate('/inspection-view');
       }
     } catch (error) {
@@ -221,7 +222,7 @@ const InspectionExecutionDetail = () => {
         console.error('Server response:', error.response.data);
         toast.error(error.response.data.message || 'Failed to update inspection');
       } else {
-        toast.error("Failed to update inspection");
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_INSPECTION_5F02CAA9', fallbackText: 'Failed to update inspection', type: 'error' });
       }
     } finally {
       setSaving(false);

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -79,7 +80,7 @@ const InspectionFrequency = () => {
       setFrequencies(dataWithKeys);
     } catch (error) {
       console.error("Error fetching frequencies:", error);
-      toast.error(t("inspectionFrequency.failedToLoadFrequencies"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOLOADFREQUENCIES_2B83EA7A', fallbackText: t("inspectionFrequency.failedToLoadFrequencies"), type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -173,7 +174,7 @@ const InspectionFrequency = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!selectedMappingId) {
-      toast.error(t("inspectionFrequency.pleaseSelectMapping"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_PLEASESELECTMAPPING_7B4F6D9A', fallbackText: t("inspectionFrequency.pleaseSelectMapping"), type: 'error' });
       return;
     }
 
@@ -189,7 +190,7 @@ const InspectionFrequency = () => {
           if (detailedItems.length > 0) {
             aatic_id = detailedItems[0].aatic_id;
           } else {
-            toast.error(t("inspectionFrequency.noChecklistItemsForMapping"));
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_NOCHECKLISTITEMSFORMAPPING_5E25E3BE', fallbackText: t("inspectionFrequency.noChecklistItemsForMapping"), type: 'error' });
             setSaving(false);
             return;
           }
@@ -208,16 +209,16 @@ const InspectionFrequency = () => {
 
       if (isEditing) {
         await API.put(`/inspection-frequencies/${currentId}`, payload);
-        toast.success(t("inspectionFrequency.frequencyUpdated"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FREQUENCYUPDATED_2A7F3D7F', fallbackText: t("inspectionFrequency.frequencyUpdated"), type: 'success' });
       } else {
         await API.post("/inspection-frequencies", payload);
-        toast.success(t("inspectionFrequency.frequencyCreated"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FREQUENCYCREATED_20C860AE', fallbackText: t("inspectionFrequency.frequencyCreated"), type: 'success' });
       }
       setShowModal(false);
       fetchFrequencies();
     } catch (error) {
       console.error("Error saving frequency:", error);
-      toast.error(t("inspectionFrequency.failedToSaveFrequency"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOSAVEFREQUENCY_1B231E25', fallbackText: t("inspectionFrequency.failedToSaveFrequency"), type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -233,7 +234,7 @@ const InspectionFrequency = () => {
         successCount++;
       }
       if (successCount > 0) {
-        toast.success(t("inspectionFrequency.deletedCount", { count: successCount }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_DELETEDCOUNT_605CA7C8', fallbackText: t("inspectionFrequency.deletedCount", { count: successCount }), type: 'success' });
         fetchFrequencies();
         setSelectedRows([]);
         return true;
@@ -241,7 +242,7 @@ const InspectionFrequency = () => {
       return false;
     } catch (error) {
       console.error("Error deleting:", error);
-      toast.error(t("inspectionFrequency.failedToDeleteSomeItems"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTODELETESOMEITEMS_44E94A07', fallbackText: t("inspectionFrequency.failedToDeleteSomeItems"), type: 'error' });
       return false;
     }
   };

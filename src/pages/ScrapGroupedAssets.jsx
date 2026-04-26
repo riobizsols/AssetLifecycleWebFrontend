@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Search, X } from 'lucide-react';
@@ -41,7 +42,7 @@ const ScrapGroupedAssets = () => {
       const details = res.data?.details || [];
 
       if (!header) {
-        toast.error('Group not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_GROUP_NOT_FOUND_11A4AB74', fallbackText: 'Group not found', type: 'error' });
         navigate('/scrap-assets/create');
         return;
       }
@@ -59,7 +60,7 @@ const ScrapGroupedAssets = () => {
       setSelectedAssetIds([]);
     } catch (e) {
       console.error('Failed to fetch group', e);
-      toast.error('Failed to fetch group details');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_GROUP_DETAILS_19D61F47', fallbackText: 'Failed to fetch group details', type: 'error' });
       navigate('/scrap-assets/create');
     } finally {
       setLoading(false);
@@ -99,7 +100,7 @@ const ScrapGroupedAssets = () => {
 
   const openScrapSelected = () => {
     if (selectedAssetIds.length === 0) {
-      toast.error('Please select at least one asset');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AT_LEAST_ONE_ASSET_26BAA2E0', fallbackText: 'Please select at least one asset', type: 'error' });
       return;
     }
     setMode('SELECTED');
