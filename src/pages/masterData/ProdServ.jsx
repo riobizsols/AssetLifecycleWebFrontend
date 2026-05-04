@@ -246,10 +246,10 @@ export default function ProdServ() {
       // Update local state based on type
       if (itemToDelete.type === 'product') {
         setProducts(prev => prev.filter(p => (p.prod_serv_id || p.id) !== itemId));
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_PRODSERV_PRODUCTDELETEDSUCCESSFULLY_531CC616', fallbackText: t('prodServ.productDeletedSuccessfully'), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_PRODSERV_PRODUCTDELETEDSUCCESSFULLY_531CC616', fallbackText: 'Product deleted successfully', type: 'success' });
       } else {
         setServices(prev => prev.filter(s => (s.prod_serv_id || s.id) !== itemId));
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_PRODSERV_SERVICEDELETEDSUCCESSFULLY_130A0570', fallbackText: t('prodServ.serviceDeletedSuccessfully'), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_PRODSERV_SERVICEDELETEDSUCCESSFULLY_130A0570', fallbackText: 'Service deleted successfully', type: 'success' });
       }
 
       // Refresh the data after deletion
@@ -274,7 +274,13 @@ export default function ProdServ() {
         errorMessage = err.response?.data?.message || err.response?.data?.error || errorMessage;
       }
       
-      toast.error(errorMessage, { duration: 4000 });
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_PRODSERV_FAILEDTODELETEITEM_41D760F6',
+        fallbackText: errorMessage,
+        type: 'error',
+        toastOptions: { duration: 4000 },
+      });
     } finally {
       _setIsDeleting(false);
       setShowDeleteModal(false);
@@ -782,7 +788,7 @@ export default function ProdServ() {
                       console.log('Navigation completed');
                     } catch (error) {
                       console.error('Navigation error:', error);
-                      showBackendTextToast({ toast, tmdId: 'TMD_I18N_PRODSERV_FAILEDTONAVIGATETOVENDORS_5FE199BE', fallbackText: t('prodServ.failedToNavigateToVendors'), type: 'error' });
+                      showBackendTextToast({ toast, tmdId: 'TMD_I18N_PRODSERV_FAILEDTONAVIGATETOVENDORS_5FE199BE', fallbackText: 'Failed to navigate to vendors', type: 'error' });
                     }
                   }}
                   className="w-full text-left px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded flex items-center gap-2"

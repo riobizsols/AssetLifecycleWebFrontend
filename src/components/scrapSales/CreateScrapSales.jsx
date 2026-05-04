@@ -520,9 +520,12 @@ const CreateScrapSales = () => {
       });
 
       if (response.data.success) {
-        toast.success(
-          response.data.message || t("scrapSales.scrapSaleCreatedSuccessfully")
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_SCRAPSALES_SCRAPSALECREATEDSUCCESSFULLY_C385EA89',
+          fallbackText: response.data.message || t("scrapSales.scrapSaleCreatedSuccessfully"),
+          type: 'success',
+        });
         const scrapId = response.data?.scrap_sale?.ssh_id || response.data?.data?.scrap_id || response.data?.scrap_id || response.data?.id;
         console.log('CreateScrapSales - Response data:', response.data);
         console.log('CreateScrapSales - Extracted scrapId:', scrapId);
@@ -563,7 +566,7 @@ const CreateScrapSales = () => {
         error.response?.data?.message ||
         error.message ||
         t("scrapSales.failedToCreateScrapSale");
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_FAILEDTOCREATESCRAPSALE_D1470D0B', fallbackText: errorMessage, type: 'error' });
     } finally {
       setLoading(false);
     }

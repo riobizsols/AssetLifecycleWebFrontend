@@ -130,7 +130,12 @@ export default function AssetValuation() {
       } catch (error) {
         console.error('Error fetching asset valuation data:', error);
         const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch asset valuation data';
-        toast.error(errorMessage);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_FETCH_ASSET_VALUATION_DATA_00BD2A3A',
+          fallbackText: errorMessage,
+          type: 'error',
+        });
         setApiData(prev => ({
           ...prev,
           error: null // Don't set error state to avoid full-screen error

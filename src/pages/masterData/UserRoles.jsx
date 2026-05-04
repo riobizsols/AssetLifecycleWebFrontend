@@ -342,7 +342,12 @@ const Users = () => {
     }
 
     // Show loading toast
-    const loadingToast = toast.loading(t("users.deletingSelectedUsers"));
+    const loadingToast = showBackendTextToast({
+      toast,
+      tmdId: 'TMD_I18N_USERS_DELETINGSELECTEDUSERS_90A2E953',
+      fallbackText: t("users.deletingSelectedUsers"),
+      type: 'loading',
+    });
 
     try {
             const response = await API.delete("/users/delete-users", {
@@ -644,7 +649,7 @@ const Users = () => {
     } catch (error) {
       console.error("Error updating user:", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t("users.failedToUpdateUser");
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOUPDATEUSER_76B693A8', fallbackText: errorMessage, type: 'error' });
     }
   };
 

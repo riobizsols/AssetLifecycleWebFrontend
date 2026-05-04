@@ -369,7 +369,7 @@ const CreateScrapAsset = () => {
 
       if (response.data?.success) {
         if (response.data.workflowCreated) {
-          toast.success(`Scrap request sent for approval (Workflow: ${response.data.wfscrap_h_id})`);
+          showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_REQUEST_SENT_FOR_APPROVAL_WORKFLOW_5A6CA29F', fallbackText: `Scrap request sent for approval (Workflow: ${response.data.wfscrap_h_id})`, type: 'success' });
         } else if (response.data.scrapped) {
           showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETSUCCESSFULLYMARKEDFORSCRA_601EDB7A', fallbackText: t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }), type: 'success' });
         } else {
@@ -387,7 +387,7 @@ const CreateScrapAsset = () => {
         setSelectedAsset(null);
         setNotes('');
       } else {
-        toast.error(response.data?.message || t('createScrapAsset.failedToMarkAssetForScrapping'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_FAILEDTOMARKASSETFORSCRAPPING_627A62EE', fallbackText: response.data?.message || t('createScrapAsset.failedToMarkAssetForScrapping'), type: 'error' });
       }
     } catch (error) {
       console.error('❌ Error submitting scrap asset:', error);
@@ -397,13 +397,13 @@ const CreateScrapAsset = () => {
         console.error('Response data:', error.response.data);
         
         if (error.response.status === 400) {
-          toast.error(error.response.data?.message || t('createScrapAsset.validationError', { error: error.response.data.error }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_VALIDATIONERROR_609EBEB8', fallbackText: error.response.data?.message || t('createScrapAsset.validationError', { error: error.response.data.error }), type: 'error' });
         } else if (error.response.status === 401) {
           showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_UNAUTHORIZEDPLEASELOGINAGAIN_67901914', fallbackText: t('createScrapAsset.unauthorizedPleaseLogInAgain'), type: 'error' });
         } else if (error.response.status === 500) {
           showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_SERVERERRORPLEASETRYAGAINLATER_69979231', fallbackText: t('createScrapAsset.serverErrorPleaseTryAgainLater'), type: 'error' });
         } else {
-          toast.error(error.response.data?.message || t('createScrapAsset.failedToMarkAssetForScrapping'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_FAILEDTOMARKASSETFORSCRAPPING_627A62EE', fallbackText: error.response.data?.message || t('createScrapAsset.failedToMarkAssetForScrapping'), type: 'error' });
         }
       } else {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_NETWORKERRORPLEASECHECKCONNECT_3B254235', fallbackText: t('createScrapAsset.networkErrorPleaseCheckConnection'), type: 'error' });

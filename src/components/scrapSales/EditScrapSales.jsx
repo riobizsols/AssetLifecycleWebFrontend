@@ -341,7 +341,13 @@ const EditScrapSales = () => {
       const individualTotal = totalIndividualValues;
       
       if (Math.abs(total - individualTotal) > 0.01) { // Allow for small floating point differences
-        toast.error(`Total scrap value (${total}) does not match sum of individual values (${individualTotal})`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_TOTAL_SCRAP_VALUE_DOES_NOT_MATCH_INDIVIDUALVALUES_C7A069D2',
+          fallbackText: 'Total scrap value ({{total}}) does not match sum of individual values ({{individualTotal}})',
+          type: 'error',
+          values: { total, individualTotal },
+        });
         return false;
       }
     }
@@ -400,7 +406,7 @@ const EditScrapSales = () => {
     } catch (error) {
       console.error('Error updating scrap sale:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to update scrap sale';
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_SCRAP_SALE_2FF0EA5D', fallbackText: errorMessage, type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -481,7 +487,7 @@ const EditScrapSales = () => {
       setActiveDropdown(null);
     } catch (error) {
       console.error('Document action failed:', error);
-      toast.error(`Failed to ${action} document`);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_ACTION_DOCUMENT_7B41507A', fallbackText: `Failed to ${action} document`, type: 'error' });
     }
   };
 
@@ -501,7 +507,7 @@ const EditScrapSales = () => {
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+        showBackendTextToast({ toast, tmdId: 'TMD_ENTER_CUSTOM_NAME_FOR_DOCUMENTTYPE_DOCUMENTS_2C7778D6', fallbackText: `Enter custom name for ${selectedDocType.text} documents`, type: 'error' });
         return;
       }
     }
@@ -536,7 +542,7 @@ const EditScrapSales = () => {
         if (failCount === 0) {
           showBackendTextToast({ toast, tmdId: 'TMD_ALL_FILES_UPLOADED_SUCCESSFULLY_2B7F645F', fallbackText: 'All files uploaded successfully', type: 'success' });
         } else {
-          toast.success(`${successCount} files uploaded, ${failCount} failed`);
+          showBackendTextToast({ toast, tmdId: 'TMD_FILES_UPLOADED_WITH_FAILCOUNT_4F1D26C0', fallbackText: `${successCount} files uploaded, ${failCount} failed`, type: 'success' });
         }
         setUploadRows([]); // Clear all attachments after upload
         // Refresh the documents list

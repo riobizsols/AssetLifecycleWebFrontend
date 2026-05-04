@@ -346,7 +346,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       }
     } catch (err) {
       console.error(`Error ${action}ing document:`, err);
-      toast.error(`Failed to ${action} document. Please try again.`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_PROCESS_DOCUMENT_ACTION_DA089BC7',
+        fallbackText: `Failed to ${action} document. Please try again.`,
+        type: 'error',
+      });
     } finally {
       setLoadingActions(prev => ({ ...prev, [actionKey]: false }));
     }
@@ -367,7 +372,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       console.log('Archive response:', res.data); // Debug log
       
       if (res.data && res.data.message && res.data.message.includes('successfully')) {
-        toast.success(`Document ${archiveStatus ? 'archived' : 'unarchived'} successfully`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_DOCUMENT_ARCHIVE_STATUS_UPDATED_0B7E3F68',
+          fallbackText: `Document ${archiveStatus ? 'archived' : 'unarchived'} successfully`,
+          type: 'success',
+        });
         // Refresh the documents list and separate active/archived
         const refreshRes = await API.get(`/assets/${assetData.asset_id}/docs`);
         const arr = Array.isArray(refreshRes.data) ? refreshRes.data : [];
@@ -381,7 +391,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       }
     } catch (err) {
       console.error('Error updating archive status:', err);
-      toast.error(`Failed to ${archiveStatus ? 'archive' : 'unarchive'} document. ${err.message || 'Please try again.'}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_DOCUMENT_ARCHIVE_STATUS_29EE9D3E',
+        fallbackText: `Failed to ${archiveStatus ? 'archive' : 'unarchive'} document. ${err.message || 'Please try again.'}`,
+        type: 'error',
+      });
     } finally {
       setLoadingActions(prev => ({ ...prev, [actionKey]: false }));
     }
@@ -571,7 +586,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     }
     
     if (validationErrors.length > 0) {
-      toast.error(`Required fields missing: ${validationErrors.join(', ')}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_REQUIRED_FIELDS_MISSING_90B2EA4C',
+        fallbackText: `Required fields missing: ${validationErrors.join(', ')}`,
+        type: 'error',
+      });
       return;
     }
 
@@ -685,7 +705,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     } catch (err) {
       console.error('Error updating asset:', err);
       const errorMessage = err.response?.data?.error || 'Failed to update asset';
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_ASSET_8578544F',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -707,7 +732,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
-        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ENTER_CUSTOM_DOCUMENT_NAME_B9E20D65',
+          fallbackText: `Enter custom name for ${selectedDocType.text} documents`,
+          type: 'error',
+        });
         return;
       }
     }
@@ -755,7 +785,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         if (failCount === 0) {
           showBackendTextToast({ toast, tmdId: 'TMD_ALL_FILES_UPLOADED_SUCCESSFULLY_2B7F645F', fallbackText: 'All files uploaded successfully', type: 'success' });
         } else {
-          toast.success(`${successCount} files uploaded, ${failCount} failed`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_FILES_UPLOADED_WITH_FAILURES_44AF4F5A',
+            fallbackText: `${successCount} files uploaded, ${failCount} failed`,
+            type: 'success',
+          });
         }
         setUploadRows([]); // Clear all attachments after upload
         // Refresh the documents list using the correct endpoint
@@ -1712,7 +1747,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                     } else {
                       // Other errors
                       const errorMessage = error.response?.data?.message || 'Failed to submit QSN print request';
-                      toast.error(errorMessage);
+                      showBackendTextToast({
+                        toast,
+                        tmdId: 'TMD_FAILED_TO_SUBMIT_QSN_PRINT_REQUEST_39D8A39B',
+                        fallbackText: errorMessage,
+                        type: 'error',
+                      });
                     }
                   } finally {
                     setIsQSNPrintLoading(false);

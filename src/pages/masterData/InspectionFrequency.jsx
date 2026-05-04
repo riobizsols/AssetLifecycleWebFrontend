@@ -80,7 +80,7 @@ const InspectionFrequency = () => {
       setFrequencies(dataWithKeys);
     } catch (error) {
       console.error("Error fetching frequencies:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOLOADFREQUENCIES_2B83EA7A', fallbackText: t("inspectionFrequency.failedToLoadFrequencies"), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOLOADFREQUENCIES_2B83EA7A', fallbackText: 'Failed to load frequencies', type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -174,7 +174,7 @@ const InspectionFrequency = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!selectedMappingId) {
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_PLEASESELECTMAPPING_7B4F6D9A', fallbackText: t("inspectionFrequency.pleaseSelectMapping"), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_PLEASESELECTMAPPING_7B4F6D9A', fallbackText: 'Please select mapping', type: 'error' });
       return;
     }
 
@@ -190,7 +190,7 @@ const InspectionFrequency = () => {
           if (detailedItems.length > 0) {
             aatic_id = detailedItems[0].aatic_id;
           } else {
-            showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_NOCHECKLISTITEMSFORMAPPING_5E25E3BE', fallbackText: t("inspectionFrequency.noChecklistItemsForMapping"), type: 'error' });
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_NOCHECKLISTITEMSFORMAPPING_5E25E3BE', fallbackText: 'No checklist items for mapping', type: 'error' });
             setSaving(false);
             return;
           }
@@ -209,16 +209,16 @@ const InspectionFrequency = () => {
 
       if (isEditing) {
         await API.put(`/inspection-frequencies/${currentId}`, payload);
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FREQUENCYUPDATED_2A7F3D7F', fallbackText: t("inspectionFrequency.frequencyUpdated"), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FREQUENCYUPDATED_2A7F3D7F', fallbackText: 'Frequency updated', type: 'success' });
       } else {
         await API.post("/inspection-frequencies", payload);
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FREQUENCYCREATED_20C860AE', fallbackText: t("inspectionFrequency.frequencyCreated"), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FREQUENCYCREATED_20C860AE', fallbackText: 'Frequency created', type: 'success' });
       }
       setShowModal(false);
       fetchFrequencies();
     } catch (error) {
       console.error("Error saving frequency:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOSAVEFREQUENCY_1B231E25', fallbackText: t("inspectionFrequency.failedToSaveFrequency"), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOSAVEFREQUENCY_1B231E25', fallbackText: 'Failed to save frequency', type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -234,7 +234,7 @@ const InspectionFrequency = () => {
         successCount++;
       }
       if (successCount > 0) {
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_DELETEDCOUNT_605CA7C8', fallbackText: t("inspectionFrequency.deletedCount", { count: successCount }), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_DELETEDCOUNT_605CA7C8', fallbackText: '{{count}} frequency item(s) deleted', type: 'success', values: { count: successCount } });
         fetchFrequencies();
         setSelectedRows([]);
         return true;
@@ -242,7 +242,7 @@ const InspectionFrequency = () => {
       return false;
     } catch (error) {
       console.error("Error deleting:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTODELETESOMEITEMS_44E94A07', fallbackText: t("inspectionFrequency.failedToDeleteSomeItems"), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTODELETESOMEITEMS_44E94A07', fallbackText: 'Failed to delete some items', type: 'error' });
       return false;
     }
   };

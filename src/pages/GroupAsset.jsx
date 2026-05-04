@@ -211,7 +211,7 @@ const GroupAsset = () => {
       fetchAssetGroups();
     } catch (error) {
       console.error("Error deleting selected asset groups:", error);
-      toast.error(t("groupAssets.failedToDeleteSomeAssetGroups"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETESOMEASSETGROUPS_781931A5', fallbackText: t("groupAssets.failedToDeleteSomeAssetGroups"), type: 'error' });
     }
   };
 

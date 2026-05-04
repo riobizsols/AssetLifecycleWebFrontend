@@ -138,7 +138,7 @@ const TechCertApprovals = () => {
       await fetchApprovals();
     } catch (error) {
       console.error("Failed to approve certificate:", error);
-      toast.error(error.response?.data?.message || t("techCertApprovals.failedToApproveCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOAPPROVECERTIFICATE_1A2F8E53', fallbackText: error.response?.data?.message || t("techCertApprovals.failedToApproveCertificate"), type: 'error' });
     } finally {
       setIsApproving(false);
     }
@@ -154,7 +154,7 @@ const TechCertApprovals = () => {
       await fetchApprovals();
     } catch (error) {
       console.error("Failed to reject certificate:", error);
-      toast.error(error.response?.data?.message || t("techCertApprovals.failedToRejectCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOREJECTCERTIFICATE_18E3E6D5', fallbackText: error.response?.data?.message || t("techCertApprovals.failedToRejectCertificate"), type: 'error' });
     } finally {
       setIsApproving(false);
     }
@@ -196,7 +196,7 @@ const TechCertApprovals = () => {
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Failed to get download URL:", error);
-      toast.error(error.response?.data?.message || t("techCertApprovals.failedToDownload"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTODOWNLOAD_2BCF20D3', fallbackText: error.response?.data?.message || t("techCertApprovals.failedToDownload"), type: 'error' });
     } finally {
       setDownloadingId(null);
     }
@@ -216,7 +216,7 @@ const TechCertApprovals = () => {
       }
     } catch (error) {
       console.error("Failed to block technician:", error);
-      toast.error(error.response?.data?.error || t("techCertApprovals.failedToBlockTechnician"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOBLOCKTECHNICIAN_3F95E62A', fallbackText: error.response?.data?.error || t("techCertApprovals.failedToBlockTechnician"), type: 'error' });
     } finally {
       setIsBlocking(false);
     }

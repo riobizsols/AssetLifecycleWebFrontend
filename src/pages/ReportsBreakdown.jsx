@@ -117,7 +117,7 @@ const ReportsBreakdown = () => {
     } catch (err) {
       console.error("Error deleting breakdown reports:", err);
       const errorMessage = err.response?.data?.details || err.response?.data?.error || err.message || t("breakdownDetails.failedToDeleteBreakdownReports");
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTODELETEBREAKDOWNREPORTS_66A0E95B', fallbackText: errorMessage, type: 'error' });
       return false;
     }
   };

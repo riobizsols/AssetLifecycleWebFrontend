@@ -182,7 +182,14 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         });
         
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
-          toast.success(archiveStatus ? t('assetTypes.documentArchivedSuccessfully') : t('assetTypes.documentUnarchivedSuccessfully'));
+          showBackendTextToast({
+            toast,
+            tmdId: archiveStatus
+              ? 'TMD_DOCUMENT_ARCHIVED_SUCCESSFULLY_169C69DB'
+              : 'TMD_DOCUMENT_UNARCHIVED_SUCCESSFULLY_C6AA930A',
+            fallbackText: archiveStatus ? t('assetTypes.documentArchivedSuccessfully') : t('assetTypes.documentUnarchivedSuccessfully'),
+            type: 'success',
+          });
           console.log('🔄 Refreshing documents after archive action...');
           // Refresh the documents list
           fetchChecklist();
@@ -206,7 +213,12 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       closeAllDropdowns();
     } catch (err) {
       console.error(`Error ${action}ing document:`, err);
-      toast.error(`Failed to ${action} document. Please try again.`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_PROCESS_ASSET_TYPE_DOCUMENT_ACTION_79C8D9E0',
+        fallbackText: `Failed to ${action} document. Please try again.`,
+        type: 'error',
+      });
     } finally {
       setLoadingActions(prev => ({ ...prev, [actionKey]: false }));
     }
@@ -349,13 +361,23 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         fetchExistingProperties();
       } else {
         const errorMessage = res.data?.error || res.data?.message || 'Failed to add property';
-        toast.error(errorMessage);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_ADD_PROPERTY_A70E17D5',
+          fallbackText: errorMessage,
+          type: 'error',
+        });
       }
     } catch (err) {
       console.error('Error adding property:', err);
       console.error('Error response:', err.response?.data);
       const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to add property';
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_ADD_PROPERTY_A70E17D5',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     }
   };
 
@@ -384,33 +406,23 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
     
     // Validate form
     if (!assetType.trim()) {
-      toast(
-        "Asset type name is required",
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_NAME_IS_REQUIRED_F4B83CC5',
+        fallbackText: "Asset type name is required",
+        type: 'error',
+      });
       return;
     }
 
     // Validate parent selection for child asset types
     if (parentChild === "child" && !selectedParentType) {
-      toast(
-        "Please select a parent asset type",
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PLEASE_SELECT_A_PARENT_ASSET_TYPE_F9A518FE',
+        fallbackText: "Please select a parent asset type",
+        type: 'error',
+      });
       return;
     }
 
@@ -453,17 +465,12 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         action: 'Asset Type Updated'
       });
 
-      toast(
-        t('assetTypes.assetTypeUpdatedSuccessfully', { name: assetType }),
-        {
-          icon: '✅',
-          style: {
-            borderRadius: '8px',
-            background: '#064E3B',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_UPDATED_SUCCESSFULLY_76CD38EC',
+        fallbackText: t('assetTypes.assetTypeUpdatedSuccessfully', { name: assetType }),
+        type: 'success',
+      });
       
       // Call onClose with a flag to trigger refresh in parent
       onClose(true);
@@ -476,18 +483,12 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       if (errorDetails) fullError += `\n${errorDetails}`;
       if (errorHint) fullError += `\n\nHint: ${errorHint}`;
 
-      toast(
-        fullError,
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-          duration: 5000,
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_ASSET_TYPE_6848FB6D',
+        fallbackText: fullError,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -509,7 +510,12 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
-        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ENTER_CUSTOM_NAME_FOR_DOCUMENTS_A5B0C4C8',
+          fallbackText: `Enter custom name for ${selectedDocType.text} documents`,
+          type: 'error',
+        });
         return;
       }
     }

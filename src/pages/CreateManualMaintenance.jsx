@@ -25,6 +25,35 @@ const CreateManualMaintenance = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const scannerRef = useRef(null);
 
+  const getCreateMaintenanceErrorConfig = (rawMessage) => {
+    const message = String(rawMessage || '').trim();
+
+    if (!message || /^TMD_[A-Z0-9_]+$/.test(message)) {
+      return {
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOCREATEMAINTENANCE_B4750532',
+        fallbackText: 'Failed to create maintenance',
+      };
+    }
+
+    const normalizedMessage = message.toLowerCase();
+    const isWorkflowSequenceConfigError =
+      normalizedMessage.includes('workflow') &&
+      normalizedMessage.includes('sequence') &&
+      normalizedMessage.includes('asset type');
+
+    if (isWorkflowSequenceConfigError) {
+      return {
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_NOWORKFLOWSEQUENCECONFIGURED_8D46AE91',
+        fallbackText: '',
+      };
+    }
+
+    return {
+      tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOCREATEMAINTENANCE_B4750532',
+      fallbackText: message,
+    };
+  };
+
   useEffect(() => {
     if (showScanner && !scannerRef.current) {
       initializeScanner();
@@ -60,7 +89,7 @@ const CreateManualMaintenance = () => {
       showBackendTextToast({
         toast,
         tmdId: 'TMD_I18N_ASSETS_COULDNOTACCESSCAMERA_7EF238B6',
-        fallbackText: t('assets.couldNotAccessCamera') || 'Could not access camera',
+        fallbackText: 'Could not access camera',
         type: 'error',
       });
       setShowScanner(false);
@@ -74,7 +103,12 @@ const CreateManualMaintenance = () => {
     }
     setScannedAssetId(decodedText);
     setShowScanner(false);
-    toast.success(t('assets.assetIdScannedSuccessfully') || 'Asset ID scanned successfully');
+    showBackendTextToast({
+      toast,
+      tmdId: 'TMD_I18N_ASSETS_ASSETIDSCANNEDSUCCESSFULLY_5A8AF033',
+      fallbackText: 'Asset ID scanned successfully',
+      type: 'success',
+    });
   };
 
   const onScanError = () => {};
@@ -102,7 +136,12 @@ const CreateManualMaintenance = () => {
       setAssets(assetsList);
     } catch (err) {
       console.error('Failed to fetch assets:', err);
-      toast.error(t('assets.failedToFetchAssets') || 'Failed to fetch assets');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETS_59117016',
+        fallbackText: 'Failed to fetch assets',
+        type: 'error',
+      });
       setAssets([]);
     } finally {
       setLoadingAssets(false);
@@ -111,7 +150,12 @@ const CreateManualMaintenance = () => {
 
   const createMaintenanceForAsset = async (asset) => {
     if (!asset?.asset_id || !asset?.asset_type_id) {
-      toast.error(t('maintenanceSupervisor.pleaseSelectAsset') || 'Please select an asset');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_PLEASESELECTASSET_43095C1E',
+        fallbackText: 'Please select an asset',
+        type: 'error',
+      });
       return;
     }
     setSubmitting(true);
@@ -122,14 +166,31 @@ const CreateManualMaintenance = () => {
         org_id: user?.org_id,
       });
       if (res.data?.success) {
-        toast.success(t('maintenanceSupervisor.maintenanceCreatedSuccessfully') || 'Maintenance created successfully');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_MAINTENANCECREATEDSUCCESSFULL_5A483959',
+          fallbackText: 'Maintenance created successfully',
+          type: 'success',
+        });
         navigate('/maintenance-list');
       } else {
-        toast.error(res.data?.message || (t('maintenanceSupervisor.failedToCreateMaintenance') || 'Failed to create maintenance'));
+        const errorConfig = getCreateMaintenanceErrorConfig(res.data?.message);
+        showBackendTextToast({
+          toast,
+          tmdId: errorConfig.tmdId,
+          fallbackText: errorConfig.fallbackText,
+          type: 'error',
+        });
       }
     } catch (err) {
       console.error('Failed to create maintenance:', err);
-      toast.error(err.response?.data?.message || (t('maintenanceSupervisor.failedToCreateMaintenance') || 'Failed to create maintenance'));
+      const errorConfig = getCreateMaintenanceErrorConfig(err.response?.data?.message);
+      showBackendTextToast({
+        toast,
+        tmdId: errorConfig.tmdId,
+        fallbackText: errorConfig.fallbackText,
+        type: 'error',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -141,7 +202,7 @@ const CreateManualMaintenance = () => {
       showBackendTextToast({
         toast,
         tmdId: 'TMD_I18N_ASSETS_PLEASEENTERASSETID_5202CAD4',
-        fallbackText: t('assets.pleaseEnterAssetId') || 'Please enter or scan asset ID',
+        fallbackText: 'Please enter or scan asset ID',
         type: 'error',
       });
       return;
@@ -154,7 +215,7 @@ const CreateManualMaintenance = () => {
         showBackendTextToast({
           toast,
           tmdId: 'TMD_I18N_ASSETS_ASSETNOTFOUNDORNOTAVAILABLE_6BCC1309',
-          fallbackText: t('assets.assetNotFoundOrNotAvailable') || 'Asset not found',
+          fallbackText: 'Asset not found',
           type: 'error',
         });
         setSubmitting(false);
@@ -164,9 +225,14 @@ const CreateManualMaintenance = () => {
     } catch (err) {
       console.error('Failed to resolve scanned asset:', err);
       const msg = err.response?.status === 404
-        ? (t('assets.assetNotFoundOrNotAvailable') || 'Asset not found')
-        : (err.response?.data?.message || t('assets.assetNotFoundOrNotAvailable') || 'Asset not found or already in maintenance');
-      toast.error(msg);
+        ? 'Asset not found'
+        : (err.response?.data?.message || 'Asset not found or already in maintenance');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_ASSETS_ASSETNOTFOUNDORNOTAVAILABLE_6BCC1309',
+        fallbackText: msg,
+        type: 'error',
+      });
     } finally {
       setSubmitting(false);
     }

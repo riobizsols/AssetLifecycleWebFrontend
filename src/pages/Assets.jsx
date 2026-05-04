@@ -231,7 +231,13 @@ const Assets = () => {
     
     try {
       await API.post("/assets/delete", { asset_ids: selectedRows });
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETSDELETEDSUCCESSFULLY_1180A8F2', fallbackText: t('assets.assetsDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_ASSETS_ASSETSDELETEDSUCCESSFULLY_1180A8F2',
+        fallbackText: t('assets.assetsDeletedSuccessfully', { count: selectedRows.length }),
+        type: 'success',
+        values: { count: selectedRows.length },
+      });
       
       // Log bulk delete action
       await recordActionByNameWithFetch('Delete', { 
@@ -246,14 +252,20 @@ const Assets = () => {
       console.error("Failed to delete assets", err);
       if (err.response?.data?.code === '23503') {
         const assetId = err.response.data.assetId;
-        toast.error(
-          err.response.data.message || 
-          t('assets.assetCannotBeDeleted', { assetId }),
-          { duration: 5000 }
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSET_CANNOT_BE_DELETED_1752ED0D',
+          fallbackText: err.response.data.message || t('assets.assetCannotBeDeleted', { assetId }),
+          type: 'error',
+        });
       } else {
         const errorMessage = err.response?.data?.message || t('assets.failedToDeleteAssets');
-        toast.error(translateErrorMessage(errorMessage));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_DELETE_ASSETS_846A8366',
+          fallbackText: translateErrorMessage(errorMessage),
+          type: 'error',
+        });
       }
       return false;
     }
@@ -273,14 +285,20 @@ const Assets = () => {
     } catch (err) {
       console.error("Failed to delete asset", err);
       if (err.response?.data?.code === '23503') {
-        toast.error(
-          err.response.data.message || 
-          t('assets.assetCannotBeDeleted', { assetId: row.asset_id }),
-          { duration: 5000 }
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSET_CANNOT_BE_DELETED_1752ED0D',
+          fallbackText: err.response.data.message || t('assets.assetCannotBeDeleted', { assetId: row.asset_id }),
+          type: 'error',
+        });
       } else {
         const errorMessage = err.response?.data?.message || t('assets.failedToDeleteAsset');
-        toast.error(translateErrorMessage(errorMessage));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_DELETE_ASSET_295BFB6A',
+          fallbackText: translateErrorMessage(errorMessage),
+          type: 'error',
+        });
       }
     }
   };
@@ -301,14 +319,20 @@ const Assets = () => {
       } catch (err) {
         console.error("Failed to delete asset", err);
         if (err.response?.data?.code === '23503') {
-          toast.error(
-            err.response.data.message || 
-            t('assets.assetCannotBeDeleted', { assetId: selectedAsset.asset_id }),
-            { duration: 5000 }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_ASSET_CANNOT_BE_DELETED_1752ED0D',
+            fallbackText: err.response.data.message || t('assets.assetCannotBeDeleted', { assetId: selectedAsset.asset_id }),
+            type: 'error',
+          });
         } else {
           const errorMessage = err.response?.data?.message || t('assets.failedToDeleteAsset');
-          toast.error(translateErrorMessage(errorMessage));
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_FAILED_TO_DELETE_ASSET_295BFB6A',
+            fallbackText: translateErrorMessage(errorMessage),
+            type: 'error',
+          });
         }
       }
     } else if (selectedRows.length > 0) {
@@ -362,33 +386,23 @@ const Assets = () => {
         // Log export action
         await recordActionByNameWithFetch('Download', { count: dataToExport.length, assetIds: selectedRows });
         
-        toast(
-          t('assets.assetsExportedSuccessfully'),
-          {
-            icon: '✅',
-            style: {
-              borderRadius: '8px',
-              background: '#064E3B',
-              color: '#fff',
-            },
-          }
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSETS_EXPORTED_SUCCESSFULLY_4259789A',
+          fallbackText: t('assets.assetsExportedSuccessfully'),
+          type: 'success',
+        });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast(
-        t('assets.failedToExportAssets'),
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_EXPORT_ASSETS_BFEA8085',
+        fallbackText: t('assets.failedToExportAssets'),
+        type: 'error',
+      });
     }
   };
 

@@ -240,9 +240,24 @@ const AssignRoles = () => {
       });
 
       if (response.data.skippedRoles?.length > 0) {
-        toast.success(`Successfully assigned ${response.data.assignedRoles.length} role(s). ${response.data.skippedRoles.length} role(s) were already assigned.`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSIGNROLES_SUCCESSFULLYASSIGNEDWITHSKIPPED_13D5E43F',
+          fallbackText: 'Successfully assigned {{assignedCount}} role(s). {{skippedCount}} role(s) were already assigned.',
+          type: 'success',
+          values: {
+            assignedCount: response.data.assignedRoles.length,
+            skippedCount: response.data.skippedRoles.length,
+          },
+        });
       } else {
-        toast.success(`Successfully assigned ${response.data.assignedRoles.length} role(s)`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSIGNROLES_SUCCESSFULLYASSIGNED_0A2D6462',
+          fallbackText: 'Successfully assigned {{assignedCount}} role(s)',
+          type: 'success',
+          values: { assignedCount: response.data.assignedRoles.length },
+        });
       }
       
       // Refresh employees list

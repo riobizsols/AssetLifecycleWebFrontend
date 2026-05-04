@@ -91,7 +91,12 @@ const ScrapMaintenanceApprovalDetail = () => {
     try {
       const res = await API.get(`/scrap-maintenance/workflow/${id}`);
       if (!res.data?.success) {
-        toast.error(res.data?.message || "Failed to load scrap workflow");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_LOAD_SCRAP_WORKFLOW_326DCEC3',
+          fallbackText: res.data?.message || "Failed to load scrap workflow",
+          type: 'error',
+        });
         setDetail(null);
         return;
       }
@@ -273,24 +278,44 @@ const ScrapMaintenanceApprovalDetail = () => {
     setIsSubmitting(true);
     let toastId = null;
     try {
-      toastId = toast.loading("Approving scrap...", { duration: Infinity });
+      toastId = await showBackendTextToast({
+        toast,
+        tmdId: 'TMD_APPROVING_SCRAP_IN_PROGRESS_3F395E78',
+        fallbackText: "Approving scrap...",
+        type: 'loading',
+      });
       const res = await API.post(`/scrap-maintenance/${id}/approve`, {
         note: approveNote,
         empIntId: user?.emp_int_id,
       });
       if (toastId) toast.dismiss(toastId);
       if (res.data?.success) {
-        toast.success(res.data?.message || "Approved");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SCRAP_APPROVED_SUCCESSFULLY_29930D4C',
+          fallbackText: res.data?.message || "Approved",
+          type: 'success',
+        });
         setShowApproveModal(false);
         setApproveNote("");
         await fetchDetail();
         await fetchWorkflowHistory();
       } else {
-        toast.error(res.data?.message || "Failed to approve");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_APPROVE_SCRAP_1EA9E4DC',
+          fallbackText: res.data?.message || "Failed to approve",
+          type: 'error',
+        });
       }
     } catch (e) {
       if (toastId) toast.dismiss(toastId);
-      toast.error(e.response?.data?.message || "Failed to approve");
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_APPROVE_SCRAP_1EA9E4DC',
+        fallbackText: e.response?.data?.message || "Failed to approve",
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -301,24 +326,44 @@ const ScrapMaintenanceApprovalDetail = () => {
     setIsSubmitting(true);
     let toastId = null;
     try {
-      toastId = toast.loading("Rejecting scrap...", { duration: Infinity });
+      toastId = await showBackendTextToast({
+        toast,
+        tmdId: 'TMD_REJECTING_SCRAP_IN_PROGRESS_09A2E790',
+        fallbackText: "Rejecting scrap...",
+        type: 'loading',
+      });
       const res = await API.post(`/scrap-maintenance/${id}/reject`, {
         reason: rejectNote,
         empIntId: user?.emp_int_id,
       });
       if (toastId) toast.dismiss(toastId);
       if (res.data?.success) {
-        toast.success(res.data?.message || "Rejected");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SCRAP_REJECTED_SUCCESSFULLY_8EAD62F7',
+          fallbackText: res.data?.message || "Rejected",
+          type: 'success',
+        });
         setShowRejectModal(false);
         setRejectNote("");
         await fetchDetail();
         await fetchWorkflowHistory();
       } else {
-        toast.error(res.data?.message || "Failed to reject");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_REJECT_SCRAP_505743B6',
+          fallbackText: res.data?.message || "Failed to reject",
+          type: 'error',
+        });
       }
     } catch (e) {
       if (toastId) toast.dismiss(toastId);
-      toast.error(e.response?.data?.message || "Failed to reject");
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_REJECT_SCRAP_505743B6',
+        fallbackText: e.response?.data?.message || "Failed to reject",
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }

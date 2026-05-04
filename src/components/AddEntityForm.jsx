@@ -114,7 +114,12 @@ const AddEntityForm = () => {
     } catch (err) {
       console.error('Error fetching SLA descriptions:', err);
       console.error('Error details:', err.response?.data || err.message);
-      toast.error(err.response?.data?.message || 'Failed to load SLA descriptions. Please check if tblSLA_Desc table exists.');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_LOAD_SLA_DESCRIPTIONS_PLEASE_CHECK_IF_TBLSL_567A2AA5',
+        fallbackText: err.response?.data?.message || 'Failed to load SLA descriptions. Please check if tblSLA_Desc table exists.',
+        type: 'error',
+      });
       setSlaDescriptions([]);
     }
   };
@@ -255,7 +260,7 @@ const AddEntityForm = () => {
     } catch (error) {
       console.error(error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t('vendors.failedToCreateVendor');
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOCREATEVENDOR_B19D7A9B', fallbackText: errorMessage, type: 'error' });
     } finally {
       setLoading(false);
       setSavingTab("");
@@ -299,9 +304,9 @@ const AddEntityForm = () => {
 
     // Phone number validation (basic format check)
     if (form.contact_person_number && form.contact_person_number.trim()) {
-      const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
+      const phoneRegex = /^[+]?[0-9\s\-()]{10,}$/;
       if (!phoneRegex.test(form.contact_person_number.trim())) {
-        errors.push('Please enter a valid contact number (at least 10 digits)');
+        errors.push('Please enter a valid contact number with at least 10 digits');
       }
     }
 
@@ -320,7 +325,14 @@ const AddEntityForm = () => {
         const validationErrors = validateRequiredFields();
         if (validationErrors.length > 0) {
           setSubmitAttempted(true); // Trigger field highlighting
-          toast.error(`Please fill required fields: ${validationErrors.join(', ')}`);
+          const validationMessage = validationErrors.join(', ');
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_PLEASEFILLREQUIREDFIELDS_2A8D8CDD',
+            fallbackText: 'Please correct the following fields: {{details}}',
+            type: 'error',
+            values: { details: validationMessage },
+          });
           setLoading(false); // Reset loading state
           return;
         }
@@ -385,8 +397,16 @@ const AddEntityForm = () => {
       
       // Show success message only if we actually saved something
       if (vendorSaveSuccess || tabsToSave.length > 0) {
-        const savedTabsList = tabsToSave.length > 0 ? tabsToSave.join(", ") : "Vendor Details";
-        toast.success(`Successfully saved: ${savedTabsList}`);
+        const savedTabsList = tabsToSave.length > 0
+          ? tabsToSave.map(translateTab).join(", ")
+          : translateTab("Vendor Details");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_SUCCESSFULLYSAVED_5ED2C725',
+          fallbackText: `${t('vendors.successfullySaved') || 'Successfully saved'}: {{savedTabs}}`,
+          type: 'success',
+          values: { savedTabs: savedTabsList },
+        });
       }
       
     } catch (error) {

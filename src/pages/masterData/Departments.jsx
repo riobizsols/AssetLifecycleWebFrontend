@@ -102,7 +102,12 @@ const Departments = () => {
     } catch (err) {
       console.error("Error creating department:", err);
       const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToCreateDepartment')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_DEPARTMENT_8A22D911',
+        fallbackText: `${t('departments.failedToCreateDepartment')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 
@@ -138,20 +143,20 @@ const Departments = () => {
       // Handle specific foreign key constraint errors
       if (err.response?.data?.error === "Cannot delete department") {
         const hint = err.response?.data?.hint || "";
-        toast.error(
-          `${err.response?.data?.message || t('departments.cannotDeleteDepartment')}. ${hint}`,
-          {
-            duration: 6000,
-            style: {
-              borderRadius: '8px',
-              background: '#7F1D1D',
-              color: '#fff',
-            },
-          }
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_CANNOT_DELETE_DEPARTMENT_WITH_REASON_18D8A14C',
+          fallbackText: `${err.response?.data?.message || t('departments.cannotDeleteDepartment')}. ${hint}`,
+          type: 'error',
+        });
       } else {
         const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-        toast.error(`${t('departments.failedToDeleteDepartment')}: ${errorMessage}`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_DELETE_DEPARTMENT_CFB60274',
+          fallbackText: `${t('departments.failedToDeleteDepartment')}: ${errorMessage}`,
+          type: 'error',
+        });
       }
     }
   };
@@ -190,7 +195,12 @@ const Departments = () => {
     } catch (err) {
       console.error("Error updating department:", err);
       const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToUpdateDepartment')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_DEPARTMENT_7D24C793',
+        fallbackText: `${t('departments.failedToUpdateDepartment')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 

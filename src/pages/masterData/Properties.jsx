@@ -113,7 +113,13 @@ const Properties = () => {
       });
 
       if (res.data && res.data.success) {
-        toast.success(`Property created successfully with ${validValues.length} list value(s)`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_PROPERTY_CREATED_WITH_LIST_VALUES_COUNT_7A8D7937',
+          fallbackText: 'Property created successfully with {{count}} list value(s)',
+          type: 'success',
+          values: { count: validValues.length },
+        });
         setPropertyName('');
         setListValues(['']);
         setShowCreateForm(false);
@@ -124,23 +130,9 @@ const Properties = () => {
       
       // Handle duplicate property error
       if (error.response?.data?.code === 'DUPLICATE_PROPERTY') {
-        toast.error(
-          error.response?.data?.message || 'A property with this name already exists',
-          {
-            duration: 6000,
-            style: {
-              background: '#FEF3C7',
-              color: '#92400E',
-              border: '2px solid #F59E0B',
-              padding: '16px',
-              fontSize: '14px',
-              maxWidth: '500px'
-            },
-            icon: '⚠️'
-          }
-        );
+        showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_ALREADY_EXISTS_CE58E9C6', fallbackText: 'A property with this name already exists', type: 'error' });
       } else {
-        toast.error(error.response?.data?.message || 'Failed to create property');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_CREATE_PROPERTY_AA95D244', fallbackText: 'Failed to create property', type: 'error' });
       }
     } finally {
       setIsSubmitting(false);
@@ -181,23 +173,9 @@ const Properties = () => {
       
       // Handle duplicate property error
       if (error.response?.data?.code === 'DUPLICATE_PROPERTY') {
-        toast.error(
-          error.response?.data?.message || 'A property with this name already exists',
-          {
-            duration: 6000,
-            style: {
-              background: '#FEF3C7',
-              color: '#92400E',
-              border: '2px solid #F59E0B',
-              padding: '16px',
-              fontSize: '14px',
-              maxWidth: '500px'
-            },
-            icon: '⚠️'
-          }
-        );
+        showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_ALREADY_EXISTS_CE58E9C6', fallbackText: 'A property with this name already exists', type: 'error' });
       } else {
-        toast.error(error.response?.data?.message || 'Failed to update property');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_PROPERTY_FF2A7E3B', fallbackText: 'Failed to update property', type: 'error' });
       }
     } finally {
       setIsSubmitting(false);
@@ -216,7 +194,7 @@ const Properties = () => {
       fetchProperties();
     } catch (error) {
       console.error('Error deleting property:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete property');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_PROPERTY_57B769A4', fallbackText: 'Failed to delete property', type: 'error' });
     }
   };
 
@@ -236,7 +214,7 @@ const Properties = () => {
       fetchProperties();
     } catch (error) {
       console.error('Error adding list value:', error);
-      toast.error(error.response?.data?.message || 'Failed to add list value');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_ADD_LIST_VALUE_00EA07EC', fallbackText: 'Failed to add list value', type: 'error' });
     }
   };
 
@@ -252,7 +230,7 @@ const Properties = () => {
       fetchProperties();
     } catch (error) {
       console.error('Error deleting list value:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete list value');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_LIST_VALUE_6971E732', fallbackText: 'Failed to delete list value', type: 'error' });
     }
   };
 

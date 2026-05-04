@@ -49,7 +49,12 @@ const AddBranch = () => {
       const errorMessage = error.response?.data?.message || 
                          error.response?.data?.error || 
                          "Failed to create branch";
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_BRANCH_7FF7841A',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }

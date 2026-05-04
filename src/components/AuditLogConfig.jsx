@@ -116,7 +116,7 @@ const AuditLogConfig = () => {
             ? { ...config, reporting_required: !currentValue }
             : config
         ));
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_REPORTINGREQUIREMENTUPDATED_0AF2833F', fallbackText: t('auditLogConfig.reportingRequirementUpdated'), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_REPORTINGREQUIREMENTUPDATED_0AF2833F', fallbackText: 'Reporting requirement updated successfully', type: 'success' });
       }
     } catch (error) {
       console.error('Error updating reporting requirement:', error);
@@ -140,7 +140,7 @@ const AuditLogConfig = () => {
             ? { ...config, enabled: !currentValue }
             : config
         ));
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_STATUSUPDATED_0F5F61A2', fallbackText: t('auditLogConfig.statusUpdated'), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_STATUSUPDATED_0F5F61A2', fallbackText: 'Status updated successfully', type: 'success' });
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -190,7 +190,7 @@ const AuditLogConfig = () => {
         ));
         setEditingEmail(null);
         setEmailValue('');
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_EMAILUPDATED_3D4AED26', fallbackText: t('auditLogConfig.emailUpdated'), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_EMAILUPDATED_3D4AED26', fallbackText: 'Email updated successfully', type: 'success' });
       }
     } catch (error) {
       console.error('Error updating email:', error);

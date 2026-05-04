@@ -173,7 +173,7 @@ const SerialNumberPrint = () => {
       }
     } catch (error) {
       console.error('Error fetching print queue:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SERIALNUMBERPRINT_FAILEDTOLOADPRINTQUEUE_10B9F0DC', fallbackText: t('serialNumberPrint.failedToLoadPrintQueue'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SERIALNUMBERPRINT_FAILEDTOLOADPRINTQUEUE_10B9F0DC', fallbackText: 'Failed to load print queue', type: 'error' });
       setPrintQueue([]);
       setFilteredQueue([]);
     } finally {
@@ -430,7 +430,13 @@ const SerialNumberPrint = () => {
       const template = selectedTemplate || { format: 'text-only', layout: {} };
       
       // Simulate print process
-      toast.loading('Generating PDF and sending to printer...', { duration: 3000 });
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_GENERATING_PDF_AND_SENDING_TO_PRINTER_1A6CC35F',
+        fallbackText: 'Generating PDF and sending to printer...',
+        type: 'loading',
+        toastOptions: { duration: 3000 },
+      });
       
       // Try to update status to Completed (continue even if this fails)
       const statusUpdated = await updateItemStatus(selectedItem.psnq_id, 'Completed');
@@ -444,7 +450,13 @@ const SerialNumberPrint = () => {
       // Simulate print delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      toast.success(`Print job sent to ${selectedPrinter.name} successfully!`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PRINT_JOB_SENT_SUCCESSFULLY_2FF611CD',
+        fallbackText: 'Print job sent to {{printerName}} successfully!',
+        type: 'success',
+        values: { printerName: selectedPrinter.name },
+      });
       handleBackToList();
       fetchPrintQueue();
     } catch (error) {
@@ -625,7 +637,13 @@ const SerialNumberPrint = () => {
         )
       );
       
-      toast.success(`Status updated to ${status}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_STATUS_UPDATED_TO_VALUE_777D8607',
+        fallbackText: 'Status updated to {{status}}',
+        type: 'success',
+        values: { status },
+      });
       return true; // Success
     } catch (error) {
       console.error('Error updating status:', error);

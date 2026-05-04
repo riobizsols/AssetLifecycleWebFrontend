@@ -168,49 +168,34 @@ const AddAssetType = () => {
     
     // Validate form
     if (!assetType.trim()) {
-      toast(
-        t('assetTypes.assetTypeNameRequired'),
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_NAME_REQUIRED_D9DE7807',
+        fallbackText: t('assetTypes.assetTypeNameRequired'),
+        type: 'error',
+      });
       return;
     }
 
     // Validate parent selection for child asset types
     if (parentChild === "child" && !selectedParentType) {
-      toast(
-        t('assetTypes.pleaseSelectParentAssetType'),
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PLEASE_SELECT_PARENT_ASSET_TYPE_8B4E9A91',
+        fallbackText: t('assetTypes.pleaseSelectParentAssetType'),
+        type: 'error',
+      });
       return;
     }
 
     // Validate maintenance fields when maintenance is required
     if (requireMaintenance && !selectedMaintenanceType) {
-      toast(
-        t('assetTypes.pleaseSelectMaintenanceType'),
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PLEASE_SELECT_MAINTENANCE_TYPE_745B6797',
+        fallbackText: t('assetTypes.pleaseSelectMaintenanceType'),
+        type: 'error',
+      });
       return;
     }
 
@@ -219,34 +204,24 @@ const AddAssetType = () => {
     if (checklistUploads.length > 0) {
       for (const upload of checklistUploads) {
         if (!upload.type || !upload.file) {
-          toast(
-            t('assetTypes.pleaseSelectDocumentType'),
-            {
-              icon: '❌',
-              style: {
-                borderRadius: '8px',
-                background: '#7F1D1D',
-                color: '#fff',
-              },
-            }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_PLEASE_SELECT_DOCUMENT_TYPE_9F0D10E7',
+            fallbackText: t('assetTypes.pleaseSelectDocumentType'),
+            type: 'error',
+          });
           return;
         }
         
         // Check if the selected document type requires a custom name
         const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
         if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !upload.docTypeName?.trim()) {
-          toast(
-            t('assetTypes.pleaseEnterCustomName', { type: selectedDocType.text }),
-            {
-              icon: '❌',
-              style: {
-                borderRadius: '8px',
-                background: '#7F1D1D',
-                color: '#fff',
-              },
-            }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_PLEASE_ENTER_CUSTOM_DOCUMENT_NAME_7667B432',
+            fallbackText: t('assetTypes.pleaseEnterCustomName', { type: selectedDocType.text }),
+            type: 'error',
+          });
           return;
         }
       }
@@ -291,17 +266,12 @@ const AddAssetType = () => {
         action: 'Asset Type Created'
       });
 
-      toast(
-        t('assetTypes.assetTypeCreatedSuccessfully', { name: assetType }),
-        {
-          icon: '✅',
-          style: {
-            borderRadius: '8px',
-            background: '#064E3B',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_CREATED_SUCCESSFULLY_FD64A758',
+        fallbackText: t('assetTypes.assetTypeCreatedSuccessfully', { name: assetType }),
+        type: 'success',
+      });
       // Upload checklist files if any are provided
       const newId = response.data?.asset_type?.asset_type_id;
       console.log('Asset type creation response:', response.data);
@@ -325,7 +295,12 @@ const AddAssetType = () => {
             } catch (upErr) {
               console.error('Checklist upload failed', upErr);
               console.error('Upload error details:', upErr.response?.data);
-                toast.error(`${t('assetTypes.failedToUploadFile', { fileName: upload.file.name })}: ${upErr.response?.data?.message || upErr.message}`);
+                showBackendTextToast({
+                  toast,
+                  tmdId: 'TMD_FAILED_TO_UPLOAD_FILE_FOR_ASSET_TYPE_AFC322A8',
+                  fallbackText: `${t('assetTypes.failedToUploadFile', { fileName: upload.file.name })}: ${upErr.response?.data?.message || upErr.message}`,
+                  type: 'error',
+                });
             }
           }
         }
@@ -340,18 +315,12 @@ const AddAssetType = () => {
       if (errorDetails) fullError += `\n${errorDetails}`;
       if (errorHint) fullError += `\n\nHint: ${errorHint}`;
 
-      toast(
-        fullError,
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-          duration: 5000,
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_ASSET_TYPE_477F730A',
+        fallbackText: fullError,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }

@@ -22,10 +22,28 @@ const CreateManualInspection = () => {
   const [loadingAssetTypeCounts, setLoadingAssetTypeCounts] = useState(false);
   const [assetTypeCounts, setAssetTypeCounts] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [creatingAssetId, setCreatingAssetId] = useState(null);
   const [scannedAssetId, setScannedAssetId] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const scannerRef = useRef(null);
+
+  const getCreateInspectionErrorConfig = (rawMessage) => {
+    const message = String(rawMessage || '').trim();
+    const normalized = message.toLowerCase();
+
+    if (normalized.includes('no inspection frequency configured for this asset type')) {
+      return {
+        tmdId: 'TMD_I18N_CREATEINSPECTION_NOINSPFREQUENCYCONFIGURED_E6D3B9F4',
+        fallbackText: 'No inspection frequency configured for this asset type. Configure it in Admin Settings first.',
+      };
+    }
+
+    return {
+      tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOCREATEINSPECTION_58DA658B',
+      fallbackText: message || 'Failed to create inspection',
+    };
+  };
 
   useEffect(() => {
     if (showScanner && !scannerRef.current) {
@@ -80,7 +98,7 @@ const CreateManualInspection = () => {
     }
     setScannedAssetId(decodedText);
     setShowScanner(false);
-    toast.success(t('assets.assetIdScannedSuccessfully') || 'Asset ID scanned successfully');
+    showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETIDSCANNEDSUCCESSFULLY_5A8AF033', fallbackText: 'Asset ID scanned successfully', type: 'success' });
   };
 
   const onScanError = () => {};
@@ -107,7 +125,7 @@ const CreateManualInspection = () => {
       setAssets(assetsList);
     } catch (err) {
       console.error('Failed to fetch assets:', err);
-      toast.error(t('assets.failedToFetchAssets') || 'Failed to fetch assets');
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETS_59117016', fallbackText: 'Failed to fetch assets', type: 'error' });
       setAssets([]);
     } finally {
       setLoadingAssets(false);
@@ -158,22 +176,24 @@ const CreateManualInspection = () => {
       });
       return;
     }
-    setSubmitting(true);
+    setCreatingAssetId(asset.asset_id);
     try {
       const res = await API.post('/inspection/create-manual', {
         asset_id: asset.asset_id,
       });
       if (res.data?.success) {
-        toast.success(t('inspectionView.inspectionCreatedSuccessfully') || 'Inspection created successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_INSPECTIONCREATEDSUCCESSFULLY_05A4A5E6', fallbackText: 'Inspection created successfully', type: 'success' });
         navigate('/inspection-view');
       } else {
-        toast.error(res.data?.message || (t('inspectionView.failedToCreateInspection') || 'Failed to create inspection'));
+        const errorConfig = getCreateInspectionErrorConfig(res.data?.message);
+        showBackendTextToast({ toast, tmdId: errorConfig.tmdId, fallbackText: errorConfig.fallbackText, type: 'error' });
       }
     } catch (err) {
       console.error('Failed to create inspection:', err);
-      toast.error(err.response?.data?.message || (t('inspectionView.failedToCreateInspection') || 'Failed to create inspection'));
+      const errorConfig = getCreateInspectionErrorConfig(err.response?.data?.message);
+      showBackendTextToast({ toast, tmdId: errorConfig.tmdId, fallbackText: errorConfig.fallbackText, type: 'error' });
     } finally {
-      setSubmitting(false);
+      setCreatingAssetId(null);
     }
   };
 
@@ -206,9 +226,9 @@ const CreateManualInspection = () => {
     } catch (err) {
       console.error('Failed to resolve scanned asset:', err);
       const msg = err.response?.status === 404
-        ? (t('assets.assetNotFoundOrNotAvailable') || 'Asset not found')
-        : (err.response?.data?.message || t('assets.assetNotFoundOrNotAvailable') || 'Asset not found');
-      toast.error(msg);
+        ? 'Asset not found'
+        : (err.response?.data?.message || 'Asset not found');
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETNOTFOUNDORNOTAVAILABLE_6BCC1309', fallbackText: msg, type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -391,10 +411,12 @@ const CreateManualInspection = () => {
                         <button
                           type="button"
                           onClick={() => createInspectionForAsset(asset)}
-                          disabled={submitting}
+                          disabled={Boolean(creatingAssetId)}
                           className="bg-[#0E2F4B] text-white px-3 py-1 rounded text-sm hover:bg-[#1a4971] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {submitting ? (t('common.creating') || 'Creating...') : (t('inspectionView.createManualInspection') || 'Trigger Inspection')}
+                          {creatingAssetId === asset.asset_id
+                            ? (t('common.creating') || 'Creating...')
+                            : (t('inspectionView.createManualInspection') || 'Trigger Inspection')}
                         </button>
                       </div>
                     </div>

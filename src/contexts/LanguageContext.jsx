@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/useAuthStore';
+import { clearTextMessageCache } from '../services/textMessagesService';
 
 const LanguageContext = createContext();
 
@@ -21,6 +22,7 @@ export const LanguageProvider = ({ children }) => {
       await i18n.changeLanguage(language);
       // Store the selected language in localStorage
       localStorage.setItem('selectedLanguage', language);
+      clearTextMessageCache();
     } catch (error) {
       console.error('Error changing language:', error);
     }
@@ -46,12 +48,14 @@ export const LanguageProvider = ({ children }) => {
         console.log('Setting language from user profile:', userLanguage);
         i18n.changeLanguage(userLanguage);
         localStorage.setItem('selectedLanguage', userLanguage);
+        clearTextMessageCache();
       }
     } else {
       // User not logged in, check localStorage or browser default
       const savedLanguage = localStorage.getItem('selectedLanguage');
       if (savedLanguage && savedLanguage !== i18n.language) {
         i18n.changeLanguage(savedLanguage);
+        clearTextMessageCache();
       }
     }
   }, [i18n, user?.language_code]);

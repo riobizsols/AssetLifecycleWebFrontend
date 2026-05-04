@@ -236,7 +236,7 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       }
       
       if (!vendorId || !orgId) {
-        toast.error(t('vendors.vendorMustBeCreatedFirst') || 'Vendor must be created first.');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORMUSTBECREATEDFIRST_66C0316E', fallbackText: t('vendors.vendorMustBeCreatedFirst') || 'Vendor must be created first.', type: 'error' });
         return;
       }
 
@@ -246,7 +246,7 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
         productsFromStorage = JSON.parse(sessionStorage.getItem('products') || '[]');
       } catch (parseErr) {
         console.error('Error parsing products from sessionStorage:', parseErr);
-        toast.error(t('vendors.errorReadingProductsFromStorage') || 'Error reading products from local storage.');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORREADINGPRODUCTSFROMSTORAGE_42DE5425', fallbackText: t('vendors.errorReadingProductsFromStorage') || 'Error reading products from local storage.', type: 'error' });
         return;
       }
       if (!Array.isArray(productsFromStorage)) {
@@ -269,17 +269,17 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
           if (match && match.prod_serv_id) prodServIds.push(match.prod_serv_id);
           else {
             console.warn('No matching prod_serv_id found for product:', p);
-            toast.error(t('vendors.noMatchingProductFound', { product: `${p.assetType}, ${p.brand}, ${p.model}` }) || `No matching product found in master list for: ${p.assetType}, ${p.brand}, ${p.model}`);
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_NOMATCHINGPRODUCTFOUND_7011AB88', fallbackText: t('vendors.noMatchingProductFound', { product: `${p.assetType}, ${p.brand}, ${p.model}` }) || `No matching product found in master list for: ${p.assetType}, ${p.brand}, ${p.model}`, type: 'error' });
           }
         } catch (apiErr) {
           console.error('Error fetching /prodserv for product:', p, apiErr);
-          toast.error(t('vendors.errorLookingUpProduct') || 'Error looking up product in master list.');
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORLOOKINGUPPRODUCT_50502E89', fallbackText: t('vendors.errorLookingUpProduct') || 'Error looking up product in master list.', type: 'error' });
         }
       }
       prodServIds = [...new Set(prodServIds)];
       
       if (!prodServIds.length) {
-        toast.error(t('vendors.noValidProductsToLink') || 'No valid products to link');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_NOVALIDPRODUCTSTOLINK_30709AEA', fallbackText: t('vendors.noValidProductsToLink') || 'No valid products to link', type: 'error' });
         return;
       }
 
@@ -302,7 +302,7 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             console.log('Product already linked to vendor:', prod_serv_id);
           } else {
             const errorMessage = postErr.response?.data?.message || postErr.response?.data?.error || "Error linking product";
-            toast.error(errorMessage);
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORLINKINGPRODUCT_0A01DDC7', fallbackText: errorMessage, type: 'error' });
           }
         }
       }
@@ -311,9 +311,21 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       const totalProcessed = successCount + duplicateCount;
       if (totalProcessed === prodServIds.length) {
         if (duplicateCount > 0 && successCount > 0) {
-          toast.success(`${successCount} products linked successfully, ${duplicateCount} were already linked`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_PRODUCTSLINKEDSUCCESSFULLYWITHDUP_7F7C7BC8',
+            fallbackText: '{{successCount}} products linked successfully, {{duplicateCount}} were already linked',
+            type: 'success',
+            values: { successCount, duplicateCount },
+          });
         } else if (duplicateCount > 0 && successCount === 0) {
-          toast.success(`All ${duplicateCount} products were already linked to this vendor`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_ALLPRODUCTSALREADYLINKED_5FB0807B',
+            fallbackText: 'All {{duplicateCount}} products were already linked to this vendor',
+            type: 'success',
+            values: { duplicateCount },
+          });
         } else {
           showBackendTextToast({ toast, tmdId: 'TMD_ALL_PRODUCTS_LINKED_SUCCESSFULLY_4723C1D1', fallbackText: 'All products linked successfully', type: 'success' });
         }
@@ -323,15 +335,21 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
         // Mark tab as saved
         if (onTabSaved) onTabSaved('Product Details');
       } else if (totalProcessed > 0) {
-        toast.success(`${totalProcessed} out of ${prodServIds.length} products processed successfully`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_PRODUCTSPROCESSEDSUCCESSFULLY_3B13C421',
+          fallbackText: '{{totalProcessed}} out of {{totalCount}} products processed successfully',
+          type: 'success',
+          values: { totalProcessed, totalCount: prodServIds.length },
+        });
         // Mark tab as saved even if partial success
         if (onTabSaved) onTabSaved('Product Details');
       } else {
-        toast.error(t('vendors.failedToLinkAnyProducts') || 'Failed to link any products');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOLINKANYPRODUCTS_293A70FD', fallbackText: t('vendors.failedToLinkAnyProducts') || 'Failed to link any products', type: 'error' });
       }
     } catch (err) {
       console.error('Unexpected error in handleDone:', err);
-      toast.error(t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred');
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_UNEXPECTEDERROROCCURRED_39B6A99A', fallbackText: t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred', type: 'error' });
     } finally {
       setIsSaving(false);
     }

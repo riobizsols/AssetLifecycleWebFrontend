@@ -121,11 +121,14 @@ const BreakdownSelection2 = () => {
       const status = err?.response?.status;
       const data = err?.response?.data;
       console.error("Failed to fetch my assets", { status, data, err });
-      toast.error(
-        status
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_FETCH_MY_ASSETS_F23766D2',
+        fallbackText: status
           ? `Failed to fetch my assets (HTTP ${status})`
-          : "Failed to fetch my assets"
-      );
+          : "Failed to fetch my assets",
+        type: 'error',
+      });
       setMyAssets([]);
     }
   };

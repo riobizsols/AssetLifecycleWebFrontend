@@ -244,16 +244,20 @@ const CreateJobRoleNavigation = () => {
       // Bulk create all navigation entries in a single transaction
       const response = await API.post("/job-role-navigation/bulk", { entries });
 
-      toast.success(
-        response.data.message ||
-          `Successfully created ${entries.length} navigation ${entries.length === 1 ? "entry" : "entries"}`,
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_NAVIGATION_ENTRIES_CREATED_SUCCESSFULLY_725B0E48',
+        fallbackText: 'Successfully created {{count}} navigation {{entryLabel}}',
+        type: 'success',
+        values: {
+          count: entries.length,
+          entryLabel: entries.length === 1 ? "entry" : "entries",
+        },
+      });
       navigate(getBackRoute(), { state: getBackState() });
     } catch (error) {
       console.error("Error creating navigation entries:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to create navigation entries",
-      );
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_CREATE_NAVIGATION_ENTRIES_00DDF2FA', fallbackText: 'Failed to create navigation entries', type: 'error' });
     }
   };
 
@@ -280,7 +284,7 @@ const CreateJobRoleNavigation = () => {
       navigate(getBackRoute(), { state: getBackState() });
     } catch (error) {
       console.error("Error saving navigation:", error);
-      toast.error(error.response?.data?.message || "Failed to save navigation");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_NAVIGATION_2F25C877', fallbackText: 'Failed to save navigation', type: 'error' });
     }
   };
 

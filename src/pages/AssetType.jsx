@@ -238,29 +238,19 @@ const AssetType = () => {
         });
 
         if (successful.length === 1) {
-          toast(
-            t('assetTypes.assetTypeDeletedSuccessfully', { name: successful[0].name }),
-            {
-              icon: '✅',
-              style: {
-                borderRadius: '8px',
-                background: '#064E3B',
-                color: '#fff',
-              },
-            }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_ASSET_TYPE_DELETED_SUCCESSFULLY_E5DB3153',
+            fallbackText: t('assetTypes.assetTypeDeletedSuccessfully', { name: successful[0].name }),
+            type: 'success',
+          });
         } else {
-          toast(
-            t('assetTypes.assetTypesDeletedSuccessfully', { count: successful.length }),
-            {
-              icon: '✅',
-              style: {
-                borderRadius: '8px',
-                background: '#064E3B',
-                color: '#fff',
-              },
-            }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_ASSET_TYPES_DELETED_SUCCESSFULLY_6735E66A',
+            fallbackText: t('assetTypes.assetTypesDeletedSuccessfully', { count: successful.length }),
+            type: 'success',
+          });
         }
       }
 
@@ -271,18 +261,12 @@ const AssetType = () => {
           if (failure.details) errorMessage += `\n${failure.details}`;
           if (failure.hint) errorMessage += `\n\nHint: ${failure.hint}`;
 
-          toast(
-            errorMessage,
-            {
-              icon: '❌',
-              style: {
-                borderRadius: '8px',
-                background: '#7F1D1D',
-                color: '#fff',
-              },
-              duration: 5000,
-            }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_FAILED_TO_DELETE_ASSET_TYPE_WITH_REASON_CE62C24A',
+            fallbackText: errorMessage,
+            type: 'error',
+          });
         });
       }
 
@@ -324,33 +308,23 @@ const AssetType = () => {
           action: 'Asset Types Data Downloaded'
         });
         
-        toast(
-          t('assetTypes.assetTypesExportedSuccessfully'),
-          {
-            icon: '✅',
-            style: {
-              borderRadius: '8px',
-              background: '#064E3B',
-              color: '#fff',
-            },
-          }
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSET_TYPES_EXPORTED_SUCCESSFULLY_3298BC6A',
+          fallbackText: t('assetTypes.assetTypesExportedSuccessfully'),
+          type: 'success',
+        });
       } else {
         throw new Error(t('assetTypes.exportFailed'));
       }
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast(
-        t('assetTypes.failedToExportAssetTypes'),
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_EXPORT_ASSET_TYPES_3D186FA2',
+        fallbackText: t('assetTypes.failedToExportAssetTypes'),
+        type: 'error',
+      });
     }
   };
 

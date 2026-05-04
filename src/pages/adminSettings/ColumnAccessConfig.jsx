@@ -136,9 +136,21 @@ const ColumnAccessConfig = () => {
           
           if (existingConfig) {
             await API.delete(`/column-access-config/${existingConfig.column_access_id}`);
-            toast.success(`Access level updated to AUTH (full access) for ${fieldName}`);
+            showBackendTextToast({
+              toast,
+              tmdId: 'TMD_ACCESS_LEVEL_UPDATED_TO_AUTH_FOR_FIELD_2CC6C40C',
+              fallbackText: 'Access level updated to AUTH (full access) for {{fieldName}}',
+              type: 'success',
+              values: { fieldName },
+            });
           } else {
-            toast.success(`Access level is AUTH (full access) for ${fieldName}`);
+            showBackendTextToast({
+              toast,
+              tmdId: 'TMD_ACCESS_LEVEL_IS_AUTH_FOR_FIELD_C185D7C2',
+              fallbackText: 'Access level is AUTH (full access) for {{fieldName}}',
+              type: 'success',
+              values: { fieldName },
+            });
           }
         }
       } else {
@@ -153,7 +165,13 @@ const ColumnAccessConfig = () => {
         const response = await API.post('/column-access-config', configData);
         
         if (response.data.success) {
-          toast.success(`Access level updated to ${accessLevel} for ${fieldName}`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_ACCESS_LEVEL_UPDATED_FOR_FIELD_C94523A4',
+            fallbackText: 'Access level updated to {{accessLevel}} for {{fieldName}}',
+            type: 'success',
+            values: { accessLevel, fieldName },
+          });
         } else {
           // Revert on error
           setConfigs((prev) => ({
@@ -170,7 +188,7 @@ const ColumnAccessConfig = () => {
         ...prev,
         [fieldName]: previousAccess,
       }));
-      toast.error(error.response?.data?.message || 'Failed to update access level');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_ACCESS_LEVEL_2FEAF243', fallbackText: 'Failed to update access level', type: 'error' });
     }
   };
 
@@ -204,14 +222,20 @@ const ColumnAccessConfig = () => {
       });
 
       if (response.data.success) {
-        toast.success(`Successfully updated ${configsArray.length} column access configuration(s)`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_UPDATED_COLUMN_ACCESS_CONFIG_COUNT_0DA9FE77',
+          fallbackText: 'Successfully updated {{count}} column access configuration(s)',
+          type: 'success',
+          values: { count: configsArray.length },
+        });
         await loadConfigurations();
       } else {
         throw new Error(response.data.message || 'Failed to save');
       }
     } catch (error) {
       console.error('Error saving configurations:', error);
-      toast.error(error.response?.data?.message || 'Failed to save configurations');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_CONFIGURATIONS_E7D8CCF2', fallbackText: 'Failed to save configurations', type: 'error' });
     } finally {
       setSaving(false);
     }

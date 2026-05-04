@@ -163,25 +163,22 @@ const ScrapSales = () => {
       }
     } catch (error) {
       console.error('Error deleting scrap sale:', error);
-      toast.error(error.response?.data?.message || t('scrapSales.errorDeletingScrapSale'), {
-        style: {
-          borderRadius: '10px',
-          background: '#EF4444',
-          color: '#fff',
-        },
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_SCRAPSALES_ERRORDELETINGSCRAPSALE_7E3B6D31',
+        fallbackText: error.response?.data?.message || t('scrapSales.errorDeletingScrapSale'),
+        type: 'error',
       });
     }
   };
 
   const handleDeleteSelected = async () => {
     if (!selectedRows || selectedRows.length === 0) {
-      toast(t('scrapSales.pleaseSelectScrapSalesToDelete'), {
-        icon: '⚠️',
-        style: {
-          borderRadius: '10px',
-          background: '#F59E0B',
-          color: '#fff',
-        },
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_SCRAPSALES_PLEASESELECTSCRAPSALESTODELETE_1E4D8AAF',
+        fallbackText: t('scrapSales.pleaseSelectScrapSalesToDelete'),
+        type: 'error',
       });
       return false; // Return false to keep modal open
     }
@@ -218,24 +215,22 @@ const ScrapSales = () => {
       }
       
       if (failed > 0) {
-        toast.error(t('scrapSales.errorDeletingScrapSales', { count: failed }), {
-          style: {
-            borderRadius: '10px',
-            background: '#EF4444',
-            color: '#fff',
-          },
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_SCRAPSALES_ERRORDELETINGSCRAPSALESCOUNT_65224FA7',
+          fallbackText: t('scrapSales.errorDeletingScrapSales', { count: failed }),
+          type: 'error',
         });
       }
       
       return true; // Return true to close modal
     } catch (error) {
       console.error('Error deleting scrap sales:', error);
-      toast.error(t('scrapSales.errorDeletingScrapSales'), {
-        style: {
-          borderRadius: '10px',
-          background: '#EF4444',
-          color: '#fff',
-        },
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_SCRAPSALES_ERRORDELETINGSCRAPSALES_31497D1F',
+        fallbackText: t('scrapSales.errorDeletingScrapSales'),
+        type: 'error',
       });
       return false; // Return false to keep modal open
     }

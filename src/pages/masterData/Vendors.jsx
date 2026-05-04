@@ -205,10 +205,16 @@ const Vendors = () => {
       // If there are constraint violation details, show them
       if (error.response?.data?.details) {
         error.response.data.details.forEach(detail => {
-          toast.error(detail, { duration: 5000 });
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_VENDORS_DELETE_CONSTRAINT_DETAIL_821E9F9F',
+            fallbackText: detail,
+            type: 'error',
+            toastOptions: { duration: 5000 },
+          });
         });
       } else {
-        toast.error(errorMessage);
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTODELETEVENDORS_0A3D2E6C', fallbackText: errorMessage, type: 'error' });
       }
       return false; // Return false to indicate failed deletion
     }
@@ -285,7 +291,7 @@ const Vendors = () => {
     } catch (error) {
       console.error("Error updating vendor:", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t('vendors.failedToUpdateVendor');
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOUPDATEVENDOR_B36D1204', fallbackText: errorMessage, type: 'error' });
     }
   };
 
@@ -301,13 +307,23 @@ const Vendors = () => {
           action: 'Vendors Data Downloaded'
         });
         
-        toast(t('vendors.vendorsExportedSuccessfully'), { icon: '✅' });
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_VENDORSEXPORTEDSUCCESSFULLY_61CDBE54',
+          fallbackText: t('vendors.vendorsExportedSuccessfully'),
+          type: 'success',
+        });
       } else {
         throw new Error(t('vendors.exportFailed'));
       }
     } catch (error) {
       console.error('Error downloading vendors:', error);
-      toast(t('vendors.failedToExportVendors'), { icon: '❌' });
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_FAILEDTOEXPORTVENDORS_7C20AB9E',
+        fallbackText: t('vendors.failedToExportVendors'),
+        type: 'error',
+      });
     }
   };
 

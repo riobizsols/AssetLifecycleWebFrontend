@@ -145,33 +145,39 @@ const VendorRenewalApproval = () => {
       );
 
       if (success) {
-        toast(
-          t('vendorRenewalApproval.approvalsExportedSuccessfully'),
-          {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORRENEWALAPPROVAL_APPROVALSEXPORTEDSUCCESSFULLY_4A9E2D91',
+          fallbackText: 'Vendor renewal approvals exported successfully',
+          type: 'success',
+          toastOptions: {
             icon: '✅',
             style: {
               borderRadius: '8px',
               background: '#064E3B',
               color: '#fff',
             },
-          }
-        );
+          },
+        });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast(
-        t('vendorRenewalApproval.failedToExportApprovals'),
-        {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORRENEWALAPPROVAL_FAILEDTOEXPORTAPPROVALS_79CC438E',
+        fallbackText: 'Failed to export vendor renewal approvals',
+        type: 'error',
+        toastOptions: {
           icon: '❌',
           style: {
             borderRadius: '8px',
             background: '#7F1D1D',
             color: '#fff',
           },
-        }
-      );
+        },
+      });
     }
   };
 

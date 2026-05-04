@@ -270,7 +270,12 @@ export default function MaintSupervisorApproval() {
           maint_notes: res.data.data.maint_notes || ""
         });
       } else {
-        toast.error(res.data.message || t('maintenanceSupervisor.failedToFetchMaintenanceData'));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHMAINTENANCED_556133F6',
+          fallbackText: res.data.message || t('maintenanceSupervisor.failedToFetchMaintenanceData'),
+          type: 'error',
+        });
       }
     } catch (err) {
       console.error("Failed to fetch maintenance data:", err);
@@ -551,7 +556,12 @@ export default function MaintSupervisorApproval() {
         rating: ratingToUse || 'not set',
         response: response.data
       });
-      toast.success(`SLA records saved successfully (${recordsToSave.length} SLA${recordsToSave.length > 1 ? 's' : ''})`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SLA_RECORDS_SAVED_SUCCESSFULLY_B65BD350',
+        fallbackText: `SLA records saved successfully (${recordsToSave.length} SLA${recordsToSave.length > 1 ? 's' : ''})`,
+        type: 'success',
+      });
     } catch (err) {
       console.error("❌ Failed to auto-save SLA records to tblvendorslarecs:", err);
       console.error("Error details:", err.response?.data);
@@ -971,7 +981,12 @@ export default function MaintSupervisorApproval() {
     } catch (err) {
       console.error(`Failed to ${action} document:`, err);
       console.error('Error response:', err.response?.data);
-      toast.error(err.response?.data?.message || t('maintenanceSupervisor.failedToActionDocument', { action }));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOACTIONDOCUMENT_24E03157',
+        fallbackText: err.response?.data?.message || t('maintenanceSupervisor.failedToActionDocument', { action }),
+        type: 'error',
+      });
     }
   };
 
@@ -1296,7 +1311,12 @@ export default function MaintSupervisorApproval() {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_MAINTENANCESCHEDULEUPDATE_396CC527', fallbackText: t('maintenanceSupervisor.maintenanceScheduleUpdatedSuccessfully'), type: 'success' });
         navigate("/maintenance-list");
       } else {
-        toast.error(res.data.message || t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPDATEMAINTENANCE_1A285ADA',
+          fallbackText: res.data.message || t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'),
+          type: 'error',
+        });
       }
     } catch (err) {
       console.error("Failed to update maintenance schedule:", err);

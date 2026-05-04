@@ -79,7 +79,7 @@ const DepartmentsAsset = () => {
   const handleAdd = async () => {
     setSubmitAttempted(true);
     if (!selectedDeptId || !selectedAssetTypeId) {
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDASSETT_0FEC304B', fallbackText: t('departments.pleaseSelectBothDepartmentAndAssetType'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDASSETT_0FEC304B', fallbackText: 'Please select both department and asset type', type: 'error' });
       return;
     }
     
@@ -105,11 +105,16 @@ const DepartmentsAsset = () => {
       setSelectedAssetTypeId("");
       setSubmitAttempted(false); // Reset submit attempt flag to remove red border
       fetchDeptAssets();
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGADDEDSUCCESSFULLY_0D092680', fallbackText: t('departments.assetMappingAddedSuccessfully', { assetTypeName: selectedAssetTypeName, deptName: selectedDeptName }), type: 'success' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGADDEDSUCCESSFULLY_0D092680', fallbackText: 'Asset mapping {{assetTypeName}} added successfully to {{deptName}}', type: 'success', values: { assetTypeName: selectedAssetTypeName, deptName: selectedDeptName } });
     } catch (err) {
       console.error("Failed to add asset", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToAddAsset')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_ADD_DEPARTMENT_ASSET_MAPPING_E18A82E9',
+        fallbackText: `${t('departments.failedToAddAsset')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 
@@ -146,11 +151,16 @@ const DepartmentsAsset = () => {
       
       setShowDeleteModal(false);
       fetchDeptAssets();
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGREMOVEDSUCCESSFULLY_2C0043A0', fallbackText: t('departments.assetMappingRemovedSuccessfully'), type: 'success' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGREMOVEDSUCCESSFULLY_2C0043A0', fallbackText: 'Asset mapping removed successfully', type: 'success' });
     } catch (err) {
       console.error("Failed to delete", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToRemoveAssetMapping')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_REMOVE_DEPARTMENT_ASSET_MAPPING_49A0783C',
+        fallbackText: `${t('departments.failedToRemoveAssetMapping')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 

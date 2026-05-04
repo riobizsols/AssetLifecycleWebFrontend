@@ -159,7 +159,12 @@ const MaintenanceSupervisor = () => {
       return false;
     } catch (err) {
       console.error("Failed to delete maintenance records", err);
-      toast.error(err.response?.data?.message || t('maintenanceSupervisor.failedToDeleteMaintenanceRecords'));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTODELETEMAINTENANCEREC_6CE8EF86',
+        fallbackText: err.response?.data?.message || t('maintenanceSupervisor.failedToDeleteMaintenanceRecords'),
+        type: 'error',
+      });
       return false;
     }
   };
@@ -170,7 +175,12 @@ const MaintenanceSupervisor = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_DELETENOTIMPLEMENTED_05C8C6C9', fallbackText: t('maintenanceSupervisor.deleteNotImplemented'), type: 'error' });
     } catch (err) {
       console.error("Failed to delete maintenance record", err);
-      toast.error(err.response?.data?.message || t('maintenanceSupervisor.failedToDeleteMaintenanceRecord'));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTODELETEMAINTENANCEREC_5CF333CA',
+        fallbackText: err.response?.data?.message || t('maintenanceSupervisor.failedToDeleteMaintenanceRecord'),
+        type: 'error',
+      });
     }
   };
 
@@ -202,33 +212,23 @@ const MaintenanceSupervisor = () => {
       );
 
       if (success) {
-        toast(
-          t('maintenanceSupervisor.maintenanceSchedulesExportedSuccessfully'),
-          {
-            icon: '✅',
-            style: {
-              borderRadius: '8px',
-              background: '#064E3B',
-              color: '#fff',
-            },
-          }
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_MAINTENANCESCHEDULESEXPORT_7B3A2A1B',
+          fallbackText: t('maintenanceSupervisor.maintenanceSchedulesExportedSuccessfully'),
+          type: 'success',
+        });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast(
-        t('maintenanceSupervisor.failedToExportMaintenanceSchedules'),
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOEXPORTMAINTENANCESCH_7B11F0DE',
+        fallbackText: t('maintenanceSupervisor.failedToExportMaintenanceSchedules'),
+        type: 'error',
+      });
     }
   };
 

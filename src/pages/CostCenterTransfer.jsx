@@ -361,7 +361,12 @@ const CostCenterTransfer = () => {
 
       const response = await API.post("/cost-center-transfer/transfer", payload);
 
-      toast.success(response.data.message || t('costCenterTransfer.assetTransferred'));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TRANSFERRED_SUCCESSFULLY_F35D7610',
+        fallbackText: response.data.message || t('costCenterTransfer.assetTransferred'),
+        type: 'success',
+      });
 
       // Reset form
       setSelectedAssetType("");
@@ -374,7 +379,12 @@ const CostCenterTransfer = () => {
     } catch (error) {
       console.error("Error transferring asset:", error);
       const errorMessage = error.response?.data?.error || "Failed to transfer asset";
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_TRANSFER_ASSET_B5F699B8',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -430,7 +440,12 @@ const CostCenterTransfer = () => {
     } catch (error) {
       console.error("Failed to process scanned asset:", error);
       const errorMessage = error.response?.data?.message || t('costCenterTransfer.failedToProcessAsset');
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_PROCESS_SCANNED_ASSET_4FB5D632',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }

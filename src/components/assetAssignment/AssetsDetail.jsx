@@ -113,7 +113,12 @@ const AssetsDetail = () => {
     } catch (err) {
       console.error('[AssetsDetail] Failed to assign asset:', err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'An error occurred';
-      toast.error(`${t('assetsDetail.failedToAssignAsset')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_ASSIGN_ASSET_A21E866D',
+        fallbackText: `${t('assetsDetail.failedToAssignAsset')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 

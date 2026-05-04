@@ -881,7 +881,12 @@ const AddAssetForm = ({ userRole }) => {
         propId: property.prop_id
       });
       
-      toast.success(`Added "${value}" to ${property.property}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PROPERTY_VALUE_ADDED_SUCCESSFULLY_9884D3A5',
+        fallbackText: `Added "${value}" to ${property.property}`,
+        type: 'success',
+      });
     } catch (error) {
       console.error('Error adding custom property value:', error);
     }
@@ -913,12 +918,22 @@ const AddAssetForm = ({ userRole }) => {
         
         // Note: Serial number generation logging removed as requested
       } else {
-        toast.error(response.data.message || t('assets.failedToGenerateSerialNumber'));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_GENERATE_SERIAL_NUMBER_DF521603',
+          fallbackText: response.data.message || t('assets.failedToGenerateSerialNumber'),
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error generating serial number:', error);
       const errorMessage = error.response?.data?.message || t('assets.failedToGenerateSerialNumber');
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_GENERATE_SERIAL_NUMBER_DF521603',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     } finally {
       setIsGeneratingSerial(false);
     }
@@ -1041,12 +1056,27 @@ const AddAssetForm = ({ userRole }) => {
           type: 'error',
         });
       } else if (errors.expiryDateBeforePurchase) {
-        toast.error(t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_EXPIRY_DATE_CANNOT_BE_BEFORE_PURCHASE_DATE_0F3C5CE6',
+          fallbackText: t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date',
+          type: 'error',
+        });
       } else if (errors.vendorRequired) {
-        toast.error(t('assets.vendorDetailsAreMissing') || 'Vendor details are missing');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_VENDOR_DETAILS_ARE_MISSING_6942E5A4',
+          fallbackText: t('assets.vendorDetailsAreMissing') || 'Vendor details are missing',
+          type: 'error',
+        });
         setCollapsedSections(prev => ({ ...prev, vendor: false }));
       } else {
-        toast.error(t('assets.pleaseFillAllRequiredFields'));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_PLEASE_FILL_ALL_REQUIRED_FIELDS_4AAD1F06',
+          fallbackText: t('assets.pleaseFillAllRequiredFields'),
+          type: 'error',
+        });
       }
       return;
     }
@@ -1178,7 +1208,12 @@ const AddAssetForm = ({ userRole }) => {
             // Check if the selected document type requires a custom name (like OT - Others)
             const selectedDocType = documentTypes.find(dt => dt.id === a.type);
             if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !a.docTypeName?.trim()) {
-              toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+              showBackendTextToast({
+                toast,
+                tmdId: 'TMD_ENTER_CUSTOM_DOCUMENT_NAME_B9E20D65',
+                fallbackText: `Enter custom name for ${selectedDocType.text} documents`,
+                type: 'error',
+              });
               return;
             }
           }
@@ -1213,9 +1248,19 @@ const AddAssetForm = ({ userRole }) => {
 
             // Show upload results
             if (successCount > 0 && failCount === 0) {
-              toast.success(`Asset and ${successCount} document(s) saved successfully!`);
+              showBackendTextToast({
+                toast,
+                tmdId: 'TMD_ASSET_AND_DOCUMENTS_SAVED_SUCCESSFULLY_7A22D248',
+                fallbackText: `Asset and ${successCount} document(s) saved successfully!`,
+                type: 'success',
+              });
             } else if (successCount > 0 && failCount > 0) {
-              toast.success(`Asset saved and ${successCount} document(s) uploaded successfully. ${failCount} document(s) failed to upload.`);
+              showBackendTextToast({
+                toast,
+                tmdId: 'TMD_ASSET_SAVED_WITH_PARTIAL_UPLOAD_FAILURE_3C486617',
+                fallbackText: `Asset saved and ${successCount} document(s) uploaded successfully. ${failCount} document(s) failed to upload.`,
+                type: 'success',
+              });
             } else {
               showBackendTextToast({ toast, tmdId: 'TMD_ASSET_SAVED_SUCCESSFULLY_BUT_DOCUMENT_UPLOADS_FAILED_42AB8EDF', fallbackText: 'Asset saved successfully, but document uploads failed.', type: 'success' });
             }
@@ -1244,18 +1289,38 @@ const AddAssetForm = ({ userRole }) => {
       if (!hasPurchaseVendorSelection && looksLikeGenericInternalError) {
         setValidationErrors(prev => ({ ...prev, vendorRequired: true }));
         setCollapsedSections(prev => ({ ...prev, vendor: false }));
-        toast.error(t('assets.vendorDetailsAreMissing') || 'Vendor details are missing');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_VENDOR_DETAILS_ARE_MISSING_6942E5A4',
+          fallbackText: t('assets.vendorDetailsAreMissing') || 'Vendor details are missing',
+          type: 'error',
+        });
       } else if (backendError.toLowerCase().includes('service vendor is required')) {
         setValidationErrors(prev => ({ ...prev, vendorRequired: true }));
         setCollapsedSections(prev => ({ ...prev, vendor: false }));
-        toast.error(t('assets.vendorDetailsAreMissing') || 'Vendor details are missing');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_VENDOR_DETAILS_ARE_MISSING_6942E5A4',
+          fallbackText: t('assets.vendorDetailsAreMissing') || 'Vendor details are missing',
+          type: 'error',
+        });
       } else if (backendError.toLowerCase().includes('purchase vendor is required')) {
         setValidationErrors(prev => ({ ...prev, vendorRequired: true }));
         setCollapsedSections(prev => ({ ...prev, vendor: false }));
-        toast.error(t('assets.vendorDetailsAreMissing') || 'Vendor details are missing');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_VENDOR_DETAILS_ARE_MISSING_6942E5A4',
+          fallbackText: t('assets.vendorDetailsAreMissing') || 'Vendor details are missing',
+          type: 'error',
+        });
       } else {
         const errorMessage = backendError || 'Failed to create asset';
-        toast.error(errorMessage);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_CREATE_ASSET_67770EC0',
+          fallbackText: errorMessage,
+          type: 'error',
+        });
       }
     } finally {
       setIsSubmitting(false);

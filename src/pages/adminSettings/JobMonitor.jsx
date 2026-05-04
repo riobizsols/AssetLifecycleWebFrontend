@@ -70,8 +70,7 @@ const JobMonitor = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_JOB_TRIGGERED_SUCCESSFULLY_6107414D', fallbackText: 'Job triggered successfully', type: 'success' });
       await fetchHistory(job.job_id);
     } catch (err) {
-      const msg = err.response?.data?.message || "Failed to run job";
-      toast.error(msg);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_RUN_JOB_5C94B4CD', fallbackText: 'Failed to run job', type: 'error' });
       await fetchHistory(job.job_id);
     } finally {
       setRunningJobId(null);
@@ -102,7 +101,7 @@ const JobMonitor = () => {
       await fetchJobs();
     } catch (err) {
       console.error("Failed to update job", err);
-      toast.error(err.response?.data?.message || "Failed to update job");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_JOB_028368A8', fallbackText: 'Failed to update job', type: 'error' });
     }
   };
 
@@ -120,11 +119,17 @@ const JobMonitor = () => {
     try {
       const res = await API.post("/job-monitor/warranty-notifications/cleanup", { limit: 100 });
       const deletedCount = res?.data?.data?.deletedCount ?? 0;
-      toast.success(`Deleted oldest ${deletedCount} warranty notifications`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_DELETED_OLDEST_WARRANTY_NOTIFICATIONS_8BF77128',
+        fallbackText: 'Deleted oldest {{count}} warranty notifications',
+        type: 'success',
+        values: { count: deletedCount },
+      });
       await fetchJobs();
       if (selectedJobId) await fetchHistory(selectedJobId);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to clean warranty notifications");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_CLEAN_WARRANTY_NOTIFICATIONS_4EEC7110', fallbackText: 'Failed to clean warranty notifications', type: 'error' });
     } finally {
       setIsCleaningWarranty(false);
     }

@@ -107,7 +107,12 @@ const InspectionApprovalDetail = () => {
     try {
       const res = await API.get(`/inspection-approval/detail/${id}`);
       if (!res.data?.success) {
-        toast.error(res.data?.message || "Failed to load inspection approval");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_LOAD_INSPECTION_APPROVAL_FAAEA185',
+          fallbackText: res.data?.message || "Failed to load inspection approval",
+          type: 'error',
+        });
         setDetail(null);
         return;
       }
@@ -361,7 +366,7 @@ const InspectionApprovalDetail = () => {
           console.error('Error fetching vendor after update:', e);
         }
       } else {
-        toast.error(resp.data?.message || 'Failed to update vendor');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_VENDOR_3F2744FD', fallbackText: resp.data?.message || 'Failed to update vendor', type: 'error' });
       }
     } catch (e) {
       console.error('Error saving inspection vendor change:', e);
@@ -390,7 +395,7 @@ const InspectionApprovalDetail = () => {
           console.error('Error fetching technician after update:', e);
         }
       } else {
-        toast.error(resp.data?.message || 'Failed to update technician');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_TECHNICIAN_6DD97967', fallbackText: resp.data?.message || 'Failed to update technician', type: 'error' });
       }
     } catch (e) {
       console.error('Error saving technician change:', e);
@@ -569,7 +574,15 @@ const InspectionApprovalDetail = () => {
     setIsSubmitting(true);
     let toastId = null;
     try {
-      toastId = toast.loading("Approving inspection...", { duration: Infinity });
+      const loadingToastId = `inspection-approve-loading-${id}`;
+      toastId = showBackendTextToast({
+        toast,
+        tmdId: 'TMD_APPROVING_INSPECTION_IN_PROGRESS_2696953C',
+        fallbackText: "Approving inspection...",
+        type: 'loading',
+        toastOptions: { duration: Infinity, id: loadingToastId },
+      });
+      if (!toastId) toastId = loadingToastId;
       
       const requestBody = {
         action: 'APPROVE',
@@ -586,18 +599,18 @@ const InspectionApprovalDetail = () => {
       const res = await API.post("/inspection-approval/action", requestBody);
       if (toastId) toast.dismiss(toastId);
       if (res.data?.success) {
-        toast.success(res.data?.message || "Approved");
+        showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_APPROVED_SUCCESSFULLY_396498FA', fallbackText: 'Inspection approved successfully', type: 'success' });
         setShowApproveModal(false);
         setApproveNote("");
         setSelectedTechnician("");
         await fetchDetail();
         await fetchWorkflowHistory();
       } else {
-        toast.error(res.data?.message || "Failed to approve");
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_APPROVE_INSPECTION_476A2BD6', fallbackText: res.data?.message || "Failed to approve", type: 'error' });
       }
     } catch (e) {
       if (toastId) toast.dismiss(toastId);
-      toast.error(e.response?.data?.message || "Failed to approve");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_APPROVE_INSPECTION_476A2BD6', fallbackText: e.response?.data?.message || "Failed to approve", type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -616,7 +629,15 @@ const InspectionApprovalDetail = () => {
     setIsSubmitting(true);
     let toastId = null;
     try {
-      toastId = toast.loading("Rejecting inspection...", { duration: Infinity });
+      const loadingToastId = `inspection-reject-loading-${id}`;
+      toastId = showBackendTextToast({
+        toast,
+        tmdId: 'TMD_REJECTING_INSPECTION_IN_PROGRESS_96661A83',
+        fallbackText: "Rejecting inspection...",
+        type: 'loading',
+        toastOptions: { duration: Infinity, id: loadingToastId },
+      });
+      if (!toastId) toastId = loadingToastId;
       const res = await API.post("/inspection-approval/action", {
         action: 'REJECT',
         wfaiisd_id: currentStep.wfaiisd_id,
@@ -625,17 +646,17 @@ const InspectionApprovalDetail = () => {
       });
       if (toastId) toast.dismiss(toastId);
       if (res.data?.success) {
-        toast.success(res.data?.message || "Rejected");
+        showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_REJECTED_SUCCESSFULLY_1F1F9603', fallbackText: res.data?.message || "Rejected", type: 'success' });
         setShowRejectModal(false);
         setRejectNote("");
         await fetchDetail();
         await fetchWorkflowHistory();
       } else {
-        toast.error(res.data?.message || "Failed to reject");
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_REJECT_INSPECTION_DB1F3FF5', fallbackText: res.data?.message || "Failed to reject", type: 'error' });
       }
     } catch (e) {
       if (toastId) toast.dismiss(toastId);
-      toast.error(e.response?.data?.message || "Failed to reject");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_REJECT_INSPECTION_DB1F3FF5', fallbackText: e.response?.data?.message || "Failed to reject", type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

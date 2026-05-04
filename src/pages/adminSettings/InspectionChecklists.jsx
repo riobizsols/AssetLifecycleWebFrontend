@@ -61,7 +61,7 @@ const InspectionChecklists = () => {
       setChecklists(data);
     } catch (error) {
       console.error("Failed to fetch checklists:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOLOADCHECKLISTS_4672B024', fallbackText: t('inspectionChecklists.failedToLoadChecklists'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOLOADCHECKLISTS_4672B024', fallbackText: 'Failed to load checklists', type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +74,7 @@ const InspectionChecklists = () => {
       setResponseTypes(data);
     } catch (error) {
       console.error("Failed to fetch response types:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOLOADRESPONSETYPES_6AA55209', fallbackText: t('inspectionChecklists.failedToLoadResponseTypes'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOLOADRESPONSETYPES_6AA55209', fallbackText: 'Failed to load response types', type: 'error' });
     }
   };
 
@@ -102,10 +102,10 @@ const InspectionChecklists = () => {
 
     if (!isQuestionValid || !isResponseTypeValid || !isMinRangeValid || !isMaxRangeValid) {
       setShowErrors(true);
-      if (!isQuestionValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASEENTERINSPECTIONQUEST_3D4780F7', fallbackText: t('inspectionChecklists.pleaseEnterInspectionQuestion'), type: 'error' });
-      else if (!isResponseTypeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASESELECTRESPONSETYPE_76540B6E', fallbackText: t('inspectionChecklists.pleaseSelectResponseType'), type: 'error' });
-      else if (!isMinRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MINRANGEMANDATORYQUANTITAT_4C1263D4', fallbackText: t('inspectionChecklists.minRangeMandatoryQuantitative'), type: 'error' });
-      else if (!isMaxRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MAXRANGEMANDATORYQUANTITAT_02B4D066', fallbackText: t('inspectionChecklists.maxRangeMandatoryQuantitative'), type: 'error' });
+      if (!isQuestionValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASEENTERINSPECTIONQUEST_3D4780F7', fallbackText: 'Please enter inspection question', type: 'error' });
+      else if (!isResponseTypeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASESELECTRESPONSETYPE_76540B6E', fallbackText: 'Please select response type', type: 'error' });
+      else if (!isMinRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MINRANGEMANDATORYQUANTITAT_4C1263D4', fallbackText: 'Min range is mandatory for quantitative response type', type: 'error' });
+      else if (!isMaxRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MAXRANGEMANDATORYQUANTITAT_02B4D066', fallbackText: 'Max range is mandatory for quantitative response type', type: 'error' });
       return;
     }
 
@@ -120,13 +120,18 @@ const InspectionChecklists = () => {
         trigger_maintenance: triggerMaintenance
       });
 
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTCREATEDSUCCESSFUL_57EEBA86', fallbackText: t('inspectionChecklists.checklistCreatedSuccessfully'), type: 'success' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTCREATEDSUCCESSFUL_57EEBA86', fallbackText: 'Checklist created successfully', type: 'success' });
       clearForm();
       setShowCreateModal(false);
       await fetchChecklists();
     } catch (error) {
       console.error("Failed to create checklist:", error);
-      toast.error(error.response?.data?.message || t('inspectionChecklists.failedToCreateChecklist'));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOCREATECHECKLIST_6A6246DF',
+        fallbackText: error.response?.data?.message || 'Failed to create checklist',
+        type: 'error',
+      });
     } finally {
       setIsCreating(false);
     }
@@ -157,11 +162,11 @@ const InspectionChecklists = () => {
 
     if (!isQuestionValid || !isResponseTypeValid || !isExpectedValueValid || !isMinRangeValid || !isMaxRangeValid) {
       setShowEditErrors(true);
-      if (!isQuestionValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASEENTERINSPECTIONQUEST_3D4780F7', fallbackText: t('inspectionChecklists.pleaseEnterInspectionQuestion'), type: 'error' });
-      else if (!isResponseTypeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASESELECTRESPONSETYPE_76540B6E', fallbackText: t('inspectionChecklists.pleaseSelectResponseType'), type: 'error' });
-      else if (!isExpectedValueValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_EXPECTEDVALUEMANDATORYQUAL_18B8A0C6', fallbackText: t('inspectionChecklists.expectedValueMandatoryQualitative'), type: 'error' });
-      else if (!isMinRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MINRANGEMANDATORYQUANTITAT_4C1263D4', fallbackText: t('inspectionChecklists.minRangeMandatoryQuantitative'), type: 'error' });
-      else if (!isMaxRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MAXRANGEMANDATORYQUANTITAT_02B4D066', fallbackText: t('inspectionChecklists.maxRangeMandatoryQuantitative'), type: 'error' });
+      if (!isQuestionValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASEENTERINSPECTIONQUEST_3D4780F7', fallbackText: 'Please enter inspection question', type: 'error' });
+      else if (!isResponseTypeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASESELECTRESPONSETYPE_76540B6E', fallbackText: 'Please select response type', type: 'error' });
+      else if (!isExpectedValueValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_EXPECTEDVALUEMANDATORYQUAL_18B8A0C6', fallbackText: 'Expected value is mandatory for qualitative response type', type: 'error' });
+      else if (!isMinRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MINRANGEMANDATORYQUANTITAT_4C1263D4', fallbackText: 'Min range is mandatory for quantitative response type', type: 'error' });
+      else if (!isMaxRangeValid) showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_MAXRANGEMANDATORYQUANTITAT_02B4D066', fallbackText: 'Max range is mandatory for quantitative response type', type: 'error' });
       return;
     }
 
@@ -176,12 +181,17 @@ const InspectionChecklists = () => {
         trigger_maintenance: editTriggerMaintenance
       });
 
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTUPDATEDSUCCESSFUL_443E82CD', fallbackText: t('inspectionChecklists.checklistUpdatedSuccessfully'), type: 'success' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTUPDATEDSUCCESSFUL_443E82CD', fallbackText: 'Checklist updated successfully', type: 'success' });
       cancelEdit();
       await fetchChecklists();
     } catch (error) {
       console.error("Failed to update checklist:", error);
-      toast.error(error.response?.data?.message || t('inspectionChecklists.failedToUpdateChecklist'));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOUPDATECHECKLIST_1E6D3B76',
+        fallbackText: error.response?.data?.message || 'Failed to update checklist',
+        type: 'error',
+      });
     } finally {
       setIsUpdating(false);
     }
@@ -201,19 +211,24 @@ const InspectionChecklists = () => {
         for (const id of selectedRows) {
           await API.delete(`/inspection-checklists/${id}`);
         }
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_SUCCESSFULLYDELETEDCOUNT_30A7708E', fallbackText: t('inspectionChecklists.successfullyDeletedCount', { count: selectedRows.length }), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_SUCCESSFULLYDELETEDCOUNT_30A7708E', fallbackText: '{{count}} item(s) deleted successfully', type: 'success', values: { count: selectedRows.length } });
         setSelectedRows([]);
       } else if (itemToDelete) {
         // Single delete via top button (if itemToDelete was set)
         await API.delete(`/inspection-checklists/${itemToDelete.ic_id}`);
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTDELETEDSUCCESSFUL_353FB52B', fallbackText: t('inspectionChecklists.checklistDeletedSuccessfully'), type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTDELETEDSUCCESSFUL_353FB52B', fallbackText: 'Checklist deleted successfully', type: 'success' });
       }
       setShowDeleteModal(false);
       setItemToDelete(null);
       await fetchChecklists();
     } catch (error) {
       console.error("Failed to delete checklist:", error);
-      toast.error(error.response?.data?.message || t('inspectionChecklists.failedToDeleteChecklist'));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTODELETECHECKLIST_4E5F83E2',
+        fallbackText: error.response?.data?.message || 'Failed to delete checklist',
+        type: 'error',
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -221,7 +236,7 @@ const InspectionChecklists = () => {
 
   const handleDeleteSelected = () => {
     if (selectedRows.length === 0) {
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASESELECTATLEASTONEITEM_38D30486', fallbackText: t('inspectionChecklists.pleaseSelectAtLeastOneItem'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_PLEASESELECTATLEASTONEITEM_38D30486', fallbackText: 'Please select at least one item to delete', type: 'error' });
       return;
     }
     setShowDeleteModal(true);

@@ -41,7 +41,7 @@ const DepartmentsAdmin = () => {
       setDepartments(res.data);
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHDEPARTMENTS_4D03E1C8', fallbackText: t('departments.failedToFetchDepartments'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHDEPARTMENTS_4D03E1C8', fallbackText: 'Failed to fetch departments', type: 'error' });
     }
   };
 
@@ -52,7 +52,7 @@ const DepartmentsAdmin = () => {
       setAdminList(res.data);
     } catch (err) {
       console.error("Failed to fetch all admins", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHADMINLIST_20C2EF4C', fallbackText: t('departments.failedToFetchAdminList'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHADMINLIST_20C2EF4C', fallbackText: 'Failed to fetch admin list', type: 'error' });
     }
   };
 
@@ -67,14 +67,14 @@ const DepartmentsAdmin = () => {
       setUsersToAdd(usersData);
     } catch (err) {
       console.error("Failed to fetch users to add", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHUSERSLIST_0CC86913', fallbackText: t('departments.failedToFetchUsersList'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_FAILEDTOFETCHUSERSLIST_0CC86913', fallbackText: 'Failed to fetch users list', type: 'error' });
     }
   };
 
   const handleAddAdmin = async () => {
     setSubmitAttempted(true);
     if (!selectedUser || !selectedDept) {
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDUSER_2DFB9B80', fallbackText: t('departments.pleaseSelectBothDepartmentAndUser'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDUSER_2DFB9B80', fallbackText: 'Please select both department and user', type: 'error' });
       return;
     }
     
@@ -98,11 +98,16 @@ const DepartmentsAdmin = () => {
       
       fetchAllAdmins();
       setSelectedUser(null);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINADDEDSUCCESSFULLY_3FB28B41', fallbackText: t('departments.adminAddedSuccessfully', { userName: selectedUserName, deptName: selectedDeptName }), type: 'success' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINADDEDSUCCESSFULLY_3FB28B41', fallbackText: 'Admin {{userName}} added successfully to {{deptName}}', type: 'success', values: { userName: selectedUserName, deptName: selectedDeptName } });
     } catch (err) {
       console.error("Failed to add admin", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToAddAdmin')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_ADD_DEPARTMENT_ADMIN_A84D5E0E',
+        fallbackText: `${t('departments.failedToAddAdmin')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 
@@ -130,11 +135,16 @@ const DepartmentsAdmin = () => {
 
       fetchAllAdmins();
       setShowDeleteModal(false);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINREMOVEDSUCCESSFULLY_59E37C21', fallbackText: t('departments.adminRemovedSuccessfully', { userName: userToDelete.full_name, deptName: userToDelete.dept_name }), type: 'success' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINREMOVEDSUCCESSFULLY_59E37C21', fallbackText: 'Admin {{userName}} removed successfully from {{deptName}}', type: 'success', values: { userName: userToDelete.full_name, deptName: userToDelete.dept_name } });
     } catch (err) {
       console.error("Failed to delete admin", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToRemoveAdmin')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_REMOVE_DEPARTMENT_ADMIN_9156E962',
+        fallbackText: `${t('departments.failedToRemoveAdmin')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 

@@ -69,20 +69,74 @@ export const resolveBackendTextMessage = async (tmdId, fallbackText = "") => {
   return getTextMessageById(tmdId, fallbackText);
 };
 
+const interpolateTemplate = (message, values = {}) => {
+  if (!message || typeof message !== "string") return message;
+  return message.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key) => {
+    const value = values[key];
+    return value === undefined || value === null ? "" : String(value);
+  });
+};
+
 /**
  * Show multilingual toast text by tmd_id.
  * type can be: success | error | loading | default
  */
-export const showBackendTextToast = async ({
+export const showBackendTextToast = ({
   toast,
   tmdId,
   fallbackText = "",
   type = "default",
+  values = {},
+  toastOptions = {},
 }) => {
-  const message = await resolveBackendTextMessage(tmdId, fallbackText);
+  const fallbackMessage = interpolateTemplate(String(fallbackText || ""), values);
+  const hasFallbackMessage = Boolean(String(fallbackMessage || "").trim());
+  const selectedLang = String(localStorage.getItem("selectedLanguage") || "").toLowerCase();
+  const currentLang = String(selectedLang || i18n?.language || "en").toLowerCase();
+  const isEnglish = currentLang.startsWith("en");
 
-  if (type === "success") return toast.success(message);
-  if (type === "error") return toast.error(message);
-  if (type === "loading") return toast.loading(message);
-  return toast(message);
+  const showByType = (message, options = {}) => {
+    if (type === "success") return toast.success(message, options);
+    if (type === "error") return toast.error(message, options);
+    if (type === "loading") return toast.loading(message, options);
+    return toast(message, options);
+  };
+
+  // For English, show fallback immediately.
+  // For non-English, avoid showing English fallback first; show DB text when resolved.
+  let toastId = null;
+  let fallbackShown = false;
+  let fallbackTimer = null;
+
+  if (isEnglish && hasFallbackMessage) {
+    toastId = showByType(fallbackMessage, toastOptions);
+    fallbackShown = true;
+  }
+
+  // Resolve DB text in background and refresh same toast only if message differs.
+  resolveBackendTextMessage(tmdId, fallbackText)
+    .then((rawMessage) => {
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      const resolvedMessage = interpolateTemplate(rawMessage, values);
+      if (!resolvedMessage) return;
+
+      if (fallbackShown) {
+        if (resolvedMessage !== fallbackMessage) {
+          showByType(resolvedMessage, { ...toastOptions, id: toastId });
+        }
+      } else {
+        toastId = showByType(resolvedMessage, toastOptions);
+        fallbackShown = true;
+      }
+    })
+    .catch(() => {
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      // Keep fallback toast; no-op on lookup failures.
+      if (!fallbackShown && hasFallbackMessage) {
+        toastId = showByType(fallbackMessage, toastOptions);
+        fallbackShown = true;
+      }
+    });
+
+  return toastId;
 };

@@ -112,7 +112,12 @@ const AssetAssignmentList = ({
     } catch (err) {
       console.error('Failed to unassign asset', err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'An error occurred';
-      toast.error(`${t('departments.failedToUnassignAsset')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UNASSIGN_ASSET_36BB99A2',
+        fallbackText: `${t('departments.failedToUnassignAsset')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 

@@ -197,10 +197,22 @@ const BulkSerialNumberPrint = () => {
 
       // Show results
       if (successCount > 0) {
-        toast.success(`Added ${successCount} asset(s) to print queue successfully`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ADDED_ASSET_COUNT_TO_PRINT_QUEUE_A10B6E53',
+          fallbackText: 'Added {{count}} asset(s) to print queue successfully',
+          type: 'success',
+          values: { count: successCount },
+        });
       }
       if (failCount > 0) {
-        toast.error(`Failed to add ${failCount} asset(s) to print queue`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_ADD_ASSET_COUNT_TO_PRINT_QUEUE_7F44C5C6',
+          fallbackText: 'Failed to add {{count}} asset(s) to print queue',
+          type: 'error',
+          values: { count: failCount },
+        });
       }
 
       // Navigate to print screen

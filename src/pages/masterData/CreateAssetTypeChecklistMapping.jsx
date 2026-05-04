@@ -176,7 +176,13 @@ const CreateAssetTypeChecklistMapping = () => {
       } else if (err?.message?.includes("NotSupportedError")) {
         showBackendTextToast({ toast, tmdId: 'TMD_CAMERA_API_NOT_SUPPORTED_PLEASE_USE_HTTPS_CONNECTION_782F8222', fallbackText: 'Camera API not supported. Please use HTTPS connection.', type: 'error' });
       } else {
-        toast.error("Could not access camera: " + (err?.message?.substring(0, 50) || "Unknown error"));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_COULD_NOT_ACCESS_CAMERA_UNKNOWN_ERROR_4F0A3C92',
+          fallbackText: "Could not access camera: {{details}}",
+          type: 'error',
+          values: { details: err?.message?.substring(0, 50) || "Unknown error" },
+        });
       }
       setShowScanner(false);
     }
@@ -219,7 +225,13 @@ const CreateAssetTypeChecklistMapping = () => {
       setMappingRows([]);
       await fetchAssetsByAssetType(asset.asset_type_id);
       setActiveTab('manual');
-      toast.success(`Asset ${asset.asset_id} loaded successfully`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_LOADED_SUCCESSFULLY_7E0C9FD4',
+        fallbackText: 'Asset {{assetId}} loaded successfully',
+        type: 'success',
+        values: { assetId: asset.asset_id },
+      });
     } catch (error) {
       console.error("Error scanning asset:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_ASSET_NOT_FOUND_6AE286A5', fallbackText: 'Asset not found', type: 'error' });

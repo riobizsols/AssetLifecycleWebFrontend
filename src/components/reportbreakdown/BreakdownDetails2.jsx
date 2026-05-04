@@ -62,9 +62,12 @@ const BreakdownDetails2 = () => {
         setReportedByType(typeDetails.assignment_type);
       } catch (err) {
         console.error(t("breakdownDetails.failedToFetchAssetTypeDetails"), err);
-        toast.error(
-          err.message || t("breakdownDetails.failedToFetchAssetTypeDetails"),
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOFETCHASSETTYPEDETAILS_0D6F7935',
+          fallbackText: err.message || t("breakdownDetails.failedToFetchAssetTypeDetails"),
+          type: 'error',
+        });
         navigate(-1); // Go back if we can't get the required assignment type
       }
     };
@@ -154,10 +157,12 @@ const BreakdownDetails2 = () => {
       }
     } catch (error) {
       console.error("Error creating breakdown reason code:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to create breakdown reason code",
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_BREAKDOWN_REASON_CODE_1D7DF739',
+        fallbackText: error.response?.data?.message || "Failed to create breakdown reason code",
+        type: 'error',
+      });
     } finally {
       setIsCreatingReasonCode(false);
     }
@@ -266,7 +271,7 @@ const BreakdownDetails2 = () => {
         // Default to current user
         reportedBy = user?.user_id || user?.emp_int_id || "SYSTEM";
         if (!user?.user_id && !user?.emp_int_id) {
-          toast.error(t("breakdownDetails.userIdRequired"));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_USERIDREQUIRED_76EEFF56', fallbackText: t("breakdownDetails.userIdRequired"), type: 'error' });
           return;
         }
       }
@@ -335,10 +340,12 @@ const BreakdownDetails2 = () => {
           navigate("/reports");
         }
       } else {
-        toast.error(
-          response.data.message ||
-            t("breakdownDetails.failedToCreateBreakdownReport"),
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOCREATEBREAKDOWNREPORT_48AB53F9',
+          fallbackText: response.data.message || t("breakdownDetails.failedToCreateBreakdownReport"),
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error("Error creating breakdown report:", error);
@@ -350,9 +357,12 @@ const BreakdownDetails2 = () => {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_REQUESTTIMEOUT_7C4354DD', fallbackText: t("breakdownDetails.requestTimeout"), type: 'error' });
         resetForm(); // Reset form on timeout
       } else if (error.response?.status === 400) {
-        toast.error(
-          error.response.data.error || t("breakdownDetails.invalidRequestData"),
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_BREAKDOWNDETAILS_INVALIDREQUESTDATA_6D8C5A8A',
+          fallbackText: error.response.data.error || t("breakdownDetails.invalidRequestData"),
+          type: 'error',
+        });
         resetForm(); // Reset form on validation error
       } else if (error.response?.status === 401) {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_UNAUTHORIZED_7475E085', fallbackText: t("breakdownDetails.unauthorized"), type: 'error' });
@@ -361,10 +371,12 @@ const BreakdownDetails2 = () => {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_SERVERERROR_267E86D4', fallbackText: t("breakdownDetails.serverError"), type: 'error' });
         resetForm(); // Reset form on server error
       } else {
-        toast.error(
-          error.response?.data?.error ||
-            t("breakdownDetails.failedToCreateBreakdownReport"),
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOCREATEBREAKDOWNREPORT_48AB53F9',
+          fallbackText: error.response?.data?.error || t("breakdownDetails.failedToCreateBreakdownReport"),
+          type: 'error',
+        });
         resetForm(); // Reset form on other errors
       }
     } finally {

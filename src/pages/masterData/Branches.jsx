@@ -186,7 +186,12 @@ const Branches = () => {
     } catch (error) {
       console.error("Error updating branch:", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t('branches.failedToUpdateBranch');
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_BRANCH_0AD95E61',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     }
   };
 
@@ -212,7 +217,12 @@ const Branches = () => {
     } catch (error) {
       console.error("Error deleting branches:", error);
       const errorMessage = error.response?.data?.error || t('branches.failedToDeleteBranches');
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_DELETE_BRANCHES_CF3A7071',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     }
   };
 
@@ -228,13 +238,23 @@ const Branches = () => {
           action: 'Branches Data Downloaded'
         });
         
-        toast(t('branches.branchesExportedSuccessfully'), { icon: '✅' });
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_BRANCHES_EXPORTED_SUCCESSFULLY_498FC7C7',
+          fallbackText: t('branches.branchesExportedSuccessfully'),
+          type: 'success',
+        });
       } else {
         throw new Error(t('branches.exportFailed'));
       }
     } catch (error) {
       console.error('Error downloading branches:', error);
-      toast(t('branches.failedToExportBranches'), { icon: '❌' });
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_EXPORT_BRANCHES_3E370899',
+        fallbackText: t('branches.failedToExportBranches'),
+        type: 'error',
+      });
     }
   };
 

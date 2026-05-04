@@ -220,7 +220,7 @@ const JobRoles = () => {
       fetchJobRoles();
     } catch (error) {
       console.error("Error saving job role:", error);
-      toast.error(error.response?.data?.message || "Failed to save job role");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_JOB_ROLE_064A4D27', fallbackText: 'Failed to save job role', type: 'error' });
     }
   };
 

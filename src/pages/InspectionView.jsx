@@ -88,7 +88,7 @@ const InspectionView = () => {
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch inspection schedules", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOFETCHINSPECTIONSCHEDULES_1030DBFF', fallbackText: t('inspectionView.failedToFetchInspectionSchedules'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOFETCHINSPECTIONSCHEDULES_1030DBFF', fallbackText: 'Failed to fetch inspection schedules', type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -145,17 +145,17 @@ const InspectionView = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_PLEASESELECTINSPECTIONRECORDS_303143D1', fallbackText: t('inspectionView.pleaseSelectInspectionRecords'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_PLEASESELECTINSPECTIONRECORDS_303143D1', fallbackText: 'Please select inspection records', type: 'error' });
       return false;
     }
 
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAAT_Insp_Sch
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: t('inspectionView.deleteNotImplemented'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: 'Delete not implemented', type: 'error' });
       return false;
     } catch (err) {
       console.error("Failed to delete inspection records", err);
-      toast.error(err.response?.data?.message || t('inspectionView.failedToDeleteInspectionRecords'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTODELETEINSPECTIONRECORDS_F2A3C8D1', fallbackText: err.response?.data?.message || 'Failed to delete inspection records', type: 'error' });
       return false;
     }
   };
@@ -163,10 +163,10 @@ const InspectionView = () => {
   const handleDelete = async (row) => {
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAAT_Insp_Sch
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: t('inspectionView.deleteNotImplemented'), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: 'Delete not implemented', type: 'error' });
     } catch (err) {
       console.error("Failed to delete inspection record", err);
-      toast.error(err.response?.data?.message || t('inspectionView.failedToDeleteInspectionRecord'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTODELETEINSPECTIONRECORD_63BEFA8C', fallbackText: err.response?.data?.message || 'Failed to delete inspection record', type: 'error' });
     }
   };
 
@@ -198,33 +198,31 @@ const InspectionView = () => {
       );
 
       if (success) {
-        toast(
-          t('inspectionView.inspectionSchedulesExportedSuccessfully'),
-          {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_INSPECTIONVIEW_INSPECTIONSCHEDULESEXPORTEDSUCCESSF_6F44B0D2',
+          fallbackText: 'Inspection schedules exported successfully',
+          type: 'success',
+          toastOptions: {
             icon: '✅',
-            style: {
-              borderRadius: '8px',
-              background: '#064E3B',
-              color: '#fff',
-            },
-          }
-        );
+            style: { borderRadius: '8px', background: '#064E3B', color: '#fff' },
+          },
+        });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast(
-        t('inspectionView.failedToExportInspectionSchedules'),
-        {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOEXPORTINSPECTIONSCHEDULES_80AA2F1A',
+        fallbackText: 'Failed to export inspection schedules',
+        type: 'error',
+        toastOptions: {
           icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+          style: { borderRadius: '8px', background: '#7F1D1D', color: '#fff' },
+        },
+      });
     }
   };
 

@@ -44,7 +44,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     } catch (err) {
       console.error("Error fetching asset types:", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || "Failed to fetch asset types";
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOFETCHASSETTYPES_27D8A8FF', fallbackText: errorMessage, type: 'error' });
       setAssetTypes([]);
     }
   };
@@ -58,7 +58,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     } catch (err) {
       console.error("Error fetching service descriptions:", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || "Failed to fetch service descriptions";
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOFETCHSERVICEDESCRIPTIONS_2C81B918', fallbackText: errorMessage, type: 'error' });
       setAllServiceDescriptions([]);
     }
   };
@@ -209,7 +209,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       
       // Validate required data
       if (!vendorId || !orgId) {
-        toast.error(t('vendors.pleaseCreateVendorFirst'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_PLEASECREATEVENDORFIRST_47C50D3D', fallbackText: t('vendors.pleaseCreateVendorFirst'), type: 'error' });
         return;
       }
 
@@ -262,12 +262,12 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
           if (match?.prod_serv_id) {
             prodServIds.push(match.prod_serv_id);
           } else {
-            toast.error(t('vendors.serviceNotFound', { service: `${s.asset_type_text || s.asset_type_id} - ${s.description}` }) || `Service not found: ${s.asset_type_text || s.asset_type_id} - ${s.description}`);
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_SERVICENOTFOUND_37AA4B10', fallbackText: t('vendors.serviceNotFound', { service: `${s.asset_type_text || s.asset_type_id} - ${s.description}` }) || `Service not found: ${s.asset_type_text || s.asset_type_id} - ${s.description}`, type: 'error' });
           }
         } catch (apiErr) {
           console.error('Error fetching service:', apiErr);
           const errorMessage = apiErr.response?.data?.message || apiErr.response?.data?.error || "Error looking up service";
-          toast.error(errorMessage);
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORLOOKINGUPSERVICE_4CC6342E', fallbackText: errorMessage, type: 'error' });
           toast.dismiss(loadingToast);
           return;
         }
@@ -277,7 +277,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       prodServIds = [...new Set(prodServIds)];
 
       if (!prodServIds.length) {
-        toast.error(t('vendors.noValidServicesToLink') || 'No valid services to link');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_NOVALIDSERVICESTOLINK_183E4A9E', fallbackText: t('vendors.noValidServicesToLink') || 'No valid services to link', type: 'error' });
         toast.dismiss(loadingToast);
         return;
       }
@@ -301,7 +301,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             console.log('Service already linked to vendor:', prod_serv_id);
           } else {
             const errorMessage = postErr.response?.data?.message || postErr.response?.data?.error || "Error linking service";
-            toast.error(errorMessage);
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORLINKINGSERVICE_67A88E5A', fallbackText: errorMessage, type: 'error' });
           }
         }
       }
@@ -313,9 +313,21 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       const totalProcessed = successCount + duplicateCount;
       if (totalProcessed === prodServIds.length) {
         if (duplicateCount > 0 && successCount > 0) {
-          toast.success(`${successCount} services linked successfully, ${duplicateCount} were already linked`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_SERVICESLINKEDSUCCESSFULLYWITHDUP_3A4568A1',
+            fallbackText: '{{successCount}} services linked successfully, {{duplicateCount}} were already linked',
+            type: 'success',
+            values: { successCount, duplicateCount },
+          });
         } else if (duplicateCount > 0 && successCount === 0) {
-          toast.success(`All ${duplicateCount} services were already linked to this vendor`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_ALLSERVICESALREADYLINKED_4B5CE66A',
+            fallbackText: 'All {{duplicateCount}} services were already linked to this vendor',
+            type: 'success',
+            values: { duplicateCount },
+          });
         } else {
           showBackendTextToast({ toast, tmdId: 'TMD_ALL_SERVICES_LINKED_SUCCESSFULLY_307E4035', fallbackText: 'All services linked successfully', type: 'success' });
         }
@@ -325,15 +337,21 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
         // Mark tab as saved
         if (onTabSaved) onTabSaved('Service Details');
       } else if (totalProcessed > 0) {
-        toast.success(`${totalProcessed} out of ${prodServIds.length} services processed successfully`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_SERVICESPROCESSEDSUCCESSFULLY_4265EE45',
+          fallbackText: '{{totalProcessed}} out of {{totalCount}} services processed successfully',
+          type: 'success',
+          values: { totalProcessed, totalCount: prodServIds.length },
+        });
         // Mark tab as saved even if partial success
         if (onTabSaved) onTabSaved('Service Details');
       } else {
-        toast.error(t('vendors.failedToLinkAnyServices') || 'Failed to link any services');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOLINKANYSERVICES_1AB086B5', fallbackText: t('vendors.failedToLinkAnyServices') || 'Failed to link any services', type: 'error' });
       }
     } catch (err) {
       console.error('Unexpected error:', err);
-      toast.error(t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred');
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_UNEXPECTEDERROROCCURRED_39B6A99A', fallbackText: t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred', type: 'error' });
     } finally {
       setIsSaving(false);
     }

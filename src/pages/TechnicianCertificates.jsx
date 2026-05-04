@@ -53,7 +53,7 @@ const TechnicianCertificates = () => {
       
       if (data.length === 0) {
         console.warn("No certificates found in database");
-        toast.info(t("technicianCertificates.noCertificatesCreateInAdmin"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_NOCERTIFICATESCREATEINAD_4CB7BA07', fallbackText: t("technicianCertificates.noCertificatesCreateInAdmin"), type: 'success' });
       }
       
       setCertificates(data);
@@ -216,7 +216,7 @@ const TechnicianCertificates = () => {
       await fetchUploadedCertificates();
     } catch (error) {
       console.error("Failed to update certificate:", error);
-      toast.error(error.response?.data?.message || t("technicianCertificates.failedToUpdateCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOUPDATECERTIFICATE_1A0F83ED', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToUpdateCertificate"), type: 'error' });
     } finally {
       setIsUpdating(false);
     }
@@ -233,7 +233,7 @@ const TechnicianCertificates = () => {
       await fetchUploadedCertificates();
     } catch (error) {
       console.error("Failed to delete certificate:", error);
-      toast.error(error.response?.data?.message || t("technicianCertificates.failedToDeleteCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTODELETECERTIFICATE_53BA7B98', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToDeleteCertificate"), type: 'error' });
     } finally {
       setIsDeleting(false);
     }
@@ -275,7 +275,7 @@ const TechnicianCertificates = () => {
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Failed to get download URL:", error);
-      toast.error(error.response?.data?.message || t("technicianCertificates.failedToDownload"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTODOWNLOAD_0990D73E', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToDownload"), type: 'error' });
     } finally {
       setDownloadingId(null);
     }
@@ -330,7 +330,7 @@ const TechnicianCertificates = () => {
       await fetchUploadedCertificates();
     } catch (error) {
       console.error("Failed to upload certificate:", error);
-      toast.error(error.response?.data?.message || t("technicianCertificates.failedToUploadCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOUPLOADCERTIFICATE_23A7B061', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToUploadCertificate"), type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

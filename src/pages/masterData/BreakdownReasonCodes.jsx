@@ -103,7 +103,7 @@ const BreakdownReasonCodes = () => {
       }
     } catch (error) {
       console.error('Error creating breakdown reason code:', error);
-      toast.error(error.response?.data?.message || 'Failed to create breakdown reason code');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_CREATE_BREAKDOWN_REASON_CODE_8B2E4E0B', fallbackText: 'Failed to create breakdown reason code', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -143,7 +143,7 @@ const BreakdownReasonCodes = () => {
       }
     } catch (error) {
       console.error('Error updating breakdown reason code:', error);
-      toast.error(error.response?.data?.message || 'Failed to update breakdown reason code');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_BREAKDOWN_REASON_CODE_47D88F80', fallbackText: 'Failed to update breakdown reason code', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -163,7 +163,7 @@ const BreakdownReasonCodes = () => {
       }
     } catch (error) {
       console.error('Error deleting breakdown reason code:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete breakdown reason code');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_BREAKDOWN_REASON_CODE_E2DF765E', fallbackText: 'Failed to delete breakdown reason code', type: 'error' });
     }
   };
 
@@ -183,7 +183,13 @@ const BreakdownReasonCodes = () => {
         API.delete(`/breakdown-reason-codes/${rowId}`)
       );
       await Promise.all(deletePromises);
-      toast.success(`${selectedRows.length} reason code(s) deleted successfully`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_REASON_CODES_DELETED_SUCCESSFULLY_17B3A2BD',
+        fallbackText: '{{count}} reason code(s) deleted successfully',
+        type: 'success',
+        values: { count: selectedRows.length },
+      });
       setSelectedRows([]);
       fetchReasonCodes();
     } catch (error) {
