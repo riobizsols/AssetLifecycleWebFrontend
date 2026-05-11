@@ -78,7 +78,7 @@ export default function TenantSetup() {
     try {
       const response = await API.post("/tenant-setup/check-org-id", {
         orgId: form.orgId.toUpperCase(),
-      });
+      }, { timeout: 60000 });
 
       if (response.data.success) {
         setOrgIdAvailable(response.data.available);
@@ -92,7 +92,7 @@ export default function TenantSetup() {
       toast.error(
         error.response?.data?.message || "Failed to check organization ID"
       );
-      setOrgIdAvailable(false);
+      setOrgIdAvailable(null);
     } finally {
       setCheckingOrgId(false);
     }
@@ -161,7 +161,9 @@ export default function TenantSetup() {
         },
       };
 
-      const response = await API.post("/tenant-setup/create", payload);
+      const response = await API.post("/tenant-setup/create", payload, {
+        timeout: 900000,
+      });
 
       if (response.data.success) {
         toast.success("Tenant created successfully!");
