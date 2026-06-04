@@ -49,6 +49,7 @@ export default function Header() {
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
     "/master-data/inspection-checklists": { title: t('masterDataTitles.inspectionChecklists'), subtitle: "" },
     "/master-data/inspection-frequency": { title: t('masterDataTitles.inspectionFrequency'), subtitle: "" },
+    "/master-data/departments-asset": { title: t('departments.departmentAssetMappings'), subtitle: "" },
     "/master-data/uploads": { title: t('bulkUpload.title'), subtitle: "" },
     "/master-data/asset-type-checklist-mapping/create": { title: "", subtitle: "" },
     "/master-data/asset-type-checklist-mapping": { title: t('navigation.assetTypeChecklistMapping'), subtitle: "" },

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/useAuthStore';
 import { clearTextMessageCache } from '../services/textMessagesService';
+import { resetMasterDataLabelCache } from '../utils/masterDataLabel';
 
 const LanguageContext = createContext();
 
@@ -23,6 +24,7 @@ export const LanguageProvider = ({ children }) => {
       // Store the selected language in localStorage
       localStorage.setItem('selectedLanguage', language);
       clearTextMessageCache();
+      resetMasterDataLabelCache();
     } catch (error) {
       console.error('Error changing language:', error);
     }
@@ -49,6 +51,7 @@ export const LanguageProvider = ({ children }) => {
         i18n.changeLanguage(userLanguage);
         localStorage.setItem('selectedLanguage', userLanguage);
         clearTextMessageCache();
+        resetMasterDataLabelCache();
       }
     } else {
       // User not logged in, check localStorage or browser default
@@ -56,9 +59,21 @@ export const LanguageProvider = ({ children }) => {
       if (savedLanguage && savedLanguage !== i18n.language) {
         i18n.changeLanguage(savedLanguage);
         clearTextMessageCache();
+        resetMasterDataLabelCache();
       }
     }
   }, [i18n, user?.language_code]);
+
+  useEffect(() => {
+    const syncStorage = (lng) => {
+      if (lng) {
+        localStorage.setItem('selectedLanguage', lng);
+        resetMasterDataLabelCache();
+      }
+    };
+    i18n.on('languageChanged', syncStorage);
+    return () => i18n.off('languageChanged', syncStorage);
+  }, [i18n]);
 
   const value = {
     currentLanguage: getCurrentLanguage(),

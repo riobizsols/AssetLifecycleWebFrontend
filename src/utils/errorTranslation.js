@@ -63,6 +63,30 @@ export const translateErrorMessage = (errorMessage) => {
     {
       pattern: /already scrapped/i,
       translationKey: 'createScrapAsset.assetsAlreadyScrapped'
+    },
+    {
+      pattern: /^asset created successfully!?$/i,
+      translationKey: 'assets.assetCreatedSuccessfully'
+    },
+    {
+      pattern: /^inspection updated successfully!?$/i,
+      translationKey: 'inspectionExecution.updatedSuccessfully'
+    },
+    {
+      pattern: /^value saved locally\. click save to persist all values\.?$/i,
+      translationKey: 'inspectionExecution.valueSavedLocally'
+    },
+    {
+      pattern: /^inspection created successfully!?$/i,
+      translationKey: 'inspectionView.inspectionCreatedSuccessfully'
+    },
+    {
+      pattern: /no inspection frequency configured for this asset type/i,
+      translationKey: 'inspectionView.noInspectionFrequencyConfigured'
+    },
+    {
+      pattern: /this asset type is already mapped to this department/i,
+      translationKey: 'departments.assetTypeAlreadyMappedToDepartment'
     }
   ];
 
@@ -130,26 +154,25 @@ export const showBackendTextToast = ({
   const isEnglish = currentLang.startsWith("en");
 
   const showByType = (message, options = {}) => {
-    if (type === "success") return toast.success(message, options);
-    if (type === "error") return toast.error(message, options);
-    if (type === "loading") return toast.loading(message, options);
-    return toast(message, options);
+    const resolvedOptions = { ...options, skipMlResolve: true };
+    if (type === "success") return toast.success(message, resolvedOptions);
+    if (type === "error") return toast.error(message, resolvedOptions);
+    if (type === "loading") return toast.loading(message, resolvedOptions);
+    return toast(message, resolvedOptions);
   };
 
-  // For English, show fallback immediately.
-  // For non-English, avoid showing English fallback first; show DB text when resolved.
   let toastId = null;
   let fallbackShown = false;
   let fallbackTimer = null;
 
-  // Show localized fallback immediately for English, or for errors (fallback is already translated via t()).
-  if ((isEnglish || type === 'error') && hasFallbackMessage) {
+  // Show localized fallback immediately so non-English users never see English first.
+  if (hasFallbackMessage) {
     toastId = showByType(fallbackMessage, toastOptions);
     fallbackShown = true;
   }
 
-  // Resolve DB text in background and refresh same toast only if message differs.
-  resolveBackendTextMessage(tmdId, fallbackText)
+  // Resolve DB text in background; only replace when it matches the active language.
+  resolveBackendTextMessage(tmdId, fallbackMessage)
     .then((rawMessage) => {
       if (fallbackTimer) clearTimeout(fallbackTimer);
       const rawResolvedMessage = interpolateTemplate(rawMessage, values);
@@ -158,6 +181,15 @@ export const showBackendTextToast = ({
           ? translateErrorMessage(rawResolvedMessage)
           : rawResolvedMessage;
       if (!resolvedMessage) return;
+
+      const shouldKeepLocalizedFallback =
+        !isEnglish &&
+        resolvedMessage !== fallbackMessage &&
+        translateErrorMessage(resolvedMessage) !== resolvedMessage;
+
+      if (shouldKeepLocalizedFallback) {
+        return;
+      }
 
       if (fallbackShown) {
         if (resolvedMessage !== fallbackMessage) {

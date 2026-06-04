@@ -1,5 +1,7 @@
 import { toast } from "react-hot-toast";
+import i18n from "../i18n/config";
 import { getTextMessageById } from "../services/textMessagesService.js";
+import { translateErrorMessage } from "./errorTranslation.js";
 
 let isPatched = false;
 
@@ -35,12 +37,24 @@ export const installMlToastRuntime = () => {
   const originalError = toast.error.bind(toast);
 
   const resolveAndShow = async (originalFn, message, options) => {
+    if (options?.skipMlResolve) {
+      return originalFn(message, options);
+    }
+
     if (typeof message !== "string" || !message.trim()) {
       return originalFn(message, options);
     }
 
+    const selectedLang = String(localStorage.getItem("selectedLanguage") || "").toLowerCase();
+    const currentLang = String(selectedLang || i18n?.language || "en").toLowerCase();
+    const localizedFallback = translateErrorMessage(message);
+    const fallbackText =
+      !currentLang.startsWith("en") && localizedFallback !== message
+        ? localizedFallback
+        : message;
+
     const tmdId = getTmdIdForToastText(message);
-    const resolvedText = await getTextMessageById(tmdId, message);
+    const resolvedText = await getTextMessageById(tmdId, fallbackText);
     return originalFn(resolvedText, options);
   };
 

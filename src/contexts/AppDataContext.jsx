@@ -1,6 +1,7 @@
   import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import API from '../lib/axios';
 import { useAuthStore } from '../store/useAuthStore';
+import i18n from '../i18n/config';
 
 const AppDataContext = createContext();
 
@@ -236,9 +237,21 @@ export const AppDataProvider = ({ children }) => {
     // Status helper
     getStatusText: (code) => {
       if (!code) return "";
-      // Prefer exact match by code (e.g., IN, IP, CO, CA)
-      const t = statusCodeMap?.[code];
-      return t || String(code);
+      const lang = String(i18n?.language || "en").toLowerCase();
+      const statusI18nKeys = {
+        IN: "inspectionView.initiated",
+        IP: "inspectionView.inProgress",
+        CO: "inspectionView.completed",
+        CA: "inspectionView.cancelled",
+        PN: "inspectionApproval.statusPending",
+        AP: "inspectionApproval.statusApproved",
+        RJ: "inspectionApproval.statusRejected",
+      };
+      if (!lang.startsWith("en") && statusI18nKeys[code]) {
+        return i18n.t(statusI18nKeys[code]);
+      }
+      const fromApi = statusCodeMap?.[code];
+      return fromApi || String(code);
     },
   };
 
