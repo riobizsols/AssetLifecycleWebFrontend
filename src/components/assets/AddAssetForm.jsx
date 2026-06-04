@@ -1251,27 +1251,27 @@ const AddAssetForm = ({ userRole }) => {
               showBackendTextToast({
                 toast,
                 tmdId: 'TMD_ASSET_AND_DOCUMENTS_SAVED_SUCCESSFULLY_7A22D248',
-                fallbackText: `Asset and ${successCount} document(s) saved successfully!`,
+                fallbackText: t('assets.assetAndDocumentsSavedSuccessfully', { count: successCount }) || `Asset and ${successCount} document(s) saved successfully!`,
                 type: 'success',
               });
             } else if (successCount > 0 && failCount > 0) {
               showBackendTextToast({
                 toast,
                 tmdId: 'TMD_ASSET_SAVED_WITH_PARTIAL_UPLOAD_FAILURE_3C486617',
-                fallbackText: `Asset saved and ${successCount} document(s) uploaded successfully. ${failCount} document(s) failed to upload.`,
+                fallbackText: t('assets.assetSavedWithPartialUploadFailure', { successCount, failCount }) || `Asset saved and ${successCount} document(s) uploaded successfully. ${failCount} document(s) failed to upload.`,
                 type: 'success',
               });
             } else {
-              showBackendTextToast({ toast, tmdId: 'TMD_ASSET_SAVED_SUCCESSFULLY_BUT_DOCUMENT_UPLOADS_FAILED_42AB8EDF', fallbackText: 'Asset saved successfully, but document uploads failed.', type: 'success' });
+              showBackendTextToast({ toast, tmdId: 'TMD_ASSET_SAVED_SUCCESSFULLY_BUT_DOCUMENT_UPLOADS_FAILED_42AB8EDF', fallbackText: t('assets.assetSavedSuccessfullyButDocumentUploadsFailed') || 'Asset saved successfully, but document uploads failed.', type: 'success' });
             }
           } catch (err) {
             console.error('❌ Error uploading documents:', err);
-            showBackendTextToast({ toast, tmdId: 'TMD_ASSET_SAVED_SUCCESSFULLY_BUT_DOCUMENT_UPLOADS_FAILED_42AB8EDF', fallbackText: 'Asset saved successfully, but document uploads failed.', type: 'success' });
+            showBackendTextToast({ toast, tmdId: 'TMD_ASSET_SAVED_SUCCESSFULLY_BUT_DOCUMENT_UPLOADS_FAILED_42AB8EDF', fallbackText: t('assets.assetSavedSuccessfullyButDocumentUploadsFailed') || 'Asset saved successfully, but document uploads failed.', type: 'success' });
           } finally {
             setIsUploading(false);
           }
         } else {
-          showBackendTextToast({ toast, tmdId: 'TMD_ASSET_CREATED_SUCCESSFULLY_7C8B8AD2', fallbackText: 'Asset created successfully!', type: 'success' });
+          showBackendTextToast({ toast, tmdId: 'TMD_ASSET_CREATED_SUCCESSFULLY_7C8B8AD2', fallbackText: t('assets.assetCreatedSuccessfully') || 'Asset created successfully!', type: 'success' });
         }
         
         // Navigate to assets list after successful save
@@ -2428,7 +2428,7 @@ const AddAssetForm = ({ userRole }) => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {isSubmitting ? 'Saving...' : 'Uploading...'}
+                {isSubmitting ? (t('common.saving') || 'Saving...') : (t('common.uploading') || 'Uploading...')}
               </span>
             ) : (
               t('common.save')

@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/assets/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
+import { translateMasterDataLabel } from "../utils/masterDataLabel";
 
 const InspectionView = () => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const InspectionView = () => {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [columns] = useState([
+  const columns = useMemo(() => ([
     { label: t('inspectionView.id'), name: "ais_id", visible: true },
     { label: t('inspectionView.assetCode'), name: "asset_code", visible: true },
     { label: t('inspectionView.assetType'), name: "asset_type_name", visible: true },
@@ -40,13 +41,25 @@ const InspectionView = () => {
     { label: t('inspectionView.outcome'), name: "insp_outcome", visible: true },
     { label: t('inspectionView.createdOn'), name: "created_on", visible: true },
     { label: t('inspectionView.createdBy'), name: "created_by", visible: true },
-  ]);
+  ]), [t]);
 
-  useEffect(() => {
-    fetchInspectionSchedules();
-  }, []);
+  const mapStatusLabel = useCallback((code) => {
+    if (code === 'IN') return t('inspectionView.initiated');
+    if (code === 'IP') return t('inspectionView.inProgress');
+    if (code === 'CO') return t('inspectionView.completed');
+    if (code === 'CA') return t('inspectionView.cancelled');
+    return code || t('inspectionView.unknown');
+  }, [t]);
 
-  const fetchInspectionSchedules = async () => {
+  const mapOutcomeLabel = useCallback((code) => {
+    if (code === 'PA') return t('inspectionView.passed');
+    if (code === 'FA') return t('inspectionView.failed');
+    if (code === 'PR') return t('inspectionView.partial');
+    if (code === 'PE' || !code) return t('inspectionView.pending');
+    return code || t('inspectionView.pending');
+  }, [t]);
+
+  const fetchInspectionSchedules = useCallback(async () => {
     setIsLoading(true);
     try {
       // Pass context so logs go to INSPECTION CSV
@@ -69,30 +82,28 @@ const InspectionView = () => {
 
         return {
           ...item,
+          asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
           act_insp_st_date: formatDate(item.act_insp_st_date),
           act_insp_end_date: formatDate(item.act_insp_end_date),
           created_on: formatDate(item.created_on),
-          // Map status codes to readable names
-          status: item.status === 'IN' ? 'Initiated' :
-                  item.status === 'IP' ? 'In Progress' :
-                  item.status === 'CO' ? 'Completed' :
-                  item.status === 'CA' ? 'Cancelled' :
-                  item.status || 'Unknown',
-          // Format outcome
-          insp_outcome: item.insp_outcome === 'PA' ? 'Passed' :
-                       item.insp_outcome === 'FA' ? 'Failed' :
-                       item.insp_outcome === 'PR' ? 'Partial' :
-                       item.insp_outcome || 'Pending'
+          status_code: item.status,
+          status: mapStatusLabel(item.status),
+          insp_outcome_code: item.insp_outcome,
+          insp_outcome: mapOutcomeLabel(item.insp_outcome),
         };
       });
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch inspection schedules", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOFETCHINSPECTIONSCHEDULES_1030DBFF', fallbackText: 'Failed to fetch inspection schedules', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOFETCHINSPECTIONSCHEDULES_1030DBFF', fallbackText: t('inspectionView.failedToFetchInspectionSchedules'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [mapOutcomeLabel, mapStatusLabel, t]);
+
+  useEffect(() => {
+    fetchInspectionSchedules();
+  }, [fetchInspectionSchedules]);
 
   const handleFilterChange = (columnName, value) => {
     // Handle columnFilters array from ContentBox
@@ -145,17 +156,17 @@ const InspectionView = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_PLEASESELECTINSPECTIONRECORDS_303143D1', fallbackText: 'Please select inspection records', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_PLEASESELECTINSPECTIONRECORDS_303143D1', fallbackText: t('inspectionView.pleaseSelectInspectionRecords'), type: 'error' });
       return false;
     }
 
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAAT_Insp_Sch
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: 'Delete not implemented', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: t('inspectionView.deleteNotImplemented'), type: 'error' });
       return false;
     } catch (err) {
       console.error("Failed to delete inspection records", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTODELETEINSPECTIONRECORDS_F2A3C8D1', fallbackText: err.response?.data?.message || 'Failed to delete inspection records', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTODELETEINSPECTIONRECORDS_F2A3C8D1', fallbackText: err.response?.data?.message || t('inspectionView.failedToDeleteInspectionRecords'), type: 'error' });
       return false;
     }
   };
@@ -163,10 +174,10 @@ const InspectionView = () => {
   const handleDelete = async (row) => {
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAAT_Insp_Sch
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: 'Delete not implemented', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: t('inspectionView.deleteNotImplemented'), type: 'error' });
     } catch (err) {
       console.error("Failed to delete inspection record", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTODELETEINSPECTIONRECORD_63BEFA8C', fallbackText: err.response?.data?.message || 'Failed to delete inspection record', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTODELETEINSPECTIONRECORD_63BEFA8C', fallbackText: err.response?.data?.message || t('inspectionView.failedToDeleteInspectionRecord'), type: 'error' });
     }
   };
 
@@ -201,7 +212,7 @@ const InspectionView = () => {
         showBackendTextToast({
           toast,
           tmdId: 'TMD_I18N_INSPECTIONVIEW_INSPECTIONSCHEDULESEXPORTEDSUCCESSF_6F44B0D2',
-          fallbackText: 'Inspection schedules exported successfully',
+          fallbackText: t('inspectionView.inspectionSchedulesExportedSuccessfully'),
           type: 'success',
           toastOptions: {
             icon: '✅',
@@ -216,7 +227,7 @@ const InspectionView = () => {
       showBackendTextToast({
         toast,
         tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOEXPORTINSPECTIONSCHEDULES_80AA2F1A',
-        fallbackText: 'Failed to export inspection schedules',
+        fallbackText: t('inspectionView.failedToExportInspectionSchedules'),
         type: 'error',
         toastOptions: {
           icon: '❌',
@@ -245,15 +256,15 @@ const InspectionView = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'status' ? [
-      { label: t('inspectionView.initiated'), value: "Initiated" },
-      { label: t('inspectionView.inProgress'), value: "In Progress" },
-      { label: t('inspectionView.completed'), value: "Completed" },
-      { label: t('inspectionView.cancelled'), value: "Cancelled" }
+      { label: t('inspectionView.initiated'), value: t('inspectionView.initiated') },
+      { label: t('inspectionView.inProgress'), value: t('inspectionView.inProgress') },
+      { label: t('inspectionView.completed'), value: t('inspectionView.completed') },
+      { label: t('inspectionView.cancelled'), value: t('inspectionView.cancelled') }
     ] : col.name === 'insp_outcome' ? [
-      { label: t('inspectionView.passed'), value: "Passed" },
-      { label: t('inspectionView.failed'), value: "Failed" },
-      { label: t('inspectionView.partial'), value: "Partial" },
-      { label: t('inspectionView.pending'), value: "Pending" }
+      { label: t('inspectionView.passed'), value: t('inspectionView.passed') },
+      { label: t('inspectionView.failed'), value: t('inspectionView.failed') },
+      { label: t('inspectionView.partial'), value: t('inspectionView.partial') },
+      { label: t('inspectionView.pending'), value: t('inspectionView.pending') }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
@@ -326,12 +337,12 @@ const InspectionView = () => {
               showActions={showActions} // Hide action column for this page
               renderCell={(col, row, colIndex) =>
                 col.name === "status"
-                  ? <StatusBadge status={row[col.name]} />
+                  ? <StatusBadge status={row.status_code || row[col.name]} />
                   : col.name === "insp_outcome"
                   ? <span className={
-                      row[col.name] === 'Passed' ? 'text-green-600 font-semibold' :
-                      row[col.name] === 'Failed' ? 'text-red-600 font-semibold' :
-                      row[col.name] === 'Partial' ? 'text-orange-600 font-semibold' :
+                      row.insp_outcome_code === 'PA' ? 'text-green-600 font-semibold' :
+                      row.insp_outcome_code === 'FA' ? 'text-red-600 font-semibold' :
+                      row.insp_outcome_code === 'PR' ? 'text-orange-600 font-semibold' :
                       'text-gray-600'
                     }>{row[col.name]}</span>
                   : colIndex === 0

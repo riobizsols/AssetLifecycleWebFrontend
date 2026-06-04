@@ -118,8 +118,15 @@ const DatabaseSidebar = () => {
       'Asset Types': t('navigation.assetTypes'),
       'Organizations': t('navigation.organizations'),
       'Departments': t('navigation.departments'),
-      'Departments Admin': t('navigation.departments') + ' Admin',
-      'Departments Asset': t('navigation.departments') + ' Asset',
+      'Departments Admin': t('navigation.departmentsAdmin'),
+      'Departments Asset': t('navigation.departmentsAsset'),
+      'Departments Asset...': t('navigation.departmentsAsset'),
+      'Departments Ass...': t('navigation.departmentsAsset'),
+      'Departments Asset type': t('navigation.departmentsAsset'),
+      'Departments Asset typ...': t('navigation.departmentsAsset'),
+      'Department Asset': t('navigation.departmentsAsset'),
+      'Department Asset type': t('navigation.departmentsAsset'),
+      'Manage Departments Assets Type': t('navigation.departmentsAsset'),
       'Branches': t('navigation.branches'),
       'Vendors': t('navigation.vendors'),
       'Products/Services': t('navigation.productsServices'),
@@ -147,7 +154,10 @@ const DatabaseSidebar = () => {
       'Master Data': t('navigation.masterData'),
       'Asset Type - Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
       'Inspection CheckList mapping': t('navigation.assetTypeChecklistMapping'),
-      'Inspection Frequency': 'Inspection Frequency',
+      'Inspection Frequency': t('masterDataTitles.inspectionFrequency'),
+      'Inspection Checklists': t('masterDataTitles.inspectionChecklists'),
+      'Inspection Checklist': t('masterDataTitles.inspectionChecklists'),
+      'Inspection Checkli...': t('masterDataTitles.inspectionChecklists'),
       'Scrap Sales': t('navigation.scrapSales'),
       'Scrap Assets': t('navigation.scrapAssets'),
       'Group Asset': t('navigation.groupAsset'),
@@ -160,7 +170,9 @@ const DatabaseSidebar = () => {
       'Scrap Approval': t('navigation.scrapApproval'),
       'Inspection': t('navigation.inspection'),
       'Inspection Approval': t('navigation.inspectionApproval'),
+      'Inspection Approvals': t('navigation.inspectionApproval'),
       'Inspection List': t('navigation.inspectionList'),
+      'Reopened Breakdowns': t('navigation.reopenedBreakdowns'),
       'Employee Report Breakdown': t('navigation.employeeReportBreakdown'),
       'Vendor Renewal Approval': t('navigation.vendorRenewalApproval'),
       // Report sub-items
@@ -178,8 +190,21 @@ const DatabaseSidebar = () => {
       'SLA Reports': t('navigation.slaReport'),
       'Usage-Based Asset...': t('navigation.usageBasedAssetReport'),
     };
-    
-    return labelMap[label] || label; // Return original label if no translation found
+
+    if (labelMap[label]) return labelMap[label];
+
+    const normalized = String(label || '').trim();
+    if (/^departments?\s+asset/i.test(normalized)) {
+      return t('navigation.departmentsAsset');
+    }
+    if (/^inspection\s+checklist/i.test(normalized)) {
+      return t('masterDataTitles.inspectionChecklists');
+    }
+    if (/^inspection\s+frequency/i.test(normalized)) {
+      return t('masterDataTitles.inspectionFrequency');
+    }
+
+    return label;
   };
 
   // Get icon based on access level
