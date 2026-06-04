@@ -492,6 +492,11 @@ const CreateScrapSales = () => {
       return;
     }
 
+    if (!buyerDetails.company_name?.trim()) {
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_COMPANYNAMEISREQUIRED', fallbackText: t("scrapSales.companyNameRequired"), type: 'error' });
+      return;
+    }
+
     if (!collectionDate) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_PLEASEENTERCOLLECTIONDATE_5B1F1783', fallbackText: t("scrapSales.pleaseEnterCollectionDate"), type: 'error' });
       return;
@@ -1185,7 +1190,7 @@ const CreateScrapSales = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('scrapSales.companyName')}
+                {t('scrapSales.companyNameRequiredLabel')}
               </label>
               <input
                 type="text"

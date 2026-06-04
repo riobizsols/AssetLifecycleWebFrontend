@@ -31,6 +31,38 @@ export const translateErrorMessage = (errorMessage) => {
     {
       pattern: /failed to delete asset/i,
       translationKey: 'assets.failedToDeleteAsset'
+    },
+    {
+      pattern: /null value in column "buyer_company".*not-null constraint/i,
+      translationKey: 'scrapSales.companyNameRequired'
+    },
+    {
+      pattern: /company name is required/i,
+      translationKey: 'scrapSales.companyNameRequired'
+    },
+    {
+      pattern: /similar name already exists/i,
+      translationKey: 'assetTypes.similarAssetTypeNameExistsGeneric'
+    },
+    {
+      pattern: /similar asset name exists/i,
+      translationKey: 'assets.similarAssetNameExistsGeneric'
+    },
+    {
+      pattern: /server error\. please try again later/i,
+      translationKey: 'createScrapAsset.serverErrorPleaseTryAgainLater'
+    },
+    {
+      pattern: /failed to create scrap request/i,
+      translationKey: 'createScrapAsset.failedToCreateScrapRequest'
+    },
+    {
+      pattern: /scrap workflow sequence is not configured/i,
+      translationKey: 'createScrapAsset.scrapWorkflowNotConfigured'
+    },
+    {
+      pattern: /already scrapped/i,
+      translationKey: 'createScrapAsset.assetsAlreadyScrapped'
     }
   ];
 
@@ -89,7 +121,9 @@ export const showBackendTextToast = ({
   values = {},
   toastOptions = {},
 }) => {
-  const fallbackMessage = interpolateTemplate(String(fallbackText || ""), values);
+  const rawFallbackMessage = interpolateTemplate(String(fallbackText || ""), values);
+  const fallbackMessage =
+    type === "error" ? translateErrorMessage(rawFallbackMessage) : rawFallbackMessage;
   const hasFallbackMessage = Boolean(String(fallbackMessage || "").trim());
   const selectedLang = String(localStorage.getItem("selectedLanguage") || "").toLowerCase();
   const currentLang = String(selectedLang || i18n?.language || "en").toLowerCase();
@@ -108,7 +142,8 @@ export const showBackendTextToast = ({
   let fallbackShown = false;
   let fallbackTimer = null;
 
-  if (isEnglish && hasFallbackMessage) {
+  // Show localized fallback immediately for English, or for errors (fallback is already translated via t()).
+  if ((isEnglish || type === 'error') && hasFallbackMessage) {
     toastId = showByType(fallbackMessage, toastOptions);
     fallbackShown = true;
   }
@@ -117,7 +152,11 @@ export const showBackendTextToast = ({
   resolveBackendTextMessage(tmdId, fallbackText)
     .then((rawMessage) => {
       if (fallbackTimer) clearTimeout(fallbackTimer);
-      const resolvedMessage = interpolateTemplate(rawMessage, values);
+      const rawResolvedMessage = interpolateTemplate(rawMessage, values);
+      const resolvedMessage =
+        type === "error"
+          ? translateErrorMessage(rawResolvedMessage)
+          : rawResolvedMessage;
       if (!resolvedMessage) return;
 
       if (fallbackShown) {
