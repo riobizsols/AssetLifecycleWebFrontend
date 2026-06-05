@@ -9,6 +9,7 @@ import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
+import { translateMasterDataLabel } from "../utils/masterDataLabel";
 
 const InspectionApproval = () => {
   const navigate = useNavigate();
@@ -48,6 +49,8 @@ const InspectionApproval = () => {
         const approvalData = res.data.data.map(item => ({
             ...item,
             id: item.wfaiisd_id, // Use workflow detail ID as row key
+            asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
+            branch_name: translateMasterDataLabel(item.branch_name, t),
             pl_sch_date: item.pl_sch_date ? new Date(item.pl_sch_date).toLocaleDateString() : '-',
             header_status: item.header_status || 'PN'
         }));
