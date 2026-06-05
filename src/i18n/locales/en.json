@@ -140,6 +140,7 @@
     "alertTypeRegularMaintenance": "Regular Maintenance",
     "alertTypeInspection": "Inspection",
     "alertTypeWarrantyExpiry": "Warranty Expiry",
+    "alertTypeWarrantyExpired": "Warranty Expired",
     "alertTypeUrgent": "Urgent",
     "groupNameWithAssets": "{{groupName}} ({{count}} assets)",
     "assetTypeInspection": "{{assetType}} Inspection",

@@ -140,6 +140,7 @@
     "alertTypeRegularMaintenance": "Regelmäßige Wartung",
     "alertTypeInspection": "Inspektion",
     "alertTypeWarrantyExpiry": "Garantieablauf",
+    "alertTypeWarrantyExpired": "Garantie abgelaufen",
     "alertTypeUrgent": "Dringend",
     "groupNameWithAssets": "{{groupName}} ({{count}} Anlagen)",
     "assetTypeInspection": "{{assetType}} Inspektion",

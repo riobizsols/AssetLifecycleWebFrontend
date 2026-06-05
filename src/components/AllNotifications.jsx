@@ -134,7 +134,9 @@ const AllNotifications = () => {
         alertType: notification.workflowType === 'INSPECTION' 
           ? "Inspection" 
           : notification.workflowType === "WARRANTY"
-          ? "Warranty Expiry"
+          ? (notification.isOverdue || notification.title === "Warranty Expired"
+              ? t("allNotifications.alertTypeWarrantyExpired")
+              : t("allNotifications.alertTypeWarrantyExpiry"))
           : notification.maintenanceType || "Regular Maintenance",
         alertText: notification.isGroupMaintenance && notification.groupName
           ? t("allNotifications.groupNameWithAssets", { groupName: notification.groupName, count: notification.groupAssetCount })
@@ -165,6 +167,7 @@ const AllNotifications = () => {
         notifyId: notification.notifyId,
         notificationStatus: notification.notificationStatus,
         title: notification.title,
+        isOverdue: !!notification.isOverdue,
         canChangeVendor: !!notification.canChangeVendor,
       }));
       console.log("Transformed alerts:", transformedAlerts);
