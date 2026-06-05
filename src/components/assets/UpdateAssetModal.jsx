@@ -11,6 +11,7 @@ import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
 import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
 import { useNavigation } from '../../hooks/useNavigation';
 import useColumnAccess from '../../hooks/useColumnAccess';
 
@@ -116,6 +117,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [showQSNPrintModal, setShowQSNPrintModal] = useState(false);
   const [qsnPrintReason, setQsnPrintReason] = useState("");
   const [isQSNPrintLoading, setIsQSNPrintLoading] = useState(false);
+  const [existingAssets, setExistingAssets] = useState([]);
 
   const isWarrantyPeriodInPast = (() => {
     if (!form.warrantyPeriod) return false;
@@ -253,6 +255,27 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   useEffect(() => {
     fetchDocumentTypes();
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchExistingAssets = async () => {
+      try {
+        const res = await API.get('/assets');
+        const rows = Array.isArray(res.data?.rows)
+          ? res.data.rows
+          : Array.isArray(res.data)
+            ? res.data
+            : [];
+        setExistingAssets(rows);
+      } catch (err) {
+        console.error('Error fetching assets for name validation:', err);
+        setExistingAssets([]);
+      }
+    };
+
+    fetchExistingAssets();
+  }, [isOpen]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -595,6 +618,28 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       return;
     }
 
+    const assetNameTrimmed = form.description?.trim();
+    if (
+      !isWarrantyActionMode &&
+      isColumnVisible('description') &&
+      assetNameTrimmed
+    ) {
+      const conflictingName = findConflictingAssetName(
+        assetNameTrimmed,
+        existingAssets,
+        assetData?.asset_id
+      );
+      if (conflictingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
+          fallbackText: t('assets.similarAssetNameExists', { name: conflictingName }),
+          type: 'error',
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       // Get user's branch ID automatically
@@ -622,7 +667,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           updateData.serial_number = form.serialNumber;
         }
         if (isColumnVisible('description')) {
-          updateData.description = form.description;
+          updateData.description = form.description?.trim() || null;
         }
         if (isColumnVisible('branch_id')) {
           updateData.branch_id = userBranchId; // Auto-populate user's branch
@@ -704,7 +749,23 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       onClose(true);
     } catch (err) {
       console.error('Error updating asset:', err);
-      const errorMessage = err.response?.data?.error || 'Failed to update asset';
+      const responseData = err.response?.data;
+      if (responseData?.existingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
+          fallbackText: t('assets.similarAssetNameExists', {
+            name: responseData.existingName,
+          }),
+          type: 'error',
+        });
+        return;
+      }
+
+      const errorMessage =
+        responseData?.message ||
+        responseData?.error ||
+        t('assets.failedToUpdateAsset');
       showBackendTextToast({
         toast,
         tmdId: 'TMD_FAILED_TO_UPDATE_ASSET_8578544F',
