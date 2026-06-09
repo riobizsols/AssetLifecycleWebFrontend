@@ -350,26 +350,26 @@ const Roles = () => {
   const generateAssetTypesCSV = () => {
     const headers = [
       'asset_type_id', 'text', 'assignment_type', 'int_status', 'inspection_required', 'group_required',
-      'maint_required', 'is_child', 'parent_asset_type_id', 'maint_type_id', 'maint_lead_type',
+      'is_child', 'parent_asset_type_id', 'maint_lead_type',
       'depreciation_type', 'properties'
     ];
     
     const sampleData = [
       [
-        'AT001', 'Laptops', 'user', '1', 'false', 'false', 'true', 'false', '', 'MT001', 'internal', 'SL',
-        'Screen Size;RAM;Storage;Processor' // Example properties for laptops
+        'AT001', 'Laptops', 'user', '1', 'false', 'false', 'false', '', 'internal', 'SL',
+        'Screen Size;RAM;Storage;Processor'
       ],
       [
-        'AT002', 'Desktops', 'user', '1', 'false', 'false', 'true', 'false', '', 'MT001', 'internal', 'SL',
-        'RAM;Storage;Processor;Graphics Card' // Different properties for desktops
+        'AT002', 'Desktops', 'user', '1', 'false', 'false', 'false', '', 'internal', 'SL',
+        'RAM;Storage;Processor;Graphics Card'
       ],
       [
-        'AT003', 'Gaming Laptops', 'user', '1', 'false', 'false', 'true', 'true', 'AT001', 'MT001', 'internal', 'SL',
-        'Screen Size;RAM;Storage;Processor;Graphics Card' // Child asset type with parent
+        'AT003', 'Gaming Laptops', 'user', '1', 'false', 'false', 'true', 'AT001', 'internal', 'SL',
+        'Screen Size;RAM;Storage;Processor;Graphics Card'
       ],
       [
-        'AT004', 'Office Chairs', 'user', '1', 'false', 'false', 'false', 'false', '', '', '', 'ND',
-        'Material;Weight Capacity;Adjustable Height' // Different properties for chairs
+        'AT004', 'Office Chairs', 'user', '1', 'false', 'false', 'false', '', '', 'ND',
+        'Material;Weight Capacity;Adjustable Height'
       ]
     ];
     
@@ -771,7 +771,7 @@ const Roles = () => {
     const errors = [];
     const requiredFields = [
       'asset_type_id', 'text', 'assignment_type', 'int_status', 'inspection_required', 'group_required',
-      'maint_required', 'is_child', 'depreciation_type', 'properties'
+      'is_child', 'depreciation_type', 'properties'
     ];
 
     // Validate headers
@@ -850,14 +850,6 @@ const Roles = () => {
         const groupRequired = data[groupRequiredIndex];
         if (!['true', 'false'].includes(groupRequired.toLowerCase())) {
           rowErrors.push(`Row ${rowNumber}: group_required must be true or false`);
-        }
-      }
-
-      const maintRequiredIndex = headers.indexOf('maint_required');
-      if (maintRequiredIndex !== -1 && data[maintRequiredIndex]) {
-        const maintRequired = data[maintRequiredIndex];
-        if (!['true', 'false'].includes(maintRequired.toLowerCase())) {
-          rowErrors.push(`Row ${rowNumber}: maint_required must be true or false`);
         }
       }
 
@@ -1131,7 +1123,7 @@ const Roles = () => {
           } else if (header === 'parent_asset_type_id') {
             // Convert parent asset type text to ID if needed
             obj[header] = convertParentAssetTypeToId(value, referenceData.assetTypes || []);
-          } else if (header === 'is_child' || header === 'inspection_required' || header === 'group_required' || header === 'maint_required') {
+          } else if (header === 'is_child' || header === 'inspection_required' || header === 'group_required') {
             // Convert boolean string values to actual booleans
             obj[header] = value.toLowerCase() === 'true';
           } else {
@@ -1591,13 +1583,6 @@ const Roles = () => {
             if (!parentAssetTypeExists) {
               rowErrors.push(`parent_asset_type_id '${parentAssetTypeId}' does not exist in asset types table`);
             }
-          }
-
-          const maintTypeIdIndex = headers.indexOf('maint_type_id');
-          if (maintTypeIdIndex !== -1 && data[maintTypeIdIndex] && data[maintTypeIdIndex] !== '') {
-            const maintTypeId = data[maintTypeIdIndex];
-            // Note: maint_type_id validation would need a maintenance types API endpoint
-            // For now, we'll skip this validation
           }
 
           const createdByIndexAT = headers.indexOf('created_by');

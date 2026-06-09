@@ -463,10 +463,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
-        maint_required: 0,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
-        maint_type_id: null,
         maint_lead_type: null
       };
 

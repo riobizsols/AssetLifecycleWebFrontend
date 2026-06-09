@@ -263,11 +263,9 @@ const AddAssetType = () => {
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
-        maint_required: requireMaintenance ? 1 : 0,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
-        maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
-        maint_lead_type: requireMaintenance ? maintenanceLeadType : null,
+        maint_lead_type: maintenanceLeadType || null,
         depreciation_type: depreciationType,
         properties: selectedProperties
       };

@@ -156,7 +156,6 @@ const SerialNumberPrint = () => {
           asset_type_id: item.asset_type_details?.asset_type_id,
           asset_type_name: item.asset_type_details?.asset_type_name || '', // Use asset type name from asset_type_details
           assignment_type: item.asset_type_details?.assignment_type,
-          maint_required: item.asset_type_details?.maint_required,
           inspection_required: item.asset_type_details?.inspection_required,
           group_required: item.asset_type_details?.group_required,
           // Additional fields for compatibility

@@ -26,6 +26,27 @@ import SearchableDropdown from "../../components/ui/SearchableDropdown";
 import { generateUUID } from "../../utils/uuid";
 import { useLanguage } from "../../contexts/LanguageContext";
 
+const parseApiList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
+const deriveMaintTypesFromFrequencies = (frequencyRows, allMaintTypes = []) => {
+  const byId = new Map();
+  frequencyRows.forEach((row) => {
+    if (!row?.maint_type_id) return;
+    const id = String(row.maint_type_id);
+    if (byId.has(id)) return;
+    const master = allMaintTypes.find((type) => String(type.maint_type_id) === id);
+    byId.set(id, {
+      maint_type_id: row.maint_type_id,
+      text: row.maint_type_name || master?.text || id,
+    });
+  });
+  return [...byId.values()];
+};
+
 const Certifications = () => {
   const location = useLocation();
   const { t } = useLanguage();
@@ -156,8 +177,8 @@ const Certifications = () => {
 
   const fetchAssetTypes = async () => {
     try {
-      const response = await API.get("/asset-types");
-      const data = response.data || [];
+      const response = await API.get("/asset-types/maint-required");
+      const data = parseApiList(response.data);
       setAssetTypes(data);
     } catch (error) {
       console.error("Failed to fetch asset types:", error);
@@ -168,7 +189,7 @@ const Certifications = () => {
   const fetchMaintTypes = async () => {
     try {
       const response = await API.get("/maint-types");
-      const data = response.data || [];
+      const data = parseApiList(response.data);
       setMaintTypes(data);
     } catch (error) {
       console.error("Failed to fetch maintenance types:", error);
@@ -264,16 +285,12 @@ const Certifications = () => {
     }
 
     try {
-      const response = await API.get(`/maintenance-schedules/frequency/${assetTypeId}`);
-      const rows = Array.isArray(response.data) ? response.data : response.data?.data || [];
-      const ids = Array.from(new Set(rows.map((row) => row.maint_type_id).filter(Boolean)));
-      if (ids.length > 0) {
-        setAssetTypeMaintTypeIds(ids);
-      } else {
-        // Fallback: use maint_type_id from asset type master if frequency rows are missing.
-        const assetTypeRow = assetTypes.find((type) => String(type.asset_type_id) === String(assetTypeId));
-        setAssetTypeMaintTypeIds(assetTypeRow?.maint_type_id ? [assetTypeRow.maint_type_id] : []);
-      }
+      const response = await API.get(`/maintenance-frequencies/asset-type/${assetTypeId}`);
+      const rows = parseApiList(response.data);
+      const ids = Array.from(
+        new Set(rows.map((row) => row.maint_type_id).filter(Boolean).map(String))
+      );
+      setAssetTypeMaintTypeIds(ids);
     } catch (error) {
       console.error("Failed to fetch maintenance types for asset type:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOLOADMAINTTYPESFORASSETTY_140AF30A', fallbackText: "Failed to load maintenance types for asset type", type: 'error' });
@@ -324,14 +341,19 @@ const Certifications = () => {
     }
   }, [selectedAssetType]);
 
-  // Auto-select first asset type when asset types are loaded
+  // Auto-select first asset type with maintenance configured
   useEffect(() => {
-    if (assetTypes.length > 0 && !selectedAssetType) {
+    if (assetTypes.length === 0) return;
+
+    const isCurrentValid = assetTypes.some(
+      (type) => String(type.asset_type_id) === String(selectedAssetType)
+    );
+    if (!selectedAssetType || !isCurrentValid) {
       const firstAssetTypeId = assetTypes[0].asset_type_id;
-      console.log("🔶 Auto-selecting first asset type:", firstAssetTypeId);
+      console.log("🔶 Auto-selecting first maintenance asset type:", firstAssetTypeId);
       setSelectedAssetType(firstAssetTypeId);
     }
-  }, [assetTypes]);
+  }, [assetTypes, selectedAssetType]);
 
   useEffect(() => {
     if (!selectedAssetType) {
@@ -344,17 +366,27 @@ const Certifications = () => {
       return;
     }
 
-    const filtered = maintTypes.filter((type) => assetTypeMaintTypeIds.includes(type.maint_type_id));
+    const filtered = maintTypes.filter((type) =>
+      assetTypeMaintTypeIds.includes(String(type.maint_type_id))
+    );
     setFilteredMaintTypes(filtered);
   }, [maintTypes, assetTypeMaintTypeIds, selectedAssetType]);
 
   useEffect(() => {
-    if (!selectedMaintType) return;
-    const stillValid = filteredMaintTypes.some((type) => type.maint_type_id === selectedMaintType);
-    if (!stillValid) {
+    if (!selectedAssetType) return;
+
+    if (filteredMaintTypes.length === 0) {
       setSelectedMaintType("");
+      return;
     }
-  }, [filteredMaintTypes, selectedMaintType]);
+
+    setSelectedMaintType((current) => {
+      const stillValid = filteredMaintTypes.some(
+        (type) => String(type.maint_type_id) === String(current)
+      );
+      return stillValid ? current : filteredMaintTypes[0].maint_type_id;
+    });
+  }, [filteredMaintTypes, selectedAssetType]);
 
   // When update modal is open for mapping, load maintenance types for selected asset type
   useEffect(() => {
@@ -365,23 +397,10 @@ const Certifications = () => {
     let cancelled = false;
     const load = async () => {
       try {
-        const response = await API.get(`/maintenance-schedules/frequency/${updateCertAssetType}`);
-        const rows = Array.isArray(response.data) ? response.data : response.data?.data || [];
-        const ids = Array.from(new Set(rows.map((row) => row.maint_type_id).filter(Boolean)));
+        const response = await API.get(`/maintenance-frequencies/asset-type/${updateCertAssetType}`);
+        const rows = parseApiList(response.data);
         if (!cancelled) {
-          if (ids.length > 0) {
-            setUpdateModalMaintTypes(maintTypes.filter((t) => ids.includes(t.maint_type_id)));
-          } else {
-            const assetTypeRow = assetTypes.find(
-              (type) => String(type.asset_type_id) === String(updateCertAssetType),
-            );
-            const fallbackMaintTypeId = assetTypeRow?.maint_type_id;
-            setUpdateModalMaintTypes(
-              fallbackMaintTypeId
-                ? maintTypes.filter((t) => String(t.maint_type_id) === String(fallbackMaintTypeId))
-                : [],
-            );
-          }
+          setUpdateModalMaintTypes(deriveMaintTypesFromFrequencies(rows, maintTypes));
         }
       } catch (err) {
         if (!cancelled) setUpdateModalMaintTypes([]);
@@ -406,25 +425,12 @@ const Certifications = () => {
     const load = async () => {
       try {
         const [freqRes, mapRes] = await Promise.all([
-          API.get(`/maintenance-schedules/frequency/${mappingFormAssetType}`),
+          API.get(`/maintenance-frequencies/asset-type/${mappingFormAssetType}`),
           API.get(`/asset-types/${mappingFormAssetType}/maintenance-certificates`)
         ]);
         if (cancelled) return;
-        const rows = Array.isArray(freqRes.data) ? freqRes.data : freqRes.data?.data || [];
-        const maintIds = Array.from(new Set(rows.map((r) => r.maint_type_id).filter(Boolean)));
-        if (maintIds.length > 0) {
-          setMappingFormMaintTypes(maintTypes.filter((t) => maintIds.includes(t.maint_type_id)));
-        } else {
-          const assetTypeRow = assetTypes.find(
-            (type) => String(type.asset_type_id) === String(mappingFormAssetType),
-          );
-          const fallbackMaintTypeId = assetTypeRow?.maint_type_id;
-          setMappingFormMaintTypes(
-            fallbackMaintTypeId
-              ? maintTypes.filter((t) => String(t.maint_type_id) === String(fallbackMaintTypeId))
-              : [],
-          );
-        }
+        const rows = parseApiList(freqRes.data);
+        setMappingFormMaintTypes(deriveMaintTypesFromFrequencies(rows, maintTypes));
         const mapData = mapRes.data?.data || [];
         setMappingFormMappedCertificates(mapData);
         setMappingFormMappedLoaded(true);
@@ -979,8 +985,14 @@ const Certifications = () => {
     selectableCertificateIds.every((id) => selectedCertificateRows.includes(id));
 
   const filteredMappedCertificates = useMemo(() => {
-    return filterData(mappedCertificates, { columnFilters: mappingColumnFilters }, []);
-  }, [mappedCertificates, mappingColumnFilters]);
+    let rows = mappedCertificates;
+    if (selectedMaintType) {
+      rows = rows.filter(
+        (cert) => String(cert.maint_type_id) === String(selectedMaintType)
+      );
+    }
+    return filterData(rows, { columnFilters: mappingColumnFilters }, []);
+  }, [mappedCertificates, mappingColumnFilters, selectedMaintType]);
 
   const selectableMappedIds = useMemo(() => {
     return filteredMappedCertificates
@@ -1329,6 +1341,45 @@ const Certifications = () => {
                 )}
               </div>
             </div>
+
+            {!showMappingForm && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.assetType")}</label>
+                  <select
+                    value={selectedAssetType}
+                    onChange={(e) => {
+                      setSelectedAssetType(e.target.value);
+                      setSelectedMaintType("");
+                    }}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                  >
+                    <option value="">{t("certifications.selectAssetType")}</option>
+                    {assetTypes.map((type) => (
+                      <option key={type.asset_type_id} value={type.asset_type_id}>
+                        {type.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.maintenanceType")}</label>
+                  <select
+                    value={selectedMaintType}
+                    onChange={(e) => setSelectedMaintType(e.target.value)}
+                    disabled={!selectedAssetType || filteredMaintTypes.length === 0}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40 disabled:bg-gray-100 disabled:text-gray-500"
+                  >
+                    <option value="">Select maintenance type</option>
+                    {filteredMaintTypes.map((type) => (
+                      <option key={type.maint_type_id} value={type.maint_type_id}>
+                        {type.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             {mappingFilterOpen && (
               <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
