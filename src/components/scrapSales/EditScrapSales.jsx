@@ -370,6 +370,11 @@ const EditScrapSales = () => {
       return;
     }
 
+    if (!buyerDetails.company_name?.trim()) {
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_COMPANYNAMEISREQUIRED', fallbackText: t('scrapSales.companyNameRequired'), type: 'error' });
+      return;
+    }
+
     setLoading(true);
     try {
       // Prepare scrap assets with sale values
@@ -386,7 +391,7 @@ const EditScrapSales = () => {
         text: groupName,
         total_sale_value: finalTotalValue,
         buyer_name: buyerDetails.buyer_name,
-        buyer_company: buyerDetails.company_name || null,
+        buyer_company: buyerDetails.company_name?.trim() || '',
         buyer_phone: buyerDetails.buyer_contact,
         sale_date: saleDate || new Date().toISOString().split('T')[0], // Required field
         collection_date: collectionDate || null,
@@ -1033,7 +1038,7 @@ const EditScrapSales = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('scrapSales.companyName')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('scrapSales.companyNameRequiredLabel')}</label>
               <input
                 type="text"
                 placeholder={t('scrapSales.companyNamePlaceholder')}

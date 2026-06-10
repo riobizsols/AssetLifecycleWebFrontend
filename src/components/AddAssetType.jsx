@@ -9,6 +9,7 @@ import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import { findConflictingAssetTypeName } from "../utils/assetTypeNameValidation";
 
 const AddAssetType = () => {
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ const AddAssetType = () => {
   
   // Document types from API
   const [documentTypes, setDocumentTypes] = useState([]);
+  const [existingAssetTypes, setExistingAssetTypes] = useState([]);
 
   useEffect(() => {
     // Reset parent selection when parentChild changes
@@ -62,7 +64,18 @@ const AddAssetType = () => {
     fetchMaintenanceTypes();
     fetchDocumentTypes();
     fetchProperties();
+    fetchExistingAssetTypes();
   }, []);
+
+  const fetchExistingAssetTypes = async () => {
+    try {
+      const res = await API.get("/asset-types");
+      setExistingAssetTypes(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Error fetching asset types for validation:", err);
+      setExistingAssetTypes([]);
+    }
+  };
 
   const fetchParentAssetTypes = async () => {
     try {
@@ -177,6 +190,20 @@ const AddAssetType = () => {
       return;
     }
 
+    const conflictingName = findConflictingAssetTypeName(
+      assetType.trim(),
+      existingAssetTypes
+    );
+    if (conflictingName) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
+        fallbackText: t('assetTypes.similarAssetTypeNameExists', { name: conflictingName }),
+        type: 'error',
+      });
+      return;
+    }
+
     // Validate parent selection for child asset types
     if (parentChild === "child" && !selectedParentType) {
       showBackendTextToast({
@@ -236,11 +263,9 @@ const AddAssetType = () => {
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
-        maint_required: requireMaintenance ? 1 : 0,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
-        maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
-        maint_lead_type: requireMaintenance ? maintenanceLeadType : null,
+        maint_lead_type: maintenanceLeadType || null,
         depreciation_type: depreciationType,
         properties: selectedProperties
       };
@@ -307,10 +332,26 @@ const AddAssetType = () => {
       }
       navigate('/master-data/asset-types');
     } catch (error) {
-      const errorMessage = error.response?.data?.error || "Failed to create asset type";
-      const errorDetails = error.response?.data?.details || "";
-      const errorHint = error.response?.data?.hint || "";
-      
+      const responseData = error.response?.data;
+      if (responseData?.existingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
+          fallbackText: t('assetTypes.similarAssetTypeNameExists', {
+            name: responseData.existingName,
+          }),
+          type: 'error',
+        });
+        return;
+      }
+
+      const errorMessage =
+        responseData?.message ||
+        responseData?.error ||
+        t('assetTypes.failedToCreateAssetType');
+      const errorDetails = responseData?.details || "";
+      const errorHint = responseData?.hint || "";
+
       let fullError = errorMessage;
       if (errorDetails) fullError += `\n${errorDetails}`;
       if (errorHint) fullError += `\n\nHint: ${errorHint}`;

@@ -45,6 +45,16 @@ const AllNotifications = () => {
   const [openSnoozeMenuId, setOpenSnoozeMenuId] = useState(null);
   const [openingNotifyIds, setOpeningNotifyIds] = useState({});
 
+  const getAlertTypeLabel = (alertType) => {
+    const labels = {
+      "Regular Maintenance": t("allNotifications.alertTypeRegularMaintenance"),
+      Inspection: t("allNotifications.alertTypeInspection"),
+      "Warranty Expiry": t("allNotifications.alertTypeWarrantyExpiry"),
+      Urgent: t("allNotifications.alertTypeUrgent"),
+    };
+    return labels[alertType] || alertType;
+  };
+
   const isUnreadWarranty = (status) => {
     const normalized = String(status || "").toUpperCase();
     return normalized === "NEW" || normalized === "UNREAD";
@@ -130,23 +140,25 @@ const AllNotifications = () => {
         alertType: notification.workflowType === 'INSPECTION' 
           ? "Inspection" 
           : notification.workflowType === "WARRANTY"
-          ? "Warranty Expiry"
+          ? (notification.isOverdue || notification.title === "Warranty Expired"
+              ? t("allNotifications.alertTypeWarrantyExpired")
+              : t("allNotifications.alertTypeWarrantyExpiry"))
           : notification.workflowType === "ASSETEXPIRY"
           ? "Asset Expiry"
           : notification.maintenanceType || "Regular Maintenance",
         alertText: notification.isGroupMaintenance && notification.groupName
-          ? `${notification.groupName} (${notification.groupAssetCount} assets)`
+          ? t("allNotifications.groupNameWithAssets", { groupName: notification.groupName, count: notification.groupAssetCount })
           : notification.workflowType === 'INSPECTION'
-          ? `${notification.assetTypeName} Inspection`
+          ? t("allNotifications.assetTypeInspection", { assetType: notification.assetTypeName })
           : notification.workflowType === "WARRANTY"
-          ? `${notification.assetId} - ${notification.title || "Warranty Expiry"}`
+          ? `${notification.assetId} - ${notification.title || t("allNotifications.alertTypeWarrantyExpiry")}`
           : notification.workflowType === "ASSETEXPIRY"
           ? `${notification.assetId} - ${notification.title || "Asset Expiry"}`
           : String(notification.maintenanceType || "").toLowerCase().includes("subscription")
           ? `${notification.assetTypeName}`
-          : `${notification.assetTypeName} Maintenance`,
+          : t("allNotifications.assetTypeMaintenance", { assetType: notification.assetTypeName }),
         dueOn: formatDate(notification.dueDate),
-        actionBy: notification.userName || "Unassigned",
+        actionBy: notification.userName || t("allNotifications.unassigned"),
         cutoffDate: formatDate(notification.cutoffDate),
         isUrgent: notification.daysUntilCutoff <= 2, // Show urgent only when 2 days or less until cutoff
         wfamshId: notification.wfamshId, // For navigation
@@ -165,6 +177,7 @@ const AllNotifications = () => {
         notifyId: notification.notifyId,
         notificationStatus: notification.notificationStatus,
         title: notification.title,
+        isOverdue: !!notification.isOverdue,
         canChangeVendor: !!notification.canChangeVendor,
       }));
       console.log("Transformed alerts:", transformedAlerts);
@@ -172,7 +185,7 @@ const AllNotifications = () => {
       setError(null);
     } catch (err) {
       console.error("Error fetching notifications:", err);
-      setError("Failed to load notifications");
+      setError(t("allNotifications.failedToLoadNotifications"));
       setAlerts([]);
     } finally {
       setLoading(false);
@@ -180,7 +193,7 @@ const AllNotifications = () => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return t("allNotifications.notAvailable");
     return new Date(dateString).toLocaleDateString();
   };
 
@@ -281,7 +294,7 @@ const AllNotifications = () => {
         delete next[alert.notifyId];
         return next;
       });
-      toast.success(`Snoozed for ${days} day(s)`);
+      toast.success(t("allNotifications.snoozedForDays", { days }));
     } catch (error) {
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SNOOZE_ALERT_4DC3EA64', fallbackText: 'Failed to snooze alert', type: 'error' });
     }
@@ -339,16 +352,16 @@ const AllNotifications = () => {
             className="mb-3 inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
           >
             <span aria-hidden="true">←</span>
-            <span>Back</span>
+            <span>{t("allNotifications.back")}</span>
           </button>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-blue-100 rounded-lg">
               <BellIcon className="w-8 h-8 text-blue-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">All Notifications</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("allNotifications.title")}</h1>
           </div>
           <p className="text-gray-600">
-            View and manage all your maintenance notifications
+            {t("allNotifications.subtitle")}
           </p>
         </div>
 
@@ -360,7 +373,7 @@ const AllNotifications = () => {
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <FunnelIcon className="w-5 h-5 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filters</span>
+              <span className="text-sm font-medium text-gray-700">{t("allNotifications.filters")}</span>
               <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
                 {Object.values(selectedFilters).filter(Boolean).length}
               </span>
@@ -368,7 +381,7 @@ const AllNotifications = () => {
             
             {alerts.length > 0 && (
               <div className="text-sm text-gray-500">
-                Showing {getFilteredAlerts().length} of {alerts.length} notifications
+                {t("allNotifications.showingCount", { shown: getFilteredAlerts().length, total: alerts.length })}
               </div>
             )}
           </div>
@@ -384,10 +397,10 @@ const AllNotifications = () => {
                     className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Inspection ({getFilterCount('inspection')})
+                    {t("allNotifications.filterInspection")} ({getFilterCount('inspection')})
                   </span>
                   <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                    Inspections
+                    {t("allNotifications.filterInspections")}
                   </span>
                 </label>
 
@@ -399,10 +412,10 @@ const AllNotifications = () => {
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Maintenance ({getFilterCount('maintenance')})
+                    {t("allNotifications.filterMaintenance")} ({getFilterCount('maintenance')})
                   </span>
                   <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                    Maintenance
+                    {t("allNotifications.filterMaintenance")}
                   </span>
                 </label>
 
@@ -414,10 +427,10 @@ const AllNotifications = () => {
                     className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Vendor Renewal ({getFilterCount('vendorRenewal')})
+                    {t("allNotifications.filterVendorRenewal")} ({getFilterCount('vendorRenewal')})
                   </span>
                   <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                    Contracts
+                    {t("allNotifications.filterContracts")}
                   </span>
                 </label>
 
@@ -429,10 +442,10 @@ const AllNotifications = () => {
                     className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Subscription Renewal ({getFilterCount('subscriptionRenewal')})
+                    {t("allNotifications.filterSubscriptionRenewal")} ({getFilterCount('subscriptionRenewal')})
                   </span>
                   <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
-                    Subscriptions
+                    {t("allNotifications.filterSubscriptions")}
                   </span>
                 </label>
 
@@ -444,10 +457,10 @@ const AllNotifications = () => {
                     className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Warranty ({getFilterCount('warranty')})
+                    {t("allNotifications.filterWarranty")} ({getFilterCount('warranty')})
                   </span>
                   <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded-full">
-                    Warranty
+                    {t("allNotifications.filterWarranty")}
                   </span>
                 </label>
 
@@ -482,12 +495,12 @@ const AllNotifications = () => {
               <BellIcon className="w-16 h-16 text-blue-400" />
             </div>
             <h3 className="text-lg font-semibold mb-2 text-gray-600">
-              {alerts.length === 0 ? "No Notifications" : "No Matching Notifications"}
+              {alerts.length === 0 ? t("allNotifications.noNotifications") : t("allNotifications.noMatchingNotifications")}
             </h3>
             <span className="text-sm text-gray-500">
               {alerts.length === 0 
-                ? "You don't have any maintenance notifications at the moment."
-                : "No notifications match your current filter selection. Try adjusting the filters above."
+                ? t("allNotifications.noNotificationsDescription")
+                : t("allNotifications.noMatchingDescription")
               }
             </span>
           </div>
@@ -502,7 +515,7 @@ const AllNotifications = () => {
                     : "border-gray-200 bg-white hover:bg-gray-50 hover:shadow-xl"
                   }
                 `}
-                title={alert.isUrgent ? `Urgent: Only ${alert.daysUntilCutoff} days until cutoff!` : ""}
+                title={alert.isUrgent ? t("allNotifications.urgentTooltip", { days: alert.daysUntilCutoff }) : ""}
                 onClick={() => handleAlertClick(alert)}
               >
               <div className="flex items-center gap-3 flex-wrap">
@@ -510,11 +523,11 @@ const AllNotifications = () => {
                   <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
                 )}
                 <span className={`text-sm font-bold px-3 py-1 rounded-full ${badgeColors[alert.alertType] || "bg-gray-100 text-gray-800"}`}>
-                  {alert.alertType}
+                  {getAlertTypeLabel(alert.alertType)}
                 </span>
                 {alert.isGroupMaintenance && (
                   <span className="text-sm font-semibold px-3 py-1 rounded-full bg-blue-100 text-blue-800">
-                    Group Maintenance
+                    {t("allNotifications.groupMaintenance")}
                   </span>
                 )}
                 <span className={`text-lg ${isUnreadWarranty(alert.notificationStatus) ? "font-bold text-gray-900" : "font-normal text-gray-800"}`}>{alert.alertText}</span>
@@ -525,8 +538,8 @@ const AllNotifications = () => {
                       : "bg-gray-100 text-gray-600"
                   }`}>
                     {alert.daysUntilCutoff <= 0 
-                      ? "OVERDUE" 
-                      : `${alert.daysUntilCutoff} day${alert.daysUntilCutoff !== 1 ? 's' : ''} left`
+                      ? t("allNotifications.overdue")
+                      : t("allNotifications.daysLeft", { count: alert.daysUntilCutoff })
                     }
                   </span>
                 )}
@@ -534,15 +547,15 @@ const AllNotifications = () => {
               <div className="flex flex-wrap gap-6 text-sm text-gray-600 items-center">
                 <span className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5" />
-                  <span>Due On: <b className="text-gray-800">{alert.dueOn}</b></span>
+                  <span>{t("allNotifications.dueOn")}: <b className="text-gray-800">{alert.dueOn}</b></span>
                 </span>
                 <span className="flex items-center gap-2">
                   <UserIcon className="w-5 h-5" />
-                  <span>Action By: <b className="text-gray-800">{alert.actionBy}</b></span>
+                  <span>{t("allNotifications.actionBy")}: <b className="text-gray-800">{alert.actionBy}</b></span>
                 </span>
                 <span className="flex items-center gap-2">
                   <ClockIcon className={`w-5 h-5 ${alert.isUrgent ? "text-red-500" : ""}`} />
-                  <span>Cut-off Date: <b className={alert.isUrgent ? "text-red-600" : "text-gray-800"}>{alert.cutoffDate}</b></span>
+                  <span>{t("allNotifications.cutoffDate")}: <b className={alert.isUrgent ? "text-red-600" : "text-gray-800"}>{alert.cutoffDate}</b></span>
                 </span>
               </div>
               {(alert.workflowType === "WARRANTY" || alert.workflowType === "ASSETEXPIRY") && (
@@ -556,7 +569,7 @@ const AllNotifications = () => {
                       }
                       className="px-3 py-1.5 text-xs font-semibold rounded-full border bg-white hover:bg-gray-50"
                     >
-                      Actions
+                      {t("allNotifications.actions")}
                     </button>
                     {openActionMenuId === alert.notifyId && (
                       <div className="absolute z-20 mt-2 w-56 rounded-lg border bg-white shadow-lg p-2 space-y-1">
@@ -569,7 +582,7 @@ const AllNotifications = () => {
                           }}
                           className="w-full text-left px-3 py-2 text-xs rounded hover:bg-gray-100 text-gray-700"
                         >
-                          Discard
+                          {t("allNotifications.discard")}
                         </button>
                         {/* 2. Extend Expiry */}
                         <button
@@ -594,7 +607,7 @@ const AllNotifications = () => {
                           }
                           className="w-full text-left px-3 py-2 text-xs rounded hover:bg-blue-50 text-blue-700"
                         >
-                          Remind Again
+                          {t("allNotifications.remindAgain")}
                         </button>
                         {openSnoozeMenuId === alert.notifyId && (
                           <div className="px-2 py-2 rounded bg-blue-50 border border-blue-100 space-y-2">
@@ -611,10 +624,10 @@ const AllNotifications = () => {
                               }
                               className="w-full px-2 py-1 text-xs border rounded-md bg-white"
                             >
-                              <option value="5">5 days</option>
-                              <option value="10">10 days</option>
-                              <option value="20">20 days</option>
-                              <option value="custom">Custom</option>
+                              <option value="5">{t("allNotifications.daysOption", { count: 5 })}</option>
+                              <option value="10">{t("allNotifications.daysOption", { count: 10 })}</option>
+                              <option value="20">{t("allNotifications.daysOption", { count: 20 })}</option>
+                              <option value="custom">{t("allNotifications.custom")}</option>
                             </select>
                             {(snoozeDrafts[alert.notifyId] || { option: "5" }).option === "custom" && (
                               <input
@@ -630,7 +643,7 @@ const AllNotifications = () => {
                                     },
                                   }))
                                 }
-                                placeholder="Days"
+                                placeholder={t("allNotifications.days")}
                                 className="w-full px-2 py-1 text-xs border rounded-md"
                               />
                             )}
@@ -642,7 +655,7 @@ const AllNotifications = () => {
                               }}
                               className="w-full px-2 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700"
                             >
-                              Apply Snooze
+                              {t("allNotifications.applySnooze")}
                             </button>
                           </div>
                         )}
@@ -653,6 +666,17 @@ const AllNotifications = () => {
                         >
                           Scrap
                         </button>
+                        {alert.workflowType === "WARRANTY" && alert.canChangeVendor && (
+                          <button
+                            onClick={(e) => {
+                              goToWarrantyEdit(e, alert, "vendor");
+                              setOpenActionMenuId(null);
+                            }}
+                            className="w-full text-left px-3 py-2 text-xs rounded hover:bg-purple-50 text-purple-700"
+                          >
+                            {t("allNotifications.changeServiceVendor")}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -665,7 +689,7 @@ const AllNotifications = () => {
       
         {error && (
           <div className="text-center py-8 bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="text-red-500 mb-2">⚠️ Error</div>
+            <div className="text-red-500 mb-2">⚠️ {t("allNotifications.error")}</div>
             <div className="text-sm text-gray-600">{error}</div>
           </div>
         )}

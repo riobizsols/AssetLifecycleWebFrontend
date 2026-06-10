@@ -156,7 +156,6 @@ const SerialNumberPrint = () => {
           asset_type_id: item.asset_type_details?.asset_type_id,
           asset_type_name: item.asset_type_details?.asset_type_name || '', // Use asset type name from asset_type_details
           assignment_type: item.asset_type_details?.assignment_type,
-          maint_required: item.asset_type_details?.maint_required,
           inspection_required: item.asset_type_details?.inspection_required,
           group_required: item.asset_type_details?.group_required,
           // Additional fields for compatibility
@@ -266,7 +265,7 @@ const SerialNumberPrint = () => {
       id: type,
       text: type
     }));
-    return [{ id: '', text: 'All Asset Types' }, ...options];
+    return [{ id: '', text: t('serialNumberPrint.allAssetTypes') }, ...options];
   };
 
   // Fetch print queue data
@@ -682,11 +681,12 @@ const SerialNumberPrint = () => {
 
   const renderStatus = (col, row) => {
     if (col.name === 'status') {
+      const translatedStatus = statusOptions.find((status) => status.id === row.status)?.name || row.status;
       return (
         <div className="flex items-center gap-2">
           {getStatusIcon(row.status)}
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(row.status)}`}>
-            {row.status}
+            {translatedStatus}
           </span>
         </div>
       );
@@ -702,10 +702,10 @@ const SerialNumberPrint = () => {
           <button
             onClick={() => handleStatusUpdate(row)}
             className="flex items-center gap-1 px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors"
-            title="Update Status"
+            title={t('serialNumberPrint.updateStatus')}
           >
             <Settings className="w-3 h-3" />
-            Status
+            {t('serialNumberPrint.status')}
           </button>
         </div>
       );
@@ -767,14 +767,18 @@ const SerialNumberPrint = () => {
     );
   }
 
+  const selectedItemStatusName = selectedItem
+    ? statusOptions.find((status) => status.id === selectedItem.status)?.name || selectedItem.status
+    : '';
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Serial Number Print</h1>
-            <p className="text-gray-600 mt-1">Manage and print serial number labels for assets</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('serialNumberPrint.title')}</h1>
+            <p className="text-gray-600 mt-1">{t('serialNumberPrint.subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -782,14 +786,14 @@ const SerialNumberPrint = () => {
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Filter className="w-4 h-4" />
-              Filters
+              {t('serialNumberPrint.filters')}
             </button>
             <button
               onClick={() => fetchPrintQueue(filters.status)}
               className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-              Refresh
+              {t('serialNumberPrint.refresh')}
             </button>
           </div>
         </div>
@@ -802,7 +806,7 @@ const SerialNumberPrint = () => {
             {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
+                {t('serialNumberPrint.status')}
               </label>
               <SearchableDropdown
                 options={statusOptions.map(status => ({
@@ -811,7 +815,7 @@ const SerialNumberPrint = () => {
                 }))}
                 value={filters.status}
                 onChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
-                placeholder="Select status..."
+                placeholder={t('serialNumberPrint.selectStatus')}
                 className="w-full"
               />
             </div>
@@ -819,13 +823,13 @@ const SerialNumberPrint = () => {
             {/* Asset Type Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Asset Type
+                {t('serialNumberPrint.assetType')}
               </label>
               <SearchableDropdown
                 options={getAssetTypeOptions()}
                 value={filters.assetType}
                 onChange={(value) => setFilters(prev => ({ ...prev, assetType: value }))}
-                placeholder="Select asset type..."
+                placeholder={t('serialNumberPrint.selectAssetType')}
                 className="w-full"
               />
             </div>
@@ -839,22 +843,22 @@ const SerialNumberPrint = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="text-sm">
-              <span className="text-gray-600">Total Items:</span>
+              <span className="text-gray-600">{t('serialNumberPrint.totalItems')}:</span>
               <span className="font-semibold ml-1">{printQueue.length}</span>
             </div>
             <div className="text-sm">
-              <span className="text-gray-600">Filtered:</span>
+              <span className="text-gray-600">{t('serialNumberPrint.filtered')}:</span>
               <span className="font-semibold ml-1">{filteredQueue.length}</span>
             </div>
             <div className="text-sm">
-              <span className="text-gray-600">Selected:</span>
+              <span className="text-gray-600">{t('serialNumberPrint.selected')}:</span>
               <span className="font-semibold ml-1">{selectedItems.length}</span>
             </div>
           </div>
           {isLoading && (
             <div className="flex items-center gap-2 text-blue-600">
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Loading...</span>
+              <span className="text-sm">{t('serialNumberPrint.loading')}</span>
             </div>
           )}
         </div>
@@ -897,21 +901,21 @@ const SerialNumberPrint = () => {
       {showStatusModal && selectedItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Update Print Request Status</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('serialNumberPrint.updatePrintRequestStatus')}</h3>
             
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">Serial Number: {selectedItem.serial_number}</p>
-              <p className="text-sm text-gray-600 mb-2">Asset: {selectedItem.asset_name}</p>
-              <p className="text-sm text-gray-600">Current Status: 
+              <p className="text-sm text-gray-600 mb-2">{t('serialNumberPrint.serialNumber')}: {selectedItem.serial_number}</p>
+              <p className="text-sm text-gray-600 mb-2">{t('serialNumberPrint.assetName')}: {selectedItem.asset_name}</p>
+              <p className="text-sm text-gray-600">{t('serialNumberPrint.status')}: 
                 <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(selectedItem.status)}`}>
-                  {selectedItem.status}
+                  {selectedItemStatusName}
                 </span>
               </p>
             </div>
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select New Status
+                {t('serialNumberPrint.selectNewStatus')}
               </label>
               <div className="space-y-2">
                 {statusOptions.map(status => (
@@ -933,10 +937,10 @@ const SerialNumberPrint = () => {
                       <div>
                         <div className="font-medium">{status.name}</div>
                         <div className="text-xs text-gray-500">
-                          {status.id === 'New' && 'New print request'}
-                          {status.id === 'In-progress' && 'Currently being printed'}
-                          {status.id === 'Completed' && 'Print job completed successfully'}
-                          {status.id === 'Cancelled' && 'Print job cancelled'}
+                          {status.id === 'New' && t('serialNumberPrint.newPrintRequest')}
+                          {status.id === 'In-progress' && t('serialNumberPrint.currentlyBeingPrinted')}
+                          {status.id === 'Completed' && t('serialNumberPrint.printJobCompletedSuccessfully')}
+                          {status.id === 'Cancelled' && t('serialNumberPrint.printJobCancelled')}
                         </div>
                       </div>
                     </div>
@@ -950,7 +954,7 @@ const SerialNumberPrint = () => {
                 onClick={() => setShowStatusModal(false)}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {t('serialNumberPrint.cancel')}
               </button>
             </div>
           </div>

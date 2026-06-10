@@ -7,6 +7,7 @@ import { Card, CardContent } from "./ui/card";
 import { Clock, CheckCircle2 } from "lucide-react";
 import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
+import { getAppLocale, translateJobRoleName } from "../utils/jobRoleTranslations";
 
 // Keep the same look & feel as ScrapMaintenanceApprovalDetail
 const getStepIcon = (status) => {
@@ -20,8 +21,8 @@ const getStepIcon = (status) => {
   }
 };
 
-const getStepColor = (status, title) => {
-  if (title === "Approval Initiated") return "bg-[#2196F3]";
+const getStepColor = (status, isInitStep) => {
+  if (isInitStep) return "bg-[#2196F3]";
   switch (status) {
     case "completed":
       return "bg-[#8BC34A]";
@@ -37,18 +38,18 @@ const getStepColor = (status, title) => {
   }
 };
 
-const formatDate = (dateString) => {
+const formatDate = (dateString, locale) => {
   if (!dateString) return "";
   const d = new Date(dateString);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString();
+  return d.toLocaleDateString(locale);
 };
 
-const formatTime = (dateString) => {
+const formatTime = (dateString, locale) => {
   if (!dateString) return "";
   const d = new Date(dateString);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 };
 
 const ReadOnlyInput = ({ label, value, type = "text", className = "" }) => (
@@ -64,7 +65,44 @@ const ReadOnlyInput = ({ label, value, type = "text", className = "" }) => (
 );
 
 const InspectionApprovalDetail = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const ia = (key, options) => t(`inspectionApproval.${key}`, options);
+  const ma = (key, options) => t(`maintenanceApproval.${key}`, options);
+
+  const translateHeaderStatus = (status) => {
+    switch (status) {
+      case "IN":
+        return ia("inProgress");
+      case "AP":
+        return ia("approved");
+      case "CO":
+        return ia("statusCompleted");
+      case "CA":
+        return t("vendorRenewalApproval.cancelled");
+      case "UR":
+        return ia("rejected");
+      default:
+        return status;
+    }
+  };
+
+  const translateUomText = (uomText) => {
+    if (!uomText) return uomText;
+    if (String(uomText).toLowerCase() === "days") return ia("daysUom");
+    return uomText;
+  };
+
+  const translateWorkflowAction = (action) => {
+    const normalized = String(action || "").toLowerCase();
+    if (normalized === "approved" || action === "UA") return ia("approved");
+    if (normalized === "rejected" || action === "UR") return ia("rejected");
+    return action;
+  };
+
+  const appLocale = getAppLocale(i18n.language);
+  const trRole = (name, id) => translateJobRoleName(t, name, id);
+  const fmtDate = (dateString) => formatDate(dateString, appLocale);
+  const fmtTime = (dateString) => formatTime(dateString, appLocale);
   const { id } = useParams();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -110,7 +148,7 @@ const InspectionApprovalDetail = () => {
         showBackendTextToast({
           toast,
           tmdId: 'TMD_FAILED_TO_LOAD_INSPECTION_APPROVAL_FAAEA185',
-          fallbackText: res.data?.message || "Failed to load inspection approval",
+          fallbackText: res.data?.message || ia("failedToLoad"),
           type: 'error',
         });
         setDetail(null);
@@ -132,10 +170,7 @@ const InspectionApprovalDetail = () => {
           created_on: inspectionData.header.created_on,
           created_by: inspectionData.header.created_by,
           header_status: inspectionData.header.status,
-          header_status_text: inspectionData.header.status === 'IN' ? 'In Progress' : 
-                              inspectionData.header.status === 'AP' ? 'Approved' :
-                              inspectionData.header.status === 'CO' ? 'Completed' : 
-                              inspectionData.header.status,
+          header_status_text: translateHeaderStatus(inspectionData.header.status),
           branch_code: inspectionData.header.branch_code,
           branch_name: inspectionData.header.branch_name,
           inspection_frequency: inspectionData.header.inspection_frequency,
@@ -163,7 +198,7 @@ const InspectionApprovalDetail = () => {
       }
     } catch (e) {
       console.error("Failed to load inspection approval detail", e);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_INSPECTION_APPROVAL_DETAIL_0EE1C166', fallbackText: 'Failed to load inspection approval detail', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_INSPECTION_APPROVAL_DETAIL_0EE1C166', fallbackText: ia('failedToLoadDetail'), type: 'error' });
       setDetail(null);
     } finally {
       setLoading(false);
@@ -186,9 +221,10 @@ const InspectionApprovalDetail = () => {
         // Transform history data to match expected format
         const historyData = response.data.data.map(item => ({
           id: item.wfaihis_id,
-          date: formatDate(item.action_on),
-          action: item.action_display || item.action,
+          actionOn: item.action_on,
+          actionKey: item.action_display || item.action,
           jobRole: item.job_role_name,
+          jobRoleId: item.job_role_id,
           department: '-',
           notes: item.notes,
           actionColor: item.action === 'UA' || item.action === 'Approved' ? 'text-green-600' : 
@@ -321,7 +357,7 @@ const InspectionApprovalDetail = () => {
     setDisplayedVendorDetails(vendor);
     const status = vendor.vendor_status || vendor.int_status || vendor.vendor_status;
     if (status === 0 || status === 3 || status === '0' || status === '3') {
-      setVendorStatusError('The specified Service Vendor is Inactive or CR Approved. Please choose another vendor.');
+      setVendorStatusError(ia('vendorInactiveMessage'));
     } else {
       setVendorStatusError('');
     }
@@ -354,7 +390,7 @@ const InspectionApprovalDetail = () => {
     try {
       const resp = await API.put(`/inspection-approval/workflow-header/${detail.header.wfaiish_id}`, { vendorId: newVendorId });
       if (resp.data?.success) {
-        showBackendTextToast({ toast, tmdId: 'TMD_VENDOR_UPDATED_525C2603', fallbackText: 'Vendor updated', type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_VENDOR_UPDATED_525C2603', fallbackText: ia('vendorUpdated'), type: 'success' });
         setSelectedVendorId(newVendorId);
         // Refresh detail
         await fetchDetail();
@@ -366,11 +402,11 @@ const InspectionApprovalDetail = () => {
           console.error('Error fetching vendor after update:', e);
         }
       } else {
-        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_VENDOR_3F2744FD', fallbackText: resp.data?.message || 'Failed to update vendor', type: 'error' });
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_VENDOR_3F2744FD', fallbackText: resp.data?.message || ia('failedToUpdateVendor'), type: 'error' });
       }
     } catch (e) {
       console.error('Error saving inspection vendor change:', e);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_VENDOR_3F2744FD', fallbackText: 'Failed to update vendor', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_VENDOR_3F2744FD', fallbackText: ia('failedToUpdateVendor'), type: 'error' });
     } finally {
       setLoadingVendorDetails(false);
     }
@@ -383,7 +419,7 @@ const InspectionApprovalDetail = () => {
     try {
       const resp = await API.put(`/inspection-approval/workflow-header/${detail.header.wfaiish_id}`, { technicianId: newTechnicianId });
       if (resp.data?.success) {
-        showBackendTextToast({ toast, tmdId: 'TMD_TECHNICIAN_UPDATED_2F615E1F', fallbackText: 'Technician updated', type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_TECHNICIAN_UPDATED_2F615E1F', fallbackText: ia('technicianUpdated'), type: 'success' });
         // Update local selected and fetch details
         setSelectedTechnician(newTechnicianId);
         try {
@@ -395,11 +431,11 @@ const InspectionApprovalDetail = () => {
           console.error('Error fetching technician after update:', e);
         }
       } else {
-        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_TECHNICIAN_6DD97967', fallbackText: resp.data?.message || 'Failed to update technician', type: 'error' });
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_TECHNICIAN_6DD97967', fallbackText: resp.data?.message || ia('failedToUpdateTechnician'), type: 'error' });
       }
     } catch (e) {
       console.error('Error saving technician change:', e);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_TECHNICIAN_6DD97967', fallbackText: 'Failed to update technician', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_TECHNICIAN_6DD97967', fallbackText: ia('failedToUpdateTechnician'), type: 'error' });
     }
   };
 
@@ -451,15 +487,21 @@ const InspectionApprovalDetail = () => {
   const steps = useMemo(() => {
     if (!detail?.header) return [];
 
-    const initDate = formatDate(detail.header.created_on);
-    const initTime = formatTime(detail.header.created_on);
+    const initDate = fmtDate(detail.header.created_on);
+    const initTime = fmtTime(detail.header.created_on);
 
     const out = [
       {
         id: "init",
-        title: "Approval Initiated",
+        title: ia("approvalInitiated"),
+        isInitStep: true,
         status: "completed",
-        description: `Initiated by ${detail.header.created_by || "System"}`,
+        description: ia("initiatedBy", {
+          name:
+            !detail.header.created_by || String(detail.header.created_by).toUpperCase() === "SYSTEM"
+              ? ia("system")
+              : detail.header.created_by,
+        }),
         date: initDate,
         time: initTime,
         role: null,
@@ -480,25 +522,26 @@ const InspectionApprovalDetail = () => {
       if (r.status === "UR") status = "rejected";
 
       const canThisUserApprove = userRoleIds.includes(r.job_role_id);
-      const roleName = r.job_role_name || r.job_role_id || "Role";
+      const roleName = trRole(r.job_role_name, r.job_role_id);
 
       const description =
         status === "current"
           ? canThisUserApprove
-            ? "Awaiting Approval from You"
-            : `Awaiting Approval from ${roleName}`
+            ? ia("awaitingApprovalFromYou")
+            : ia("awaitingApprovalFrom", { roleName })
           : status === "approved"
-            ? `Approved by ${roleName}`
+            ? ia("approvedBy", { roleName })
             : status === "rejected"
-              ? `Rejected by ${roleName}`
-              : `Awaiting ${roleName}`;
+              ? ia("rejectedBy", { roleName })
+              : ia("awaitingRole", { roleName });
 
-      const date = r.approval_date ? formatDate(r.approval_date) : "";
-      const time = r.approval_date ? formatTime(r.approval_date) : "";
+      const date = r.approval_date ? fmtDate(r.approval_date) : "";
+      const time = r.approval_date ? fmtTime(r.approval_date) : "";
 
       out.push({
         id: r.wfaiisd_id,
         title: roleName,
+        isInitStep: false,
         status,
         description,
         date,
@@ -509,7 +552,7 @@ const InspectionApprovalDetail = () => {
     }
 
     return out;
-  }, [detail, userRoleIds]);
+  }, [detail, userRoleIds, t, i18n.language]);
 
   const currentActionSteps = useMemo(() => steps.filter((s) => s.status === "current"), [steps]);
 
@@ -519,7 +562,7 @@ const InspectionApprovalDetail = () => {
 
   const displayTitle = useMemo(() => {
     if (!detail?.assets || detail.assets.length === 0) {
-      return "Inspection Approval";
+      return ia("title");
     }
 
     // Single asset - show asset name from assetDetails if available, fallback to asset_type_name
@@ -528,7 +571,7 @@ const InspectionApprovalDetail = () => {
                        assetDetails?.description || 
                        detail.header?.asset_type_name || 
                        detail.assets[0].asset_id || 
-                       "Inspection Approval";
+                       ia("title");
       return assetName;
     }
 
@@ -539,8 +582,8 @@ const InspectionApprovalDetail = () => {
       detail.header?.asset_type_name ||
       a.asset_id
     ).filter(Boolean).join(", ");
-    return assetNames ? `Inspection Approval (${assetNames})` : "Inspection Approval";
-  }, [detail, assetDetails]);
+    return assetNames ? `${ia("title")} (${assetNames})` : ia("title");
+  }, [detail, assetDetails, t, i18n.language]);
 
   const handleApprove = async () => {
     if (!approveNote.trim()) return;
@@ -553,13 +596,13 @@ const InspectionApprovalDetail = () => {
     // Validation for internal maintenance - check if technician is assigned
     if (isInternalMaintenance) {
       if (!assignedTechnician && !selectedTechnician) {
-        showBackendTextToast({ toast, tmdId: 'TMD_TECHNICIAN_ASSIGNMENT_IS_REQUIRED_FOR_INTERNAL_MAINT_2698B69A', fallbackText: 'Technician assignment is required for internal maintenance inspections.', type: 'error' });
+        showBackendTextToast({ toast, tmdId: 'TMD_TECHNICIAN_ASSIGNMENT_IS_REQUIRED_FOR_INTERNAL_MAINT_2698B69A', fallbackText: ia('technicianRequired'), type: 'error' });
         return;
       }
     } else if (isVendorMaintenance) {
       // Validation for vendor maintenance - check if technician is selected
       if (technicians.length > 0 && !selectedTechnician) {
-        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_TECHNICIAN_TO_PROCEED_WITH_THE_APPRO_5E6998D6', fallbackText: 'Please select a technician to proceed with the approval.', type: 'error' });
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_TECHNICIAN_TO_PROCEED_WITH_THE_APPRO_5E6998D6', fallbackText: ia('selectTechnicianToProceed'), type: 'error' });
         return;
       }
     }
@@ -567,7 +610,7 @@ const InspectionApprovalDetail = () => {
     // Find current step
     const currentStep = detail?.workflowSteps?.find(step => step.status === 'AP');
     if (!currentStep) {
-      showBackendTextToast({ toast, tmdId: 'TMD_NO_PENDING_STEP_FOUND_FOR_APPROVAL_00A1A05C', fallbackText: 'No pending step found for approval', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_NO_PENDING_STEP_FOUND_FOR_APPROVAL_00A1A05C', fallbackText: ia('noPendingStepForApproval'), type: 'error' });
       return;
     }
 
@@ -578,7 +621,7 @@ const InspectionApprovalDetail = () => {
       toastId = showBackendTextToast({
         toast,
         tmdId: 'TMD_APPROVING_INSPECTION_IN_PROGRESS_2696953C',
-        fallbackText: "Approving inspection...",
+        fallbackText: ia("approvingInspection"),
         type: 'loading',
         toastOptions: { duration: Infinity, id: loadingToastId },
       });
@@ -599,18 +642,18 @@ const InspectionApprovalDetail = () => {
       const res = await API.post("/inspection-approval/action", requestBody);
       if (toastId) toast.dismiss(toastId);
       if (res.data?.success) {
-        showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_APPROVED_SUCCESSFULLY_396498FA', fallbackText: 'Inspection approved successfully', type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_APPROVED_SUCCESSFULLY_396498FA', fallbackText: ia('inspectionApprovedSuccessfully'), type: 'success' });
         setShowApproveModal(false);
         setApproveNote("");
         setSelectedTechnician("");
         await fetchDetail();
         await fetchWorkflowHistory();
       } else {
-        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_APPROVE_INSPECTION_476A2BD6', fallbackText: res.data?.message || "Failed to approve", type: 'error' });
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_APPROVE_INSPECTION_476A2BD6', fallbackText: res.data?.message || ia("failedToApprove"), type: 'error' });
       }
     } catch (e) {
       if (toastId) toast.dismiss(toastId);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_APPROVE_INSPECTION_476A2BD6', fallbackText: e.response?.data?.message || "Failed to approve", type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_APPROVE_INSPECTION_476A2BD6', fallbackText: e.response?.data?.message || ia("failedToApprove"), type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -622,7 +665,7 @@ const InspectionApprovalDetail = () => {
     // Find current step
     const currentStep = detail?.workflowSteps?.find(step => step.status === 'AP');
     if (!currentStep) {
-      showBackendTextToast({ toast, tmdId: 'TMD_NO_PENDING_STEP_FOUND_FOR_REJECTION_05F24138', fallbackText: 'No pending step found for rejection', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_NO_PENDING_STEP_FOUND_FOR_REJECTION_05F24138', fallbackText: ia('noPendingStepForRejection'), type: 'error' });
       return;
     }
 
@@ -633,7 +676,7 @@ const InspectionApprovalDetail = () => {
       toastId = showBackendTextToast({
         toast,
         tmdId: 'TMD_REJECTING_INSPECTION_IN_PROGRESS_96661A83',
-        fallbackText: "Rejecting inspection...",
+        fallbackText: ia("rejectingInspection"),
         type: 'loading',
         toastOptions: { duration: Infinity, id: loadingToastId },
       });
@@ -646,17 +689,17 @@ const InspectionApprovalDetail = () => {
       });
       if (toastId) toast.dismiss(toastId);
       if (res.data?.success) {
-        showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_REJECTED_SUCCESSFULLY_1F1F9603', fallbackText: res.data?.message || "Rejected", type: 'success' });
+        showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_REJECTED_SUCCESSFULLY_1F1F9603', fallbackText: res.data?.message || ia("inspectionRejectedSuccessfully"), type: 'success' });
         setShowRejectModal(false);
         setRejectNote("");
         await fetchDetail();
         await fetchWorkflowHistory();
       } else {
-        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_REJECT_INSPECTION_DB1F3FF5', fallbackText: res.data?.message || "Failed to reject", type: 'error' });
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_REJECT_INSPECTION_DB1F3FF5', fallbackText: res.data?.message || ia("failedToReject"), type: 'error' });
       }
     } catch (e) {
       if (toastId) toast.dismiss(toastId);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_REJECT_INSPECTION_DB1F3FF5', fallbackText: e.response?.data?.message || "Failed to reject", type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_REJECT_INSPECTION_DB1F3FF5', fallbackText: e.response?.data?.message || ia("failedToReject"), type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -673,7 +716,7 @@ const InspectionApprovalDetail = () => {
   if (!detail?.header) {
     return (
       <div className="min-h-screen bg-[#f7f7f7] p-6">
-        <div className="text-red-600 font-medium">Inspection approval not found</div>
+        <div className="text-red-600 font-medium">{ia("detailNotFound")}</div>
       </div>
     );
   }
@@ -692,7 +735,7 @@ const InspectionApprovalDetail = () => {
           <div className="mb-8">
             <div className="flex items-center">
               {steps.map((step) => (
-                <div key={step.id} className={`arrow-step ${getStepColor(step.status, step.title)} text-white`}>
+                <div key={step.id} className={`arrow-step ${getStepColor(step.status, step.isInitStep)} text-white`}>
                   <div className="flex items-center space-x-2">
                     {getStepIcon(step.status)}
                     <span className="font-medium text-sm">{step.title}</span>
@@ -707,12 +750,12 @@ const InspectionApprovalDetail = () => {
                   <p className="text-sm text-gray-700">{step.description}</p>
                   {step.notes && step.status === "rejected" && (
                     <p className="text-xs text-red-600 mt-1">
-                      <strong>Reason:</strong> {step.notes}
+                      <strong>{ia("reason")}:</strong> {step.notes}
                     </p>
                   )}
                   {step.notes && step.status === "approved" && (
                     <p className="text-xs text-green-600 mt-1">
-                      <strong>Notes:</strong> {step.notes}
+                      <strong>{ia("notes")}:</strong> {step.notes}
                     </p>
                   )}
                   {step.date && (step.status === "completed" || step.status === "approved" || step.status === "rejected") && (
@@ -754,11 +797,11 @@ const InspectionApprovalDetail = () => {
                         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                       }`}
                   >
-                    {tab === "approval" ? t('maintenanceApproval.approvalDetails') : 
-                     tab === "asset" ? t('maintenanceApproval.assetDetails') : 
-                     tab === "technician" ? t('maintenanceApproval.technicianDetails') :
-                     tab === "vendor" ? t('maintenanceApproval.vendorDetails') :
-                     t('maintenanceApproval.historyDetails')}
+                    {tab === "approval" ? ma('approvalDetails') : 
+                     tab === "asset" ? ma('assetDetails') : 
+                     tab === "technician" ? ma('technicianDetails') :
+                     tab === "vendor" ? ma('vendorDetails') :
+                     ma('historyDetails')}
                   </button>
                 ));
               })()}
@@ -769,16 +812,16 @@ const InspectionApprovalDetail = () => {
             {activeTab === "approval" && (
               <div className="bg-white rounded shadow p-6 mb-8">
                 <div className="grid grid-cols-5 gap-6 mb-6">
-                  <ReadOnlyInput label="Alert Type" value="Inspection Request" />
-                  <ReadOnlyInput label="Created On" value={formatDate(detail.header.created_on)} />
-                  <ReadOnlyInput label="Action By" value={currentActionSteps[0]?.role?.name || "Unassigned"} />
-                  <ReadOnlyInput label="Frequency" value={[detail.header.inspection_frequency, detail.header.inspection_uom_text || detail.header.inspection_uom].filter(Boolean).join(' ') || '—'} />
-                  <ReadOnlyInput label="Asset Type" value={detail.header.asset_type_name || "-"} />
-                  <ReadOnlyInput label="Asset Code" value={detail.header.asset_code || "-"} />
-                  <ReadOnlyInput label="Scheduled Date" value={formatDate(detail.header.pl_sch_date)} />
-                  <ReadOnlyInput label="Inspection ID" value={detail.header.wfaiish_id || "-"} />
-                  <ReadOnlyInput label="Branch" value={detail.header.branch_name || detail.header.branch_code || "-"} />
-                  <ReadOnlyInput label="Status" value={detail.header.header_status_text || detail.header.header_status || "-"} />
+                  <ReadOnlyInput label={ia("alertType")} value={ia("inspectionRequest")} />
+                  <ReadOnlyInput label={ia("createdOn")} value={fmtDate(detail.header.created_on)} />
+                  <ReadOnlyInput label={ia("actionBy")} value={currentActionSteps[0]?.role ? trRole(currentActionSteps[0].role.name, currentActionSteps[0].role.id) : ia("unassigned")} />
+                  <ReadOnlyInput label={ia("frequency")} value={[detail.header.inspection_frequency, translateUomText(detail.header.inspection_uom_text || detail.header.inspection_uom)].filter(Boolean).join(' ') || '—'} />
+                  <ReadOnlyInput label={ia("assetType")} value={detail.header.asset_type_name || "-"} />
+                  <ReadOnlyInput label={ia("assetCode")} value={detail.header.asset_code || "-"} />
+                  <ReadOnlyInput label={ia("scheduledDate")} value={fmtDate(detail.header.pl_sch_date)} />
+                  <ReadOnlyInput label={ia("inspectionId")} value={detail.header.wfaiish_id || "-"} />
+                  <ReadOnlyInput label={ia("branch")} value={detail.header.branch_name || detail.header.branch_code || "-"} />
+                  <ReadOnlyInput label={ia("status")} value={translateHeaderStatus(detail.header.header_status) || detail.header.header_status || "-"} />
                 </div>
               </div>
             )}
@@ -788,31 +831,31 @@ const InspectionApprovalDetail = () => {
                 {loadingAssetDetails ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B] mx-auto"></div>
-                    <p className="text-gray-500 mt-2">Loading asset details...</p>
+                    <p className="text-gray-500 mt-2">{ia("loadingAssetDetails")}</p>
                   </div>
                 ) : detail.assets.length === 1 && assetDetails ? (
                   <>
                     <div className="grid grid-cols-5 gap-6 mb-6">
-                      <ReadOnlyInput label="Asset Type" value={assetDetails.asset_type_name || assetDetails.asset_type_id || "-"} />
-                      <ReadOnlyInput label="Serial Number" value={assetDetails.serial_number || "-"} />
-                      <ReadOnlyInput label="Asset ID" value={assetDetails.asset_id || "-"} />
-                      <ReadOnlyInput label="Asset Name" value={assetDetails.description || detail.header.asset_name || detail.header.asset_code || "-"} />
-                      <ReadOnlyInput label="Expiry Date" value={formatDate(assetDetails.expiry_date) || "-"} />
+                      <ReadOnlyInput label={ia("assetType")} value={assetDetails.asset_type_name || assetDetails.asset_type_id || "-"} />
+                      <ReadOnlyInput label={ia("serialNumber")} value={assetDetails.serial_number || "-"} />
+                      <ReadOnlyInput label={ia("assetId")} value={assetDetails.asset_id || "-"} />
+                      <ReadOnlyInput label={ia("assetName")} value={assetDetails.description || detail.header.asset_name || detail.header.asset_code || "-"} />
+                      <ReadOnlyInput label={ma("expiryDate")} value={fmtDate(assetDetails.expiry_date) || "-"} />
                     </div>
                     <div className="grid grid-cols-5 gap-6 mb-6">
-                      <ReadOnlyInput label="Purchase Date" value={formatDate(assetDetails.purchased_on) || "-"} />
-                      <ReadOnlyInput label="Purchase Cost" value={assetDetails.purchased_cost || "-"} />
-                      <ReadOnlyInput label="Purchase By" value={assetDetails.purchased_by_name || assetDetails.purchased_by || "-"} />
-                      <ReadOnlyInput label="Purchase Vendor" value={assetDetails.purchase_vendor_name || assetDetails.purchase_vendor_id || "-"} />
-                      <ReadOnlyInput label="Warranty Period" value={formatDate(assetDetails.warranty_period) || "-"} />
+                      <ReadOnlyInput label={ma("purchaseDate")} value={fmtDate(assetDetails.purchased_on) || "-"} />
+                      <ReadOnlyInput label={ma("purchaseCost")} value={assetDetails.purchased_cost || "-"} />
+                      <ReadOnlyInput label={ma("purchaseBy")} value={assetDetails.purchased_by_name || assetDetails.purchased_by || "-"} />
+                      <ReadOnlyInput label={ma("purchaseVendor")} value={assetDetails.purchase_vendor_name || assetDetails.purchase_vendor_id || "-"} />
+                      <ReadOnlyInput label={ma("warrantyPeriod")} value={fmtDate(assetDetails.warranty_period) || "-"} />
                     </div>
                     <div className="grid grid-cols-3 gap-6 mb-6">
-                      <ReadOnlyInput label="Product/Service ID" value={assetDetails.prod_serv_id || "-"} />
-                      <ReadOnlyInput label="Parent Asset" value={assetDetails.parent_asset_id || "-"} />
-                      <ReadOnlyInput label="Service Vendor" value={assetDetails.service_vendor_name || assetDetails.service_vendor_id || "-"} />
+                      <ReadOnlyInput label={ma("productServiceID")} value={assetDetails.prod_serv_id || "-"} />
+                      <ReadOnlyInput label={ma("parentAsset")} value={assetDetails.parent_asset_id || "-"} />
+                      <ReadOnlyInput label={ma("serviceVendor")} value={assetDetails.service_vendor_name || assetDetails.service_vendor_id || "-"} />
                     </div>
                     <div className="mb-6">
-                      <label className="block text-sm mb-1 font-medium text-gray-700">Description</label>
+                      <label className="block text-sm mb-1 font-medium text-gray-700">{ma("description")}</label>
                       <textarea
                         value={assetDetails.description || "-"}
                         readOnly
@@ -821,22 +864,22 @@ const InspectionApprovalDetail = () => {
                       />
                     </div>
                     <div className="mb-6">
-                      <label className="block text-sm mb-1 font-medium text-gray-700">Additional Info</label>
+                      <label className="block text-sm mb-1 font-medium text-gray-700">{ma("additionalInfo")}</label>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="font-medium">Branch Name:</span> {assetDetails.branch_name || assetDetails.branch_id || "-"}
+                          <span className="font-medium">{ia("branchName")}:</span> {assetDetails.branch_name || assetDetails.branch_id || "-"}
                         </div>
                         <div>
-                          <span className="font-medium">Group ID:</span> {assetDetails.group_id || "-"}
+                          <span className="font-medium">{ma("groupID")}:</span> {assetDetails.group_id || "-"}
                         </div>
                         <div>
-                          <span className="font-medium">Inspection ID:</span> {detail.header.wfaiish_id || "-"}
+                          <span className="font-medium">{ia("inspectionId")}:</span> {detail.header.wfaiish_id || "-"}
                         </div>
                         <div>
-                          <span className="font-medium">Org Name:</span> {assetDetails.org_name || assetDetails.org_id || "-"}
+                          <span className="font-medium">{ia("orgName")}:</span> {assetDetails.org_name || assetDetails.org_id || "-"}
                         </div>
                         <div>
-                          <span className="font-medium">Status:</span>{' '}
+                          <span className="font-medium">{ia("status")}:</span>{' '}
                           <span className={String(assetDetails.current_status || '').toLowerCase() === 'active' ? 'text-green-600 font-medium' : String(assetDetails.current_status || '').toLowerCase() === 'inactive' ? 'text-red-600 font-medium' : ''}>
                             {assetDetails.current_status || "-"}
                           </span>
@@ -846,7 +889,7 @@ const InspectionApprovalDetail = () => {
                   </>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    No asset details available
+                    {ia("noAssetDetailsAvailable")}
                   </div>
                 )}
               </div>
@@ -862,10 +905,10 @@ const InspectionApprovalDetail = () => {
                     // Show assigned technician with the ability to change from available certified technicians
                     return (
                       <>
-                        <h3 className="text-lg font-medium mb-4">Assigned Technician (Inhouse Maintenance)</h3>
+                        <h3 className="text-lg font-medium mb-4">{ia("assignedTechnicianInhouse")}</h3>
 
                         <div className="mb-4">
-                          <label className="block text-sm font-medium mb-1 text-gray-700">Select Technician</label>
+                          <label className="block text-sm font-medium mb-1 text-gray-700">{ia("selectTechnician")}</label>
                           <select
                             value={selectedTechnician || (assignedTechnician?.emp_int_id || "")}
                             onChange={async (e) => {
@@ -880,9 +923,9 @@ const InspectionApprovalDetail = () => {
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
                           >
-                            <option value="">Select Technician</option>
-                            {technicians.map(t => (
-                              <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name || t.name}</option>
+                            <option value="">{ia("selectTechnician")}</option>
+                            {technicians.map(tech => (
+                              <option key={tech.emp_int_id} value={tech.emp_int_id}>{tech.full_name || tech.name}</option>
                             ))}
                           </select>
                         </div>
@@ -890,20 +933,20 @@ const InspectionApprovalDetail = () => {
                         {loadingAssignedTechnician ? (
                           <div className="flex items-center text-blue-600">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                            <span>Loading assigned technician...</span>
+                            <span>{ia("loadingAssignedTechnician")}</span>
                           </div>
                         ) : assignedTechnician ? (
                           <div className="p-4 bg-white border border-gray-200 rounded-lg">
                             <div className="grid grid-cols-2 gap-4">
-                              <ReadOnlyInput label="Name" value={assignedTechnician.full_name} />
-                              <ReadOnlyInput label="Employee ID" value={assignedTechnician.emp_int_id} />
-                              <ReadOnlyInput label="Email" value={assignedTechnician.email_id || 'N/A'} />
-                              <ReadOnlyInput label="Phone" value={assignedTechnician.phone_number || 'N/A'} />
+                              <ReadOnlyInput label={ia("name")} value={assignedTechnician.full_name} />
+                              <ReadOnlyInput label={ia("employeeId")} value={assignedTechnician.emp_int_id} />
+                              <ReadOnlyInput label={ma("email")} value={assignedTechnician.email_id || ia('notAvailable')} />
+                              <ReadOnlyInput label={ia("phone")} value={assignedTechnician.phone_number || ia('notAvailable')} />
                             </div>
                           </div>
                         ) : (
                           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <p className="text-yellow-800">No technician assigned for this inspection</p>
+                            <p className="text-yellow-800">{ia("noTechnicianAssigned")}</p>
                           </div>
                         )}
                       </>
@@ -913,10 +956,10 @@ const InspectionApprovalDetail = () => {
                   // Vendor-maintained: allow selection from certified technicians and show details
                   return (
                     <>
-                      <h3 className="text-lg font-medium mb-4">Select Technician (Certified for this Asset Type)</h3>
+                      <h3 className="text-lg font-medium mb-4">{ia("selectCertifiedTechnician")}</h3>
 
                       <div className="mb-4">
-                        <label className="block text-sm font-medium mb-1 text-gray-700">Select Technician</label>
+                        <label className="block text-sm font-medium mb-1 text-gray-700">{ia("selectTechnician")}</label>
                         <select
                           value={selectedTechnician || ""}
                           onChange={async (e) => {
@@ -932,9 +975,9 @@ const InspectionApprovalDetail = () => {
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
                         >
-                          <option value="">Select Technician</option>
-                          {technicians.map(t => (
-                            <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name || t.name}</option>
+                          <option value="">{ia("selectTechnician")}</option>
+                          {technicians.map(tech => (
+                            <option key={tech.emp_int_id} value={tech.emp_int_id}>{tech.full_name || tech.name}</option>
                           ))}
                         </select>
                       </div>
@@ -942,22 +985,22 @@ const InspectionApprovalDetail = () => {
                       {loadingTechnicians ? (
                         <div className="text-center py-8">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B] mx-auto"></div>
-                          <p className="text-gray-500 mt-2">Loading certified technicians...</p>
+                          <p className="text-gray-500 mt-2">{ia("loadingCertifiedTechnicians")}</p>
                         </div>
                       ) : (
                         <>
                           {assignedTechnician ? (
                             <div className="p-4 bg-white border border-gray-200 rounded-lg mb-4">
                               <div className="grid grid-cols-2 gap-4">
-                                <ReadOnlyInput label="Name" value={assignedTechnician.full_name} />
-                                <ReadOnlyInput label="Employee ID" value={assignedTechnician.emp_int_id} />
-                                <ReadOnlyInput label="Email" value={assignedTechnician.email_id || '-'} />
-                                <ReadOnlyInput label="Phone" value={assignedTechnician.phone_number || '-'} />
+                                <ReadOnlyInput label={ia("name")} value={assignedTechnician.full_name} />
+                                <ReadOnlyInput label={ia("employeeId")} value={assignedTechnician.emp_int_id} />
+                                <ReadOnlyInput label={ma("email")} value={assignedTechnician.email_id || '-'} />
+                                <ReadOnlyInput label={ia("phone")} value={assignedTechnician.phone_number || '-'} />
                               </div>
                             </div>
                           ) : (
                             <div className="text-center py-8 text-gray-500">
-                              <p className="text-lg mb-2">No technician selected</p>
+                              <p className="text-lg mb-2">{ia("noTechnicianSelected")}</p>
                             </div>
                           )}
 
@@ -966,10 +1009,10 @@ const InspectionApprovalDetail = () => {
                               <table className="min-w-full border border-gray-200 rounded-lg">
                                 <thead className="bg-gray-50">
                                   <tr>
-                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Name</th>
-                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Email</th>
-                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Phone</th>
-                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Expiry</th>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">{ia("name")}</th>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">{ma("email")}</th>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">{ia("phone")}</th>
+                                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">{ia("expiry")}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -978,7 +1021,7 @@ const InspectionApprovalDetail = () => {
                                       <td className="px-4 py-3 text-sm text-gray-900">{tech.full_name}</td>
                                       <td className="px-4 py-3 text-sm text-gray-900">{tech.email_id || "-"}</td>
                                       <td className="px-4 py-3 text-sm text-gray-900">{tech.phone_number || "-"}</td>
-                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.expiry_date ? formatDate(tech.expiry_date) : "No Expiry"}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{tech.expiry_date ? fmtDate(tech.expiry_date) : ia("noExpiry")}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -998,7 +1041,7 @@ const InspectionApprovalDetail = () => {
                 {loadingVendor ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B] mx-auto"></div>
-                    <p className="text-gray-500 mt-2">Loading vendor details...</p>
+                    <p className="text-gray-500 mt-2">{ia("loadingVendorDetails")}</p>
                   </div>
                 ) : (
                   <>
@@ -1014,13 +1057,13 @@ const InspectionApprovalDetail = () => {
                             </div>
                             <div className="ml-3">
                               <p className="text-yellow-800 text-sm font-medium">{vendorStatusError}</p>
-                              <p className="text-yellow-700 text-xs mt-1">Please select an active service vendor from the dropdown below to proceed with approval.</p>
+                              <p className="text-yellow-700 text-xs mt-1">{ia("selectActiveVendor")}</p>
                             </div>
                           </div>
                         </div>
                       )}
 
-                      <label className="block text-sm font-medium mb-1 text-gray-700">Service Vendor</label>
+                      <label className="block text-sm font-medium mb-1 text-gray-700">{ma("serviceVendor")}</label>
                       <select
                         value={selectedVendorId !== null ? selectedVendorId : (displayedVendorDetails?.vendor_id || "")}
                         onChange={async (e) => {
@@ -1039,7 +1082,7 @@ const InspectionApprovalDetail = () => {
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none mb-3"
                       >
-                        <option value="">Select Service Vendor</option>
+                        <option value="">{ia("selectServiceVendor")}</option>
                         {activeVendors.map(v => (
                           <option key={v.value} value={v.value}>{v.label}</option>
                         ))}
@@ -1048,20 +1091,20 @@ const InspectionApprovalDetail = () => {
 
                     {displayedVendorDetails ? (
                       <div className="grid grid-cols-2 gap-6">
-                        <ReadOnlyInput label="Vendor ID" value={displayedVendorDetails.vendor_id || '-'} />
-                        <ReadOnlyInput label="Vendor Name" value={displayedVendorDetails.vendor_name || displayedVendorDetails.company_name || '-'} />
-                        <ReadOnlyInput label="Contact Person" value={displayedVendorDetails.contact_person_name || '-'} />
-                        <ReadOnlyInput label="Contact Email" value={displayedVendorDetails.contact_person_email || displayedVendorDetails.company_email || '-'} />
-                        <ReadOnlyInput label="Contact Phone" value={displayedVendorDetails.contact_person_number || '-'} />
-                        <ReadOnlyInput label="Contract From" value={displayedVendorDetails.contract_start_date ? formatDate(displayedVendorDetails.contract_start_date) : '-'} />
-                        <ReadOnlyInput label="Contract To" value={displayedVendorDetails.contract_end_date ? formatDate(displayedVendorDetails.contract_end_date) : '-'} />
-                        <ReadOnlyInput label="Address" value={`${displayedVendorDetails.address_line1 || ''} ${displayedVendorDetails.address_line2 || ''} ${displayedVendorDetails.city || ''}`.trim() || '-'} />
+                        <ReadOnlyInput label={ia("vendorId")} value={displayedVendorDetails.vendor_id || '-'} />
+                        <ReadOnlyInput label={ma("vendorName")} value={displayedVendorDetails.vendor_name || displayedVendorDetails.company_name || '-'} />
+                        <ReadOnlyInput label={ia("contactPerson")} value={displayedVendorDetails.contact_person_name || '-'} />
+                        <ReadOnlyInput label={ia("contactEmail")} value={displayedVendorDetails.contact_person_email || displayedVendorDetails.company_email || '-'} />
+                        <ReadOnlyInput label={ia("contactPhone")} value={displayedVendorDetails.contact_person_number || '-'} />
+                        <ReadOnlyInput label={ia("contractFrom")} value={displayedVendorDetails.contract_start_date ? fmtDate(displayedVendorDetails.contract_start_date) : '-'} />
+                        <ReadOnlyInput label={ia("contractTo")} value={displayedVendorDetails.contract_end_date ? fmtDate(displayedVendorDetails.contract_end_date) : '-'} />
+                        <ReadOnlyInput label={ia("address")} value={`${displayedVendorDetails.address_line1 || ''} ${displayedVendorDetails.address_line2 || ''} ${displayedVendorDetails.city || ''}`.trim() || '-'} />
                       </div>
                     ) : (
                       <div className="text-center py-8 text-gray-500">
-                        <p className="text-lg mb-2">No vendor information available</p>
+                        <p className="text-lg mb-2">{ia("noVendorInformation")}</p>
                         {detail?.header?.asset_type_name && (
-                          <p className="text-sm mt-2">Asset Type: {detail.header.asset_type_name}</p>
+                          <p className="text-sm mt-2">{ia("assetType")}: {detail.header.asset_type_name}</p>
                         )}
                       </div>
                     )}
@@ -1075,26 +1118,26 @@ const InspectionApprovalDetail = () => {
                 {loadingHistory ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0E2F4B] mx-auto"></div>
-                    <p className="text-gray-500 mt-2">Loading workflow history...</p>
+                    <p className="text-gray-500 mt-2">{ia("loadingWorkflowHistory")}</p>
                   </div>
                 ) : workflowHistory.length > 0 ? (
                   <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
                     <table className="min-w-full border-separate border-spacing-y-2">
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr>
-                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Date</th>
-                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Action</th>
-                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Job Role</th>
-                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Department</th>
-                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">Notes</th>
+                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{ma("date")}</th>
+                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{ma("action")}</th>
+                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{ma("jobRole")}</th>
+                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{ia("department")}</th>
+                          <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{ia("notes")}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {workflowHistory.map((row, idx) => (
                           <tr key={row.id || idx} className="bg-white border border-gray-200 rounded-md shadow-sm">
-                            <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.date}</td>
-                            <td className={`px-6 py-3 text-sm whitespace-nowrap font-medium ${row.actionColor || 'text-gray-600'}`}>{row.action}</td>
-                            <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.jobRole || "-"}</td>
+                            <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{fmtDate(row.actionOn)}</td>
+                            <td className={`px-6 py-3 text-sm whitespace-nowrap font-medium ${row.actionColor || 'text-gray-600'}`}>{translateWorkflowAction(row.actionKey)}</td>
+                            <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{trRole(row.jobRole, row.jobRoleId) || "-"}</td>
                             <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.department || "-"}</td>
                             <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.notes || "-"}</td>
                           </tr>
@@ -1104,7 +1147,7 @@ const InspectionApprovalDetail = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    No workflow history available
+                    {ia("noWorkflowHistory")}
                   </div>
                 )}
               </div>
@@ -1119,21 +1162,21 @@ const InspectionApprovalDetail = () => {
                   onClick={() => setShowRejectModal(true)}
                   className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                 >
-                  Reject
+                  {ia("reject")}
                 </button>
                 <button
                   onClick={() => setShowApproveModal(true)}
                   className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors"
                   disabled={isSubmitting}
                 >
-                  Approve
+                  {ia("approve")}
                 </button>
               </>
             )}
 
             {!isCurrentActionUser && (
               <div className="text-gray-500 text-sm italic">
-                {currentActionSteps.length > 0 ? "Waiting for approval from the current approver role(s)." : "No action required from you."}
+                {currentActionSteps.length > 0 ? ia("waitingForApprover") : ma("noActionRequiredFromYou")}
               </div>
             )}
           </div>
@@ -1143,11 +1186,11 @@ const InspectionApprovalDetail = () => {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-xl w-[500px]">
                 <div className="bg-[#0E2F4B] text-white px-6 py-4 rounded-t-lg border-b-4 border-[#FFC107]">
-                  <h3 className="text-lg font-semibold">Reject Inspection Request</h3>
+                  <h3 className="text-lg font-semibold">{ia("rejectInspectionRequest")}</h3>
                 </div>
                 <div className="p-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Reason for rejection <span className="text-red-500">*</span>
+                    {ia("reasonForRejection")} <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={rejectNote}
@@ -1155,22 +1198,22 @@ const InspectionApprovalDetail = () => {
                     className={`w-full h-32 px-3 py-2 border rounded focus:outline-none ${
                       !rejectNote.trim() && isSubmitting ? "border-red-500" : "border-gray-300"
                     }`}
-                    placeholder="Please provide reason for rejection"
+                    placeholder={ia("pleaseProvideReasonForRejection")}
                   />
-                  {!rejectNote.trim() && isSubmitting && <div className="text-red-500 text-xs mt-1">Note is required to reject</div>}
+                  {!rejectNote.trim() && isSubmitting && <div className="text-red-500 text-xs mt-1">{ia("noteRequiredToReject")}</div>}
                   <div className="flex justify-end gap-3 mt-6">
                     <button
                       onClick={() => setShowRejectModal(false)}
                       className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
                     >
-                      Cancel
+                      {ia("cancel")}
                     </button>
                     <button
                       onClick={handleReject}
                       className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                       disabled={!rejectNote.trim() || isSubmitting}
                     >
-                      Reject
+                      {ia("reject")}
                     </button>
                   </div>
                 </div>
@@ -1183,11 +1226,11 @@ const InspectionApprovalDetail = () => {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-xl w-[500px]">
                 <div className="bg-[#0E2F4B] text-white px-6 py-4 rounded-t-lg border-b-4 border-[#FFC107]">
-                  <h3 className="text-lg font-semibold">Approve Inspection Request</h3>
+                  <h3 className="text-lg font-semibold">{ia("approveInspectionRequest")}</h3>
                 </div>
                 <div className="p-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Approval note <span className="text-red-500">*</span>
+                    {ia("approvalNote")} <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={approveNote}
@@ -1195,9 +1238,9 @@ const InspectionApprovalDetail = () => {
                     className={`w-full h-32 px-3 py-2 border rounded focus:outline-none ${
                       !approveNote.trim() && isSubmitting ? "border-red-500" : "border-gray-300"
                     }`}
-                    placeholder="Please provide approval note"
+                    placeholder={ia("pleaseProvideApprovalNote")}
                   />
-                  {!approveNote.trim() && isSubmitting && <div className="text-red-500 text-xs mt-1">Note is required to approve</div>}
+                  {!approveNote.trim() && isSubmitting && <div className="text-red-500 text-xs mt-1">{ia("noteRequiredToApprove")}</div>}
                   
                   {/* Technician selection removed from approve modal. Please use the Technician Details tab to change technician. */}
                   <div className="flex justify-end gap-3 mt-6">
@@ -1205,7 +1248,7 @@ const InspectionApprovalDetail = () => {
                       onClick={() => setShowApproveModal(false)}
                       className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
                     >
-                      Cancel
+                      {ia("cancel")}
                     </button>
                     <button
                       onClick={handleApprove}
@@ -1214,7 +1257,7 @@ const InspectionApprovalDetail = () => {
                         !approveNote.trim() || isSubmitting
                       }
                     >
-                      Approve
+                      {ia("approve")}
                     </button>
                   </div>
                 </div>

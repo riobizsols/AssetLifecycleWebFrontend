@@ -8,6 +8,7 @@ import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import { findConflictingAssetTypeName } from "../utils/assetTypeNameValidation";
 import { X } from "lucide-react";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }) => {
@@ -42,6 +43,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const [selectedProperties, setSelectedProperties] = useState([]);
   const [existingProperties, setExistingProperties] = useState([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(false);
+  const [existingAssetTypes, setExistingAssetTypes] = useState([]);
 
   useEffect(() => {
     if (assetData) {
@@ -80,7 +82,18 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   useEffect(() => {
     fetchDocumentTypes();
     fetchProperties();
+    fetchExistingAssetTypes();
   }, []);
+
+  const fetchExistingAssetTypes = async () => {
+    try {
+      const res = await API.get("/asset-types");
+      setExistingAssetTypes(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Error fetching asset types for validation:", err);
+      setExistingAssetTypes([]);
+    }
+  };
 
   // Fetch checklist and properties when asset type is loaded
   useEffect(() => {
@@ -409,7 +422,22 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       showBackendTextToast({
         toast,
         tmdId: 'TMD_ASSET_TYPE_NAME_IS_REQUIRED_F4B83CC5',
-        fallbackText: "Asset type name is required",
+        fallbackText: t('assetTypes.assetTypeNameRequired'),
+        type: 'error',
+      });
+      return;
+    }
+
+    const conflictingName = findConflictingAssetTypeName(
+      assetType.trim(),
+      existingAssetTypes,
+      assetData?.asset_type_id
+    );
+    if (conflictingName) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
+        fallbackText: t('assetTypes.similarAssetTypeNameExists', { name: conflictingName }),
         type: 'error',
       });
       return;
@@ -435,10 +463,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
-        maint_required: 0,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
-        maint_type_id: null,
         maint_lead_type: null
       };
 
@@ -475,10 +501,26 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       // Call onClose with a flag to trigger refresh in parent
       onClose(true);
     } catch (error) {
-      const errorMessage = error.response?.data?.error || "Failed to update asset type";
-      const errorDetails = error.response?.data?.details || "";
-      const errorHint = error.response?.data?.hint || "";
-      
+      const responseData = error.response?.data;
+      if (responseData?.existingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
+          fallbackText: t('assetTypes.similarAssetTypeNameExists', {
+            name: responseData.existingName,
+          }),
+          type: 'error',
+        });
+        return;
+      }
+
+      const errorMessage =
+        responseData?.message ||
+        responseData?.error ||
+        t('assetTypes.failedToUpdateAssetType');
+      const errorDetails = responseData?.details || "";
+      const errorHint = responseData?.hint || "";
+
       let fullError = errorMessage;
       if (errorDetails) fullError += `\n${errorDetails}`;
       if (errorHint) fullError += `\n\nHint: ${errorHint}`;

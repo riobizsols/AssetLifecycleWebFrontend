@@ -1,4 +1,4 @@
-import { showBackendTextToast } from '../../utils/errorTranslation';
+import { showBackendTextToast, translateErrorMessage } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -185,7 +185,7 @@ const CreateScrapAsset = () => {
       setColumns(groupColumns);
     } catch (error) {
       console.error('Error fetching grouped assets:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_ASSET_GROUPS_5C809F7C', fallbackText: 'Failed to load asset groups', type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_ASSET_GROUPS_5C809F7C', fallbackText: t('createScrapAsset.failedToLoadAssetGroups'), type: 'error' });
       setGroupedAssetRows([]);
       setColumns([]);
     }
@@ -345,7 +345,7 @@ const CreateScrapAsset = () => {
       console.log('Submitting scrap asset:', selectedAsset, 'with notes:', notes);
       
       if (!selectedAsset) {
-        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ITEM_TO_SCRAP_321605CC', fallbackText: 'Please select an item to scrap', type: 'error' });
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ITEM_TO_SCRAP_321605CC', fallbackText: t('createScrapAsset.pleaseSelectItemToScrap'), type: 'error' });
         return;
       }
 
@@ -369,11 +369,11 @@ const CreateScrapAsset = () => {
 
       if (response.data?.success) {
         if (response.data.workflowCreated) {
-          showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_REQUEST_SENT_FOR_APPROVAL_WORKFLOW_5A6CA29F', fallbackText: `Scrap request sent for approval (Workflow: ${response.data.wfscrap_h_id})`, type: 'success' });
+          showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_REQUEST_SENT_FOR_APPROVAL_WORKFLOW_5A6CA29F', fallbackText: t('createScrapAsset.scrapRequestSentForApproval', { workflowId: response.data.wfscrap_h_id }), type: 'success' });
         } else if (response.data.scrapped) {
           showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETSUCCESSFULLYMARKEDFORSCRA_601EDB7A', fallbackText: t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }), type: 'success' });
         } else {
-          showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_REQUEST_CREATED_06CB9FE8', fallbackText: 'Scrap request created', type: 'success' });
+          showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_REQUEST_CREATED_06CB9FE8', fallbackText: t('createScrapAsset.scrapRequestCreated'), type: 'success' });
         }
 
         // Remove from list to prevent duplicate requests from this screen
@@ -396,14 +396,39 @@ const CreateScrapAsset = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
         
+        const apiMessage = [error.response.data?.message, error.response.data?.error]
+          .filter(Boolean)
+          .join(' ');
+        const translatedMessage = apiMessage
+          ? translateErrorMessage(apiMessage)
+          : '';
+
         if (error.response.status === 400) {
-          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_VALIDATIONERROR_609EBEB8', fallbackText: error.response.data?.message || t('createScrapAsset.validationError', { error: error.response.data.error }), type: 'error' });
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_CREATESCRAPASSET_VALIDATIONERROR_609EBEB8',
+            fallbackText:
+              translatedMessage ||
+              t('createScrapAsset.validationError', { error: error.response.data?.error || '' }),
+            type: 'error',
+          });
         } else if (error.response.status === 401) {
           showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_UNAUTHORIZEDPLEASELOGINAGAIN_67901914', fallbackText: t('createScrapAsset.unauthorizedPleaseLogInAgain'), type: 'error' });
         } else if (error.response.status === 500) {
-          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_SERVERERRORPLEASETRYAGAINLATER_69979231', fallbackText: t('createScrapAsset.serverErrorPleaseTryAgainLater'), type: 'error' });
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_CREATESCRAPASSET_SERVERERRORPLEASETRYAGAINLATER_69979231',
+            fallbackText:
+              translatedMessage || t('createScrapAsset.serverErrorPleaseTryAgainLater'),
+            type: 'error',
+          });
         } else {
-          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_FAILEDTOMARKASSETFORSCRAPPING_627A62EE', fallbackText: error.response.data?.message || t('createScrapAsset.failedToMarkAssetForScrapping'), type: 'error' });
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_CREATESCRAPASSET_FAILEDTOMARKASSETFORSCRAPPING_627A62EE',
+            fallbackText: translatedMessage || t('createScrapAsset.failedToMarkAssetForScrapping'),
+            type: 'error',
+          });
         }
       } else {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_NETWORKERRORPLEASECHECKCONNECT_3B254235', fallbackText: t('createScrapAsset.networkErrorPleaseCheckConnection'), type: 'error' });
@@ -672,7 +697,7 @@ const CreateScrapAsset = () => {
                   setSelectedRows={() => {}}
                   showActions={showActions}
                   onRowAction={handleScrap}
-                  actionLabel={assetGroupOption === 'GROUPED' ? 'Scrap Grouped Asset' : 'Scrap'}
+                  actionLabel={assetGroupOption === 'GROUPED' ? t('createScrapAsset.scrapGroupedAsset') : t('createScrapAsset.scrapAction')}
                   rowKey={assetGroupOption === 'GROUPED' ? 'assetgroup_id' : 'asset_id'}
                 />
               );
