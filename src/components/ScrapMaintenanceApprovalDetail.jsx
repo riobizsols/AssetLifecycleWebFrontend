@@ -82,8 +82,7 @@ const ScrapMaintenanceApprovalDetail = () => {
       if (user?.user_id) {
         try {
           const res = await API.get(`/employees/users/${user.user_id}/roles`);
-          const roles = res.data?.data || [];
-          roles.forEach((role) => {
+          (res.data?.data || []).forEach((role) => {
             if (role?.job_role_id) ids.add(role.job_role_id);
           });
         } catch (err) {

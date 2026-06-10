@@ -1872,6 +1872,7 @@
     "initiated": "Eingeleitet",
     "inProgress": "In Bearbeitung",
     "completed": "Abgeschlossen",
+    "rejected": "Abgelehnt",
     "cancelled": "Abgebrochen",
     "days": "Tage",
     "approvalInitiated": "Genehmigung eingeleitet",

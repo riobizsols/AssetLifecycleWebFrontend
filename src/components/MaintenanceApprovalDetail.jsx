@@ -145,6 +145,7 @@ const MaintenanceApprovalDetail = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
+  const [userRoleIds, setUserRoleIds] = useState([]);
   const { t } = useLanguage();
   
   // Get context from URL or state (MAINTENANCEAPPROVAL)
@@ -203,6 +204,35 @@ const MaintenanceApprovalDetail = () => {
       maintType.includes('contract renewal')
     );
   }, [approvalDetails]);
+
+  useEffect(() => {
+    const loadUserRoleIds = async () => {
+      const ids = new Set();
+      (user?.roles || []).forEach((role) => {
+        if (role?.job_role_id) ids.add(role.job_role_id);
+      });
+      if (user?.job_role_id) ids.add(user.job_role_id);
+
+      if (user?.user_id) {
+        try {
+          const res = await API.get(`/employees/users/${user.user_id}/roles`);
+          (res.data?.data || []).forEach((role) => {
+            if (role?.job_role_id) ids.add(role.job_role_id);
+          });
+        } catch (err) {
+          console.warn("Could not refresh user roles for maintenance approval:", err);
+        }
+      }
+
+      setUserRoleIds([...ids]);
+    };
+
+    if (user) {
+      loadUserRoleIds();
+    } else {
+      setUserRoleIds([]);
+    }
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -382,10 +412,6 @@ const MaintenanceApprovalDetail = () => {
     // TODO: Replace above with real API call using id
   }, [id]);
 
-  // ROLE-BASED: Get current user's job roles from auth store
-  const userRoles = user?.roles || [];
-  const userRoleIds = userRoles.map(role => role.job_role_id);
-  
   console.log('🔍 Current user roles:', userRoleIds);
   console.log('📋 Workflow steps:', steps);
   

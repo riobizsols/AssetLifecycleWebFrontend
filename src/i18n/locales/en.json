@@ -1886,6 +1886,7 @@
     "initiated": "Initiated",
     "inProgress": "In Progress",
     "completed": "Completed",
+    "rejected": "Rejected",
     "cancelled": "Cancelled",
     "days": "days",
     "approvalInitiated": "Approval Initiated",

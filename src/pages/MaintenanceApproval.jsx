@@ -255,6 +255,7 @@ const MaintenanceApprovalDetail = () => {
       { label: t('maintenanceApproval.initiated'), value: "IN" },
       { label: t('maintenanceApproval.inProgress'), value: "IP" },
       { label: t('maintenanceApproval.completed'), value: "CO" },
+      { label: t('maintenanceApproval.rejected'), value: "UR" },
       { label: t('maintenanceApproval.cancelled'), value: "CA" }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
