@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import API from '../lib/axios';
+import {
+    appIdsMatch,
+    hasEditAccess as hasEditAccessLevel,
+    hasViewAccess,
+    resolveInheritedAccess,
+} from '../utils/accessLevel';
 
 export const useNavigation = () => {
     const [navigation, setNavigation] = useState([]);
@@ -37,26 +43,33 @@ export const useNavigation = () => {
         }
     };
 
-    // Check if user has access to a specific app
-    const hasAccess = (appId) => {
-        if (!navigation || navigation.length === 0) return false;
-        
-        // Recursive function to search through navigation structure
-        const searchNavigation = (items) => {
-            for (const item of items) {
-                if (item.app_id === appId) {
-                    return item.access_level === 'A' || item.access_level === 'D';
-                }
-                if (item.children && item.children.length > 0) {
-                    const found = searchNavigation(item.children);
-                    if (found) return found;
-                }
+    const findAccessLevelByAppId = (items, id) => {
+        for (const item of items) {
+            if (appIdsMatch(item.app_id, id)) {
+                return item.access_level;
             }
-            return false;
-        };
-        
-        return searchNavigation(navigation);
+            if (item.children?.length) {
+                const found = findAccessLevelByAppId(item.children, id);
+                if (found) return found;
+            }
+        }
+        return null;
     };
+
+    const resolveAccessLevelFromNav = (targetAppId) => {
+        if (!navigation || navigation.length === 0) return null;
+
+        const inherited = resolveInheritedAccess(
+            (appId) => findAccessLevelByAppId(navigation, appId),
+            targetAppId
+        );
+        if (hasViewAccess(inherited)) return inherited;
+
+        return findAccessLevelByAppId(navigation, targetAppId);
+    };
+
+    // Check if user has access to a specific app
+    const hasAccess = (appId) => hasViewAccess(resolveAccessLevelFromNav(appId));
 
     // Check if user has edit access to a specific app
     const hasEditAccess = (appId) => {
@@ -64,8 +77,8 @@ export const useNavigation = () => {
         
         const searchNavigation = (items) => {
             for (const item of items) {
-                if (item.app_id === appId) {
-                    return item.access_level === 'A';
+                if (appIdsMatch(item.app_id, appId)) {
+                    return hasEditAccessLevel(item.access_level);
                 }
                 if (item.children && item.children.length > 0) {
                     const found = searchNavigation(item.children);
@@ -79,24 +92,7 @@ export const useNavigation = () => {
     };
 
     // Get access level for a specific app
-    const getAccessLevel = (appId) => {
-        if (!navigation || navigation.length === 0) return null;
-        
-        const searchNavigation = (items) => {
-            for (const item of items) {
-                if (item.app_id === appId) {
-                    return item.access_level;
-                }
-                if (item.children && item.children.length > 0) {
-                    const found = searchNavigation(item.children);
-                    if (found) return found;
-                }
-            }
-            return null;
-        };
-        
-        return searchNavigation(navigation);
-    };
+    const getAccessLevel = (appId) => resolveAccessLevelFromNav(appId);
 
     // Get navigation item by app ID
     const getNavigationItem = (appId) => {
@@ -104,7 +100,7 @@ export const useNavigation = () => {
         
         const searchNavigation = (items) => {
             for (const item of items) {
-                if (item.app_id === appId) {
+                if (appIdsMatch(item.app_id, appId)) {
                     return item;
                 }
                 if (item.children && item.children.length > 0) {
@@ -136,6 +132,7 @@ export const useNavigation = () => {
             case 'A':
                 return 'Full Access';
             case 'D':
+            case 'V':
                 return 'Read Only';
             default:
                 return 'No Access';
@@ -148,6 +145,7 @@ export const useNavigation = () => {
             case 'A':
                 return 'text-green-600';
             case 'D':
+            case 'V':
                 return 'text-yellow-600';
             default:
                 return 'text-red-600';

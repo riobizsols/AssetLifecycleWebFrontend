@@ -1,6 +1,11 @@
-import { useState, useContext, useMemo } from "react";
+import { useState, useContext, useMemo, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
+import {
+  buildFlatAccessMap,
+  hasViewAccess,
+  resolveInheritedAccess,
+} from "../utils/accessLevel";
 import { useLanguage } from "../contexts/LanguageContext";
 import { AdminSettingsContext } from "../contexts/AdminSettingsContext";
 import {
@@ -36,6 +41,221 @@ import {
   Clock,
   Activity,
 } from "lucide-react";
+
+const normalizeNavAppId = (id) =>
+  id == null ? "" : String(id).trim().replace(/\s+/g, " ").toUpperCase();
+
+const EMPLOYEE_TECH_CERT_APP_IDS = [
+  "TECHCERTUPLOAD",
+  "TECHNICIANCERTIFICATES",
+  "EMPLOYEE TECH CERTIFICATION",
+];
+
+const SIDEBAR_MENU_GROUPS = [
+  {
+    id: "synthetic-approvals",
+    app_id: "APPROVALS",
+    label: "Approvals",
+    children: [
+      { app_id: "MAINTENANCEAPPROVAL", label: "Maintenance Approval" },
+      { app_id: "INSPECTIONAPPROVAL", label: "Inspection Approval" },
+      { app_id: "SCRAPMAINTENANCEAPPROVAL", label: "Scrap Approval" },
+      { app_id: "VENDORRENEWALAPPROVAL", label: "Vendor Renewal Approval" },
+      { app_id: "HR/MANAGERAPPROVAL", label: "HR/Manager Approval" },
+    ],
+  },
+  {
+    id: "synthetic-certificates",
+    app_id: "CERTIFICATESGROUP",
+    label: "Certificates",
+    children: [
+      { app_id: "CERTIFICATIONS", label: "Certificates" },
+      {
+        app_id: "EMPLOYEE TECH CERTIFICATION",
+        label: "Employee Tech Certificate",
+        aliases: EMPLOYEE_TECH_CERT_APP_IDS.filter(
+          (id) => id !== "EMPLOYEE TECH CERTIFICATION"
+        ),
+      },
+    ],
+  },
+  {
+    id: "synthetic-report-breakdown",
+    app_id: "REPORTBREAKDOWNGROUP",
+    label: "Report Breakdown",
+    children: [
+      { app_id: "REPORTBREAKDOWN", label: "Report Breakdown" },
+      {
+        app_id: "EMPLOYEE REPORT BREAKDOWN",
+        label: "Employee Report Breakdown",
+        aliases: ["EMPLOYEEREPORTBREAKDOWN"],
+        inheritAccessFrom: "REPORTBREAKDOWN",
+      },
+    ],
+  },
+];
+
+function flattenNavItems(items, result = []) {
+  if (!items?.length) return result;
+  for (const item of items) {
+    result.push(item);
+    if (item.children?.length) {
+      flattenNavItems(item.children, result);
+    }
+  }
+  return result;
+}
+
+function removeAppIdsFromTree(items, appIdSet) {
+  if (!items?.length) return [];
+  return items
+    .filter((item) => !appIdSet.has(normalizeNavAppId(item.app_id)))
+    .map((item) => ({
+      ...item,
+      children: item.children?.length
+        ? removeAppIdsFromTree(item.children, appIdSet)
+        : item.children,
+    }));
+}
+
+function resolveChildAccess(accessMap, childDef) {
+  const candidateAppIds = [childDef.app_id, ...(childDef.aliases || [])];
+
+  for (const appId of candidateAppIds) {
+    const level = resolveInheritedAccess(
+      (id) => accessMap.get(id),
+      appId
+    );
+    if (hasViewAccess(level)) return level;
+  }
+
+  if (childDef.inheritAccessFrom) {
+    const inherited = resolveInheritedAccess(
+      (id) => accessMap.get(id),
+      childDef.inheritAccessFrom
+    );
+    if (hasViewAccess(inherited)) return inherited;
+  }
+
+  return null;
+}
+
+function findNavMatch(flatItems, appIds, usedIds) {
+  for (const appId of appIds) {
+    const match = flatItems.find(
+      (item) =>
+        normalizeNavAppId(item.app_id) === normalizeNavAppId(appId) &&
+        !usedIds.has(item.id)
+    );
+    if (match) return match;
+  }
+  return null;
+}
+
+function collectGroupChildren(flatItems, groupDef, accessMap, options = {}) {
+  const { forceAllChildren = false, fallbackAccessLevel = null } = options;
+  const children = [];
+  const usedIds = new Set();
+  const employeeTechCertIds = new Set(
+    EMPLOYEE_TECH_CERT_APP_IDS.map((id) => normalizeNavAppId(id))
+  );
+
+  for (const childDef of groupDef.children) {
+    const candidateAppIds = [childDef.app_id, ...(childDef.aliases || [])];
+
+    if (employeeTechCertIds.has(normalizeNavAppId(childDef.app_id))) {
+      if (
+        children.some((child) =>
+          employeeTechCertIds.has(normalizeNavAppId(child.app_id))
+        )
+      ) {
+        continue;
+      }
+    }
+
+    const match = findNavMatch(flatItems, candidateAppIds, usedIds);
+    const accessLevel =
+      resolveChildAccess(accessMap, childDef) ||
+      match?.access_level ||
+      (forceAllChildren ? fallbackAccessLevel : null);
+
+    if (!hasViewAccess(accessLevel)) continue;
+
+    if (match) usedIds.add(match.id);
+
+    children.push({
+      ...(match || {}),
+      id:
+        match?.id ||
+        `synthetic-child-${normalizeNavAppId(childDef.app_id)}`,
+      app_id: childDef.app_id,
+      label: childDef.label || match?.label,
+      access_level: accessLevel,
+      is_group: false,
+      children: undefined,
+      seq: match?.seq,
+    });
+  }
+
+  return children;
+}
+
+function getGroupedAppIds() {
+  const groupedAppIds = new Set();
+  SIDEBAR_MENU_GROUPS.forEach((group) => {
+    group.children.forEach((child) => {
+      groupedAppIds.add(normalizeNavAppId(child.app_id));
+      (child.aliases || []).forEach((alias) =>
+        groupedAppIds.add(normalizeNavAppId(alias))
+      );
+    });
+  });
+  return groupedAppIds;
+}
+
+/** Groups Approvals, Certificates, and Report Breakdown into dropdown menus. */
+function reorganizeSidebarGroups(items) {
+  if (!items?.length) return items;
+
+  const flatItems = flattenNavItems(items);
+  const accessMap = buildFlatAccessMap(flatItems);
+  const groupedAppIds = getGroupedAppIds();
+
+  const syntheticGroups = SIDEBAR_MENU_GROUPS.map((groupDef) => {
+    const isReportBreakdownGroup = groupDef.id === "synthetic-report-breakdown";
+    const reportBreakdownAccess =
+      resolveInheritedAccess((id) => accessMap.get(id), "REPORTBREAKDOWN") ||
+      resolveInheritedAccess((id) => accessMap.get(id), "REOPENEDBREAKDOWNS");
+
+    const children = collectGroupChildren(flatItems, groupDef, accessMap, {
+      forceAllChildren: isReportBreakdownGroup && hasViewAccess(reportBreakdownAccess),
+      fallbackAccessLevel: reportBreakdownAccess,
+    });
+
+    if (!children.length) return null;
+
+    const minSeq = Math.min(...children.map((child) => child.seq ?? 9999));
+
+    return {
+      id: groupDef.id,
+      app_id: groupDef.app_id,
+      label: groupDef.label,
+      is_group: true,
+      seq: minSeq,
+      access_level: children.some((child) => child.access_level === "A")
+        ? "A"
+        : children[0].access_level,
+      children,
+    };
+  }).filter(Boolean);
+
+  if (!syntheticGroups.length) return items;
+
+  const remainingItems = removeAppIdsFromTree(items, groupedAppIds);
+  return [...remainingItems, ...syntheticGroups].sort(
+    (a, b) => (a.seq ?? 9999) - (b.seq ?? 9999)
+  );
+}
 
 /** Injects synthetic "One Time Cron" nav row under Master Data (admin settings mode). */
 function injectOneTimeCronUnderMasterData(items) {
@@ -88,8 +308,10 @@ const DatabaseSidebar = () => {
   const isAdminSettingsMode = adminSettingsContext?.isAdminSettingsMode || false;
 
   const navigationForRender = useMemo(() => {
-    if (!isAdminSettingsMode) return navigation;
-    return injectOneTimeCronUnderMasterData(navigation);
+    if (isAdminSettingsMode) {
+      return injectOneTimeCronUnderMasterData(navigation);
+    }
+    return reorganizeSidebarGroups(navigation);
   }, [navigation, isAdminSettingsMode]);
 
   const toggleDropdown = (id) => {
@@ -175,6 +397,9 @@ const DatabaseSidebar = () => {
       'Reopened Breakdowns': t('navigation.reopenedBreakdowns'),
       'Employee Report Breakdown': t('navigation.employeeReportBreakdown'),
       'Vendor Renewal Approval': t('navigation.vendorRenewalApproval'),
+      'Approvals': t('navigation.approvalsGroup'),
+      'Certificates': t('navigation.certificatesGroup'),
+      'Employee Tech Certificate': t('navigation.employeeTechCertificate'),
       // Report sub-items
       'Asset Lifecycle Report': t('navigation.assetLifecycleReport'),
       'Asset Lifecycle Re...': t('navigation.assetLifecycleReport'),
@@ -213,6 +438,7 @@ const DatabaseSidebar = () => {
       case "A":
         return <Shield size={12} className="text-green-400" />;
       case "D":
+      case "V":
         return <Eye size={12} className="text-yellow-400" />;
       default:
         return <Lock size={12} className="text-red-400" />;
@@ -225,6 +451,7 @@ const DatabaseSidebar = () => {
       case "A":
         return "border-l-2 border-green-400";
       case "D":
+      case "V":
         return "border-l-2 border-yellow-400";
       default:
         return "border-l-2 border-red-400";
@@ -250,6 +477,9 @@ const DatabaseSidebar = () => {
     INSPECTIONAPPROVAL: "/inspection-approval", // New Inspection Approval ID
     MAINTENANCEAPPROVAL: "/maintenance-approval",
     VENDORRENEWALAPPROVAL: "/vendor-renewal-approval",
+    APPROVALS: null,
+    CERTIFICATESGROUP: null,
+    REPORTBREAKDOWNGROUP: null,
     SCRAPMAINTENANCEAPPROVAL: "/scrap-approval",
     SUPERVISORAPPROVAL: "/maintenance-list", //done
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
@@ -264,7 +494,7 @@ const DatabaseSidebar = () => {
     BULKSERIALNUMBERPRINT: "/bulk-serial-number-print", // Bulk Serial Number Print route
     BREAKDOWNHISTORY: "/reports/breakdown-history",  //done
     BREAKDOWNREOPENDETAILS: "/reports/breakdown-reopen-details",
-    REOPENEDBREAKDOWNS: "/reports/reopened-breakdowns",
+      REOPENEDBREAKDOWNS: "/reports/reopened-breakdowns",
     USAGEBASEDASSETREPORT: "/reports/usage-based-asset",  //done
     SLAREPORT: "/reports/sla-report",  //done
     QAAUDITREPORT: "/reports/qa-audit-report",  //done
@@ -315,10 +545,15 @@ const DatabaseSidebar = () => {
       INSPECTIONVIEW: CheckSquare, // Execution
       INSPECTIONAPPROVAL: ClipboardList, // Approval
       MAINTENANCEAPPROVAL: ClipboardList,
+      VENDORRENEWALAPPROVAL: ClipboardList,
       SCRAPMAINTENANCEAPPROVAL: ClipboardList,
+      APPROVALS: ClipboardList,
+      CERTIFICATESGROUP: FileText,
+      REPORTBREAKDOWNGROUP: BarChart3,
       SUPERVISORAPPROVAL: UserCheck,
       REPORTBREAKDOWN: BarChart3,
       "EMPLOYEE REPORT BREAKDOWN": BarChart3,
+      REOPENEDBREAKDOWNS: BarChart3,
       // Report icons
       ASSETLIFECYCLEREPORT: FileText,
       ASSETREPORT: FileText,
@@ -406,6 +641,22 @@ const DatabaseSidebar = () => {
     return basePath;
   };
 
+  useEffect(() => {
+    if (isAdminSettingsMode || collapsed) return;
+
+    const activeGroup = navigationForRender.find((item) => {
+      if (!item.is_group || !item.children?.length) return false;
+      return item.children.some((child) => {
+        const childPath = getPath(child.app_id);
+        return childPath && location.pathname.startsWith(childPath);
+      });
+    });
+
+    if (activeGroup) {
+      setOpenDropdown(activeGroup.id);
+    }
+  }, [location.pathname, navigationForRender, isAdminSettingsMode, collapsed]);
+
   // App IDs that should only be visible in admin settings mode (/adminsettings/configuration routes)
   // Add more app IDs here as needed for future admin settings menu items
   const adminSettingsOnlyAppIds = [
@@ -418,35 +669,8 @@ const DatabaseSidebar = () => {
     "ONETIMECRON",
     "JOBMONITOR",
   ];
-  const employeeTechCertAppIds = ["TECHCERTUPLOAD", "TECHNICIANCERTIFICATES", "EMPLOYEE TECH CERTIFICATION"];
-
-  const normalizeNavAppId = (id) =>
-    id == null ? "" : String(id).trim().replace(/\s+/g, " ").toUpperCase();
-
-  const employeeTechCertIdSet = new Set(
-    employeeTechCertAppIds.map((id) => normalizeNavAppId(id))
-  );
-
-  const isEmployeeTechCertMenuId = (appId) =>
-    employeeTechCertIdSet.has(normalizeNavAppId(appId));
-
-  const hasEmployeeTechCertAccess = () =>
-    employeeTechCertAppIds.some((appId) => Boolean(getAccessLevel(appId)));
-
-  const getEmployeeTechCertAppId = () =>
-    employeeTechCertAppIds.find((appId) => Boolean(getAccessLevel(appId))) || "TECHCERTUPLOAD";
-
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
-    // Same route as standalone "Technician Certificates"; hide raw nav rows so only one link shows
-    if (
-      item.id !== "standalone-tech-certificates" &&
-      !isAdminSettingsMode &&
-      isEmployeeTechCertMenuId(item.app_id)
-    ) {
-      return false;
-    }
-
     const isAdminSettingsOnlyItem = adminSettingsOnlyAppIds.includes(item.app_id);
     
     // Hide admin settings only items when NOT in admin settings mode
@@ -503,10 +727,6 @@ const DatabaseSidebar = () => {
       const isAnyChildActive =
         hasChildren &&
         item.children.some((child) => {
-          // Tech cert routes are shown as a standalone item, not under this group — don't mark parent active
-          if (isEmployeeTechCertMenuId(child.app_id)) {
-            return false;
-          }
           const childPath = getPath(child.app_id);
           // For COLUMNACCESSCONFIG, check exact match since it shares path with ADMINSETTINGS
           if (child.app_id === "COLUMNACCESSCONFIG") {
@@ -549,18 +769,12 @@ const DatabaseSidebar = () => {
             <ul className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
                 const isAdminSettingsOnlyChild = adminSettingsOnlyAppIds.includes(child.app_id);
-                const isEmployeeTechCertChild = isEmployeeTechCertMenuId(child.app_id);
-                
+
                 // Hide admin settings only items when NOT in admin settings mode
                 if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
                   return null;
                 }
 
-                // Show Employee Tech Certificate as standalone top-level item
-                if (isEmployeeTechCertChild) {
-                  return null;
-                }
-                
                 // In admin settings mode, only show admin settings only children
                 if (isAdminSettingsMode && !isAdminSettingsOnlyChild) {
                   return null;
@@ -572,11 +786,11 @@ const DatabaseSidebar = () => {
                     ? getAccessLevel("ONETIMECRON") ||
                       getAccessLevel("ADMINSETTINGS") ||
                       getAccessLevel("MASTERDATA")
-                    : getAccessLevel(child.app_id);
+                    : child.access_level || getAccessLevel(child.app_id);
                 const ChildIconComponent = getIconComponent(child.app_id);
 
                 // Only show children that have access
-                if (!childAccessLevel) return null;
+                if (!hasViewAccess(childAccessLevel)) return null;
 
                 // For admin settings routes, use exact path matching to prevent multiple items being active
                 const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON", "JOBMONITOR"];
@@ -627,8 +841,8 @@ const DatabaseSidebar = () => {
           ? getAccessLevel("ONETIMECRON") ||
             getAccessLevel("ADMINSETTINGS") ||
             getAccessLevel("MASTERDATA")
-          : accessLevel;
-      if (!effectiveAccess) return null;
+          : accessLevel || item.access_level;
+      if (!hasViewAccess(effectiveAccess)) return null;
 
       // For admin settings routes, check exact path match
       const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON", "JOBMONITOR"];
@@ -751,13 +965,6 @@ const DatabaseSidebar = () => {
         ) : (
           <>
             {navigationForRender.map((item) => renderNavigationItem(item))}
-            {!isAdminSettingsMode && hasEmployeeTechCertAccess() &&
-              renderNavigationItem({
-                id: "standalone-tech-certificates",
-                app_id: getEmployeeTechCertAppId(),
-                label: "Technician Certificates",
-                is_group: false
-              })}
           </>
         )}
       </ul>

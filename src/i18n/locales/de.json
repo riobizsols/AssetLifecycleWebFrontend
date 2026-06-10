@@ -56,7 +56,9 @@
     "employeeTechCertificate": "Mitarbeiter-Technikerzertifikat",
     "vendorRenewalApproval": "Lieferantenerneuerungsgenehmigung",
     "hrManagerApproval": "HR/Vorgesetzten-Genehmigung",
-    "qaAuditReport": "QA-Prüfbericht"
+    "qaAuditReport": "QA-Prüfbericht",
+    "approvalsGroup": "Genehmigungen",
+    "certificatesGroup": "Zertifikate"
   },
   "dashboard": {
     "title": "Dashboard",
