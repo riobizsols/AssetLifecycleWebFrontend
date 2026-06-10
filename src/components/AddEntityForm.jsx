@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { generateUUID } from '../utils/uuid';
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
+import { normalizeVendorFormPayload } from "../utils/vendorFormPayload";
 
 
 const AddEntityForm = () => {
@@ -248,7 +249,7 @@ const AddEntityForm = () => {
       
       // Map selected SLAs to vendor_slas array
       const vendor_slas = mapSLAsToForm();
-      const formDataWithSLAs = { ...form, vendor_slas };
+      const formDataWithSLAs = normalizeVendorFormPayload({ ...form, vendor_slas });
       
       const response = await API.post("/create-vendor", formDataWithSLAs); // Backend adds ext_id, created_on, org_id
       const vendorId = response.data?.data?.vendor_id;
@@ -403,7 +404,10 @@ const AddEntityForm = () => {
         showBackendTextToast({
           toast,
           tmdId: 'TMD_I18N_VENDORS_SUCCESSFULLYSAVED_5ED2C725',
-          fallbackText: `${t('vendors.successfullySaved') || 'Successfully saved'}: {{savedTabs}}`,
+          fallbackText: t('vendors.successfullySaved', {
+            savedTabs: savedTabsList,
+            defaultValue: 'Successfully saved: {{savedTabs}}',
+          }),
           type: 'success',
           values: { savedTabs: savedTabsList },
         });
@@ -414,7 +418,7 @@ const AddEntityForm = () => {
       showBackendTextToast({
         toast,
         tmdId: 'TMD_I18N_VENDORS_SAVEFAILED_08205C99',
-        fallbackText: t('vendors.saveFailed') || 'Save failed',
+        fallbackText: t('vendors.saveFailed', { defaultValue: 'Save failed' }),
         type: 'error',
       });
     } finally {

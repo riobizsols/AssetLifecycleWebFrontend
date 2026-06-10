@@ -1170,6 +1170,8 @@
     "vendorCreatedSuccessfully": "Lieferant erfolgreich erstellt!",
     "failedToCreateVendor": "Erstellung fehlgeschlagen. Bitte versuchen Sie es erneut.",
     "saving": "Speichern...",
+    "successfullySaved": "Erfolgreich gespeichert: {{savedTabs}}",
+    "saveFailed": "Speichern fehlgeschlagen",
     "documentTypesLoadedFromSystem": "Dokumenttypen werden aus der Systemkonfiguration geladen",
     "pleaseCreateVendorFirstBeforeUploading": "Bitte erstellen Sie zuerst den Lieferanten, bevor Sie Dokumente hochladen",
     "noFilesAdded": "Keine Dateien hinzugefügt.",

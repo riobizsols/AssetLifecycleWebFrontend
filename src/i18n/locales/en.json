@@ -1184,6 +1184,8 @@
     "vendorCreatedSuccessfully": "Vendor created successfully!",
     "failedToCreateVendor": "Failed to create. Please try again.",
     "saving": "Saving...",
+    "successfullySaved": "Successfully saved: {{savedTabs}}",
+    "saveFailed": "Save failed",
     "documentTypesLoadedFromSystem": "Document types are loaded from the system configuration",
     "pleaseCreateVendorFirstBeforeUploading": "Please create the vendor first before uploading documents",
     "noFilesAdded": "No files added.",

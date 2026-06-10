@@ -10,6 +10,14 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "react-hot-toast";
 
+function isInhouseMaintenance(approvalDetails) {
+  if (!approvalDetails) return false;
+  if (approvalDetails.header_emp_int_id) return true;
+  const maint = (approvalDetails.maintained_by || '').toString().toLowerCase().replace(/\s|-/g, '');
+  if (!maint) return false;
+  return !maint.includes('vendor');
+}
+
 const mockApiResponse = {
   steps: [
     {
@@ -277,9 +285,7 @@ const MaintenanceApprovalDetail = () => {
     if (!approvalDetails) return;
     // MT005 vendor contract renewal: API used to default maintained_by to Inhouse when at_main_freq is null; never force tab away from Vendor
     if (isVendorContractRenewal) return;
-    const hasEmpIntId = approvalDetails?.header_emp_int_id;
-    const maint = (approvalDetails?.maintained_by || '').toString().toLowerCase();
-    const isInhouse = hasEmpIntId || (maint && (maint.includes('inhouse') || maint.includes('in-house')));
+    const isInhouse = isInhouseMaintenance(approvalDetails);
     
     if (isInhouse && activeTab === 'vendor') {
       console.log('Resetting tab from vendor to approval for in-house maintenance');
@@ -509,15 +515,19 @@ const MaintenanceApprovalDetail = () => {
           fetchApprovalDetails(true);
         }, 500);
       } else {
-        // Check if it's a vendor status message (not an error)
-        if (response.data.message && (response.data.message.includes("Inactive") || response.data.message.includes("CR Approved"))) {
-          toast.error(response.data.message);
-          setVendorStatusError(response.data.message);
+        const msg = response.data.message || '';
+        if (msg.includes("Inactive") || msg.includes("CR Approved")) {
+          toast.error(msg);
+          setVendorStatusError(msg);
           setShowApproveModal(false);
-          // Switch to vendor tab to show the message
           setActiveTab('vendor');
+        } else if (msg.toLowerCase().includes('already been completed')) {
+          toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approval already completed.');
+          setShowApproveModal(false);
+          setApproveNote('');
+          fetchApprovalDetails(true);
         } else {
-          toast.error(response.data.message || t('maintenanceApproval.failedToApprove'));
+          toast.error(msg || t('maintenanceApproval.failedToApprove'));
         }
       }
     } catch (error) {
@@ -535,10 +545,18 @@ const MaintenanceApprovalDetail = () => {
         toast.error(errorMessage);
         setVendorStatusError(errorMessage);
         setShowApproveModal(false);
-        // Switch to vendor tab to show the message
         setActiveTab('vendor');
+      } else if (
+        errorMessage.toLowerCase().includes('already been completed') ||
+        (errorMessage.includes('vendor_id') && errorMessage.includes('tblAssetMaintSch'))
+      ) {
+        toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approved successfully.');
+        setShowApproveModal(false);
+        setApproveNote('');
+        fetchApprovalDetails(true);
       } else {
         toast.error(errorMessage);
+        fetchApprovalDetails(true);
       }
     } finally {
       setIsSubmitting(false);
@@ -645,9 +663,7 @@ const MaintenanceApprovalDetail = () => {
     };
 
     if (!approvalDetails) return;
-    const hasEmpIntId = approvalDetails?.header_emp_int_id;
-    const maintained = (approvalDetails?.maintained_by || '').toString().toLowerCase();
-    const isInhouse = hasEmpIntId || (maintained && (maintained.includes('inhouse') || maintained.includes('in-house')));
+    const isInhouse = isInhouseMaintenance(approvalDetails);
     
     if (isInhouse) {
       // Fetch assigned technician from header if present
@@ -817,7 +833,7 @@ const MaintenanceApprovalDetail = () => {
       }
       
       // If maintenance is inhouse we ignore vendor status entirely
-      if (approvalDetails?.maintained_by && approvalDetails.maintained_by.toLowerCase().includes('inhouse')) {
+      if (isInhouseMaintenance(approvalDetails)) {
         setVendorStatusError("");
       } else {
         // Check vendor status on load
@@ -1020,15 +1036,13 @@ const MaintenanceApprovalDetail = () => {
                     return base;
                   }
                   // For regular maintenance: show technician tab when has emp_int_id (in-house), otherwise vendor
-                  const hasEmpIntId = approvalDetails?.header_emp_int_id;
-                  const maint = (approvalDetails?.maintained_by || '').toString().toLowerCase();
+                  const isInhouse = isInhouseMaintenance(approvalDetails);
                   console.log('🔍 Tab Logic Debug:', {
-                    hasEmpIntId,
+                    isInhouse,
                     maintained_by: approvalDetails?.maintained_by,
-                    maint,
                     approvalDetails
                   });
-                  if (hasEmpIntId || (maint && (maint.includes('inhouse') || maint.includes('in-house')))) {
+                  if (isInhouse) {
                     const base = ['approval', 'technician', 'asset', 'history'];
                     if (isSoftwareApproval && !base.includes('asset')) {
                       base.splice(base.length - 1, 0, 'asset');
@@ -1470,22 +1484,20 @@ const MaintenanceApprovalDetail = () => {
                       const vendorToCheck = displayedVendorDetails || approvalDetails?.vendorDetails;
                       const vendorStatus = vendorToCheck?.vendor_status || vendorToCheck?.int_status;
                       
-                      // If this is inhouse maintenance, ignore vendor status
-                      if (!approvalDetails?.maintained_by || !approvalDetails.maintained_by.toLowerCase().includes('inhouse')) {
+                      const isInhouse = isInhouseMaintenance(approvalDetails);
+                      if (!isInhouse) {
                         // If vendor is inactive (0) or CR Approved (3), prevent approval
                         if (currentVendorId && (vendorStatus === 0 || vendorStatus === 3)) {
                           showBackendTextToast({ toast, tmdId: 'TMD_THE_SPECIFIED_SERVICE_VENDOR_IS_INACTIVE_OR_CR_APPRO_2051F472', fallbackText: 'The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.', type: 'error' });
-                          // Switch to vendor tab to show the message
                           setActiveTab('vendor');
                           setVendorStatusError("The specified Service Vendor is Inactive or CR Approved. Please choose another vendor for service.");
                           return;
                         }
-                      }
-                      // If no vendor selected, also prevent
-                      if (!currentVendorId) {
-                        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_VENDOR_BEFORE_APPROVING_72E3B706', fallbackText: 'Please select a vendor before approving.', type: 'error' });
-                        setActiveTab('vendor');
-                        return;
+                        if (!currentVendorId) {
+                          showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_VENDOR_BEFORE_APPROVING_72E3B706', fallbackText: 'Please select a vendor before approving.', type: 'error' });
+                          setActiveTab('vendor');
+                          return;
+                        }
                       }
                       
                       // Vendor is valid, open approve modal

@@ -12,6 +12,7 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { VENDORS_APP_ID } from "../../constants/vendorsAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { normalizeVendorFormPayload } from "../../utils/vendorFormPayload";
 
 const Vendors = () => {
   const navigate = useNavigate();
@@ -227,24 +228,13 @@ const Vendors = () => {
 
   const handleUpdate = async (formData) => {
     try {
-      // Clean up empty/null values for optional fields and preserve required fields
-      const cleanedData = {
+      const cleanedData = normalizeVendorFormPayload({
         ...formData,
-        org_id: editingVendor.org_id, // Preserve org_id from existing vendor
-        ext_id: editingVendor.ext_id, // Preserve ext_id from existing vendor
-        address_line2: formData.address_line2 || null,
-        contact_person_name: formData.contact_person_name || null,
-        contact_person_email: formData.contact_person_email || null,
-        contact_person_number: formData.contact_person_number || null,
-        gst_number: formData.gst_number || null,
-        cin_number: formData.cin_number || null,
-        address_line1: formData.address_line1 || null,
-        city: formData.city || null,
-        state: formData.state || null,
-        pincode: formData.pincode || null,
+        org_id: editingVendor.org_id,
+        ext_id: editingVendor.ext_id,
         changed_by: "USER123", // Replace with actual user ID from context/state
-        changed_on: new Date().toISOString()
-      };
+        changed_on: new Date().toISOString(),
+      });
 
       const response = await API.put(`/update/${editingVendor.vendor_id}`, cleanedData);
 
