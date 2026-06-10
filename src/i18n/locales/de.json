@@ -2814,6 +2814,8 @@
     "add": "Hinzufügen",
     "create": "Erstellen",
     "creating": "Wird erstellt...",
+    "saving": "Wird gespeichert...",
+    "uploading": "Wird hochgeladen...",
     "update": "Aktualisieren",
     "search": "Suchen",
     "filter": "Filtern",

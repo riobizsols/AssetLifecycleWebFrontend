@@ -1876,7 +1876,7 @@ const AddAssetForm = ({ userRole }) => {
             <div className="grid grid-cols-5 gap-6 mb-4">
                 {/* Product Vendor Dropdown */}
                 <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')}</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')} <span className="text-red-500">*</span></label>
                 <div className="relative w-full">
                   <button
                     type="button"

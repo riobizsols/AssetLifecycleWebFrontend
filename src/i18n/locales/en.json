@@ -2968,6 +2968,8 @@
     "add": "Add",
     "create": "Create",
     "creating": "Creating...",
+    "saving": "Saving...",
+    "uploading": "Uploading...",
     "update": "Update",
     "search": "Search",
     "filter": "Filter",
