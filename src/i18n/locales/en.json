@@ -56,7 +56,9 @@
     "employeeTechCertificate": "Employee Tech Certificate",
     "vendorRenewalApproval": "Vendor Renewal Approval",
     "hrManagerApproval": "HR/Manager Approval",
-    "qaAuditReport": "QA Audit Report"
+    "qaAuditReport": "QA Audit Report",
+    "approvalsGroup": "Approvals",
+    "certificatesGroup": "Certificates"
   },
   "dashboard": {
     "title": "Dashboard",

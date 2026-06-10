@@ -261,9 +261,27 @@ const NotificationsPanel = () => {
       }
       if (action === "extend") {
         navigate(`/assets?editAssetId=${alert.assetId}&warrantyAction=warranty&notifyId=${alert.notifyId}`);
+        return;
       }
       if (action === "vendor") {
         navigate(`/assets?editAssetId=${alert.assetId}&warrantyAction=vendor&notifyId=${alert.notifyId}`);
+        return;
+      }
+      if (action === "scrap") {
+        const confirmed = window.confirm(
+          `Initiate scrap approval for asset ${alert.assetId}? This will start the scrap approval workflow.`
+        );
+        if (!confirmed) return;
+        const res = await API.put(`/notifications/warranty/${alert.notifyId}/scrap`);
+        setAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
+        showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_APPROVAL_INITIATED_WARRANTY', fallbackText: 'Scrap approval initiated successfully', type: 'success' });
+        // Navigate to scrap approval list
+        if (res.data?.data?.wfscrap_h_id) {
+          navigate(`/scrap-approval-detail/${res.data.data.wfscrap_h_id}?context=SCRAPMAINTENANCEAPPROVAL`);
+        } else {
+          navigate('/scrap-approval');
+        }
+        return;
       }
     } catch (error) {
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_PROCESS_ACTION_4490D849', fallbackText: 'Failed to process action', type: 'error' });
@@ -357,7 +375,11 @@ const NotificationsPanel = () => {
                     </button>
                     {openActionMenuId === alert.notifyId && (
                       <div className="absolute z-20 mt-2 w-52 rounded-lg border bg-white shadow-lg p-2 space-y-1">
-                        <button onClick={(e) => handleWarrantyAction(e, alert, "discard")} className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100">Discard</button>
+                        {/* 1. Discard */}
+                        <button onClick={(e) => handleWarrantyAction(e, alert, "discard")} className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 text-gray-700">Discard</button>
+                        {/* 2. Extend Expiry */}
+                        <button onClick={(e) => handleWarrantyAction(e, alert, "extend")} className="w-full text-left px-2 py-1.5 rounded hover:bg-green-50 text-green-700">Extend Expiry</button>
+                        {/* 3. Remind Again */}
                         <button
                           onClick={() =>
                             setOpenSnoozeMenuId((prev) =>
@@ -414,10 +436,8 @@ const NotificationsPanel = () => {
                             </button>
                           </div>
                         )}
-                        <button onClick={(e) => handleWarrantyAction(e, alert, "extend")} className="w-full text-left px-2 py-1.5 rounded hover:bg-green-50 text-green-700">Extend Warranty</button>
-                        {alert.canChangeVendor && (
-                          <button onClick={(e) => handleWarrantyAction(e, alert, "vendor")} className="w-full text-left px-2 py-1.5 rounded hover:bg-purple-50 text-purple-700">Change Vendor</button>
-                        )}
+                        {/* 4. Scrap */}
+                        <button onClick={(e) => handleWarrantyAction(e, alert, "scrap")} className="w-full text-left px-2 py-1.5 rounded hover:bg-red-50 text-red-600 font-medium">Scrap</button>
                       </div>
                     )}
                   </div>

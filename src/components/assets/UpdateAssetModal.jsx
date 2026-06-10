@@ -27,7 +27,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const warrantyActionMode = assetData?.warranty_action || null;
   const isWarrantyExtendMode = warrantyActionMode === 'warranty';
   const isWarrantyVendorMode = warrantyActionMode === 'vendor';
-  const isWarrantyActionMode = isWarrantyExtendMode || isWarrantyVendorMode;
+  const isExpiryExtendMode = warrantyActionMode === 'expiry';
+  const isWarrantyActionMode = isWarrantyExtendMode || isWarrantyVendorMode || isExpiryExtendMode;
   
   // Get column access for tblAssets
   const { isVisible: isColumnVisible, isReadOnly: isColumnReadOnly, getAccessLevel: getColumnAccessLevel, loading: columnAccessLoading } = useColumnAccess('tblAssets');
@@ -35,6 +36,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     if (!isWarrantyActionMode) return true;
     if (isWarrantyExtendMode) return fieldName === 'warranty_period';
     if (isWarrantyVendorMode) return fieldName === 'service_vendor_id';
+    if (isExpiryExtendMode) return fieldName === 'expiry_date';
     return true;
   };
   const isFieldDisabled = (fieldName) =>
