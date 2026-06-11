@@ -88,6 +88,8 @@ const getStepColor = (status, title) => {
       return 'bg-red-500'; // Red for rejected
     case 'pending':
       return 'bg-gray-400'; // Gray for awaiting
+    case 'cancelled':
+      return 'bg-gray-300'; // Light gray for skipped stages after rejection
     default:
       return 'bg-gray-400';
   }
@@ -353,6 +355,7 @@ const MaintenanceApprovalDetail = () => {
             userId: workflowData.workflowDetails?.[0]?.user_id,
             userEmail: workflowData.workflowDetails?.[0]?.email,
             status: workflowData.workflowDetails?.[0]?.detail_status,
+            headerStatus: workflowData.headerStatus,
             sequence: workflowData.workflowDetails?.[0]?.sequence,
             daysUntilDue: workflowData.daysUntilDue,
             daysUntilCutoff: workflowData.daysUntilCutoff,
@@ -433,7 +436,7 @@ const MaintenanceApprovalDetail = () => {
     return hasRole;
   });
   
-  const isRejected = steps.some((step) => step.status === "rejected");
+  const isRejected = approvalDetails?.headerStatus === 'UR' || steps.some((step) => step.status === "rejected");
 
   // Find ALL steps with AP status (current action pending)
   const currentActionSteps = steps.filter((step) => {
@@ -578,8 +581,7 @@ const MaintenanceApprovalDetail = () => {
         console.log("Maintenance rejected successfully");
         setShowRejectModal(false);
         setRejectNote("");
-        // Refresh the page to show updated workflow
-        window.location.reload();
+        navigate('/maintenance-approval');
       } else {
         alert(t('maintenanceApproval.failedToReject'));
       }
@@ -1469,7 +1471,7 @@ const MaintenanceApprovalDetail = () => {
               >
                 Back
               </button>
-              {isCurrentActionUser && (
+              {isCurrentActionUser && !isRejected && (
                 <>
                   <button
                     onClick={() => setShowRejectModal(true)}
