@@ -116,14 +116,25 @@ const InspectionExecutionDetail = () => {
     setShowModal(true);
   };
 
+  const getNumericRange = (question) => {
+    const min = question.min_range != null && question.min_range !== ''
+      ? parseFloat(question.min_range)
+      : null;
+    const max = question.max_range != null && question.max_range !== ''
+      ? parseFloat(question.max_range)
+      : null;
+    return {
+      min: Number.isFinite(min) ? min : null,
+      max: Number.isFinite(max) ? max : null,
+    };
+  };
+
   const validateValue = (question, value) => {
     if (question.response_type === 'QN') {
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return false;
-      
-      const min = question.min_range;
-      const max = question.max_range;
-      
+
+      const { min, max } = getNumericRange(question);
       if (min !== null && numValue < min) return false;
       if (max !== null && numValue > max) return false;
     }
@@ -132,21 +143,34 @@ const InspectionExecutionDetail = () => {
 
   const isValueOutOfRange = (question, value) => {
     if (question.response_type === 'QN' && value) {
-      const numValue = parseFloat(value);
-      if (isNaN(numValue)) return true;
-      
-      const min = question.min_range;
-      const max = question.max_range;
-      
-      if (min !== null && numValue < min) return true;
-      if (max !== null && numValue > max) return true;
+      return !validateValue(question, value);
     }
     return false;
+  };
+
+  const validatePendingRecords = (records) => {
+    for (const record of records) {
+      const question = checklist.find((q) => q.insp_check_id === record.insp_check_id);
+      if (!question) continue;
+      if (!validateValue(question, record.recorded_value)) {
+        return question;
+      }
+    }
+    return null;
   };
 
   const handleAddRecord = async () => {
     if (!recordedValue.trim()) {
       showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_VALUE_2C0B41EC', fallbackText: t('inspectionExecution.pleaseEnterValue'), type: 'error' });
+      return;
+    }
+
+    if (!validateValue(selectedQuestion, recordedValue)) {
+      showBackendTextToast({
+        toast,
+        fallbackText: t('inspectionExecution.valueOutsideRange'),
+        type: 'error',
+      });
       return;
     }
 
@@ -179,6 +203,18 @@ const InspectionExecutionDetail = () => {
   };
 
   const handleFinalSave = async () => {
+    if (Array.isArray(pendingRecords) && pendingRecords.length > 0) {
+      const invalidQuestion = validatePendingRecords(pendingRecords);
+      if (invalidQuestion) {
+        showBackendTextToast({
+          toast,
+          fallbackText: t('inspectionExecution.valueOutsideRange'),
+          type: 'error',
+        });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       // First, persist any pending checklist records.
@@ -522,7 +558,12 @@ const InspectionExecutionDetail = () => {
               </button>
               <button
                 onClick={handleAddRecord}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                disabled={!recordedValue.trim() || isValueOutOfRange(selectedQuestion, recordedValue)}
+                className={`flex-1 px-4 py-2 rounded-lg transition ${
+                  !recordedValue.trim() || isValueOutOfRange(selectedQuestion, recordedValue)
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
                 {t('common.add')}
               </button>
