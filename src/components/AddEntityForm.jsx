@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import ProductSupplyForm from "./ProductSupplyForm";
@@ -11,6 +11,7 @@ import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 import { normalizeVendorFormPayload } from "../utils/vendorFormPayload";
 
+const VENDOR_ADD_DRAFT_KEY = "vendorAddDraft";
 
 const AddEntityForm = () => {
   const navigate = useNavigate();
@@ -71,6 +72,69 @@ const AddEntityForm = () => {
     fetchSLADescriptions();
   }, []);
 
+  const persistVendorDraft = useCallback(
+    (returnTab) => {
+      sessionStorage.setItem(
+        VENDOR_ADD_DRAFT_KEY,
+        JSON.stringify({
+          form,
+          selectedSLAs,
+          activeTab: returnTab ?? activeTab,
+          createdVendorId,
+          vendorSaved,
+          savedTabs: [...savedTabs],
+        })
+      );
+    },
+    [form, selectedSLAs, activeTab, createdVendorId, vendorSaved, savedTabs]
+  );
+
+  useEffect(() => {
+    const returnTab =
+      sessionStorage.getItem("vendorProductReturnTab") ||
+      sessionStorage.getItem("vendorServiceReturnTab");
+    const draftRaw = sessionStorage.getItem(VENDOR_ADD_DRAFT_KEY);
+
+    let draftActiveTab = null;
+    if (draftRaw) {
+      try {
+        const draft = JSON.parse(draftRaw);
+        draftActiveTab = draft.activeTab || null;
+        if (draft.form) {
+          setForm((prev) => ({
+            ...prev,
+            ...draft.form,
+            org_id: org_id || draft.form.org_id || prev.org_id,
+          }));
+        }
+        if (Array.isArray(draft.selectedSLAs)) {
+          setSelectedSLAs(draft.selectedSLAs);
+        }
+        if (draft.createdVendorId) {
+          setCreatedVendorId(draft.createdVendorId);
+        }
+        if (typeof draft.vendorSaved === "boolean") {
+          setVendorSaved(draft.vendorSaved);
+        }
+        if (Array.isArray(draft.savedTabs)) {
+          setSavedTabs(new Set(draft.savedTabs));
+        }
+      } catch (error) {
+        console.warn("Failed to restore vendor add draft:", error);
+      }
+      sessionStorage.removeItem(VENDOR_ADD_DRAFT_KEY);
+    }
+
+    if (returnTab) {
+      setActiveTab(returnTab);
+      sessionStorage.removeItem("vendorProductReturnTab");
+      sessionStorage.removeItem("vendorServiceReturnTab");
+    } else if (draftActiveTab) {
+      setActiveTab(draftActiveTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once on mount
+  }, []);
+
   const fetchDocumentTypes = async () => {
     try {
       console.log('Fetching document types for vendors...');
@@ -108,9 +172,8 @@ const AddEntityForm = () => {
         setSlaDescriptions(res.data.data);
         console.log('SLA descriptions loaded:', res.data.data);
       } else {
-        console.warn('No SLA descriptions found or invalid response format:', res.data);
+        console.warn('No SLA descriptions configured:', res.data);
         setSlaDescriptions([]);
-        showBackendTextToast({ toast, tmdId: 'TMD_NO_SLA_DESCRIPTIONS_FOUND_IN_DATABASE_40BFC0BA', fallbackText: 'No SLA descriptions found in database', type: 'error' });
       }
     } catch (err) {
       console.error('Error fetching SLA descriptions:', err);
@@ -412,6 +475,21 @@ const AddEntityForm = () => {
           values: { savedTabs: savedTabsList },
         });
       }
+
+      // Vendor-only setup: no optional product/service/attachment data to save
+      if (
+        vendorSaveSuccess &&
+        !form.product_supply &&
+        !form.service_supply &&
+        uploadRows.length === 0
+      ) {
+        clearVendorAddSession();
+        navigate("/master-data/vendors");
+      } else if (vendorSaveSuccess && !hasPendingOptionalData() && tabsToSave.length === 0) {
+        // All staged optional data already saved — return to list
+        clearVendorAddSession();
+        navigate("/master-data/vendors");
+      }
       
     } catch (error) {
       console.error('Error in unified save:', error);
@@ -427,9 +505,28 @@ const AddEntityForm = () => {
     }
   };
 
-  // Unified cancel function
+  const clearVendorAddSession = () => {
+    sessionStorage.removeItem(VENDOR_ADD_DRAFT_KEY);
+    sessionStorage.removeItem("vendorProductDraft");
+    sessionStorage.removeItem("vendorServiceDraft");
+    sessionStorage.removeItem("products");
+    sessionStorage.removeItem("services");
+  };
+
+  // Leave wizard and return to vendor list
   const handleUnifiedCancel = () => {
+    clearVendorAddSession();
     navigate("/master-data/vendors");
+  };
+
+  const hasPendingOptionalData = () => {
+    const products = JSON.parse(sessionStorage.getItem("products") || "[]");
+    const services = JSON.parse(sessionStorage.getItem("services") || "[]");
+    return (
+      (form.product_supply && Array.isArray(products) && products.length > 0 && !savedTabs.has("Product Details")) ||
+      (form.service_supply && Array.isArray(services) && services.length > 0 && !savedTabs.has("Service Details")) ||
+      (uploadRows.length > 0 && !savedTabs.has("Attachments"))
+    );
   };
 
   // Callback to mark tabs as saved
@@ -710,18 +807,50 @@ const AddEntityForm = () => {
           </form>
         )}
 
-        {activeTab === "Product Details" && <ProductSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />}
-        {activeTab === "Service Details" && <ServiceSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />}
+        {activeTab === "Product Details" && (
+          <ProductSupplyForm
+            vendorId={createdVendorId}
+            orgId={org_id}
+            vendorSaved={vendorSaved}
+            onSaveTrigger={savingTab}
+            onTabSaved={markTabAsSaved}
+            onPersistVendorDraft={persistVendorDraft}
+          />
+        )}
+        {activeTab === "Service Details" && (
+          <ServiceSupplyForm
+            vendorId={createdVendorId}
+            orgId={org_id}
+            vendorSaved={vendorSaved}
+            onSaveTrigger={savingTab}
+            onTabSaved={markTabAsSaved}
+            onPersistVendorDraft={persistVendorDraft}
+          />
+        )}
         
         {/* Hidden components for save operations - rendered but not visible */}
         {activeTab !== "Product Details" && form.product_supply && JSON.parse(sessionStorage.getItem('products') || '[]').length > 0 && (
           <div style={{ display: 'none' }}>
-            <ProductSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />
+            <ProductSupplyForm
+              vendorId={createdVendorId}
+              orgId={org_id}
+              vendorSaved={vendorSaved}
+              onSaveTrigger={savingTab}
+              onTabSaved={markTabAsSaved}
+              onPersistVendorDraft={persistVendorDraft}
+            />
           </div>
         )}
         {activeTab !== "Service Details" && form.service_supply && JSON.parse(sessionStorage.getItem('services') || '[]').length > 0 && (
           <div style={{ display: 'none' }}>
-            <ServiceSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />
+            <ServiceSupplyForm
+              vendorId={createdVendorId}
+              orgId={org_id}
+              vendorSaved={vendorSaved}
+              onSaveTrigger={savingTab}
+              onTabSaved={markTabAsSaved}
+              onPersistVendorDraft={persistVendorDraft}
+            />
           </div>
         )}
         {activeTab === "Attachments" && (
@@ -871,7 +1000,9 @@ const AddEntityForm = () => {
             className="bg-gray-300 text-gray-700 px-8 py-2 rounded text-base font-medium hover:bg-gray-400 transition"
             disabled={loading}
           >
-            Cancel
+            {vendorSaved
+              ? t('vendors.backToVendors', { defaultValue: 'Back to Vendors' })
+              : t('common.cancel', { defaultValue: 'Cancel' })}
           </button>
           <button
             type="button"
@@ -895,11 +1026,16 @@ const AddEntityForm = () => {
         
         {/* Status indicator */}
         {vendorSaved && (
-          <div className="mt-2 text-sm text-green-600 flex items-center">
-            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            Vendor details saved successfully
+          <div className="px-6 pb-3 text-sm text-green-700">
+            <div className="flex items-center">
+              <svg className="w-4 h-4 mr-1 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              {t('vendors.vendorCreatedContinueSetup', {
+                defaultValue:
+                  'Vendor created successfully. Add products/services or attachments on the other tabs, then click Save All — or use Back to Vendors when you are done.',
+              })}
+            </div>
           </div>
         )}
       </div>

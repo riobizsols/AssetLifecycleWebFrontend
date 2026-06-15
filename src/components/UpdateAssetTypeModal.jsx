@@ -275,6 +275,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   };
 
   const fetchProperties = async () => {
+    setIsLoadingProperties(true);
     try {
       console.log('Fetching properties from tblProps...');
       const res = await API.get('/properties');
@@ -309,6 +310,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       console.error('Error status:', err.response?.status);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_PROPERTIES_2A6DBE55', fallbackText: 'Failed to load properties', type: 'error' });
       setProperties([]);
+    } finally {
+      setIsLoadingProperties(false);
     }
   };
 
@@ -494,7 +497,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       showBackendTextToast({
         toast,
         tmdId: 'TMD_ASSET_TYPE_UPDATED_SUCCESSFULLY_76CD38EC',
-        fallbackText: t('assetTypes.assetTypeUpdatedSuccessfully', { name: assetType }),
+        fallbackText: t('assetTypes.assetTypeUpdatedSuccessfully', { name: assetType.trim() }),
+        values: { name: assetType.trim() },
         type: 'success',
       });
       

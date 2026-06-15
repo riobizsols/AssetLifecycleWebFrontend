@@ -45,6 +45,11 @@ import {
 const normalizeNavAppId = (id) =>
   id == null ? "" : String(id).trim().replace(/\s+/g, " ").toUpperCase();
 
+const compactNavAppId = (id) =>
+  id == null ? "" : String(id).trim().replace(/\s+/g, "").toUpperCase();
+
+const resolveNavAppId = (appId) => compactNavAppId(appId) || normalizeNavAppId(appId);
+
 const EMPLOYEE_TECH_CERT_APP_IDS = [
   "TECHCERTUPLOAD",
   "TECHNICIANCERTIFICATES",
@@ -594,13 +599,35 @@ const DatabaseSidebar = () => {
       "HR/MANAGERAPPROVAL": FileText,
     };
 
-    const IconComponent = iconMap[appId] || Building;
+    const IconComponent =
+      iconMap[appId] || iconMap[resolveNavAppId(appId)] || Building;
     return () => <IconComponent size={16} />;
+  };
+
+  const resolveEffectiveAccess = (appId, fallbackLevel) => {
+    const key = resolveNavAppId(appId);
+    if (key === "ONETIMECRON") {
+      return (
+        getAccessLevel("ONETIMECRON") ||
+        getAccessLevel("ADMINSETTINGS") ||
+        getAccessLevel("MASTERDATA") ||
+        fallbackLevel
+      );
+    }
+    if (key === "JOBMONITOR") {
+      return (
+        getAccessLevel("JOBMONITOR") ||
+        getAccessLevel("ADMINSETTINGS") ||
+        fallbackLevel
+      );
+    }
+    return fallbackLevel;
   };
 
   // Get path - in admin settings mode, use simplified paths under /adminsettings/configuration
   const getPath = (appId) => {
-    const basePath = appIdToPath[appId];
+    const navKey = resolveNavAppId(appId);
+    const basePath = appIdToPath[appId] || appIdToPath[navKey];
     if (!basePath) {
       return isAdminSettingsMode ? "/adminsettings/configuration" : "/dashboard";
     }
@@ -627,8 +654,8 @@ const DatabaseSidebar = () => {
         // Example: "NEW_APP_ID": "/adminsettings/configuration/new-path",
       };
       
-      if (adminSettingsPathMap[appId]) {
-        return adminSettingsPathMap[appId];
+      if (adminSettingsPathMap[appId] || adminSettingsPathMap[navKey]) {
+        return adminSettingsPathMap[appId] || adminSettingsPathMap[navKey];
       }
       
       // For all other routes, prefix with /adminsettings/configuration
@@ -669,9 +696,26 @@ const DatabaseSidebar = () => {
     "ONETIMECRON",
     "JOBMONITOR",
   ];
+  const adminSettingsRoutes = [
+    "COLUMNACCESSCONFIG",
+    "MAINTENANCECONFIG",
+    "PROPERTIES",
+    "BREAKDOWNREASONCODES",
+    "USERROLES",
+    "ONETIMECRON",
+    "JOBMONITOR",
+  ];
+  const isAdminSettingsOnlyAppId = (appId) =>
+    adminSettingsOnlyAppIds.some(
+      (id) => resolveNavAppId(id) === resolveNavAppId(appId)
+    );
+  const isAdminSettingsRouteAppId = (appId) =>
+    adminSettingsRoutes.some(
+      (id) => resolveNavAppId(id) === resolveNavAppId(appId)
+    );
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
-    const isAdminSettingsOnlyItem = adminSettingsOnlyAppIds.includes(item.app_id);
+    const isAdminSettingsOnlyItem = isAdminSettingsOnlyAppId(item.app_id);
     
     // Hide admin settings only items when NOT in admin settings mode
     if (!isAdminSettingsMode) {
@@ -681,12 +725,12 @@ const DatabaseSidebar = () => {
       // Check if any child is an admin settings only item and hide the parent if needed
       if (item.children && item.children.length > 0) {
         const hasAdminSettingsChild = item.children.some(child => 
-          adminSettingsOnlyAppIds.includes(child.app_id)
+          isAdminSettingsOnlyAppId(child.app_id)
         );
         if (hasAdminSettingsChild) {
           // Hide parent groups that only contain admin settings items
           const nonAdminSettingsChildren = item.children.filter(child => 
-            !adminSettingsOnlyAppIds.includes(child.app_id)
+            !isAdminSettingsOnlyAppId(child.app_id)
           );
           // If all children are admin settings items, hide the parent
           if (nonAdminSettingsChildren.length === 0) {
@@ -705,7 +749,7 @@ const DatabaseSidebar = () => {
     
     // Check children for admin settings only items
     if (item.children && item.children.length > 0) {
-      return item.children.some(child => adminSettingsOnlyAppIds.includes(child.app_id));
+      return item.children.some(child => isAdminSettingsOnlyAppId(child.app_id));
     }
     
     return false;
@@ -722,8 +766,8 @@ const DatabaseSidebar = () => {
     const accessLevel = getAccessLevel(item.app_id);
     const IconComponent = getIconComponent(item.app_id);
 
-    if (item.is_group) {
-      const hasChildren = item.children && item.children.length > 0;
+    if (item.is_group && item.children?.length > 0) {
+      const hasChildren = true;
       const isAnyChildActive =
         hasChildren &&
         item.children.some((child) => {
@@ -768,7 +812,7 @@ const DatabaseSidebar = () => {
           {!collapsed && openDropdown === item.id && hasChildren && (
             <ul className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
-                const isAdminSettingsOnlyChild = adminSettingsOnlyAppIds.includes(child.app_id);
+                const isAdminSettingsOnlyChild = isAdminSettingsOnlyAppId(child.app_id);
 
                 // Hide admin settings only items when NOT in admin settings mode
                 if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
@@ -781,20 +825,16 @@ const DatabaseSidebar = () => {
                 }
 
                 const childPath = getPath(child.app_id);
-                const childAccessLevel =
-                  child.app_id === "ONETIMECRON"
-                    ? getAccessLevel("ONETIMECRON") ||
-                      getAccessLevel("ADMINSETTINGS") ||
-                      getAccessLevel("MASTERDATA")
-                    : child.access_level || getAccessLevel(child.app_id);
+                const childAccessLevel = resolveEffectiveAccess(
+                  child.app_id,
+                  child.access_level || getAccessLevel(child.app_id)
+                );
                 const ChildIconComponent = getIconComponent(child.app_id);
 
                 // Only show children that have access
                 if (!hasViewAccess(childAccessLevel)) return null;
 
-                // For admin settings routes, use exact path matching to prevent multiple items being active
-                const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON", "JOBMONITOR"];
-                const requiresExactMatch = adminSettingsRoutes.includes(child.app_id);
+                const requiresExactMatch = isAdminSettingsRouteAppId(child.app_id);
                 const isActiveForAdminRoute = requiresExactMatch 
                   ? location.pathname === childPath
                   : undefined;
@@ -836,17 +876,13 @@ const DatabaseSidebar = () => {
         </li>
       );
     } else {
-      const effectiveAccess =
-        item.app_id === "ONETIMECRON"
-          ? getAccessLevel("ONETIMECRON") ||
-            getAccessLevel("ADMINSETTINGS") ||
-            getAccessLevel("MASTERDATA")
-          : accessLevel || item.access_level;
+      const effectiveAccess = resolveEffectiveAccess(
+        item.app_id,
+        accessLevel || item.access_level
+      );
       if (!hasViewAccess(effectiveAccess)) return null;
 
-      // For admin settings routes, check exact path match
-      const adminSettingsRoutes = ["COLUMNACCESSCONFIG", "MAINTENANCECONFIG", "PROPERTIES", "BREAKDOWNREASONCODES", "USERROLES", "ONETIMECRON", "JOBMONITOR"];
-      const requiresExactMatch = adminSettingsRoutes.includes(item.app_id);
+      const requiresExactMatch = isAdminSettingsRouteAppId(item.app_id);
       const isActiveForAdminRoute = requiresExactMatch 
         ? location.pathname === path
         : undefined;

@@ -44,6 +44,7 @@ const AddAssetType = () => {
   // Properties state variables
   const [properties, setProperties] = useState([]);
   const [selectedProperties, setSelectedProperties] = useState([]);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(true);
   
   // Document types from API
   const [documentTypes, setDocumentTypes] = useState([]);
@@ -126,6 +127,7 @@ const AddAssetType = () => {
   };
 
   const fetchProperties = async () => {
+    setIsLoadingProperties(true);
     try {
       console.log('Fetching properties from tblProps...');
       const res = await API.get('/properties');
@@ -148,6 +150,8 @@ const AddAssetType = () => {
       console.error('Error fetching properties:', err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOLOADPROPERTIES_068941C6', fallbackText: t('assetTypes.failedToLoadProperties'), type: 'error' });
       setProperties([]);
+    } finally {
+      setIsLoadingProperties(false);
     }
   };
 
@@ -291,10 +295,12 @@ const AddAssetType = () => {
         action: 'Asset Type Created'
       });
 
+      const createdName = assetType.trim();
       showBackendTextToast({
         toast,
         tmdId: 'TMD_ASSET_TYPE_CREATED_SUCCESSFULLY_FD64A758',
-        fallbackText: t('assetTypes.assetTypeCreatedSuccessfully', { name: assetType }),
+        fallbackText: t('assetTypes.assetTypeCreatedSuccessfully', { name: createdName }),
+        values: { name: createdName },
         type: 'success',
       });
       // Upload checklist files if any are provided
@@ -466,8 +472,14 @@ const AddAssetType = () => {
         {/* Properties Selection - Enhanced UI */}
         <div className="mb-6">
           <label className="block text-sm font-medium mb-3">{t('assetTypes.properties')}</label>
-          {properties.length === 0 ? (
+          {isLoadingProperties ? (
             <div className="text-sm text-gray-500">{t('assetTypes.loadingProperties')}</div>
+          ) : properties.length === 0 ? (
+            <div className="text-sm text-gray-500">
+              {t('assetTypes.noPropertiesConfigured', {
+                defaultValue: 'No properties configured yet. Add them under Settings → Configuration → Properties, then refresh this page.'
+              })}
+            </div>
           ) : (
             <div className="space-y-4">
               {/* Selected Properties - Shown at top */}

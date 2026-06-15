@@ -1109,6 +1109,7 @@
     "active": "Aktiv",
     "inactive": "Inaktiv",
     "vendorUpdatedSuccessfully": "Lieferant erfolgreich aktualisiert",
+    "failedToFetchVendors": "Lieferanten konnten nicht geladen werden",
     "failedToUpdateVendor": "Fehler beim Aktualisieren des Lieferanten",
     "vendorsDeletedSuccessfully": "{{count}} Lieferant(en) erfolgreich gelöscht",
     "failedToDeleteVendors": "Fehler beim Löschen der Lieferanten",

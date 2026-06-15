@@ -133,6 +133,43 @@ const interpolateTemplate = (message, values = {}) => {
   });
 };
 
+/** DB templates use {{placeholders}}; without values they produce empty toasts. */
+const hasUnresolvedTemplateTokens = (message) =>
+  typeof message === "string" && /\{\{\s*[\w.]+\s*\}\}/.test(message);
+
+const looksLikeFailedInterpolation = (message, referenceMessage = "") => {
+  if (!message || typeof message !== "string") return true;
+  if (hasUnresolvedTemplateTokens(message)) return true;
+
+  const trimmed = message.trim();
+  if (/:\s*$/.test(trimmed)) return true;
+  if (/""/.test(message) && referenceMessage && !/""/.test(referenceMessage)) return true;
+  if (/\(\s*\)/.test(message) && referenceMessage && !/\(\s*\)/.test(referenceMessage)) {
+    return true;
+  }
+
+  return false;
+};
+
+/** Generic DB toast text should not replace a more specific API error. */
+const shouldKeepSpecificErrorFallback = (resolvedMessage, fallbackMessage) => {
+  if (!resolvedMessage || !fallbackMessage || resolvedMessage === fallbackMessage) {
+    return false;
+  }
+  const specificPattern =
+    /already exists|is required|required\.|violates|duplicate|not found|invalid/i;
+  if (specificPattern.test(fallbackMessage) && !specificPattern.test(resolvedMessage)) {
+    return true;
+  }
+  if (
+    /^failed to /i.test(resolvedMessage) &&
+    fallbackMessage.length > resolvedMessage.length + 8
+  ) {
+    return true;
+  }
+  return false;
+};
+
 /**
  * Show multilingual toast text by tmd_id.
  * type can be: success | error | loading | default
@@ -188,6 +225,17 @@ export const showBackendTextToast = ({
         translateErrorMessage(resolvedMessage) !== resolvedMessage;
 
       if (shouldKeepLocalizedFallback) {
+        return;
+      }
+
+      if (looksLikeFailedInterpolation(resolvedMessage, fallbackMessage)) {
+        return;
+      }
+
+      if (
+        type === "error" &&
+        shouldKeepSpecificErrorFallback(resolvedMessage, fallbackMessage)
+      ) {
         return;
       }
 

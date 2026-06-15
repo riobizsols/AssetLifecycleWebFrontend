@@ -359,26 +359,14 @@ const Vendors = () => {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length + 1; // +1 for actions column
             return (
-              <>
-                <tr>
-                  <td colSpan={colSpan} className="text-center py-16">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <p className="text-gray-600">{t('common.loading')}</p>
-                    </div>
-                  </td>
-                </tr>
-                <EditVendorModal
-                  show={showEditModal}
-                  onClose={() => {
-                    setShowEditModal(false);
-                    setEditingVendor(null);
-                  }}
-                  onConfirm={handleUpdate}
-                  vendor={editingVendor}
-                  isReadOnly={isReadOnly}
-                />
-              </>
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">{t('common.loading')}</p>
+                  </div>
+                </td>
+              </tr>
             );
           }
 
@@ -386,27 +374,15 @@ const Vendors = () => {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length + 1; // +1 for actions column
             return (
-              <>
-                <tr>
-                  <td colSpan={colSpan} className="text-center py-16">
-                    <div className="flex flex-col items-center justify-center">
-                      <p className="text-xl font-semibold text-gray-800">
-                        {t('common.noDataFound')}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-                <EditVendorModal
-                  show={showEditModal}
-                  onClose={() => {
-                    setShowEditModal(false);
-                    setEditingVendor(null);
-                  }}
-                  onConfirm={handleUpdate}
-                  vendor={editingVendor}
-                  isReadOnly={isReadOnly}
-                />
-              </>
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('common.noDataFound')}
+                    </p>
+                  </div>
+                </td>
+              </tr>
             );
           }
 
@@ -450,20 +426,20 @@ const Vendors = () => {
                   return row[col.name];
                 }}
               />
-              <EditVendorModal
-                show={showEditModal}
-                onClose={() => {
-                  setShowEditModal(false);
-                  setEditingVendor(null);
-                }}
-                onConfirm={handleUpdate}
-                vendor={editingVendor}
-                isReadOnly={isReadOnly}
-              />
             </>
           );
         }}
       </ContentBox>
+      <EditVendorModal
+        show={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingVendor(null);
+        }}
+        onConfirm={handleUpdate}
+        vendor={editingVendor}
+        isReadOnly={isReadOnly}
+      />
     </div>
   );
 };

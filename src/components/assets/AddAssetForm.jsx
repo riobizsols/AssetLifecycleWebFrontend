@@ -934,7 +934,13 @@ const AddAssetForm = ({ userRole }) => {
       if (response.data.success) {
         const serialNumber = response.data.data.serialNumber;
         setForm(prev => ({ ...prev, serialNumberMode: 'generate', serialNumber }));
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_SERIALNUMBERPREVIEW_1DB66D64', fallbackText: t('assets.serialNumberPreview', { serialNumber }), type: 'success' });
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSETS_SERIALNUMBERPREVIEW_1DB66D64',
+          fallbackText: t('assets.serialNumberPreview', { serialNumber }),
+          values: { serialNumber },
+          type: 'success',
+        });
         console.log(`👀 Preview serial number: ${serialNumber} (Will be saved when asset is created)`);
         
         // Note: Serial number generation logging removed as requested
@@ -1364,6 +1370,17 @@ const AddAssetForm = ({ userRole }) => {
           toast,
           tmdId: 'TMD_VENDOR_DETAILS_ARE_MISSING_6942E5A4',
           fallbackText: t('assets.vendorDetailsAreMissing') || 'Vendor details are missing',
+          type: 'error',
+        });
+      } else if (backendError.toLowerCase().includes('serial number already exists')) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSET_SERIAL_NUMBER_ALREADY_EXISTS',
+          fallbackText:
+            t('assets.serialNumberAlreadyExists', {
+              defaultValue:
+                'This serial number is already used. Click Generate to get a new serial number, then save again.',
+            }),
           type: 'error',
         });
       } else {

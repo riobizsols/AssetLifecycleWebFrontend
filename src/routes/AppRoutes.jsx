@@ -1171,7 +1171,9 @@ export default function AppRoutes() {
         <Route
           path="/adminsettings/configuration/job-monitor"
           element={
-            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["JOBMONITOR", "ADMINSETTINGS"]}
+            >
               <AdminSettingsLayout>
                 <JobMonitor />
               </AdminSettingsLayout>

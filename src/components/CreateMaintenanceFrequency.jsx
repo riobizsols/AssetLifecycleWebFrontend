@@ -31,15 +31,17 @@ const CreateMaintenanceFrequency = () => {
   const [selectedMaintenanceType, setSelectedMaintenanceType] = useState('');
   const [maintLeadType, setMaintLeadType] = useState('');
 
-  // Fetch asset types (only those with maint_required = true)
+  // All active asset types (first frequency row is created here; cron reads tblATMaintFreq)
   const fetchAssetTypes = async () => {
     try {
-      const res = await API.get('/asset-types/maint-required');
+      const res = await API.get('/asset-types');
+      let types = [];
       if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        setAssetTypes(res.data.data);
+        types = res.data.data;
       } else if (Array.isArray(res.data)) {
-        setAssetTypes(res.data);
+        types = res.data;
       }
+      setAssetTypes(types.filter((at) => at.int_status === 1 || at.int_status === '1'));
     } catch (error) {
       console.error('Error fetching asset types:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPES_02F89461', fallbackText: 'Failed to fetch asset types', type: 'error' });
@@ -210,7 +212,7 @@ const CreateMaintenanceFrequency = () => {
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Create Maintenance Frequency</h1>
               <p className="mt-2 text-sm sm:text-base text-gray-600">
-                Configure maintenance frequency for asset types with maintenance required
+                Configure recurring or on-demand maintenance frequency for an asset type
               </p>
             </div>
             <button
