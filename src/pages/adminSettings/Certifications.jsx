@@ -60,6 +60,7 @@ const Certifications = () => {
   const [assetTypes, setAssetTypes] = useState(
     () => peekCache(CERTIFICATIONS_CACHE_KEYS.assetTypes, CERTIFICATIONS_TTL_MS) || [],
   );
+  const [inspectionAssetTypes, setInspectionAssetTypes] = useState([]);
   const [maintTypes, setMaintTypes] = useState(
     () => peekCache(CERTIFICATIONS_CACHE_KEYS.maintTypes, CERTIFICATIONS_TTL_MS) || [],
   );
@@ -205,6 +206,17 @@ const Certifications = () => {
     }
   };
 
+  const fetchInspectionAssetTypes = async () => {
+    try {
+      const response = await API.get("/asset-types/inspection-required");
+      const data = parseApiList(response.data);
+      setInspectionAssetTypes(data);
+    } catch (error) {
+      console.error("Failed to fetch inspection asset types:", error);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOLOADASSETTYPES_3547A0E0', fallbackText: "Failed to load asset types", type: 'error' });
+    }
+  };
+
   const fetchMaintTypes = async ({ force = false } = {}) => {
     try {
       const data = await useCertificationsStore.getState().fetchMaintTypes({
@@ -264,6 +276,7 @@ const Certifications = () => {
   useEffect(() => {
     fetchCertificates({ revalidate: true });
     fetchAssetTypes({ revalidate: true });
+    fetchInspectionAssetTypes();
     fetchMaintTypes({ revalidate: true });
     fetchInspectionCertificates({ revalidate: true });
     fetchDocumentTypes({ revalidate: true });
@@ -1883,7 +1896,7 @@ const Certifications = () => {
                       >
                         <span className={selectedInspectionAssetType ? 'text-gray-900' : 'text-gray-500'}>
                           {selectedInspectionAssetType ? 
-                            (assetTypes.find(t => t.asset_type_id === selectedInspectionAssetType)?.text || selectedInspectionAssetType) 
+                            (inspectionAssetTypes.find(t => t.asset_type_id === selectedInspectionAssetType)?.text || selectedInspectionAssetType) 
                             : t("certifications.selectAssetType")}
                         </span>
                         <ChevronDown size={16} className="text-gray-400" />
@@ -1905,7 +1918,7 @@ const Certifications = () => {
                             </div>
                           </div>
                           <div className="max-h-48 overflow-y-auto">
-                            {assetTypes
+                            {inspectionAssetTypes
                               .filter(type => 
                                 type.text?.toLowerCase().includes(dropdownSearchTerm.toLowerCase()) ||
                                 type.asset_type_id?.toLowerCase().includes(dropdownSearchTerm.toLowerCase())

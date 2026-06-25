@@ -243,10 +243,14 @@ export const AppDataProvider = ({ children }) => {
         IP: "inspectionView.inProgress",
         CO: "inspectionView.completed",
         CA: "inspectionView.cancelled",
+        UR: "maintenanceApproval.rejected",
         PN: "inspectionApproval.statusPending",
         AP: "inspectionApproval.statusApproved",
         RJ: "inspectionApproval.statusRejected",
       };
+      if (code === "UR" && statusI18nKeys[code]) {
+        return i18n.t(statusI18nKeys[code]);
+      }
       if (!lang.startsWith("en") && statusI18nKeys[code]) {
         return i18n.t(statusI18nKeys[code]);
       }

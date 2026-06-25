@@ -152,11 +152,12 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
     fetchVendorData();
   }, [vendor?.vendor_id]);
 
-  // Fetch document types and SLA descriptions on component mount
+  // Load reference data only when the modal is opened
   useEffect(() => {
+    if (!show) return;
     fetchDocumentTypes();
     fetchSLADescriptions();
-  }, []);
+  }, [show]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -247,12 +248,11 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         
         console.log('SLA descriptions loaded:', res.data.data);
       } else {
-        console.log('No SLA descriptions found');
+        console.log('No SLA descriptions configured');
         setSlaDescriptions([]);
       }
     } catch (err) {
       console.error('Error fetching SLA descriptions:', err);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_SLA_DESCRIPTIONS_620C0D79', fallbackText: 'Failed to load SLA descriptions', type: 'error' });
       setSlaDescriptions([]);
     }
   };

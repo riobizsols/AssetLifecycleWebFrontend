@@ -1,5 +1,6 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Maximize, Minimize, Trash2 } from "lucide-react";
 import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
@@ -8,10 +9,18 @@ import SearchableDropdown from "./ui/SearchableDropdown";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 
-const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger, onTabSaved }) => {
+const ProductSupplyForm = ({
+  vendorId,
+  orgId,
+  vendorSaved = false,
+  onSaveTrigger,
+  onTabSaved,
+  onPersistVendorDraft,
+}) => {
   // Debug logs
   console.log('ProductSupplyForm render:', { vendorId, orgId });
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [assetTypes, setAssetTypes] = useState([]);
   const [brands, setBrands] = useState([]);
   const [models, setModels] = useState([]);
@@ -63,6 +72,82 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
   useEffect(() => {
     fetchAssetTypes();
   }, []);
+
+  const refreshBrands = useCallback(async (assetTypeId) => {
+    if (!assetTypeId) {
+      setBrands([]);
+      return;
+    }
+    try {
+      const res = await API.get(`/brands?assetTypeId=${assetTypeId}`);
+      setBrands(res.data);
+    } catch {
+      setBrands([]);
+    }
+  }, []);
+
+  const refreshModels = useCallback(async (assetTypeId, brand) => {
+    if (!assetTypeId || !brand) {
+      setModels([]);
+      return;
+    }
+    try {
+      const res = await API.get(
+        `/models?assetTypeId=${assetTypeId}&brand=${encodeURIComponent(brand)}`
+      );
+      setModels(res.data);
+    } catch {
+      setModels([]);
+    }
+  }, []);
+
+  const goToProdServ = (focus) => {
+    if (!form.assetType) return;
+    onPersistVendorDraft?.("Product Details");
+    sessionStorage.setItem(
+      'vendorProductDraft',
+      JSON.stringify({ ...form, returnTab: 'Product Details' })
+    );
+    sessionStorage.setItem('vendorProductReturnTab', 'Product Details');
+    const params = new URLSearchParams({
+      assetType: form.assetType,
+      focus,
+      returnTo: 'vendor-add',
+    });
+    if (focus === 'model' && form.brand) {
+      params.set('brand', form.brand);
+    }
+    navigate(`/master-data/prod-serv?${params.toString()}`);
+  };
+
+  const goToAddAssetType = () => {
+    onPersistVendorDraft?.("Product Details");
+    sessionStorage.setItem("vendorProductReturnTab", "Product Details");
+    navigate("/master-data/asset-types/add");
+  };
+
+  useEffect(() => {
+    const draft = sessionStorage.getItem('vendorProductDraft');
+    if (!draft) return;
+    try {
+      const parsed = JSON.parse(draft);
+      if (parsed.assetType) {
+        setForm((prev) => ({
+          ...prev,
+          assetType: parsed.assetType,
+          brand: parsed.brand || prev.brand,
+          model: parsed.model || prev.model,
+        }));
+        refreshBrands(parsed.assetType);
+        if (parsed.brand) {
+          refreshModels(parsed.assetType, parsed.brand);
+        }
+      }
+      sessionStorage.removeItem('vendorProductDraft');
+    } catch {
+      sessionStorage.removeItem('vendorProductDraft');
+    }
+  }, [refreshBrands, refreshModels]);
 
   // On mount, load products from sessionStorage
   useEffect(() => {
@@ -369,8 +454,8 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             onChange={(value) => handleChange({ target: { name: "assetType", value }})}
             placeholder={t('vendors.selectAssetType')}
             searchPlaceholder="Search Asset Types..."
-            createNewText="Create New"
-            createNewPath="/master-data/asset-types"
+            createNewText={t('vendors.addAssetType', { defaultValue: 'Add Asset Type' })}
+            onCreateNew={goToAddAssetType}
             className={`w-48 ${isFieldInvalid(form.assetType) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="asset_type_id"
@@ -385,8 +470,10 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             value={form.brand}
             onChange={(value) => handleChange({ target: { name: "brand", value }})}
             placeholder={t('vendors.selectBrand')}
-            searchPlaceholder="Search Brands..."
+            searchPlaceholder={t('vendors.searchBrands', { defaultValue: 'Search Brands...' })}
             disabled={!form.assetType}
+            createNewText={t('vendors.addBrand', { defaultValue: 'Add Brand' })}
+            onCreateNew={form.assetType ? () => goToProdServ('brand') : undefined}
             className={`w-48 ${isFieldInvalid(form.brand) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="id"
@@ -401,8 +488,10 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             value={form.model}
             onChange={(value) => handleChange({ target: { name: "model", value }})}
             placeholder={t('vendors.selectModel')}
-            searchPlaceholder="Search Models..."
+            searchPlaceholder={t('vendors.searchModels', { defaultValue: 'Search Models...' })}
             disabled={!form.brand}
+            createNewText={t('vendors.addModel', { defaultValue: 'Add Model' })}
+            onCreateNew={form.assetType ? () => goToProdServ('model') : undefined}
             className={`w-48 ${isFieldInvalid(form.model) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="id"

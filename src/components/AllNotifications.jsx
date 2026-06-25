@@ -18,6 +18,7 @@ const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
   "Inspection": "bg-green-100 text-green-800",
   "Warranty Expiry": "bg-amber-100 text-amber-800",
+  "Asset Expiry": "bg-rose-100 text-rose-800",
   "Urgent": "bg-red-100 text-red-800",
 };
 
@@ -36,6 +37,7 @@ const AllNotifications = () => {
     vendorRenewal: true,
     subscriptionRenewal: true,
     warranty: true,
+    assetExpiry: true,
   });
   const [showFilters, setShowFilters] = useState(false);
   const [snoozeDrafts, setSnoozeDrafts] = useState({});
@@ -72,6 +74,10 @@ const AllNotifications = () => {
 
     if (alert.workflowType === "WARRANTY") {
       return "warranty";
+    }
+
+    if (alert.workflowType === "ASSETEXPIRY") {
+      return "assetExpiry";
     }
     
     // Check for subscription renewal notifications
@@ -137,6 +143,8 @@ const AllNotifications = () => {
           ? (notification.isOverdue || notification.title === "Warranty Expired"
               ? t("allNotifications.alertTypeWarrantyExpired")
               : t("allNotifications.alertTypeWarrantyExpiry"))
+          : notification.workflowType === "ASSETEXPIRY"
+          ? "Asset Expiry"
           : notification.maintenanceType || "Regular Maintenance",
         alertText: notification.isGroupMaintenance && notification.groupName
           ? t("allNotifications.groupNameWithAssets", { groupName: notification.groupName, count: notification.groupAssetCount })
@@ -144,6 +152,8 @@ const AllNotifications = () => {
           ? t("allNotifications.assetTypeInspection", { assetType: notification.assetTypeName })
           : notification.workflowType === "WARRANTY"
           ? `${notification.assetId} - ${notification.title || t("allNotifications.alertTypeWarrantyExpiry")}`
+          : notification.workflowType === "ASSETEXPIRY"
+          ? `${notification.assetId} - ${notification.title || "Asset Expiry"}`
           : String(notification.maintenanceType || "").toLowerCase().includes("subscription")
           ? `${notification.assetTypeName}`
           : t("allNotifications.assetTypeMaintenance", { assetType: notification.assetTypeName }),
@@ -188,7 +198,10 @@ const AllNotifications = () => {
   };
 
   const handleAlertClick = (alert) => {
-    if (alert.workflowType === "WARRANTY" && alert.notifyId) {
+    if (
+      (alert.workflowType === "WARRANTY" || alert.workflowType === "ASSETEXPIRY") &&
+      alert.notifyId
+    ) {
       const currentStatus = String(alert.notificationStatus || "").toUpperCase();
       if (!isUnreadWarranty(currentStatus) || openingNotifyIds[alert.notifyId]) {
         return;
@@ -289,8 +302,37 @@ const AllNotifications = () => {
 
   const goToWarrantyEdit = (e, alert, mode) => {
     e.stopPropagation();
-    const action = mode === "vendor" ? "vendor" : "warranty";
+    const action =
+      mode === "vendor" ? "vendor" : mode === "expiry" ? "expiry" : "warranty";
     navigate(`/assets?editAssetId=${alert.assetId}&warrantyAction=${action}&notifyId=${alert.notifyId}`);
+  };
+
+  const handleWarrantyScrap = async (e, alert) => {
+    e.stopPropagation();
+    const confirmed = window.confirm(
+      `Initiate scrap approval for asset ${alert.assetId}?\n\nThis will start the scrap approval workflow and resolve this notification.`
+    );
+    if (!confirmed) return;
+    try {
+      const res = await API.put(`/notifications/warranty/${alert.notifyId}/scrap`);
+      setAlerts((prev) => prev.filter((item) => item.notifyId !== alert.notifyId));
+      setOpenActionMenuId(null);
+      setOpenSnoozeMenuId(null);
+      showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_APPROVAL_INITIATED_WARRANTY_ALL', fallbackText: 'Scrap approval initiated successfully', type: 'success' });
+      if (res.data?.data?.wfscrap_h_id) {
+        navigate(`/scrap-approval-detail/${res.data.data.wfscrap_h_id}?context=SCRAPMAINTENANCEAPPROVAL`);
+      } else {
+        navigate('/scrap-approval');
+      }
+    } catch (error) {
+      const serverMessage = error?.response?.data?.message;
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_INITIATE_SCRAP_WARRANTY',
+        fallbackText: serverMessage || 'Failed to initiate scrap approval',
+        type: 'error',
+      });
+    }
   };
 
   // Fetch notifications when user changes
@@ -421,6 +463,21 @@ const AllNotifications = () => {
                     {t("allNotifications.filterWarranty")}
                   </span>
                 </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFilters.assetExpiry}
+                    onChange={() => handleFilterChange('assetExpiry')}
+                    className="w-4 h-4 text-rose-600 border-gray-300 rounded focus:ring-rose-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Asset Expiry ({getFilterCount('assetExpiry')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-rose-100 text-rose-800 rounded-full">
+                    Expiry
+                  </span>
+                </label>
               </div>
             </div>
           )}
@@ -501,7 +558,7 @@ const AllNotifications = () => {
                   <span>{t("allNotifications.cutoffDate")}: <b className={alert.isUrgent ? "text-red-600" : "text-gray-800"}>{alert.cutoffDate}</b></span>
                 </span>
               </div>
-              {alert.workflowType === "WARRANTY" && (
+              {(alert.workflowType === "WARRANTY" || alert.workflowType === "ASSETEXPIRY") && (
                 <div className="pt-2 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
                   <div className="relative inline-block">
                     <button
@@ -516,16 +573,32 @@ const AllNotifications = () => {
                     </button>
                     {openActionMenuId === alert.notifyId && (
                       <div className="absolute z-20 mt-2 w-56 rounded-lg border bg-white shadow-lg p-2 space-y-1">
+                        {/* 1. Discard */}
                         <button
                           onClick={(e) => {
                             handleWarrantyDiscard(e, alert);
                             setOpenActionMenuId(null);
                             setOpenSnoozeMenuId(null);
                           }}
-                          className="w-full text-left px-3 py-2 text-xs rounded hover:bg-gray-100"
+                          className="w-full text-left px-3 py-2 text-xs rounded hover:bg-gray-100 text-gray-700"
                         >
                           {t("allNotifications.discard")}
                         </button>
+                        {/* 2. Extend Expiry */}
+                        <button
+                          onClick={(e) => {
+                            goToWarrantyEdit(
+                              e,
+                              alert,
+                              alert.workflowType === "ASSETEXPIRY" ? "expiry" : "warranty"
+                            );
+                            setOpenActionMenuId(null);
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs rounded hover:bg-green-50 text-green-700"
+                        >
+                          Extend Expiry
+                        </button>
+                        {/* 3. Remind Again */}
                         <button
                           onClick={() =>
                             setOpenSnoozeMenuId((prev) =>
@@ -586,16 +659,14 @@ const AllNotifications = () => {
                             </button>
                           </div>
                         )}
+                        {/* 4. Scrap */}
                         <button
-                          onClick={(e) => {
-                            goToWarrantyEdit(e, alert, "warranty");
-                            setOpenActionMenuId(null);
-                          }}
-                          className="w-full text-left px-3 py-2 text-xs rounded hover:bg-green-50 text-green-700"
+                          onClick={(e) => handleWarrantyScrap(e, alert)}
+                          className="w-full text-left px-3 py-2 text-xs rounded hover:bg-red-50 text-red-600 font-medium"
                         >
-                          {t("allNotifications.extendWarranty")}
+                          Scrap
                         </button>
-                        {alert.canChangeVendor && (
+                        {alert.workflowType === "WARRANTY" && alert.canChangeVendor && (
                           <button
                             onClick={(e) => {
                               goToWarrantyEdit(e, alert, "vendor");

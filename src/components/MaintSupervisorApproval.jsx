@@ -2215,7 +2215,7 @@ export default function MaintSupervisorApproval() {
               {!isSubscriptionRenewal && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.name')}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.name')} <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       name="technician_name"
@@ -2231,7 +2231,7 @@ export default function MaintSupervisorApproval() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.phone')}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.phone')} <span className="text-red-500">*</span></label>
                     <input
                       type="tel"
                       name="technician_phno"
@@ -2250,7 +2250,7 @@ export default function MaintSupervisorApproval() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')} <span className="text-red-500">*</span></label>
                 <input
                   type="number"
                   name="cost"
@@ -2267,7 +2267,7 @@ export default function MaintSupervisorApproval() {
                 )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')} <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     name="po_number"
@@ -2286,7 +2286,7 @@ export default function MaintSupervisorApproval() {
               {/* Email field - hide for subscription renewal */}
               {!isSubscriptionRenewal && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')} <span className="text-red-500">*</span></label>
                   <input
                     type="email"
                     name="technician_email"
@@ -2309,7 +2309,7 @@ export default function MaintSupervisorApproval() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')} <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="invoice"
@@ -2372,7 +2372,7 @@ export default function MaintSupervisorApproval() {
 
             {showAdditionalNotesField && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')} <span className="text-red-500">*</span></label>
                 <textarea
                   name="notes"
                   value={formData.notes}

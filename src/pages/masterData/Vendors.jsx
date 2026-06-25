@@ -15,6 +15,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
 import { useVendorsStore } from "../../store/useVendorsStore";
 import { invalidateCache } from "../../utils/apiCache";
+import { normalizeVendorFormPayload } from "../../utils/vendorFormPayload";
 
 const Vendors = () => {
   const navigate = useNavigate();
@@ -214,24 +215,13 @@ const Vendors = () => {
 
   const handleUpdate = async (formData) => {
     try {
-      // Clean up empty/null values for optional fields and preserve required fields
-      const cleanedData = {
+      const cleanedData = normalizeVendorFormPayload({
         ...formData,
-        org_id: editingVendor.org_id, // Preserve org_id from existing vendor
-        ext_id: editingVendor.ext_id, // Preserve ext_id from existing vendor
-        address_line2: formData.address_line2 || null,
-        contact_person_name: formData.contact_person_name || null,
-        contact_person_email: formData.contact_person_email || null,
-        contact_person_number: formData.contact_person_number || null,
-        gst_number: formData.gst_number || null,
-        cin_number: formData.cin_number || null,
-        address_line1: formData.address_line1 || null,
-        city: formData.city || null,
-        state: formData.state || null,
-        pincode: formData.pincode || null,
+        org_id: editingVendor.org_id,
+        ext_id: editingVendor.ext_id,
         changed_by: "USER123", // Replace with actual user ID from context/state
-        changed_on: new Date().toISOString()
-      };
+        changed_on: new Date().toISOString(),
+      });
 
       const response = await API.put(`/update/${editingVendor.vendor_id}`, cleanedData);
 
@@ -335,26 +325,14 @@ const Vendors = () => {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length + 1; // +1 for actions column
             return (
-              <>
-                <tr>
-                  <td colSpan={colSpan} className="text-center py-16">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <p className="text-gray-600">{t('common.loading')}</p>
-                    </div>
-                  </td>
-                </tr>
-                <EditVendorModal
-                  show={showEditModal}
-                  onClose={() => {
-                    setShowEditModal(false);
-                    setEditingVendor(null);
-                  }}
-                  onConfirm={handleUpdate}
-                  vendor={editingVendor}
-                  isReadOnly={isReadOnly}
-                />
-              </>
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">{t('common.loading')}</p>
+                  </div>
+                </td>
+              </tr>
             );
           }
 
@@ -362,27 +340,15 @@ const Vendors = () => {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length + 1; // +1 for actions column
             return (
-              <>
-                <tr>
-                  <td colSpan={colSpan} className="text-center py-16">
-                    <div className="flex flex-col items-center justify-center">
-                      <p className="text-xl font-semibold text-gray-800">
-                        {t('common.noDataFound')}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-                <EditVendorModal
-                  show={showEditModal}
-                  onClose={() => {
-                    setShowEditModal(false);
-                    setEditingVendor(null);
-                  }}
-                  onConfirm={handleUpdate}
-                  vendor={editingVendor}
-                  isReadOnly={isReadOnly}
-                />
-              </>
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('common.noDataFound')}
+                    </p>
+                  </div>
+                </td>
+              </tr>
             );
           }
 
@@ -426,20 +392,20 @@ const Vendors = () => {
                   return row[col.name];
                 }}
               />
-              <EditVendorModal
-                show={showEditModal}
-                onClose={() => {
-                  setShowEditModal(false);
-                  setEditingVendor(null);
-                }}
-                onConfirm={handleUpdate}
-                vendor={editingVendor}
-                isReadOnly={isReadOnly}
-              />
             </>
           );
         }}
       </ContentBox>
+      <EditVendorModal
+        show={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingVendor(null);
+        }}
+        onConfirm={handleUpdate}
+        vendor={editingVendor}
+        isReadOnly={isReadOnly}
+      />
     </div>
   );
 };

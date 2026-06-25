@@ -28,6 +28,14 @@ const MaintenanceDetails = () => {
   const [editingStepName, setEditingStepName] = useState('');
   const [showAddStepModal, setShowAddStepModal] = useState(false);
   const [stepNameInput, setStepNameInput] = useState('');
+  const [isSavingStep, setIsSavingStep] = useState(false);
+  const [isSavingSequence, setIsSavingSequence] = useState(false);
+
+  const apiErrorText = (error, fallback) =>
+    error.response?.data?.error ||
+    error.response?.data?.message ||
+    error.response?.data?.details ||
+    fallback;
 
   // Asset Types
   const [selectedAssetType, setSelectedAssetType] = useState('');
@@ -100,13 +108,15 @@ const MaintenanceDetails = () => {
   // Create workflow step
   const handleCreateStep = async (e) => {
     e.preventDefault();
+    if (isSavingStep) return;
     if (!newStepName.trim()) {
       showBackendTextToast({ toast, tmdId: 'TMD_STEP_NAME_IS_REQUIRED_47BC298C', fallbackText: 'Step name is required', type: 'error' });
       return;
     }
 
+    setIsSavingStep(true);
     try {
-      const res = await API.post('/maintenance-details/workflow-steps', {
+      await API.post('/maintenance-details/workflow-steps', {
         text: newStepName.trim()
       });
       showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_CREATED_SUCCESSFULLY_2EB9244E', fallbackText: 'Workflow step created successfully', type: 'success' });
@@ -115,17 +125,26 @@ const MaintenanceDetails = () => {
       refreshDetailsBase({ force: true });
     } catch (error) {
       console.error('Error creating workflow step:', error);
-      toast.error(error.response?.data?.error || 'Failed to create workflow step');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_WORKFLOW_STEP',
+        fallbackText: apiErrorText(error, 'Failed to create workflow step'),
+        type: 'error',
+      });
+    } finally {
+      setIsSavingStep(false);
     }
   };
 
   // Create workflow step from modal
   const handleCreateStepFromModal = async () => {
+    if (isSavingStep) return;
     if (!stepNameInput.trim()) {
       showBackendTextToast({ toast, tmdId: 'TMD_STEP_NAME_IS_REQUIRED_47BC298C', fallbackText: 'Step name is required', type: 'error' });
       return;
     }
 
+    setIsSavingStep(true);
     try {
       await API.post('/maintenance-details/workflow-steps', {
         text: stepNameInput.trim()
@@ -137,7 +156,14 @@ const MaintenanceDetails = () => {
       refreshDetailsBase({ force: true });
     } catch (error) {
       console.error('Error creating workflow step:', error);
-      toast.error(error.response?.data?.error || 'Failed to create workflow step');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_WORKFLOW_STEP',
+        fallbackText: apiErrorText(error, 'Failed to create workflow step'),
+        type: 'error',
+      });
+    } finally {
+      setIsSavingStep(false);
     }
   };
 
@@ -211,6 +237,9 @@ const MaintenanceDetails = () => {
       return;
     }
 
+    if (isSavingSequence) return;
+
+    setIsSavingSequence(true);
     try {
       await API.post('/maintenance-details/workflow-sequences', {
         asset_type_id: selectedAssetType,
@@ -223,7 +252,14 @@ const MaintenanceDetails = () => {
       fetchSequences({ force: true });
     } catch (error) {
       console.error('Error creating sequence:', error);
-      toast.error(error.response?.data?.error || 'Failed to create sequence');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_SEQUENCE',
+        fallbackText: apiErrorText(error, 'Failed to create sequence'),
+        type: 'error',
+      });
+    } finally {
+      setIsSavingSequence(false);
     }
   };
 
@@ -385,6 +421,7 @@ const MaintenanceDetails = () => {
                       </div>
                       <div className="flex justify-end gap-3">
                         <button
+                          type="button"
                           onClick={() => {
                             setShowAddStepModal(false);
                             setStepNameInput('');
@@ -394,10 +431,12 @@ const MaintenanceDetails = () => {
                           Cancel
                         </button>
                         <button
+                          type="button"
                           onClick={handleCreateStepFromModal}
-                          className="px-6 py-2.5 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] transition-colors"
+                          disabled={isSavingStep}
+                          className="px-6 py-2.5 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] transition-colors disabled:opacity-60"
                         >
-                          Add Step
+                          {isSavingStep ? 'Saving...' : 'Add Step'}
                         </button>
                       </div>
                     </div>
@@ -516,31 +555,10 @@ const MaintenanceDetails = () => {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-gray-900 text-lg">Existing Sequences</h3>
                     <button
-                      onClick={async () => {
-                        if (!newSequence.wf_steps_id || !newSequence.seqs_no) {
-                          showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_FILL_IN_BOTH_WORKFLOW_STEP_AND_SEQUENCE_NUMBE_2A829D21', fallbackText: 'Please fill in both Workflow Step and Sequence Number', type: 'error' });
-                          return;
-                        }
-                        if (parseInt(newSequence.seqs_no) < 1) {
-                          showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_NUMBER_MUST_BE_A_POSITIVE_INTEGER_E_G_1_2_3_7ECDD8D7', fallbackText: 'Sequence number must be a positive integer (e.g., 1, 2, 3)', type: 'error' });
-                          return;
-                        }
-                        try {
-                          await API.post('/maintenance-details/workflow-sequences', {
-                            asset_type_id: selectedAssetType,
-                            wf_steps_id: newSequence.wf_steps_id,
-                            seqs_no: newSequence.seqs_no
-                          });
-                          showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_CREATED_SUCCESSFULLY_28D6FEBE', fallbackText: 'Sequence created successfully', type: 'success' });
-                          setNewSequence({ wf_steps_id: '', seqs_no: '' });
-                          invalidateCache('maintenance-config:');
-                          fetchSequences({ force: true });
-                        } catch (error) {
-                          console.error('Error creating sequence:', error);
-                          toast.error(error.response?.data?.error || 'Failed to create sequence');
-                        }
-                      }}
-                      className="flex items-center justify-center text-white border border-gray-300 rounded px-3 py-2 hover:bg-[#143d65] bg-[#0E2F4B]"
+                      type="button"
+                      onClick={() => handleCreateSequence({ preventDefault: () => {} })}
+                      disabled={isSavingSequence}
+                      className="flex items-center justify-center text-white border border-gray-300 rounded px-3 py-2 hover:bg-[#143d65] bg-[#0E2F4B] disabled:opacity-60"
                       title="Add Sequence"
                     >
                       <Plus size={18} />
@@ -576,12 +594,12 @@ const MaintenanceDetails = () => {
                           type="number"
                           value={newSequence.seqs_no}
                           onChange={(e) => setNewSequence({ ...newSequence, seqs_no: e.target.value })}
-                          placeholder="1, 2, 3, etc."
+                          placeholder="10, 20, 30, etc."
                           min="1"
                           step="1"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
                         />
-                        <p className="mt-1 text-xs text-gray-500">Enter sequential number (1, 2, 3...)</p>
+                        <p className="mt-1 text-xs text-gray-500">Use order numbers (10, 20, 30…). Lowest number is the first approver.</p>
                       </div>
                     </div>
                   </div>

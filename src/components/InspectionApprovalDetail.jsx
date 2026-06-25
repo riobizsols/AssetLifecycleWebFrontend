@@ -109,8 +109,36 @@ const InspectionApprovalDetail = () => {
   const context = searchParams.get("context") || location.state?.context || "INSPECTIONAPPROVAL";
 
   const { user } = useAuthStore();
-  const userRoles = user?.roles || [];
-  const userRoleIds = userRoles.map((r) => r.job_role_id);
+  const [userRoleIds, setUserRoleIds] = useState([]);
+
+  useEffect(() => {
+    const loadUserRoleIds = async () => {
+      const ids = new Set();
+      (user?.roles || []).forEach((role) => {
+        if (role?.job_role_id) ids.add(role.job_role_id);
+      });
+      if (user?.job_role_id) ids.add(user.job_role_id);
+
+      if (user?.user_id) {
+        try {
+          const res = await API.get(`/employees/users/${user.user_id}/roles`);
+          (res.data?.data || []).forEach((role) => {
+            if (role?.job_role_id) ids.add(role.job_role_id);
+          });
+        } catch (err) {
+          console.warn("Could not refresh user roles for inspection approval:", err);
+        }
+      }
+
+      setUserRoleIds([...ids]);
+    };
+
+    if (user) {
+      loadUserRoleIds();
+    } else {
+      setUserRoleIds([]);
+    }
+  }, [user]);
 
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState(null);

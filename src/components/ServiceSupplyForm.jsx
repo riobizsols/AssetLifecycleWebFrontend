@@ -1,5 +1,6 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Maximize, Minimize, Trash2 } from "lucide-react";
 import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
@@ -8,10 +9,18 @@ import SearchableDropdown from "./ui/SearchableDropdown";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 
-const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger, onTabSaved }) => {
+const ServiceSupplyForm = ({
+  vendorId,
+  orgId,
+  vendorSaved = false,
+  onSaveTrigger,
+  onTabSaved,
+  onPersistVendorDraft,
+}) => {
   // Debug logs
   console.log('ServiceSupplyForm render:', { vendorId, orgId });
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [assetTypes, setAssetTypes] = useState([]);
   const [services, setServices] = useState([]);
   const [form, setForm] = useState({ assetType: "", description: "" });
@@ -20,13 +29,64 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
   const [allServiceDescriptions, setAllServiceDescriptions] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
 
+  const refreshServiceDescriptions = useCallback(async () => {
+    try {
+      const res = await API.get('/prodserv');
+      const filtered = Array.isArray(res.data)
+        ? res.data.filter((p) => p.ps_type === 'service')
+        : [];
+      setAllServiceDescriptions(filtered);
+    } catch {
+      setAllServiceDescriptions([]);
+    }
+  }, []);
+
+  const goToProdServ = () => {
+    if (!form.assetType) return;
+    onPersistVendorDraft?.("Service Details");
+    sessionStorage.setItem(
+      'vendorServiceDraft',
+      JSON.stringify({ ...form, returnTab: 'Service Details' })
+    );
+    sessionStorage.setItem('vendorServiceReturnTab', 'Service Details');
+    const params = new URLSearchParams({
+      assetType: form.assetType,
+      tab: 'service',
+      focus: 'description',
+      returnTo: 'vendor-add',
+    });
+    navigate(`/master-data/prod-serv?${params.toString()}`);
+  };
+
+  const goToAddAssetType = () => {
+    onPersistVendorDraft?.("Service Details");
+    sessionStorage.setItem("vendorServiceReturnTab", "Service Details");
+    navigate("/master-data/asset-types/add");
+  };
+
   useEffect(() => {
     fetchAssetTypes();
     fetchAllServiceDescriptions();
-    // On mount, load services from sessionStorage
     const stored = sessionStorage.getItem('services');
     if (stored) setServices(JSON.parse(stored));
-  }, []);
+
+    const draft = sessionStorage.getItem('vendorServiceDraft');
+    if (!draft) return;
+    try {
+      const parsed = JSON.parse(draft);
+      if (parsed.assetType) {
+        setForm((prev) => ({
+          ...prev,
+          assetType: parsed.assetType,
+          description: parsed.description || prev.description,
+        }));
+      }
+      sessionStorage.removeItem('vendorServiceDraft');
+      refreshServiceDescriptions();
+    } catch {
+      sessionStorage.removeItem('vendorServiceDraft');
+    }
+  }, [refreshServiceDescriptions]);
 
   // Listen for save trigger from parent
   useEffect(() => {
@@ -370,9 +430,9 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             value={form.assetType}
             onChange={(value) => handleChange({ target: { name: "assetType", value }})}
             placeholder={t('vendors.selectAssetType')}
-            searchPlaceholder="Search Asset Types..."
-            createNewText="Create New"
-            createNewPath="/master-data/asset-types"
+            searchPlaceholder={t('vendors.searchAssetTypes', { defaultValue: 'Search Asset Types...' })}
+            createNewText={t('vendors.addAssetType', { defaultValue: 'Add Asset Type' })}
+            onCreateNew={goToAddAssetType}
             className={`w-48 ${isFieldInvalid(form.assetType) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="asset_type_id"
@@ -387,8 +447,10 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             value={form.description}
             onChange={(value) => handleChange({ target: { name: "description", value }})}
             placeholder={t('vendors.selectDescription')}
-            searchPlaceholder="Search Descriptions..."
+            searchPlaceholder={t('vendors.searchDescriptions', { defaultValue: 'Search Descriptions...' })}
             disabled={!form.assetType}
+            createNewText={t('vendors.addDescription', { defaultValue: 'Add Description' })}
+            onCreateNew={form.assetType ? goToProdServ : undefined}
             className={`w-80 ${isFieldInvalid(form.description) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="id"
