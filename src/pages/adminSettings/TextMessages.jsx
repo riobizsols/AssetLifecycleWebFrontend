@@ -2,9 +2,19 @@ import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useTextMessagesStore } from "../../store/useTextMessagesStore";
+import { invalidateCache } from "../../utils/apiCache";
+import { clearTextMessageCache } from "../../services/textMessagesService";
 
 export default function TextMessages() {
   const [langCode, setLangCode] = useState("ch");
+  const defaults = useTextMessagesStore((s) => s.defaults);
+  const defaultsLoading = useTextMessagesStore((s) => s.defaultsLoading);
+  const translationsLoading = useTextMessagesStore((s) => s.translationsLoading);
+  const fetchDefaults = useTextMessagesStore((s) => s.fetchDefaults);
+  const fetchTranslations = useTextMessagesStore((s) => s.fetchTranslations);
+
   const suggestedLangs = useMemo(
     () => [
       { code: "ch", label: "Chinese" },
@@ -17,74 +27,65 @@ export default function TextMessages() {
     [],
   );
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [defaults, setDefaults] = useState([]); // [{tmd_id, text}]
-  const [translations, setTranslations] = useState({}); // { [tmd_id]: text }
-  const [dirty, setDirty] = useState({}); // { [tmd_id]: true }
+  const [translations, setTranslations] = useState({});
+  const [dirty, setDirty] = useState({});
   const [filter, setFilter] = useState("");
 
+  const loadDefaults = async ({ force = false } = {}) => {
+    try {
+      await fetchDefaults({ revalidate: true, force });
+    } catch (e) {
+      console.error(e);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_TEXT_MESSAGES_1B478899', fallbackText: 'Failed to load text messages', type: 'error' });
+    }
+  };
+
+  const loadTranslations = async (code, { force = false } = {}) => {
+    const normalized = String(code || "").trim().toLowerCase();
+    if (!normalized) {
+      setTranslations({});
+      setDirty({});
+      return;
+    }
+    try {
+      const trMap = await fetchTranslations(normalized, {
+        revalidate: true,
+        force,
+        onFresh: (data) => {
+          setTranslations(data);
+          setDirty({});
+        },
+      });
+      setTranslations(trMap);
+      setDirty({});
+    } catch (e) {
+      console.error(e);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_TRANSLATIONS_5AA225A6', fallbackText: 'Failed to load translations', type: 'error' });
+      setTranslations({});
+      setDirty({});
+    }
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        const dRes = await API.get("/text-messages/default");
-
-        if (cancelled) return;
-
-        const d = Array.isArray(dRes.data?.data) ? dRes.data.data : [];
-
-        setDefaults(d);
-      } catch (e) {
-        console.error(e);
-        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_TEXT_MESSAGES_1B478899', fallbackText: 'Failed to load text messages', type: 'error' });
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    loadDefaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        const code = String(langCode || "").trim().toLowerCase();
-        if (!code) {
-          setTranslations({});
-          setDirty({});
-          return;
-        }
-
-        const tRes = await API.get(`/text-messages/translations/${code}`);
-        if (cancelled) return;
-        const trRows = Array.isArray(tRes.data?.data) ? tRes.data.data : [];
-
-        const trMap = {};
-        for (const row of trRows) {
-          if (row?.tmd_id) trMap[row.tmd_id] = row.text ?? "";
-        }
-
-        setTranslations(trMap);
-        setDirty({});
-      } catch (e) {
-        console.error(e);
-        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_TRANSLATIONS_5AA225A6', fallbackText: 'Failed to load translations', type: 'error' });
-        setTranslations({});
-        setDirty({});
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    loadTranslations(langCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [langCode]);
+
+  useRevalidateOnFocus(() => {
+    fetchDefaults({ revalidate: true });
+    const code = String(langCode || "").trim().toLowerCase();
+    if (code) fetchTranslations(code, { revalidate: true });
+  });
+
+  const loading =
+    (defaultsLoading && defaults.length === 0) ||
+    (translationsLoading && defaults.length > 0 && Object.keys(translations).length === 0);
 
   const rows = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -126,6 +127,9 @@ export default function TextMessages() {
       await API.put(`/text-messages/translations/${code}`, payload);
       showBackendTextToast({ toast, tmdId: 'TMD_SAVED_04BF7E67', fallbackText: 'Saved', type: 'success' });
       setDirty({});
+      invalidateCache('text-messages:');
+      clearTextMessageCache();
+      await loadTranslations(code, { force: true });
     } catch (e) {
       console.error(e);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_1A32E73F', fallbackText: 'Failed to save', type: 'error' });
@@ -242,4 +246,3 @@ export default function TextMessages() {
     </div>
   );
 }
-

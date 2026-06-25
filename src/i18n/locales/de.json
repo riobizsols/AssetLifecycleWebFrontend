@@ -1967,6 +1967,9 @@
     "maintenanceType": "Wartungstyp",
     "vendor": "Lieferant",
     "scheduleDate": "Geplantes Datum",
+    "scheduledDate": "Geplantes Datum",
+    "actualHours": "Tatsächliche Stunden",
+    "variance": "Abweichung",
     "status": "Status",
     "daysUntilDue": "Tage bis Fälligkeit",
     "createdOn": "Erstellt am",
@@ -2879,7 +2882,11 @@
     "preview": "Vorschau",
     "department": "Abteilung",
     "depreciationMethod": "Abschreibungsmethode",
-    "pleaseSelectItemsToDelete": "Bitte wählen Sie Elemente zum Löschen aus"
+    "pleaseSelectItemsToDelete": "Bitte wählen Sie Elemente zum Löschen aus",
+    "showing": "Zeige",
+    "of": "von",
+    "previous": "Zurück",
+    "next": "Weiter"
   },
   "auth": {
     "login": "Anmelden",

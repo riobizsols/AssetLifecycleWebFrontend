@@ -10,62 +10,40 @@ import CustomTable from "../components/CustomTable";
 import { useAuditLog } from "../hooks/useAuditLog";
 import { GROUP_ASSETS_APP_ID } from "../constants/groupAssetsAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useGroupAssetStore } from "../store/useGroupAssetStore";
+import { invalidateCache } from "../utils/apiCache";
 
 const GroupAsset = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { t } = useLanguage();
-  const [groupAssets, setGroupAssets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const groupAssets = useGroupAssetStore((s) => s.groupAssets);
+  const listLoading = useGroupAssetStore((s) => s.listLoading);
+  const fetchGroupAssetsStore = useGroupAssetStore((s) => s.fetchGroupAssets);
+  const removeGroups = useGroupAssetStore((s) => s.removeGroups);
+  const loading = listLoading && groupAssets.length === 0;
 
   // Audit logging
   const { recordActionByNameWithFetch } = useAuditLog(GROUP_ASSETS_APP_ID);
 
-  // Fetch asset groups from API
-  const fetchAssetGroups = async () => {
+  const fetchAssetGroups = async ({ force = false } = {}) => {
     try {
-      setLoading(true);
-      const response = await API.get("/asset-groups");
-
-      if (response.data && Array.isArray(response.data)) {
-        // Transform the backend data to match table structure
-        const transformedData = response.data.map((group) => ({
-          group_id: group.assetgroup_h_id,
-          group_name: group.text,
-          org_id: group.org_id,
-          asset_count: group.asset_count,
-          created_by: group.created_by,
-          created_date: new Date(group.created_on).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
-          changed_by: group.changed_by,
-          changed_date: new Date(group.changed_on).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
-          status: "Active", // Default status since backend doesn't provide this
-        }));
-
-        setGroupAssets(transformedData);
-      } else {
-        setGroupAssets([]);
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTOFETCHASSETGROUPS_25C4A6EA', fallbackText: t("groupAssets.failedToFetchAssetGroups"), type: 'error' });
-      }
+      await fetchGroupAssetsStore({ revalidate: true, force });
     } catch (error) {
       console.error("Error fetching asset groups:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTOFETCHASSETGROUPS_25C4A6EA', fallbackText: t("groupAssets.failedToFetchAssetGroups"), type: 'error' });
-      setGroupAssets([]);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchAssetGroups();
-  }, [t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchGroupAssetsStore({ revalidate: true });
+  });
 
   const columns = [
     {
@@ -168,8 +146,9 @@ const GroupAsset = () => {
       });
 
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_ASSETGROUPDELETEDSUCCESSFULLY_32EB5DF7', fallbackText: t("groupAssets.assetGroupDeletedSuccessfully"), type: 'success' });
-      // Refresh the data
-      fetchAssetGroups();
+      removeGroups([row.group_id]);
+      invalidateCache('asset-groups:');
+      fetchAssetGroups({ force: true });
     } catch (error) {
       console.error("Error deleting asset group:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETEASSETGROUP_59E22566', fallbackText: t("groupAssets.failedToDeleteAssetGroup"), type: 'error' });
@@ -208,7 +187,9 @@ const GroupAsset = () => {
 
       // Clear selection and refresh data
       setSelectedRows([]);
-      fetchAssetGroups();
+      removeGroups(selectedRows);
+      invalidateCache('asset-groups:');
+      fetchAssetGroups({ force: true });
     } catch (error) {
       console.error("Error deleting selected asset groups:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETESOMEASSETGROUPS_781931A5', fallbackText: t("groupAssets.failedToDeleteSomeAssetGroups"), type: 'error' });

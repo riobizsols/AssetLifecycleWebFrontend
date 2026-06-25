@@ -13,11 +13,17 @@ import { useNavigation } from "../hooks/useNavigation";
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useAssetTypeStore } from "../store/useAssetTypeStore";
+import { invalidateCache } from "../utils/apiCache";
 
 const AssetType = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const assetTypes = useAssetTypeStore((s) => s.assetTypes);
+  const listLoading = useAssetTypeStore((s) => s.listLoading);
+  const fetchAssetTypesStore = useAssetTypeStore((s) => s.fetchAssetTypes);
+  const data = assetTypes;
+  const isLoading = listLoading && data.length === 0;
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: '',
@@ -62,47 +68,23 @@ const AssetType = () => {
     { label: t('assetTypes.externalId'), name: "ext_id", visible: false }
   ];
 
-  const fetchAssetTypes = async () => {
-    setIsLoading(true);
+  const fetchAssetTypes = async ({ force = false } = {}) => {
     try {
-      const res = await API.get("/asset-types");
-      
-      // Create a map of asset types for parent lookup
-      const assetTypeMap = res.data.reduce((map, type) => {
-        map[type.asset_type_id] = type.text;
-        return map;
-      }, {});
-
-      // Store original data for edit modal
-      const formattedData = res.data.map(item => {
-        const displayData = {
-          ...item,
-          int_status: item.int_status === 1 ? 'Active' : 'Inactive',
-          assignment_type: item.assignment_type === 'user' ? 'User-wise' : 'Department-wise',
-          group_required: item.group_required ? 'Yes' : 'No',
-          inspection_required: item.inspection_required ? 'Yes' : 'No',
-          maintenance_schedule: Number(item.maintenance_schedule) === 1 ? 'Yes' : 'No',
-          created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-          changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
-          type: item.is_child ? 'Child' : 'Parent',
-          parent_asset_type: item.parent_asset_type_id ? assetTypeMap[item.parent_asset_type_id] : '-',
-          // Store original data for edit modal
-          _original: { ...item }
-        };
-        return displayData;
-      });
-      setData(formattedData);
+      await fetchAssetTypesStore({ revalidate: true, force });
     } catch (err) {
       console.error("Failed to fetch asset types:", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOFETCHASSETTYPES_4E9FF19E', fallbackText: t('assetTypes.failedToFetchAssetTypes'), type: 'error' });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchAssetTypes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchAssetTypesStore({ revalidate: true });
+  });
 
   const handleFilterChange = (filterType, value) => {
     setFilterValues(prev => {
@@ -271,7 +253,8 @@ const AssetType = () => {
       }
 
       setSelectedRows([]); // Clear selection
-      fetchAssetTypes(); // Refresh the list
+      fetchAssetTypes({ force: true });
+      invalidateCache('asset-types:');
       return true; // Return success for ContentBox
     } catch (error) {
       console.error("Error in delete operation:", error);
@@ -284,7 +267,8 @@ const AssetType = () => {
     setUpdateModalOpen(false);
     setSelectedAssetType(null);
     if (wasUpdated) {
-      fetchAssetTypes(); // Refresh the list if update was successful
+      invalidateCache('asset-types:');
+      fetchAssetTypes({ force: true });
     }
   };
 

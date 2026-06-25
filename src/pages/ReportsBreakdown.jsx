@@ -7,14 +7,22 @@ import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
 import { useNavigation } from "../hooks/useNavigation";
 import { useLanguage } from "../contexts/LanguageContext";
-import { Pencil } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useReportBreakdownStore } from "../store/useReportBreakdownStore";
+import { invalidateCache } from "../utils/apiCache";
 
 const ReportsBreakdown = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const reports = useReportBreakdownStore((s) => s.reports);
+  const listLoading = useReportBreakdownStore((s) => s.listLoading);
+  const fetchReports = useReportBreakdownStore((s) => s.fetchReports);
+  const removeReports = useReportBreakdownStore((s) => s.removeReports);
+
+  const data = reports;
+  const isLoading = listLoading && data.length === 0;
+
   const [selectedRows, setSelectedRows] = useState([]);
   const [sortConfig, setSortConfig] = useState({ sorts: [] });
   const [filterValues, setFilterValues] = useState({
@@ -23,18 +31,12 @@ const ReportsBreakdown = () => {
     toDate: "",
   });
 
-  // Access control
   const { canEdit, canDelete, getAccessLevel } = useNavigation();
   const hasEditAccess = canEdit("REPORTBREAKDOWN");
   const hasDeleteAccess = canDelete("REPORTBREAKDOWN");
   const accessLevel = getAccessLevel("REPORTBREAKDOWN");
   const isReadOnly = accessLevel === "D";
 
-  // Debug logging
-  console.log("ReportsBreakdown - Access Level:", accessLevel);
-  console.log("ReportsBreakdown - Has Edit Access:", hasEditAccess);
-  console.log("ReportsBreakdown - Has Delete Access:", hasDeleteAccess);
-  console.log("ReportsBreakdown - Is Read Only:", isReadOnly);
   const columns = useMemo(() => [
     { label: t("breakdownDetails.reportedBy"), name: "reported_by", visible: true },
     { label: t("breakdownDetails.status"), name: "status", visible: true },
@@ -45,34 +47,23 @@ const ReportsBreakdown = () => {
     navigate("/edit-breakdown", { state: { breakdown } });
   };
 
-  const fetchBreakdowns = async () => {
-    setIsLoading(true);
+  const loadReports = async ({ force = false } = {}) => {
     try {
-      const res = await API.get("/reportbreakdown/reports");
-      const raw = Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-        ? res.data
-        : [];
-      const formatted = raw.map((b) => ({
-        ...b,
-        created_on: b.created_at
-          ? new Date(b.created_at).toLocaleString()
-          : "",
-      }));
-      setData(formatted);
+      await fetchReports({ revalidate: true, force });
     } catch (err) {
       console.error("Failed to fetch breakdowns", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOFETCHBREAKDOWNREPORTS_5D1574F1', fallbackText: t("breakdownDetails.failedToFetchBreakdownReports"), type: 'error' });
-      setData([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBreakdowns();
+    loadReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchReports({ revalidate: true });
+  });
 
   const handleDeleteSelected = async () => {
     if (!hasDeleteAccess) {
@@ -86,33 +77,36 @@ const ReportsBreakdown = () => {
     }
 
     try {
-      const deletePromises = selectedRows.map(abrId => 
+      const deletePromises = selectedRows.map((abrId) =>
         API.delete(`/reportbreakdown/${abrId}`)
       );
-      
+
       const results = await Promise.allSettled(deletePromises);
-      
-      const successCount = results.filter(r => r.status === 'fulfilled' && r.value.data?.success).length;
+
+      const successCount = results.filter((r) => r.status === 'fulfilled' && r.value.data?.success).length;
       const failureCount = results.length - successCount;
-      
+
       if (successCount > 0) {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_SUCCESSFULLYDELETEDBREAKDOWNRE_2BD8D9C1', fallbackText: t("breakdownDetails.successfullyDeletedBreakdownReports", { count: successCount }), type: 'success' });
+        const deletedIds = selectedRows.filter((_, i) => results[i].status === 'fulfilled' && results[i].value.data?.success);
+        removeReports(deletedIds);
+        invalidateCache('report-breakdown:');
+        invalidateCache('employee-report-breakdown:');
         setSelectedRows([]);
-        await fetchBreakdowns(); // Refresh the data
       }
-      
+
       if (failureCount > 0) {
-        const failedResults = results.filter(r => r.status === 'rejected' || !r.value.data?.success);
-        const errorMessages = failedResults.map(r => {
+        const failedResults = results.filter((r) => r.status === 'rejected' || !r.value.data?.success);
+        const errorMessages = failedResults.map((r) => {
           if (r.status === 'rejected') {
             return r.reason?.response?.data?.details || r.reason?.message || t("breakdownDetails.unknownError");
           }
           return r.value.data?.details || r.value.data?.error || t("breakdownDetails.failedToDeleteGeneric");
         });
-        
+
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTODELETEREPORTSCOUNT_77D2009C', fallbackText: t("breakdownDetails.failedToDeleteReportsCount", { count: failureCount, message: errorMessages[0] }), type: 'error' });
       }
-      
+
       return successCount > 0;
     } catch (err) {
       console.error("Error deleting breakdown reports:", err);
@@ -136,7 +130,7 @@ const ReportsBreakdown = () => {
       } else if (existingSort.direction === "asc") {
         return {
           sorts: sorts.map((s) =>
-            s.column === column ? { ...s, direction: "desc" } : s,
+            s.column === column ? { ...s, direction: "desc" } : s
           ),
         };
       } else {

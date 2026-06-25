@@ -5,15 +5,15 @@ import toast from 'react-hot-toast';
 import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useAssetsStore } from '../../store/useAssetsStore';
 
 const AssetsDetail = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { user } = useAuthStore();
+  const { asset_id } = useParams();
   const [assetDetails, setAssetDetails] = useState(null);
   const [loading, setLoading] = useState(true);
-  // Get asset_id from URL params
-  const { asset_id } = useParams();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { employee_int_id, dept_id, org_id, hideAssign, backTo, selectedAssetType, context, entityId, returnState } = location.state || {};
@@ -123,18 +123,33 @@ const AssetsDetail = () => {
   };
 
   useEffect(() => {
-    if (asset_id) {
-      setLoading(true);
-      // Pass context parameter to API if available
-      const params = contextFromUrl ? { context: contextFromUrl } : {};
-      API.get(`/assets/${asset_id}`, { params })
-        .then(res => setAssetDetails(res.data))
-        .catch(() => showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETSDETAIL_FAILEDTOFETCHASSETDETAILS_02EE968A', fallbackText: t('assetsDetail.failedToFetchAssetDetails'), type: 'error' }))
-        .finally(() => setLoading(false));
-    } else {
+    if (!asset_id) {
       setLoading(false);
+      return;
     }
-  }, [asset_id, contextFromUrl, t]);
+
+    const cached = useAssetsStore.getState().getCachedAssetById(asset_id);
+    if (cached) {
+      setAssetDetails(cached);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    useAssetsStore
+      .getState()
+      .fetchAssetById(asset_id)
+      .then((data) => setAssetDetails(data))
+      .catch(() =>
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSETSDETAIL_FAILEDTOFETCHASSETDETAILS_02EE968A',
+          fallbackText: t('assetsDetail.failedToFetchAssetDetails'),
+          type: 'error',
+        }),
+      )
+      .finally(() => setLoading(false));
+  }, [asset_id, t]);
 
   if (loading) {
     return (

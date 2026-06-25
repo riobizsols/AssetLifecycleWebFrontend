@@ -3,6 +3,35 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
 import { useLanguage } from "../contexts/LanguageContext";
 import { AdminSettingsContext } from "../contexts/AdminSettingsContext";
+import { useScrapApprovalStore } from "../store/useScrapApprovalStore";
+import { useMaintenanceSupervisorStore } from "../store/useMaintenanceSupervisorStore";
+import { prefetchReportByAppId } from "../utils/reportCache";
+import { useWorkOrderStore } from "../store/useWorkOrderStore";
+import { useMaintenanceApprovalStore } from "../store/useMaintenanceApprovalStore";
+import { useSerialNumberPrintStore } from "../store/useSerialNumberPrintStore";
+import { useAuditLogConfigStore } from "../store/useAuditLogConfigStore";
+import { useInspectionApprovalStore } from "../store/useInspectionApprovalStore";
+import { useInspectionViewStore } from "../store/useInspectionViewStore";
+import { useEmployeeReportBreakdownStore } from "../store/useEmployeeReportBreakdownStore";
+import { useReportBreakdownStore } from "../store/useReportBreakdownStore";
+import { useScrapSalesStore } from "../store/useScrapSalesStore";
+import { useAssetTypeStore } from "../store/useAssetTypeStore";
+import { useDepartmentsStore } from "../store/useDepartmentsStore";
+import { useBranchesStore } from "../store/useBranchesStore";
+import { useVendorsStore } from "../store/useVendorsStore";
+import { useUserRolesStore } from "../store/useUserRolesStore";
+import { useCertificationsStore } from "../store/useCertificationsStore";
+import { useTechCertApprovalsStore } from "../store/useTechCertApprovalsStore";
+import { useTechnicianCertificatesStore } from "../store/useTechnicianCertificatesStore";
+import { useGroupAssetStore } from "../store/useGroupAssetStore";
+import { useInspectionFrequencyStore } from "../store/useInspectionFrequencyStore";
+import { useInspectionChecklistsStore } from "../store/useInspectionChecklistsStore";
+import { useJobMonitorStore } from "../store/useJobMonitorStore";
+import { useMaintenanceConfigStore } from "../store/useMaintenanceConfigStore";
+import { usePropertiesStore } from "../store/usePropertiesStore";
+import { useBreakdownReasonCodesStore } from "../store/useBreakdownReasonCodesStore";
+import { useTextMessagesStore } from "../store/useTextMessagesStore";
+import { useAuthStore } from "../store/useAuthStore";
 import {
   Menu,
   Eye,
@@ -291,6 +320,7 @@ const DatabaseSidebar = () => {
     PROPERTIES: "/adminsettings/configuration/properties", // Properties route
     BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes", // Breakdown Reason Codes route
     ONETIMECRON: "/adminsettings/configuration/one-time-cron",
+    TEXTMESSAGES: "/adminsettings/configuration/text-messages",
     JOBMONITOR: "/adminsettings/configuration/job-monitor",
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
@@ -298,6 +328,95 @@ const DatabaseSidebar = () => {
     SCRAPASSETS: "/scrap-assets", // Scrap Assets route  //done
     "EMPLOYEE TECH CERTIFICATION": "/technician-certificates",
     "HR/MANAGERAPPROVAL": "/tech-cert-approvals",
+  };
+
+  const prefetchRouteData = (appId) => {
+    if (appId === "SCRAPMAINTENANCEAPPROVAL") {
+      useScrapApprovalStore.getState().prefetchApprovals();
+    }
+    if (appId === "SUPERVISORAPPROVAL") {
+      useMaintenanceSupervisorStore.getState().prefetchSchedules();
+    }
+    if (appId === "WORKORDERMANAGEMENT") {
+      useWorkOrderStore.getState().prefetchWorkOrders();
+    }
+    if (appId === "MAINTENANCEAPPROVAL") {
+      useMaintenanceApprovalStore.getState().prefetchApprovals();
+    }
+    if (appId === "SERIALNUMBERPRINT") {
+      useSerialNumberPrintStore.getState().prefetchSerialNumberPrint('New');
+    }
+    if (appId === "AUDITLOGCONFIG") {
+      useAuditLogConfigStore.getState().prefetchAuditLogConfig();
+    }
+    if (appId === "INSPECTIONVIEW" || appId === "INSPECTION") {
+      useInspectionViewStore.getState().prefetchSchedules();
+    }
+    if (appId === "INSPECTIONAPPROVAL") {
+      useInspectionApprovalStore.getState().prefetchApprovals();
+    }
+    if (appId === "EMPLOYEE REPORT BREAKDOWN") {
+      const user = useAuthStore.getState().user;
+      useEmployeeReportBreakdownStore.getState().prefetchBreakdowns(user);
+    }
+    if (appId === "REPORTBREAKDOWN") {
+      useReportBreakdownStore.getState().prefetchReports();
+    }
+    if (appId === "SCRAPSALES") {
+      useScrapSalesStore.getState().prefetchScrapSales();
+    }
+    if (appId === "ASSETTYPES") {
+      useAssetTypeStore.getState().prefetchAssetTypes();
+    }
+    if (appId === "DEPARTMENTS") {
+      useDepartmentsStore.getState().prefetchDepartments();
+    }
+    if (appId === "BRANCHES") {
+      useBranchesStore.getState().prefetchBranches();
+    }
+    if (appId === "VENDORS") {
+      useVendorsStore.getState().prefetchVendors();
+    }
+    if (appId === "USERS") {
+      useUserRolesStore.getState().prefetchUserRoles();
+    }
+    if (appId === "CERTIFICATIONS") {
+      useCertificationsStore.getState().prefetchCertifications();
+    }
+    if (appId === "HR/MANAGERAPPROVAL") {
+      useTechCertApprovalsStore.getState().prefetchTechCertApprovals();
+    }
+    if (appId === "TECHCERTUPLOAD" || appId === "TECHNICIANCERTIFICATES" || appId === "EMPLOYEE TECH CERTIFICATION") {
+      useTechnicianCertificatesStore.getState().prefetchTechnicianCertificates();
+    }
+    if (appId === "GROUPASSET" || appId === "CREATEGROUPASSET") {
+      useGroupAssetStore.getState().prefetchGroupAssets();
+    }
+    if (appId === "SCRAPASSETS") {
+      useScrapAssetsStore.getState().prefetchScrapAssets();
+    }
+    if (appId === "INSPECTIONFREQUENCY") {
+      useInspectionFrequencyStore.getState().prefetchInspectionFrequencies();
+    }
+    if (appId === "INSPECTIONCHECKLISTS") {
+      useInspectionChecklistsStore.getState().prefetchInspectionChecklists();
+    }
+    if (appId === "JOBMONITOR") {
+      useJobMonitorStore.getState().prefetchJobs();
+    }
+    if (appId === "MAINTENANCECONFIG") {
+      useMaintenanceConfigStore.getState().prefetchMaintenanceConfig();
+    }
+    if (appId === "PROPERTIES") {
+      usePropertiesStore.getState().prefetchProperties();
+    }
+    if (appId === "BREAKDOWNREASONCODES") {
+      useBreakdownReasonCodesStore.getState().prefetchBreakdownReasonCodes();
+    }
+    if (appId === "TEXTMESSAGES") {
+      useTextMessagesStore.getState().prefetchTextMessages();
+    }
+    prefetchReportByAppId(appId);
   };
 
   // Dynamic icon component
@@ -591,6 +710,7 @@ const DatabaseSidebar = () => {
                       to={childPath || "/dashboard"}
                       state={navLinkState}
                       end={requiresExactMatch} // Use exact match for admin settings routes
+                      onMouseEnter={() => prefetchRouteData(child.app_id)}
                       className={({ isActive }) => {
                         // Use exact match check for admin settings routes
                         const active = requiresExactMatch 
@@ -643,6 +763,7 @@ const DatabaseSidebar = () => {
             to={path || "/dashboard"}
             state={navLinkState}
             end={requiresExactMatch} // Use exact match for admin settings routes
+            onMouseEnter={() => prefetchRouteData(item.app_id)}
             className={({ isActive }) => {
               // Use exact match check for admin settings routes
               const active = requiresExactMatch 

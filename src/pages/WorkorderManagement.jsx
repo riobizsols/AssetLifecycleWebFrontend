@@ -1,18 +1,29 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
-import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "react-hot-toast";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import {
+  formatWorkOrderRows,
+  useWorkOrderStore,
+} from "../store/useWorkOrderStore";
 
 const WorkorderManagement = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const workOrders = useWorkOrderStore((s) => s.workOrders);
+  const listLoading = useWorkOrderStore((s) => s.listLoading);
+  const fetchWorkOrders = useWorkOrderStore((s) => s.fetchWorkOrders);
+
+  const data = useMemo(
+    () => formatWorkOrderRows(workOrders, t),
+    [workOrders, t],
+  );
+
   const [selectedRows, setSelectedRows] = useState([]);
   const [sortConfig, setSortConfig] = useState({ sorts: [] });
   const [filterValues, setFilterValues] = useState({
@@ -31,47 +42,20 @@ const WorkorderManagement = () => {
   ]);
 
   useEffect(() => {
-    const fetchWorkOrders = async () => {
-      setIsLoading(true);
-      try {
-        const res = await API.get("/work-orders/all");
-        const raw = Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-          ? res.data
-          : [];
-        // Helper function to check if value is empty and return "Not Set"
-        const getDisplayValue = (value, dateFormat = false) => {
-          if (dateFormat && value) {
-            return new Date(value).toLocaleDateString();
-          }
-          if (value === null || value === undefined || value === "" || (typeof value === 'string' && value.trim() === '')) {
-            return t('workorderManagement.notSet') || 'Not Set';
-          }
-          return value;
-        };
+    fetchWorkOrders({ revalidate: true }).catch((err) => {
+      console.error("Failed to fetch work orders", err);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_WORKORDERMANAGEMENT_FAILEDTOFETCHWORKORDERS_46EB10AE',
+        fallbackText: t('workorderManagement.failedToFetchWorkOrders'),
+        type: 'error',
+      });
+    });
+  }, [fetchWorkOrders, t]);
 
-        const formatted = raw.map((wo) => ({
-          ...wo,
-          ams_id: getDisplayValue(wo.ams_id),
-          asset_id: getDisplayValue(wo.asset?.asset_id),
-          description: getDisplayValue(wo.asset?.description),
-          maintenance_type_name: getDisplayValue(wo.maintenance_type_name),
-          act_maint_st_date: getDisplayValue(wo.act_maint_st_date, true),
-          status: getDisplayValue(wo.status),
-          asset_type_name: getDisplayValue(wo.asset_type?.asset_type_name),
-        }));
-        setData(formatted);
-      } catch (err) {
-        console.error("Failed to fetch work orders", err);
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_WORKORDERMANAGEMENT_FAILEDTOFETCHWORKORDERS_46EB10AE', fallbackText: t('workorderManagement.failedToFetchWorkOrders'), type: 'error' });
-        setData([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchWorkOrders();
-  }, [t]);
+  useRevalidateOnFocus(() => {
+    fetchWorkOrders({ revalidate: true });
+  });
 
   const handleSort = (column) => {
     setSortConfig((prevConfig) => {
@@ -163,7 +147,7 @@ const WorkorderManagement = () => {
           const filtered = filterData(data, filterValues, visibleColumns);
           const sorted = sortData(filtered);
           
-          if (isLoading) {
+          if (listLoading && sorted.length === 0) {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length;
             return (

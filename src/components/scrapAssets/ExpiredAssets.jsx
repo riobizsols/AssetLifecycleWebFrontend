@@ -9,6 +9,8 @@ import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { useScrapAssetsStore } from '../../store/useScrapAssetsStore';
 
 const ExpiredAssets = () => {
   const navigate = useNavigate();
@@ -26,20 +28,9 @@ const ExpiredAssets = () => {
   // Fetch expired assets from API
   const fetchExpiredAssets = async () => {
     try {
-      console.log('🔍 Fetching expired assets...');
       setLoading(true);
-      const response = await API.get('/assets/expiry/expired', {
-        params: { context: 'SCRAPASSETS' }
-      });
-      console.log('📊 API Response:', response.data);
-      
-      if (response.data && response.data.assets) {
-        console.log('✅ Expired assets:', response.data.assets);
-        setScrapAssets(response.data.assets);
-      } else {
-        console.log('⚠️ No expired assets found or unexpected response format');
-        setScrapAssets([]);
-      }
+      const assets = await useScrapAssetsStore.getState().fetchExpired({ revalidate: true });
+      setScrapAssets(assets);
     } catch (error) {
       console.error('❌ Error fetching expired assets:', error);
       if (error.response) {

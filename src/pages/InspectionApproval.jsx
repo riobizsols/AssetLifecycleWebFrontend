@@ -5,17 +5,19 @@ import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
 import { exportToExcel } from "../utils/exportToExcel";
 import { useNavigate } from "react-router-dom";
-import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
 import { translateMasterDataLabel } from "../utils/masterDataLabel";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useInspectionApprovalStore } from "../store/useInspectionApprovalStore";
 
 const InspectionApproval = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const approvals = useInspectionApprovalStore((s) => s.approvals);
+  const listLoading = useInspectionApprovalStore((s) => s.listLoading);
+  const fetchApprovalsStore = useInspectionApprovalStore((s) => s.fetchApprovals);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -37,32 +39,29 @@ const InspectionApproval = () => {
   ], [t]);
 
   useEffect(() => {
-    fetchApprovals();
-  }, []);
-
-  const fetchApprovals = async () => {
-    setIsLoading(true);
-    try {
-      const res = await API.get("/inspection-approval/pending");
-      
-      if (res.data.success) {
-        const approvalData = res.data.data.map(item => ({
-            ...item,
-            id: item.wfaiisd_id, // Use workflow detail ID as row key
-            asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
-            branch_name: translateMasterDataLabel(item.branch_name, t),
-            pl_sch_date: item.pl_sch_date ? new Date(item.pl_sch_date).toLocaleDateString() : '-',
-            header_status: item.header_status || 'PN'
-        }));
-        setData(approvalData);
-      }
-    } catch (err) {
+    fetchApprovalsStore({ revalidate: true }).catch((err) => {
       console.error("Failed to fetch inspection approvals", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONAPPROVAL_FAILEDTOFETCH_6A59C607', fallbackText: t('inspectionApproval.failedToFetch'), type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    });
+  }, [fetchApprovalsStore, t]);
+
+  useRevalidateOnFocus(() => {
+    fetchApprovalsStore({ revalidate: true });
+  });
+
+  const data = useMemo(
+    () => (approvals || []).map((item) => ({
+      ...item,
+      id: item.wfaiisd_id,
+      asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
+      branch_name: translateMasterDataLabel(item.branch_name, t),
+      pl_sch_date: item.pl_sch_date ? new Date(item.pl_sch_date).toLocaleDateString() : '-',
+      header_status: item.header_status || 'PN',
+    })),
+    [approvals, t],
+  );
+
+  const isLoading = listLoading && data.length === 0;
 
   const handleFilterChange = (columnName, value) => {
     if (columnName === "columnFilters") {

@@ -1,7 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useJobMonitorStore } from "../store/useJobMonitorStore";
+import { useMaintenanceConfigStore } from "../store/useMaintenanceConfigStore";
+import { usePropertiesStore } from "../store/usePropertiesStore";
+import { useBreakdownReasonCodesStore } from "../store/useBreakdownReasonCodesStore";
+import { useTextMessagesStore } from "../store/useTextMessagesStore";
 import {
   Settings,
   Users,
@@ -29,6 +34,14 @@ const AdminSettingsView = () => {
   const location = useLocation();
   const { navigation, hasAccess, getAccessLevel, loading } = useNavigation();
   const { t } = useLanguage();
+
+  useEffect(() => {
+    useJobMonitorStore.getState().prefetchJobs();
+    useMaintenanceConfigStore.getState().prefetchMaintenanceConfig();
+    usePropertiesStore.getState().prefetchProperties();
+    useBreakdownReasonCodesStore.getState().prefetchBreakdownReasonCodes();
+    useTextMessagesStore.getState().prefetchTextMessages();
+  }, []);
 
   // Get admin settings items from navigation
   const getAdminSettingsItems = () => {

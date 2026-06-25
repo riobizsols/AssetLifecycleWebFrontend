@@ -7,12 +7,18 @@ import { filterData } from "../../utils/filterData";
 import DeleteConfirmModal from "../../components/DeleteConfirmModal";
 import CreateInspectionChecklist from "../../pages/masterData/CreateInspectionChecklist";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useInspectionChecklistsStore } from "../../store/useInspectionChecklistsStore";
+import { invalidateCache } from "../../utils/apiCache";
 
 const InspectionChecklists = () => {
   const { t } = useLanguage();
-  const [checklists, setChecklists] = useState([]);
-  const [responseTypes, setResponseTypes] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const checklists = useInspectionChecklistsStore((s) => s.checklists);
+  const responseTypes = useInspectionChecklistsStore((s) => s.responseTypes);
+  const listLoading = useInspectionChecklistsStore((s) => s.listLoading);
+  const loadPageData = useInspectionChecklistsStore((s) => s.loadPageData);
+  const fetchChecklistsStore = useInspectionChecklistsStore((s) => s.fetchChecklists);
+  const isLoading = listLoading && checklists.length === 0;
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -53,35 +59,25 @@ const InspectionChecklists = () => {
     return type?.name?.toUpperCase().includes("QN") || id.toUpperCase().includes("QN");
   };
 
-  const fetchChecklists = async () => {
-    setIsLoading(true);
+  const fetchChecklists = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/inspection-checklists");
-      const data = (response.data?.data || []).reverse();
-      setChecklists(data);
+      await fetchChecklistsStore({ revalidate: true, force });
     } catch (error) {
       console.error("Failed to fetch checklists:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOLOADCHECKLISTS_4672B024', fallbackText: 'Failed to load checklists', type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchResponseTypes = async () => {
-    try {
-      const response = await API.get("/inspection-checklists/response-types");
-      const data = response.data?.data || [];
-      setResponseTypes(data);
-    } catch (error) {
-      console.error("Failed to fetch response types:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOLOADRESPONSETYPES_6AA55209', fallbackText: 'Failed to load response types', type: 'error' });
     }
   };
 
   useEffect(() => {
-    fetchChecklists();
-    fetchResponseTypes();
+    loadPageData({ revalidate: true }).catch(() => {
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_FAILEDTOLOADCHECKLISTS_4672B024', fallbackText: 'Failed to load checklists', type: 'error' });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchChecklistsStore({ revalidate: true });
+  });
 
   const clearForm = () => {
     setInspectionQuestion("");
@@ -123,7 +119,8 @@ const InspectionChecklists = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTCREATEDSUCCESSFUL_57EEBA86', fallbackText: 'Checklist created successfully', type: 'success' });
       clearForm();
       setShowCreateModal(false);
-      await fetchChecklists();
+      invalidateCache('inspection-checklists:');
+      await fetchChecklists({ force: true });
     } catch (error) {
       console.error("Failed to create checklist:", error);
       showBackendTextToast({
@@ -183,7 +180,8 @@ const InspectionChecklists = () => {
 
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONCHECKLISTS_CHECKLISTUPDATEDSUCCESSFUL_443E82CD', fallbackText: 'Checklist updated successfully', type: 'success' });
       cancelEdit();
-      await fetchChecklists();
+      invalidateCache('inspection-checklists:');
+      await fetchChecklists({ force: true });
     } catch (error) {
       console.error("Failed to update checklist:", error);
       showBackendTextToast({
@@ -220,7 +218,8 @@ const InspectionChecklists = () => {
       }
       setShowDeleteModal(false);
       setItemToDelete(null);
-      await fetchChecklists();
+      invalidateCache('inspection-checklists:');
+      await fetchChecklists({ force: true });
     } catch (error) {
       console.error("Failed to delete checklist:", error);
       showBackendTextToast({

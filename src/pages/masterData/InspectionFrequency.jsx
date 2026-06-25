@@ -10,11 +10,28 @@ import API from "../../lib/axios";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useInspectionFrequencyStore } from "../../store/useInspectionFrequencyStore";
+import { invalidateCache } from "../../utils/apiCache";
 
 const InspectionFrequency = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  
+
+  const frequencies = useInspectionFrequencyStore((s) => s.frequencies);
+  const mappings = useInspectionFrequencyStore((s) => s.mappings);
+  const uomOptions = useInspectionFrequencyStore((s) => s.uomOptions);
+  const listLoading = useInspectionFrequencyStore((s) => s.listLoading);
+  const loadPageData = useInspectionFrequencyStore((s) => s.loadPageData);
+  const fetchFrequenciesStore = useInspectionFrequencyStore((s) => s.fetchFrequencies);
+  const isLoading = listLoading && frequencies.length === 0;
+
+  const formatOpts = {
+    allAssetsFallback: t("inspectionFrequency.allAssetsFallback"),
+    onDemandFallback: t("inspectionFrequency.onDemandFallback"),
+    notApplicable: t("inspectionFrequency.notApplicable"),
+  };
+
   const columns = useMemo(() => [
     { label: t("inspectionFrequency.assetType"), name: "asset_type_name", visible: true },
     { label: t("inspectionFrequency.assetName"), name: "asset_name", visible: true },
@@ -23,8 +40,6 @@ const InspectionFrequency = () => {
     { label: t("inspectionFrequency.description"), name: "text", visible: true },
   ], [t]);
 
-  const [frequencies, setFrequencies] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   
   // Modal state
@@ -34,23 +49,26 @@ const InspectionFrequency = () => {
   const [currentId, setCurrentId] = useState(null);
   
   // Form state
-  const [mappings, setMappings] = useState([]);
   const [selectedMappingId, setSelectedMappingId] = useState("");
   const [freq, setFreq] = useState("");
   const [uom, setUom] = useState("");
   const [description, setDescription] = useState("");
   const [maintainedBy, setMaintainedBy] = useState("In-House");
   const [isRecurring, setIsRecurring] = useState(true);
-  const [uomOptions, setUomOptions] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [selectedTechnician, setSelectedTechnician] = useState("");
   const [techLoading, setTechLoading] = useState(false);
 
   useEffect(() => {
-    fetchFrequencies();
-    fetchMappings();
-    fetchUOM();
+    loadPageData({ revalidate: true, formatOpts }).catch(() => {
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOLOADFREQUENCIES_2B83EA7A', fallbackText: 'Failed to load frequencies', type: 'error' });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchFrequenciesStore({ revalidate: true, formatOpts });
+  });
 
   // Close modal on Esc key
   useEffect(() => {
@@ -66,50 +84,12 @@ const InspectionFrequency = () => {
     };
   }, [showModal]);
 
-  const fetchFrequencies = async () => {
-    setIsLoading(true);
+  const fetchFrequencies = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/inspection-frequencies");
-      const data = response.data?.data || [];
-      const dataWithKeys = (Array.isArray(data) ? data : []).map(f => ({
-        ...f,
-        id: f.aatif_id,
-        asset_name: f.asset_name || t("inspectionFrequency.allAssetsFallback"),
-        freq_display: f.is_recurring ? `${f.freq || ''} ${f.uom || ''}`.trim() || t("inspectionFrequency.notApplicable") : t("inspectionFrequency.onDemandFallback")
-      }));
-      setFrequencies(dataWithKeys);
+      await fetchFrequenciesStore({ revalidate: true, force, formatOpts });
     } catch (error) {
       console.error("Error fetching frequencies:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOLOADFREQUENCIES_2B83EA7A', fallbackText: 'Failed to load frequencies', type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchMappings = async () => {
-    try {
-      const response = await API.get("/asset-type-checklist-mapping/all");
-      const data = response.data?.data || [];
-      const dataWithKeys = (Array.isArray(data) ? data : []).map(m => ({
-          ...m,
-          rowId: m.asset_id ? `${m.at_id}_${m.asset_id}` : m.at_id
-      }));
-      setMappings(dataWithKeys);
-    } catch (error) {
-      console.error("Error fetching mappings:", error);
-    }
-  };
-
-  const fetchUOM = async () => {
-    try {
-      const res = await API.get("/uom");
-      const data = res.data?.data || res.data || [];
-      setUomOptions((Array.isArray(data) ? data : []).map(u => ({
-        id: u.UOM_id || u.uom_id,
-        text: u.UOM || u.uom || u.text
-      })));
-    } catch (error) {
-      console.error("Error fetching UOM:", error);
     }
   };
 
@@ -215,7 +195,8 @@ const InspectionFrequency = () => {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FREQUENCYCREATED_20C860AE', fallbackText: 'Frequency created', type: 'success' });
       }
       setShowModal(false);
-      fetchFrequencies();
+      invalidateCache('inspection-frequencies:');
+      fetchFrequencies({ force: true });
     } catch (error) {
       console.error("Error saving frequency:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOSAVEFREQUENCY_1B231E25', fallbackText: 'Failed to save frequency', type: 'error' });
@@ -235,7 +216,8 @@ const InspectionFrequency = () => {
       }
       if (successCount > 0) {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_DELETEDCOUNT_605CA7C8', fallbackText: '{{count}} frequency item(s) deleted', type: 'success', values: { count: successCount } });
-        fetchFrequencies();
+        invalidateCache('inspection-frequencies:');
+      fetchFrequencies({ force: true });
         setSelectedRows([]);
         return true;
       }

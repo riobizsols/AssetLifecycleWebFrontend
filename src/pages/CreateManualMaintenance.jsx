@@ -7,6 +7,7 @@ import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import SearchableDropdown from '../components/ui/SearchableDropdown';
 import { useAuthStore } from '../store/useAuthStore';
+import { useMaintenanceSupervisorStore } from '../store/useMaintenanceSupervisorStore';
 import { useAppData } from '../contexts/AppDataContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -166,6 +167,7 @@ const CreateManualMaintenance = () => {
         org_id: user?.org_id,
       });
       if (res.data?.success) {
+        useMaintenanceSupervisorStore.getState().invalidateMaintenanceCache();
         showBackendTextToast({
           toast,
           tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_MAINTENANCECREATEDSUCCESSFULL_5A483959',

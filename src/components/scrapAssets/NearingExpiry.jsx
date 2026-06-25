@@ -9,6 +9,8 @@ import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { useScrapAssetsStore } from '../../store/useScrapAssetsStore';
 
 const NearingExpiry = () => {
   const navigate = useNavigate();
@@ -27,20 +29,9 @@ const NearingExpiry = () => {
   // Fetch assets nearing expiry from API
   const fetchNearingExpiryAssets = async () => {
     try {
-      console.log('🔍 Fetching assets nearing expiry...');
       setLoading(true);
-      const response = await API.get('/assets/expiry/expiring_soon?days=30', {
-        params: { context: 'SCRAPASSETS' }
-      });
-      console.log('📊 API Response:', response.data);
-      
-      if (response.data && response.data.assets) {
-        console.log('✅ Assets nearing expiry:', response.data.assets);
-        setScrapAssets(response.data.assets);
-      } else {
-        console.log('⚠️ No assets found or unexpected response format');
-        setScrapAssets([]);
-      }
+      const assets = await useScrapAssetsStore.getState().fetchNearingExpiry({ revalidate: true });
+      setScrapAssets(assets);
     } catch (error) {
       console.error('❌ Error fetching assets nearing expiry:', error);
       if (error.response) {
@@ -57,6 +48,10 @@ const NearingExpiry = () => {
   useEffect(() => {
     fetchNearingExpiryAssets();
   }, []);
+
+  useRevalidateOnFocus(() => {
+    useScrapAssetsStore.getState().fetchNearingExpiry({ revalidate: true }).then(setScrapAssets).catch(() => {});
+  });
 
   const columns = useMemo(() => [
     { key: 'text', name: 'text', label: t('scrapAssets.assetName'), sortable: true, visible: true },

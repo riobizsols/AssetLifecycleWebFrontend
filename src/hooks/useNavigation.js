@@ -1,47 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
-import API from '../lib/axios';
+import { useNavigationStore } from '../store/useNavigationStore';
 
 export const useNavigation = () => {
-    const [navigation, setNavigation] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const { user } = useAuthStore();
+    const user = useAuthStore((state) => state.user);
+    const navigation = useNavigationStore((state) => state.navigation);
+    const loading = useNavigationStore((state) => state.loading);
+    const error = useNavigationStore((state) => state.error);
+    const fetchNavigation = useNavigationStore((state) => state.fetchNavigation);
 
-    // Detect platform (Desktop or Mobile)
-    const detectPlatform = () => {
-        // Check if it's a mobile device
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        return isMobile ? 'M' : 'D'; // 'D' for Desktop, 'M' for Mobile
-    };
-
-    // Fetch user's navigation data
-    const fetchNavigation = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            
-            const platform = detectPlatform();
-            const response = await API.get(`/navigation/user/navigation?platform=${platform}`);
-            
-            if (response.data.success) {
-                setNavigation(response.data.data);
-            } else {
-                setError('Failed to fetch navigation data');
-            }
-        } catch (err) {
-            console.error('Error fetching navigation:', err);
-            setError(err.response?.data?.message || 'Failed to fetch navigation');
-        } finally {
-            setLoading(false);
+    useEffect(() => {
+        if (user?.user_id) {
+            fetchNavigation(user.user_id);
         }
-    };
+    }, [user?.user_id, fetchNavigation]);
 
-    // Check if user has access to a specific app
     const hasAccess = (appId) => {
         if (!navigation || navigation.length === 0) return false;
         
-        // Recursive function to search through navigation structure
         const searchNavigation = (items) => {
             for (const item of items) {
                 if (item.app_id === appId) {
@@ -58,7 +34,6 @@ export const useNavigation = () => {
         return searchNavigation(navigation);
     };
 
-    // Check if user has edit access to a specific app
     const hasEditAccess = (appId) => {
         if (!navigation || navigation.length === 0) return false;
         
@@ -78,7 +53,6 @@ export const useNavigation = () => {
         return searchNavigation(navigation);
     };
 
-    // Get access level for a specific app
     const getAccessLevel = (appId) => {
         if (!navigation || navigation.length === 0) return null;
         
@@ -98,7 +72,6 @@ export const useNavigation = () => {
         return searchNavigation(navigation);
     };
 
-    // Get navigation item by app ID
     const getNavigationItem = (appId) => {
         if (!navigation || navigation.length === 0) return null;
         
@@ -118,19 +91,11 @@ export const useNavigation = () => {
         return searchNavigation(navigation);
     };
 
-    // Check if user can view (any access level)
     const canView = (appId) => hasAccess(appId);
-
-    // Check if user can edit (access level A)
     const canEdit = (appId) => hasEditAccess(appId);
-
-    // Check if user can create (access level A)
     const canCreate = (appId) => hasEditAccess(appId);
-
-    // Check if user can delete (access level A)
     const canDelete = (appId) => hasEditAccess(appId);
 
-    // Get access level label
     const getAccessLevelLabel = (accessLevel) => {
         switch (accessLevel) {
             case 'A':
@@ -142,7 +107,6 @@ export const useNavigation = () => {
         }
     };
 
-    // Get access level color
     const getAccessLevelColor = (accessLevel) => {
         switch (accessLevel) {
             case 'A':
@@ -154,16 +118,11 @@ export const useNavigation = () => {
         }
     };
 
-    // Refresh navigation data
     const refreshNavigation = () => {
-        fetchNavigation();
-    };
-
-    useEffect(() => {
-        if (user) {
-            fetchNavigation();
+        if (user?.user_id) {
+            fetchNavigation(user.user_id, { force: true });
         }
-    }, [user]);
+    };
 
     return {
         navigation,
@@ -179,6 +138,6 @@ export const useNavigation = () => {
         getNavigationItem,
         getAccessLevelLabel,
         getAccessLevelColor,
-        refreshNavigation
+        refreshNavigation,
     };
-}; 
+};

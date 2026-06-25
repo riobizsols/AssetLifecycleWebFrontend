@@ -2,6 +2,8 @@ import { showBackendTextToast, translateErrorMessage } from '../../utils/errorTr
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useScrapApprovalStore } from '../../store/useScrapApprovalStore';
+import { useScrapAssetsStore } from '../../store/useScrapAssetsStore';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Search, QrCode, X, Maximize, Minimize } from 'lucide-react';
@@ -369,6 +371,8 @@ const CreateScrapAsset = () => {
 
       if (response.data?.success) {
         if (response.data.workflowCreated) {
+          useScrapApprovalStore.getState().invalidateScrapApprovalCache();
+          useScrapAssetsStore.getState().invalidateSummary();
           showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_REQUEST_SENT_FOR_APPROVAL_WORKFLOW_5A6CA29F', fallbackText: t('createScrapAsset.scrapRequestSentForApproval', { workflowId: response.data.wfscrap_h_id }), type: 'success' });
         } else if (response.data.scrapped) {
           showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETSUCCESSFULLYMARKEDFORSCRA_601EDB7A', fallbackText: t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.asset_name }), type: 'success' });

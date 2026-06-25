@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ExclamationTriangleIcon,
@@ -8,27 +8,8 @@ import {
   ClockIcon,
 } from "@heroicons/react/24/outline";
 import API from "../../lib/axios";
-import { useAuthStore } from "../../store/useAuthStore";
 import toast from "react-hot-toast";
-
-const mockAlerts = [
-  {
-    alertType: "Regular Maintenance",
-    alertText: "Laptop Maintenance",
-    dueOn: "2024-07-25",
-    actionBy: "John Doe",
-    cutoffDate: "2024-07-30",
-    isUrgent: false,
-  },
-  {
-    alertType: "Regular Maintenance",
-    alertText: "Printer Maintenance",
-    dueOn: "2024-07-22",
-    actionBy: "Jane Smith",
-    cutoffDate: "2024-07-24",
-    isUrgent: true,
-  },
-];
+import { useDashboardStore } from "../../store/useDashboardStore";
 
 const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
@@ -40,9 +21,13 @@ const badgeColors = {
 
 const NotificationsPanel = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const alerts = useDashboardStore((s) => s.notifications);
+  const loading = useDashboardStore((s) => s.notificationsLoading);
+  const setNotifications = useDashboardStore((s) => s.setNotifications);
+  const patchAlerts = (updater) => {
+    const current = useDashboardStore.getState().notifications;
+    setNotifications(typeof updater === 'function' ? updater(current) : updater);
+  };
   const [error, setError] = useState(null);
   const [openActionMenuId, setOpenActionMenuId] = useState(null);
   const [openSnoozeMenuId, setOpenSnoozeMenuId] = useState(null);
@@ -54,126 +39,6 @@ const NotificationsPanel = () => {
     return normalized === "NEW" || normalized === "UNREAD";
   };
 
-  // Debug: Log user data
-  useEffect(() => {
-    console.log("Auth store user data:", user);
-  }, [user]);
-
-  const fetchNotifications = async () => {
-    if (!user || !user.emp_int_id) {
-      console.log("No user or emp_int_id found:", user);
-      setAlerts([]);
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const url = `/notifications/user/${user.emp_int_id}`;
-      console.log("Fetching notifications from:", url);
-      console.log("Current user:", user);
-      const response = await API.get(url);
-      const notifications = response.data.data || [];
-      console.log("API response:", response.data);
-      console.log("Notifications received:", notifications);
-      // Transform API data to match the existing UI structure
-      const transformedAlerts = notifications.map(notification => {
-        // Determine alert type based on workflowType or maintenanceType
-        let alertType = "Regular Maintenance";
-        if (notification.workflowType === 'INSPECTION') {
-          alertType = "Inspection";
-        } else if (notification.workflowType === "WARRANTY") {
-          alertType = "Warranty Expiry";
-        } else if (notification.maintenanceType) {
-          alertType = notification.maintenanceType;
-        }
-        
-        let alertText = "";
-        
-        if (alertType === 'Inspection') {
-           alertText = `${notification.assetTypeName} Inspection`;
-        } else if (alertType === "Warranty Expiry") {
-           alertText = `${notification.assetId} - ${notification.title || "Warranty Expiry"}`;
-        } else if (String(notification.maintenanceType || "").toLowerCase().includes("subscription")) {
-           alertText = `${notification.assetTypeName}`;
-        } else if (alertType === 'Vendor Contract Renewal') {
-           alertText = `${notification.assetTypeName}`; 
-        } else if (notification.isGroupMaintenance && notification.groupName) {
-           alertText = `${notification.groupName} (${notification.groupAssetCount} assets)`;
-        } else {
-           alertText = `${notification.assetTypeName} Maintenance`;
-        }
-        
-        return {
-        alertType: alertType,
-        alertText: alertText,
-        dueOn: formatDate(notification.dueDate),
-        actionBy: notification.userName || "Unassigned",
-        cutoffDate: formatDate(notification.cutoffDate),
-        isUrgent: notification.daysUntilCutoff <= 2, // Show urgent only when 2 days or less until cutoff
-        wfamshId: notification.wfamshId, // For navigation
-        route: notification.route,
-        workflowType: notification.workflowType,
-        workflowId: notification.workflowId,
-        id: notification.id,
-        daysUntilCutoff: notification.daysUntilCutoff,
-        assetId: notification.assetId, // Add assetId to the transformed alert
-        // Group asset maintenance information
-        isGroupMaintenance: notification.isGroupMaintenance || false,
-        groupId: notification.groupId,
-        groupName: notification.groupName,
-        groupAssetCount: notification.groupAssetCount,
-        assetTypeName: notification.assetTypeName
-        ,
-        notifyId: notification.notifyId,
-        notificationStatus: notification.notificationStatus,
-        canChangeVendor: !!notification.canChangeVendor
-      }});
-      
-      // Filter to show up to 2 notifications with smart fallback
-      const maintenanceAlerts = transformedAlerts.filter(alert => 
-        alert.alertType !== 'Inspection' && alert.workflowType !== 'INSPECTION'
-      );
-      const inspectionAlerts = transformedAlerts.filter(alert => 
-        alert.alertType === 'Inspection' || alert.workflowType === 'INSPECTION'
-      );
-      
-      const dashboardAlerts = [];
-      
-      // Smart selection logic for dashboard display
-      if (maintenanceAlerts.length > 0 && inspectionAlerts.length > 0) {
-        // Both types available: show 1 of each
-        dashboardAlerts.push(maintenanceAlerts[0]);
-        dashboardAlerts.push(inspectionAlerts[0]);
-      } else if (maintenanceAlerts.length > 0) {
-        // Only maintenance available: show up to 2 maintenance
-        dashboardAlerts.push(...maintenanceAlerts.slice(0, 2));
-      } else if (inspectionAlerts.length > 0) {
-        // Only inspection available: show up to 2 inspection  
-        dashboardAlerts.push(...inspectionAlerts.slice(0, 2));
-      }
-      
-      console.log("Dashboard alerts selection:");
-      console.log(`  - Total available: ${transformedAlerts.length}`);
-      console.log(`  - Maintenance available: ${maintenanceAlerts.length}`);  
-      console.log(`  - Inspection available: ${inspectionAlerts.length}`);
-      console.log(`  - Selected for dashboard: ${dashboardAlerts.length}`, dashboardAlerts);
-      
-      setAlerts(dashboardAlerts);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching notifications:", err);
-      setError("Failed to load notifications");
-      setAlerts(mockAlerts.slice(0, 2)); // Limit mock data to 2 as well
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString();
-  };
-
   const handleAlertClick = (alert) => {
     if (alert.workflowType === "WARRANTY" && alert.notifyId) {
       const currentStatus = String(alert.notificationStatus || "").toUpperCase();
@@ -182,7 +47,7 @@ const NotificationsPanel = () => {
       }
 
       // Optimistic row update for immediate bold -> normal feedback.
-      setAlerts((prev) =>
+      patchAlerts((prev) =>
         prev.map((item) => {
           const sameNotification =
             (item.notifyId && item.notifyId === alert.notifyId) ||
@@ -194,7 +59,7 @@ const NotificationsPanel = () => {
       setOpeningNotifyIds((prev) => ({ ...prev, [alert.notifyId]: true }));
       API.put(`/notifications/warranty/${alert.notifyId}/open`)
         .catch(() => {
-          setAlerts((prev) =>
+          patchAlerts((prev) =>
             prev.map((item) => {
               const sameNotification =
                 (item.notifyId && item.notifyId === alert.notifyId) ||
@@ -245,7 +110,7 @@ const NotificationsPanel = () => {
     try {
       if (action === "discard") {
         await API.put(`/notifications/warranty/${alert.notifyId}/discard`);
-        setAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
+        patchAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
         return;
       }
       if (action === "snooze") {
@@ -256,7 +121,7 @@ const NotificationsPanel = () => {
           return;
         }
         await API.put(`/notifications/warranty/${alert.notifyId}/snooze`, { snooze_days: days });
-        setAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
+        patchAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
         return;
       }
       if (action === "extend") {
@@ -269,12 +134,6 @@ const NotificationsPanel = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_PROCESS_ACTION_4490D849', fallbackText: 'Failed to process action', type: 'error' });
     }
   };
-
-  // Fetch notifications when user changes
-  useEffect(() => {
-    fetchNotifications();
-    // eslint-disable-next-line
-  }, [user && user.emp_int_id]);
 
   return (
     <div>

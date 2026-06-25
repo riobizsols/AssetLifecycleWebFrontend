@@ -20,6 +20,8 @@ import PrintLabelScreen from '../../components/PrintLabelScreen';
 import SearchableDropdown from '../../components/ui/SearchableDropdown';
 import { labelTemplates, assetTypeTemplateMapping } from '../../templates/labelTemplates';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { useSerialNumberPrintStore } from '../../store/useSerialNumberPrintStore';
 
 const SerialNumberPrint = () => {
   const navigate = useNavigate();
@@ -27,9 +29,21 @@ const SerialNumberPrint = () => {
   const { t } = useLanguage();
   
   // State management
-  const [printQueue, setPrintQueue] = useState([]);
+  const queueByStatus = useSerialNumberPrintStore((s) => s.queueByStatus);
+  const printers = useSerialNumberPrintStore((s) => s.printers);
+  const queueLoading = useSerialNumberPrintStore((s) => s.queueLoading);
+  const fetchPrintQueueStore = useSerialNumberPrintStore((s) => s.fetchPrintQueue);
+  const fetchPrintersStore = useSerialNumberPrintStore((s) => s.fetchPrinters);
+  const invalidateSerialPrintCache = useSerialNumberPrintStore((s) => s.invalidateSerialPrintCache);
+
+  const [filters, setFilters] = useState({
+    status: 'New',
+    assetType: '',
+  });
+
+  const printQueue = queueByStatus[filters.status] || [];
   const [filteredQueue, setFilteredQueue] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const isLoading = queueLoading && printQueue.length === 0;
   const [selectedItems, setSelectedItems] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [showPrintPage, setShowPrintPage] = useState(false);
@@ -37,15 +51,8 @@ const SerialNumberPrint = () => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
-  // Filter states
-  const [filters, setFilters] = useState({
-    status: 'New', // Default to New status
-    assetType: ''
-  });
-
-  // Printer and status options
-  const [printers, setPrinters] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Printer options loaded via store
+  const [loading, setLoading] = useState(false);
 
   // Mock printers data for local development
   // const mockPrinters = [
@@ -123,120 +130,40 @@ const SerialNumberPrint = () => {
     template: ''
   });
 
-  // Data fetching functions
-  const fetchPrintQueue = async (status = filters.status) => {
+  const loadPrintQueue = async (status = filters.status) => {
     try {
-      setIsLoading(true);
-      console.log('Fetching print queue with status:', status);
-      
-      // Use the new API endpoint with status parameter
-      const response = await API.get(`/asset-serial-print/status/${status}`);
-      
-      if (response.data && response.data.success) {
-        console.log('Print queue response:', response.data);
-        
-        // Transform the data to match the expected format
-        const transformedData = response.data.data.map(item => ({
-          psnq_id: item.psnq_id,
-          serial_number: item.serial_no,
-          status: item.status,
-          reason: item.reason,
-          created_by: item.created_by,
-          created_at: item.created_on,
-          org_id: item.org_id,
-          // Asset details - ensure asset_name comes from asset_details, not asset_type_details
-          asset_id: item.asset_details?.asset_id,
-          asset_name: item.asset_details?.asset_name || '', // Use asset name from asset_details
-          asset_description: item.asset_details?.asset_description || '', // Use description from tblAssets
-          asset_serial_number: item.asset_details?.asset_serial_number,
-          purchased_on: item.asset_details?.purchased_on,
-          expiry_date: item.asset_details?.expiry_date,
-          current_status: item.asset_details?.current_status,
-          // Asset type details
-          asset_type_id: item.asset_type_details?.asset_type_id,
-          asset_type_name: item.asset_type_details?.asset_type_name || '', // Use asset type name from asset_type_details
-          assignment_type: item.asset_type_details?.assignment_type,
-          inspection_required: item.asset_type_details?.inspection_required,
-          group_required: item.asset_type_details?.group_required,
-          // Additional fields for compatibility
-          estimated_cost: 0 // Default cost
-        }));
-        
-        console.log('Transformed data:', transformedData);
-        setPrintQueue(transformedData);
-        setFilteredQueue(transformedData);
-      } else {
-        console.error('Failed to fetch print queue:', response.data);
-        setPrintQueue([]);
-        setFilteredQueue([]);
-      }
+      await fetchPrintQueueStore(status, { revalidate: true });
     } catch (error) {
       console.error('Error fetching print queue:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_SERIALNUMBERPRINT_FAILEDTOLOADPRINTQUEUE_10B9F0DC', fallbackText: 'Failed to load print queue', type: 'error' });
-      setPrintQueue([]);
-      setFilteredQueue([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const fetchPrinters = async () => {
+  const loadPrinters = async () => {
     try {
-      console.log('Fetching printers from assets using organization settings...');
-      const res = await API.get('/assets/printers');
-      console.log('API response:', res.data);
-      const assets = res.data?.data || [];
-      console.log('Assets from API:', assets);
-      
-      // Map assets to printer-like objects expected by UI
-      const mapped = assets.map((asset, idx) => ({
-        id: String(asset.asset_id || `printer_${idx + 1}`), // Ensure ID is always a string
-        printer_id: asset.asset_id,
-        name: asset.text || asset.description || `Printer ${idx + 1}`,
-        location: asset.branch_id || 'Unknown',
-        ip_address: 'N/A', // Not available in asset data
-        status: asset.current_status || 'Online',
-        type: 'Label', // Default type for printers
-        paper_size: 'A4',
-        paper_type: 'Paper',
-        paper_quality: 'High',
-        description: asset.description || '',
-        serial_number: asset.serial_number,
-        purchased_cost: asset.purchased_cost,
-        warranty_period: asset.warranty_period
-      }));
-      
-      setPrinters(mapped);
-      console.log('Printers loaded from assets:', mapped.length, mapped);
+      await fetchPrintersStore({ revalidate: true });
     } catch (error) {
       console.error('Error loading printers from organization settings:', error);
-      console.log('Setting empty printers array since mock is commented out');
-      setPrinters([]); // Set empty array instead of mockPrinters
     }
   };
 
-  // Load data on component mount
   useEffect(() => {
-    fetchPrintQueue();
-    fetchPrinters();
+    loadPrintQueue(filters.status);
+    loadPrinters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debug printers when they change
-  useEffect(() => {
-    console.log('Printers state changed:', printers);
-  }, [printers]);
-
-  // Debug printSettings when they change
-  useEffect(() => {
-    console.log('Print settings changed:', printSettings);
-  }, [printSettings]);
-
-  // Fetch data when status filter changes
   useEffect(() => {
     if (filters.status) {
-      fetchPrintQueue(filters.status);
+      loadPrintQueue(filters.status);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.status]);
+
+  useRevalidateOnFocus(() => {
+    loadPrintQueue(filters.status);
+    loadPrinters();
+  });
 
   const statusOptions = [
     { id: 'New', name: t('serialNumberPrint.new'), color: 'bg-blue-100 text-blue-800' },
@@ -267,11 +194,6 @@ const SerialNumberPrint = () => {
     }));
     return [{ id: '', text: t('serialNumberPrint.allAssetTypes') }, ...options];
   };
-
-  // Fetch print queue data
-  useEffect(() => {
-    fetchPrintQueue();
-  }, []);
 
   // Apply filters when they change
   useEffect(() => {
@@ -365,14 +287,8 @@ const SerialNumberPrint = () => {
       try {
         const success = await updateItemStatus(item.psnq_id, status);
         if (success) {
-          // Update local state
-          setPrintQueue(prev => 
-            prev.map(queueItem => 
-              queueItem.psnq_id === item.psnq_id ? { ...queueItem, status } : queueItem
-            )
-          );
-          setFilteredQueue(prev => 
-            prev.map(queueItem => 
+          setFilteredQueue((prev) =>
+            prev.map((queueItem) =>
               queueItem.psnq_id === item.psnq_id ? { ...queueItem, status } : queueItem
             )
           );
@@ -457,7 +373,8 @@ const SerialNumberPrint = () => {
         values: { printerName: selectedPrinter.name },
       });
       handleBackToList();
-      fetchPrintQueue();
+      invalidateSerialPrintCache();
+      loadPrintQueue(filters.status);
     } catch (error) {
       console.error('Error printing:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SEND_PRINT_JOB_7524BF8C', fallbackText: 'Failed to send print job', type: 'error' });
@@ -628,13 +545,9 @@ const SerialNumberPrint = () => {
         status,
         orgId: 'ORG001'
       });
-      
-      // Update local state
-      setPrintQueue(prev => 
-        prev.map(item => 
-          item.psnq_id === psnqId ? { ...item, status } : item
-        )
-      );
+
+      invalidateSerialPrintCache();
+      loadPrintQueue(filters.status);
       
       showBackendTextToast({
         toast,
@@ -789,7 +702,7 @@ const SerialNumberPrint = () => {
               {t('serialNumberPrint.filters')}
             </button>
             <button
-              onClick={() => fetchPrintQueue(filters.status)}
+              onClick={() => loadPrintQueue(filters.status)}
               className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />

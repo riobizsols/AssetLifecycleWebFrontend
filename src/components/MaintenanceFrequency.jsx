@@ -6,18 +6,21 @@ import { toast } from 'react-hot-toast';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Plus, Edit2, Trash2, Save, X, Filter, Minus, ChevronDown } from 'lucide-react';
 import { filterData } from '../utils/filterData';
+import { useMaintenanceConfigStore } from '../store/useMaintenanceConfigStore';
+import { invalidateCache } from '../utils/apiCache';
 
 const MaintenanceFrequency = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const maintenanceTypes = useMaintenanceConfigStore((s) => s.maintenanceTypes);
+  const uomOptions = useMaintenanceConfigStore((s) => s.uomOptions);
+  const allFrequencies = useMaintenanceConfigStore((s) => s.frequencies);
+  const frequenciesLoading = useMaintenanceConfigStore((s) => s.frequenciesLoading);
+  const fetchFrequencyBundle = useMaintenanceConfigStore((s) => s.fetchFrequencyBundle);
   const [activeTab, setActiveTab] = useState('frequency'); // frequency, checklist
 
   // First Tab - Maintenance Frequency
-  const [maintenanceTypes, setMaintenanceTypes] = useState([]);
-  const [uomOptions, setUomOptions] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
-  const [allFrequencies, setAllFrequencies] = useState([]); // Store all frequencies for filtering
-  const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Edit state
@@ -56,82 +59,6 @@ const MaintenanceFrequency = () => {
   const [checklistItems, setChecklistItems] = useState([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [loadingChecklist, setLoadingChecklist] = useState(false);
-
-  // Fetch maintenance types
-  const fetchMaintenanceTypes = async () => {
-    try {
-      const res = await API.get('/maint-types');
-      console.log('Maintenance types API response:', res);
-      console.log('Maintenance types data:', res.data);
-      
-      let types = [];
-      if (Array.isArray(res.data)) {
-        types = res.data;
-      } else if (res.data && Array.isArray(res.data.data)) {
-        types = res.data.data;
-      } else if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        types = res.data.data;
-      }
-      
-      console.log('Parsed maintenance types array:', types);
-      console.log('Number of maintenance types:', types.length);
-      
-      // Backend now filters by int_status = 1, but add safety filter
-      const filteredTypes = types.filter(mt => {
-        if (!mt || !mt.maint_type_id) return false;
-        // Backend filters by int_status = 1, but double-check
-        const status = mt.int_status;
-        if (status === undefined || status === null) {
-          // If status is missing, include it (might be filtered by backend)
-          return true;
-        }
-        // Handle numeric, string, and boolean
-        return status === 1 || status === '1' || status === true || status === 'true';
-      });
-      
-      console.log('Final maintenance types to display:', filteredTypes);
-      setMaintenanceTypes(filteredTypes);
-      
-      if (filteredTypes.length === 0) {
-        console.warn('No maintenance types found. Raw response:', res.data);
-        if (types.length > 0) {
-          console.warn('Raw types before filtering:', types);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching maintenance types:', error);
-      console.error('Error response:', error.response);
-      console.error('Error details:', error.response?.data);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_MAINTENANCE_TYPES_775B8444', fallbackText: 'Failed to fetch maintenance types', type: 'error' });
-      setMaintenanceTypes([]);
-    }
-  };
-
-  // Fetch UOM values from tblUom
-  const fetchUOM = async () => {
-    try {
-      const res = await API.get('/uom');
-      let uomData = [];
-      
-      if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        uomData = res.data.data;
-      } else if (Array.isArray(res.data)) {
-        uomData = res.data;
-      }
-      
-      // Store full UOM objects with both id and text
-      setUomOptions(uomData.map(u => ({
-        id: u.UOM_id || u.uom_id,
-        text: u.UOM || u.uom || u.text
-      })));
-      
-      console.log('UOM options loaded:', uomData);
-    } catch (error) {
-      console.error('Error fetching UOM values:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_UOM_VALUES_1CC35F29', fallbackText: 'Failed to fetch UOM values', type: 'error' });
-      setUomOptions([]);
-    }
-  };
 
   // Helper function to get UOM text from UOM_id or UOM text
   const getUomText = (uomValue) => {
@@ -217,21 +144,14 @@ const MaintenanceFrequency = () => {
   };
 
   // Fetch all maintenance frequencies
-  const fetchFrequencies = async () => {
-    setLoading(true);
+  const fetchFrequencies = async ({ force = false } = {}) => {
     try {
-      const res = await API.get('/maintenance-frequencies');
-      if (res.data && res.data.success) {
-        const data = res.data.data || [];
-        setAllFrequencies(data);
-        // Apply filters if any
-        applyFilters(data);
-      }
+      const bundle = await fetchFrequencyBundle({ revalidate: true, force });
+      const data = bundle?.frequencies || [];
+      applyFilters(data);
     } catch (error) {
       console.error('Error fetching maintenance frequencies:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_MAINTENANCE_FREQUENCIES_2BB3A97B', fallbackText: 'Failed to fetch maintenance frequencies', type: 'error' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -426,9 +346,8 @@ const MaintenanceFrequency = () => {
   };
 
   useEffect(() => {
-    fetchMaintenanceTypes();
-    fetchUOM();
     fetchFrequencies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -546,7 +465,8 @@ const MaintenanceFrequency = () => {
       if (res.data && res.data.success) {
         showBackendTextToast({ toast, tmdId: 'TMD_MAINTENANCE_FREQUENCY_UPDATED_SUCCESSFULLY_7DC92403', fallbackText: 'Maintenance frequency updated successfully', type: 'success' });
         handleCancelEdit();
-        fetchFrequencies();
+        invalidateCache('maintenance-config:');
+        fetchFrequencies({ force: true });
       }
     } catch (error) {
       console.error('Error updating maintenance frequency:', error);
@@ -566,7 +486,8 @@ const MaintenanceFrequency = () => {
       const res = await API.delete(`/maintenance-frequencies/${id}`);
       if (res.data && res.data.success) {
         showBackendTextToast({ toast, tmdId: 'TMD_MAINTENANCE_FREQUENCY_DELETED_SUCCESSFULLY_4EA40AA1', fallbackText: 'Maintenance frequency deleted successfully', type: 'success' });
-        fetchFrequencies();
+        invalidateCache('maintenance-config:');
+        fetchFrequencies({ force: true });
         if (selectedFreqId === id) {
           setSelectedFreqId('');
         }
@@ -962,7 +883,7 @@ const MaintenanceFrequency = () => {
               )}
 
               {/* Table */}
-              {loading ? (
+              {frequenciesLoading && frequencies.length === 0 && allFrequencies.length === 0 ? (
                 <div className="text-center py-16">
                   <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E2F4B]"></div>
                   <p className="mt-4 text-gray-600">Loading...</p>

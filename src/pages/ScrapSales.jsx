@@ -1,80 +1,42 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
-import { Plus } from 'lucide-react';
 import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
 import { useLanguage } from '../contexts/LanguageContext';
-
+import { useRevalidateOnFocus } from '../hooks/useRevalidateOnFocus';
+import { useScrapSalesStore } from '../store/useScrapSalesStore';
+import { invalidateCache } from '../utils/apiCache';
 
 const ScrapSales = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   const { t } = useLanguage();
-  const [scrapSales, setScrapSales] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const scrapSales = useScrapSalesStore((s) => s.scrapSales);
+  const listLoading = useScrapSalesStore((s) => s.listLoading);
+  const fetchScrapSalesStore = useScrapSalesStore((s) => s.fetchScrapSales);
+  const removeSales = useScrapSalesStore((s) => s.removeSales);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
+  const loading = listLoading && scrapSales.length === 0;
+
+  const loadScrapSales = async ({ force = false } = {}) => {
     try {
-      const d = new Date(dateString);
-      if (isNaN(d.getTime())) return '';
-      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch (e) {
-      return '';
-    }
-  };
-
-
-  const fetchScrapSales = async () => {
-    try {
-      setLoading(true);
-      const res = await API.get('/scrap-sales', {
-        params: { context: 'SCRAPSALES' }
-      });
-      const list = Array.isArray(res.data?.scrap_sales)
-        ? res.data.scrap_sales
-        : Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data?.rows)
-            ? res.data.rows
-            : Array.isArray(res.data)
-              ? res.data
-              : [];
-
-      const normalized = list.map(item => ({
-        ssh_id: item.ssh_id || item.scrap_id || item.id || '',
-        text: item.text || item.group_name || item.name || '',
-        buyer_name: item.buyer_name || item.buyer_details?.buyer_name || '',
-        buyer_company: item.buyer_company || item.buyer_details?.company_name || '',
-        buyer_phone: item.buyer_phone || item.buyer_details?.buyer_contact || '',
-        sale_date: formatDate(item.sale_date || item.scrap_date || ''),
-        collection_date: formatDate(item.collection_date || ''),
-        invoice_no: item.invoice_no || '',
-        po_no: item.po_no || '',
-        total_assets: item.total_assets || '',
-        total_sale_value: Array.isArray(item.total_sale_value) ? (item.total_sale_value[0] ?? '') : (item.total_sale_value ?? ''),
-        status: item.status || '',
-        created_by: item.created_by || '',
-        created_on: formatDate(item.created_on || item.created_date || '')
-      }));
-
-      setScrapSales(normalized);
+      await fetchScrapSalesStore({ revalidate: true, force });
     } catch (error) {
       console.error(t('scrapSales.failedToFetchScrapSales'), error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_FAILEDTOLOADSCRAPSALES_690537D0', fallbackText: t('scrapSales.failedToLoadScrapSales'), type: 'error' });
-      setScrapSales([]);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchScrapSales();
-  }, [t]);
+    loadScrapSales();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchScrapSalesStore({ revalidate: true });
+  });
 
   const columns = [
     { key: 'ssh_id', name: 'ssh_id', label: t('scrapSales.saleId'), sortable: true, visible: true },
@@ -155,9 +117,8 @@ const ScrapSales = () => {
           fallbackText: t('scrapSales.scrapSaleDeletedSuccessfully'),
           type: 'success',
         });
-        
-        // Refresh the scrap sales list
-        fetchScrapSales();
+        removeSales([row.ssh_id]);
+        invalidateCache('scrap-sales:');
       } else {
         throw new Error(response.data.message || 'Delete failed');
       }
@@ -206,11 +167,12 @@ const ScrapSales = () => {
           fallbackText: t('scrapSales.scrapSalesDeletedSuccessfully', { count: successful }),
           type: 'success',
         });
-        
-        // Refresh the scrap sales list
-        fetchScrapSales();
-        
-        // Clear selected rows
+
+        const deletedIds = selectedRows.filter((_, i) =>
+          results[i].status === 'fulfilled' && results[i].value.data.success
+        );
+        removeSales(deletedIds);
+        invalidateCache('scrap-sales:');
         setSelectedRows([]);
       }
       

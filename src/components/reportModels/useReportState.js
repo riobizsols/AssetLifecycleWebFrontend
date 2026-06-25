@@ -7,7 +7,14 @@ import { breakdownHistoryService } from "../../services/breakdownHistoryService"
 import { reopenedBreakdownsService } from "../../services/reopenedBreakdownsService";
 import assetWorkflowHistoryService from "../../services/assetWorkflowHistoryService";
 import { slaReportService } from "../../services/slaReportService";
+import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
+import {
+  fetchReportDataCached,
+  fetchReportFilterOptionsCached,
+  loadReportData,
+  peekReportFilterOptions,
+} from "../../utils/reportCache";
 
 /**
  * Serialized "effective" advanced filters for API-driven report fetches.
@@ -56,7 +63,7 @@ export function useReportState(reportId, report) {
   const [allAvailableAssets, setAllAvailableAssets] = useState([]); // Separate list for dropdown options
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [filterOptions, setFilterOptions] = useState(null);
+  const [filterOptions, setFilterOptions] = useState(() => peekReportFilterOptions(reportId));
   const [updatedReport, setUpdatedReport] = useState(null);
   const [forceUpdate, setForceUpdate] = useState(0);
 
@@ -82,10 +89,10 @@ export function useReportState(reportId, report) {
       const fetchFilterOptions = async () => {
         try {
           console.log('🔍 [useReportState] Fetching filter options...');
-          const response = await assetRegisterService.getFilterOptions();
-          
-          // The API returns the data directly in response.data, not response.data.data
-          const filterData = response.data?.data || response.data || {};
+          const filterData = await fetchReportFilterOptionsCached('asset-register', async () => {
+            const response = await assetRegisterService.getFilterOptions();
+            return response.data?.data || response.data || {};
+          });
           setFilterOptions(filterData);
           
           // Update the report configuration with real filter options
@@ -127,11 +134,10 @@ export function useReportState(reportId, report) {
       const fetchFilterOptions = async () => {
         try {
           console.log('🔍 [useReportState] Fetching asset lifecycle filter options...');
-          const response = await assetLifecycleService.getFilterOptions();
-          console.log('🔍 [useReportState] Filter options response:', response);
-          
-          // The API returns the data in response.data.data
-          const filterData = response.data?.data || {};
+          const filterData = await fetchReportFilterOptionsCached(reportId, async () => {
+            const response = await assetLifecycleService.getFilterOptions();
+            return response.data?.data || {};
+          });
           setFilterOptions(filterData);
           
           // Update the report configuration with real filter options
@@ -178,12 +184,10 @@ export function useReportState(reportId, report) {
         try {
           console.log('🔍 [useReportState] Fetching maintenance history filter options...');
           console.log('🔍 [useReportState] Auth token available:', !!useAuthStore.getState().token);
-          const response = await maintenanceHistoryService.getFilterOptions();
-          console.log('🔍 [useReportState] Maintenance history filter options response:', response);
-          console.log('🔍 [useReportState] Filter options data structure:', response.data);
-          
-          // The API returns the data in response.data.data
-          const filterData = response.data?.data || response.data || {};
+          const filterData = await fetchReportFilterOptionsCached('maintenance-history', async () => {
+            const response = await maintenanceHistoryService.getFilterOptions();
+            return response.data?.data || response.data || {};
+          });
           console.log('🔍 [useReportState] Filter data:', filterData);
           console.log('🔍 [useReportState] Asset options from API:', filterData.asset_options);
           setFilterOptions(filterData);
@@ -262,17 +266,9 @@ export function useReportState(reportId, report) {
     } else if (reportId === "sla-report") {
       const fetchFilterOptions = async () => {
         try {
-          console.log('🔍 [useReportState] Fetching SLA report filter options...');
-          const response = await slaReportService.getFilterOptions();
-          console.log('🔍 [useReportState] SLA report filter options response:', response);
-          const filterData = response.data?.data || response.data || {};
-          console.log('🔍 [useReportState] Filter data structure:', {
-            hasVendors: !!filterData.vendors,
-            vendorsCount: filterData.vendors?.length || 0,
-            hasAssetTypes: !!filterData.assetTypes,
-            assetTypesCount: filterData.assetTypes?.length || 0,
-            hasAssets: !!filterData.assets,
-            assetsCount: filterData.assets?.length || 0
+          const filterData = await fetchReportFilterOptionsCached('sla-report', async () => {
+            const response = await slaReportService.getFilterOptions();
+            return response.data?.data || response.data || {};
           });
           setFilterOptions(filterData);
           
@@ -334,12 +330,10 @@ export function useReportState(reportId, report) {
         try {
           console.log('🔍 [useReportState] Fetching asset workflow history filter options...');
           console.log('🔍 [useReportState] Auth token available:', !!useAuthStore.getState().token);
-          const response = await assetWorkflowHistoryService.getFilterOptions();
-          console.log('🔍 [useReportState] Asset workflow history filter options response:', response);
-          console.log('🔍 [useReportState] Filter options data structure:', response.filter_options);
-          
-          const filterData = response.filter_options || {};
-          console.log('🔍 [useReportState] Filter data:', filterData);
+          const filterData = await fetchReportFilterOptionsCached('asset-workflow-history', async () => {
+            const response = await assetWorkflowHistoryService.getFilterOptions();
+            return response.filter_options || {};
+          });
           
           // Update report configuration with real data
           const updatedReport = { ...report };
@@ -464,17 +458,16 @@ export function useReportState(reportId, report) {
         try {
           console.log('🔍 [useReportState] Fetching breakdown filter options...');
           console.log('🔍 [useReportState] Auth token available:', !!useAuthStore.getState().token);
-          const response =
-            reportId === "reopened-breakdowns"
-              ? await reopenedBreakdownsService.getFilterOptions()
-              : await breakdownHistoryService.getFilterOptions();
-          console.log('🔍 [useReportState] Breakdown history filter options response:', response);
-          console.log('🔍 [useReportState] Filter options data structure:', response.data);
-          
-          // The API returns the data in response.data.filter_options
-          const filterData = response?.filter_options || response?.data?.filter_options || response?.data || {};
-          console.log('🔍 [useReportState] Filter data:', filterData);
-          console.log('🔍 [useReportState] Asset options from API:', filterData.asset_options);
+          const filterData = await fetchReportFilterOptionsCached(reportId, async () => {
+            const response =
+              reportId === "reopened-breakdowns"
+                ? await API.get(
+                    `/breakdown-history/reopened-breakdowns/filter-options?orgId=${encodeURIComponent(localStorage.getItem("org_id") || "ORG001")}`,
+                  )
+                : await breakdownHistoryService.getFilterOptions();
+            const payload = reportId === "reopened-breakdowns" ? response.data : response;
+            return payload?.filter_options || payload?.data?.filter_options || payload?.data || {};
+          });
           
           setFilterOptions(filterData);
           console.log('✅ [useReportState] Updated breakdown history filter options with real data');
@@ -580,341 +573,160 @@ export function useReportState(reportId, report) {
     }
   }, [reportId]);
 
-  // Fetch all available assets for dropdown options (only once, not affected by filters)
+  // Dropdown options for legacy reports without filter-options API
   useEffect(() => {
-    if (reportId === "asset-register") {
-      const fetchAllAssets = async () => {
-        try {
-          console.log('🔍 [useReportState] Fetching all assets for dropdown options...');
-          const response = await assetRegisterService.getAssetRegister({
-            limit: 1000,
-            offset: 0
-          });
-          
-          const allAssets = response.data?.data || response.data || [];
-          setAllAvailableAssets(allAssets);
-          console.log('✅ [useReportState] Loaded', allAssets.length, 'assets for dropdown options');
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching all assets:', err);
-          // Fallback to fake data if API fails
-          setAllAvailableAssets(fakeRows(reportId, 12));
-        }
-      };
-
-      fetchAllAssets();
-    } else if (reportId === "breakdown-history") {
-      const fetchAllBreakdownData = async () => {
-        try {
-          console.log('🔍 [useReportState] Fetching all breakdown data for dropdown options...');
-          const response = await breakdownHistoryService.getBreakdownHistory({
-            limit: 1000,
-            offset: 0
-          });
-          
-          const allBreakdownData = response.data?.data || response.data || [];
-          setAllAvailableAssets(allBreakdownData);
-          console.log('✅ [useReportState] Loaded', allBreakdownData.length, 'breakdown records for dropdown options');
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching all breakdown data:', err);
-          // No fallback to fake data for breakdown history - use real API data only
-          setAllAvailableAssets([]);
-        }
-      };
-
-      fetchAllBreakdownData();
-    } else if (reportId === "reopened-breakdowns") {
-      setAllAvailableAssets([]);
-    } else if (reportId === "asset-workflow-history") {
-      const fetchAllWorkflowData = async () => {
-        try {
-          console.log('🔍 [useReportState] Fetching all asset workflow data for dropdown options...');
-          const response = await assetWorkflowHistoryService.getAssetWorkflowHistory({
-            limit: 1000,
-            offset: 0,
-            orgId: useAuthStore.getState().user?.org_id
-          });
-          
-          console.log('🔍 [useReportState] All workflow data response:', response);
-          const allWorkflowData = response.data || [];
-          setAllAvailableAssets(allWorkflowData);
-          console.log('✅ [useReportState] Loaded', allWorkflowData.length, 'workflow records for dropdown options');
-          console.log('🔍 [useReportState] First few workflow records:', allWorkflowData.slice(0, 2));
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching all workflow data:', err);
-          // No fallback to fake data for asset workflow history - use real API data only
-          setAllAvailableAssets([]);
-        }
-      };
-
-      fetchAllWorkflowData();
-    } else if (reportId === "asset-lifecycle" || reportId === "asset-valuation") {
-      const fetchAllAssets = async () => {
-        try {
-          console.log('🔍 [useReportState] Fetching all asset lifecycle data for dropdown options...');
-          const response = await assetLifecycleService.getAssetLifecycle({
-            limit: 1000,
-            offset: 0
-          });
-          console.log('🔍 [useReportState] All assets response:', response);
-          
-          const allAssets = response.data?.data || [];
-          setAllAvailableAssets(allAssets);
-          console.log('✅ [useReportState] Loaded', allAssets.length, 'asset lifecycle records for dropdown options');
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching all asset lifecycle data:', err);
-          // Don't fallback to fake data - show error instead
-          setAllAvailableAssets([]);
-        }
-      };
-
-      fetchAllAssets();
-    } else if (reportId === "maintenance-history") {
-      const fetchAllMaintenanceHistory = async () => {
-        try {
-          console.log('🔍 [useReportState] Fetching all maintenance history for dropdown options...');
-          const response = await maintenanceHistoryService.getMaintenanceHistory({
-            limit: 1000,
-            offset: 0
-          });
-          console.log('🔍 [useReportState] All maintenance history response:', response);
-          
-          const allMaintenanceHistory = Array.isArray(response.data) ? response.data : (response.data?.data || []);
-          setAllAvailableAssets(allMaintenanceHistory);
-          console.log('✅ [useReportState] Loaded', allMaintenanceHistory.length, 'maintenance history records for dropdown options');
-          console.log('🔍 [useReportState] All maintenance history data:', allMaintenanceHistory);
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching all maintenance history data:', err);
-          // Don't fallback to fake data - show error instead
-          setAllAvailableAssets([]);
-        }
-      };
-
-      fetchAllMaintenanceHistory();
-    } else {
-      // Use fake data for other reports (not asset-lifecycle)
+    if (!["asset-register", "asset-lifecycle", "maintenance-history", "breakdown-history", "asset-workflow-history", "asset-valuation", "reopened-breakdowns", "sla-report"].includes(reportId)) {
       setAllAvailableAssets(fakeRows(reportId, 12));
     }
   }, [reportId]);
 
-  // Fetch filtered data from API for asset-register, asset-lifecycle, maintenance-history, breakdown-history, and asset-workflow-history reports
+  // Fetch filtered data from API (cached; also seeds dropdown options on base query)
   useEffect(() => {
     console.log('🔍 [useReportState] useEffect triggered for data fetching:', { reportId, quick, advanced });
     if (reportId === "asset-register") {
       const fetchAssetRegisterData = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-          // Convert quick filters to API parameters
-          const apiFilters = {};
-          Object.entries(quick).forEach(([key, value]) => {
-            if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
-              apiFilters[key] = value;
-            }
-          });
-          
-          // Add advanced conditions to API filters (only include conditions with actual values)
-          if (advanced && advanced.length > 0) {
-            const validAdvancedConditions = advanced.filter(condition => {
-              // Check if the condition has a valid value
-              if (condition.val === null || condition.val === undefined) return false;
-              if (Array.isArray(condition.val) && condition.val.length === 0) return false;
-              if (typeof condition.val === 'string' && condition.val.trim() === '') return false;
-              if (Array.isArray(condition.val) && condition.val.every(v => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) return false;
-              return true;
-            });
-            
-            if (validAdvancedConditions.length > 0) {
-              apiFilters.advancedConditions = validAdvancedConditions;
-            }
+        const apiFilters = {};
+        Object.entries(quick).forEach(([key, value]) => {
+          if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
+            apiFilters[key] = value;
           }
-          
-          console.log('🔍 [useReportState] Sending API filters:', apiFilters);
-          console.log('🔍 [useReportState] Advanced conditions:', JSON.stringify(advanced, null, 2));
-
-          const response = await assetRegisterService.getAssetRegister({
-            ...apiFilters,
-            limit: 1000,
-            offset: 0
+        });
+        if (advanced?.length) {
+          const validAdvancedConditions = advanced.filter((condition) => {
+            if (condition.val === null || condition.val === undefined) return false;
+            if (Array.isArray(condition.val) && condition.val.length === 0) return false;
+            if (typeof condition.val === 'string' && condition.val.trim() === '') return false;
+            if (Array.isArray(condition.val) && condition.val.every((v) => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) return false;
+            return true;
           });
-          
-          // The API returns the data directly in response.data, not response.data.data
-          const assetData = response.data?.data || response.data || [];
-          console.log('✅ [useReportState] Loaded', assetData.length, 'filtered assets from API');
-          
-          // Extract property columns dynamically and add to available columns
-          if (assetData.length > 0) {
-            const propertyColumns = new Set();
-            assetData.forEach(row => {
-              Object.keys(row).forEach(key => {
-                if (key.startsWith('Property: ')) {
-                  propertyColumns.add(key);
-                }
+          if (validAdvancedConditions.length > 0) {
+            apiFilters.advancedConditions = validAdvancedConditions;
+          }
+        }
+
+        const requestFilters = { ...apiFilters, limit: 1000, offset: 0 };
+
+        await loadReportData({
+          reportId,
+          apiFilters: requestFilters,
+          quick,
+          advancedFetchKey,
+          report,
+          setLoading,
+          setError,
+          setAllRows,
+          setAllAvailableAssets,
+          fallbackRows: () => fakeRows(reportId, 12),
+          onRowsLoaded: (assetData) => {
+            if (assetData.length > 0) {
+              const propertyColumns = new Set();
+              assetData.forEach((row) => {
+                Object.keys(row).forEach((key) => {
+                  if (key.startsWith('Property: ')) propertyColumns.add(key);
+                });
               });
-            });
-            
-            // Update report's allColumns with property columns
-            if (propertyColumns.size > 0) {
-              const report = REPORTS.find(r => r.id === reportId);
-              if (report) {
-                const existingColumns = report.allColumns || ALL_COLUMNS[reportId] || [];
-                const newColumns = [...existingColumns, ...Array.from(propertyColumns)];
-                // Remove duplicates
-                report.allColumns = [...new Set(newColumns)];
-                console.log('✅ [useReportState] Added property columns:', Array.from(propertyColumns));
+              if (propertyColumns.size > 0) {
+                const reportDef = REPORTS.find((r) => r.id === reportId);
+                if (reportDef) {
+                  const existingColumns = reportDef.allColumns || [];
+                  reportDef.allColumns = [...new Set([...existingColumns, ...propertyColumns])];
+                }
               }
             }
-          }
-          
-          setAllRows(assetData);
-          // Force re-render to update dropdowns
-          setForceUpdate(prev => prev + 1);
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching asset register data:', err);
-          console.error('❌ [useReportState] Error details:', err.response?.data);
-          setError(err.message);
-          // Fallback to fake data if API fails
-          console.log('🔄 [useReportState] Falling back to fake data...');
-          setAllRows(fakeRows(reportId, 12));
-        } finally {
-          setLoading(false);
-        }
+            setForceUpdate((prev) => prev + 1);
+          },
+          fetcher: async () => {
+            const response = await assetRegisterService.getAssetRegister(requestFilters);
+            return response.data?.data || response.data || [];
+          },
+        });
       };
 
       fetchAssetRegisterData();
     } else if (reportId === "asset-lifecycle") {
       const fetchAssetLifecycleData = async () => {
-        console.log('🔍 [useReportState] Starting asset lifecycle data fetch...');
-        setLoading(true);
-        setError(null);
-        try {
-          // Convert quick filters to API parameters
-          const apiFilters = {};
-          Object.entries(quick).forEach(([key, value]) => {
-            if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
-              apiFilters[key] = value;
-            }
-          });
-          
-          // Add advanced conditions to API filters (only include conditions with actual values)
-          if (advanced && advanced.length > 0) {
-            const validAdvancedConditions = advanced.filter(condition => {
-              // Check if the condition has a valid value
-              if (condition.val === null || condition.val === undefined) return false;
-              if (Array.isArray(condition.val) && condition.val.length === 0) return false;
-              if (typeof condition.val === 'string' && condition.val.trim() === '') return false;
-              if (Array.isArray(condition.val) && condition.val.every(v => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) return false;
-              return true;
-            });
-            
-            if (validAdvancedConditions.length > 0) {
-              apiFilters.advancedConditions = validAdvancedConditions;
-            }
+        const apiFilters = {};
+        Object.entries(quick).forEach(([key, value]) => {
+          if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
+            apiFilters[key] = value;
           }
-          
-          console.log('🔍 [useReportState] Sending asset lifecycle API filters:', apiFilters);
-          console.log('🔍 [useReportState] Advanced conditions:', JSON.stringify(advanced, null, 2));
-
-          const response = await assetLifecycleService.getAssetLifecycle({
-            ...apiFilters,
-            limit: 1000,
-            offset: 0
+        });
+        if (advanced?.length) {
+          const validAdvancedConditions = advanced.filter((condition) => {
+            if (condition.val === null || condition.val === undefined) return false;
+            if (Array.isArray(condition.val) && condition.val.length === 0) return false;
+            if (typeof condition.val === 'string' && condition.val.trim() === '') return false;
+            if (Array.isArray(condition.val) && condition.val.every((v) => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) return false;
+            return true;
           });
-          
-          console.log('🔍 [useReportState] Main data response:', response);
-          
-          // The API returns the data in response.data.data
-          const assetData = response.data?.data || [];
-          console.log('✅ [useReportState] Loaded', assetData.length, 'filtered asset lifecycle records from API');
-          
-          setAllRows(assetData);
-          // Force re-render to update dropdowns
-          setForceUpdate(prev => prev + 1);
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching asset lifecycle data:', err);
-          console.error('❌ [useReportState] Error details:', err.response?.data);
-          setError(err.message);
-          // Don't fallback to fake data - show error instead
-          console.log('❌ [useReportState] API failed - showing error to user');
-          setAllRows([]);
-        } finally {
-          setLoading(false);
+          if (validAdvancedConditions.length > 0) {
+            apiFilters.advancedConditions = validAdvancedConditions;
+          }
         }
+
+        const requestFilters = { ...apiFilters, limit: 1000, offset: 0 };
+
+        await loadReportData({
+          reportId,
+          apiFilters: requestFilters,
+          quick,
+          advancedFetchKey,
+          report,
+          setLoading,
+          setError,
+          setAllRows,
+          setAllAvailableAssets,
+          fallbackRows: [],
+          onRowsLoaded: () => setForceUpdate((prev) => prev + 1),
+          fetcher: async () => {
+            const response = await assetLifecycleService.getAssetLifecycle(requestFilters);
+            return response.data?.data || [];
+          },
+        });
       };
 
       fetchAssetLifecycleData();
     } else if (reportId === "maintenance-history") {
       const fetchMaintenanceHistoryData = async () => {
-        console.log('🔍 [useReportState] Starting maintenance history data fetch...');
-        console.log('🔍 [useReportState] Auth token available for data fetch:', !!useAuthStore.getState().token);
-        setLoading(true);
-        setError(null);
-        try {
-          // Convert quick filters to API parameters
-          const apiFilters = {};
-          Object.entries(quick).forEach(([key, value]) => {
-            if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
-              // Map frontend field names to API parameter names
-              if (key === 'maintenanceStartDateRange' && Array.isArray(value) && value.length === 2) {
-                apiFilters.maintenance_start_date_from = value[0];
-                apiFilters.maintenance_start_date_to = value[1];
-              } else if (key === 'maintenanceEndDateRange' && Array.isArray(value) && value.length === 2) {
-                apiFilters.maintenance_end_date_from = value[0];
-                apiFilters.maintenance_end_date_to = value[1];
-              } else if (key === 'vendorId') {
-                apiFilters.vendor_id = value;
-              } else if (key === 'assetId') {
-                apiFilters.asset_id = value;
-              } else if (key === 'workOrderId') {
-                apiFilters.wo_id = value;
-              } else if (key === 'notes') {
-                apiFilters.notes = value;
-              } else {
-                apiFilters[key] = value;
-              }
-            }
-          });
-          
-          // Add advanced conditions to API filters (only include conditions with actual values)
-          if (advanced && advanced.length > 0) {
-            const validAdvancedConditions = advanced.filter(condition => {
-              // Check if the condition has a valid value
-              if (condition.val === null || condition.val === undefined) return false;
-              if (Array.isArray(condition.val) && condition.val.length === 0) return false;
-              if (typeof condition.val === 'string' && condition.val.trim() === '') return false;
-              if (Array.isArray(condition.val) && condition.val.every(v => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) return false;
-              return true;
-            });
-            
-            if (validAdvancedConditions.length > 0) {
-              apiFilters.advancedConditions = validAdvancedConditions;
+        const apiFilters = {};
+        Object.entries(quick).forEach(([key, value]) => {
+          if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
+            if (key === 'maintenanceStartDateRange' && Array.isArray(value) && value.length === 2) {
+              apiFilters.maintenance_start_date_from = value[0];
+              apiFilters.maintenance_start_date_to = value[1];
+            } else if (key === 'maintenanceEndDateRange' && Array.isArray(value) && value.length === 2) {
+              apiFilters.maintenance_end_date_from = value[0];
+              apiFilters.maintenance_end_date_to = value[1];
+            } else if (key === 'vendorId') {
+              apiFilters.vendor_id = value;
+            } else if (key === 'assetId') {
+              apiFilters.asset_id = value;
+            } else if (key === 'workOrderId') {
+              apiFilters.wo_id = value;
+            } else if (key === 'notes') {
+              apiFilters.notes = value;
+            } else {
+              apiFilters[key] = value;
             }
           }
-          
-          console.log('🔍 [useReportState] Sending maintenance history API filters:', apiFilters);
-          console.log('🔍 [useReportState] Advanced conditions:', JSON.stringify(advanced, null, 2));
-
-          const response = await maintenanceHistoryService.getMaintenanceHistory({
-            ...apiFilters,
-            limit: 1000,
-            offset: 0
+        });
+        if (advanced?.length) {
+          const validAdvancedConditions = advanced.filter((condition) => {
+            if (condition.val === null || condition.val === undefined) return false;
+            if (Array.isArray(condition.val) && condition.val.length === 0) return false;
+            if (typeof condition.val === 'string' && condition.val.trim() === '') return false;
+            if (Array.isArray(condition.val) && condition.val.every((v) => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) return false;
+            return true;
           });
-          
-          console.log('🔍 [useReportState] Maintenance history response:', response);
-          console.log('🔍 [useReportState] Response data structure:', response.data);
-          console.log('🔍 [useReportState] Response.data.data:', response.data?.data);
-          console.log('🔍 [useReportState] Response.data type:', typeof response.data);
-          console.log('🔍 [useReportState] Response.data keys:', Object.keys(response.data || {}));
-          console.log('🔍 [useReportState] Is response.data.data an array?', Array.isArray(response.data?.data));
-          console.log('🔍 [useReportState] Response.data.data length:', response.data?.data?.length);
-          
-          // Handle both cases: response.data could be the full object or just the data array
-          const maintenanceData = Array.isArray(response.data) ? response.data : (response.data?.data || []);
-          console.log('✅ [useReportState] Loaded', maintenanceData.length, 'filtered maintenance history records from API');
-          console.log('🔍 [useReportState] First record sample:', maintenanceData[0]);
-          console.log('🔍 [useReportState] Raw response data:', response.data);
-          
-          // Transform API data to match frontend column names
-          const transformedData = maintenanceData.map(record => ({
+          if (validAdvancedConditions.length > 0) {
+            apiFilters.advancedConditions = validAdvancedConditions;
+          }
+        }
+
+        const requestFilters = { ...apiFilters, limit: 1000, offset: 0 };
+
+        const transformMaintenanceRows = (maintenanceData) =>
+          (maintenanceData || []).map((record) => ({
             "Work Order ID": record.wo_id,
             "Asset ID": record.asset_id,
             "Asset Name": record.asset_description,
@@ -926,95 +738,68 @@ export function useReportState(reportId, report) {
             "Work Order Status": record.status === 'CO' ? 'Completed' : record.status === 'IN' ? 'Initiated' : record.status,
             "Maintenance Type": record.maintenance_type_name,
             "Cost (₹)": record.po_number ? `₹${record.po_number}` : 'N/A',
-            "Downtime (h)": record.technician_name ? '8' : 'N/A' // Placeholder - not in API response
+            "Downtime (h)": record.technician_name ? '8' : 'N/A',
           }));
-          
-          setAllRows(transformedData);
-          // Force re-render to update dropdowns
-          setForceUpdate(prev => prev + 1);
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching maintenance history data:', err);
-          console.error('❌ [useReportState] Error details:', err.response?.data);
-          setError(err.message);
-          
-          // Don't fallback to fake data - show error instead
-          console.log('❌ [useReportState] API failed - showing error to user');
-          setAllRows([]);
-        } finally {
-          setLoading(false);
-        }
+
+        await loadReportData({
+          reportId,
+          apiFilters: requestFilters,
+          quick,
+          advancedFetchKey,
+          report,
+          setLoading,
+          setError,
+          setAllRows,
+          setAllAvailableAssets,
+          fallbackRows: [],
+          onRowsLoaded: () => setForceUpdate((prev) => prev + 1),
+          fetcher: async () => {
+            const response = await maintenanceHistoryService.getMaintenanceHistory(requestFilters);
+            const maintenanceData = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            return transformMaintenanceRows(maintenanceData);
+          },
+        });
       };
 
       fetchMaintenanceHistoryData();
     } else if (reportId === "breakdown-history") {
       const fetchBreakdownHistoryData = async () => {
-        console.log('🔍 [useReportState] Starting breakdown history data fetch...');
-        console.log('🔍 [useReportState] Auth token available for data fetch:', !!useAuthStore.getState().token);
-        setLoading(true);
-        setError(null);
-        try {
-          // Convert quick filters to API parameters
-          const apiFilters = {};
-          Object.entries(quick).forEach(([key, value]) => {
-            if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
-              if (key === 'breakdownDateRange' && Array.isArray(value) && value.length === 2) {
-                apiFilters.breakdown_date_from = value[0];
-                apiFilters.breakdown_date_to = value[1];
-              } else if (key === 'assetId' && typeof value === 'string') {
-                apiFilters.asset_id = value;
-              } else if (key === 'reportedBy' && typeof value === 'string') {
-                apiFilters.reported_by = value;
-              } else if (key === 'vendorId' && typeof value === 'string') {
-                apiFilters.vendor_id = value;
-              } else if (key === 'workOrderId' && typeof value === 'string') {
-                apiFilters.work_order_id = value;
-              } else {
-                apiFilters[key] = value;
-              }
-            }
-          });
-          
-          // Add advanced conditions to API filters (only include conditions with actual values)
-          if (advanced && advanced.length > 0) {
-            const validAdvancedConditions = advanced.filter(condition => {
-              // Check if the condition has a valid value
-              if (condition.val === null || condition.val === undefined) return false;
-              if (Array.isArray(condition.val) && condition.val.length === 0) return false;
-              if (typeof condition.val === 'string' && condition.val.trim() === '') return false;
-              if (Array.isArray(condition.val) && condition.val.every(v => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) return false;
-              return true;
-            });
-            
-            if (validAdvancedConditions.length > 0) {
-              apiFilters.advancedConditions = validAdvancedConditions;
+        const apiFilters = {};
+        Object.entries(quick).forEach(([key, value]) => {
+          if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
+            if (key === 'breakdownDateRange' && Array.isArray(value) && value.length === 2) {
+              apiFilters.breakdown_date_from = value[0];
+              apiFilters.breakdown_date_to = value[1];
+            } else if (key === 'assetId' && typeof value === 'string') {
+              apiFilters.asset_id = value;
+            } else if (key === 'reportedBy' && typeof value === 'string') {
+              apiFilters.reported_by = value;
+            } else if (key === 'vendorId' && typeof value === 'string') {
+              apiFilters.vendor_id = value;
+            } else if (key === 'workOrderId' && typeof value === 'string') {
+              apiFilters.work_order_id = value;
+            } else {
+              apiFilters[key] = value;
             }
           }
-          
-          console.log('🔍 [useReportState] Sending breakdown history API filters:', apiFilters);
-          console.log('🔍 [useReportState] Advanced conditions:', JSON.stringify(advanced, null, 2));
-
-          const response = await breakdownHistoryService.getBreakdownHistory({
-            ...apiFilters,
-            limit: 1000,
-            offset: 0
+        });
+        if (advanced?.length) {
+          const validAdvancedConditions = advanced.filter((condition) => {
+            if (condition.val === null || condition.val === undefined) return false;
+            if (Array.isArray(condition.val) && condition.val.length === 0) return false;
+            if (typeof condition.val === 'string' && condition.val.trim() === '') return false;
+            if (Array.isArray(condition.val) && condition.val.every((v) => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) return false;
+            return true;
           });
-          
-          console.log('🔍 [useReportState] Breakdown history response:', response);
-          console.log('🔍 [useReportState] Response data structure:', response.data);
-          console.log('🔍 [useReportState] Response.data.data:', response.data?.data);
-          console.log('🔍 [useReportState] Response.data type:', typeof response.data);
-          console.log('🔍 [useReportState] Response.data keys:', Object.keys(response.data || {}));
-          console.log('🔍 [useReportState] Is response.data.data an array?', Array.isArray(response.data?.data));
-          console.log('🔍 [useReportState] Response.data.data length:', response.data?.data?.length);
-          
-          // Handle both response.data as array and response.data.data cases
-          const breakdownData = Array.isArray(response.data) ? response.data : (response.data?.data || []);
-          console.log('✅ [useReportState] Loaded', breakdownData.length, 'filtered breakdown history records from API');
-          console.log('🔍 [useReportState] First record sample:', breakdownData[0]);
-          console.log('🔍 [useReportState] Raw response data:', breakdownData);
-          
-          // Transform the data to match the frontend column names
-          const transformedData = breakdownData.map(record => ({
+          if (validAdvancedConditions.length > 0) {
+            apiFilters.advancedConditions = validAdvancedConditions;
+          }
+        }
+
+        const requestFilters = { ...apiFilters, limit: 1000, offset: 0 };
+
+        const transformBreakdownRows = (breakdownData) =>
+          (breakdownData || []).map((record) => ({
             "Breakdown ID": record.breakdown_id || 'N/A',
             "Asset ID": record.asset_id,
             "Asset Name": record.asset_description && record.asset_description !== 'NULL' ? record.asset_description : record.serial_number || 'N/A',
@@ -1038,156 +823,138 @@ export function useReportState(reportId, report) {
             "Vendor Phone": record.vendor_phone || 'N/A',
             "Vendor Address": record.vendor_address || 'N/A',
             "Reported By Email": record.reported_by_email || 'N/A',
-            "Reported By Phone": record.reported_by_phone || 'N/A'
+            "Reported By Phone": record.reported_by_phone || 'N/A',
           }));
-          
-          setAllRows(transformedData);
-          console.log('✅ [useReportState] Set breakdown history data:', transformedData.length, 'records');
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching breakdown history data:', err);
-          console.error('❌ [useReportState] Error details:', err.response?.data);
-          setError(err.response?.data?.message || 'Failed to fetch breakdown history data');
-          setAllRows([]);
-          console.log('❌ [useReportState] API failed - no fallback to fake data for breakdown history');
-        } finally {
-          setLoading(false);
-        }
+
+        await loadReportData({
+          reportId,
+          apiFilters: requestFilters,
+          quick,
+          advancedFetchKey,
+          report,
+          setLoading,
+          setError,
+          setAllRows,
+          setAllAvailableAssets,
+          fallbackRows: [],
+          onRowsLoaded: () => setForceUpdate((prev) => prev + 1),
+          fetcher: async () => {
+            const response = await breakdownHistoryService.getBreakdownHistory(requestFilters);
+            const breakdownData = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            return {
+              rows: transformBreakdownRows(breakdownData),
+              dropdownRows: breakdownData,
+            };
+          },
+        });
       };
 
       fetchBreakdownHistoryData();
     } else if (reportId === "reopened-breakdowns") {
       const fetchReopenedBreakdownsData = async () => {
-        setLoading(true);
-        setError(null);
-        setAllRows([]);
-        try {
-          const apiFilters = {};
+        const apiFilters = { orgId: localStorage.getItem("org_id") || "ORG001" };
 
-          Object.entries(quick).forEach(([key, value]) => {
-            if (!value || (Array.isArray(value) && value.length === 0)) return;
+        Object.entries(quick).forEach(([key, value]) => {
+          if (!value || (Array.isArray(value) && value.length === 0)) return;
 
-            if (key === "assetId") {
-              apiFilters.assetId = typeof value === "string" ? value : value.value;
-            } else if (key === "assetType") {
-              const selected = Array.isArray(value) ? value[0] : value;
-              apiFilters.assetTypeId = typeof selected === "object" ? selected.value : selected;
-            } else if (key === "userId") {
-              const selected = Array.isArray(value) ? value[0] : value;
-              apiFilters.userId = typeof selected === "object" ? selected.value : selected;
-            } else if (key === "department") {
-              const selected = Array.isArray(value) ? value[0] : value;
-              apiFilters.deptId = typeof selected === "object" ? selected.value : selected;
+          if (key === "assetId") {
+            apiFilters.assetId = typeof value === "string" ? value : value.value;
+          } else if (key === "assetType") {
+            const selected = Array.isArray(value) ? value[0] : value;
+            apiFilters.assetTypeId = typeof selected === "object" ? selected.value : selected;
+          } else if (key === "userId") {
+            const selected = Array.isArray(value) ? value[0] : value;
+            apiFilters.userId = typeof selected === "object" ? selected.value : selected;
+          } else if (key === "department") {
+            const selected = Array.isArray(value) ? value[0] : value;
+            apiFilters.deptId = typeof selected === "object" ? selected.value : selected;
+          }
+        });
+
+        if (Array.isArray(advanced) && advanced.length > 0) {
+          for (const cond of advanced) {
+            if (!cond || !cond.field) continue;
+            if (cond.field === "reopenCount" && cond.val !== null && cond.val !== undefined && `${cond.val}`.trim() !== "") {
+              apiFilters.reopenCountMin = cond.val;
             }
-          });
-
-          // Advanced filters (Reopened Breakdowns)
-          // Shape: [{ field, op, val }]
-          if (Array.isArray(advanced) && advanced.length > 0) {
-            for (const cond of advanced) {
-              if (!cond || !cond.field) continue;
-              if (cond.field === "reopenCount" && cond.val !== null && cond.val !== undefined && `${cond.val}`.trim() !== "") {
-                // UI label says "Reopen Count (RO) ≥" so we treat it as a minimum.
-                apiFilters.reopenCountMin = cond.val;
-              }
-              if (cond.field === "lastReopenedOn" && cond.val) {
-                const v = cond.val;
-                const from = Array.isArray(v) ? v[0] : v.from;
-                const to = Array.isArray(v) ? v[1] : v.to;
-                if (from) apiFilters.lastReopenedOnFrom = from;
-                if (to) apiFilters.lastReopenedOnTo = to;
-              }
+            if (cond.field === "lastReopenedOn" && cond.val) {
+              const v = cond.val;
+              const from = Array.isArray(v) ? v[0] : v.from;
+              const to = Array.isArray(v) ? v[1] : v.to;
+              if (from) apiFilters.lastReopenedOnFrom = from;
+              if (to) apiFilters.lastReopenedOnTo = to;
             }
           }
+        }
 
-          const response = await reopenedBreakdownsService.getReopenedBreakdowns(apiFilters);
-          const reopenedData = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
-
-          const transformedData = reopenedData.map((record) => ({
+        const transformReopenedRows = (reopenedData) =>
+          (reopenedData || []).map((record) => ({
             "AMS ID": record.ams_id || "N/A",
             "Asset ID": record.asset_id || "N/A",
             "Asset Name": record.asset_name || record.asset_description || "N/A",
             "Serial Number": record.serial_number || "N/A",
             "Asset Type": record.asset_type_name || "N/A",
             "Reopen Count (RO)": record.ro_count ?? 0,
-            "Last Reopened On": record.last_reopened_on ? new Date(record.last_reopened_on).toLocaleString() : "N/A",
+            "Last Reopened On": record.last_reopened_on
+              ? new Date(record.last_reopened_on).toLocaleString()
+              : "N/A",
           }));
 
-          setAllRows(transformedData);
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching reopened breakdown data:', err);
-          setError(err.response?.data?.message || 'Failed to fetch reopened breakdown data');
-          setAllRows([]);
-        } finally {
-          setLoading(false);
-        }
+        await loadReportData({
+          reportId,
+          apiFilters,
+          quick,
+          advancedFetchKey,
+          report,
+          setLoading,
+          setError,
+          setAllRows,
+          setAllAvailableAssets,
+          fallbackRows: [],
+          onRowsLoaded: () => setForceUpdate((prev) => prev + 1),
+          fetcher: async () => {
+            const response = await reopenedBreakdownsService.getReopenedBreakdowns(apiFilters, { raw: true });
+            const reopenedData = Array.isArray(response?.data)
+              ? response.data
+              : Array.isArray(response)
+                ? response
+                : [];
+            return {
+              rows: transformReopenedRows(reopenedData),
+              dropdownRows: reopenedData,
+            };
+          },
+        });
       };
 
       fetchReopenedBreakdownsData();
     } else if (reportId === "asset-workflow-history") {
       const fetchAssetWorkflowHistoryData = async () => {
-        console.log('🔍 [useReportState] Starting asset workflow history data fetch...');
-        console.log('🔍 [useReportState] Auth token available for data fetch:', !!useAuthStore.getState().token);
-        setLoading(true);
-        setError(null);
-        
-        try {
-          // Convert quick filters to API parameters
-          const apiFilters = {};
-          
-          // Handle date range filters
-          if (quick.plannedScheduleDateRange?.from) {
-            apiFilters.maintenance_start_date_from = quick.plannedScheduleDateRange.from;
-          }
-          if (quick.plannedScheduleDateRange?.to) {
-            apiFilters.maintenance_start_date_to = quick.plannedScheduleDateRange.to;
-          }
-          if (quick.actualScheduleDateRange?.from) {
-            apiFilters.maintenance_end_date_from = quick.actualScheduleDateRange.from;
-          }
-          if (quick.actualScheduleDateRange?.to) {
-            apiFilters.maintenance_end_date_to = quick.actualScheduleDateRange.to;
-          }
-          
-          // Handle other quick filters
-          if (quick.assetId) apiFilters.asset_id = quick.assetId;
-          if (quick.vendorId) apiFilters.vendor_id = quick.vendorId;
-          if (quick.workOrderId) apiFilters.work_order_id = quick.workOrderId;
-          
-          // Add pagination
-          apiFilters.limit = 1000;
-          apiFilters.offset = 0;
-          apiFilters.orgId = useAuthStore.getState().user?.org_id;
-          
-          // Add advanced conditions
-          if (advanced && advanced.length > 0) {
-            apiFilters.advancedConditions = advanced;
-          }
-          
-          console.log('🔍 [useReportState] Sending asset workflow history API filters:', apiFilters);
-          console.log('🔍 [useReportState] Quick filters:', quick);
-          console.log('🔍 [useReportState] Advanced conditions:', advanced);
-          console.log('🔍 [useReportState] Work Order ID filter value:', quick.workOrderId);
-          console.log('🔍 [useReportState] API work_order_id value:', apiFilters.work_order_id);
-          
-          const response = await assetWorkflowHistoryService.getAssetWorkflowHistory(apiFilters);
-          console.log('🔍 [useReportState] Asset workflow history response:', response);
-          console.log('🔍 [useReportState] Response data structure:', response.data);
-          
-          const workflowData = response.data || [];
-          console.log('🔍 [useReportState] Raw response data:', workflowData);
-          console.log('🔍 [useReportState] Number of records returned from API:', workflowData.length);
-          
-          // Debug: Log sample data to see what's being processed
-          if (workflowData.length > 0) {
-            console.log('🔍 [useReportState] Sample workflow record for debugging:', {
-              purchased_cost: workflowData[0].purchased_cost,
-              asset_status: workflowData[0].asset_status,
-              asset_type_name: workflowData[0].asset_type_name
-            });
-          }
-          
-          // Transform API data to frontend column format
-          const transformedData = workflowData.map(record => ({
+        const apiFilters = {};
+        if (quick.plannedScheduleDateRange?.from) {
+          apiFilters.maintenance_start_date_from = quick.plannedScheduleDateRange.from;
+        }
+        if (quick.plannedScheduleDateRange?.to) {
+          apiFilters.maintenance_start_date_to = quick.plannedScheduleDateRange.to;
+        }
+        if (quick.actualScheduleDateRange?.from) {
+          apiFilters.maintenance_end_date_from = quick.actualScheduleDateRange.from;
+        }
+        if (quick.actualScheduleDateRange?.to) {
+          apiFilters.maintenance_end_date_to = quick.actualScheduleDateRange.to;
+        }
+        if (quick.assetId) apiFilters.asset_id = quick.assetId;
+        if (quick.vendorId) apiFilters.vendor_id = quick.vendorId;
+        if (quick.workOrderId) apiFilters.work_order_id = quick.workOrderId;
+        apiFilters.limit = 1000;
+        apiFilters.offset = 0;
+        apiFilters.orgId = useAuthStore.getState().user?.org_id;
+        if (advanced?.length) {
+          apiFilters.advancedConditions = advanced;
+        }
+
+        const transformWorkflowRows = (workflowData) =>
+          (workflowData || []).map((record) => ({
             "Work Order ID": record.workflow_id || 'N/A',
             "Asset ID": record.asset_id || 'N/A',
             "Asset Name": record.asset_description && record.asset_description !== 'NULL' ? record.asset_description : record.serial_number || 'N/A',
@@ -1197,16 +964,16 @@ export function useReportState(reportId, report) {
             "Notes": record.step_notes || 'N/A',
             "Vendor ID": record.vendor_id || 'N/A',
             "Vendor Name": record.vendor_name || 'N/A',
-            "Workflow Status": record.workflow_status === 'CO' ? 'Completed' : 
-                             record.workflow_status === 'IN' ? 'Initiated' : 
-                             record.workflow_status === 'IP' ? 'In Progress' : 
-                             record.workflow_status === 'CA' ? 'Cancelled' : 
-                             record.workflow_status === 'OH' ? 'On Hold' : record.workflow_status || 'N/A',
-            "Step Status": record.step_status === 'AP' ? 'Approved' : 
-                          record.step_status === 'IN' ? 'Initiated' : 
-                          record.step_status === 'UA' ? 'Under Approval' : 
-                          record.step_status === 'CO' ? 'Completed' : 
-                          record.step_status === 'CA' ? 'Cancelled' : record.step_status || 'N/A',
+            "Workflow Status": record.workflow_status === 'CO' ? 'Completed' :
+              record.workflow_status === 'IN' ? 'Initiated' :
+              record.workflow_status === 'IP' ? 'In Progress' :
+              record.workflow_status === 'CA' ? 'Cancelled' :
+              record.workflow_status === 'OH' ? 'On Hold' : record.workflow_status || 'N/A',
+            "Step Status": record.step_status === 'AP' ? 'Approved' :
+              record.step_status === 'IN' ? 'Initiated' :
+              record.step_status === 'UA' ? 'Under Approval' :
+              record.step_status === 'CO' ? 'Completed' :
+              record.step_status === 'CA' ? 'Cancelled' : record.step_status || 'N/A',
             "Assigned To": record.user_id || 'N/A',
             "Maintenance Type": record.maintenance_type_name || 'N/A',
             "Asset Type": record.asset_type_name || 'N/A',
@@ -1227,110 +994,84 @@ export function useReportState(reportId, report) {
             "Latest Action": record.latest_action || 'N/A',
             "Latest Action Date": record.latest_action_date ? new Date(record.latest_action_date).toLocaleString() : 'N/A',
             "Latest Action By": record.latest_action_by || 'N/A',
-            // Additional fields for workflow history details
             "History ID": record.history_id || 'N/A',
             "Action By": record.action_by_name || record.action_by || 'N/A',
             "Approved On": record.action_on ? new Date(record.action_on).toLocaleString() : 'N/A',
-            "Action": record.action === 'AP' ? 'Approved' : 
-                     record.action === 'UA' ? 'Under Approval' : 
-                     record.action === 'UR' ? 'Under Review' : 
-                     record.action === 'CO' ? 'Completed' : 
-                     record.action === 'CA' ? 'Cancelled' : record.action || 'N/A',
+            "Action": record.action === 'AP' ? 'Approved' :
+              record.action === 'UA' ? 'Under Approval' :
+              record.action === 'UR' ? 'Under Review' :
+              record.action === 'CO' ? 'Completed' :
+              record.action === 'CA' ? 'Cancelled' : record.action || 'N/A',
             "History Notes": record.history_notes || 'N/A',
             "Action By Email": record.action_by_email || 'N/A',
             "Step User": record.step_user_name || record.step_user_id || 'N/A',
-            "Step User Email": record.step_user_email || 'N/A'
+            "Step User Email": record.step_user_email || 'N/A',
           }));
-          
-          setAllRows(transformedData);
-          // Also set allAvailableAssets for dropdown population
-          setAllAvailableAssets(workflowData);
-          console.log('🔍 [useReportState] Set allRows with', transformedData.length, 'transformed records');
-          console.log('🔍 [useReportState] Set allAvailableAssets with', workflowData.length, 'raw records');
-          console.log('🔍 [useReportState] Sample workflowData for dropdowns:', {
-            asset_status: workflowData.map(row => row.asset_status),
-            asset_type_name: workflowData.map(row => row.asset_type_name),
-            purchased_cost: workflowData.map(row => row.purchased_cost)
-          });
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching asset workflow history data:', err);
-          console.error('❌ [useReportState] Error details:', err.response?.data);
-          setError(err.response?.data?.message || 'Failed to fetch asset workflow history data');
-          setAllRows([]);
-          console.log('❌ [useReportState] API failed - no fallback to fake data for asset workflow history');
-        } finally {
-          setLoading(false);
-        }
+
+        await loadReportData({
+          reportId,
+          apiFilters: apiFilters,
+          quick,
+          advancedFetchKey,
+          report,
+          setLoading,
+          setError,
+          setAllRows,
+          setAllAvailableAssets,
+          fallbackRows: [],
+          onRowsLoaded: () => setForceUpdate((prev) => prev + 1),
+          fetcher: async () => {
+            const response = await assetWorkflowHistoryService.getAssetWorkflowHistory(apiFilters);
+            const workflowData = response.data || [];
+            return {
+              rows: transformWorkflowRows(workflowData),
+              dropdownRows: workflowData,
+            };
+          },
+        });
       };
 
       fetchAssetWorkflowHistoryData();
     } else if (reportId === "sla-report") {
       const fetchSLAReportData = async () => {
-        console.log('🔍 [useReportState] Starting SLA report data fetch...');
-        setLoading(true);
-        setError(null);
-        try {
-          // Convert quick filters to API parameters
-          const apiFilters = {};
-          Object.entries(quick).forEach(([key, value]) => {
-            if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
-              // Extract values from arrays (handle both objects and primitives)
-              let processedValue = value;
-              if (Array.isArray(value)) {
-                processedValue = value.map(v => typeof v === 'object' && v !== null ? v.value : v);
-              }
-              
-              if (key === 'assetType') {
-                apiFilters.asset_type_id = processedValue;
-              } else if (key === 'vendor') {
-                apiFilters.vendor_id = processedValue;
-              } else if (key === 'slaDescription') {
-                apiFilters.sla_description = processedValue;
-              } else if (key === 'dateRange' && Array.isArray(value) && value.length === 2) {
-                apiFilters.dateRange = value;
-              } else {
-                apiFilters[key] = processedValue;
-              }
+        const apiFilters = {};
+        Object.entries(quick).forEach(([key, value]) => {
+          if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
+            let processedValue = value;
+            if (Array.isArray(value)) {
+              processedValue = value.map(v => typeof v === 'object' && v !== null ? v.value : v);
             }
-          });
-          
-          console.log('🔍 [useReportState] Sending SLA report API filters:', apiFilters);
-          
-          const response = await slaReportService.getSLAReport({
-            ...apiFilters,
-            limit: 1000,
-            offset: 0
-          });
-          
-          const slaData = response.data?.data || [];
-          console.log('✅ [useReportState] Loaded', slaData.length, 'SLA report records from API');
-          
-          // Transform data to create rows for each vendor-SLA combination
-          // Since query now returns one row per vendor with aggregated asset types
+            
+            if (key === 'assetType') {
+              apiFilters.asset_type_id = processedValue;
+            } else if (key === 'vendor') {
+              apiFilters.vendor_id = processedValue;
+            } else if (key === 'slaDescription') {
+              apiFilters.sla_description = processedValue;
+            } else if (key === 'dateRange' && Array.isArray(value) && value.length === 2) {
+              apiFilters.dateRange = value;
+            } else {
+              apiFilters[key] = processedValue;
+            }
+          }
+        });
+
+        const requestFilters = { ...apiFilters, limit: 1000, offset: 0 };
+
+        const transformSlaRows = (slaData) => {
           const transformedData = [];
-          
-          slaData.forEach(item => {
-            // Extract asset type info (now comes as comma-separated string)
+          (slaData || []).forEach(item => {
             const assetTypeNames = item.asset_type_names || '';
             const assetTypeIds = item.asset_type_ids || '';
-            
-            // Collect all SLA values for this vendor
             const slas = [];
             for (let i = 1; i <= 10; i++) {
               const slaValue = item[`sla_${i}_value`];
               const slaDescription = item[`sla_${i}_description`];
               const slaId = item[`sla_${i}_id`];
-              
               if (slaValue && slaValue.trim() !== '') {
-                slas.push({
-                  sla_id: slaId,
-                  sla_description: slaDescription,
-                  sla_value: slaValue
-                });
+                slas.push({ sla_id: slaId, sla_description: slaDescription, sla_value: slaValue });
               }
             }
-            
-            // Create a row for each SLA that has a value
             if (slas.length > 0) {
               slas.forEach(sla => {
                 transformedData.push({
@@ -1352,7 +1093,6 @@ export function useReportState(reportId, report) {
                 });
               });
             } else {
-              // If no SLA values, still show the vendor row
               transformedData.push({
                 "Vendor ID": item.vendor_id,
                 "Vendor Name": item.vendor_name,
@@ -1372,17 +1112,27 @@ export function useReportState(reportId, report) {
               });
             }
           });
-          
-          setAllRows(transformedData);
-          console.log('✅ [useReportState] Set SLA report data:', transformedData.length, 'transformed records');
-        } catch (err) {
-          console.error('❌ [useReportState] Error fetching SLA report data:', err);
-          console.error('❌ [useReportState] Error details:', err.response?.data);
-          setError(err.response?.data?.message || 'Failed to fetch SLA report data');
-          setAllRows([]);
-        } finally {
-          setLoading(false);
-        }
+          return transformedData;
+        };
+
+        await loadReportData({
+          reportId,
+          apiFilters: requestFilters,
+          quick,
+          advancedFetchKey,
+          report,
+          setLoading,
+          setError,
+          setAllRows,
+          setAllAvailableAssets,
+          fallbackRows: [],
+          onRowsLoaded: () => setForceUpdate((prev) => prev + 1),
+          fetcher: async () => {
+            const response = await slaReportService.getSLAReport(requestFilters);
+            const slaData = response.data?.data || [];
+            return transformSlaRows(slaData);
+          },
+        });
       };
       
       fetchSLAReportData();
@@ -1878,7 +1628,7 @@ export function useReportState(reportId, report) {
   const filteredRows = useMemo(() => {
     // For asset-register, asset-lifecycle, maintenance-history, and breakdown-history, we're doing server-side filtering, so return allRows
     // For other reports, use client-side filtering
-    if (reportId === "asset-register" || reportId === "asset-lifecycle" || reportId === "asset-valuation" || reportId === "maintenance-history" || reportId === "breakdown-history" || reportId === "asset-workflow-history" || reportId === "reopened-breakdowns") {
+    if (reportId === "asset-register" || reportId === "asset-lifecycle" || reportId === "asset-valuation" || reportId === "maintenance-history" || reportId === "breakdown-history" || reportId === "asset-workflow-history" || reportId === "reopened-breakdowns" || reportId === "sla-report") {
       return allRows;
     }
     return filterRows(allRows, reportId, quick, advanced);

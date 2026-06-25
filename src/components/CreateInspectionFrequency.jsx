@@ -5,6 +5,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import { Save, X, QrCode } from 'lucide-react';
+import { useInspectionFrequencyStore } from '../store/useInspectionFrequencyStore';
 
 const CreateInspectionFrequency = () => {
   const navigate = useNavigate();
@@ -217,6 +218,7 @@ const CreateInspectionFrequency = () => {
       await API.post('/inspection-frequencies', payload);
       
       showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_FREQUENCY_CREATED_SUCCESSFULLY_6D268C2F', fallbackText: 'Inspection frequency created successfully', type: 'success' });
+      useInspectionFrequencyStore.getState().invalidateInspectionFrequencyCache();
       navigate('/master-data/inspection-frequency');
     } catch (error) {
       console.error('Error creating inspection frequency:', error);

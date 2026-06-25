@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
@@ -10,12 +10,26 @@ import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/assets/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import {
+  formatMaintenanceApprovalRows,
+  useMaintenanceApprovalStore,
+} from "../store/useMaintenanceApprovalStore";
 
 const MaintenanceApprovalDetail = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const approvals = useMaintenanceApprovalStore((s) => s.approvals);
+  const listLoading = useMaintenanceApprovalStore((s) => s.listLoading);
+  const fetchApprovals = useMaintenanceApprovalStore((s) => s.fetchApprovals);
+  const invalidateMaintenanceApprovalCache = useMaintenanceApprovalStore(
+    (s) => s.invalidateMaintenanceApprovalCache,
+  );
+
+  const data = useMemo(
+    () => formatMaintenanceApprovalRows(approvals, t),
+    [approvals, t],
+  );
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -42,57 +56,24 @@ const MaintenanceApprovalDetail = () => {
   ]);
 
   useEffect(() => {
-    fetchMaintenanceApprovals();
-  }, []);
-
-  const fetchMaintenanceApprovals = async () => {
-    setIsLoading(true);
-    try {
-      const res = await API.get("/approval-detail/maintenance-approvals");
-      const maintenanceArray = Array.isArray(res.data) ? res.data : res.data.data || [];
-      const formattedData = maintenanceArray.map(item => {
-        const formatDate = (dateString) => {
-          if (!dateString) return '';
-          try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) return ''; // Invalid date
-            // If it's a date-only string (length 10 like '2023-10-01'), keep it as a date
-            if (dateString.length <= 10) return date.toLocaleDateString();
-            return date.toLocaleString();
-          } catch (err) {
-            console.error('Error formatting date:', err);
-            return '';
-          }
-        };
-
-        return {
-          ...item,
-          raw_created_on: item.maintenance_created_on,
-          raw_changed_on: item.maintenance_changed_on,
-          scheduled_date: formatDate(item.scheduled_date),
-          actual_date: formatDate(item.actual_date),
-          maintenance_created_on: formatDate(item.maintenance_created_on),
-          maintenance_changed_on: formatDate(item.maintenance_changed_on),
-          days_until_due: item.days_until_due ? `${item.days_until_due} ${t('maintenanceApproval.days')}` : '-',
-          // Add urgency styling for days until due
-          urgency_class: item.days_until_due <= 2 ? 'text-red-600 font-semibold' : 
-                        item.days_until_due <= 5 ? 'text-orange-600 font-semibold' : 
-                        'text-gray-600'
-        };
-      });
-      // Sort by most recent first (descending order by maintenance_created_on or maintenance_changed_on)
-      const sortedData = formattedData.sort((a, b) => {
-        const dateA = new Date(a.raw_changed_on || a.raw_created_on || 0);
-        const dateB = new Date(b.raw_changed_on || b.raw_created_on || 0);
-        return dateB - dateA; // Descending order (newest first)
-      });
-      setData(sortedData);
-    } catch (err) {
+    fetchApprovals({ revalidate: true }).catch((err) => {
       console.error("Failed to fetch maintenance approvals", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCEAPPROVAL_FAILEDTOFETCHMAINTENANCEAPP_7688480B', fallbackText: t('maintenanceApproval.failedToFetchMaintenanceApprovals'), type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCEAPPROVAL_FAILEDTOFETCHMAINTENANCEAPP_7688480B',
+        fallbackText: t('maintenanceApproval.failedToFetchMaintenanceApprovals'),
+        type: 'error',
+      });
+    });
+  }, [fetchApprovals, t]);
+
+  useRevalidateOnFocus(() => {
+    fetchApprovals({ revalidate: true });
+  });
+
+  const refreshList = () => {
+    invalidateMaintenanceApprovalCache();
+    return fetchApprovals({ revalidate: true });
   };
 
   const handleFilterChange = (columnName, value) => {
@@ -154,7 +135,7 @@ const MaintenanceApprovalDetail = () => {
       await API.post("/maintenance-approval/delete", { wfamsh_ids: selectedRows });
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCEAPPROVAL_MAINTENANCERECORDSDELETEDSU_294557A3', fallbackText: t('maintenanceApproval.maintenanceRecordsDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
       setSelectedRows([]);
-      fetchMaintenanceApprovals();
+      refreshList();
       return true;
     } catch (err) {
       console.error("Failed to delete maintenance records", err);
@@ -167,7 +148,7 @@ const MaintenanceApprovalDetail = () => {
     try {
       await API.delete(`/maintenance-approval/${row.wfamsh_id}`);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCEAPPROVAL_MAINTENANCERECORDDELETEDSUC_4EB946D0', fallbackText: t('maintenanceApproval.maintenanceRecordDeletedSuccessfully'), type: 'success' });
-      fetchMaintenanceApprovals();
+      refreshList();
     } catch (err) {
       console.error("Failed to delete maintenance record", err);
       toast.error(err.response?.data?.message || t('maintenanceApproval.failedToDeleteMaintenanceRecord'));
@@ -184,7 +165,7 @@ const MaintenanceApprovalDetail = () => {
     setUpdateModalOpen(false);
     setSelectedAsset(null);
     if (wasUpdated) {
-      fetchMaintenanceApprovals(); // Refresh the list if update was successful
+      refreshList();
     }
   };
 
@@ -286,7 +267,7 @@ const MaintenanceApprovalDetail = () => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
-          if (isLoading) {
+          if (listLoading && sortedData.length === 0) {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length + (showActions ? 1 : 0);
             return (

@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import ChildItemsDropdown from "../components/ChildItemsDropdown";
@@ -16,6 +16,9 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { translateErrorMessage } from "../utils/errorTranslation";
 import { useNavigation } from "../hooks/useNavigation";
 import useColumnAccess from "../hooks/useColumnAccess";
+import { useAssetsStore } from "../store/useAssetsStore";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { prefetchAddAssetFormData } from "../services/addAssetFormData";
 
 const Assets = () => {
   const navigate = useNavigate();
@@ -34,23 +37,44 @@ const Assets = () => {
   const hasCreateAccess = canCreate('ASSETS');
   const hasDeleteAccess = canDelete('ASSETS');
   const accessLevel = getAccessLevel('ASSETS');
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [filterValues, setFilterValues] = useState({
-    columnFilters: [],
-    fromDate: "",
-    toDate: ""
+  const PAGE_SIZE = 50;
+
+  const currentPage = useAssetsStore((s) => s.currentPage);
+  const filterValues = useAssetsStore((s) => s.filterValues);
+  const setCurrentPage = useAssetsStore((s) => s.setCurrentPage);
+  const setFilterValues = useAssetsStore((s) => s.setFilterValues);
+  const fetchAssetsList = useAssetsStore((s) => s.fetchAssetsList);
+  const fetchAssetTypes = useAssetsStore((s) => s.fetchAssetTypes);
+  const getCachedAssetsList = useAssetsStore((s) => s.getCachedAssetsList);
+  const getCachedAssetTypes = useAssetsStore((s) => s.getCachedAssetTypes);
+  const invalidateAssetsCache = useAssetsStore((s) => s.invalidateAssetsCache);
+
+  const hasActiveFilters = useCallback((filters) => (
+    (filters.columnFilters && filters.columnFilters.length > 0) ||
+    Boolean(filters.fromDate) ||
+    Boolean(filters.toDate)
+  ), []);
+
+  const loadAll = hasActiveFilters(filterValues);
+  const cachedList = getCachedAssetsList(currentPage, PAGE_SIZE, loadAll);
+
+  const [data, setData] = useState(() => cachedList?.rows || []);
+  const [isLoading, setIsLoading] = useState(!cachedList);
+  const [totalPages, setTotalPages] = useState(() => cachedList?.pagination?.total_pages || 1);
+  const [totalCount, setTotalCount] = useState(() => {
+    if (cachedList?.pagination) return cachedList.pagination.total_count;
+    return cachedList?.rows?.length || 0;
   });
+  const [isFullListMode, setIsFullListMode] = useState(loadAll);
+  const [assetTypes, setAssetTypes] = useState(() => getCachedAssetTypes() || []);
+  // Delete modal state removed - delete happens immediately
+
   const [selectedRows, setSelectedRows] = useState([]);
   const [sortConfig, setSortConfig] = useState({
     sorts: []
   });
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
-  const [assetTypes, setAssetTypes] = useState([]);
-  // Delete modal state removed - delete happens immediately
-
-  // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
 
   // Create columns with translations and apply column access
@@ -95,9 +119,95 @@ const Assets = () => {
     };
   }); // Keep all columns but set visible=false for NONE access - ContentBox will handle hiding them
 
-  useEffect(() => {
-    fetchAssets();
+  const applyListResult = useCallback((result, fullList) => {
+    setData(result.rows || []);
+    if (result.pagination) {
+      setIsFullListMode(false);
+      setTotalPages(result.pagination.total_pages);
+      setTotalCount(result.pagination.total_count);
+    } else {
+      setIsFullListMode(Boolean(fullList));
+      setTotalPages(1);
+      setTotalCount(result.rows?.length || 0);
+    }
   }, []);
+
+  const loadAssets = useCallback(async (page, fullList, { force = false, revalidate = !force } = {}) => {
+    const cached = !force ? getCachedAssetsList(page, PAGE_SIZE, fullList) : null;
+
+    if (cached && revalidate && !force) {
+      applyListResult(cached, fullList);
+      setIsLoading(false);
+      try {
+        await fetchAssetsList({
+          page,
+          limit: PAGE_SIZE,
+          loadAll: fullList,
+          revalidate: true,
+          onFresh: (result) => applyListResult(result, fullList),
+        });
+      } catch (err) {
+        console.error('Background asset refresh failed', err);
+      }
+      return;
+    }
+
+    if (cached && !force) {
+      applyListResult(cached, fullList);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await fetchAssetsList({
+        page,
+        limit: PAGE_SIZE,
+        loadAll: fullList,
+        force,
+      });
+      applyListResult(result, fullList);
+    } catch (err) {
+      console.error('Failed to fetch assets', err);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETS_59117016',
+        fallbackText: t('assets.failedToFetchAssets'),
+        type: 'error',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [PAGE_SIZE, applyListResult, fetchAssetsList, getCachedAssetsList, t]);
+
+  const refreshAssets = useCallback(() => {
+    invalidateAssetsCache();
+    return loadAssets(currentPage, loadAll, { force: true });
+  }, [currentPage, invalidateAssetsCache, loadAll, loadAssets]);
+
+  useEffect(() => {
+    if (loadAll && currentPage !== 1) {
+      setCurrentPage(1);
+      return;
+    }
+    loadAssets(currentPage, loadAll);
+  }, [currentPage, filterValues, loadAll, loadAssets, setCurrentPage]);
+
+  useEffect(() => {
+    fetchAssetTypes({
+      revalidate: true,
+      onFresh: setAssetTypes,
+    }).then(setAssetTypes).catch(() => setAssetTypes([]));
+  }, [fetchAssetTypes]);
+
+  useEffect(() => {
+    prefetchAddAssetFormData();
+  }, []);
+
+  useRevalidateOnFocus(() => {
+    loadAssets(currentPage, loadAll, { revalidate: true });
+    fetchAssetTypes({ revalidate: true, onFresh: setAssetTypes }).catch(() => {});
+  });
 
   useEffect(() => {
     const editAssetId = searchParams.get("editAssetId");
@@ -114,18 +224,6 @@ const Assets = () => {
     setUpdateModalOpen(true);
   }, [searchParams, data, updateModalOpen]);
 
-  useEffect(() => {
-    const fetchAssetTypes = async () => {
-      try {
-        const res = await API.get("/asset-types");
-        setAssetTypes(Array.isArray(res.data) ? res.data : res.data?.rows || []);
-      } catch {
-        setAssetTypes([]);
-      }
-    };
-    fetchAssetTypes();
-  }, []);
-
   // Prevent access to /assets/add for read-only users
   useEffect(() => {
     if (location.pathname === '/assets/add' && !hasCreateAccess) {
@@ -133,45 +231,6 @@ const Assets = () => {
       navigate('/assets');
     }
   }, [location.pathname, hasCreateAccess, navigate, t]);
-
-  const fetchAssets = async () => {
-    setIsLoading(true);
-    try {
-      const res = await API.get("/assets");
-      // Format the data
-      const assetsArray = Array.isArray(res.data) ? res.data : res.data.rows || [];
-      const formattedData = assetsArray.map(item => {
-        const formatDate = (dateString) => {
-          if (!dateString) return '';
-          try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) return ''; // Invalid date
-            return date.toLocaleDateString();
-          } catch (err) {
-            console.error('Error formatting date:', err);
-            return '';
-          }
-        };
-
-        return {
-          ...item,
-          purchased_on: formatDate(item.purchased_on),
-          expiry_date: formatDate(item.expiry_date),
-          warranty_period: formatDate(item.warranty_period),
-          created_on: formatDate(item.created_on),
-          changed_on: formatDate(item.changed_on),
-          purchased_cost: item.purchased_cost ? `₹${item.purchased_cost.toLocaleString()}` : ''
-        };
-      });
-      setData(formattedData);
-      
-    } catch (err) {
-      console.error("Failed to fetch assets", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETS_59117016', fallbackText: t('assets.failedToFetchAssets'), type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleFilterChange = async (columnName, value) => {
     // Handle columnFilters array from ContentBox
@@ -246,7 +305,7 @@ const Assets = () => {
       });
       
       setSelectedRows([]);
-      fetchAssets();
+      refreshAssets();
       return true;
     } catch (err) {
       console.error("Failed to delete assets", err);
@@ -281,7 +340,7 @@ const Assets = () => {
       // Log delete action
       await recordActionByNameWithFetch('Delete', { assetId: row.asset_id });
       
-      fetchAssets();
+      refreshAssets();
     } catch (err) {
       console.error("Failed to delete asset", err);
       if (err.response?.data?.code === '23503') {
@@ -315,7 +374,7 @@ const Assets = () => {
         
         setShowDeleteModal(false);
         setSelectedAsset(null);
-        fetchAssets();
+        refreshAssets();
       } catch (err) {
         console.error("Failed to delete asset", err);
         if (err.response?.data?.code === '23503') {
@@ -360,8 +419,13 @@ const Assets = () => {
       setSearchParams(next, { replace: true });
     }
     if (wasUpdated) {
-      fetchAssets(); // Refresh the list if update was successful
+      refreshAssets();
     }
+  };
+
+  const handlePageChange = (nextPage) => {
+    if (nextPage < 1 || nextPage > totalPages || isFullListMode) return;
+    setCurrentPage(nextPage);
   };
 
   const handleDownload = async () => {
@@ -443,6 +507,7 @@ const Assets = () => {
           </div>
         </div>
       ) : (
+      <>
       <ContentBox
         filters={filters}
         onFilterChange={handleFilterChange}
@@ -454,12 +519,11 @@ const Assets = () => {
             navigate('/group-asset');
           }
         }}
-        onAdd={hasCreateAccess ? async () => {
-          // Log Create event when plus icon is clicked
-          await recordActionByNameWithFetch('Create', { 
-            action: t('assets.addAssetFormOpened')
+        onAdd={hasCreateAccess ? () => {
+          navigate('/assets/add');
+          recordActionByNameWithFetch('Create', {
+            action: t('assets.addAssetFormOpened'),
           });
-          navigate("/assets/add");
         } : undefined}
         onDeleteSelected={hasDeleteAccess ? handleDeleteSelected : undefined}
         onDownload={handleDownload}
@@ -587,6 +651,35 @@ const Assets = () => {
           );
         }}
       </ContentBox>
+      {!isFullListMode && totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
+          <p className="text-sm text-gray-600">
+            {t('common.showing')} {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)} {t('common.of')} {totalCount}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1 || isLoading}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded disabled:opacity-50"
+            >
+              {t('common.previous')}
+            </button>
+            <span className="text-sm text-gray-700">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages || isLoading}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded disabled:opacity-50"
+            >
+              {t('common.next')}
+            </button>
+          </div>
+        </div>
+      )}
+      </>
       )}
     </div>
   );

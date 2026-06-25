@@ -5,17 +5,23 @@ import { CheckCircle, XCircle, Ban, Filter, Plus, Minus, Trash2 } from "lucide-r
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useTechCertApprovalsStore } from "../store/useTechCertApprovalsStore";
+import { invalidateCache } from "../utils/apiCache";
 
 const TechCertApprovals = () => {
   const { t } = useLanguage();
+  const certificates = useTechCertApprovalsStore((s) => s.approvals);
+  const employeeList = useTechCertApprovalsStore((s) => s.technicians);
+  const certMasterList = useTechCertApprovalsStore((s) => s.certMasterList);
+  const upcomingJobs = useTechCertApprovalsStore((s) => s.upcomingJobs);
+  const listLoading = useTechCertApprovalsStore((s) => s.listLoading);
+  const loadPageData = useTechCertApprovalsStore((s) => s.loadPageData);
+  const fetchApprovalsStore = useTechCertApprovalsStore((s) => s.fetchApprovals);
+  const loading = listLoading && certificates.length === 0;
   const [activeTab, setActiveTab] = useState("approvals");
-  const [certificates, setCertificates] = useState([]);
-  const [employeeList, setEmployeeList] = useState([]);
-  const [certMasterList, setCertMasterList] = useState([]);
   const [maintenanceHistory, setMaintenanceHistory] = useState([]);
-  const [upcomingJobs, setUpcomingJobs] = useState([]);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState("");
-  const [loading, setLoading] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isBlocking, setIsBlocking] = useState(false);
   const [loadingTechnicians, setLoadingTechnicians] = useState(false);
@@ -28,28 +34,19 @@ const TechCertApprovals = () => {
   const [selectedRows, setSelectedRows] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchApprovals = async () => {
-    setLoading(true);
+  const fetchApprovals = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/employee-tech-certificates/approvals", {
-        params: { status: "Approval Pending" }
-      });
-      const data = response.data?.data || [];
-      setCertificates(data);
+      await fetchApprovalsStore({ revalidate: true, force });
     } catch (error) {
       console.error("Failed to fetch approvals:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOLOADAPPROVALS_59166FE2', fallbackText: t("techCertApprovals.failedToLoadApprovals"), type: 'error' });
-    } finally {
-      setLoading(false);
     }
   };
 
   const fetchTechnicians = async () => {
     setLoadingTechnicians(true);
     try {
-      const response = await API.get("/employees/with-roles");
-      const data = response.data || [];
-      setEmployeeList(data);
+      await useTechCertApprovalsStore.getState().fetchTechnicians({ revalidate: true });
     } catch (error) {
       console.error("Failed to fetch technicians:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOLOADTECHNICIANS_3F57659D', fallbackText: t("techCertApprovals.failedToLoadTechnicians"), type: 'error' });
@@ -61,9 +58,7 @@ const TechCertApprovals = () => {
   const fetchCertificateMaster = async () => {
     setLoadingCerts(true);
     try {
-      const response = await API.get("/tech-certificates");
-      const data = response.data?.data || [];
-      setCertMasterList(data);
+      await useTechCertApprovalsStore.getState().fetchCertificateMaster({ revalidate: true });
     } catch (error) {
       console.error("Failed to fetch certificates:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOLOADCERTIFICATELIST_00CC0DE3', fallbackText: t("techCertApprovals.failedToLoadCertificateList"), type: 'error' });
@@ -102,9 +97,7 @@ const TechCertApprovals = () => {
   const fetchUpcomingJobs = async () => {
     setLoadingUpcoming(true);
     try {
-      const response = await API.get("/work-orders/all");
-      const data = response.data?.data || [];
-      setUpcomingJobs(data);
+      await useTechCertApprovalsStore.getState().fetchUpcomingJobs({ revalidate: true });
     } catch (error) {
       console.error("Failed to fetch upcoming jobs:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOLOADUPCOMINGJOBS_2E48D4BC', fallbackText: t("techCertApprovals.failedToLoadUpcomingJobs"), type: 'error' });
@@ -114,11 +107,13 @@ const TechCertApprovals = () => {
   };
 
   useEffect(() => {
-    fetchApprovals();
-    fetchTechnicians();
-    fetchCertificateMaster();
-    fetchUpcomingJobs();
+    loadPageData({ revalidate: true }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchApprovalsStore({ revalidate: true });
+  });
 
   useEffect(() => {
     if (activeTab === "jobHistory" && selectedTechnicianId) {
@@ -135,7 +130,9 @@ const TechCertApprovals = () => {
         status: "Approved"
       });
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_CERTIFICATEAPPROVEDSUCCESSFUL_628A343F', fallbackText: t("techCertApprovals.certificateApprovedSuccessfully"), type: 'success' });
-      await fetchApprovals();
+      invalidateCache('tech-cert-approvals:');
+      invalidateCache('technician-certs:');
+      await fetchApprovals({ force: true });
     } catch (error) {
       console.error("Failed to approve certificate:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOAPPROVECERTIFICATE_1A2F8E53', fallbackText: error.response?.data?.message || t("techCertApprovals.failedToApproveCertificate"), type: 'error' });
@@ -151,7 +148,9 @@ const TechCertApprovals = () => {
         status: "Rejected"
       });
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_CERTIFICATEREJECTEDSUCCESSFUL_2E4A0708', fallbackText: t("techCertApprovals.certificateRejectedSuccessfully"), type: 'success' });
-      await fetchApprovals();
+      invalidateCache('tech-cert-approvals:');
+      invalidateCache('technician-certs:');
+      await fetchApprovals({ force: true });
     } catch (error) {
       console.error("Failed to reject certificate:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOREJECTCERTIFICATE_18E3E6D5', fallbackText: error.response?.data?.message || t("techCertApprovals.failedToRejectCertificate"), type: 'error' });
@@ -174,7 +173,9 @@ const TechCertApprovals = () => {
       await Promise.all(selectedRows.map((id) => API.delete(`/employee-tech-certificates/${id}`)));
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_CERTIFICATESDELETEDSUCCESSFUL_57E08D70', fallbackText: t("techCertApprovals.certificatesDeletedSuccessfully", { count: selectedRows.length }), type: 'success' });
       setSelectedRows([]);
-      await fetchApprovals();
+      invalidateCache('tech-cert-approvals:');
+      invalidateCache('technician-certs:');
+      await fetchApprovals({ force: true });
     } catch (error) {
       console.error("Failed to delete selected certificates:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTODELETESOME_45FF5E15', fallbackText: t("techCertApprovals.failedToDeleteSome"), type: 'error' });

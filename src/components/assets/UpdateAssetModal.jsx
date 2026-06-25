@@ -12,6 +12,7 @@ import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
+import { useAssetsStore } from '../../store/useAssetsStore';
 import { useNavigation } from '../../hooks/useNavigation';
 import useColumnAccess from '../../hooks/useColumnAccess';
 
@@ -129,22 +130,9 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     return parsed < today;
   })();
 
-  // Fetch full asset data with properties
   const fetchAssetWithProperties = async (assetId) => {
     try {
-      const response = await API.get(`/assets/${assetId}`);
-      const payload = response?.data;
-      if (!payload) return null;
-
-      // Support both direct asset object and wrapped API shapes.
-      if (Array.isArray(payload)) {
-        return payload[0] || null;
-      }
-      if (payload.data) {
-        if (Array.isArray(payload.data)) return payload.data[0] || null;
-        return payload.data;
-      }
-      return payload;
+      return await useAssetsStore.getState().fetchAssetById(assetId);
     } catch (error) {
       console.error('Error fetching asset with properties:', error);
     }
@@ -261,12 +249,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
     const fetchExistingAssets = async () => {
       try {
-        const res = await API.get('/assets');
-        const rows = Array.isArray(res.data?.rows)
-          ? res.data.rows
-          : Array.isArray(res.data)
-            ? res.data
-            : [];
+        const rows = await useAssetsStore.getState().fetchExistingAssets();
         setExistingAssets(rows);
       } catch (err) {
         console.error('Error fetching assets for name validation:', err);
@@ -732,6 +715,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
       // Use the asset_id from the passed assetData prop
       await API.put(`/assets/${assetData.asset_id}`, updateData);
+      useAssetsStore.getState().invalidateAssetsCache();
       
       // Log asset update action
       await recordActionByNameWithFetch('Update', { 

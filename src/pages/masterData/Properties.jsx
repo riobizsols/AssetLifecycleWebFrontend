@@ -4,11 +4,15 @@ import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Plus, Edit2, Trash2, X, Save, ChevronDown, ChevronUp, Filter, Search } from 'lucide-react';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { usePropertiesStore } from '../../store/usePropertiesStore';
+import { invalidateCache } from '../../utils/apiCache';
 
 const Properties = () => {
   const { t } = useLanguage();
-  const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const properties = usePropertiesStore((s) => s.properties);
+  const listLoading = usePropertiesStore((s) => s.listLoading);
+  const fetchPropertiesStore = usePropertiesStore((s) => s.fetchProperties);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [expandedProperties, setExpandedProperties] = useState(new Set());
   
@@ -43,25 +47,23 @@ const Properties = () => {
     };
   }, [showFilters]);
 
-  // Fetch all properties with their list values
-  const fetchProperties = async () => {
-    setLoading(true);
+  const fetchProperties = async ({ force = false } = {}) => {
     try {
-      const res = await API.get('/properties/with-values');
-      if (res.data && res.data.success) {
-        setProperties(res.data.data || []);
-      }
+      await fetchPropertiesStore({ revalidate: true, force });
     } catch (error) {
       console.error('Error fetching properties:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_PROPERTIES_2421D91B', fallbackText: 'Failed to fetch properties', type: 'error' });
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchProperties();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchPropertiesStore({ revalidate: true });
+  });
 
   // Toggle property expansion
   const togglePropertyExpansion = (propId) => {
@@ -123,7 +125,8 @@ const Properties = () => {
         setPropertyName('');
         setListValues(['']);
         setShowCreateForm(false);
-        fetchProperties();
+        invalidateCache('properties:');
+        fetchProperties({ force: true });
       }
     } catch (error) {
       console.error('Error creating property:', error);
@@ -167,7 +170,8 @@ const Properties = () => {
 
       showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_UPDATED_SUCCESSFULLY_48F2170A', fallbackText: 'Property name updated successfully', type: 'success' });
       handleCancelEdit();
-      fetchProperties();
+      invalidateCache('properties:');
+      fetchProperties({ force: true });
     } catch (error) {
       console.error('Error updating property:', error);
       
@@ -191,7 +195,8 @@ const Properties = () => {
     try {
       await API.delete(`/properties/${propId}`);
       showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_DELETED_SUCCESSFULLY_1BF88C67', fallbackText: 'Property deleted successfully', type: 'success' });
-      fetchProperties();
+      invalidateCache('properties:');
+      fetchProperties({ force: true });
     } catch (error) {
       console.error('Error deleting property:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_PROPERTY_57B769A4', fallbackText: 'Failed to delete property', type: 'error' });
@@ -211,7 +216,8 @@ const Properties = () => {
         value: value.trim()
       });
       showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_ADDED_SUCCESSFULLY_78135CF8', fallbackText: 'List value added successfully', type: 'success' });
-      fetchProperties();
+      invalidateCache('properties:');
+      fetchProperties({ force: true });
     } catch (error) {
       console.error('Error adding list value:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_ADD_LIST_VALUE_00EA07EC', fallbackText: 'Failed to add list value', type: 'error' });
@@ -227,7 +233,8 @@ const Properties = () => {
     try {
       await API.delete(`/properties/list-values/${aplvId}`);
       showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_DELETED_SUCCESSFULLY_118BD63F', fallbackText: 'List value deleted successfully', type: 'success' });
-      fetchProperties();
+      invalidateCache('properties:');
+      fetchProperties({ force: true });
     } catch (error) {
       console.error('Error deleting list value:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_LIST_VALUE_6971E732', fallbackText: 'Failed to delete list value', type: 'error' });
@@ -452,7 +459,7 @@ const Properties = () => {
 
         {/* Properties List */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-          {loading ? (
+          {listLoading && properties.length === 0 ? (
             <div className="text-center py-20">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E2F4B]"></div>
               <p className="mt-4 text-gray-500">Loading properties...</p>

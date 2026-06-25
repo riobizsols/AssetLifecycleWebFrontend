@@ -4,82 +4,55 @@ import {
   RefreshCw,
   Search,
   AlertCircle,
-  ArrowLeft,
   Edit,
   Save,
   X
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import API from '../lib/axios';
-import { useNavigate } from 'react-router-dom';
 import { useNavigation } from '../hooks/useNavigation';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useRevalidateOnFocus } from '../hooks/useRevalidateOnFocus';
+import { useAuditLogConfigStore } from '../store/useAuditLogConfigStore';
+import { invalidateCache } from '../utils/apiCache';
 
 const AuditLogConfig = () => {
-  const navigate = useNavigate();
   const { t } = useLanguage();
   
-  // Access control
+  const configs = useAuditLogConfigStore((s) => s.configs);
+  const eventNames = useAuditLogConfigStore((s) => s.eventNames);
+  const appNames = useAuditLogConfigStore((s) => s.appNames);
+  const listLoading = useAuditLogConfigStore((s) => s.listLoading);
+  const fetchConfigs = useAuditLogConfigStore((s) => s.fetchConfigs);
+  const patchConfig = useAuditLogConfigStore((s) => s.patchConfig);
+
   const { getAccessLevel } = useNavigation();
   const accessLevel = getAccessLevel('AUDITLOGCONFIG');
   const isReadOnly = accessLevel === 'D';
-  const [configs, setConfigs] = useState([]);
   const [filteredConfigs, setFilteredConfigs] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterApp, setFilterApp] = useState('');
-  const [eventNames, setEventNames] = useState({});
-  const [appNames, setAppNames] = useState({});
   const [editingEmail, setEditingEmail] = useState(null);
   const [emailValue, setEmailValue] = useState('');
 
-
-  // Fetch audit log configurations
-  const fetchConfigs = async () => {
-    setIsLoading(true);
+  const loadConfigs = async ({ force = false } = {}) => {
     try {
-      // Fetch configs, event names, and app names in parallel
-      const [configsResponse, eventNamesResponse, appNamesResponse] = await Promise.all([
-        API.get('/audit-log-configs'),
-        API.get('/app-events/events'),
-        API.get('/app-events/apps')
-      ]);
-      
-      if (configsResponse.data && configsResponse.data.success) {
-        setConfigs(configsResponse.data.data);
-        setFilteredConfigs(configsResponse.data.data);
-      }
-      
-      if (eventNamesResponse.data && eventNamesResponse.data.success && eventNamesResponse.data.data.events) {
-        const eventNameMap = {};
-        eventNamesResponse.data.data.events.forEach(event => {
-          eventNameMap[event.event_id] = event.text;
-        });
-        console.log('📊 Event names fetched from tblEvents:', eventNameMap);
-        setEventNames(eventNameMap);
-      }
-      
-      if (appNamesResponse.data && appNamesResponse.data.success && appNamesResponse.data.data.apps) {
-        const appNameMap = {};
-        appNamesResponse.data.data.apps.forEach(app => {
-          appNameMap[app.app_id] = app.app_name;
-        });
-        console.log('📊 App names fetched from tblApps:', appNameMap);
-        setAppNames(appNameMap);
-      }
+      await fetchConfigs({ revalidate: true, force });
     } catch (error) {
       console.error('Error fetching audit log configs:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_FAILEDTOLOADCONFIGURATIONS_47CF91E2', fallbackText: t('auditLogConfig.failedToLoadConfigurations'), type: 'error' });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-
   useEffect(() => {
-    fetchConfigs();
+    loadConfigs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchConfigs({ revalidate: true });
+  });
 
   // Apply filters
   useEffect(() => {
@@ -111,11 +84,8 @@ const AuditLogConfig = () => {
       });
       
       if (response.data && response.data.success) {
-        setConfigs(prev => prev.map(config => 
-          config.alc_id === alcId 
-            ? { ...config, reporting_required: !currentValue }
-            : config
-        ));
+        patchConfig(alcId, { reporting_required: !currentValue });
+        invalidateCache('audit-log-config:');
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_REPORTINGREQUIREMENTUPDATED_0AF2833F', fallbackText: 'Reporting requirement updated successfully', type: 'success' });
       }
     } catch (error) {
@@ -135,11 +105,8 @@ const AuditLogConfig = () => {
       });
       
       if (response.data && response.data.success) {
-        setConfigs(prev => prev.map(config => 
-          config.alc_id === alcId 
-            ? { ...config, enabled: !currentValue }
-            : config
-        ));
+        patchConfig(alcId, { enabled: !currentValue });
+        invalidateCache('audit-log-config:');
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_STATUSUPDATED_0F5F61A2', fallbackText: 'Status updated successfully', type: 'success' });
       }
     } catch (error) {
@@ -183,11 +150,8 @@ const AuditLogConfig = () => {
       });
       
       if (response.data && response.data.success) {
-        setConfigs(prev => prev.map(config => 
-          config.alc_id === alcId 
-            ? { ...config, reporting_email: emailValue.trim() }
-            : config
-        ));
+        patchConfig(alcId, { reporting_email: emailValue.trim() });
+        invalidateCache('audit-log-config:');
         setEditingEmail(null);
         setEmailValue('');
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGCONFIG_EMAILUPDATED_3D4AED26', fallbackText: 'Email updated successfully', type: 'success' });
@@ -214,23 +178,11 @@ const AuditLogConfig = () => {
   // Get unique apps for filter
   const uniqueApps = [...new Set(configs.map(config => config.app_id))].sort();
 
-  // Get app display name
-  const getAppDisplayName = (appId) => {
-    const appName = appNames[appId] || appId;
-    if (!appNames[appId]) {
-      console.warn(`App name not found for ID: ${appId}`);
-    }
-    return appName;
-  };
+  const getAppDisplayName = (appId) => appNames[appId] || appId;
 
-  // Get event display name
-  const getEventDisplayName = (eventId) => {
-    const eventName = eventNames[eventId] || eventId;
-    if (!eventNames[eventId]) {
-      console.warn(`Event name not found for ID: ${eventId}`);
-    }
-    return eventName;
-  };
+  const getEventDisplayName = (eventId) => eventNames[eventId] || eventId;
+
+  const isLoading = listLoading && configs.length === 0;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -263,7 +215,7 @@ const AuditLogConfig = () => {
             ))}
           </select>
           <button
-            onClick={fetchConfigs}
+            onClick={() => loadConfigs({ force: true })}
             disabled={isLoading}
             className="flex items-center gap-2 px-4 py-2 bg-[#0E2F4B] text-white rounded-lg hover:bg-[#143d65] transition-colors disabled:opacity-50"
           >

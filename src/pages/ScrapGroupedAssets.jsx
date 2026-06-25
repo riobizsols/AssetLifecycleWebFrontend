@@ -4,6 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Search, X } from 'lucide-react';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
+import { useScrapApprovalStore } from '../store/useScrapApprovalStore';
+import { useScrapAssetsStore } from '../store/useScrapAssetsStore';
 
 const ScrapGroupedAssets = () => {
   const navigate = useNavigate();
@@ -125,6 +127,10 @@ const ScrapGroupedAssets = () => {
         });
 
         if (res.data?.success) {
+          if (res.data?.workflowCreated) {
+            useScrapApprovalStore.getState().invalidateScrapApprovalCache();
+            useScrapAssetsStore.getState().invalidateSummary();
+          }
           toast.success(res.data?.workflowCreated ? `Sent for approval (${res.data.wfscrap_h_id})` : 'Scrap created');
           setModalOpen(false);
           if (res.data?.workflowCreated) {
@@ -144,6 +150,10 @@ const ScrapGroupedAssets = () => {
         });
 
         if (res.data?.success) {
+          if (res.data?.workflowCreated) {
+            useScrapApprovalStore.getState().invalidateScrapApprovalCache();
+            useScrapAssetsStore.getState().invalidateSummary();
+          }
           toast.success(res.data?.workflowCreated ? `Sent for approval (${res.data.wfscrap_h_id})` : 'Scrap created');
           setModalOpen(false);
           setSelectedAssetIds([]);

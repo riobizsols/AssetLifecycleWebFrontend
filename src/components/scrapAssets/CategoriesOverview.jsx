@@ -6,6 +6,8 @@ import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, BarChart3, AlertTriangle, Clock, Calendar } from 'lucide-react';
 import ContentBox from '../ContentBox';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { useScrapAssetsStore } from '../../store/useScrapAssetsStore';
 
 const CategoriesOverview = () => {
   const navigate = useNavigate();
@@ -16,24 +18,17 @@ const CategoriesOverview = () => {
   // Fetch assets expiring within 30 days by type from API
   const fetchExpiringByCategory = async () => {
     try {
-      console.log('🔍 Fetching assets expiring by category...');
-      const response = await API.get('/assets/expiring-30-days-by-type');
-      console.log('📊 Expiring by Category API Response:', response.data);
-      
-      if (response.data && response.data.asset_types) {
-        console.log('✅ Expiring by category data:', response.data.asset_types);
-        return response.data.asset_types.map(type => ({
+      const types = await useScrapAssetsStore.getState().fetchExpiringByCategory({ revalidate: true });
+      if (types?.length) {
+        return types.map((type) => ({
           asset_type_id: type.asset_type_id,
           asset_type_name: type.asset_type_name,
-          asset_count: parseInt(type.asset_count),
+          asset_count: parseInt(type.asset_count, 10),
           total_assets: type.assets ? type.assets.length : 0,
-          earliest_expiry: type.assets && type.assets.length > 0 ? 
-            type.assets[0].expiry_date : null,
-          latest_expiry: type.assets && type.assets.length > 0 ? 
-            type.assets[type.assets.length - 1].expiry_date : null
+          earliest_expiry: type.assets?.length ? type.assets[0].expiry_date : null,
+          latest_expiry: type.assets?.length ? type.assets[type.assets.length - 1].expiry_date : null,
         }));
       }
-      console.log('⚠️ Expiring by category API response format unexpected:', response.data);
       return [];
     } catch (error) {
       console.error('❌ Error fetching expiring by category:', error);

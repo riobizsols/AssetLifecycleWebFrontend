@@ -2123,6 +2123,9 @@
     "maintenanceType": "Maintenance Type",
     "vendor": "Vendor",
     "scheduleDate": "Schedule Date",
+    "scheduledDate": "Scheduled Date",
+    "actualHours": "Actual Hours",
+    "variance": "Variance",
     "status": "Status",
     "daysUntilDue": "Days Until Due",
     "createdOn": "Created On",
@@ -3033,7 +3036,11 @@
     "preview": "Preview",
     "department": "Department",
     "depreciationMethod": "Depreciation Method",
-    "pleaseSelectItemsToDelete": "Please select items to delete"
+    "pleaseSelectItemsToDelete": "Please select items to delete",
+    "showing": "Showing",
+    "of": "of",
+    "previous": "Previous",
+    "next": "Next"
   },
   "auth": {
     "login": "Login",

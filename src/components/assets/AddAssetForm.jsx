@@ -15,6 +15,14 @@ import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
+import { useAssetsStore } from '../../store/useAssetsStore';
+import {
+  getCachedAddFormData,
+  loadDocumentTypes,
+  loadProdServs,
+  loadVendorsByType,
+} from '../../services/addAssetFormData';
+import { invalidateCache } from '../../utils/apiCache';
 
 const initialForm = {
   assetType: '',
@@ -100,29 +108,52 @@ const AddAssetForm = ({ userRole }) => {
     vendorRequired: false
   });
   const [isVendorMaintainedType, setIsVendorMaintainedType] = useState(false);
-  const [existingAssets, setExistingAssets] = useState([]);
+  const [existingAssets, setExistingAssets] = useState(
+    () => getCachedAddFormData().existingAssets || [],
+  );
+
+  const applyProdServData = (data) => {
+    if (!Array.isArray(data) || data.length === 0) return;
+    const uniqueBrands = [...new Set(data.map((item) => item.brand).filter(Boolean))];
+    setVendorBrandOptions([
+      { value: '', label: 'Select' },
+      ...uniqueBrands.map((brand) => ({ value: brand, label: brand })),
+    ]);
+    setAllProdServData(data);
+    const uniqueModels = [...new Set(data.map((item) => item.model).filter(Boolean))];
+    setVendorModelOptions([
+      { value: '', label: 'Select' },
+      ...uniqueModels.map((model) => ({ value: model, label: model })),
+    ]);
+  };
+
+  const toVendorOptions = (data) => [
+    { value: '', label: 'Select' },
+    ...(Array.isArray(data) ? data : [])
+      .filter((v) => v && (v.int_status === 1 || v.int_status == null))
+      .map((vendor) => ({
+        value: vendor.vendor_id,
+        label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`,
+      })),
+  ];
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
 
   useEffect(() => {
-    const fetchExistingAssets = async () => {
-      try {
-        const res = await API.get('/assets');
-        const rows = Array.isArray(res.data?.rows)
-          ? res.data.rows
-          : Array.isArray(res.data)
-            ? res.data
-            : [];
-        setExistingAssets(rows);
-      } catch (err) {
-        console.error('Error fetching assets for name validation:', err);
-        setExistingAssets([]);
-      }
-    };
-
-    fetchExistingAssets();
+    useAssetsStore.getState().fetchExistingAssets({
+      revalidate: true,
+      onFresh: setExistingAssets,
+    }).then(setExistingAssets).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!users?.length) return;
+    setPurchaseByOptions([
+      { value: '', label: 'Select' },
+      ...users.map((u) => ({ value: u.user_id, label: u.full_name })),
+    ]);
+  }, [users]);
   const [propertiesMap, setPropertiesMap] = useState({});
   const [dynamicProperties, setDynamicProperties] = useState([]);
   const [assetTypePropsMap, setAssetTypePropsMap] = useState({});
@@ -293,14 +324,36 @@ const AddAssetForm = ({ userRole }) => {
   }, []);
 
   useEffect(() => {
-    console.log('Component mounted, fetching asset types...');
-    fetchAssetTypes?.();
-    fetchUsers();
-    fetchProdServs();
-    fetchVendors();
-    fetchDocumentTypes();
-    
-    // Check if returning from product service screen
+    const cached = getCachedAddFormData();
+    if (cached.prodserv) applyProdServData(cached.prodserv);
+    if (cached.vendorsProduct) setPurchaseSupplyOptions(toVendorOptions(cached.vendorsProduct));
+    if (cached.vendorsService) setServiceSupplyOptions(toVendorOptions(cached.vendorsService));
+    if (cached.docTypes) setDocumentTypes(cached.docTypes);
+
+    if (!assetTypes?.length) {
+      fetchAssetTypes?.();
+    }
+
+    loadProdServs({
+      revalidate: true,
+      onFresh: applyProdServData,
+    }).then(applyProdServData).catch(() => {});
+
+    loadVendorsByType('product', {
+      revalidate: true,
+      onFresh: (data) => setPurchaseSupplyOptions(toVendorOptions(data)),
+    }).then((data) => setPurchaseSupplyOptions(toVendorOptions(data))).catch(() => {});
+
+    loadVendorsByType('service', {
+      revalidate: true,
+      onFresh: (data) => setServiceSupplyOptions(toVendorOptions(data)),
+    }).then((data) => setServiceSupplyOptions(toVendorOptions(data))).catch(() => {});
+
+    loadDocumentTypes({
+      revalidate: true,
+      onFresh: setDocumentTypes,
+    }).then(setDocumentTypes).catch(() => {});
+
     const savedFormData = sessionStorage.getItem('assetFormData');
     if (savedFormData) {
       try {
@@ -515,126 +568,6 @@ const AddAssetForm = ({ userRole }) => {
     });
     setDropdownStates(prev => ({ ...prev, [name]: false }));
     updateSearch(name, '');
-  };
-
-  const fetchUsers = async () => {
-    try {
-      console.log('Fetching users from API...');
-      const res = await API.get('/users/get-users');
-      console.log('Users response:', res.data);
-
-      // Handle the new API response format with success/data structure
-      const usersData = res.data?.data || res.data || [];
-      if (Array.isArray(usersData)) {
-        // Transform API data to dropdown format
-        const users = [
-          { value: '', label: 'Select' },
-          ...usersData.map(user => ({
-            value: user.user_id,
-            label: user.full_name
-          }))
-        ];
-        setPurchaseByOptions(users);
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      console.log('Using dummy users as fallback');
-      // Keep using dummy data if API fails
-      setPurchaseByOptions([]);
-    }
-  };
-
-  const fetchProdServs = async () => {
-    try {
-      console.log('Fetching product/services from API...');
-      const res = await API.get('/prodserv');
-      console.log('Product/services response:', res.data);
-
-      if (res.data && Array.isArray(res.data)) {
-        // Extract unique brands
-        const uniqueBrands = [...new Set(res.data.map(item => item.brand).filter(Boolean))];
-        const brandOptions = [
-          { value: '', label: 'Select' },
-          ...uniqueBrands.map(brand => ({
-            value: brand,
-            label: brand
-          }))
-        ];
-        setVendorBrandOptions(brandOptions);
-
-        // Store all prodServ data for filtering
-        setAllProdServData(res.data);
-        
-        // Initially show all models (will be filtered when brand is selected)
-        const uniqueModels = [...new Set(res.data.map(item => item.model).filter(Boolean))];
-        const modelOptions = [
-          { value: '', label: 'Select' },
-          ...uniqueModels.map(model => ({
-            value: model,
-            label: model
-          }))
-        ];
-        setVendorModelOptions(modelOptions);
-      }
-    } catch (err) {
-      console.error('Error fetching product/services:', err);
-      console.log('Using dummy brands and models as fallback');
-      // Keep using dummy data if API fails
-      setVendorBrandOptions([]);
-      setVendorModelOptions([]);
-    }
-  };
-
-  const fetchVendors = async () => {
-    try {
-      console.log('Fetching product-based and service-based vendors...');
-      // Product Vendor: only vendors linked to prod_serv with ps_type = 'product'
-      const productRes = await API.get('/get-vendors', { params: { type: 'product' } });
-      // Service Vendor: only vendors linked to prod_serv with ps_type = 'service'
-      const serviceRes = await API.get('/get-vendors', { params: { type: 'service' } });
-
-      const toOptions = (data) => [
-        { value: '', label: 'Select' },
-        ...(Array.isArray(data) ? data : [])
-          .filter(v => v && (v.int_status === 1 || v.int_status == null))
-          .map(vendor => ({
-            value: vendor.vendor_id,
-            label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
-          }))
-      ];
-      setPurchaseSupplyOptions(toOptions(productRes.data || []));
-      setServiceSupplyOptions(toOptions(serviceRes.data || []));
-    } catch (err) {
-      console.error('Error fetching vendors:', err);
-      setPurchaseSupplyOptions([{ value: '', label: 'Select' }]);
-      setServiceSupplyOptions([{ value: '', label: 'Select' }]);
-    }
-  };
-
-  const fetchDocumentTypes = async () => {
-    try {
-      console.log('Fetching document types for assets...');
-      const res = await API.get('/doc-type-objects/object-type/asset');
-      console.log('Document types response:', res.data);
-
-      if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        // Transform API data to dropdown format
-        const docTypes = res.data.data.map(docType => ({
-          id: docType.dto_id,  // Use dto_id instead of doc_type
-          text: docType.doc_type_text,
-          doc_type: docType.doc_type  // Keep doc_type for reference
-        }));
-        setDocumentTypes(docTypes);
-        console.log('Document types loaded:', docTypes);
-      } else {
-        console.log('No document types found, using fallback');
-        setDocumentTypes([]);
-      }
-    } catch (err) {
-      console.error('Error fetching document types:', err);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENT_TYPES_002075AC', fallbackText: 'Failed to load document types', type: 'error' });
-      setDocumentTypes([]);
-    }
   };
 
   // Function to filter models based on selected brand
@@ -1314,6 +1247,8 @@ const AddAssetForm = ({ userRole }) => {
         }
         
         // Navigate to assets list after successful save
+        useAssetsStore.getState().invalidateAssetsCache();
+        invalidateCache('add-form:');
         navigate('/assets');
       } else {
         console.error('No asset ID returned from server:', response.data);

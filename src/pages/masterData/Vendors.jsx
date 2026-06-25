@@ -12,12 +12,18 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { VENDORS_APP_ID } from "../../constants/vendorsAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useVendorsStore } from "../../store/useVendorsStore";
+import { invalidateCache } from "../../utils/apiCache";
 
 const Vendors = () => {
   const navigate = useNavigate();
 
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const vendors = useVendorsStore((s) => s.vendors);
+  const listLoading = useVendorsStore((s) => s.listLoading);
+  const fetchVendorsStore = useVendorsStore((s) => s.fetchVendors);
+  const data = vendors;
+  const isLoading = listLoading && data.length === 0;
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -68,39 +74,21 @@ const Vendors = () => {
   ];
 
   useEffect(() => {
-    const fetchVendors = async () => {
-      setIsLoading(true);
+    const load = async () => {
       try {
-        const response = await API.get("/get-vendors");
-        const formattedData = response.data.map(item => {
-          // Map int_status to display text
-          let statusText = 'Inactive';
-          if (item.int_status === 1) {
-            statusText = 'Active';
-          } else if (item.int_status === 3) {
-            statusText = 'CRApproved';
-          } else if (item.int_status === 4) {
-            statusText = 'Blocked';
-          }
-          
-          return {
-            ...item,
-            int_status: statusText,
-            created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-            changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : ''
-          };
-        });
-        setData(formattedData);
+        await fetchVendorsStore({ revalidate: true });
       } catch (error) {
         console.error("Error fetching vendors:", error);
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOFETCHVENDORS_00D2C278', fallbackText: t('vendors.failedToFetchVendors'), type: 'error' });
-      } finally {
-        setIsLoading(false);
       }
     };
-
-    fetchVendors();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchVendorsStore({ revalidate: true });
+  });
 
   const handleSort = (column) => {
     setSortConfig(prevConfig => {
@@ -192,9 +180,8 @@ const Vendors = () => {
         action: `${selectedRows.length} Vendor(s) Deleted`
       });
 
-      setData((prev) =>
-        prev.filter((vendor) => !selectedRows.includes(vendor.vendor_id))
-      );
+      invalidateCache('vendors:');
+      await fetchVendorsStore({ revalidate: true, force: true });
       setSelectedRows([]);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORSDELETEDSUCCESSFULLY_58F50B4C', fallbackText: t('vendors.vendorsDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
       return true; // Return true to indicate successful deletion
@@ -261,29 +248,8 @@ const Vendors = () => {
         action: 'Vendor Updated'
       });
 
-      // Update the data state with the updated vendor
-      setData(prev => prev.map(vendor => {
-        if (vendor.vendor_id === editingVendor.vendor_id) {
-          // Map int_status to display text
-          let statusText = 'Inactive';
-          const statusValue = response.data.vendor.int_status;
-          if (statusValue === 1) {
-            statusText = 'Active';
-          } else if (statusValue === 3) {
-            statusText = 'CRApproved';
-          } else if (statusValue === 4) {
-            statusText = 'Blocked';
-          }
-          
-          return {
-            ...vendor,
-            ...response.data.vendor,
-            int_status: statusText,
-            changed_on: response.data.vendor.changed_on ? new Date(response.data.vendor.changed_on).toLocaleString() : vendor.changed_on
-          };
-        }
-        return vendor;
-      }));
+      invalidateCache('vendors:');
+      await fetchVendorsStore({ revalidate: true, force: true });
       
       setShowEditModal(false);
       setEditingVendor(null);

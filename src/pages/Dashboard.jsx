@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Package,
-  Users,    
+  Users,
   Wrench,
   Ban,
   PieChart,
@@ -15,97 +15,75 @@ import DashboardMetrics from "../components/dashboardModules/DashboardMetrics";
 import DepartmentChart from "../components/dashboardModules/DepartmentChart";
 import AssetTypeChart from "../components/dashboardModules/AssetTypeChart";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
-import CronJobMonitor from "../components/dashboardModules/CronJobMonitor";
-import DashboardCronJobTrigger from "../components/DashboardCronJobTrigger";
-import DashboardInspectionTrigger from "../components/DashboardInspectionTrigger";
-import DashboardMaintenanceTrigger from "../components/DashboardMaintenanceTrigger";
-import DashboardWorkflowEscalationTrigger from "../components/DashboardWorkflowEscalationTrigger";
 import { useLanguage } from "../contexts/LanguageContext";
-import API from "../lib/axios";
+import { useAuthStore } from "../store/useAuthStore";
+import { useDashboardStore } from "../store/useDashboardStore";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+
+const CronJobMonitor = lazy(() => import("../components/dashboardModules/CronJobMonitor"));
+const DashboardCronJobTrigger = lazy(() => import("../components/DashboardCronJobTrigger"));
+const DashboardInspectionTrigger = lazy(() => import("../components/DashboardInspectionTrigger"));
+const DashboardMaintenanceTrigger = lazy(() => import("../components/DashboardMaintenanceTrigger"));
+const DashboardWorkflowEscalationTrigger = lazy(() => import("../components/DashboardWorkflowEscalationTrigger"));
+
+const SectionFallback = () => (
+  <div className="h-24 flex items-center justify-center text-sm text-gray-400">Loading…</div>
+);
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const empIntId = useAuthStore((s) => s.user?.emp_int_id);
 
-  const [totalAssets, setTotalAssets] = useState(0);
-  const [assignedAssets, setAssignedAssets] = useState(0);
-  const [underMaintenance, setUnderMaintenance] = useState(0);
-  const [decommissioned, setDecommissioned] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState(null);
+  const metrics = useDashboardStore((s) => s.metrics);
+  const metricsLoading = useDashboardStore((s) => s.metricsLoading);
+  const loadDashboard = useDashboardStore((s) => s.loadDashboard);
 
   useEffect(() => {
-    const fetchAllMetrics = async () => {
-      setLoading(true);
-      try {
-        const [totalResponse, assignedResponse, maintenanceResponse, decommissionedResponse, summaryResponse] = 
-          await Promise.all([
-            API.get("/assets/count"),
-            API.get("/assets/assigned"),
-            API.get("/assets/under-maintenance"),
-            API.get("/assets/decommissioned"),
-            API.get("/assets/dashboard-summary").catch(() => ({ data: null })) // Optional, don't fail if it doesn't exist
-          ]);
-        
-        setTotalAssets(totalResponse.data.count || 0);
-        setAssignedAssets(assignedResponse.data.count || 0);
-        setUnderMaintenance(maintenanceResponse.data.count || 0);
-        setDecommissioned(decommissionedResponse.data.count || 0);
-        
-        if (summaryResponse?.data?.success) {
-          setSummary(summaryResponse.data.summary);
-        }
-      } catch (error) {
-        console.error("Error fetching dashboard metrics:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchAllMetrics();
-  }, []); 
+    loadDashboard(empIntId);
+  }, [empIntId, loadDashboard]);
 
-  const metrics = [
+  useRevalidateOnFocus(() => {
+    loadDashboard(empIntId);
+  });
+
+  const metricCards = [
     {
       title: t('dashboard.totalAssets'),
-      value: totalAssets,
+      value: metrics.totalAssets,
       icon: Package,
       color: "bg-blue-500",
       hoverColor: "hover:bg-blue-600",
-      // path: "/assets",
     },
     {
       title: t('dashboard.assignedAssets'),
-      value: assignedAssets,
+      value: metrics.assignedAssets,
       icon: Users,
       color: "bg-sky-500",
       hoverColor: "hover:bg-sky-600",
-      // path: "/assigned-assets",
     },
     {
       title: t('dashboard.underMaintenance'),
-      value: underMaintenance,
+      value: metrics.underMaintenance,
       icon: Wrench,
       color: "bg-cyan-500",
       hoverColor: "hover:bg-cyan-600",
-      // path: "/maintenance",
     },
     {
       title: t('dashboard.decommissioned'),
-      value: decommissioned,
+      value: metrics.decommissioned,
       icon: Ban,
       color: "bg-yellow-500",
       hoverColor: "hover:bg-yellow-600",
-      // path: "/decommissioned",
     },
   ];
+
+  const summary = metrics.summary;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="w-full max-w-none xl:max-w-7xl 2xl:max-w-none mx-auto space-y-4 sm:space-y-6">
-        {/* Removed Dashboard heading section */}
-
-        <DashboardMetrics metrics={metrics} loading={loading} />
+        <DashboardMetrics metrics={metricCards} loading={metricsLoading && metrics.totalAssets === 0 && !metrics.summary} />
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
           <Card>
@@ -205,30 +183,26 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Cron Job Monitor - Added for maintenance schedule generation */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-6">
-          <CronJobMonitor />
-        </div>
+        <Suspense fallback={<SectionFallback />}>
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
+            <CronJobMonitor deferMs={800} />
+          </div>
+        </Suspense>
 
-        {/* Depreciation Cron Job Trigger */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-6">
-          <DashboardCronJobTrigger />
-        </div>
-
-        {/* Inspection Trigger */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-6">
-          <DashboardInspectionTrigger />
-        </div>
-
-        {/* Maintenance Trigger */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-6">
-          <DashboardMaintenanceTrigger />
-        </div>
-
-        {/* Workflow Escalation Trigger */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-6">
-          <DashboardWorkflowEscalationTrigger />
-        </div>
+        <Suspense fallback={null}>
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
+            <DashboardCronJobTrigger />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
+            <DashboardInspectionTrigger />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
+            <DashboardMaintenanceTrigger />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
+            <DashboardWorkflowEscalationTrigger />
+          </div>
+        </Suspense>
       </div>
     </div>
   );

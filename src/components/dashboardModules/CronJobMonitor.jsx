@@ -5,7 +5,7 @@ import API from "../../lib/axios";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
 
-const CronJobMonitor = () => {
+const CronJobMonitor = ({ deferMs = 0 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [cronStatus, setCronStatus] = useState(null);
@@ -122,8 +122,11 @@ const CronJobMonitor = () => {
   };
 
   useEffect(() => {
-    fetchCronStatus();
-  }, []);
+    const timer = setTimeout(() => {
+      fetchCronStatus();
+    }, deferMs);
+    return () => clearTimeout(timer);
+  }, [deferMs]);
 
   const getStatusIcon = () => {
     if (isLoading) return <Loader2 className="w-5 h-5 animate-spin text-blue-500" />;

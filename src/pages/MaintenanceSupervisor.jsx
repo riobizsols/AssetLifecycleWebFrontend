@@ -1,21 +1,23 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
 import { exportToExcel } from "../utils/exportToExcel";
 import { useNavigate } from "react-router-dom";
-import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/assets/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import {
+  formatMaintenanceScheduleRows,
+  useMaintenanceSupervisorStore,
+} from "../store/useMaintenanceSupervisorStore";
 
 const MaintenanceSupervisor = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -28,6 +30,16 @@ const MaintenanceSupervisor = () => {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const schedules = useMaintenanceSupervisorStore((s) => s.schedules);
+  const listLoading = useMaintenanceSupervisorStore((s) => s.listLoading);
+  const fetchSchedules = useMaintenanceSupervisorStore((s) => s.fetchSchedules);
+
+  const data = useMemo(
+    () => formatMaintenanceScheduleRows(schedules, t),
+    [schedules, t],
+  );
+
   const [columns] = useState([
     { label: t('maintenanceSupervisor.id'), name: "ams_id", visible: true },
     { label: t('maintenanceSupervisor.assetID'), name: "asset_id", visible: true },
@@ -46,74 +58,35 @@ const MaintenanceSupervisor = () => {
   ]);
 
   useEffect(() => {
-    fetchMaintenanceSchedules();
-  }, []);
-
-  const fetchMaintenanceSchedules = async () => {
-    setIsLoading(true);
-    try {
-      // Pass context so logs go to SUPERVISORAPPROVAL CSV
-      const res = await API.get("/maintenance-schedules/all", {
-        params: { context: 'SUPERVISORAPPROVAL' }
-      });
-      const maintenanceArray = Array.isArray(res.data) ? res.data : res.data.data || [];
-      const formattedData = maintenanceArray.map(item => {
-        const formatDate = (dateString) => {
-          if (!dateString) return '';
-          try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) return ''; // Invalid date
-            return date.toLocaleDateString();
-          } catch (err) {
-            console.error('Error formatting date:', err);
-            return '';
-          }
-        };
-
-        return {
-          ...item,
-          act_maint_st_date: formatDate(item.act_maint_st_date),
-          created_on: formatDate(item.created_on),
-          changed_on: formatDate(item.changed_on),
-          days_until_due: item.days_until_due > 0 ? `${item.days_until_due} ${t('maintenanceSupervisor.days')}` : 
-                         item.days_until_due === 0 ? t('maintenanceSupervisor.dueToday') : t('maintenanceSupervisor.overdue'),
-          // Calculated Variance
-          variance: item.hours_spent && item.hours_required 
-            ? (parseFloat(item.hours_spent) - parseFloat(item.hours_required)).toFixed(2) 
-            : '0.00',
-          // Add urgency styling for days until due
-          urgency_class: item.days_until_due <= 2 ? 'text-red-600 font-semibold' : 
-                        item.days_until_due <= 5 ? 'text-orange-600 font-semibold' : 
-                        item.days_until_due === 0 ? 'text-red-800 font-bold' :
-                        item.days_until_due < 0 ? 'text-red-700 font-bold' :
-                        'text-gray-600'
-        };
-      });
-      setData(formattedData);
-    } catch (err) {
+    fetchSchedules({ revalidate: true }).catch((err) => {
       console.error("Failed to fetch maintenance schedules", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHMAINTENANCES_78A95FA4', fallbackText: t('maintenanceSupervisor.failedToFetchMaintenanceSchedules'), type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHMAINTENANCES_78A95FA4',
+        fallbackText: t('maintenanceSupervisor.failedToFetchMaintenanceSchedules'),
+        type: 'error',
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchSchedules]);
+
+  useRevalidateOnFocus(() => {
+    fetchSchedules({ revalidate: true });
+  });
 
   const handleFilterChange = (columnName, value) => {
-    // Handle columnFilters array from ContentBox
     if (columnName === "columnFilters") {
       setFilterValues((prev) => ({
         ...prev,
         columnFilters: value,
       }));
     }
-    // Handle date filters
     else if (columnName === "fromDate" || columnName === "toDate") {
       setFilterValues((prev) => ({
         ...prev,
         [columnName]: value,
       }));
     }
-    // Handle individual column filters (legacy support)
     else {
       setFilterValues((prev) => ({
         ...prev,
@@ -154,7 +127,6 @@ const MaintenanceSupervisor = () => {
     }
 
     try {
-      // Note: This would need a corresponding backend endpoint to delete from tblAssetMaintSch
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_DELETENOTIMPLEMENTED_05C8C6C9', fallbackText: t('maintenanceSupervisor.deleteNotImplemented'), type: 'error' });
       return false;
     } catch (err) {
@@ -171,7 +143,6 @@ const MaintenanceSupervisor = () => {
 
   const handleDelete = async (row) => {
     try {
-      // Note: This would need a corresponding backend endpoint to delete from tblAssetMaintSch
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_DELETENOTIMPLEMENTED_05C8C6C9', fallbackText: t('maintenanceSupervisor.deleteNotImplemented'), type: 'error' });
     } catch (err) {
       console.error("Failed to delete maintenance record", err);
@@ -185,7 +156,6 @@ const MaintenanceSupervisor = () => {
   };
 
   const handleEdit = (row) => {
-    console.log("Edit maintenance record:", row);
     setSelectedAsset(row);
     setUpdateModalOpen(true);
   };
@@ -194,17 +164,16 @@ const MaintenanceSupervisor = () => {
     setUpdateModalOpen(false);
     setSelectedAsset(null);
     if (wasUpdated) {
-      fetchMaintenanceSchedules(); // Refresh the list if update was successful
+      useMaintenanceSupervisorStore.getState().invalidateMaintenanceCache();
+      fetchSchedules({ revalidate: true });
     }
   };
 
   const handleDownload = () => {
     try {
-      // Get the filtered and sorted data
       const filteredData = filterData(data, filterValues, columns.filter(col => col.visible));
       const dataToExport = sortData(filteredData);
 
-      // Export to Excel
       const success = exportToExcel(
         dataToExport,
         columns,
@@ -232,10 +201,10 @@ const MaintenanceSupervisor = () => {
     }
   };
 
-  const sortData = (data) => {
-    if (!sortConfig.sorts.length) return data;
+  const sortData = (dataToSort) => {
+    if (!sortConfig.sorts.length) return dataToSort;
 
-    return [...data].sort((a, b) => {
+    return [...dataToSort].sort((a, b) => {
       for (const sort of sortConfig.sorts) {
         const aValue = a[sort.column];
         const bValue = b[sort.column];
@@ -260,6 +229,9 @@ const MaintenanceSupervisor = () => {
   }));
 
   const handleRowClick = (row) => {
+    useMaintenanceSupervisorStore
+      .getState()
+      .fetchScheduleDetail(row.ams_id, { revalidate: true });
     navigate(`/maintenance-list-detail/${row.ams_id}`);
   };
 
@@ -277,15 +249,16 @@ const MaintenanceSupervisor = () => {
         setSelectedRows={setSelectedRows}
         showAddButton={true}
         onAdd={() => navigate('/maintenance-list/create')}
-        showActions={false} // Hide Actions column header for this page
+        showActions={false}
       >
         {({ visibleColumns, showActions }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
-          if (isLoading) {
-            const visibleCols = visibleColumns.filter((col) => col.visible);
-            const colSpan = visibleCols.length + (showActions ? 1 : 0);
+          const visibleCols = visibleColumns.filter((col) => col.visible);
+          const colSpan = visibleCols.length + (showActions ? 1 : 0);
+
+          if (listLoading && data.length === 0) {
             return (
               <tr>
                 <td colSpan={colSpan} className="text-center py-16">
@@ -299,8 +272,6 @@ const MaintenanceSupervisor = () => {
           }
 
           if (sortedData.length === 0) {
-            const visibleCols = visibleColumns.filter((col) => col.visible);
-            const colSpan = visibleCols.length + (showActions ? 1 : 0);
             return (
               <tr>
                 <td colSpan={colSpan} className="text-center py-16">
@@ -324,7 +295,7 @@ const MaintenanceSupervisor = () => {
               onEdit={handleEdit}
               onDelete={handleDelete}
               rowKey="ams_id"
-              showActions={showActions} // Hide action column for this page
+              showActions={showActions}
               renderCell={(col, row, colIndex) => {
                 if (col.name === "status") return <StatusBadge status={row[col.name]} />;
                 if (col.name === "days_until_due") return <span className={row.urgency_class}>{row[col.name]}</span>;
@@ -337,14 +308,14 @@ const MaintenanceSupervisor = () => {
                 if (col.name === 'hours_spent' || col.name === 'hours_required') {
                   return <span className="font-medium text-gray-700">{row[col.name] || '0'}h</span>;
                 }
-                
+
                 if (colIndex === 0) {
                   return (
                     <div className="flex items-center gap-2">
                        <input
                           type="checkbox"
                           checked={selectedRows.includes(row["ams_id"])}
-                          onChange={() => setSelectedRows(prev => prev.includes(row["ams_id"]) ? prev.filter(id => id !== row["ams_id"]) : [...prev, row["ams_id"]])}
+                          onChange={() => setSelectedRows(prev => prev.includes(row["ams_id"]) ? prev.filter(itemId => itemId !== row["ams_id"]) : [...prev, row["ams_id"]])}
                           onClick={(e) => e.stopPropagation()}
                           className="accent-yellow-400"
                         />
@@ -359,8 +330,7 @@ const MaintenanceSupervisor = () => {
           );
         }}
       </ContentBox>
-      
-      {/* Modals rendered outside ContentBox so they're always available */}
+
       {updateModalOpen && (
         <UpdateAssetModal
           isOpen={updateModalOpen}

@@ -4,129 +4,97 @@ import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
+import { useMaintenanceConfigStore } from '../store/useMaintenanceConfigStore';
+import { invalidateCache } from '../utils/apiCache';
 
 const MaintenanceDetails = () => {
   const { t } = useLanguage();
+  const workflowSteps = useMaintenanceConfigStore((s) => s.workflowSteps);
+  const assetTypes = useMaintenanceConfigStore((s) => s.assetTypes);
+  const jobRoles = useMaintenanceConfigStore((s) => s.jobRoles);
+  const detailsLoading = useMaintenanceConfigStore((s) => s.detailsLoading);
+  const sequencesByAssetType = useMaintenanceConfigStore((s) => s.sequencesByAssetType);
+  const sequencesLoading = useMaintenanceConfigStore((s) => s.sequencesLoading);
+  const jobRolesByStep = useMaintenanceConfigStore((s) => s.jobRolesByStep);
+  const stepRolesLoading = useMaintenanceConfigStore((s) => s.stepRolesLoading);
+  const fetchDetailsBase = useMaintenanceConfigStore((s) => s.fetchDetailsBase);
+  const fetchSequencesStore = useMaintenanceConfigStore((s) => s.fetchSequences);
+  const fetchJobRolesForStepStore = useMaintenanceConfigStore((s) => s.fetchJobRolesForStep);
   const [activeTab, setActiveTab] = useState('steps'); // steps, sequences, jobRoles
 
   // Workflow Steps
-  const [workflowSteps, setWorkflowSteps] = useState([]);
   const [newStepName, setNewStepName] = useState('');
   const [editingStep, setEditingStep] = useState(null);
   const [editingStepName, setEditingStepName] = useState('');
-  const [loadingSteps, setLoadingSteps] = useState(false);
   const [showAddStepModal, setShowAddStepModal] = useState(false);
   const [stepNameInput, setStepNameInput] = useState('');
 
   // Asset Types
-  const [assetTypes, setAssetTypes] = useState([]);
   const [selectedAssetType, setSelectedAssetType] = useState('');
 
   // Sequences
-  const [sequences, setSequences] = useState([]);
-  const [loadingSequences, setLoadingSequences] = useState(false);
+  const sequences = selectedAssetType ? sequencesByAssetType[selectedAssetType] || [] : [];
   const [newSequence, setNewSequence] = useState({
     wf_steps_id: '',
     seqs_no: ''
   });
 
   // Job Roles
-  const [jobRoles, setJobRoles] = useState([]);
   const [selectedStepForJobRole, setSelectedStepForJobRole] = useState('');
-  const [jobRolesForStep, setJobRolesForStep] = useState([]);
-  const [loadingJobRoles, setLoadingJobRoles] = useState(false);
+  const jobRolesForStep = selectedStepForJobRole ? jobRolesByStep[selectedStepForJobRole] || [] : [];
   const [newJobRole, setNewJobRole] = useState({
     job_role_id: ''
   });
 
-  // Fetch workflow steps
-  const fetchWorkflowSteps = async () => {
-    setLoadingSteps(true);
+  const loadingSteps = detailsLoading && workflowSteps.length === 0;
+  const loadingSequences = sequencesLoading && sequences.length === 0;
+  const loadingJobRoles = stepRolesLoading && jobRolesForStep.length === 0;
+
+  const refreshDetailsBase = async ({ force = false } = {}) => {
     try {
-      const res = await API.get('/maintenance-details/workflow-steps');
-      setWorkflowSteps(res.data.data || []);
+      await fetchDetailsBase({ revalidate: true, force });
     } catch (error) {
-      console.error('Error fetching workflow steps:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_WORKFLOW_STEPS_6E793492', fallbackText: 'Failed to fetch workflow steps', type: 'error' });
-    } finally {
-      setLoadingSteps(false);
+      console.error('Error fetching maintenance details:', error);
     }
   };
 
-  // Fetch asset types
-  const fetchAssetTypes = async () => {
+  const fetchSequences = async ({ force = false } = {}) => {
+    if (!selectedAssetType) return;
     try {
-      const res = await API.get('/asset-types');
-      setAssetTypes(res.data || []);
-    } catch (error) {
-      console.error('Error fetching asset types:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPES_02F89461', fallbackText: 'Failed to fetch asset types', type: 'error' });
-    }
-  };
-
-  // Fetch job roles
-  const fetchJobRoles = async () => {
-    try {
-      const res = await API.get('/job-roles');
-      setJobRoles(res.data.roles || []);
-    } catch (error) {
-      console.error('Error fetching job roles:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_ROLES_20AF53B2', fallbackText: 'Failed to fetch job roles', type: 'error' });
-    }
-  };
-
-  // Fetch sequences for asset type
-  const fetchSequences = async () => {
-    if (!selectedAssetType) {
-      setSequences([]);
-      return;
-    }
-    setLoadingSequences(true);
-    try {
-      const res = await API.get(`/maintenance-details/workflow-sequences/${selectedAssetType}`);
-      setSequences(res.data.data || []);
+      await fetchSequencesStore(selectedAssetType, { revalidate: true, force });
     } catch (error) {
       console.error('Error fetching sequences:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_SEQUENCES_0DE2E816', fallbackText: 'Failed to fetch sequences', type: 'error' });
-    } finally {
-      setLoadingSequences(false);
     }
   };
 
-  // Fetch job roles for workflow step
-  const fetchJobRolesForStep = async (wf_steps_id) => {
-    if (!wf_steps_id) {
-      setJobRolesForStep([]);
-      return;
-    }
-    setLoadingJobRoles(true);
+  const fetchJobRolesForStep = async (wf_steps_id, { force = false } = {}) => {
+    if (!wf_steps_id) return;
     try {
-      const res = await API.get(`/maintenance-details/workflow-job-roles/${wf_steps_id}`);
-      setJobRolesForStep(res.data.data || []);
+      await fetchJobRolesForStepStore(wf_steps_id, { revalidate: true, force });
     } catch (error) {
       console.error('Error fetching job roles for step:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_ROLES_20AF53B2', fallbackText: 'Failed to fetch job roles', type: 'error' });
-    } finally {
-      setLoadingJobRoles(false);
     }
   };
 
   useEffect(() => {
-    fetchWorkflowSteps();
-    fetchAssetTypes();
-    fetchJobRoles();
+    refreshDetailsBase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (activeTab === 'sequences') {
       fetchSequences();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAssetType, activeTab]);
 
   useEffect(() => {
     if (activeTab === 'jobRoles') {
       fetchJobRolesForStep(selectedStepForJobRole);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStepForJobRole, activeTab]);
 
   // Create workflow step
@@ -143,7 +111,8 @@ const MaintenanceDetails = () => {
       });
       showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_CREATED_SUCCESSFULLY_2EB9244E', fallbackText: 'Workflow step created successfully', type: 'success' });
       setNewStepName('');
-      fetchWorkflowSteps();
+      invalidateCache('maintenance-config:');
+      refreshDetailsBase({ force: true });
     } catch (error) {
       console.error('Error creating workflow step:', error);
       toast.error(error.response?.data?.error || 'Failed to create workflow step');
@@ -164,7 +133,8 @@ const MaintenanceDetails = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_CREATED_SUCCESSFULLY_2EB9244E', fallbackText: 'Workflow step created successfully', type: 'success' });
       setStepNameInput('');
       setShowAddStepModal(false);
-      fetchWorkflowSteps();
+      invalidateCache('maintenance-config:');
+      refreshDetailsBase({ force: true });
     } catch (error) {
       console.error('Error creating workflow step:', error);
       toast.error(error.response?.data?.error || 'Failed to create workflow step');
@@ -197,7 +167,8 @@ const MaintenanceDetails = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_UPDATED_SUCCESSFULLY_453EB741', fallbackText: 'Workflow step updated successfully', type: 'success' });
       setEditingStep(null);
       setEditingStepName('');
-      fetchWorkflowSteps();
+      invalidateCache('maintenance-config:');
+      refreshDetailsBase({ force: true });
     } catch (error) {
       console.error('Error updating workflow step:', error);
       toast.error(error.response?.data?.error || 'Failed to update workflow step');
@@ -213,7 +184,8 @@ const MaintenanceDetails = () => {
     try {
       await API.delete(`/maintenance-details/workflow-steps/${id}`);
       showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_DELETED_SUCCESSFULLY_16199DDF', fallbackText: 'Workflow step deleted successfully', type: 'success' });
-      fetchWorkflowSteps();
+      invalidateCache('maintenance-config:');
+      refreshDetailsBase({ force: true });
       if (selectedStepForJobRole === id) {
         setSelectedStepForJobRole('');
       }
@@ -247,7 +219,8 @@ const MaintenanceDetails = () => {
       });
       showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_CREATED_SUCCESSFULLY_28D6FEBE', fallbackText: 'Sequence created successfully', type: 'success' });
       setNewSequence({ wf_steps_id: '', seqs_no: '' });
-      fetchSequences();
+      invalidateCache('maintenance-config:');
+      fetchSequences({ force: true });
     } catch (error) {
       console.error('Error creating sequence:', error);
       toast.error(error.response?.data?.error || 'Failed to create sequence');
@@ -263,7 +236,8 @@ const MaintenanceDetails = () => {
     try {
       await API.delete(`/maintenance-details/workflow-sequences/${id}`);
       showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_DELETED_SUCCESSFULLY_4176852D', fallbackText: 'Sequence deleted successfully', type: 'success' });
-      fetchSequences();
+      invalidateCache('maintenance-config:');
+      fetchSequences({ force: true });
     } catch (error) {
       console.error('Error deleting sequence:', error);
       toast.error(error.response?.data?.error || 'Failed to delete sequence');
@@ -289,7 +263,8 @@ const MaintenanceDetails = () => {
       });
       showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_ASSIGNED_SUCCESSFULLY_6F7A530E', fallbackText: 'Job role assigned successfully', type: 'success' });
       setNewJobRole({ job_role_id: '' });
-      fetchJobRolesForStep(selectedStepForJobRole);
+      invalidateCache('maintenance-config:');
+      fetchJobRolesForStep(selectedStepForJobRole, { force: true });
     } catch (error) {
       console.error('Error assigning job role:', error);
       toast.error(error.response?.data?.error || 'Failed to assign job role');
@@ -305,7 +280,8 @@ const MaintenanceDetails = () => {
     try {
       await API.delete(`/maintenance-details/workflow-job-roles/${id}`);
       showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_REMOVED_SUCCESSFULLY_1BB0EFF2', fallbackText: 'Job role removed successfully', type: 'success' });
-      fetchJobRolesForStep(selectedStepForJobRole);
+      invalidateCache('maintenance-config:');
+      fetchJobRolesForStep(selectedStepForJobRole, { force: true });
     } catch (error) {
       console.error('Error removing job role:', error);
       toast.error(error.response?.data?.error || 'Failed to remove job role');
@@ -557,7 +533,8 @@ const MaintenanceDetails = () => {
                           });
                           showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_CREATED_SUCCESSFULLY_28D6FEBE', fallbackText: 'Sequence created successfully', type: 'success' });
                           setNewSequence({ wf_steps_id: '', seqs_no: '' });
-                          fetchSequences();
+                          invalidateCache('maintenance-config:');
+                          fetchSequences({ force: true });
                         } catch (error) {
                           console.error('Error creating sequence:', error);
                           toast.error(error.response?.data?.error || 'Failed to create sequence');
@@ -702,7 +679,8 @@ const MaintenanceDetails = () => {
                           });
                           showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_ASSIGNED_SUCCESSFULLY_6F7A530E', fallbackText: 'Job role assigned successfully', type: 'success' });
                           setNewJobRole({ job_role_id: '' });
-                          fetchJobRolesForStep(selectedStepForJobRole);
+                          invalidateCache('maintenance-config:');
+                          fetchJobRolesForStep(selectedStepForJobRole, { force: true });
                         } catch (error) {
                           console.error('Error assigning job role:', error);
                           toast.error(error.response?.data?.error || 'Failed to assign job role');

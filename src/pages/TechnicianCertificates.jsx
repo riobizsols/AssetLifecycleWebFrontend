@@ -5,13 +5,19 @@ import { toast } from "react-hot-toast";
 import API from "../lib/axios";
 import { filterData } from "../utils/filterData";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useTechnicianCertificatesStore } from "../store/useTechnicianCertificatesStore";
+import { invalidateCache } from "../utils/apiCache";
 
 const TechnicianCertificates = () => {
   const { t } = useLanguage();
-  const [certificates, setCertificates] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [uploadedCertificates, setUploadedCertificates] = useState([]);
-  const [loadingList, setLoadingList] = useState(false);
+  const certificates = useTechnicianCertificatesStore((s) => s.certificateOptions);
+  const employees = useTechnicianCertificatesStore((s) => s.employees);
+  const uploadedCertificates = useTechnicianCertificatesStore((s) => s.uploadedCertificates);
+  const listLoading = useTechnicianCertificatesStore((s) => s.listLoading);
+  const loadPageData = useTechnicianCertificatesStore((s) => s.loadPageData);
+  const fetchUploadedStore = useTechnicianCertificatesStore((s) => s.fetchUploadedCertificates);
+  const loadingList = listLoading && uploadedCertificates.length === 0;
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,85 +43,40 @@ const TechnicianCertificates = () => {
   const fetchCertificateOptions = async () => {
     setLoadingOptions(true);
     try {
-      const response = await API.get("/tech-certificates");
-      console.log("Certificate Response:", response);
-      
-      // Handle both data.data and direct data formats
-      const data = response.data?.data || response.data || [];
-      console.log("Processed Certificate Data:", data);
-      
-      if (!Array.isArray(data)) {
-        console.error("Certificate data is not an array:", data);
-        setCertificates([]);
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_INVALIDCERTIFICATEDATA_15D2B104', fallbackText: t("technicianCertificates.invalidCertificateData"), type: 'error' });
-        return;
-      }
-      
-      if (data.length === 0) {
-        console.warn("No certificates found in database");
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_NOCERTIFICATESCREATEINAD_4CB7BA07', fallbackText: t("technicianCertificates.noCertificatesCreateInAdmin"), type: 'success' });
-      }
-      
-      setCertificates(data);
+      await useTechnicianCertificatesStore.getState().fetchCertificateOptions({ revalidate: true });
     } catch (error) {
       console.error("Failed to fetch certificate options:", error);
-      console.error("Error details:", {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data
-      });
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOLOADCERTIFICATES_4738AEF4', fallbackText: t("technicianCertificates.failedToLoadCertificates"), type: 'error' });
     } finally {
       setLoadingOptions(false);
     }
   };
 
-  const fetchUploadedCertificates = async () => {
-    setLoadingList(true);
+  const fetchUploadedCertificates = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/employee-tech-certificates/approvals");
-      const data = response.data?.data || [];
-      const allowedStatuses = ["approved", "confirmed", "approval pending", "pending"];
-      const filtered = data.filter((cert) =>
-        allowedStatuses.includes(String(cert.status || "").toLowerCase())
-      );
-
-      if (selectedEmployeeId) {
-        setUploadedCertificates(
-          filtered.filter((cert) => String(cert.emp_int_id) === String(selectedEmployeeId))
-        );
-      } else {
-        setUploadedCertificates(filtered);
-      }
+      await fetchUploadedStore({
+        revalidate: true,
+        force,
+        employeeId: selectedEmployeeId,
+      });
     } catch (error) {
       console.error("Failed to fetch uploaded certificates:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOLOADUPLOADED_6B54DA50', fallbackText: t("technicianCertificates.failedToLoadUploaded"), type: 'error' });
-    } finally {
-      setLoadingList(false);
     }
   };
 
   useEffect(() => {
-    fetchCertificateOptions();
-    fetchUploadedCertificates();
-    const fetchEmployees = async () => {
-      setLoadingEmployees(true);
-      try {
-        const response = await API.get("/employees");
-        const data = response.data?.data || response.data || [];
-        setEmployees(data);
-      } catch (error) {
-        console.error("Failed to fetch employees:", error);
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOLOADEMPLOYEES_54185235', fallbackText: t("technicianCertificates.failedToLoadEmployees"), type: 'error' });
-      } finally {
-        setLoadingEmployees(false);
-      }
-    };
-    fetchEmployees();
+    loadPageData({ revalidate: true }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchUploadedStore({ revalidate: true, employeeId: selectedEmployeeId });
+  });
 
   useEffect(() => {
     fetchUploadedCertificates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEmployeeId]);
 
   const certificateOptions = useMemo(() => {
@@ -213,7 +174,9 @@ const TechnicianCertificates = () => {
       });
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATEUPDATEDSUCCES_5E07D703', fallbackText: t("technicianCertificates.certificateUpdatedSuccessfully"), type: 'success' });
       cancelEdit();
-      await fetchUploadedCertificates();
+      invalidateCache('technician-certs:');
+      invalidateCache('tech-cert-approvals:');
+      await fetchUploadedCertificates({ force: true });
     } catch (error) {
       console.error("Failed to update certificate:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOUPDATECERTIFICATE_1A0F83ED', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToUpdateCertificate"), type: 'error' });
@@ -230,7 +193,9 @@ const TechnicianCertificates = () => {
     try {
       await API.delete(`/employee-tech-certificates/${id}`);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATEDELETEDSUCCES_6D06A4A5', fallbackText: t("technicianCertificates.certificateDeletedSuccessfully"), type: 'success' });
-      await fetchUploadedCertificates();
+      invalidateCache('technician-certs:');
+      invalidateCache('tech-cert-approvals:');
+      await fetchUploadedCertificates({ force: true });
     } catch (error) {
       console.error("Failed to delete certificate:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTODELETECERTIFICATE_53BA7B98', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToDeleteCertificate"), type: 'error' });
@@ -253,7 +218,9 @@ const TechnicianCertificates = () => {
       await Promise.all(selectedRows.map((id) => API.delete(`/employee-tech-certificates/${id}`)));
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATESDELETEDSUCCE_1A7D2532', fallbackText: t("technicianCertificates.certificatesDeletedSuccessfully", { count: selectedRows.length }), type: 'success' });
       setSelectedRows([]);
-      await fetchUploadedCertificates();
+      invalidateCache('technician-certs:');
+      invalidateCache('tech-cert-approvals:');
+      await fetchUploadedCertificates({ force: true });
     } catch (error) {
       console.error("Failed to delete selected certificates:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTODELETESOME_3514AFF7', fallbackText: t("technicianCertificates.failedToDeleteSome"), type: 'error' });
@@ -327,7 +294,9 @@ const TechnicianCertificates = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATEUPLOADEDSUCCE_7CCB808C', fallbackText: t("technicianCertificates.certificateUploadedSuccessfully"), type: 'success' });
       resetForm();
       setShowAddForm(false);
-      await fetchUploadedCertificates();
+      invalidateCache('technician-certs:');
+      invalidateCache('tech-cert-approvals:');
+      await fetchUploadedCertificates({ force: true });
     } catch (error) {
       console.error("Failed to upload certificate:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOUPLOADCERTIFICATE_23A7B061', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToUploadCertificate"), type: 'error' });

@@ -1,18 +1,20 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
-import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import {
+  formatScrapApprovalRows,
+  useScrapApprovalStore,
+} from "../store/useScrapApprovalStore";
 
 const ScrapMaintenanceApproval = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
@@ -20,7 +22,15 @@ const ScrapMaintenanceApproval = () => {
     toDate: "",
   });
 
-  // Define columns from translations on each render so they react to language changes
+  const approvals = useScrapApprovalStore((s) => s.approvals);
+  const listLoading = useScrapApprovalStore((s) => s.listLoading);
+  const fetchApprovals = useScrapApprovalStore((s) => s.fetchApprovals);
+
+  const data = useMemo(
+    () => formatScrapApprovalRows(approvals, t),
+    [approvals, t],
+  );
+
   const columns = [
     { label: t('scrapApproval.workflowId'), name: "wfscrap_h_id", visible: true },
     { label: t('scrapApproval.assetType'), name: "asset_type_name", visible: true },
@@ -33,46 +43,21 @@ const ScrapMaintenanceApproval = () => {
   ];
 
   useEffect(() => {
-    fetchApprovals();
-  }, []);
-
-  const fetchApprovals = async () => {
-    setIsLoading(true);
-    try {
-      const res = await API.get("/scrap-maintenance/approvals");
-      const approvals = res.data?.approvals || [];
-
-      const formatted = approvals.map((row) => {
-        // Format the display name based on whether it's individual asset or group
-        let displayName = row.asset_group_name;
-        
-        // If it's an individual asset (SCRAP_INDIVIDUAL_* or SCRAP_SALES_*), show only asset name
-        if (row.assetgroup_id && (row.assetgroup_id.startsWith('SCRAP_INDIVIDUAL_') || row.assetgroup_id.startsWith('SCRAP_SALES_'))) {
-          displayName = row.asset_names || row.asset_group_name;
-        } else if (row.asset_names) {
-          // For real groups, show group name followed by asset names in parentheses
-          displayName = `${row.asset_group_name} (${row.asset_names})`;
-        }
-
-        return {
-          ...row,
-          status: row.header_status,
-          created_on: row.created_on ? new Date(row.created_on).toLocaleDateString() : "",
-          scrap_type_display: row.is_scrap_sales === "Y"
-            ? t('scrapApproval.scrapTypeOptions.sales')
-            : t('scrapApproval.scrapTypeOptions.asset'),
-          display_name: displayName,
-        };
-      });
-
-      setData(formatted);
-    } catch (err) {
+    fetchApprovals({ revalidate: true }).catch((err) => {
       console.error("Failed to fetch scrap approvals", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPAPPROVAL_FAILEDTOFETCH_2CE34094', fallbackText: t('scrapApproval.failedToFetch'), type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_SCRAPAPPROVAL_FAILEDTOFETCH_2CE34094',
+        fallbackText: t('scrapApproval.failedToFetch'),
+        type: 'error',
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchApprovals]);
+
+  useRevalidateOnFocus(() => {
+    fetchApprovals({ revalidate: true });
+  });
 
   const handleFilterChange = (columnName, value) => {
     if (columnName === "columnFilters") {
@@ -120,6 +105,9 @@ const ScrapMaintenanceApproval = () => {
   ];
 
   const handleRowClick = (row) => {
+    useScrapApprovalStore
+      .getState()
+      .fetchWorkflowDetail(row.wfscrap_h_id, { revalidate: true });
     navigate(`/scrap-approval-detail/${row.wfscrap_h_id}?context=SCRAPMAINTENANCEAPPROVAL`, {
       state: { context: "SCRAPMAINTENANCEAPPROVAL" },
     });
@@ -144,7 +132,7 @@ const ScrapMaintenanceApproval = () => {
           const visibleCols = visibleColumns.filter((c) => c.visible);
           const colSpan = visibleCols.length + (showActions ? 1 : 0);
 
-          if (isLoading) {
+          if (listLoading && data.length === 0) {
             return (
               <tr>
                 <td colSpan={colSpan} className="text-center py-16">
@@ -186,4 +174,3 @@ const ScrapMaintenanceApproval = () => {
 };
 
 export default ScrapMaintenanceApproval;
-

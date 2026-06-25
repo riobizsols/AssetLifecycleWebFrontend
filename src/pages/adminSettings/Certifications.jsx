@@ -25,6 +25,9 @@ import DeleteConfirmModal from "../../components/DeleteConfirmModal";
 import SearchableDropdown from "../../components/ui/SearchableDropdown";
 import { generateUUID } from "../../utils/uuid";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useCertificationsStore, CERTIFICATIONS_CACHE_KEYS, CERTIFICATIONS_TTL_MS } from "../../store/useCertificationsStore";
+import { invalidateCache, peekCache } from "../../utils/apiCache";
 
 const parseApiList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -51,12 +54,20 @@ const Certifications = () => {
   const location = useLocation();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("create");
-  const [certificates, setCertificates] = useState([]);
-  const [assetTypes, setAssetTypes] = useState([]);
-  const [maintTypes, setMaintTypes] = useState([]);
+  const [certificates, setCertificates] = useState(
+    () => peekCache(CERTIFICATIONS_CACHE_KEYS.certificates, CERTIFICATIONS_TTL_MS) || [],
+  );
+  const [assetTypes, setAssetTypes] = useState(
+    () => peekCache(CERTIFICATIONS_CACHE_KEYS.assetTypes, CERTIFICATIONS_TTL_MS) || [],
+  );
+  const [maintTypes, setMaintTypes] = useState(
+    () => peekCache(CERTIFICATIONS_CACHE_KEYS.maintTypes, CERTIFICATIONS_TTL_MS) || [],
+  );
   const [assetTypeMaintTypeIds, setAssetTypeMaintTypeIds] = useState([]);
   const [filteredMaintTypes, setFilteredMaintTypes] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(
+    () => !peekCache(CERTIFICATIONS_CACHE_KEYS.certificates, CERTIFICATIONS_TTL_MS),
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -105,7 +116,9 @@ const Certifications = () => {
   const inspectionFormInitRef = useRef({ assetType: '' });
 
   // Inspection Certificates states
-  const [inspectionCertificates, setInspectionCertificates] = useState([]);
+  const [inspectionCertificates, setInspectionCertificates] = useState(
+    () => peekCache(CERTIFICATIONS_CACHE_KEYS.inspectionCerts, CERTIFICATIONS_TTL_MS) || [],
+  );
   const [selectedInspectionAssetType, setSelectedInspectionAssetType] = useState("");
   const [inspectionFilterOpen, setInspectionFilterOpen] = useState(false);
   const [inspectionColumnFilters, setInspectionColumnFilters] = useState([
@@ -160,12 +173,15 @@ const Certifications = () => {
     );
   };
 
-  const fetchCertificates = async () => {
-    setIsLoading(true);
+  const fetchCertificates = async ({ force = false } = {}) => {
+    const hasCached = !force && peekCache(CERTIFICATIONS_CACHE_KEYS.certificates, CERTIFICATIONS_TTL_MS);
+    if (!hasCached && certificates.length === 0) setIsLoading(true);
     try {
-      const response = await API.get("/tech-certificates");
-      const data = response.data?.data || [];
-      console.log("✅ Fetched technical certificates:", data);
+      const data = await useCertificationsStore.getState().fetchCertificates({
+        revalidate: true,
+        force,
+        onFresh: setCertificates,
+      });
       setCertificates(data);
     } catch (error) {
       console.error("❌ Failed to fetch certificates:", error);
@@ -175,10 +191,13 @@ const Certifications = () => {
     }
   };
 
-  const fetchAssetTypes = async () => {
+  const fetchAssetTypes = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/asset-types/maint-required");
-      const data = parseApiList(response.data);
+      const data = await useCertificationsStore.getState().fetchAssetTypes({
+        revalidate: true,
+        force,
+        onFresh: setAssetTypes,
+      });
       setAssetTypes(data);
     } catch (error) {
       console.error("Failed to fetch asset types:", error);
@@ -186,10 +205,13 @@ const Certifications = () => {
     }
   };
 
-  const fetchMaintTypes = async () => {
+  const fetchMaintTypes = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/maint-types");
-      const data = parseApiList(response.data);
+      const data = await useCertificationsStore.getState().fetchMaintTypes({
+        revalidate: true,
+        force,
+        onFresh: setMaintTypes,
+      });
       setMaintTypes(data);
     } catch (error) {
       console.error("Failed to fetch maintenance types:", error);
@@ -212,44 +234,55 @@ const Certifications = () => {
     }
   };
 
-  const fetchDocumentTypes = async () => {
+  const fetchDocumentTypes = async ({ force = false } = {}) => {
     try {
-      console.log('Fetching document types for inspection certificates...');
-      // Using 'inspection certificate' object type
-      const res = await API.get('/doc-type-objects/object-type/inspection certificate');
-      console.log('Document types response:', res.data);
-
-      if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        const docTypes = res.data.data.map(docType => ({
-          id: docType.dto_id,
-          text: docType.doc_type_text,
-          doc_type: docType.doc_type
-        }));
-        setDocumentTypes(docTypes);
-      } else {
-        setDocumentTypes([]);
-      }
+      const docTypes = await useCertificationsStore.getState().fetchDocumentTypes({
+        revalidate: true,
+        force,
+        onFresh: setDocumentTypes,
+      });
+      setDocumentTypes(docTypes);
     } catch (err) {
       console.error('Error fetching document types:', err);
       setDocumentTypes([]);
     }
   };
 
-  const fetchInspectionCertificates = async () => {
+  const fetchInspectionCertificates = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/asset-types/inspection-certificates");
-      const data = response.data?.data || [];
-      console.log("📍 Fetched all inspection certificates:", data);
+      const data = await useCertificationsStore.getState().fetchInspectionCertificates({
+        revalidate: true,
+        force,
+        onFresh: setInspectionCertificates,
+      });
       setInspectionCertificates(data);
     } catch (error) {
       console.error("Failed to fetch inspection certificates:", error);
-      // Don't show error toast on initial load
     }
   };
 
   useEffect(() => {
+    fetchCertificates({ revalidate: true });
+    fetchAssetTypes({ revalidate: true });
+    fetchMaintTypes({ revalidate: true });
+    fetchInspectionCertificates({ revalidate: true });
+    fetchDocumentTypes({ revalidate: true });
+
+    const saved = localStorage.getItem("lastSelectedAssetType");
+    if (saved) {
+      setSelectedAssetType(saved);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useRevalidateOnFocus(() => {
+    useCertificationsStore.getState().prefetchCertifications();
+    fetchCertificates({ revalidate: true });
+  });
+
+  useEffect(() => {
     if (activeTab === "inspection") {
-      fetchInspectionCertificates();
+      fetchInspectionCertificates({ revalidate: true });
       fetchDocumentTypes();
     }
   }, [activeTab]);
@@ -264,9 +297,9 @@ const Certifications = () => {
     }
 
     try {
-      const response = await API.get(`/asset-types/${assetTypeId}/maintenance-certificates`);
-      const data = response.data?.data || [];
-      console.log("📍 Fetched mapped certificates for asset type:", assetTypeId, "Data:", data);
+      const data = await useCertificationsStore.getState().fetchMappedCertificates(assetTypeId, {
+        revalidate: true,
+      });
       setMappedCertificates(data);
       setSelectedCertificateIds(data.map((cert) => cert.tech_cert_id));
       const maintTypeId = data.find((cert) => cert.maint_type_id)?.maint_type_id || "";
@@ -285,8 +318,9 @@ const Certifications = () => {
     }
 
     try {
-      const response = await API.get(`/maintenance-frequencies/asset-type/${assetTypeId}`);
-      const rows = parseApiList(response.data);
+      const rows = await useCertificationsStore.getState().fetchMaintFrequencies(assetTypeId, {
+        revalidate: true,
+      });
       const ids = Array.from(
         new Set(rows.map((row) => row.maint_type_id).filter(Boolean).map(String))
       );
@@ -297,20 +331,6 @@ const Certifications = () => {
       setAssetTypeMaintTypeIds([]);
     }
   };
-
-  useEffect(() => {
-    fetchCertificates();
-    fetchAssetTypes();
-    fetchMaintTypes();
-    fetchInspectionCertificates();
-    
-    // Restore last selected asset type from localStorage
-    const saved = localStorage.getItem("lastSelectedAssetType");
-    if (saved) {
-      console.log("📌 Restoring last selected asset type:", saved);
-      setSelectedAssetType(saved);
-    }
-  }, []);
 
   // Browser back button: close any open form and stay on /certifications
   useEffect(() => {
@@ -397,8 +417,9 @@ const Certifications = () => {
     let cancelled = false;
     const load = async () => {
       try {
-        const response = await API.get(`/maintenance-frequencies/asset-type/${updateCertAssetType}`);
-        const rows = parseApiList(response.data);
+        const rows = await useCertificationsStore.getState().fetchMaintFrequencies(updateCertAssetType, {
+          revalidate: true,
+        });
         if (!cancelled) {
           setUpdateModalMaintTypes(deriveMaintTypesFromFrequencies(rows, maintTypes));
         }
@@ -424,15 +445,13 @@ const Certifications = () => {
     let cancelled = false;
     const load = async () => {
       try {
-        const [freqRes, mapRes] = await Promise.all([
-          API.get(`/maintenance-frequencies/asset-type/${mappingFormAssetType}`),
-          API.get(`/asset-types/${mappingFormAssetType}/maintenance-certificates`)
+        const [rows, mapped] = await Promise.all([
+          useCertificationsStore.getState().fetchMaintFrequencies(mappingFormAssetType, { revalidate: true }),
+          useCertificationsStore.getState().fetchMappedCertificates(mappingFormAssetType, { revalidate: true }),
         ]);
         if (cancelled) return;
-        const rows = parseApiList(freqRes.data);
         setMappingFormMaintTypes(deriveMaintTypesFromFrequencies(rows, maintTypes));
-        const mapData = mapRes.data?.data || [];
-        setMappingFormMappedCertificates(mapData);
+        setMappingFormMappedCertificates(mapped || []);
         setMappingFormMappedLoaded(true);
       } catch (err) {
         if (!cancelled) {
@@ -520,11 +539,11 @@ const Certifications = () => {
       });
 
       const created = response.data?.data;
+      useCertificationsStore.getState().invalidateCertificationsCache();
       if (created) {
         setCertificates((prev) => [created, ...prev]);
-      } else {
-        await fetchCertificates();
       }
+      await fetchCertificates({ force: true });
 
       setCertName("");
       setCertNumber("");
@@ -599,8 +618,10 @@ const Certifications = () => {
           certificate_ids: nextOldIds,
           maint_type_id: oldMaintType
         });
-        const newRes = await API.get(`/asset-types/${updateCertAssetType}/maintenance-certificates`);
-        const newData = newRes.data?.data || [];
+        const newData = await useCertificationsStore.getState().fetchMappedCertificates(
+          updateCertAssetType,
+          { revalidate: true, force: true },
+        );
         const existingNewIds = newData
           .filter((c) => String(c.maint_type_id) === String(updateCertMaintType))
           .map((c) => c.tech_cert_id);
@@ -620,7 +641,8 @@ const Certifications = () => {
       setUpdateCertAssetType("");
       setUpdateCertMaintType("");
       setUpdateModalMaintTypes([]);
-      fetchCertificates();
+      useCertificationsStore.getState().invalidateCertificationsCache();
+      await fetchCertificates({ force: true });
       if (selectedAssetType) fetchMappedCertificates(selectedAssetType);
       if (otherAssetType) fetchMappedCertificates(otherAssetType);
       if (selectedInspectionAssetType) fetchInspectionCertificates();
@@ -672,6 +694,7 @@ const Certifications = () => {
     setIsCreating(true);
     try {
       await API.delete(`/tech-certificates/${id}`);
+      useCertificationsStore.getState().invalidateCertificationsCache();
       setCertificates((prev) => prev.filter((cert) => cert.tech_cert_id !== id));
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATEDELETEDSUCCESSFULLY_01ED1E82', fallbackText: "Certificate deleted successfully", type: 'success' });
     } catch (error) {
@@ -698,7 +721,8 @@ const Certifications = () => {
       await Promise.all(selectedCertificateRows.map((id) => API.delete(`/tech-certificates/${id}`)));
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATESDELETEDSUCCESSFULLYCOUNT_5293EF87', fallbackText: `${selectedCertificateRows.length} certificate(s) deleted successfully`, type: 'success' });
       setSelectedCertificateRows([]);
-      await fetchCertificates();
+      useCertificationsStore.getState().invalidateCertificationsCache();
+      await fetchCertificates({ force: true });
       if (selectedAssetType) {
         await fetchMappedCertificates(selectedAssetType);
       }
@@ -1236,7 +1260,7 @@ const Certifications = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {isLoading ? (
+                  {isLoading && certificates.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-4 py-4 text-center text-gray-500">Loading certificates...</td>
                     </tr>

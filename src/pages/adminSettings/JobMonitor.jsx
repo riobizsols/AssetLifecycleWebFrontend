@@ -3,14 +3,19 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Play, Edit2, Save, X, Copy, Loader2 } from "lucide-react";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useJobMonitorStore } from "../../store/useJobMonitorStore";
+import { invalidateCache } from "../../utils/apiCache";
 
 const JobMonitor = () => {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const jobs = useJobMonitorStore((s) => s.jobs);
+  const listLoading = useJobMonitorStore((s) => s.listLoading);
+  const historyByJobId = useJobMonitorStore((s) => s.historyByJobId);
+  const historyLoading = useJobMonitorStore((s) => s.historyLoading);
+  const fetchJobsStore = useJobMonitorStore((s) => s.fetchJobs);
+  const fetchJobHistoryStore = useJobMonitorStore((s) => s.fetchJobHistory);
   const [runningJobId, setRunningJobId] = useState(null);
   const [selectedJobId, setSelectedJobId] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
   const [editJobId, setEditJobId] = useState(null);
   const [editState, setEditState] = useState({ frequency: "", status: "DISABLED" });
   const [expandedJsonRows, setExpandedJsonRows] = useState({});
@@ -24,44 +29,52 @@ const JobMonitor = () => {
     [jobs, selectedJobId],
   );
 
-  const fetchJobs = async () => {
-    setLoading(true);
+  const history = selectedJobId ? historyByJobId[selectedJobId] || [] : [];
+
+  const fetchJobs = async ({ force = false } = {}) => {
     try {
-      const res = await API.get("/job-monitor/jobs");
-      const rows = res.data?.data || [];
-      setJobs(rows);
-      if (!selectedJobId && rows.length > 0) {
+      const rows = await fetchJobsStore({ revalidate: true, force });
+      if (!selectedJobId && rows?.length > 0) {
         setSelectedJobId(rows[0].job_id);
       }
     } catch (err) {
       console.error("Failed to fetch jobs", err);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOBS_5407363E', fallbackText: 'Failed to fetch jobs', type: 'error' });
-    } finally {
-      setLoading(false);
     }
   };
 
-  const fetchHistory = async (jobId) => {
+  const fetchHistory = async (jobId, { force = false } = {}) => {
     if (!jobId) return;
-    setHistoryLoading(true);
     try {
-      const res = await API.get(`/job-monitor/jobs/${jobId}/history`);
-      setHistory(res.data?.data || []);
+      await fetchJobHistoryStore(jobId, { revalidate: true, force });
     } catch (err) {
       console.error("Failed to fetch history", err);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_HISTORY_68A8BFB7', fallbackText: 'Failed to fetch job history', type: 'error' });
-    } finally {
-      setHistoryLoading(false);
     }
   };
 
   useEffect(() => {
     fetchJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    if (!selectedJobId && jobs.length > 0) {
+      setSelectedJobId(jobs[0].job_id);
+    }
+  }, [jobs, selectedJobId]);
+
+  useEffect(() => {
     if (selectedJobId) fetchHistory(selectedJobId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedJobId]);
+
+  useRevalidateOnFocus(() => {
+    fetchJobsStore({ revalidate: true });
+    if (selectedJobId) {
+      fetchJobHistoryStore(selectedJobId, { revalidate: true });
+    }
+  });
 
   const onRunJob = async (job) => {
     setRunningJobId(job.job_id);
@@ -98,7 +111,8 @@ const JobMonitor = () => {
       });
       showBackendTextToast({ toast, tmdId: 'TMD_JOB_UPDATED_59AD4CC8', fallbackText: 'Job updated', type: 'success' });
       onCancelEdit();
-      await fetchJobs();
+      invalidateCache('job-monitor:');
+      await fetchJobs({ force: true });
     } catch (err) {
       console.error("Failed to update job", err);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_JOB_028368A8', fallbackText: 'Failed to update job', type: 'error' });
@@ -311,7 +325,7 @@ const JobMonitor = () => {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {listLoading && jobs.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-gray-600">
                     <Loader2 className="w-5 h-5 animate-spin inline mr-2" />

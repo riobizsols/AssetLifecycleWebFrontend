@@ -11,12 +11,15 @@ import UpdateAssetModal from "../components/assets/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
 import { translateMasterDataLabel } from "../utils/masterDataLabel";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useInspectionViewStore } from "../store/useInspectionViewStore";
 
 const InspectionView = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const schedules = useInspectionViewStore((s) => s.schedules);
+  const listLoading = useInspectionViewStore((s) => s.listLoading);
+  const fetchSchedules = useInspectionViewStore((s) => s.fetchSchedules);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -60,50 +63,48 @@ const InspectionView = () => {
   }, [t]);
 
   const fetchInspectionSchedules = useCallback(async () => {
-    setIsLoading(true);
     try {
-      // Pass context so logs go to INSPECTION CSV
-      const res = await API.get("/inspection/list", {
-        params: { context: 'INSPECTIONVIEW' }
-      });
-      const inspectionArray = Array.isArray(res.data) ? res.data : res.data.data || [];
-      const formattedData = inspectionArray.map(item => {
-        const formatDate = (dateString) => {
-          if (!dateString) return '';
-          try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) return ''; // Invalid date
-            return date.toLocaleDateString();
-          } catch (err) {
-            console.error('Error formatting date:', err);
-            return '';
-          }
-        };
-
-        return {
-          ...item,
-          asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
-          act_insp_st_date: formatDate(item.act_insp_st_date),
-          act_insp_end_date: formatDate(item.act_insp_end_date),
-          created_on: formatDate(item.created_on),
-          status_code: item.status,
-          status: mapStatusLabel(item.status),
-          insp_outcome_code: item.insp_outcome,
-          insp_outcome: mapOutcomeLabel(item.insp_outcome),
-        };
-      });
-      setData(formattedData);
+      await fetchSchedules({ revalidate: true });
     } catch (err) {
       console.error("Failed to fetch inspection schedules", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOFETCHINSPECTIONSCHEDULES_1030DBFF', fallbackText: t('inspectionView.failedToFetchInspectionSchedules'), type: 'error' });
-    } finally {
-      setIsLoading(false);
     }
-  }, [mapOutcomeLabel, mapStatusLabel, t]);
+  }, [fetchSchedules, t]);
+
+  const data = useMemo(() => {
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      try {
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleDateString();
+      } catch {
+        return '';
+      }
+    };
+
+    return (schedules || []).map((item) => ({
+      ...item,
+      asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
+      act_insp_st_date: formatDate(item.act_insp_st_date),
+      act_insp_end_date: formatDate(item.act_insp_end_date),
+      created_on: formatDate(item.created_on),
+      status_code: item.status,
+      status: mapStatusLabel(item.status),
+      insp_outcome_code: item.insp_outcome,
+      insp_outcome: mapOutcomeLabel(item.insp_outcome),
+    }));
+  }, [schedules, mapOutcomeLabel, mapStatusLabel, t]);
+
+  const isLoading = listLoading && data.length === 0;
 
   useEffect(() => {
     fetchInspectionSchedules();
   }, [fetchInspectionSchedules]);
+
+  useRevalidateOnFocus(() => {
+    fetchSchedules({ revalidate: true });
+  });
 
   const handleFilterChange = (columnName, value) => {
     // Handle columnFilters array from ContentBox

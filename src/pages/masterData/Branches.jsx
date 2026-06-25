@@ -12,11 +12,17 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { BRANCHES_APP_ID } from "../../constants/branchesAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useBranchesStore } from "../../store/useBranchesStore";
+import { invalidateCache } from "../../utils/apiCache";
 
 const Branches = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const branches = useBranchesStore((s) => s.branches);
+  const listLoading = useBranchesStore((s) => s.listLoading);
+  const fetchBranchesStore = useBranchesStore((s) => s.fetchBranches);
+  const data = branches;
+  const isLoading = listLoading && data.length === 0;
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -55,27 +61,21 @@ const Branches = () => {
   ];
 
   useEffect(() => {
-    const fetchBranches = async () => {
-      setIsLoading(true);
+    const load = async () => {
       try {
-        const response = await API.get("/branches");
-        const formattedData = response.data.map(item => ({
-          ...item,
-          int_status: item.int_status === 1 ? 'Active' : 'Inactive',
-          created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-          changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : ''
-        }));
-        setData(formattedData);
+        await fetchBranchesStore({ revalidate: true });
       } catch (error) {
         console.error("Error fetching branches:", error);
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_FAILEDTOFETCHBRANCHES_65E26530', fallbackText: t('branches.failedToFetchBranches'), type: 'error' });
-      } finally {
-        setIsLoading(false);
       }
     };
-
-    fetchBranches();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchBranchesStore({ revalidate: true });
+  });
 
   const handleSort = (column) => {
     setSortConfig(prevConfig => {
@@ -173,12 +173,8 @@ const Branches = () => {
         action: 'Branch Updated'
       });
       
-      // Update the data state with the updated branch
-      setData(prev => prev.map(branch => 
-        branch.branch_id === editingBranch.branch_id 
-          ? { ...branch, ...response.data.data }
-          : branch
-      ));
+      invalidateCache('branches:');
+      await fetchBranchesStore({ revalidate: true, force: true });
       
       setShowEditModal(false);
       setEditingBranch(null);
@@ -208,10 +204,8 @@ const Branches = () => {
         action: `${selectedRows.length} Branch(es) Deleted`
       });
 
-      // Update the data state to remove deleted branches
-      setData((prev) =>
-        prev.filter((branch) => !selectedRows.includes(branch.branch_id))
-      );
+      invalidateCache('branches:');
+      await fetchBranchesStore({ revalidate: true, force: true });
       setSelectedRows([]);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_BRANCHESDELETEDSUCCESSFULLY_05CD82D2', fallbackText: t('branches.branchesDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
     } catch (error) {

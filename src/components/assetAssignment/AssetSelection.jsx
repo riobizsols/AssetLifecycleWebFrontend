@@ -9,6 +9,8 @@ import useAuditLog from "../../hooks/useAuditLog";
 import { DEPT_ASSIGNMENT_APP_ID } from "../../constants/deptAssignmentAuditEvents";
 import { EMP_ASSIGNMENT_APP_ID } from "../../constants/empAssignmentAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAssignmentStore } from "../../store/useAssignmentStore";
+import { useAssetsStore } from "../../store/useAssetsStore";
 import SearchableDropdown from "../ui/SearchableDropdown";
  
 
@@ -176,117 +178,34 @@ const AssetSelection = () => {
 
   const fetchAssetTypes = async () => {
     try {
-      let incoming = [];
-      
-      // For department assignments, fetch only asset types assigned to that department
-      if (entityType === "department" && entityId) {
-        const res = await API.get(`/dept-assets/department/${entityId}/asset-types`);
-        // Handle nested data structure from backend
-        incoming = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        // Transform asset_type_name to text for consistency
-        incoming = incoming.map(item => ({
-          ...item,
-          text: item.asset_type_name || item.text
-        }));
-        console.log('Department asset types for dept', entityId, ':', incoming);
-      } 
-      else if (entityType === "employee") {
-        // For employee assignments, fetch only 'user' assignment type asset types
-        const res = await API.get("/dept-assets/asset-types?assignment_type=user");
-        incoming = Array.isArray(res.data) ? res.data : [];
-        console.log('User assignment type asset types:', incoming);
-      }
-      else {
-        // Fallback: fetch all asset types
-        const res = await API.get("/dept-assets/asset-types");
-        incoming = Array.isArray(res.data) ? res.data : [];
-        console.log('All asset types:', incoming);
-      }
+      const incoming = await useAssignmentStore
+        .getState()
+        .fetchAssetTypesForAssignment(entityType, entityId, { revalidate: true });
 
-      // Backend already filters by assignment_type, so just use the results
       setAssetTypes(incoming);
-      fetchAssetTypeCounts(incoming);
-      console.log('Final asset types:', incoming);
+      const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
+      setCountsLoading(true);
+      const counts = await useAssignmentStore
+        .getState()
+        .fetchInactiveCountsForTypes(context, incoming);
+      setAssetTypeCounts(counts);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETTYPES_6D6CB184', fallbackText: t('assets.failedToFetchAssetTypes'), type: 'error' });
       setAssetTypes([]);
-    }
-  };
-
-  const fetchAssetTypeCounts = async (types = []) => {
-    try {
-      setCountsLoading(true);
-      if (!Array.isArray(types) || types.length === 0) {
-        setAssetTypeCounts({});
-        setCountsLoading(false);
-        return;
-      }
-
-      const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
-      const responses = await Promise.all(
-        types.map((type) =>
-          API.get(`/assets/type/${type.asset_type_id}/inactive`, { params: { context } })
-        )
-      );
-
-      const counts = {};
-      types.forEach((type, index) => {
-        const res = responses[index];
-        const list = Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-          ? res.data
-          : [];
-        counts[type.asset_type_id] = list.length;
-      });
-
-      setAssetTypeCounts(counts);
-    } catch (err) {
-      console.error("Failed to fetch asset type counts", err);
-      setAssetTypeCounts({});
     } finally {
       setCountsLoading(false);
     }
   };
 
-  const fetchAvailableAssets = async () => {
-    try {
-      const endpoint =
-        entityType === "department"
-          ? `/admin/available-assets-for-department/${entityId}`
-          : `/admin/available-assets-for-employee/${entityId}`;
-
-      const res = await API.get(endpoint);
-      setAssets(res.data);
-    } catch (err) {
-      console.error("Failed to fetch available assets", err);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHAVAILABLEASSETS_7E326879', fallbackText: t('assets.failedToFetchAvailableAssets'), type: 'error' });
-    }
-  };
-
   const fetchInactiveAssetsByType = async (assetTypeId) => {
     try {
-      // Determine context based on entityType
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
-      
-      const res = await API.get(`/assets/type/${assetTypeId}/inactive`, {
-        params: { context }
-      });
-      // If the response is an object with a 'data' array, use that
-      const assetsArr = Array.isArray(res.data.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-        ? res.data
-        : [];
+      const assetsArr = await useAssignmentStore
+        .getState()
+        .fetchInactiveAssetsByType(context, assetTypeId, { revalidate: true });
       setInactiveAssets(assetsArr);
-      setInactiveAssetsRaw(res.data); // for debugging if needed
-      console.log(
-        "Inactive assets for asset type",
-        assetTypeId,
-        ":",
-        assetsArr
-      );
+      setInactiveAssetsRaw(assetsArr);
     } catch (err) {
       console.error("Failed to fetch inactive assets", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
@@ -302,23 +221,13 @@ const AssetSelection = () => {
         return;
       }
 
-      // Reuse existing API by querying each type, then de-duplicate by asset_id.
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
-      const requests = assetTypes.map((type) =>
-        API.get(`/assets/type/${type.asset_type_id}/inactive`, { params: { context } })
-      );
-
-      const responses = await Promise.all(requests);
-      const combined = responses.flatMap((res) =>
-        Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : []
-      );
-
-      const uniqueByAssetId = Array.from(
-        new Map(combined.map((asset) => [asset.asset_id, asset])).values()
-      );
+      const uniqueByAssetId = await useAssignmentStore
+        .getState()
+        .fetchAllInactiveAssets(context, assetTypes);
 
       setInactiveAssets(uniqueByAssetId);
-      setInactiveAssetsRaw(combined);
+      setInactiveAssetsRaw(uniqueByAssetId);
     } catch (err) {
       console.error("Failed to fetch all inactive assets", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
@@ -417,6 +326,9 @@ const AssetSelection = () => {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETASSIGNEDTODEPARTMENTSUCCESSFULLY_439AD8DD', fallbackText: t('assets.assetAssignedToDepartmentSuccessfully'), type: 'success' });
       }
       
+      useAssignmentStore.getState().invalidateAssignmentCache();
+      useAssetsStore.getState().invalidateAssetsCache();
+
       // Redirect after successful assignment
       navigate(-1);
   

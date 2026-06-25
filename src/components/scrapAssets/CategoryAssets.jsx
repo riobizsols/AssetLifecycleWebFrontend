@@ -9,6 +9,8 @@ import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { useScrapAssetsStore } from '../../store/useScrapAssetsStore';
 
 const CategoryAssets = () => {
   const navigate = useNavigate();
@@ -28,20 +30,10 @@ const CategoryAssets = () => {
   // Fetch assets expiring within 30 days by type from API
   const fetchAssetsByCategory = async () => {
     try {
-      console.log('🔍 Fetching assets by category:', category);
-      const response = await API.get('/assets/expiring-30-days-by-type', {
-        params: { context: 'SCRAPASSETS' }
-      });
-      console.log('📊 API Response:', response.data);
-      
-      if (response.data && response.data.asset_types) {
-        console.log('🔍 Available categories:', response.data.asset_types.map(t => t.asset_type_name));
-        console.log('🔍 Looking for category:', category);
-        console.log('🔍 Category lengths:', response.data.asset_types.map(t => ({ name: t.asset_type_name, length: t.asset_type_name.length, hasTrailingSpace: t.asset_type_name.endsWith(' ') })));
-        
-        // Find the specific asset type that matches the category
-        // Use more flexible matching to handle URL encoding and case differences
-        const categoryData = response.data.asset_types.find(type => {
+      setLoading(true);
+      const types = await useScrapAssetsStore.getState().fetchExpiringByCategory({ revalidate: true });
+      if (types?.length) {
+        const categoryData = types.find(type => {
           const apiCategory = type.asset_type_name.toLowerCase().trim();
           const urlCategory = decodeURIComponent(category).toLowerCase().trim();
           

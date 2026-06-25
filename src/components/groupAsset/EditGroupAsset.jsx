@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
+import { useGroupAssetStore } from '../../store/useGroupAssetStore';
 import { toast } from 'react-hot-toast';
 import { 
   ChevronDown, 
@@ -468,6 +469,7 @@ const EditGroupAsset = () => {
         });
         
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_ASSETGROUPUPDATEDSUC_223B1BD8', fallbackText: t('groupAssets.editGroupAsset.assetGroupUpdatedSuccessfully'), type: 'success' });
+        useGroupAssetStore.getState().invalidateGroupAssetCache();
         navigate('/group-asset');
       } else {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOUPDATEASSETG_66EDB19B', fallbackText: t('groupAssets.editGroupAsset.failedToUpdateAssetGroup'), type: 'error' });

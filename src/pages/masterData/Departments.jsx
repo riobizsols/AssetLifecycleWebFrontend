@@ -7,9 +7,13 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { DEPARTMENTS_APP_ID } from "../../constants/departmentsAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useDepartmentsStore } from "../../store/useDepartmentsStore";
+import { invalidateCache } from "../../utils/apiCache";
 
 const Departments = () => {
-  const [departments, setDepartments] = useState([]);
+  const departments = useDepartmentsStore((s) => s.departments);
+  const fetchDepartmentsStore = useDepartmentsStore((s) => s.fetchDepartments);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedDept, setSelectedDept] = useState(null);
@@ -49,13 +53,11 @@ const Departments = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showDeleteModal, showEditModal]);
 
-    const fetchDepartments = async () => {
+    const fetchDepartments = async ({ force = false } = {}) => {
       try {
-      const res = await API.get("/departments");
-      setDepartments(Array.isArray(res.data) ? res.data : []);
+      await fetchDepartmentsStore({ revalidate: true, force });
     } catch (err) {
       console.error("Error fetching departments:", err);
-      setDepartments([]);
     }
   };
 
@@ -76,7 +78,12 @@ const Departments = () => {
   useEffect(() => {
     fetchDepartments();
     fetchNextDeptId();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchDepartmentsStore({ revalidate: true });
+  });
 
   const handleCreate = async () => {
     setSubmitAttempted(true);
@@ -95,7 +102,8 @@ const Departments = () => {
       });
       
       setNewDeptName("");
-      fetchDepartments();
+      invalidateCache('departments:');
+      fetchDepartments({ force: true });
       fetchNextDeptId();
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTCREATEDSUCCESSFULLY_3510E42C', fallbackText: t('departments.departmentCreatedSuccessfully', { name: newDeptName }), type: 'success' });
       setSubmitAttempted(false);
