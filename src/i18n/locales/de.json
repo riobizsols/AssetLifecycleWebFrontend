@@ -82,6 +82,7 @@
     "triggerNow": "Jetzt auslösen",
     "refresh": "Aktualisieren",
     "clickToViewDetailed": "Klicken Sie hier für detaillierte Verwaltung",
+    "cronMonitorViewOnly": "Verwenden Sie die Schaltflächen unten zum Auslösen. Für den vollständigen Monitor sind Admin-Rechte erforderlich.",
     "depreciationCronJobTrigger": "Abschreibungs-Cron-Job-Auslöser",
     "triggerDepreciationCronJob": "Abschreibungs-Cron-Job auslösen",
     "clickButtonToTrigger": "Klicken Sie auf die Schaltfläche oben, um den Abschreibungsberechnungs-Cron-Job auszulösen",
@@ -3609,5 +3610,18 @@
     "failedToFetch": "Fehler beim Laden der Schrottgenehmigungen",
     "loading": "Wird geladen...",
     "noData": "Keine Daten gefunden"
+  },
+  "notAuthorized": {
+    "errorCode": "Fehler 403",
+    "title": "Zugriff eingeschränkt",
+    "subtitle": "Dieses Modul ist in Ihren aktuellen Rollenberechtigungen nicht enthalten.",
+    "requestedPage": "Sie haben versucht zu öffnen",
+    "description": "Sie sind angemeldet, aber Ihre Jobrolle erlaubt keinen Zugriff auf diesen Bildschirm. Nutzen Sie die Schaltfläche unten, um zum Dashboard zurückzukehren.",
+    "hintRole": "Ihr Administrator kann die passende Jobrolle oder Navigation unter Benutzerrollen zuweisen.",
+    "hintAdmin": "Nach einer Zugriffsänderung ab- und wieder anmelden, um Berechtigungen zu aktualisieren.",
+    "goToDashboard": "Zum Dashboard",
+    "goBack": "Vorherige Seite",
+    "quickLinks": "Verfügbare Bereiche",
+    "contactAdmin": "Hilfe benötigt? Wenden Sie sich an Ihren Administrator."
   }
 }

@@ -24,6 +24,7 @@ export function formatGroupAssetRows(raw) {
           day: 'numeric',
         })
       : '',
+    raw_created_date: group.created_on || '',
     changed_by: group.changed_by,
     changed_date: group.changed_on
       ? new Date(group.changed_on).toLocaleDateString('en-US', {
@@ -32,6 +33,7 @@ export function formatGroupAssetRows(raw) {
           day: 'numeric',
         })
       : '',
+    raw_changed_date: group.changed_on || '',
     status: 'Active',
     _original: group,
   }));

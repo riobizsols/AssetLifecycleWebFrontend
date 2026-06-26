@@ -14,6 +14,7 @@ import {
   formatMaintenanceScheduleRows,
   useMaintenanceSupervisorStore,
 } from "../store/useMaintenanceSupervisorStore";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const MaintenanceSupervisor = () => {
   const navigate = useNavigate();
@@ -75,30 +76,7 @@ const MaintenanceSupervisor = () => {
   });
 
   const handleFilterChange = (columnName, value) => {
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: value,
-      }));
-    }
-    else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({
-        ...prev,
-        [columnName]: value,
-      }));
-    }
-    else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleSort = (column) => {
@@ -239,6 +217,7 @@ const MaintenanceSupervisor = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="raw_act_maint_st_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

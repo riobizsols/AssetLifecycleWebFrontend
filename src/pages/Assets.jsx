@@ -18,7 +18,7 @@ import { useNavigation } from "../hooks/useNavigation";
 import useColumnAccess from "../hooks/useColumnAccess";
 import { useAssetsStore } from "../store/useAssetsStore";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
-import { prefetchAddAssetFormData } from "../services/addAssetFormData";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const Assets = () => {
   const navigate = useNavigate();
@@ -233,33 +233,8 @@ const Assets = () => {
   }, [location.pathname, hasCreateAccess, navigate, t]);
 
   const handleFilterChange = async (columnName, value) => {
-    // Handle columnFilters array from ContentBox
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: value,
-      }));
-    }
-    // Handle date filters
-    else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({
-        ...prev,
-        [columnName]: value,
-      }));
-    }
-    // Handle individual column filters (legacy support)
-    else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    const nextFilters = applyListFilterChange(filterValues, columnName, value);
+    setFilterValues(nextFilters);
   };
 
   const handleSort = async (column) => {
@@ -510,6 +485,7 @@ const Assets = () => {
       <>
       <ContentBox
         filters={filters}
+        dateFilterField="expiry_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

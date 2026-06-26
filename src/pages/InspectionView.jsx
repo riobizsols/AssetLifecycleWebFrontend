@@ -11,6 +11,7 @@ import UpdateAssetModal from "../components/assets/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
 import { translateMasterDataLabel } from "../utils/masterDataLabel";
+import { applyListFilterChange } from "../utils/listFilterState";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useInspectionViewStore } from "../store/useInspectionViewStore";
 
@@ -86,6 +87,9 @@ const InspectionView = () => {
     return (schedules || []).map((item) => ({
       ...item,
       asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
+      raw_act_insp_st_date: item.act_insp_st_date,
+      raw_act_insp_end_date: item.act_insp_end_date,
+      raw_created_on: item.created_on,
       act_insp_st_date: formatDate(item.act_insp_st_date),
       act_insp_end_date: formatDate(item.act_insp_end_date),
       created_on: formatDate(item.created_on),
@@ -107,33 +111,7 @@ const InspectionView = () => {
   });
 
   const handleFilterChange = (columnName, value) => {
-    // Handle columnFilters array from ContentBox
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: value,
-      }));
-    }
-    // Handle date filters
-    else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({
-        ...prev,
-        [columnName]: value,
-      }));
-    }
-    // Handle individual column filters (legacy support)
-    else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleSort = (column) => {
@@ -278,6 +256,7 @@ const InspectionView = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="raw_act_insp_st_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

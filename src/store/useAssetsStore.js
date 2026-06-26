@@ -26,6 +26,11 @@ export const formatAssetRowDates = (item) => {
 
   return {
     ...item,
+    raw_purchased_on: item.purchased_on,
+    raw_expiry_date: item.expiry_date,
+    raw_warranty_period: item.warranty_period,
+    raw_created_on: item.created_on,
+    raw_changed_on: item.changed_on,
     purchased_on: formatDate(item.purchased_on),
     expiry_date: formatDate(item.expiry_date),
     warranty_period: formatDate(item.warranty_period),

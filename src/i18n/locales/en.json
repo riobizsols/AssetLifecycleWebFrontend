@@ -82,6 +82,7 @@
     "triggerNow": "Trigger Now",
     "refresh": "Refresh",
     "clickToViewDetailed": "Click to view detailed management",
+    "cronMonitorViewOnly": "Use the buttons below to trigger jobs. Admin access is required to open the full monitor.",
     "depreciationCronJobTrigger": "Depreciation Cron Job Trigger",
     "triggerDepreciationCronJob": "Trigger Depreciation Cron Job",
     "clickButtonToTrigger": "Click the button above to trigger the depreciation calculation cron job",
@@ -3485,5 +3486,18 @@
     "failedToFetch": "Failed to fetch scrap approvals",
     "loading": "Loading...",
     "noData": "No Data Found"
+  },
+  "notAuthorized": {
+    "errorCode": "Error 403",
+    "title": "Access restricted",
+    "subtitle": "This module isn't included in your current role permissions.",
+    "requestedPage": "You tried to open",
+    "description": "You're signed in successfully, but your job role doesn't grant access to this screen. Use the button below to return to the dashboard and continue with modules assigned to you.",
+    "hintRole": "Your administrator can add the right job role or navigation access in User Roles.",
+    "hintAdmin": "After access is updated, sign out and sign in again to refresh permissions.",
+    "goToDashboard": "Back to Dashboard",
+    "goBack": "Previous page",
+    "quickLinks": "Screens you can open",
+    "contactAdmin": "Need help? Contact your system administrator."
   }
 }

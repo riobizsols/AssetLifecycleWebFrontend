@@ -147,6 +147,7 @@ const ContentBox = ({
   customHeaderActions, // Custom header actions
   isReadOnly = false, // Add isReadOnly prop
   onHeaderClick, // Add onHeaderClick prop
+  dateFilterField = '', // Which column date range applies to (optional)
 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -410,6 +411,7 @@ const ContentBox = ({
       setDateRange({ from: "", to: "" });
       onFilterChange("fromDate", "");
       onFilterChange("toDate", "");
+      onFilterChange("dateField", "");
     }
   };
 
@@ -738,6 +740,7 @@ const ContentBox = ({
                       const updated = { ...dateRange, from: e.target.value };
                       setDateRange(updated);
                       onFilterChange("fromDate", updated.from);
+                      if (dateFilterField) onFilterChange("dateField", dateFilterField);
                     }}
                   />
                   <span>to</span>
@@ -749,6 +752,7 @@ const ContentBox = ({
                       const updated = { ...dateRange, to: e.target.value };
                       setDateRange(updated);
                       onFilterChange("toDate", updated.to);
+                      if (dateFilterField) onFilterChange("dateField", dateFilterField);
                     }}
                   />
                 </div>

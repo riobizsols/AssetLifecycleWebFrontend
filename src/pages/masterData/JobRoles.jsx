@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
 import { filterData } from "../../utils/filterData";
+import { applyListFilterChange } from "../../utils/listFilterState";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import { FaSave, FaTimes } from "react-icons/fa";
@@ -224,11 +225,8 @@ const JobRoles = () => {
     }
   };
 
-  const handleRoleFilterChange = (filterType, value) => {
-    setRoleFilterValues(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+  const handleRoleFilterChange = (columnName, value) => {
+    setRoleFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   // ============ NAVIGATION TAB HANDLERS ============
@@ -272,11 +270,8 @@ const JobRoles = () => {
     }
   };
 
-  const handleNavFilterChange = (filterType, value) => {
-    setNavFilterValues(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+  const handleNavFilterChange = (columnName, value) => {
+    setNavFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   // ============ RENDER ============

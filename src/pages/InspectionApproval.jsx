@@ -11,6 +11,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { translateMasterDataLabel } from "../utils/masterDataLabel";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useInspectionApprovalStore } from "../store/useInspectionApprovalStore";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const InspectionApproval = () => {
   const navigate = useNavigate();
@@ -55,6 +56,7 @@ const InspectionApproval = () => {
       id: item.wfaiisd_id,
       asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
       branch_name: translateMasterDataLabel(item.branch_name, t),
+      raw_pl_sch_date: item.pl_sch_date,
       pl_sch_date: item.pl_sch_date ? new Date(item.pl_sch_date).toLocaleDateString() : '-',
       header_status: item.header_status || 'PN',
     })),
@@ -64,22 +66,7 @@ const InspectionApproval = () => {
   const isLoading = listLoading && data.length === 0;
 
   const handleFilterChange = (columnName, value) => {
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({ ...prev, columnFilters: value }));
-    } else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({ ...prev, [columnName]: value }));
-    } else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleSort = (column) => {
@@ -140,6 +127,7 @@ const InspectionApproval = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="raw_pl_sch_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

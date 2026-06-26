@@ -9,6 +9,7 @@ import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const VendorRenewalApproval = () => {
   const navigate = useNavigate();
@@ -62,6 +63,7 @@ const VendorRenewalApproval = () => {
 
         return {
           ...item,
+          raw_scheduled_date: item.scheduled_date,
           scheduled_date: formatDate(item.scheduled_date),
           actual_date: formatDate(item.actual_date),
           maintenance_created_on: formatDate(item.maintenance_created_on),
@@ -83,33 +85,7 @@ const VendorRenewalApproval = () => {
   };
 
   const handleFilterChange = (columnName, value) => {
-    // Handle columnFilters array from ContentBox
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: value,
-      }));
-    }
-    // Handle date filters
-    else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({
-        ...prev,
-        [columnName]: value,
-      }));
-    }
-    // Handle individual column filters (legacy support)
-    else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleSort = (column) => {
@@ -218,6 +194,7 @@ const VendorRenewalApproval = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="scheduled_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

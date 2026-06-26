@@ -9,6 +9,8 @@ import useAuditLog from '../hooks/useAuditLog';
 import { USERS_APP_ID } from '../constants/usersAuditEvents';
 import ContentBox from './ContentBox';
 import CustomTable from './CustomTable';
+import { filterData } from '../utils/filterData';
+import { applyListFilterChange } from '../utils/listFilterState';
 import SearchableDropdown from './ui/SearchableDropdown';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translateJobRoleName } from '../utils/jobRoleTranslations';
@@ -32,7 +34,12 @@ const AssignRoles = () => {
   const [availableRoles, setAvailableRoles] = useState([]);
   const [currentEmployeeRoles, setCurrentEmployeeRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filterValues, setFilterValues] = useState({
+    columnFilters: [],
+    fromDate: '',
+    toDate: '',
+    search: '',
+  });
 
   const columns = useMemo(() => [
     { label: u("employeeId"), name: "employee_id", visible: true },
@@ -130,37 +137,12 @@ const AssignRoles = () => {
     });
   };
 
-  const getFilteredData = () => {
-    let filtered = getSortedData();
-    
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(employee => {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          (employee.employee_id && employee.employee_id.toLowerCase().includes(searchLower)) ||
-          (employee.name && employee.name.toLowerCase().includes(searchLower)) ||
-          (employee.full_name && employee.full_name.toLowerCase().includes(searchLower)) ||
-          (employee.email_id && employee.email_id.toLowerCase().includes(searchLower)) ||
-          (employee.dept_id && employee.dept_id.toLowerCase().includes(searchLower)) ||
-          (employee.phone_number && employee.phone_number.toLowerCase().includes(searchLower)) ||
-          (employee.job_role_name && employee.job_role_name.toLowerCase().includes(searchLower))
-        );
-      });
-    }
-    
-    return filtered;
+  const getFilteredData = (visibleColumns) => {
+    return filterData(getSortedData(), filterValues, visibleColumns);
   };
 
-  // ContentBox handlers
-  const handleFilterChange = (filterType, value) => {
-    // Handle different filter types
-    if (filterType === 'search') {
-      setSearchTerm(value);
-    } else if (filterType === 'columnFilters') {
-      // Apply column-based filtering
-      // This would be implemented based on your specific filtering needs
-    }
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleRefresh = () => {
@@ -280,8 +262,6 @@ const AssignRoles = () => {
     }
   };
 
-  const filteredData = getFilteredData();
-
   return (
     <div className="p-3">
 
@@ -314,10 +294,12 @@ const AssignRoles = () => {
           </button>
         }
       >
-        {({ visibleColumns, showActions }) => (
+        {({ visibleColumns, showActions }) => {
+          const tableData = getFilteredData(visibleColumns);
+          return (
           <CustomTable
             visibleColumns={visibleColumns}
-            data={filteredData}
+            data={tableData}
             selectedRows={selectedRows}
             setSelectedRows={setSelectedRows}
             onEdit={handleAssignRole}
@@ -358,7 +340,8 @@ const AssignRoles = () => {
               return row[col.name] || '-';
             }}
           />
-        )}
+          );
+        }}
       </ContentBox>
 
       {/* Assign Role Modal */}

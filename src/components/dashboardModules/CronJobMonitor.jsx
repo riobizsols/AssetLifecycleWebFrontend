@@ -4,10 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import API from "../../lib/axios";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useNavigation } from "../../hooks/useNavigation";
+import { getCronDetailPath } from "../../utils/cronNavigation";
 
 const CronJobMonitor = ({ deferMs = 0 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { hasAccess } = useNavigation();
+  const cronDetailPath = getCronDetailPath(hasAccess);
   const [cronStatus, setCronStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isTriggering, setIsTriggering] = useState(false);
@@ -153,7 +157,12 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
   };
 
   return (
-    <Card className="h-full cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/cron-management')}>
+    <Card
+      className={`h-full transition-shadow ${cronDetailPath ? 'cursor-pointer hover:shadow-lg' : ''}`}
+      onClick={() => {
+        if (cronDetailPath) navigate(cronDetailPath);
+      }}
+    >
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <Clock className="w-5 h-5" />
@@ -161,7 +170,7 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
         </CardTitle>
         <div className="flex items-center gap-2">
           {getStatusIcon()}
-          <ArrowRight className="w-4 h-4 text-gray-400" />
+          {cronDetailPath ? <ArrowRight className="w-4 h-4 text-gray-400" /> : null}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -197,7 +206,11 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
                  </div>
                </div>
                <div className="mt-2 text-xs text-blue-600 flex items-center gap-1">
-                 <span>{t('dashboard.clickToViewDetailed')}</span>
+                 <span>
+                   {cronDetailPath
+                     ? t('dashboard.clickToViewDetailed')
+                     : t('dashboard.cronMonitorViewOnly')}
+                 </span>
                </div>
              </div>
 

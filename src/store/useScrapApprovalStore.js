@@ -32,6 +32,7 @@ export function formatScrapApprovalRows(approvals, t) {
 
     return {
       ...row,
+      raw_created_on: row.created_on,
       status: row.header_status,
       created_on: row.created_on ? new Date(row.created_on).toLocaleDateString() : '',
       scrap_type_display:

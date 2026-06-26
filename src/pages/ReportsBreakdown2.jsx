@@ -13,6 +13,7 @@ import ConfirmBreakdownModal from "../components/reportbreakdown/ConfirmBreakdow
 import { Check, Pencil } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { applyListFilterChange } from "../utils/listFilterState";
 import { useEmployeeReportBreakdownStore } from "../store/useEmployeeReportBreakdownStore";
 
 const ReportsBreakdown2 = () => {
@@ -176,16 +177,8 @@ const ReportsBreakdown2 = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues((prev) => {
-      if (filterType === "columnFilters") {
-        return { ...prev, columnFilters: value };
-      } else if (filterType === "fromDate" || filterType === "toDate") {
-        return { ...prev, [filterType]: value };
-      } else {
-        return { ...prev, [filterType]: value };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const filters = columns.map((col) => ({

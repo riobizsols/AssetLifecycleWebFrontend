@@ -8,10 +8,27 @@ const LanguageContext = createContext();
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+  const { t, i18n } = useTranslation();
+
+  if (context) {
+    return context;
   }
-  return context;
+
+  // Lazy-loaded chunks can occasionally mount before LanguageContext resolves;
+  // fall back to i18next so dashboard widgets still render.
+  return {
+    currentLanguage: i18n.language,
+    availableLanguages: [
+      { code: 'en', name: t('language.english'), flag: '🇺🇸' },
+      { code: 'de', name: t('language.german'), flag: '🇩🇪' },
+    ],
+    changeLanguage: async (language) => {
+      await i18n.changeLanguage(language);
+      localStorage.setItem('selectedLanguage', language);
+    },
+    t,
+    i18n,
+  };
 };
 
 export const LanguageProvider = ({ children }) => {

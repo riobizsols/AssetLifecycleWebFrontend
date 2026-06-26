@@ -27,6 +27,8 @@ export function formatMaintenanceApprovalRows(items, t) {
     ...item,
     raw_created_on: item.maintenance_created_on,
     raw_changed_on: item.maintenance_changed_on,
+    raw_scheduled_date: item.scheduled_date,
+    raw_actual_date: item.act_sch_date ?? item.actual_date,
     scheduled_date: formatDate(item.scheduled_date),
     actual_date: formatDate(item.actual_date),
     maintenance_created_on: formatDate(item.maintenance_created_on),
@@ -64,25 +66,30 @@ export const useMaintenanceApprovalStore = create((set, get) => ({
       return Array.isArray(res.data) ? res.data : res.data?.data || [];
     };
 
-    if (revalidate) {
-      const cached = peekCache(LIST_KEY, MAINTENANCE_APPROVAL_TTL_MS);
-      if (cached?.length) {
-        apply(cached);
-      } else if (get().approvals.length > 0) {
-        set({ listLoading: false });
+    try {
+      if (revalidate) {
+        const cached = peekCache(LIST_KEY, MAINTENANCE_APPROVAL_TTL_MS);
+        if (cached?.length) {
+          apply(cached);
+        } else if (get().approvals.length > 0) {
+          set({ listLoading: false });
+        }
+        const { data } = await fetchWithRevalidate(LIST_KEY, fetcher, {
+          ttlMs: MAINTENANCE_APPROVAL_TTL_MS,
+          onFresh: apply,
+        });
+        return data;
       }
-      const { data } = await fetchWithRevalidate(LIST_KEY, fetcher, {
-        ttlMs: MAINTENANCE_APPROVAL_TTL_MS,
-        onFresh: apply,
-      });
-      return data;
-    }
 
-    const { data } = await fetchWithCache(LIST_KEY, fetcher, {
-      ttlMs: MAINTENANCE_APPROVAL_TTL_MS,
-    });
-    apply(data);
-    return data;
+      const { data } = await fetchWithCache(LIST_KEY, fetcher, {
+        ttlMs: MAINTENANCE_APPROVAL_TTL_MS,
+      });
+      apply(data);
+      return data;
+    } catch (err) {
+      set({ listLoading: false });
+      throw err;
+    }
   },
 
   prefetchApprovals: () => {

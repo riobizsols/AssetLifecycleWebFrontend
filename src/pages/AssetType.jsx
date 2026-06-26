@@ -16,6 +16,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useAssetTypeStore } from "../store/useAssetTypeStore";
 import { invalidateCache } from "../utils/apiCache";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const AssetType = () => {
   const navigate = useNavigate();
@@ -86,25 +87,8 @@ const AssetType = () => {
     fetchAssetTypesStore({ revalidate: true });
   });
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => {
-      if (filterType === 'columnFilters') {
-        return {
-          ...prev,
-          columnFilters: value
-        };
-      } else if (filterType === 'fromDate' || filterType === 'toDate') {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      } else {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleSort = (column) => {

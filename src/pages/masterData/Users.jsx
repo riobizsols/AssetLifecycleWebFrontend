@@ -12,6 +12,7 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { USERS_APP_ID } from "../../constants/usersAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { applyListFilterChange } from "../../utils/listFilterState";
 
 const Users = () => {
   const navigate = useNavigate();
@@ -240,25 +241,8 @@ const Users = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => {
-      if (filterType === 'columnFilters') {
-        return {
-          ...prev,
-          columnFilters: value
-        };
-      } else if (filterType === 'fromDate' || filterType === 'toDate') {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      } else {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleDelete = async () => {

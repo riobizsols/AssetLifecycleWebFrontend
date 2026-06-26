@@ -11,6 +11,7 @@ import {
   formatScrapApprovalRows,
   useScrapApprovalStore,
 } from "../store/useScrapApprovalStore";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const ScrapMaintenanceApproval = () => {
   const navigate = useNavigate();
@@ -60,25 +61,7 @@ const ScrapMaintenanceApproval = () => {
   });
 
   const handleFilterChange = (columnName, value) => {
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({ ...prev, columnFilters: value }));
-      return;
-    }
-    if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({ ...prev, [columnName]: value }));
-      return;
-    }
-
-    setFilterValues((prev) => ({
-      ...prev,
-      columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-      ...(value && {
-        columnFilters: [
-          ...prev.columnFilters.filter((f) => f.column !== columnName),
-          { column: columnName, value },
-        ],
-      }),
-    }));
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const filters = [
@@ -117,6 +100,7 @@ const ScrapMaintenanceApproval = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="raw_created_on"
         onFilterChange={handleFilterChange}
         data={data}
         selectedRows={selectedRows}

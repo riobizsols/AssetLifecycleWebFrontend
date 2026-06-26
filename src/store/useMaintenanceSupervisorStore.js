@@ -30,6 +30,9 @@ export function formatMaintenanceScheduleRows(rows, t) {
 
   return (rows || []).map((item) => ({
     ...item,
+    raw_act_maint_st_date: item.act_maint_st_date,
+    raw_created_on: item.created_on,
+    raw_changed_on: item.changed_on,
     act_maint_st_date: formatDate(item.act_maint_st_date),
     created_on: formatDate(item.created_on),
     changed_on: formatDate(item.changed_on),

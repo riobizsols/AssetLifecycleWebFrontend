@@ -12,6 +12,8 @@ import CustomTable from '../CustomTable';
 import { Html5Qrcode } from "html5-qrcode";
 import SearchableDropdown from '../ui/SearchableDropdown';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { filterData } from '../../utils/filterData';
+import { applyListFilterChange } from '../../utils/listFilterState';
 
 const CreateScrapAsset = () => {
   const navigate = useNavigate();
@@ -171,7 +173,8 @@ const CreateScrapAsset = () => {
         group_name: g.text || '',
         asset_count: g.asset_count !== undefined && g.asset_count !== null ? Number(g.asset_count) : 0,
         branch_code: g.branch_code || '',
-        created_on: g.created_on ? new Date(g.created_on).toLocaleDateString() : ''
+        created_on: g.created_on ? new Date(g.created_on).toLocaleDateString() : '',
+        raw_created_on: g.created_on || '',
       }));
 
       setGroupedAssetRows(normalized);
@@ -446,7 +449,11 @@ const CreateScrapAsset = () => {
     setNotes('');
   };
 
-  const [filterValues, setFilterValues] = useState({});
+  const [filterValues, setFilterValues] = useState({
+    columnFilters: [],
+    fromDate: '',
+    toDate: '',
+  });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const handleSort = (column) => {
@@ -470,62 +477,11 @@ const CreateScrapAsset = () => {
         return sortConfig.direction === 'asc' ? 1 : -1;
       }
         return 0;
-      });
-    };
-
-    const filterData = (data, filters) => {
-      return data.filter(item => {
-        // Handle column-specific filters
-        if (filters.columnFilters && filters.columnFilters.length > 0) {
-          const columnFilterMatch = filters.columnFilters.every(filter => {
-          if (!filter.column || !filter.value) return true;
-          
-          let itemValue = item[filter.column];
-          
-          // Handle object values (like days_until_expiry: {days: 5})
-          if (itemValue && typeof itemValue === 'object' && itemValue.days !== undefined) {
-            itemValue = `${itemValue.days} days`;
-          }
-          // Handle other object values by converting to string
-          else if (itemValue && typeof itemValue === 'object') {
-            itemValue = JSON.stringify(itemValue);
-          }
-          // Handle null/undefined values
-          else if (itemValue === null || itemValue === undefined) {
-            itemValue = 'N/A';
-          }
-          
-          const itemValueStr = String(itemValue).toLowerCase();
-          const filterValueStr = filter.value.toLowerCase();
-          
-          return itemValueStr.includes(filterValueStr);
-        });
-        
-        if (!columnFilterMatch) return false;
-      }
-      
-      // Handle date range filters
-      if (filters.fromDate && filters.fromDate !== '') {
-        const itemDate = new Date(item.expiry_date);
-        const fromDate = new Date(filters.fromDate);
-        if (itemDate < fromDate) return false;
-      }
-      
-      if (filters.toDate && filters.toDate !== '') {
-        const itemDate = new Date(item.expiry_date);
-        const toDate = new Date(filters.toDate);
-        if (itemDate > toDate) return false;
-      }
-      
-      return true;
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
 
@@ -678,6 +634,7 @@ const CreateScrapAsset = () => {
         <div>
           <ContentBox
             filters={columns}
+            dateFilterField="expiry_date"
             onFilterChange={handleFilterChange}
             onSort={handleSort}
             sortConfig={sortConfig}
@@ -690,7 +647,7 @@ const CreateScrapAsset = () => {
             showActions={false}
           >
             {({ visibleColumns, showActions }) => {
-              const filteredData = filterData(getFilteredAssets(), filterValues);
+              const filteredData = filterData(getFilteredAssets(), filterValues, visibleColumns);
               const sortedData = sortData(filteredData);
 
               return (

@@ -11,6 +11,8 @@ import { useNavigation } from '../../hooks/useNavigation';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
 import { useScrapAssetsStore } from '../../store/useScrapAssetsStore';
+import { filterData, withRawDateFields } from '../../utils/filterData';
+import { applyListFilterChange } from '../../utils/listFilterState';
 
 const ExpiredAssets = () => {
   const navigate = useNavigate();
@@ -30,7 +32,7 @@ const ExpiredAssets = () => {
     try {
       setLoading(true);
       const assets = await useScrapAssetsStore.getState().fetchExpired({ revalidate: true });
-      setScrapAssets(assets);
+      setScrapAssets((assets || []).map((a) => withRawDateFields(a, ['expiry_date'])));
     } catch (error) {
       console.error('❌ Error fetching expired assets:', error);
       if (error.response) {
@@ -251,7 +253,11 @@ const ExpiredAssets = () => {
   };
 
   const [selectedRows, setSelectedRows] = useState([]);
-  const [filterValues, setFilterValues] = useState({});
+  const [filterValues, setFilterValues] = useState({
+    columnFilters: [],
+    fromDate: '',
+    toDate: '',
+  });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const handleSort = (column) => {
@@ -278,61 +284,8 @@ const ExpiredAssets = () => {
     });
   };
 
-  const filterData = (data, filters, visibleColumns) => {
-    return data.filter(item => {
-      // Handle column-specific filters
-      if (filters.columnFilters && filters.columnFilters.length > 0) {
-        const columnFilterMatch = filters.columnFilters.every(filter => {
-          if (!filter.column || !filter.value) {
-            return true;
-          }
-          
-          let itemValue = item[filter.column];
-          
-          // Handle object values (like days_until_expiry: {days: 5})
-          if (itemValue && typeof itemValue === 'object' && itemValue.days !== undefined) {
-            itemValue = `${itemValue.days} days`;
-          }
-          // Handle other object values by converting to string
-          else if (itemValue && typeof itemValue === 'object') {
-            itemValue = JSON.stringify(itemValue);
-          }
-          // Handle null/undefined values
-          else if (itemValue === null || itemValue === undefined) {
-            itemValue = 'N/A';
-          }
-          
-          const itemValueStr = String(itemValue).toLowerCase();
-          const filterValueStr = filter.value.toLowerCase();
-          
-          return itemValueStr.includes(filterValueStr);
-        });
-        
-        if (!columnFilterMatch) return false;
-      }
-      
-      // Handle date range filters
-      if (filters.fromDate && filters.fromDate !== '') {
-        const itemDate = new Date(item.expiry_date);
-        const fromDate = new Date(filters.fromDate);
-        if (itemDate < fromDate) return false;
-      }
-      
-      if (filters.toDate && filters.toDate !== '') {
-        const itemDate = new Date(item.expiry_date);
-        const toDate = new Date(filters.toDate);
-        if (itemDate > toDate) return false;
-      }
-      
-      return true;
-    });
-  };
-
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const visibleColumns = columns.filter(col => col.visible);
@@ -364,6 +317,7 @@ const ExpiredAssets = () => {
       
       <ContentBox
         filters={columns}
+        dateFilterField="expiry_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

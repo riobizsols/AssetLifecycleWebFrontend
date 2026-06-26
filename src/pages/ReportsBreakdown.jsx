@@ -11,6 +11,7 @@ import { toast } from "react-hot-toast";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useReportBreakdownStore } from "../store/useReportBreakdownStore";
 import { invalidateCache } from "../utils/apiCache";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const ReportsBreakdown = () => {
   const navigate = useNavigate();
@@ -166,16 +167,8 @@ const ReportsBreakdown = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues((prev) => {
-      if (filterType === "columnFilters") {
-        return { ...prev, columnFilters: value };
-      } else if (filterType === "fromDate" || filterType === "toDate") {
-        return { ...prev, [filterType]: value };
-      } else {
-        return { ...prev, [filterType]: value };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const filters = columns.map((col) => ({

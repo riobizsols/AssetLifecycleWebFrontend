@@ -28,6 +28,7 @@ export function formatWorkOrderRows(raw, t) {
     description: getDisplayValue(wo.asset?.description),
     maintenance_type_name: getDisplayValue(wo.maintenance_type_name),
     act_maint_st_date: getDisplayValue(wo.act_maint_st_date, true),
+    raw_act_maint_st_date: wo.act_maint_st_date,
     status: getDisplayValue(wo.status),
     asset_type_name: getDisplayValue(wo.asset_type?.asset_type_name),
   }));

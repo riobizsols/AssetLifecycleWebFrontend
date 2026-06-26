@@ -16,6 +16,7 @@ import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
 import { useVendorsStore } from "../../store/useVendorsStore";
 import { invalidateCache } from "../../utils/apiCache";
 import { normalizeVendorFormPayload } from "../../utils/vendorFormPayload";
+import { applyListFilterChange } from "../../utils/listFilterState";
 
 const Vendors = () => {
   const navigate = useNavigate();
@@ -147,25 +148,8 @@ const Vendors = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => {
-      if (filterType === 'columnFilters') {
-        return {
-          ...prev,
-          columnFilters: value
-        };
-      } else if (filterType === 'fromDate' || filterType === 'toDate') {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      } else {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleDelete = async () => {

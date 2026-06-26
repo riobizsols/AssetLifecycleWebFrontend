@@ -15,6 +15,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
 import { useUserRolesStore } from "../../store/useUserRolesStore";
 import { invalidateCache } from "../../utils/apiCache";
+import { applyListFilterChange } from "../../utils/listFilterState";
 import { X } from "lucide-react";
 
 const Users = () => {
@@ -297,25 +298,8 @@ const Users = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => {
-      if (filterType === 'columnFilters') {
-        return {
-          ...prev,
-          columnFilters: value
-        };
-      } else if (filterType === 'fromDate' || filterType === 'toDate') {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      } else {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleDelete = async () => {

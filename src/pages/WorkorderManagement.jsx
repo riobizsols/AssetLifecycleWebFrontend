@@ -7,6 +7,7 @@ import { filterData } from "../utils/filterData";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "react-hot-toast";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { applyListFilterChange } from "../utils/listFilterState";
 import {
   formatWorkOrderRows,
   useWorkOrderStore,
@@ -107,16 +108,8 @@ const WorkorderManagement = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues((prev) => {
-      if (filterType === "columnFilters") {
-        return { ...prev, columnFilters: value };
-      } else if (filterType === "fromDate" || filterType === "toDate") {
-        return { ...prev, [filterType]: value };
-      } else {
-        return { ...prev, [filterType]: value };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleRowClick = (row) => {
@@ -134,6 +127,7 @@ const WorkorderManagement = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="act_maint_st_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

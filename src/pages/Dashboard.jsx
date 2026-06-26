@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Package,
@@ -15,20 +15,15 @@ import DashboardMetrics from "../components/dashboardModules/DashboardMetrics";
 import DepartmentChart from "../components/dashboardModules/DepartmentChart";
 import AssetTypeChart from "../components/dashboardModules/AssetTypeChart";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
+import CronJobMonitor from "../components/dashboardModules/CronJobMonitor";
+import DashboardCronJobTrigger from "../components/DashboardCronJobTrigger";
+import DashboardInspectionTrigger from "../components/DashboardInspectionTrigger";
+import DashboardMaintenanceTrigger from "../components/DashboardMaintenanceTrigger";
+import DashboardWorkflowEscalationTrigger from "../components/DashboardWorkflowEscalationTrigger";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useAuthStore } from "../store/useAuthStore";
 import { useDashboardStore } from "../store/useDashboardStore";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
-
-const CronJobMonitor = lazy(() => import("../components/dashboardModules/CronJobMonitor"));
-const DashboardCronJobTrigger = lazy(() => import("../components/DashboardCronJobTrigger"));
-const DashboardInspectionTrigger = lazy(() => import("../components/DashboardInspectionTrigger"));
-const DashboardMaintenanceTrigger = lazy(() => import("../components/DashboardMaintenanceTrigger"));
-const DashboardWorkflowEscalationTrigger = lazy(() => import("../components/DashboardWorkflowEscalationTrigger"));
-
-const SectionFallback = () => (
-  <div className="h-24 flex items-center justify-center text-sm text-gray-400">Loading…</div>
-);
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -183,26 +178,22 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        <Suspense fallback={<SectionFallback />}>
-          <div className="grid grid-cols-1 gap-4 sm:gap-6">
-            <CronJobMonitor deferMs={800} />
-          </div>
-        </Suspense>
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          <CronJobMonitor deferMs={800} />
+        </div>
 
-        <Suspense fallback={null}>
-          <div className="grid grid-cols-1 gap-4 sm:gap-6">
-            <DashboardCronJobTrigger />
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:gap-6">
-            <DashboardInspectionTrigger />
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:gap-6">
-            <DashboardMaintenanceTrigger />
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:gap-6">
-            <DashboardWorkflowEscalationTrigger />
-          </div>
-        </Suspense>
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          <DashboardCronJobTrigger />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          <DashboardInspectionTrigger />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          <DashboardMaintenanceTrigger />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          <DashboardWorkflowEscalationTrigger />
+        </div>
       </div>
     </div>
   );

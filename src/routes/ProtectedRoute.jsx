@@ -58,11 +58,23 @@ export default function ProtectedRoute({
         "Access denied. User needs one of:",
         requiredAnyOfAppIds,
       );
-      return <Navigate to="/not-authorized" />;
+      return (
+        <Navigate
+          to="/not-authorized"
+          replace
+          state={{ from: location.pathname, requiredAnyOfAppIds }}
+        />
+      );
     }
   } else if (requiredAppId && !hasAccess(requiredAppId)) {
     console.log("Access denied. User does not have access to app:", requiredAppId);
-    return <Navigate to="/not-authorized" />;
+    return (
+      <Navigate
+        to="/not-authorized"
+        replace
+        state={{ from: location.pathname, requiredAppId }}
+      />
+    );
   }
 
   return children;

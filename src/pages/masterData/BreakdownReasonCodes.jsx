@@ -9,6 +9,7 @@ import { filterData } from '../../utils/filterData';
 import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
 import { useBreakdownReasonCodesStore } from '../../store/useBreakdownReasonCodesStore';
 import { invalidateCache } from '../../utils/apiCache';
+import { applyListFilterChange } from '../../utils/listFilterState';
 
 const BreakdownReasonCodes = () => {
   const { t } = useLanguage();
@@ -234,28 +235,7 @@ const BreakdownReasonCodes = () => {
 
   // Handle filter change
   const handleFilterChange = (columnName, value) => {
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: value,
-      }));
-    } else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({
-        ...prev,
-        [columnName]: value,
-      }));
-    } else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const filters = columns.map((col) => ({

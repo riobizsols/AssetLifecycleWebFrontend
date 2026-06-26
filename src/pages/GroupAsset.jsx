@@ -13,6 +13,8 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useGroupAssetStore } from "../store/useGroupAssetStore";
 import { invalidateCache } from "../utils/apiCache";
+import { filterData } from "../utils/filterData";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const GroupAsset = () => {
   const navigate = useNavigate();
@@ -197,7 +199,11 @@ const GroupAsset = () => {
   };
 
   const [selectedRows, setSelectedRows] = useState([]);
-  const [filterValues, setFilterValues] = useState({});
+  const [filterValues, setFilterValues] = useState({
+    columnFilters: [],
+    fromDate: "",
+    toDate: "",
+  });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
   const handleSort = (column) => {
@@ -221,33 +227,8 @@ const GroupAsset = () => {
     });
   };
 
-  const filterData = (data, filters, visibleColumns) => {
-    return data.filter((item) => {
-      return Object.keys(filters).every((key) => {
-        const filterValue = filters[key];
-        if (!filterValue || filterValue === "") return true;
-
-        const itemValue = item[key];
-        if (itemValue === null || itemValue === undefined) return false;
-
-        return itemValue
-          .toString()
-          .toLowerCase()
-          .includes(filterValue.toString().toLowerCase());
-      });
-    });
-  };
-
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues((prev) => {
-      if (filterType === "columnFilters") {
-        return { ...prev, columnFilters: value };
-      } else if (filterType === "fromDate" || filterType === "toDate") {
-        return { ...prev, [filterType]: value };
-      } else {
-        return { ...prev, [filterType]: value };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const filters = columns.map((col) => ({
@@ -277,6 +258,7 @@ const GroupAsset = () => {
       ) : (
         <ContentBox
           filters={filters}
+          dateFilterField="created_date"
           onFilterChange={handleFilterChange}
           onSort={handleSort}
           sortConfig={sortConfig}

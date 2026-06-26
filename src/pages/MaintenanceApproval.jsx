@@ -15,6 +15,7 @@ import {
   formatMaintenanceApprovalRows,
   useMaintenanceApprovalStore,
 } from "../store/useMaintenanceApprovalStore";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const MaintenanceApprovalDetail = () => {
   const navigate = useNavigate();
@@ -68,7 +69,7 @@ const MaintenanceApprovalDetail = () => {
   }, [fetchApprovals, t]);
 
   useRevalidateOnFocus(() => {
-    fetchApprovals({ revalidate: true });
+    fetchApprovals({ revalidate: true }).catch(() => {});
   });
 
   const refreshList = () => {
@@ -77,33 +78,7 @@ const MaintenanceApprovalDetail = () => {
   };
 
   const handleFilterChange = (columnName, value) => {
-    // Handle columnFilters array from ContentBox
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: value,
-      }));
-    }
-    // Handle date filters
-    else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({
-        ...prev,
-        [columnName]: value,
-      }));
-    }
-    // Handle individual column filters (legacy support)
-    else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleSort = (column) => {
@@ -252,6 +227,7 @@ const MaintenanceApprovalDetail = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="raw_scheduled_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
