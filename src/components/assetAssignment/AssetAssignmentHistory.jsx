@@ -1,92 +1,83 @@
-import React, { useEffect, useState } from "react";
-import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
+import { showBackendTextToast } from '../../utils/errorTranslation';
+import React, { useEffect, useState } from "react";
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAssignmentStore } from '../../store/useAssignmentStore';
+
+function mapRawHistoryRows(rows, loadingLabel) {
+  return (rows || []).map((item) => ({
+    ...item,
+    description: item.description || loadingLabel,
+  }));
+}
 
 const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employee' }) => {
   const { t } = useLanguage();
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const loadingLabel = t('common.loading') || 'Loading...';
+
+  const [history, setHistory] = useState(() => {
+    const cached = useAssignmentStore.getState().getCachedAssignmentHistory({
+      type,
+      deptId,
+      employeeIntId,
+    });
+    return cached || [];
+  });
+  const [loading, setLoading] = useState(() => {
+    const cached = useAssignmentStore.getState().getCachedAssignmentHistory({
+      type,
+      deptId,
+      employeeIntId,
+    });
+    return cached == null;
+  });
 
   useEffect(() => {
     if (!employeeIntId && !deptId) return;
-    setLoading(true);
-    
-    // Determine the endpoint based on type
-    let endpoint = '';
-    if (type === 'department' && deptId) {
-      endpoint = `/asset-assignments/dept/${deptId}`;
-    } else if (type === 'employee' && employeeIntId) {
-      endpoint = `/asset-assignments/employee-history/${employeeIntId}`;
-    } else {
-      setLoading(false);
-      return;
-    }
 
-    // Determine context for logging
-    const context = type === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
+    let cancelled = false;
 
-    API.get(endpoint)
-      .then(async res => {
-        const historyArr = Array.isArray(res.data) ? res.data : [];
-        
-        // Display history immediately (don't wait for asset details)
-        setHistory(historyArr.map(item => ({
-          ...item,
-          asset_type: '',
-          description: 'Loading...'
-        })));
-        setLoading(false); // Stop showing "Loading history..." immediately
-        
-        // Get UNIQUE asset IDs only (prevent duplicate fetches)
-        const uniqueAssetIds = [...new Set(historyArr.map(item => item.asset_id).filter(Boolean))];
-        
-        // Fetch asset details for unique assets only (in background)
-        const assetDetailsMap = {};
-        
-        // Fetch unique assets one by one (not all at once to prevent overwhelming)
-        for (const asset_id of uniqueAssetIds) {
-          try {
-            // Pass context parameter so logs go to the right CSV
-            const assetRes = await API.get(`/assets/${asset_id}`, {
-              params: { context }
-            });
-            assetDetailsMap[asset_id] = assetRes.data;
-            
-            // Update history progressively as each asset loads
-            setHistory(prevHistory => 
-              prevHistory.map(item => 
-                item.asset_id === asset_id ? {
-                  ...item,
-                  asset_type: assetRes.data?.asset_type_id || '',
-                  description:
-                    assetRes.data?.description ||
-                    assetRes.data?.text ||
-                    '-'
-                } : item
-              )
-            );
-          } catch (err) {
-            assetDetailsMap[asset_id] = {};
-            // Update with error state
-            setHistory(prevHistory => 
-              prevHistory.map(item => 
-                item.asset_id === asset_id ? {
-                  ...item,
-                  asset_type: '',
-                  description: '-'
-                } : item
-              )
-            );
-          }
+    useAssignmentStore
+      .getState()
+      .fetchAssignmentHistory({
+        type,
+        deptId,
+        employeeIntId,
+        revalidate: true,
+        onRaw: (rows) => {
+          if (cancelled) return;
+          setHistory(mapRawHistoryRows(rows, loadingLabel));
+          setLoading(false);
+        },
+        onEnriched: (rows) => {
+          if (cancelled) return;
+          setHistory(rows || []);
+          setLoading(false);
+        },
+      })
+      .then((rows) => {
+        if (!cancelled && rows?.length) {
+          setHistory(rows);
+          setLoading(false);
         }
       })
-      .catch(err => {
-        toast.error(t('employees.failedToFetchAssignmentHistory', { type }));
-        setHistory([]);
-        setLoading(false);
+      .catch(() => {
+        if (!cancelled) {
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_EMPLOYEES_FAILEDTOFETCHASSIGNMENTHISTORY_18048F76',
+            fallbackText: t('employees.failedToFetchAssignmentHistory', { type }),
+            type: 'error',
+          });
+          setHistory([]);
+          setLoading(false);
+        }
       });
-  }, [employeeIntId, deptId, type]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeIntId, deptId, type, t, loadingLabel]);
 
   const getTitle = () => {
     return type === 'department' ? t('employees.departmentAssetAssignmentHistory') : t('employees.assetAssignmentHistory');
@@ -106,7 +97,7 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employ
           </button>
         </div>
         <div style={{ maxHeight: '70vh', overflowY: 'auto' }} className="p-8 space-y-4">
-            {loading ? (
+            {loading && history.length === 0 ? (
               <div className="text-center text-gray-500 py-8">{t('employees.loadingHistory')}</div>
             ) : history.length === 0 ? (
               <div className="text-center text-gray-500 py-8">{t('employees.noAssignmentHistoryFound')}</div>
@@ -123,7 +114,6 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employ
                 >
                   <div className="flex-1">
                     <div className="font-semibold text-lg text-[#0E2F4B] mb-1">
-                      {/* Asset Type (if available) */}
                       <span>{item.asset_type || ''}</span>
                       {item.asset_type && <span className="text-xs text-gray-500"> </span>}
                       <span className="text-xs text-gray-500">({item.asset_id})</span>
@@ -152,4 +142,4 @@ const AssetAssignmentHistory = ({ onClose, employeeIntId, deptId, type = 'employ
   );
 };
 
-export default AssetAssignmentHistory; 
+export default AssetAssignmentHistory;

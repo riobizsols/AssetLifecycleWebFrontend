@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -8,6 +9,10 @@ import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { useScrapAssetsStore } from '../../store/useScrapAssetsStore';
+import { filterData, withRawDateFields } from '../../utils/filterData';
+import { applyListFilterChange } from '../../utils/listFilterState';
 
 const ExpiredAssets = () => {
   const navigate = useNavigate();
@@ -25,27 +30,16 @@ const ExpiredAssets = () => {
   // Fetch expired assets from API
   const fetchExpiredAssets = async () => {
     try {
-      console.log('🔍 Fetching expired assets...');
       setLoading(true);
-      const response = await API.get('/assets/expiry/expired', {
-        params: { context: 'SCRAPASSETS' }
-      });
-      console.log('📊 API Response:', response.data);
-      
-      if (response.data && response.data.assets) {
-        console.log('✅ Expired assets:', response.data.assets);
-        setScrapAssets(response.data.assets);
-      } else {
-        console.log('⚠️ No expired assets found or unexpected response format');
-        setScrapAssets([]);
-      }
+      const assets = await useScrapAssetsStore.getState().fetchExpired({ revalidate: true });
+      setScrapAssets((assets || []).map((a) => withRawDateFields(a, ['expiry_date'])));
     } catch (error) {
       console.error('❌ Error fetching expired assets:', error);
       if (error.response) {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error(t('scrapAssets.failedToFetchExpiredAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPASSETS_FAILEDTOFETCHEXPIREDASSETS_47B4787C', fallbackText: t('scrapAssets.failedToFetchExpiredAssets'), type: 'error' });
       setScrapAssets([]);
     } finally {
       setLoading(false);
@@ -77,7 +71,7 @@ const ExpiredAssets = () => {
       
       // Validate that user has emp_int_id
       if (!user?.emp_int_id) {
-        toast.error(t('createScrapAsset.userEmployeeIdNotFound'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_USEREMPLOYEEIDNOTFOUND_23D9D95A', fallbackText: t('createScrapAsset.userEmployeeIdNotFound'), type: 'error' });
         return;
       }
       
@@ -99,7 +93,7 @@ const ExpiredAssets = () => {
       });
       
       if (response.data.success) {
-        toast.success(t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ASSETSUCCESSFULLYMARKEDFORSCRA_601EDB7A', fallbackText: t('createScrapAsset.assetSuccessfullyMarkedForScrapping', { assetName: selectedAsset.text }), type: 'success' });
         
         // Remove the asset from the list since it's now scrapped
         setScrapAssets(prev => prev.filter(asset => asset.asset_id !== selectedAsset.asset_id));
@@ -109,7 +103,7 @@ const ExpiredAssets = () => {
         setSelectedAsset(null);
         setNotes('');
       } else {
-        toast.error(t('createScrapAsset.failedToMarkAssetForScrapping'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_FAILEDTOMARKASSETFORSCRAPPING_627A62EE', fallbackText: t('createScrapAsset.failedToMarkAssetForScrapping'), type: 'error' });
       }
     } catch (error) {
       console.error('❌ Error submitting scrap asset:', error);
@@ -119,16 +113,16 @@ const ExpiredAssets = () => {
         console.error('Response data:', error.response.data);
         
         if (error.response.status === 400) {
-          toast.error(t('createScrapAsset.validationError', { error: error.response.data.error || '' }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_VALIDATIONERROR_609EBEB8', fallbackText: t('createScrapAsset.validationError', { error: error.response.data.error || '' }), type: 'error' });
         } else if (error.response.status === 401) {
-          toast.error(t('createScrapAsset.unauthorizedPleaseLogInAgain'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_UNAUTHORIZEDPLEASELOGINAGAIN_67901914', fallbackText: t('createScrapAsset.unauthorizedPleaseLogInAgain'), type: 'error' });
         } else if (error.response.status === 500) {
-          toast.error(t('createScrapAsset.serverErrorPleaseTryAgainLater'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_SERVERERRORPLEASETRYAGAINLATER_69979231', fallbackText: t('createScrapAsset.serverErrorPleaseTryAgainLater'), type: 'error' });
         } else {
-          toast.error(t('createScrapAsset.error', { error: error.response.data.error || t('createScrapAsset.failedToMarkAssetForScrapping') }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_ERROR_592EE2F1', fallbackText: t('createScrapAsset.error', { error: error.response.data.error || t('createScrapAsset.failedToMarkAssetForScrapping') }), type: 'error' });
         }
       } else {
-        toast.error(t('createScrapAsset.networkErrorPleaseCheckConnection'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CREATESCRAPASSET_NETWORKERRORPLEASECHECKCONNECT_3B254235', fallbackText: t('createScrapAsset.networkErrorPleaseCheckConnection'), type: 'error' });
       }
     }
   };
@@ -259,7 +253,11 @@ const ExpiredAssets = () => {
   };
 
   const [selectedRows, setSelectedRows] = useState([]);
-  const [filterValues, setFilterValues] = useState({});
+  const [filterValues, setFilterValues] = useState({
+    columnFilters: [],
+    fromDate: '',
+    toDate: '',
+  });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const handleSort = (column) => {
@@ -286,61 +284,8 @@ const ExpiredAssets = () => {
     });
   };
 
-  const filterData = (data, filters, visibleColumns) => {
-    return data.filter(item => {
-      // Handle column-specific filters
-      if (filters.columnFilters && filters.columnFilters.length > 0) {
-        const columnFilterMatch = filters.columnFilters.every(filter => {
-          if (!filter.column || !filter.value) {
-            return true;
-          }
-          
-          let itemValue = item[filter.column];
-          
-          // Handle object values (like days_until_expiry: {days: 5})
-          if (itemValue && typeof itemValue === 'object' && itemValue.days !== undefined) {
-            itemValue = `${itemValue.days} days`;
-          }
-          // Handle other object values by converting to string
-          else if (itemValue && typeof itemValue === 'object') {
-            itemValue = JSON.stringify(itemValue);
-          }
-          // Handle null/undefined values
-          else if (itemValue === null || itemValue === undefined) {
-            itemValue = 'N/A';
-          }
-          
-          const itemValueStr = String(itemValue).toLowerCase();
-          const filterValueStr = filter.value.toLowerCase();
-          
-          return itemValueStr.includes(filterValueStr);
-        });
-        
-        if (!columnFilterMatch) return false;
-      }
-      
-      // Handle date range filters
-      if (filters.fromDate && filters.fromDate !== '') {
-        const itemDate = new Date(item.expiry_date);
-        const fromDate = new Date(filters.fromDate);
-        if (itemDate < fromDate) return false;
-      }
-      
-      if (filters.toDate && filters.toDate !== '') {
-        const itemDate = new Date(item.expiry_date);
-        const toDate = new Date(filters.toDate);
-        if (itemDate > toDate) return false;
-      }
-      
-      return true;
-    });
-  };
-
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const visibleColumns = columns.filter(col => col.visible);
@@ -372,6 +317,7 @@ const ExpiredAssets = () => {
       
       <ContentBox
         filters={columns}
+        dateFilterField="expiry_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

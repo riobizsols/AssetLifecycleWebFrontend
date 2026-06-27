@@ -1,19 +1,24 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
 import { exportToExcel } from "../utils/exportToExcel";
 import { useNavigate } from "react-router-dom";
-import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
+import { translateMasterDataLabel } from "../utils/masterDataLabel";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useInspectionApprovalStore } from "../store/useInspectionApprovalStore";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const InspectionApproval = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const approvals = useInspectionApprovalStore((s) => s.approvals);
+  const listLoading = useInspectionApprovalStore((s) => s.listLoading);
+  const fetchApprovalsStore = useInspectionApprovalStore((s) => s.fetchApprovals);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -35,48 +40,33 @@ const InspectionApproval = () => {
   ], [t]);
 
   useEffect(() => {
-    fetchApprovals();
-  }, []);
-
-  const fetchApprovals = async () => {
-    setIsLoading(true);
-    try {
-      const res = await API.get("/inspection-approval/pending");
-      
-      if (res.data.success) {
-        const approvalData = res.data.data.map(item => ({
-            ...item,
-            id: item.wfaiisd_id, // Use workflow detail ID as row key
-            pl_sch_date: item.pl_sch_date ? new Date(item.pl_sch_date).toLocaleDateString() : '-',
-            header_status: item.header_status || 'PN'
-        }));
-        setData(approvalData);
-      }
-    } catch (err) {
+    fetchApprovalsStore({ revalidate: true }).catch((err) => {
       console.error("Failed to fetch inspection approvals", err);
-      toast.error(t('inspectionApproval.failedToFetch'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONAPPROVAL_FAILEDTOFETCH_6A59C607', fallbackText: t('inspectionApproval.failedToFetch'), type: 'error' });
+    });
+  }, [fetchApprovalsStore, t]);
+
+  useRevalidateOnFocus(() => {
+    fetchApprovalsStore({ revalidate: true });
+  });
+
+  const data = useMemo(
+    () => (approvals || []).map((item) => ({
+      ...item,
+      id: item.wfaiisd_id,
+      asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
+      branch_name: translateMasterDataLabel(item.branch_name, t),
+      raw_pl_sch_date: item.pl_sch_date,
+      pl_sch_date: item.pl_sch_date ? new Date(item.pl_sch_date).toLocaleDateString() : '-',
+      header_status: item.header_status || 'PN',
+    })),
+    [approvals, t],
+  );
+
+  const isLoading = listLoading && data.length === 0;
 
   const handleFilterChange = (columnName, value) => {
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({ ...prev, columnFilters: value }));
-    } else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({ ...prev, [columnName]: value }));
-    } else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleSort = (column) => {
@@ -117,7 +107,7 @@ const InspectionApproval = () => {
       const filteredData = filterData(data, filterValues, columns);
       const dataToExport = sortData(filteredData);
       exportToExcel(dataToExport, columns, "Inspection_Approvals");
-      toast.success(t('common.exportSuccess'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_COMMON_EXPORTSUCCESS_0C579D38', fallbackText: t('common.exportSuccess'), type: 'success' });
   };
 
   const filters = columns.map((col) => ({
@@ -137,6 +127,7 @@ const InspectionApproval = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="raw_pl_sch_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

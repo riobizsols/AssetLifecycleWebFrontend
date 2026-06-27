@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -9,11 +10,28 @@ import API from "../../lib/axios";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useInspectionFrequencyStore } from "../../store/useInspectionFrequencyStore";
+import { invalidateCache } from "../../utils/apiCache";
 
 const InspectionFrequency = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  
+
+  const frequencies = useInspectionFrequencyStore((s) => s.frequencies);
+  const mappings = useInspectionFrequencyStore((s) => s.mappings);
+  const uomOptions = useInspectionFrequencyStore((s) => s.uomOptions);
+  const listLoading = useInspectionFrequencyStore((s) => s.listLoading);
+  const loadPageData = useInspectionFrequencyStore((s) => s.loadPageData);
+  const fetchFrequenciesStore = useInspectionFrequencyStore((s) => s.fetchFrequencies);
+  const isLoading = listLoading && frequencies.length === 0;
+
+  const formatOpts = {
+    allAssetsFallback: t("inspectionFrequency.allAssetsFallback"),
+    onDemandFallback: t("inspectionFrequency.onDemandFallback"),
+    notApplicable: t("inspectionFrequency.notApplicable"),
+  };
+
   const columns = useMemo(() => [
     { label: t("inspectionFrequency.assetType"), name: "asset_type_name", visible: true },
     { label: t("inspectionFrequency.assetName"), name: "asset_name", visible: true },
@@ -22,8 +40,6 @@ const InspectionFrequency = () => {
     { label: t("inspectionFrequency.description"), name: "text", visible: true },
   ], [t]);
 
-  const [frequencies, setFrequencies] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   
   // Modal state
@@ -33,23 +49,26 @@ const InspectionFrequency = () => {
   const [currentId, setCurrentId] = useState(null);
   
   // Form state
-  const [mappings, setMappings] = useState([]);
   const [selectedMappingId, setSelectedMappingId] = useState("");
   const [freq, setFreq] = useState("");
   const [uom, setUom] = useState("");
   const [description, setDescription] = useState("");
   const [maintainedBy, setMaintainedBy] = useState("In-House");
   const [isRecurring, setIsRecurring] = useState(true);
-  const [uomOptions, setUomOptions] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [selectedTechnician, setSelectedTechnician] = useState("");
   const [techLoading, setTechLoading] = useState(false);
 
   useEffect(() => {
-    fetchFrequencies();
-    fetchMappings();
-    fetchUOM();
+    loadPageData({ revalidate: true, formatOpts }).catch(() => {
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOLOADFREQUENCIES_2B83EA7A', fallbackText: 'Failed to load frequencies', type: 'error' });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchFrequenciesStore({ revalidate: true, formatOpts });
+  });
 
   // Close modal on Esc key
   useEffect(() => {
@@ -65,50 +84,12 @@ const InspectionFrequency = () => {
     };
   }, [showModal]);
 
-  const fetchFrequencies = async () => {
-    setIsLoading(true);
+  const fetchFrequencies = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/inspection-frequencies");
-      const data = response.data?.data || [];
-      const dataWithKeys = (Array.isArray(data) ? data : []).map(f => ({
-        ...f,
-        id: f.aatif_id,
-        asset_name: f.asset_name || t("inspectionFrequency.allAssetsFallback"),
-        freq_display: f.is_recurring ? `${f.freq || ''} ${f.uom || ''}`.trim() || t("inspectionFrequency.notApplicable") : t("inspectionFrequency.onDemandFallback")
-      }));
-      setFrequencies(dataWithKeys);
+      await fetchFrequenciesStore({ revalidate: true, force, formatOpts });
     } catch (error) {
       console.error("Error fetching frequencies:", error);
-      toast.error(t("inspectionFrequency.failedToLoadFrequencies"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchMappings = async () => {
-    try {
-      const response = await API.get("/asset-type-checklist-mapping/all");
-      const data = response.data?.data || [];
-      const dataWithKeys = (Array.isArray(data) ? data : []).map(m => ({
-          ...m,
-          rowId: m.asset_id ? `${m.at_id}_${m.asset_id}` : m.at_id
-      }));
-      setMappings(dataWithKeys);
-    } catch (error) {
-      console.error("Error fetching mappings:", error);
-    }
-  };
-
-  const fetchUOM = async () => {
-    try {
-      const res = await API.get("/uom");
-      const data = res.data?.data || res.data || [];
-      setUomOptions((Array.isArray(data) ? data : []).map(u => ({
-        id: u.UOM_id || u.uom_id,
-        text: u.UOM || u.uom || u.text
-      })));
-    } catch (error) {
-      console.error("Error fetching UOM:", error);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOLOADFREQUENCIES_2B83EA7A', fallbackText: 'Failed to load frequencies', type: 'error' });
     }
   };
 
@@ -173,7 +154,7 @@ const InspectionFrequency = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!selectedMappingId) {
-      toast.error(t("inspectionFrequency.pleaseSelectMapping"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_PLEASESELECTMAPPING_7B4F6D9A', fallbackText: 'Please select mapping', type: 'error' });
       return;
     }
 
@@ -189,7 +170,7 @@ const InspectionFrequency = () => {
           if (detailedItems.length > 0) {
             aatic_id = detailedItems[0].aatic_id;
           } else {
-            toast.error(t("inspectionFrequency.noChecklistItemsForMapping"));
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_NOCHECKLISTITEMSFORMAPPING_5E25E3BE', fallbackText: 'No checklist items for mapping', type: 'error' });
             setSaving(false);
             return;
           }
@@ -208,16 +189,17 @@ const InspectionFrequency = () => {
 
       if (isEditing) {
         await API.put(`/inspection-frequencies/${currentId}`, payload);
-        toast.success(t("inspectionFrequency.frequencyUpdated"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FREQUENCYUPDATED_2A7F3D7F', fallbackText: 'Frequency updated', type: 'success' });
       } else {
         await API.post("/inspection-frequencies", payload);
-        toast.success(t("inspectionFrequency.frequencyCreated"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FREQUENCYCREATED_20C860AE', fallbackText: 'Frequency created', type: 'success' });
       }
       setShowModal(false);
-      fetchFrequencies();
+      invalidateCache('inspection-frequencies:');
+      fetchFrequencies({ force: true });
     } catch (error) {
       console.error("Error saving frequency:", error);
-      toast.error(t("inspectionFrequency.failedToSaveFrequency"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTOSAVEFREQUENCY_1B231E25', fallbackText: 'Failed to save frequency', type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -233,15 +215,16 @@ const InspectionFrequency = () => {
         successCount++;
       }
       if (successCount > 0) {
-        toast.success(t("inspectionFrequency.deletedCount", { count: successCount }));
-        fetchFrequencies();
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_DELETEDCOUNT_605CA7C8', fallbackText: '{{count}} frequency item(s) deleted', type: 'success', values: { count: successCount } });
+        invalidateCache('inspection-frequencies:');
+      fetchFrequencies({ force: true });
         setSelectedRows([]);
         return true;
       }
       return false;
     } catch (error) {
       console.error("Error deleting:", error);
-      toast.error(t("inspectionFrequency.failedToDeleteSomeItems"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONFREQUENCY_FAILEDTODELETESOMEITEMS_44E94A07', fallbackText: 'Failed to delete some items', type: 'error' });
       return false;
     }
   };

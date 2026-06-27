@@ -1,4 +1,5 @@
 // AssetFormPage.jsx
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import API from '../../lib/axios';
 import toast from 'react-hot-toast';
@@ -13,6 +14,15 @@ import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
 import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
+import { useAssetsStore } from '../../store/useAssetsStore';
+import {
+  getCachedAddFormData,
+  loadDocumentTypes,
+  loadProdServs,
+  loadVendorsByType,
+} from '../../services/addAssetFormData';
+import { invalidateCache } from '../../utils/apiCache';
 
 const initialForm = {
   assetType: '',
@@ -98,9 +108,52 @@ const AddAssetForm = ({ userRole }) => {
     vendorRequired: false
   });
   const [isVendorMaintainedType, setIsVendorMaintainedType] = useState(false);
+  const [existingAssets, setExistingAssets] = useState(
+    () => getCachedAddFormData().existingAssets || [],
+  );
+
+  const applyProdServData = (data) => {
+    if (!Array.isArray(data) || data.length === 0) return;
+    const uniqueBrands = [...new Set(data.map((item) => item.brand).filter(Boolean))];
+    setVendorBrandOptions([
+      { value: '', label: 'Select' },
+      ...uniqueBrands.map((brand) => ({ value: brand, label: brand })),
+    ]);
+    setAllProdServData(data);
+    const uniqueModels = [...new Set(data.map((item) => item.model).filter(Boolean))];
+    setVendorModelOptions([
+      { value: '', label: 'Select' },
+      ...uniqueModels.map((model) => ({ value: model, label: model })),
+    ]);
+  };
+
+  const toVendorOptions = (data) => [
+    { value: '', label: 'Select' },
+    ...(Array.isArray(data) ? data : [])
+      .filter((v) => v && (v.int_status === 1 || v.int_status == null))
+      .map((vendor) => ({
+        value: vendor.vendor_id,
+        label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`,
+      })),
+  ];
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
+
+  useEffect(() => {
+    useAssetsStore.getState().fetchExistingAssets({
+      revalidate: true,
+      onFresh: setExistingAssets,
+    }).then(setExistingAssets).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!users?.length) return;
+    setPurchaseByOptions([
+      { value: '', label: 'Select' },
+      ...users.map((u) => ({ value: u.user_id, label: u.full_name })),
+    ]);
+  }, [users]);
   const [propertiesMap, setPropertiesMap] = useState({});
   const [dynamicProperties, setDynamicProperties] = useState([]);
   const [assetTypePropsMap, setAssetTypePropsMap] = useState({});
@@ -202,7 +255,7 @@ const AddAssetForm = ({ userRole }) => {
             setValidationErrors(prev => ({ ...prev, serialNumber: false }));
             setTouched(prev => ({ ...prev, serialNumber: true }));
             setShowSerialScanner(false);
-            toast.success(t('assets.serialNumberScannedSuccessfully'));
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_SERIALNUMBERSCANNEDSUCCESSFULLY_54736C8B', fallbackText: t('assets.serialNumberScannedSuccessfully'), type: 'success' });
           },
           (err) => {
             // Handle scan error silently
@@ -211,7 +264,7 @@ const AddAssetForm = ({ userRole }) => {
         );
       } catch (err) {
         console.error('Error starting serial scanner:', err);
-        toast.error(t('assets.couldNotAccessCamera'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_COULDNOTACCESSCAMERA_7EF238B6', fallbackText: t('assets.couldNotAccessCamera'), type: 'error' });
         setShowSerialScanner(false);
       }
     };
@@ -271,14 +324,36 @@ const AddAssetForm = ({ userRole }) => {
   }, []);
 
   useEffect(() => {
-    console.log('Component mounted, fetching asset types...');
-    fetchAssetTypes?.();
-    fetchUsers();
-    fetchProdServs();
-    fetchVendors();
-    fetchDocumentTypes();
-    
-    // Check if returning from product service screen
+    const cached = getCachedAddFormData();
+    if (cached.prodserv) applyProdServData(cached.prodserv);
+    if (cached.vendorsProduct) setPurchaseSupplyOptions(toVendorOptions(cached.vendorsProduct));
+    if (cached.vendorsService) setServiceSupplyOptions(toVendorOptions(cached.vendorsService));
+    if (cached.docTypes) setDocumentTypes(cached.docTypes);
+
+    if (!assetTypes?.length) {
+      fetchAssetTypes?.();
+    }
+
+    loadProdServs({
+      revalidate: true,
+      onFresh: applyProdServData,
+    }).then(applyProdServData).catch(() => {});
+
+    loadVendorsByType('product', {
+      revalidate: true,
+      onFresh: (data) => setPurchaseSupplyOptions(toVendorOptions(data)),
+    }).then((data) => setPurchaseSupplyOptions(toVendorOptions(data))).catch(() => {});
+
+    loadVendorsByType('service', {
+      revalidate: true,
+      onFresh: (data) => setServiceSupplyOptions(toVendorOptions(data)),
+    }).then((data) => setServiceSupplyOptions(toVendorOptions(data))).catch(() => {});
+
+    loadDocumentTypes({
+      revalidate: true,
+      onFresh: setDocumentTypes,
+    }).then(setDocumentTypes).catch(() => {});
+
     const savedFormData = sessionStorage.getItem('assetFormData');
     if (savedFormData) {
       try {
@@ -449,7 +524,7 @@ const AddAssetForm = ({ userRole }) => {
     } catch (err) {
       console.error('❌ Error fetching parent assets:', err);
       console.error('❌ Error response:', err.response?.data);
-      toast.error('Failed to fetch parent assets');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_PARENT_ASSETS_1968EAD1', fallbackText: 'Failed to fetch parent assets', type: 'error' });
       setParentAssets([]);
       setForm((prev) => ({ ...prev, parentAsset: '' }));
     }
@@ -493,126 +568,6 @@ const AddAssetForm = ({ userRole }) => {
     });
     setDropdownStates(prev => ({ ...prev, [name]: false }));
     updateSearch(name, '');
-  };
-
-  const fetchUsers = async () => {
-    try {
-      console.log('Fetching users from API...');
-      const res = await API.get('/users/get-users');
-      console.log('Users response:', res.data);
-
-      // Handle the new API response format with success/data structure
-      const usersData = res.data?.data || res.data || [];
-      if (Array.isArray(usersData)) {
-        // Transform API data to dropdown format
-        const users = [
-          { value: '', label: 'Select' },
-          ...usersData.map(user => ({
-            value: user.user_id,
-            label: user.full_name
-          }))
-        ];
-        setPurchaseByOptions(users);
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      console.log('Using dummy users as fallback');
-      // Keep using dummy data if API fails
-      setPurchaseByOptions([]);
-    }
-  };
-
-  const fetchProdServs = async () => {
-    try {
-      console.log('Fetching product/services from API...');
-      const res = await API.get('/prodserv');
-      console.log('Product/services response:', res.data);
-
-      if (res.data && Array.isArray(res.data)) {
-        // Extract unique brands
-        const uniqueBrands = [...new Set(res.data.map(item => item.brand).filter(Boolean))];
-        const brandOptions = [
-          { value: '', label: 'Select' },
-          ...uniqueBrands.map(brand => ({
-            value: brand,
-            label: brand
-          }))
-        ];
-        setVendorBrandOptions(brandOptions);
-
-        // Store all prodServ data for filtering
-        setAllProdServData(res.data);
-        
-        // Initially show all models (will be filtered when brand is selected)
-        const uniqueModels = [...new Set(res.data.map(item => item.model).filter(Boolean))];
-        const modelOptions = [
-          { value: '', label: 'Select' },
-          ...uniqueModels.map(model => ({
-            value: model,
-            label: model
-          }))
-        ];
-        setVendorModelOptions(modelOptions);
-      }
-    } catch (err) {
-      console.error('Error fetching product/services:', err);
-      console.log('Using dummy brands and models as fallback');
-      // Keep using dummy data if API fails
-      setVendorBrandOptions([]);
-      setVendorModelOptions([]);
-    }
-  };
-
-  const fetchVendors = async () => {
-    try {
-      console.log('Fetching product-based and service-based vendors...');
-      // Product Vendor: only vendors linked to prod_serv with ps_type = 'product'
-      const productRes = await API.get('/get-vendors', { params: { type: 'product' } });
-      // Service Vendor: only vendors linked to prod_serv with ps_type = 'service'
-      const serviceRes = await API.get('/get-vendors', { params: { type: 'service' } });
-
-      const toOptions = (data) => [
-        { value: '', label: 'Select' },
-        ...(Array.isArray(data) ? data : [])
-          .filter(v => v && (v.int_status === 1 || v.int_status == null))
-          .map(vendor => ({
-            value: vendor.vendor_id,
-            label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
-          }))
-      ];
-      setPurchaseSupplyOptions(toOptions(productRes.data || []));
-      setServiceSupplyOptions(toOptions(serviceRes.data || []));
-    } catch (err) {
-      console.error('Error fetching vendors:', err);
-      setPurchaseSupplyOptions([{ value: '', label: 'Select' }]);
-      setServiceSupplyOptions([{ value: '', label: 'Select' }]);
-    }
-  };
-
-  const fetchDocumentTypes = async () => {
-    try {
-      console.log('Fetching document types for assets...');
-      const res = await API.get('/doc-type-objects/object-type/asset');
-      console.log('Document types response:', res.data);
-
-      if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        // Transform API data to dropdown format
-        const docTypes = res.data.data.map(docType => ({
-          id: docType.dto_id,  // Use dto_id instead of doc_type
-          text: docType.doc_type_text,
-          doc_type: docType.doc_type  // Keep doc_type for reference
-        }));
-        setDocumentTypes(docTypes);
-        console.log('Document types loaded:', docTypes);
-      } else {
-        console.log('No document types found, using fallback');
-        setDocumentTypes([]);
-      }
-    } catch (err) {
-      console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
-      setDocumentTypes([]);
-    }
   };
 
   // Function to filter models based on selected brand
@@ -679,7 +634,7 @@ const AddAssetForm = ({ userRole }) => {
     } catch (err) {
       console.error('❌ Error fetching prod_serv_id:', err);
       setFetchedProdServId(null);
-      toast.error('Failed to fetch product service ID');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_PRODUCT_SERVICE_ID_2E99961F', fallbackText: 'Failed to fetch product service ID', type: 'error' });
     }
   };
 
@@ -851,7 +806,7 @@ const AddAssetForm = ({ userRole }) => {
       }
     } catch (error) {
       console.error('Error adding property value:', error);
-      toast.error('Failed to add property value');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_ADD_PROPERTY_VALUE_470CACF9', fallbackText: 'Failed to add property value', type: 'error' });
       throw error;
     }
   };
@@ -880,7 +835,12 @@ const AddAssetForm = ({ userRole }) => {
         propId: property.prop_id
       });
       
-      toast.success(`Added "${value}" to ${property.property}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PROPERTY_VALUE_ADDED_SUCCESSFULLY_9884D3A5',
+        fallbackText: `Added "${value}" to ${property.property}`,
+        type: 'success',
+      });
     } catch (error) {
       console.error('Error adding custom property value:', error);
     }
@@ -890,7 +850,7 @@ const AddAssetForm = ({ userRole }) => {
 
   const generateSerialNumber = async () => {
     if (!form.assetType) {
-      toast.error(t('assets.pleaseSelectAssetTypeFirst'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASESELECTASSETTYPEFIRST_49CE689B', fallbackText: t('assets.pleaseSelectAssetTypeFirst'), type: 'error' });
       return;
     }
 
@@ -907,17 +867,33 @@ const AddAssetForm = ({ userRole }) => {
       if (response.data.success) {
         const serialNumber = response.data.data.serialNumber;
         setForm(prev => ({ ...prev, serialNumberMode: 'generate', serialNumber }));
-        toast.success(t('assets.serialNumberPreview', { serialNumber }));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSETS_SERIALNUMBERPREVIEW_1DB66D64',
+          fallbackText: t('assets.serialNumberPreview', { serialNumber }),
+          values: { serialNumber },
+          type: 'success',
+        });
         console.log(`👀 Preview serial number: ${serialNumber} (Will be saved when asset is created)`);
         
         // Note: Serial number generation logging removed as requested
       } else {
-        toast.error(response.data.message || t('assets.failedToGenerateSerialNumber'));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_GENERATE_SERIAL_NUMBER_DF521603',
+          fallbackText: response.data.message || t('assets.failedToGenerateSerialNumber'),
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('Error generating serial number:', error);
       const errorMessage = error.response?.data?.message || t('assets.failedToGenerateSerialNumber');
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_GENERATE_SERIAL_NUMBER_DF521603',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     } finally {
       setIsGeneratingSerial(false);
     }
@@ -1010,8 +986,12 @@ const AddAssetForm = ({ userRole }) => {
       }
     }
     
-    // For vendor-maintained asset types, service vendor is mandatory.
-    if (isVendorMaintainedType && !form.serviceSupply) {
+    // Vendor validation:
+    // - Purchase vendor is mandatory (DB constraint: purchase_vendor_id NOT NULL)
+    // - Vendor-maintained asset type also requires service vendor
+    const isPurchaseVendorMissing = !form.purchaseSupply;
+    const isServiceVendorMissingForVendorMaintained = isVendorMaintainedType && !form.serviceSupply;
+    if (isPurchaseVendorMissing || isServiceVendorMissingForVendorMaintained) {
       errors.vendorRequired = true;
       hasErrors = true;
     }
@@ -1027,15 +1007,54 @@ const AddAssetForm = ({ userRole }) => {
     // Set validation errors
     setValidationErrors(errors);
     
+    const assetNameTrimmed = form.description?.trim();
+    if (assetNameTrimmed) {
+      const conflictingName = findConflictingAssetName(
+        assetNameTrimmed,
+        existingAssets
+      );
+      if (conflictingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
+          fallbackText: t('assets.similarAssetNameExists', { name: conflictingName }),
+          type: 'error',
+        });
+        setCollapsedSections((prev) => ({ ...prev, asset: false }));
+        return;
+      }
+    }
+
     if (hasErrors) {
       if (errors.dateMismatch) {
-        toast.error(t('assets.expiryDateCannotBeSameAsPurchaseDate') || 'Expiry date cannot be the same as purchase date');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSETS_EXPIRYDATECANNOTBESAMEASPURCHASEDATE_7908677D',
+          fallbackText: t('assets.expiryDateCannotBeSameAsPurchaseDate') || 'Expiry date cannot be the same as purchase date',
+          type: 'error',
+        });
       } else if (errors.expiryDateBeforePurchase) {
-        toast.error(t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_EXPIRY_DATE_CANNOT_BE_BEFORE_PURCHASE_DATE_0F3C5CE6',
+          fallbackText: t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date',
+          type: 'error',
+        });
       } else if (errors.vendorRequired) {
-        toast.error(t('assets.serviceVendorIsRequired') || 'Service vendor is required for this asset type');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_VENDOR_DETAILS_ARE_MISSING_6942E5A4',
+          fallbackText: t('assets.vendorDetailsAreMissing') || 'Vendor details are missing',
+          type: 'error',
+        });
+        setCollapsedSections(prev => ({ ...prev, vendor: false }));
       } else {
-        toast.error(t('assets.pleaseFillAllRequiredFields'));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_PLEASE_FILL_ALL_REQUIRED_FIELDS_4AAD1F06',
+          fallbackText: t('assets.pleaseFillAllRequiredFields'),
+          type: 'error',
+        });
       }
       return;
     }
@@ -1061,7 +1080,7 @@ const AddAssetForm = ({ userRole }) => {
         asset_id: '', // Will be auto-generated by backend
         text: assetTypeText, // Asset type name like "Laptop", "Router", etc.
         serial_number: form.serialNumberMode === 'none' ? null : (form.serialNumber?.trim() || null),
-        description: form.description,
+        description: form.description?.trim() || null,
         branch_id: getUserBranchId(user?.user_id), // Auto-populate user's branch
         purchase_vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
         service_vendor_id: form.serviceSupply || null, // Set from Service Vendor dropdown
@@ -1161,13 +1180,18 @@ const AddAssetForm = ({ userRole }) => {
           // Validate all attachments
           for (const a of attachments) {
             if (!a.type || !a.file) {
-              toast.error('Select document type and choose a file for all rows');
+              showBackendTextToast({ toast, tmdId: 'TMD_SELECT_DOCUMENT_TYPE_AND_CHOOSE_A_FILE_FOR_ALL_ROWS_58610967', fallbackText: 'Select document type and choose a file for all rows', type: 'error' });
               return;
             }
             // Check if the selected document type requires a custom name (like OT - Others)
             const selectedDocType = documentTypes.find(dt => dt.id === a.type);
             if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !a.docTypeName?.trim()) {
-              toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+              showBackendTextToast({
+                toast,
+                tmdId: 'TMD_ENTER_CUSTOM_DOCUMENT_NAME_B9E20D65',
+                fallbackText: `Enter custom name for ${selectedDocType.text} documents`,
+                type: 'error',
+              });
               return;
             }
           }
@@ -1202,32 +1226,107 @@ const AddAssetForm = ({ userRole }) => {
 
             // Show upload results
             if (successCount > 0 && failCount === 0) {
-              toast.success(`Asset and ${successCount} document(s) saved successfully!`);
+              showBackendTextToast({
+                toast,
+                tmdId: 'TMD_ASSET_AND_DOCUMENTS_SAVED_SUCCESSFULLY_7A22D248',
+                fallbackText: t('assets.assetAndDocumentsSavedSuccessfully', { count: successCount }) || `Asset and ${successCount} document(s) saved successfully!`,
+                type: 'success',
+              });
             } else if (successCount > 0 && failCount > 0) {
-              toast.success(`Asset saved and ${successCount} document(s) uploaded successfully. ${failCount} document(s) failed to upload.`);
+              showBackendTextToast({
+                toast,
+                tmdId: 'TMD_ASSET_SAVED_WITH_PARTIAL_UPLOAD_FAILURE_3C486617',
+                fallbackText: t('assets.assetSavedWithPartialUploadFailure', { successCount, failCount }) || `Asset saved and ${successCount} document(s) uploaded successfully. ${failCount} document(s) failed to upload.`,
+                type: 'success',
+              });
             } else {
-              toast.success('Asset saved successfully, but document uploads failed.');
+              showBackendTextToast({ toast, tmdId: 'TMD_ASSET_SAVED_SUCCESSFULLY_BUT_DOCUMENT_UPLOADS_FAILED_42AB8EDF', fallbackText: t('assets.assetSavedSuccessfullyButDocumentUploadsFailed') || 'Asset saved successfully, but document uploads failed.', type: 'success' });
             }
           } catch (err) {
             console.error('❌ Error uploading documents:', err);
-            toast.success('Asset saved successfully, but document uploads failed.');
+            showBackendTextToast({ toast, tmdId: 'TMD_ASSET_SAVED_SUCCESSFULLY_BUT_DOCUMENT_UPLOADS_FAILED_42AB8EDF', fallbackText: t('assets.assetSavedSuccessfullyButDocumentUploadsFailed') || 'Asset saved successfully, but document uploads failed.', type: 'success' });
           } finally {
             setIsUploading(false);
           }
         } else {
-          toast.success('Asset created successfully!');
+          showBackendTextToast({ toast, tmdId: 'TMD_ASSET_CREATED_SUCCESSFULLY_7C8B8AD2', fallbackText: t('assets.assetCreatedSuccessfully') || 'Asset created successfully!', type: 'success' });
         }
         
         // Navigate to assets list after successful save
+        useAssetsStore.getState().invalidateAssetsCache();
+        invalidateCache('add-form:');
         navigate('/assets');
       } else {
         console.error('No asset ID returned from server:', response.data);
-        toast.error('Asset created but no ID returned. Please refresh and try again.');
+        showBackendTextToast({ toast, tmdId: 'TMD_ASSET_CREATED_BUT_NO_ID_RETURNED_PLEASE_REFRESH_AND__1B019729', fallbackText: 'Asset created but no ID returned. Please refresh and try again.', type: 'error' });
       }
     } catch (err) {
       console.error('❌ Error creating asset:', err);
-      const errorMessage = err.response?.data?.error || 'Failed to create asset';
-      toast.error(errorMessage);
+      const responseData = err.response?.data;
+      if (responseData?.existingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
+          fallbackText: t('assets.similarAssetNameExists', {
+            name: responseData.existingName,
+          }),
+          type: 'error',
+        });
+        setCollapsedSections((prev) => ({ ...prev, asset: false }));
+        return;
+      }
+
+      const backendError = (responseData?.message || responseData?.error || '').toString();
+      const hasPurchaseVendorSelection = Boolean(form.purchaseSupply);
+      const looksLikeGenericInternalError = backendError.toLowerCase().includes('internal server error');
+
+      if (!hasPurchaseVendorSelection && looksLikeGenericInternalError) {
+        setValidationErrors(prev => ({ ...prev, vendorRequired: true }));
+        setCollapsedSections(prev => ({ ...prev, vendor: false }));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_VENDOR_DETAILS_ARE_MISSING_6942E5A4',
+          fallbackText: t('assets.vendorDetailsAreMissing') || 'Vendor details are missing',
+          type: 'error',
+        });
+      } else if (backendError.toLowerCase().includes('service vendor is required')) {
+        setValidationErrors(prev => ({ ...prev, vendorRequired: true }));
+        setCollapsedSections(prev => ({ ...prev, vendor: false }));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_VENDOR_DETAILS_ARE_MISSING_6942E5A4',
+          fallbackText: t('assets.vendorDetailsAreMissing') || 'Vendor details are missing',
+          type: 'error',
+        });
+      } else if (backendError.toLowerCase().includes('purchase vendor is required')) {
+        setValidationErrors(prev => ({ ...prev, vendorRequired: true }));
+        setCollapsedSections(prev => ({ ...prev, vendor: false }));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_VENDOR_DETAILS_ARE_MISSING_6942E5A4',
+          fallbackText: t('assets.vendorDetailsAreMissing') || 'Vendor details are missing',
+          type: 'error',
+        });
+      } else if (backendError.toLowerCase().includes('serial number already exists')) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSET_SERIAL_NUMBER_ALREADY_EXISTS',
+          fallbackText:
+            t('assets.serialNumberAlreadyExists', {
+              defaultValue:
+                'This serial number is already used. Click Generate to get a new serial number, then save again.',
+            }),
+          type: 'error',
+        });
+      } else {
+        const errorMessage = backendError || 'Failed to create asset';
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_CREATE_ASSET_67770EC0',
+          fallbackText: errorMessage,
+          type: 'error',
+        });
+      }
     } finally {
       setIsSubmitting(false);
       console.log('🏁 Unified asset submission completed');
@@ -1729,11 +1828,11 @@ const AddAssetForm = ({ userRole }) => {
             <div className="grid grid-cols-5 gap-6 mb-4">
                 {/* Product Vendor Dropdown */}
                 <div>
-                <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')}</label>
+                <label className="block text-sm mb-1 font-medium">{t('assets.productVendor')} <span className="text-red-500">*</span></label>
                 <div className="relative w-full">
                   <button
                     type="button"
-                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired && !isVendorMaintainedType ? 'border-red-500' : ''}`}
+                    className={`border text-black px-3 py-2 text-xs w-full bg-white rounded focus:outline-none flex justify-between items-center h-9 ${validationErrors.vendorRequired && !form.purchaseSupply ? 'border-red-500' : ''}`}
                     onClick={() => toggleDropdown('purchaseSupply')}
                   >
                     <span className="text-xs truncate">
@@ -1782,9 +1881,9 @@ const AddAssetForm = ({ userRole }) => {
                     </div>
                   )}
                 </div>
-                {validationErrors.vendorRequired && !isVendorMaintainedType && !form.purchaseSupply && (
+                {validationErrors.vendorRequired && !form.purchaseSupply && (
                   <p className="mt-1 text-sm text-red-600">
-                    {t('assets.atLeastOneVendorRequired') || 'At least one vendor (Product or Service) is required'}
+                    {t('assets.purchaseVendorIsRequired') || 'Purchase vendor is required'}
                   </p>
                 )}
               </div>
@@ -2334,7 +2433,7 @@ const AddAssetForm = ({ userRole }) => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {isSubmitting ? 'Saving...' : 'Uploading...'}
+                {isSubmitting ? (t('common.saving') || 'Saving...') : (t('common.uploading') || 'Uploading...')}
               </span>
             ) : (
               t('common.save')

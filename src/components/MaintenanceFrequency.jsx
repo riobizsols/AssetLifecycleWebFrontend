@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
@@ -5,18 +6,21 @@ import { toast } from 'react-hot-toast';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Plus, Edit2, Trash2, Save, X, Filter, Minus, ChevronDown } from 'lucide-react';
 import { filterData } from '../utils/filterData';
+import { useMaintenanceConfigStore } from '../store/useMaintenanceConfigStore';
+import { invalidateCache } from '../utils/apiCache';
 
 const MaintenanceFrequency = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const maintenanceTypes = useMaintenanceConfigStore((s) => s.maintenanceTypes);
+  const uomOptions = useMaintenanceConfigStore((s) => s.uomOptions);
+  const allFrequencies = useMaintenanceConfigStore((s) => s.frequencies);
+  const frequenciesLoading = useMaintenanceConfigStore((s) => s.frequenciesLoading);
+  const fetchFrequencyBundle = useMaintenanceConfigStore((s) => s.fetchFrequencyBundle);
   const [activeTab, setActiveTab] = useState('frequency'); // frequency, checklist
 
   // First Tab - Maintenance Frequency
-  const [maintenanceTypes, setMaintenanceTypes] = useState([]);
-  const [uomOptions, setUomOptions] = useState([]);
   const [frequencies, setFrequencies] = useState([]);
-  const [allFrequencies, setAllFrequencies] = useState([]); // Store all frequencies for filtering
-  const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Edit state
@@ -48,87 +52,13 @@ const MaintenanceFrequency = () => {
   ];
 
   // Second Tab - Checklist
+  const [selectedChecklistAssetType, setSelectedChecklistAssetType] = useState('');
+  const [checklistFrequencies, setChecklistFrequencies] = useState([]);
   const [selectedFreqId, setSelectedFreqId] = useState('');
   const [selectedFrequencyData, setSelectedFrequencyData] = useState(null);
   const [checklistItems, setChecklistItems] = useState([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [loadingChecklist, setLoadingChecklist] = useState(false);
-
-  // Fetch maintenance types
-  const fetchMaintenanceTypes = async () => {
-    try {
-      const res = await API.get('/maint-types');
-      console.log('Maintenance types API response:', res);
-      console.log('Maintenance types data:', res.data);
-      
-      let types = [];
-      if (Array.isArray(res.data)) {
-        types = res.data;
-      } else if (res.data && Array.isArray(res.data.data)) {
-        types = res.data.data;
-      } else if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        types = res.data.data;
-      }
-      
-      console.log('Parsed maintenance types array:', types);
-      console.log('Number of maintenance types:', types.length);
-      
-      // Backend now filters by int_status = 1, but add safety filter
-      const filteredTypes = types.filter(mt => {
-        if (!mt || !mt.maint_type_id) return false;
-        // Backend filters by int_status = 1, but double-check
-        const status = mt.int_status;
-        if (status === undefined || status === null) {
-          // If status is missing, include it (might be filtered by backend)
-          return true;
-        }
-        // Handle numeric, string, and boolean
-        return status === 1 || status === '1' || status === true || status === 'true';
-      });
-      
-      console.log('Final maintenance types to display:', filteredTypes);
-      setMaintenanceTypes(filteredTypes);
-      
-      if (filteredTypes.length === 0) {
-        console.warn('No maintenance types found. Raw response:', res.data);
-        if (types.length > 0) {
-          console.warn('Raw types before filtering:', types);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching maintenance types:', error);
-      console.error('Error response:', error.response);
-      console.error('Error details:', error.response?.data);
-      toast.error('Failed to fetch maintenance types');
-      setMaintenanceTypes([]);
-    }
-  };
-
-  // Fetch UOM values from tblUom
-  const fetchUOM = async () => {
-    try {
-      const res = await API.get('/uom');
-      let uomData = [];
-      
-      if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        uomData = res.data.data;
-      } else if (Array.isArray(res.data)) {
-        uomData = res.data;
-      }
-      
-      // Store full UOM objects with both id and text
-      setUomOptions(uomData.map(u => ({
-        id: u.UOM_id || u.uom_id,
-        text: u.UOM || u.uom || u.text
-      })));
-      
-      console.log('UOM options loaded:', uomData);
-    } catch (error) {
-      console.error('Error fetching UOM values:', error);
-      toast.error('Failed to fetch UOM values');
-      setUomOptions([]);
-    }
-  };
 
   // Helper function to get UOM text from UOM_id or UOM text
   const getUomText = (uomValue) => {
@@ -182,26 +112,46 @@ const MaintenanceFrequency = () => {
     return value || '-';
   };
 
+  const getChecklistFrequencyLabel = (freq) => {
+    if (!freq) return '';
+
+    if (freq.is_recurring === false) {
+      return `${freq.text || 'On demand'} (On demand)`;
+    }
+
+    const freqText = (freq.text || '').trim() || 'Recurring';
+    const frequency = freq.frequency != null ? String(freq.frequency).trim() : '';
+    const uomText = getUomText(freq.uom);
+    const unitText = uomText ? uomText.toLowerCase() : 'days';
+    const suffix = frequency ? `${frequency} ${unitText}` : unitText;
+    return `${freqText} (${suffix})`;
+  };
+
+  const checklistAssetTypeOptions = (allFrequencies || []).reduce((acc, freq) => {
+    if (!freq?.asset_type_id) return acc;
+    if (acc.some((item) => String(item.asset_type_id) === String(freq.asset_type_id))) {
+      return acc;
+    }
+    acc.push({
+      asset_type_id: freq.asset_type_id,
+      text: freq.asset_type_name || freq.asset_type_id,
+    });
+    return acc;
+  }, []);
+
   const isVendorManaged = (value) => {
     return String(value || '').toLowerCase().replace(/\s|-/g, '').includes('vendor');
   };
 
   // Fetch all maintenance frequencies
-  const fetchFrequencies = async () => {
-    setLoading(true);
+  const fetchFrequencies = async ({ force = false } = {}) => {
     try {
-      const res = await API.get('/maintenance-frequencies');
-      if (res.data && res.data.success) {
-        const data = res.data.data || [];
-        setAllFrequencies(data);
-        // Apply filters if any
-        applyFilters(data);
-      }
+      const bundle = await fetchFrequencyBundle({ revalidate: true, force });
+      const data = bundle?.frequencies || [];
+      applyFilters(data);
     } catch (error) {
       console.error('Error fetching maintenance frequencies:', error);
-      toast.error('Failed to fetch maintenance frequencies');
-    } finally {
-      setLoading(false);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_MAINTENANCE_FREQUENCIES_2BB3A97B', fallbackText: 'Failed to fetch maintenance frequencies', type: 'error' });
     }
   };
 
@@ -389,31 +339,64 @@ const MaintenanceFrequency = () => {
       }
     } catch (error) {
       console.error('Error fetching checklist items:', error);
-      toast.error('Failed to fetch checklist items');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_CHECKLIST_ITEMS_5069A222', fallbackText: 'Failed to fetch checklist items', type: 'error' });
     } finally {
       setLoadingChecklist(false);
     }
   };
 
   useEffect(() => {
-    fetchMaintenanceTypes();
-    fetchUOM();
     fetchFrequencies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (selectedFreqId) {
-      // Find the selected frequency data
-      const freqData = frequencies.find(f => f.at_main_freq_id === selectedFreqId);
-      if (freqData) {
-        setSelectedFrequencyData(freqData);
-        fetchChecklistItems(selectedFreqId);
-      }
-    } else {
+    if (activeTab !== 'checklist') return;
+
+    if (!selectedChecklistAssetType) {
+      setChecklistFrequencies([]);
+      setSelectedFreqId('');
+      return;
+    }
+
+    const filtered = (allFrequencies || []).filter(
+      (freq) => String(freq.asset_type_id) === String(selectedChecklistAssetType)
+    );
+
+    setChecklistFrequencies(filtered);
+
+    if (filtered.length === 1) {
+      setSelectedFreqId(filtered[0].at_main_freq_id);
+      return;
+    }
+
+    // If currently selected frequency does not belong to selected asset type, reset it.
+    if (!filtered.some((freq) => String(freq.at_main_freq_id) === String(selectedFreqId))) {
+      setSelectedFreqId('');
+    }
+  }, [activeTab, selectedChecklistAssetType, allFrequencies]);
+
+  useEffect(() => {
+    if (!selectedFreqId) {
       setSelectedFrequencyData(null);
       setChecklistItems([]);
+      return;
     }
-  }, [selectedFreqId, frequencies]);
+
+    // Find selected frequency from full list (not table-filtered list)
+    const freqData = (allFrequencies || []).find(
+      (f) => String(f.at_main_freq_id) === String(selectedFreqId)
+    );
+
+    if (!freqData) {
+      setSelectedFrequencyData(null);
+      setChecklistItems([]);
+      return;
+    }
+
+    setSelectedFrequencyData(freqData);
+    fetchChecklistItems(selectedFreqId);
+  }, [selectedFreqId, allFrequencies]);
 
 
   // Start editing
@@ -448,18 +431,18 @@ const MaintenanceFrequency = () => {
     // Validation only for recurring maintenance
     if (isRecurring) {
       if (!editingFormData.frequency || isNaN(editingFormData.frequency) || parseFloat(editingFormData.frequency) <= 0) {
-        toast.error('Please enter a valid frequency');
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_VALID_FREQUENCY_65466B1B', fallbackText: 'Please enter a valid frequency', type: 'error' });
         return;
       }
 
       if (!editingFormData.uom) {
-        toast.error('Please select Unit of Measure (UOM)');
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_UNIT_OF_MEASURE_UOM_46F13EFF', fallbackText: 'Please select Unit of Measure (UOM)', type: 'error' });
         return;
       }
     }
 
     if (!editingFormData.maint_type_id) {
-      toast.error('Please select a maintenance type');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_MAINTENANCE_TYPE_07257CEC', fallbackText: 'Please select a maintenance type', type: 'error' });
       return;
     }
 
@@ -480,9 +463,10 @@ const MaintenanceFrequency = () => {
       const res = await API.put(`/maintenance-frequencies/${id}`, requestData);
 
       if (res.data && res.data.success) {
-        toast.success('Maintenance frequency updated successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_MAINTENANCE_FREQUENCY_UPDATED_SUCCESSFULLY_7DC92403', fallbackText: 'Maintenance frequency updated successfully', type: 'success' });
         handleCancelEdit();
-        fetchFrequencies();
+        invalidateCache('maintenance-config:');
+        fetchFrequencies({ force: true });
       }
     } catch (error) {
       console.error('Error updating maintenance frequency:', error);
@@ -501,8 +485,9 @@ const MaintenanceFrequency = () => {
     try {
       const res = await API.delete(`/maintenance-frequencies/${id}`);
       if (res.data && res.data.success) {
-        toast.success('Maintenance frequency deleted successfully');
-        fetchFrequencies();
+        showBackendTextToast({ toast, tmdId: 'TMD_MAINTENANCE_FREQUENCY_DELETED_SUCCESSFULLY_4EA40AA1', fallbackText: 'Maintenance frequency deleted successfully', type: 'success' });
+        invalidateCache('maintenance-config:');
+        fetchFrequencies({ force: true });
         if (selectedFreqId === id) {
           setSelectedFreqId('');
         }
@@ -518,12 +503,12 @@ const MaintenanceFrequency = () => {
     e.preventDefault();
     
     if (!selectedFreqId) {
-      toast.error('Please select a frequency from the dropdown');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_FREQUENCY_FROM_THE_DROPDOWN_43AB2F3B', fallbackText: 'Please select a frequency from the dropdown', type: 'error' });
       return;
     }
 
     if (!newChecklistItem.trim()) {
-      toast.error('Please enter a checklist item');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_CHECKLIST_ITEM_77B30C0A', fallbackText: 'Please enter a checklist item', type: 'error' });
       return;
     }
 
@@ -534,7 +519,7 @@ const MaintenanceFrequency = () => {
       });
 
       if (res.data && res.data.success) {
-        toast.success('Checklist item added successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_CHECKLIST_ITEM_ADDED_SUCCESSFULLY_7D9615A6', fallbackText: 'Checklist item added successfully', type: 'success' });
         setNewChecklistItem('');
         fetchChecklistItems(selectedFreqId);
       }
@@ -553,7 +538,7 @@ const MaintenanceFrequency = () => {
     try {
       const res = await API.delete(`/maintenance-frequencies/${selectedFreqId}/checklist/${itemId}`);
       if (res.data && res.data.success) {
-        toast.success('Checklist item deleted successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_CHECKLIST_ITEM_DELETED_SUCCESSFULLY_1F8B6CDF', fallbackText: 'Checklist item deleted successfully', type: 'success' });
         fetchChecklistItems(selectedFreqId);
       }
     } catch (error) {
@@ -898,7 +883,7 @@ const MaintenanceFrequency = () => {
               )}
 
               {/* Table */}
-              {loading ? (
+              {frequenciesLoading && frequencies.length === 0 && allFrequencies.length === 0 ? (
                 <div className="text-center py-16">
                   <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E2F4B]"></div>
                   <p className="mt-4 text-gray-600">Loading...</p>
@@ -1149,16 +1134,37 @@ const MaintenanceFrequency = () => {
                   Select Asset Type <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={selectedFreqId}
-                  onChange={(e) => setSelectedFreqId(e.target.value)}
+                  value={selectedChecklistAssetType}
+                  onChange={(e) => setSelectedChecklistAssetType(e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
                 >
                   <option value="">-- Select Asset Type --</option>
-                   {frequencies.map((freq) => (
-                      <option key={freq.at_main_freq_id} value={freq.at_main_freq_id}>
-                        {freq.asset_type_name}
-                      </option>
-                    ))}
+                  {checklistAssetTypeOptions.map((at) => (
+                    <option key={at.asset_type_id} value={at.asset_type_id}>
+                      {at.text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Frequency <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedFreqId}
+                  onChange={(e) => setSelectedFreqId(e.target.value)}
+                  disabled={!selectedChecklistAssetType}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
+                >
+                  <option value="">
+                    {!selectedChecklistAssetType ? '-- Select Asset Type First --' : '-- Select Frequency --'}
+                  </option>
+                  {checklistFrequencies.map((freq) => (
+                    <option key={freq.at_main_freq_id} value={freq.at_main_freq_id}>
+                      {getChecklistFrequencyLabel(freq)}
+                    </option>
+                  ))}
                 </select>
               </div>
 

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -45,7 +46,7 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
     
     // Validate
     if (!formData.text || !formData.city || !formData.branch_code) {
-      toast.error(t('branches.allFieldsRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_ALLFIELDSREQUIRED_6785ABB7', fallbackText: t('branches.allFieldsRequired'), type: 'error' });
       return;
     }
 

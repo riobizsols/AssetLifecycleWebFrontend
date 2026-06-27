@@ -1,15 +1,34 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/useAuthStore';
+import { clearTextMessageCache } from '../services/textMessagesService';
+import { resetMasterDataLabelCache } from '../utils/masterDataLabel';
 
 const LanguageContext = createContext();
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+  const { t, i18n } = useTranslation();
+
+  if (context) {
+    return context;
   }
-  return context;
+
+  // Lazy-loaded chunks can occasionally mount before LanguageContext resolves;
+  // fall back to i18next so dashboard widgets still render.
+  return {
+    currentLanguage: i18n.language,
+    availableLanguages: [
+      { code: 'en', name: t('language.english'), flag: '🇺🇸' },
+      { code: 'de', name: t('language.german'), flag: '🇩🇪' },
+    ],
+    changeLanguage: async (language) => {
+      await i18n.changeLanguage(language);
+      localStorage.setItem('selectedLanguage', language);
+    },
+    t,
+    i18n,
+  };
 };
 
 export const LanguageProvider = ({ children }) => {
@@ -21,6 +40,8 @@ export const LanguageProvider = ({ children }) => {
       await i18n.changeLanguage(language);
       // Store the selected language in localStorage
       localStorage.setItem('selectedLanguage', language);
+      clearTextMessageCache();
+      resetMasterDataLabelCache();
     } catch (error) {
       console.error('Error changing language:', error);
     }
@@ -46,15 +67,30 @@ export const LanguageProvider = ({ children }) => {
         console.log('Setting language from user profile:', userLanguage);
         i18n.changeLanguage(userLanguage);
         localStorage.setItem('selectedLanguage', userLanguage);
+        clearTextMessageCache();
+        resetMasterDataLabelCache();
       }
     } else {
       // User not logged in, check localStorage or browser default
       const savedLanguage = localStorage.getItem('selectedLanguage');
       if (savedLanguage && savedLanguage !== i18n.language) {
         i18n.changeLanguage(savedLanguage);
+        clearTextMessageCache();
+        resetMasterDataLabelCache();
       }
     }
   }, [i18n, user?.language_code]);
+
+  useEffect(() => {
+    const syncStorage = (lng) => {
+      if (lng) {
+        localStorage.setItem('selectedLanguage', lng);
+        resetMasterDataLabelCache();
+      }
+    };
+    i18n.on('languageChanged', syncStorage);
+    return () => i18n.off('languageChanged', syncStorage);
+  }, [i18n]);
 
   const value = {
     currentLanguage: getCurrentLanguage(),

@@ -1,9 +1,10 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, Eye, ChevronDown, Maximize, Minimize } from 'lucide-react';
 import API from '../../lib/axios';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuditLog from '../../hooks/useAuditLog';
 import { PRODSERV_APP_ID } from '../../constants/prodServAuditEvents';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -31,8 +32,12 @@ const _borderBottom = 'border-b-2 border-[#FFC107]';
 
 export default function ProdServ() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useLanguage();
   const [tab, setTab] = useState('product');
+  const brandInputRef = useRef(null);
+  const modelInputRef = useRef(null);
+  const serviceDescriptionInputRef = useRef(null);
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(PRODSERV_APP_ID);
@@ -81,6 +86,35 @@ export default function ProdServ() {
     };
     fetchAssetTypes();
   }, []);
+
+  useEffect(() => {
+    const assetType = searchParams.get('assetType');
+    const brand = searchParams.get('brand');
+    const focus = searchParams.get('focus');
+    const tabParam = searchParams.get('tab');
+
+    if (tabParam === 'service') {
+      setTab('service');
+      if (assetType) {
+        setServiceForm((prev) => ({ ...prev, assetType }));
+      }
+    } else if (assetType) {
+      setTab('product');
+      setProductForm((prev) => ({
+        ...prev,
+        assetType,
+        ...(brand ? { brand } : {}),
+      }));
+    }
+
+    if (focus === 'brand') {
+      setTimeout(() => brandInputRef.current?.focus(), 150);
+    } else if (focus === 'model') {
+      setTimeout(() => modelInputRef.current?.focus(), 150);
+    } else if (focus === 'description') {
+      setTimeout(() => serviceDescriptionInputRef.current?.focus(), 150);
+    }
+  }, [searchParams]);
 
   // Fetch products and services from /prodserv and filter by ps_type
   useEffect(() => {
@@ -131,6 +165,12 @@ export default function ProdServ() {
       const all = Array.isArray(res.data) ? res.data : [];
       setProducts(all.filter(p => p.ps_type === 'product'));
       
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo === 'vendor-add') {
+        navigate('/master-data/add-vendor');
+        return;
+      }
+
       // Check if user came from assets add screen and navigate back
       const savedFormData = sessionStorage.getItem('assetFormData');
       if (savedFormData) {
@@ -177,6 +217,12 @@ export default function ProdServ() {
       const res = await API.get('/prodserv');
       const all = Array.isArray(res.data) ? res.data : [];
       setServices(all.filter(p => p.ps_type === 'service'));
+
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo === 'vendor-add') {
+        navigate('/master-data/add-vendor');
+        return;
+      }
     } catch {
       // Optionally handle error
     }
@@ -245,10 +291,10 @@ export default function ProdServ() {
       // Update local state based on type
       if (itemToDelete.type === 'product') {
         setProducts(prev => prev.filter(p => (p.prod_serv_id || p.id) !== itemId));
-        toast.success(t('prodServ.productDeletedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_PRODSERV_PRODUCTDELETEDSUCCESSFULLY_531CC616', fallbackText: 'Product deleted successfully', type: 'success' });
       } else {
         setServices(prev => prev.filter(s => (s.prod_serv_id || s.id) !== itemId));
-        toast.success(t('prodServ.serviceDeletedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_PRODSERV_SERVICEDELETEDSUCCESSFULLY_130A0570', fallbackText: 'Service deleted successfully', type: 'success' });
       }
 
       // Refresh the data after deletion
@@ -273,7 +319,13 @@ export default function ProdServ() {
         errorMessage = err.response?.data?.message || err.response?.data?.error || errorMessage;
       }
       
-      toast.error(errorMessage, { duration: 4000 });
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_PRODSERV_FAILEDTODELETEITEM_41D760F6',
+        fallbackText: errorMessage,
+        type: 'error',
+        toastOptions: { duration: 4000 },
+      });
     } finally {
       _setIsDeleting(false);
       setShowDeleteModal(false);
@@ -376,11 +428,12 @@ export default function ProdServ() {
                       {t('prodServ.brand')} <span className="text-red-500">*</span>
                     </label>
                     {/* Product Form Brand Dropdown */}
-                    <input 
+                    <input
+                      ref={brandInputRef}
                       className={`border rounded px-2 py-1 w-full ${isProductFieldInvalid(productForm.brand) ? 'border-red-500' : 'border-gray-300'}`}
-                      value={productForm.brand} 
-                      onChange={e => setProductForm(f => ({ ...f, brand: e.target.value }))} 
-                      placeholder={t('prodServ.enterBrand')} 
+                      value={productForm.brand}
+                      onChange={e => setProductForm(f => ({ ...f, brand: e.target.value }))}
+                      placeholder={t('prodServ.enterBrand')}
                     />
                   </div>
                   <div className="flex flex-col min-w-[140px]">
@@ -388,11 +441,12 @@ export default function ProdServ() {
                       {t('prodServ.model')} <span className="text-red-500">*</span>
                     </label>
                     {/* Product Form Model Dropdown */}
-                    <input 
+                    <input
+                      ref={modelInputRef}
                       className={`border rounded px-2 py-1 w-full ${isProductFieldInvalid(productForm.model) ? 'border-red-500' : 'border-gray-300'}`}
-                      value={productForm.model} 
-                      onChange={e => setProductForm(f => ({ ...f, model: e.target.value }))} 
-                      placeholder={t('prodServ.enterModel')} 
+                      value={productForm.model}
+                      onChange={e => setProductForm(f => ({ ...f, model: e.target.value }))}
+                      placeholder={t('prodServ.enterModel')}
                     />
                   </div>
                   <button
@@ -576,6 +630,7 @@ export default function ProdServ() {
                       {t('prodServ.description')} <span className="text-red-500">*</span>
                     </label>
                     <input
+                      ref={serviceDescriptionInputRef}
                       className={`border rounded px-2 py-1 w-full ${isServiceFieldInvalid(serviceForm.description) ? 'border-red-500' : 'border-gray-300'}`}
                       value={serviceForm.description}
                       onChange={e => setServiceForm(f => ({ ...f, description: e.target.value }))}
@@ -781,7 +836,7 @@ export default function ProdServ() {
                       console.log('Navigation completed');
                     } catch (error) {
                       console.error('Navigation error:', error);
-                      toast.error(t('prodServ.failedToNavigateToVendors'));
+                      showBackendTextToast({ toast, tmdId: 'TMD_I18N_PRODSERV_FAILEDTONAVIGATETOVENDORS_5FE199BE', fallbackText: 'Failed to navigate to vendors', type: 'error' });
                     }
                   }}
                   className="w-full text-left px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded flex items-center gap-2"

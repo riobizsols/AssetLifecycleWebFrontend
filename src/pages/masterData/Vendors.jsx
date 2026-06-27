@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
@@ -11,12 +12,20 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { VENDORS_APP_ID } from "../../constants/vendorsAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useVendorsStore } from "../../store/useVendorsStore";
+import { invalidateCache } from "../../utils/apiCache";
+import { normalizeVendorFormPayload } from "../../utils/vendorFormPayload";
+import { applyListFilterChange } from "../../utils/listFilterState";
 
 const Vendors = () => {
   const navigate = useNavigate();
 
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const vendors = useVendorsStore((s) => s.vendors);
+  const listLoading = useVendorsStore((s) => s.listLoading);
+  const fetchVendorsStore = useVendorsStore((s) => s.fetchVendors);
+  const data = vendors;
+  const isLoading = listLoading && data.length === 0;
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -67,39 +76,21 @@ const Vendors = () => {
   ];
 
   useEffect(() => {
-    const fetchVendors = async () => {
-      setIsLoading(true);
+    const load = async () => {
       try {
-        const response = await API.get("/get-vendors");
-        const formattedData = response.data.map(item => {
-          // Map int_status to display text
-          let statusText = 'Inactive';
-          if (item.int_status === 1) {
-            statusText = 'Active';
-          } else if (item.int_status === 3) {
-            statusText = 'CRApproved';
-          } else if (item.int_status === 4) {
-            statusText = 'Blocked';
-          }
-          
-          return {
-            ...item,
-            int_status: statusText,
-            created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-            changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : ''
-          };
-        });
-        setData(formattedData);
+        await fetchVendorsStore({ revalidate: true });
       } catch (error) {
         console.error("Error fetching vendors:", error);
-        toast.error(t('vendors.failedToFetchVendors'));
-      } finally {
-        setIsLoading(false);
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOFETCHVENDORS_00D2C278', fallbackText: t('vendors.failedToFetchVendors'), type: 'error' });
       }
     };
-
-    fetchVendors();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchVendorsStore({ revalidate: true });
+  });
 
   const handleSort = (column) => {
     setSortConfig(prevConfig => {
@@ -157,25 +148,8 @@ const Vendors = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => {
-      if (filterType === 'columnFilters') {
-        return {
-          ...prev,
-          columnFilters: value
-        };
-      } else if (filterType === 'fromDate' || filterType === 'toDate') {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      } else {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleDelete = async () => {
@@ -191,11 +165,10 @@ const Vendors = () => {
         action: `${selectedRows.length} Vendor(s) Deleted`
       });
 
-      setData((prev) =>
-        prev.filter((vendor) => !selectedRows.includes(vendor.vendor_id))
-      );
+      invalidateCache('vendors:');
+      await fetchVendorsStore({ revalidate: true, force: true });
       setSelectedRows([]);
-      toast.success(t('vendors.vendorsDeletedSuccessfully', { count: selectedRows.length }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORSDELETEDSUCCESSFULLY_58F50B4C', fallbackText: t('vendors.vendorsDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
       return true; // Return true to indicate successful deletion
     } catch (error) {
       console.error("Error deleting vendors:", error);
@@ -204,10 +177,16 @@ const Vendors = () => {
       // If there are constraint violation details, show them
       if (error.response?.data?.details) {
         error.response.data.details.forEach(detail => {
-          toast.error(detail, { duration: 5000 });
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_VENDORS_DELETE_CONSTRAINT_DETAIL_821E9F9F',
+            fallbackText: detail,
+            type: 'error',
+            toastOptions: { duration: 5000 },
+          });
         });
       } else {
-        toast.error(errorMessage);
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTODELETEVENDORS_0A3D2E6C', fallbackText: errorMessage, type: 'error' });
       }
       return false; // Return false to indicate failed deletion
     }
@@ -220,24 +199,13 @@ const Vendors = () => {
 
   const handleUpdate = async (formData) => {
     try {
-      // Clean up empty/null values for optional fields and preserve required fields
-      const cleanedData = {
+      const cleanedData = normalizeVendorFormPayload({
         ...formData,
-        org_id: editingVendor.org_id, // Preserve org_id from existing vendor
-        ext_id: editingVendor.ext_id, // Preserve ext_id from existing vendor
-        address_line2: formData.address_line2 || null,
-        contact_person_name: formData.contact_person_name || null,
-        contact_person_email: formData.contact_person_email || null,
-        contact_person_number: formData.contact_person_number || null,
-        gst_number: formData.gst_number || null,
-        cin_number: formData.cin_number || null,
-        address_line1: formData.address_line1 || null,
-        city: formData.city || null,
-        state: formData.state || null,
-        pincode: formData.pincode || null,
+        org_id: editingVendor.org_id,
+        ext_id: editingVendor.ext_id,
         changed_by: "USER123", // Replace with actual user ID from context/state
-        changed_on: new Date().toISOString()
-      };
+        changed_on: new Date().toISOString(),
+      });
 
       const response = await API.put(`/update/${editingVendor.vendor_id}`, cleanedData);
 
@@ -254,37 +222,16 @@ const Vendors = () => {
         action: 'Vendor Updated'
       });
 
-      // Update the data state with the updated vendor
-      setData(prev => prev.map(vendor => {
-        if (vendor.vendor_id === editingVendor.vendor_id) {
-          // Map int_status to display text
-          let statusText = 'Inactive';
-          const statusValue = response.data.vendor.int_status;
-          if (statusValue === 1) {
-            statusText = 'Active';
-          } else if (statusValue === 3) {
-            statusText = 'CRApproved';
-          } else if (statusValue === 4) {
-            statusText = 'Blocked';
-          }
-          
-          return {
-            ...vendor,
-            ...response.data.vendor,
-            int_status: statusText,
-            changed_on: response.data.vendor.changed_on ? new Date(response.data.vendor.changed_on).toLocaleString() : vendor.changed_on
-          };
-        }
-        return vendor;
-      }));
+      invalidateCache('vendors:');
+      await fetchVendorsStore({ revalidate: true, force: true });
       
       setShowEditModal(false);
       setEditingVendor(null);
-      toast.success(t('vendors.vendorUpdatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORUPDATEDSUCCESSFULLY_176E9EC5', fallbackText: t('vendors.vendorUpdatedSuccessfully'), type: 'success' });
     } catch (error) {
       console.error("Error updating vendor:", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t('vendors.failedToUpdateVendor');
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOUPDATEVENDOR_B36D1204', fallbackText: errorMessage, type: 'error' });
     }
   };
 
@@ -300,13 +247,23 @@ const Vendors = () => {
           action: 'Vendors Data Downloaded'
         });
         
-        toast(t('vendors.vendorsExportedSuccessfully'), { icon: '✅' });
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_VENDORSEXPORTEDSUCCESSFULLY_61CDBE54',
+          fallbackText: t('vendors.vendorsExportedSuccessfully'),
+          type: 'success',
+        });
       } else {
         throw new Error(t('vendors.exportFailed'));
       }
     } catch (error) {
       console.error('Error downloading vendors:', error);
-      toast(t('vendors.failedToExportVendors'), { icon: '❌' });
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_FAILEDTOEXPORTVENDORS_7C20AB9E',
+        fallbackText: t('vendors.failedToExportVendors'),
+        type: 'error',
+      });
     }
   };
 
@@ -352,26 +309,14 @@ const Vendors = () => {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length + 1; // +1 for actions column
             return (
-              <>
-                <tr>
-                  <td colSpan={colSpan} className="text-center py-16">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <p className="text-gray-600">{t('common.loading')}</p>
-                    </div>
-                  </td>
-                </tr>
-                <EditVendorModal
-                  show={showEditModal}
-                  onClose={() => {
-                    setShowEditModal(false);
-                    setEditingVendor(null);
-                  }}
-                  onConfirm={handleUpdate}
-                  vendor={editingVendor}
-                  isReadOnly={isReadOnly}
-                />
-              </>
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">{t('common.loading')}</p>
+                  </div>
+                </td>
+              </tr>
             );
           }
 
@@ -379,27 +324,15 @@ const Vendors = () => {
             const visibleCols = visibleColumns.filter((col) => col.visible);
             const colSpan = visibleCols.length + 1; // +1 for actions column
             return (
-              <>
-                <tr>
-                  <td colSpan={colSpan} className="text-center py-16">
-                    <div className="flex flex-col items-center justify-center">
-                      <p className="text-xl font-semibold text-gray-800">
-                        {t('common.noDataFound')}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-                <EditVendorModal
-                  show={showEditModal}
-                  onClose={() => {
-                    setShowEditModal(false);
-                    setEditingVendor(null);
-                  }}
-                  onConfirm={handleUpdate}
-                  vendor={editingVendor}
-                  isReadOnly={isReadOnly}
-                />
-              </>
+              <tr>
+                <td colSpan={colSpan} className="text-center py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-xl font-semibold text-gray-800">
+                      {t('common.noDataFound')}
+                    </p>
+                  </div>
+                </td>
+              </tr>
             );
           }
 
@@ -443,20 +376,20 @@ const Vendors = () => {
                   return row[col.name];
                 }}
               />
-              <EditVendorModal
-                show={showEditModal}
-                onClose={() => {
-                  setShowEditModal(false);
-                  setEditingVendor(null);
-                }}
-                onConfirm={handleUpdate}
-                vendor={editingVendor}
-                isReadOnly={isReadOnly}
-              />
             </>
           );
         }}
       </ContentBox>
+      <EditVendorModal
+        show={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingVendor(null);
+        }}
+        onConfirm={handleUpdate}
+        vendor={editingVendor}
+        isReadOnly={isReadOnly}
+      />
     </div>
   );
 };

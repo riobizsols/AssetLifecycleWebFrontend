@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -146,6 +147,7 @@ const ContentBox = ({
   customHeaderActions, // Custom header actions
   isReadOnly = false, // Add isReadOnly prop
   onHeaderClick, // Add onHeaderClick prop
+  dateFilterField = '', // Which column date range applies to (optional)
 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -409,6 +411,7 @@ const ContentBox = ({
       setDateRange({ from: "", to: "" });
       onFilterChange("fromDate", "");
       onFilterChange("toDate", "");
+      onFilterChange("dateField", "");
     }
   };
 
@@ -737,6 +740,7 @@ const ContentBox = ({
                       const updated = { ...dateRange, from: e.target.value };
                       setDateRange(updated);
                       onFilterChange("fromDate", updated.from);
+                      if (dateFilterField) onFilterChange("dateField", dateFilterField);
                     }}
                   />
                   <span>to</span>
@@ -748,6 +752,7 @@ const ContentBox = ({
                       const updated = { ...dateRange, to: e.target.value };
                       setDateRange(updated);
                       onFilterChange("toDate", updated.to);
+                      if (dateFilterField) onFilterChange("dateField", dateFilterField);
                     }}
                   />
                 </div>
@@ -806,7 +811,7 @@ const ContentBox = ({
             <button
               onClick={() => {
                 if (selectedRows.length === 0) {
-                  toast.error(t('common.pleaseSelectItemsToDelete'));
+                  showBackendTextToast({ toast, tmdId: 'TMD_I18N_COMMON_PLEASESELECTITEMSTODELETE_47ECAC67', fallbackText: t('common.pleaseSelectItemsToDelete'), type: 'error' });
                   return;
                 }
                 setShowDeleteModal(true);

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
@@ -11,14 +12,22 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { USERS_APP_ID } from "../../constants/usersAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useUserRolesStore } from "../../store/useUserRolesStore";
+import { invalidateCache } from "../../utils/apiCache";
+import { applyListFilterChange } from "../../utils/listFilterState";
 import { X } from "lucide-react";
 
 const Users = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [departments, setDepartments] = useState([]);
+  const data = useUserRolesStore((s) => s.users);
+  const listLoading = useUserRolesStore((s) => s.listLoading);
+  const departments = useUserRolesStore((s) => s.departments);
+  const jobRoles = useUserRolesStore((s) => s.jobRoles);
+  const loadPageData = useUserRolesStore((s) => s.loadPageData);
+  const fetchUsersStore = useUserRolesStore((s) => s.fetchUsers);
+  const isLoading = listLoading && data.length === 0;
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -39,13 +48,11 @@ const Users = () => {
   // State for edit modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [jobRoles, setJobRoles] = useState([]);
 
   // State for role management modal
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userRoles, setUserRoles] = useState([]);
-  const [availableRoles, setAvailableRoles] = useState([]);
   const [loadingRoles, setLoadingRoles] = useState(false);
   const [loadingAvailableRoles, setLoadingAvailableRoles] = useState(false);
 
@@ -72,25 +79,22 @@ const Users = () => {
     { label: t("users.resetTokenExpiry"), name: "reset_token_expiry", visible: false }
   ], [t]);
 
-  // Fetch departments
+  // Fetch departments (for edit modal dropdowns — loaded via store)
   const fetchDepartments = async () => {
     try {
-      const res = await API.get("/admin/departments");
-      setDepartments(res.data);
+      await useUserRolesStore.getState().fetchAdminDepartments({ revalidate: true });
     } catch (err) {
       console.error("Failed to fetch departments", err);
-      toast.error(t("users.failedToFetchDepartments"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHDEPARTMENTS_35788A01', fallbackText: t("users.failedToFetchDepartments"), type: 'error' });
     }
   };
 
   const fetchJobRoles = async () => {
     try {
-      const response = await API.get("/job-roles");
-      setJobRoles(response.data.roles || []);
-      setAvailableRoles(response.data.roles || []);
+      await useUserRolesStore.getState().fetchJobRoles({ revalidate: true });
     } catch (err) {
       console.error("Failed to fetch job roles", err);
-      toast.error(t("users.failedToFetchJobRoles"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHJOBROLES_4AFF8DA0', fallbackText: t("users.failedToFetchJobRoles"), type: 'error' });
     }
   };
 
@@ -102,7 +106,7 @@ const Users = () => {
       setUserRoles(response.data.data || []);
     } catch (error) {
       console.error("Error fetching user roles:", error);
-      toast.error(t("users.failedToFetchUserRoles"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHUSERROLES_42C61BAE', fallbackText: t("users.failedToFetchUserRoles"), type: 'error' });
       setUserRoles([]);
     } finally {
       setLoadingRoles(false);
@@ -116,15 +120,13 @@ const Users = () => {
     setShowRoleModal(true);
     
     // Ensure available roles are loaded
-    if (availableRoles.length === 0) {
+    if (jobRoles.length === 0) {
       setLoadingAvailableRoles(true);
       try {
-        const response = await API.get("/job-roles");
-        setAvailableRoles(response.data.roles || []);
-        console.log('Loaded available roles:', response.data.roles);
+        await fetchJobRoles();
       } catch (error) {
         console.error('Error loading available roles:', error);
-        toast.error(t("users.failedToLoadAvailableRoles"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOLOADAVAILABLEROLES_35AE4334', fallbackText: t("users.failedToLoadAvailableRoles"), type: 'error' });
       } finally {
         setLoadingAvailableRoles(false);
       }
@@ -144,14 +146,11 @@ const Users = () => {
         
         // If user was deactivated, update the main data
         if (response.data.userDeactivated) {
-          setData(prev => prev.map(user => 
-            user.user_id === selectedUser.user_id 
-              ? { ...user, int_status: 'Inactive' }
-              : user
-          ));
-          toast.success(t("users.roleDeletedAndUserDeactivated"));
+          invalidateCache('users:');
+          await fetchUsersStore({ revalidate: true, force: true, notAssignedLabel: t("users.notAssigned") });
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_ROLEDELETEDANDUSERDEACTIVATED_19B28A2F', fallbackText: t("users.roleDeletedAndUserDeactivated"), type: 'success' });
         } else {
-          toast.success(t("users.roleDeletedSuccessfully"));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_ROLEDELETEDSUCCESSFULLY_6811ADC8', fallbackText: t("users.roleDeletedSuccessfully"), type: 'success' });
         }
 
         // Log the action
@@ -163,7 +162,7 @@ const Users = () => {
       }
     } catch (error) {
       console.error("Error deleting role:", error);
-      toast.error(t("users.failedToDeleteRole"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTODELETEROLE_110859FB', fallbackText: t("users.failedToDeleteRole"), type: 'error' });
     }
   };
 
@@ -186,7 +185,7 @@ const Users = () => {
       if (response.data.success) {
         // Refresh user roles
         await fetchUserRoles(selectedUser.user_id);
-        toast.success(t("users.roleUpdatedSuccessfully"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_ROLEUPDATEDSUCCESSFULLY_77107B6A', fallbackText: t("users.roleUpdatedSuccessfully"), type: 'success' });
 
         // Log the action
         await recordActionByNameWithFetch('Update', {
@@ -198,40 +197,31 @@ const Users = () => {
       }
     } catch (error) {
       console.error("Error updating role:", error);
-      toast.error(t("users.failedToUpdateRole"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOUPDATEROLE_69C8B1E7', fallbackText: t("users.failedToUpdateRole"), type: 'error' });
     }
   };
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      setIsLoading(true);
+    const load = async () => {
       try {
-        const response = await API.get("/users/get-users");
-        // Handle the new API response format with success/data structure
-        const usersData = response.data?.data || response.data || [];
-        const formattedData = usersData.map(item => ({
-          ...item,
-          int_status: item.int_status === 1 || item.int_status === '1' ? 'Active' : 'Inactive',
-          created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-          changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
-          last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : '',
-          dept_name: item.dept_name || departments.find(d => d.dept_id === item.dept_id)?.text || t("users.notAssigned"),
-          job_role_name: item.job_role_name || t("users.notAssigned")
-        }));
-        setData(formattedData);
+        await loadPageData({ revalidate: true, notAssignedLabel: t("users.notAssigned") });
       } catch (error) {
         console.error("Error fetching users:", error);
-        toast.error(t("users.failedToFetchUsers"));
-      } finally {
-        setIsLoading(false);
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOFETCHUSERS_46749758', fallbackText: t("users.failedToFetchUsers"), type: 'error' });
       }
     };
-    fetchUsers();
-  }, [departments]);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchUsersStore({ revalidate: true, notAssignedLabel: t("users.notAssigned") });
+  });
 
   useEffect(() => {
     fetchDepartments();
     fetchJobRoles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Close modals on ESC key
@@ -308,38 +298,28 @@ const Users = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => {
-      if (filterType === 'columnFilters') {
-        return {
-          ...prev,
-          columnFilters: value
-        };
-      } else if (filterType === 'fromDate' || filterType === 'toDate') {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      } else {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleDelete = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t("users.pleaseSelectUsersToDelete"), {
-        duration: 3000,
-        style: { backgroundColor: '#FEE2E2', color: '#DC2626' }
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_USERS_PLEASESELECTUSERSTODELETE_35751C86',
+        fallbackText: t("users.pleaseSelectUsersToDelete"),
+        type: 'error',
       });
       return false;
     }
 
     // Show loading toast
-    const loadingToast = toast.loading(t("users.deletingSelectedUsers"));
+    const loadingToast = showBackendTextToast({
+      toast,
+      tmdId: 'TMD_I18N_USERS_DELETINGSELECTEDUSERS_90A2E953',
+      fallbackText: t("users.deletingSelectedUsers"),
+      type: 'loading',
+    });
 
     try {
             const response = await API.delete("/users/delete-users", {
@@ -478,25 +458,9 @@ const Users = () => {
       });
 
       if (response.data) {
-        // Update local state
-        setData(prev => prev.filter(user => !selectedRows.includes(user.user_id)));
         setSelectedRows([]);
-
-        // Refresh data from server
-        const refreshResponse = await API.get("/users/get-users");
-        const usersData = refreshResponse.data?.data || refreshResponse.data || [];
-        if (Array.isArray(usersData)) {
-          const formattedData = usersData.map(item => ({
-            ...item,
-            int_status: item.int_status === 1 || item.int_status === '1' ? 'Active' : 'Inactive',
-            created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-            changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : '',
-            last_accessed: item.last_accessed ? new Date(item.last_accessed).toLocaleString() : '',
-            dept_name: item.dept_name || departments.find(d => d.dept_id === item.dept_id)?.text || t("users.notAssigned"),
-            job_role_name: item.job_role_name || t("users.notAssigned")
-          }));
-          setData(formattedData);
-        }
+        invalidateCache('users:');
+        await fetchUsersStore({ revalidate: true, force: true, notAssignedLabel: t("users.notAssigned") });
 
         // Log delete action
         await recordActionByNameWithFetch('Delete', {
@@ -507,12 +471,11 @@ const Users = () => {
 
         // Show success message
         toast.dismiss(loadingToast);
-        toast.success(t("users.successfullyDeletedUsers", { count: selectedRows.length }), {
-          duration: 3000,
-          style: {
-            backgroundColor: '#DCFCE7',
-            color: '#166534'
-          }
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_USERS_SUCCESSFULLYDELETEDUSERS_22501D48',
+          fallbackText: t("users.successfullyDeletedUsers", { count: selectedRows.length }),
+          type: 'success',
         });
         return true;
       }
@@ -628,21 +591,16 @@ const Users = () => {
           action: 'User Updated'
         });
 
-        setData(prev => prev.map(user => 
-          user.user_id === userId ? { 
-            ...user, 
-            ...response.data,
-            dept_name: departments.find(d => d.dept_id === response.data.dept_id)?.text || t("users.notAssigned")
-          } : user
-        ));
-        toast.success(t("users.userUpdatedSuccessfully"));
+        invalidateCache('users:');
+        await fetchUsersStore({ revalidate: true, force: true, notAssignedLabel: t("users.notAssigned") });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_USERUPDATEDSUCCESSFULLY_253AA20B', fallbackText: t("users.userUpdatedSuccessfully"), type: 'success' });
         setShowEditModal(false);
         setEditingUser(null);
       }
     } catch (error) {
       console.error("Error updating user:", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t("users.failedToUpdateUser");
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_USERS_FAILEDTOUPDATEUSER_76B693A8', fallbackText: errorMessage, type: 'error' });
     }
   };
 
@@ -979,7 +937,7 @@ const Users = () => {
                                     userJobRoleId: role.user_job_role_id,
                                     currentRoleId: role.job_role_id,
                                     newRoleId: e.target.value,
-                                    availableRoles: availableRoles.length
+                                    availableRoles: jobRoles.length
                                   });
                                   if (e.target.value && e.target.value !== role.job_role_id) {
                                     handleUpdateRole(role.user_job_role_id, e.target.value);
@@ -990,8 +948,8 @@ const Users = () => {
                               >
                                 {loadingAvailableRoles ? (
                                   <option value="">{t("users.loadingRoles")}</option>
-                                ) : availableRoles.length > 0 ? (
-                                  availableRoles.map((availableRole) => (
+                                ) : jobRoles.length > 0 ? (
+                                  jobRoles.map((availableRole) => (
                                     <option key={availableRole.job_role_id} value={availableRole.job_role_id}>
                                       {availableRole.text}
                                     </option>

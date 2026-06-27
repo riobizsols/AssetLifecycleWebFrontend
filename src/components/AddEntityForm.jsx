@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { showBackendTextToast } from '../utils/errorTranslation';
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import ProductSupplyForm from "./ProductSupplyForm";
@@ -8,7 +9,9 @@ import { v4 as uuidv4 } from "uuid";
 import { generateUUID } from '../utils/uuid';
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
+import { normalizeVendorFormPayload } from "../utils/vendorFormPayload";
 
+const VENDOR_ADD_DRAFT_KEY = "vendorAddDraft";
 
 const AddEntityForm = () => {
   const navigate = useNavigate();
@@ -69,6 +72,69 @@ const AddEntityForm = () => {
     fetchSLADescriptions();
   }, []);
 
+  const persistVendorDraft = useCallback(
+    (returnTab) => {
+      sessionStorage.setItem(
+        VENDOR_ADD_DRAFT_KEY,
+        JSON.stringify({
+          form,
+          selectedSLAs,
+          activeTab: returnTab ?? activeTab,
+          createdVendorId,
+          vendorSaved,
+          savedTabs: [...savedTabs],
+        })
+      );
+    },
+    [form, selectedSLAs, activeTab, createdVendorId, vendorSaved, savedTabs]
+  );
+
+  useEffect(() => {
+    const returnTab =
+      sessionStorage.getItem("vendorProductReturnTab") ||
+      sessionStorage.getItem("vendorServiceReturnTab");
+    const draftRaw = sessionStorage.getItem(VENDOR_ADD_DRAFT_KEY);
+
+    let draftActiveTab = null;
+    if (draftRaw) {
+      try {
+        const draft = JSON.parse(draftRaw);
+        draftActiveTab = draft.activeTab || null;
+        if (draft.form) {
+          setForm((prev) => ({
+            ...prev,
+            ...draft.form,
+            org_id: org_id || draft.form.org_id || prev.org_id,
+          }));
+        }
+        if (Array.isArray(draft.selectedSLAs)) {
+          setSelectedSLAs(draft.selectedSLAs);
+        }
+        if (draft.createdVendorId) {
+          setCreatedVendorId(draft.createdVendorId);
+        }
+        if (typeof draft.vendorSaved === "boolean") {
+          setVendorSaved(draft.vendorSaved);
+        }
+        if (Array.isArray(draft.savedTabs)) {
+          setSavedTabs(new Set(draft.savedTabs));
+        }
+      } catch (error) {
+        console.warn("Failed to restore vendor add draft:", error);
+      }
+      sessionStorage.removeItem(VENDOR_ADD_DRAFT_KEY);
+    }
+
+    if (returnTab) {
+      setActiveTab(returnTab);
+      sessionStorage.removeItem("vendorProductReturnTab");
+      sessionStorage.removeItem("vendorServiceReturnTab");
+    } else if (draftActiveTab) {
+      setActiveTab(draftActiveTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once on mount
+  }, []);
+
   const fetchDocumentTypes = async () => {
     try {
       console.log('Fetching document types for vendors...');
@@ -90,7 +156,7 @@ const AddEntityForm = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('vendors.failedToLoadDocumentTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOLOADDOCUMENTTYPES_739C25C1', fallbackText: t('vendors.failedToLoadDocumentTypes'), type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -106,14 +172,18 @@ const AddEntityForm = () => {
         setSlaDescriptions(res.data.data);
         console.log('SLA descriptions loaded:', res.data.data);
       } else {
-        console.warn('No SLA descriptions found or invalid response format:', res.data);
+        console.warn('No SLA descriptions configured:', res.data);
         setSlaDescriptions([]);
-        toast.error('No SLA descriptions found in database');
       }
     } catch (err) {
       console.error('Error fetching SLA descriptions:', err);
       console.error('Error details:', err.response?.data || err.message);
-      toast.error(err.response?.data?.message || 'Failed to load SLA descriptions. Please check if tblSLA_Desc table exists.');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_LOAD_SLA_DESCRIPTIONS_PLEASE_CHECK_IF_TBLSL_567A2AA5',
+        fallbackText: err.response?.data?.message || 'Failed to load SLA descriptions. Please check if tblSLA_Desc table exists.',
+        type: 'error',
+      });
       setSlaDescriptions([]);
     }
   };
@@ -169,7 +239,7 @@ const AddEntityForm = () => {
       // Check if already selected
       if (prev.find(s => s.sla_id === selectedSlaId)) {
         console.warn('[AddEntityForm] SLA already exists:', selectedSlaId);
-        toast.error('This SLA is already selected');
+        showBackendTextToast({ toast, tmdId: 'TMD_THIS_SLA_IS_ALREADY_SELECTED_3D476F1F', fallbackText: 'This SLA is already selected', type: 'error' });
         e.target.value = '';
         return prev;
       }
@@ -177,7 +247,7 @@ const AddEntityForm = () => {
       // Add to selectedSLAs with next available index (1-10)
       const nextIndex = prev.length + 1;
       if (nextIndex > 10) {
-        toast.error('Maximum 10 SLAs can be selected');
+        showBackendTextToast({ toast, tmdId: 'TMD_MAXIMUM_10_SLAS_CAN_BE_SELECTED_2E0B6914', fallbackText: 'Maximum 10 SLAs can be selected', type: 'error' });
         e.target.value = '';
         return prev;
       }
@@ -242,19 +312,19 @@ const AddEntityForm = () => {
       
       // Map selected SLAs to vendor_slas array
       const vendor_slas = mapSLAsToForm();
-      const formDataWithSLAs = { ...form, vendor_slas };
+      const formDataWithSLAs = normalizeVendorFormPayload({ ...form, vendor_slas });
       
       const response = await API.post("/create-vendor", formDataWithSLAs); // Backend adds ext_id, created_on, org_id
       const vendorId = response.data?.data?.vendor_id;
       setCreatedVendorId(vendorId || "");
       setVendorSaved(true); // Mark vendor as saved
       setSavedTabs(prev => new Set([...prev, "Vendor Details"])); // Mark vendor tab as saved
-      toast.success(t('vendors.vendorCreatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORCREATEDSUCCESSFULLY_4C6423E8', fallbackText: t('vendors.vendorCreatedSuccessfully'), type: 'success' });
       // Optionally: navigate("/master-data/vendors");
     } catch (error) {
       console.error(error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t('vendors.failedToCreateVendor');
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOCREATEVENDOR_B19D7A9B', fallbackText: errorMessage, type: 'error' });
     } finally {
       setLoading(false);
       setSavingTab("");
@@ -298,9 +368,9 @@ const AddEntityForm = () => {
 
     // Phone number validation (basic format check)
     if (form.contact_person_number && form.contact_person_number.trim()) {
-      const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
+      const phoneRegex = /^[+]?[0-9\s\-()]{10,}$/;
       if (!phoneRegex.test(form.contact_person_number.trim())) {
-        errors.push('Please enter a valid contact number (at least 10 digits)');
+        errors.push('Please enter a valid contact number with at least 10 digits');
       }
     }
 
@@ -319,7 +389,14 @@ const AddEntityForm = () => {
         const validationErrors = validateRequiredFields();
         if (validationErrors.length > 0) {
           setSubmitAttempted(true); // Trigger field highlighting
-          toast.error(`Please fill required fields: ${validationErrors.join(', ')}`);
+          const validationMessage = validationErrors.join(', ');
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_PLEASEFILLREQUIREDFIELDS_2A8D8CDD',
+            fallbackText: 'Please correct the following fields: {{details}}',
+            type: 'error',
+            values: { details: validationMessage },
+          });
           setLoading(false); // Reset loading state
           return;
         }
@@ -384,22 +461,72 @@ const AddEntityForm = () => {
       
       // Show success message only if we actually saved something
       if (vendorSaveSuccess || tabsToSave.length > 0) {
-        const savedTabsList = tabsToSave.length > 0 ? tabsToSave.join(", ") : "Vendor Details";
-        toast.success(`Successfully saved: ${savedTabsList}`);
+        const savedTabsList = tabsToSave.length > 0
+          ? tabsToSave.map(translateTab).join(", ")
+          : translateTab("Vendor Details");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_SUCCESSFULLYSAVED_5ED2C725',
+          fallbackText: t('vendors.successfullySaved', {
+            savedTabs: savedTabsList,
+            defaultValue: 'Successfully saved: {{savedTabs}}',
+          }),
+          type: 'success',
+          values: { savedTabs: savedTabsList },
+        });
+      }
+
+      // Vendor-only setup: no optional product/service/attachment data to save
+      if (
+        vendorSaveSuccess &&
+        !form.product_supply &&
+        !form.service_supply &&
+        uploadRows.length === 0
+      ) {
+        clearVendorAddSession();
+        navigate("/master-data/vendors");
+      } else if (vendorSaveSuccess && !hasPendingOptionalData() && tabsToSave.length === 0) {
+        // All staged optional data already saved — return to list
+        clearVendorAddSession();
+        navigate("/master-data/vendors");
       }
       
     } catch (error) {
       console.error('Error in unified save:', error);
-      toast.error(t('vendors.saveFailed') || 'Save failed');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_SAVEFAILED_08205C99',
+        fallbackText: t('vendors.saveFailed', { defaultValue: 'Save failed' }),
+        type: 'error',
+      });
     } finally {
       setLoading(false);
       setSavingTab("");
     }
   };
 
-  // Unified cancel function
+  const clearVendorAddSession = () => {
+    sessionStorage.removeItem(VENDOR_ADD_DRAFT_KEY);
+    sessionStorage.removeItem("vendorProductDraft");
+    sessionStorage.removeItem("vendorServiceDraft");
+    sessionStorage.removeItem("products");
+    sessionStorage.removeItem("services");
+  };
+
+  // Leave wizard and return to vendor list
   const handleUnifiedCancel = () => {
+    clearVendorAddSession();
     navigate("/master-data/vendors");
+  };
+
+  const hasPendingOptionalData = () => {
+    const products = JSON.parse(sessionStorage.getItem("products") || "[]");
+    const services = JSON.parse(sessionStorage.getItem("services") || "[]");
+    return (
+      (form.product_supply && Array.isArray(products) && products.length > 0 && !savedTabs.has("Product Details")) ||
+      (form.service_supply && Array.isArray(services) && services.length > 0 && !savedTabs.has("Service Details")) ||
+      (uploadRows.length > 0 && !savedTabs.has("Attachments"))
+    );
   };
 
   // Callback to mark tabs as saved
@@ -429,26 +556,26 @@ const AddEntityForm = () => {
   // Handle batch upload for vendor documents
   const handleBatchUpload = async () => {
     if (uploadRows.length === 0) {
-      toast.error(t('vendors.addAtLeastOneFile'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ADDATLEASTONEFILE_70C50032', fallbackText: t('vendors.addAtLeastOneFile'), type: 'error' });
       return;
     }
 
     // Check if vendor has been created
     if (!createdVendorId) {
-      toast.error(t('vendors.pleaseCreateVendorFirst'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_PLEASECREATEVENDORFIRST_47C50D3D', fallbackText: t('vendors.pleaseCreateVendorFirst'), type: 'error' });
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error(t('vendors.selectDocumentTypeAndFile'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_SELECTDOCUMENTTYPEANDFILE_38B5DA43', fallbackText: t('vendors.selectDocumentTypeAndFile'), type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
-        toast.error(t('vendors.enterCustomNameForDocuments', { type: selectedDocType.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ENTERCUSTOMNAMEFORDOCUMENTS_00699E04', fallbackText: t('vendors.enterCustomNameForDocuments', { type: selectedDocType.text }), type: 'error' });
         return;
       }
     }
@@ -481,18 +608,18 @@ const AddEntityForm = () => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('vendors.allFilesUploadedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ALLFILESUPLOADEDSUCCESSFULLY_75FB5EA4', fallbackText: t('vendors.allFilesUploadedSuccessfully'), type: 'success' });
           markTabAsSaved("Attachments"); // Mark attachments tab as saved
         } else {
-          toast.success(t('vendors.filesUploadedWithFailures', { successCount, failCount }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FILESUPLOADEDWITHFAILURES_25E0FBB9', fallbackText: t('vendors.filesUploadedWithFailures', { successCount, failCount }), type: 'success' });
         }
         setUploadRows([]); // Clear attachments after successful upload
       } else {
-        toast.error(t('vendors.failedToUploadAnyFiles'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOUPLOADANYFILES_1540D0C3', fallbackText: t('vendors.failedToUploadAnyFiles'), type: 'error' });
       }
     } catch (err) {
       console.error('Process error:', err);
-      toast.error(t('vendors.uploadProcessFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_UPLOADPROCESSFAILED_6D52D294', fallbackText: t('vendors.uploadProcessFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -680,18 +807,50 @@ const AddEntityForm = () => {
           </form>
         )}
 
-        {activeTab === "Product Details" && <ProductSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />}
-        {activeTab === "Service Details" && <ServiceSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />}
+        {activeTab === "Product Details" && (
+          <ProductSupplyForm
+            vendorId={createdVendorId}
+            orgId={org_id}
+            vendorSaved={vendorSaved}
+            onSaveTrigger={savingTab}
+            onTabSaved={markTabAsSaved}
+            onPersistVendorDraft={persistVendorDraft}
+          />
+        )}
+        {activeTab === "Service Details" && (
+          <ServiceSupplyForm
+            vendorId={createdVendorId}
+            orgId={org_id}
+            vendorSaved={vendorSaved}
+            onSaveTrigger={savingTab}
+            onTabSaved={markTabAsSaved}
+            onPersistVendorDraft={persistVendorDraft}
+          />
+        )}
         
         {/* Hidden components for save operations - rendered but not visible */}
         {activeTab !== "Product Details" && form.product_supply && JSON.parse(sessionStorage.getItem('products') || '[]').length > 0 && (
           <div style={{ display: 'none' }}>
-            <ProductSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />
+            <ProductSupplyForm
+              vendorId={createdVendorId}
+              orgId={org_id}
+              vendorSaved={vendorSaved}
+              onSaveTrigger={savingTab}
+              onTabSaved={markTabAsSaved}
+              onPersistVendorDraft={persistVendorDraft}
+            />
           </div>
         )}
         {activeTab !== "Service Details" && form.service_supply && JSON.parse(sessionStorage.getItem('services') || '[]').length > 0 && (
           <div style={{ display: 'none' }}>
-            <ServiceSupplyForm vendorId={createdVendorId} orgId={org_id} vendorSaved={vendorSaved} onSaveTrigger={savingTab} onTabSaved={markTabAsSaved} />
+            <ServiceSupplyForm
+              vendorId={createdVendorId}
+              orgId={org_id}
+              vendorSaved={vendorSaved}
+              onSaveTrigger={savingTab}
+              onTabSaved={markTabAsSaved}
+              onPersistVendorDraft={persistVendorDraft}
+            />
           </div>
         )}
         {activeTab === "Attachments" && (
@@ -776,7 +935,7 @@ const AddEntityForm = () => {
                             onChange={e => {
                               const f = e.target.files?.[0] || null;
                               if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                toast.error(t('vendors.fileSizeExceeds15MB'));
+                                showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FILESIZEEXCEEDS15MB_580A7304', fallbackText: t('vendors.fileSizeExceeds15MB'), type: 'error' });
                                 e.target.value = '';
                                 return;
                               }
@@ -841,7 +1000,9 @@ const AddEntityForm = () => {
             className="bg-gray-300 text-gray-700 px-8 py-2 rounded text-base font-medium hover:bg-gray-400 transition"
             disabled={loading}
           >
-            Cancel
+            {vendorSaved
+              ? t('vendors.backToVendors', { defaultValue: 'Back to Vendors' })
+              : t('common.cancel', { defaultValue: 'Cancel' })}
           </button>
           <button
             type="button"
@@ -865,11 +1026,16 @@ const AddEntityForm = () => {
         
         {/* Status indicator */}
         {vendorSaved && (
-          <div className="mt-2 text-sm text-green-600 flex items-center">
-            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            Vendor details saved successfully
+          <div className="px-6 pb-3 text-sm text-green-700">
+            <div className="flex items-center">
+              <svg className="w-4 h-4 mr-1 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              {t('vendors.vendorCreatedContinueSetup', {
+                defaultValue:
+                  'Vendor created successfully. Add products/services or attachments on the other tabs, then click Save All — or use Back to Vendors when you are done.',
+              })}
+            </div>
           </div>
         )}
       </div>

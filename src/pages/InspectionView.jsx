@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { showBackendTextToast } from '../utils/errorTranslation';
+import { useEffect, useState, useMemo, useCallback } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
@@ -9,12 +10,17 @@ import { toast } from "react-hot-toast";
 import UpdateAssetModal from "../components/assets/UpdateAssetModal";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
+import { translateMasterDataLabel } from "../utils/masterDataLabel";
+import { applyListFilterChange } from "../utils/listFilterState";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useInspectionViewStore } from "../store/useInspectionViewStore";
 
 const InspectionView = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const schedules = useInspectionViewStore((s) => s.schedules);
+  const listLoading = useInspectionViewStore((s) => s.listLoading);
+  const fetchSchedules = useInspectionViewStore((s) => s.fetchSchedules);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -27,7 +33,7 @@ const InspectionView = () => {
   const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [columns] = useState([
+  const columns = useMemo(() => ([
     { label: t('inspectionView.id'), name: "ais_id", visible: true },
     { label: t('inspectionView.assetCode'), name: "asset_code", visible: true },
     { label: t('inspectionView.assetType'), name: "asset_type_name", visible: true },
@@ -39,88 +45,73 @@ const InspectionView = () => {
     { label: t('inspectionView.outcome'), name: "insp_outcome", visible: true },
     { label: t('inspectionView.createdOn'), name: "created_on", visible: true },
     { label: t('inspectionView.createdBy'), name: "created_by", visible: true },
-  ]);
+  ]), [t]);
+
+  const mapStatusLabel = useCallback((code) => {
+    if (code === 'IN') return t('inspectionView.initiated');
+    if (code === 'IP') return t('inspectionView.inProgress');
+    if (code === 'CO') return t('inspectionView.completed');
+    if (code === 'CA') return t('inspectionView.cancelled');
+    return code || t('inspectionView.unknown');
+  }, [t]);
+
+  const mapOutcomeLabel = useCallback((code) => {
+    if (code === 'PA') return t('inspectionView.passed');
+    if (code === 'FA') return t('inspectionView.failed');
+    if (code === 'PR') return t('inspectionView.partial');
+    if (code === 'PE' || !code) return t('inspectionView.pending');
+    return code || t('inspectionView.pending');
+  }, [t]);
+
+  const fetchInspectionSchedules = useCallback(async () => {
+    try {
+      await fetchSchedules({ revalidate: true });
+    } catch (err) {
+      console.error("Failed to fetch inspection schedules", err);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOFETCHINSPECTIONSCHEDULES_1030DBFF', fallbackText: t('inspectionView.failedToFetchInspectionSchedules'), type: 'error' });
+    }
+  }, [fetchSchedules, t]);
+
+  const data = useMemo(() => {
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      try {
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleDateString();
+      } catch {
+        return '';
+      }
+    };
+
+    return (schedules || []).map((item) => ({
+      ...item,
+      asset_type_name: translateMasterDataLabel(item.asset_type_name, t),
+      raw_act_insp_st_date: item.act_insp_st_date,
+      raw_act_insp_end_date: item.act_insp_end_date,
+      raw_created_on: item.created_on,
+      act_insp_st_date: formatDate(item.act_insp_st_date),
+      act_insp_end_date: formatDate(item.act_insp_end_date),
+      created_on: formatDate(item.created_on),
+      status_code: item.status,
+      status: mapStatusLabel(item.status),
+      insp_outcome_code: item.insp_outcome,
+      insp_outcome: mapOutcomeLabel(item.insp_outcome),
+    }));
+  }, [schedules, mapOutcomeLabel, mapStatusLabel, t]);
+
+  const isLoading = listLoading && data.length === 0;
 
   useEffect(() => {
     fetchInspectionSchedules();
-  }, []);
+  }, [fetchInspectionSchedules]);
 
-  const fetchInspectionSchedules = async () => {
-    setIsLoading(true);
-    try {
-      // Pass context so logs go to INSPECTION CSV
-      const res = await API.get("/inspection/list", {
-        params: { context: 'INSPECTIONVIEW' }
-      });
-      const inspectionArray = Array.isArray(res.data) ? res.data : res.data.data || [];
-      const formattedData = inspectionArray.map(item => {
-        const formatDate = (dateString) => {
-          if (!dateString) return '';
-          try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) return ''; // Invalid date
-            return date.toLocaleDateString();
-          } catch (err) {
-            console.error('Error formatting date:', err);
-            return '';
-          }
-        };
-
-        return {
-          ...item,
-          act_insp_st_date: formatDate(item.act_insp_st_date),
-          act_insp_end_date: formatDate(item.act_insp_end_date),
-          created_on: formatDate(item.created_on),
-          // Map status codes to readable names
-          status: item.status === 'IN' ? 'Initiated' :
-                  item.status === 'IP' ? 'In Progress' :
-                  item.status === 'CO' ? 'Completed' :
-                  item.status === 'CA' ? 'Cancelled' :
-                  item.status || 'Unknown',
-          // Format outcome
-          insp_outcome: item.insp_outcome === 'PA' ? 'Passed' :
-                       item.insp_outcome === 'FA' ? 'Failed' :
-                       item.insp_outcome === 'PR' ? 'Partial' :
-                       item.insp_outcome || 'Pending'
-        };
-      });
-      setData(formattedData);
-    } catch (err) {
-      console.error("Failed to fetch inspection schedules", err);
-      toast.error(t('inspectionView.failedToFetchInspectionSchedules'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useRevalidateOnFocus(() => {
+    fetchSchedules({ revalidate: true });
+  });
 
   const handleFilterChange = (columnName, value) => {
-    // Handle columnFilters array from ContentBox
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: value,
-      }));
-    }
-    // Handle date filters
-    else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({
-        ...prev,
-        [columnName]: value,
-      }));
-    }
-    // Handle individual column filters (legacy support)
-    else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleSort = (column) => {
@@ -144,17 +135,17 @@ const InspectionView = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t('inspectionView.pleaseSelectInspectionRecords'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_PLEASESELECTINSPECTIONRECORDS_303143D1', fallbackText: t('inspectionView.pleaseSelectInspectionRecords'), type: 'error' });
       return false;
     }
 
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAAT_Insp_Sch
-      toast.error(t('inspectionView.deleteNotImplemented'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: t('inspectionView.deleteNotImplemented'), type: 'error' });
       return false;
     } catch (err) {
       console.error("Failed to delete inspection records", err);
-      toast.error(err.response?.data?.message || t('inspectionView.failedToDeleteInspectionRecords'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTODELETEINSPECTIONRECORDS_F2A3C8D1', fallbackText: err.response?.data?.message || t('inspectionView.failedToDeleteInspectionRecords'), type: 'error' });
       return false;
     }
   };
@@ -162,10 +153,10 @@ const InspectionView = () => {
   const handleDelete = async (row) => {
     try {
       // Note: This would need a corresponding backend endpoint to delete from tblAAT_Insp_Sch
-      toast.error(t('inspectionView.deleteNotImplemented'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_DELETENOTIMPLEMENTED_22BABC0D', fallbackText: t('inspectionView.deleteNotImplemented'), type: 'error' });
     } catch (err) {
       console.error("Failed to delete inspection record", err);
-      toast.error(err.response?.data?.message || t('inspectionView.failedToDeleteInspectionRecord'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTODELETEINSPECTIONRECORD_63BEFA8C', fallbackText: err.response?.data?.message || t('inspectionView.failedToDeleteInspectionRecord'), type: 'error' });
     }
   };
 
@@ -197,33 +188,31 @@ const InspectionView = () => {
       );
 
       if (success) {
-        toast(
-          t('inspectionView.inspectionSchedulesExportedSuccessfully'),
-          {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_INSPECTIONVIEW_INSPECTIONSCHEDULESEXPORTEDSUCCESSF_6F44B0D2',
+          fallbackText: t('inspectionView.inspectionSchedulesExportedSuccessfully'),
+          type: 'success',
+          toastOptions: {
             icon: '✅',
-            style: {
-              borderRadius: '8px',
-              background: '#064E3B',
-              color: '#fff',
-            },
-          }
-        );
+            style: { borderRadius: '8px', background: '#064E3B', color: '#fff' },
+          },
+        });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast(
-        t('inspectionView.failedToExportInspectionSchedules'),
-        {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOEXPORTINSPECTIONSCHEDULES_80AA2F1A',
+        fallbackText: t('inspectionView.failedToExportInspectionSchedules'),
+        type: 'error',
+        toastOptions: {
           icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+          style: { borderRadius: '8px', background: '#7F1D1D', color: '#fff' },
+        },
+      });
     }
   };
 
@@ -246,15 +235,15 @@ const InspectionView = () => {
     label: col.label,
     name: col.name,
     options: col.name === 'status' ? [
-      { label: t('inspectionView.initiated'), value: "Initiated" },
-      { label: t('inspectionView.inProgress'), value: "In Progress" },
-      { label: t('inspectionView.completed'), value: "Completed" },
-      { label: t('inspectionView.cancelled'), value: "Cancelled" }
+      { label: t('inspectionView.initiated'), value: t('inspectionView.initiated') },
+      { label: t('inspectionView.inProgress'), value: t('inspectionView.inProgress') },
+      { label: t('inspectionView.completed'), value: t('inspectionView.completed') },
+      { label: t('inspectionView.cancelled'), value: t('inspectionView.cancelled') }
     ] : col.name === 'insp_outcome' ? [
-      { label: t('inspectionView.passed'), value: "Passed" },
-      { label: t('inspectionView.failed'), value: "Failed" },
-      { label: t('inspectionView.partial'), value: "Partial" },
-      { label: t('inspectionView.pending'), value: "Pending" }
+      { label: t('inspectionView.passed'), value: t('inspectionView.passed') },
+      { label: t('inspectionView.failed'), value: t('inspectionView.failed') },
+      { label: t('inspectionView.partial'), value: t('inspectionView.partial') },
+      { label: t('inspectionView.pending'), value: t('inspectionView.pending') }
     ] : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
@@ -267,6 +256,7 @@ const InspectionView = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="raw_act_insp_st_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
@@ -327,12 +317,12 @@ const InspectionView = () => {
               showActions={showActions} // Hide action column for this page
               renderCell={(col, row, colIndex) =>
                 col.name === "status"
-                  ? <StatusBadge status={row[col.name]} />
+                  ? <StatusBadge status={row.status_code || row[col.name]} />
                   : col.name === "insp_outcome"
                   ? <span className={
-                      row[col.name] === 'Passed' ? 'text-green-600 font-semibold' :
-                      row[col.name] === 'Failed' ? 'text-red-600 font-semibold' :
-                      row[col.name] === 'Partial' ? 'text-orange-600 font-semibold' :
+                      row.insp_outcome_code === 'PA' ? 'text-green-600 font-semibold' :
+                      row.insp_outcome_code === 'FA' ? 'text-red-600 font-semibold' :
+                      row.insp_outcome_code === 'PR' ? 'text-orange-600 font-semibold' :
                       'text-gray-600'
                     }>{row[col.name]}</span>
                   : colIndex === 0

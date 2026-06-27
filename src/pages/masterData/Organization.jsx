@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
@@ -71,15 +72,15 @@ const Organization = () => {
     setSubmitAttempted(true);
     // Validation
     if (!formName.trim()) {
-      toast.error(t('organizations.organizationNameRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ORGANIZATIONS_ORGANIZATIONNAMEREQUIRED_776C1187', fallbackText: t('organizations.organizationNameRequired'), type: 'error' });
       return;
     }
     if (!formCode.trim()) {
-      toast.error(t('organizations.organizationCodeRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ORGANIZATIONS_ORGANIZATIONCODEREQUIRED_4F493D17', fallbackText: t('organizations.organizationCodeRequired'), type: 'error' });
       return;
     }
     if (!formCity.trim()) {
-      toast.error(t('organizations.organizationCityRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ORGANIZATIONS_ORGANIZATIONCITYREQUIRED_0D4A5067', fallbackText: t('organizations.organizationCityRequired'), type: 'error' });
       return;
     }
 
@@ -102,7 +103,7 @@ const Organization = () => {
           action: 'Organization Updated'
         });
         
-        toast.success(t('organizations.organizationUpdatedSuccessfully', { name: formName }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ORGANIZATIONS_ORGANIZATIONUPDATEDSUCCESSFULLY_5EE81D25', fallbackText: t('organizations.organizationUpdatedSuccessfully', { name: formName }), type: 'success' });
         setShowEditModal(false);
       } else {
         // Add
@@ -121,7 +122,7 @@ const Organization = () => {
           action: 'Organization Created'
         });
         
-        toast.success(t('organizations.organizationCreatedSuccessfully', { name: formName }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ORGANIZATIONS_ORGANIZATIONCREATEDSUCCESSFULLY_3D45202E', fallbackText: t('organizations.organizationCreatedSuccessfully', { name: formName }), type: 'success' });
       }
       resetForm();
       fetchOrgs();
@@ -156,7 +157,7 @@ const Organization = () => {
       setShowDeleteModal(false);
       resetForm();
       fetchOrgs();
-      toast.success(t('organizations.organizationDeletedSuccessfully', { name: selectedOrg.org_name || selectedOrg.name || selectedOrg.text }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ORGANIZATIONS_ORGANIZATIONDELETEDSUCCESSFULLY_4FE94F83', fallbackText: t('organizations.organizationDeletedSuccessfully', { name: selectedOrg.org_name || selectedOrg.name || selectedOrg.text }), type: 'success' });
     } catch (err) {
       console.error("Delete error:", err);
       

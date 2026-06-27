@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import API from '../../lib/axios';
@@ -10,6 +11,8 @@ import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
 import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
+import { useAssetsStore } from '../../store/useAssetsStore';
 import { useNavigation } from '../../hooks/useNavigation';
 import useColumnAccess from '../../hooks/useColumnAccess';
 
@@ -25,7 +28,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const warrantyActionMode = assetData?.warranty_action || null;
   const isWarrantyExtendMode = warrantyActionMode === 'warranty';
   const isWarrantyVendorMode = warrantyActionMode === 'vendor';
-  const isWarrantyActionMode = isWarrantyExtendMode || isWarrantyVendorMode;
+  const isExpiryExtendMode = warrantyActionMode === 'expiry';
+  const isWarrantyActionMode = isWarrantyExtendMode || isWarrantyVendorMode || isExpiryExtendMode;
   
   // Get column access for tblAssets
   const { isVisible: isColumnVisible, isReadOnly: isColumnReadOnly, getAccessLevel: getColumnAccessLevel, loading: columnAccessLoading } = useColumnAccess('tblAssets');
@@ -33,6 +37,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     if (!isWarrantyActionMode) return true;
     if (isWarrantyExtendMode) return fieldName === 'warranty_period';
     if (isWarrantyVendorMode) return fieldName === 'service_vendor_id';
+    if (isExpiryExtendMode) return fieldName === 'expiry_date';
     return true;
   };
   const isFieldDisabled = (fieldName) =>
@@ -115,6 +120,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [showQSNPrintModal, setShowQSNPrintModal] = useState(false);
   const [qsnPrintReason, setQsnPrintReason] = useState("");
   const [isQSNPrintLoading, setIsQSNPrintLoading] = useState(false);
+  const [existingAssets, setExistingAssets] = useState([]);
 
   const isWarrantyPeriodInPast = (() => {
     if (!form.warrantyPeriod) return false;
@@ -126,22 +132,9 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     return parsed < today;
   })();
 
-  // Fetch full asset data with properties
   const fetchAssetWithProperties = async (assetId) => {
     try {
-      const response = await API.get(`/assets/${assetId}`);
-      const payload = response?.data;
-      if (!payload) return null;
-
-      // Support both direct asset object and wrapped API shapes.
-      if (Array.isArray(payload)) {
-        return payload[0] || null;
-      }
-      if (payload.data) {
-        if (Array.isArray(payload.data)) return payload.data[0] || null;
-        return payload.data;
-      }
-      return payload;
+      return await useAssetsStore.getState().fetchAssetById(assetId);
     } catch (error) {
       console.error('Error fetching asset with properties:', error);
     }
@@ -253,6 +246,22 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     fetchDocumentTypes();
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchExistingAssets = async () => {
+      try {
+        const rows = await useAssetsStore.getState().fetchExistingAssets();
+        setExistingAssets(rows);
+      } catch (err) {
+        console.error('Error fetching assets for name validation:', err);
+        setExistingAssets([]);
+      }
+    };
+
+    fetchExistingAssets();
+  }, [isOpen]);
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -310,7 +319,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       } catch (err) {
         // Only show error for non-404 errors (network issues, etc.)
         console.error('Document fetch error:', err);
-        toast.error('Failed to load documents due to network error');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENTS_DUE_TO_NETWORK_ERROR_3B79E1C3', fallbackText: 'Failed to load documents due to network error', type: 'error' });
         setDocs([]);
       } finally {
         setDocsLoading(false);
@@ -345,7 +354,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       }
     } catch (err) {
       console.error(`Error ${action}ing document:`, err);
-      toast.error(`Failed to ${action} document. Please try again.`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_PROCESS_DOCUMENT_ACTION_DA089BC7',
+        fallbackText: `Failed to ${action} document. Please try again.`,
+        type: 'error',
+      });
     } finally {
       setLoadingActions(prev => ({ ...prev, [actionKey]: false }));
     }
@@ -366,7 +380,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       console.log('Archive response:', res.data); // Debug log
       
       if (res.data && res.data.message && res.data.message.includes('successfully')) {
-        toast.success(`Document ${archiveStatus ? 'archived' : 'unarchived'} successfully`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_DOCUMENT_ARCHIVE_STATUS_UPDATED_0B7E3F68',
+          fallbackText: `Document ${archiveStatus ? 'archived' : 'unarchived'} successfully`,
+          type: 'success',
+        });
         // Refresh the documents list and separate active/archived
         const refreshRes = await API.get(`/assets/${assetData.asset_id}/docs`);
         const arr = Array.isArray(refreshRes.data) ? refreshRes.data : [];
@@ -380,7 +399,12 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       }
     } catch (err) {
       console.error('Error updating archive status:', err);
-      toast.error(`Failed to ${archiveStatus ? 'archive' : 'unarchive'} document. ${err.message || 'Please try again.'}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_DOCUMENT_ARCHIVE_STATUS_29EE9D3E',
+        fallbackText: `Failed to ${archiveStatus ? 'archive' : 'unarchive'} document. ${err.message || 'Please try again.'}`,
+        type: 'error',
+      });
     } finally {
       setLoadingActions(prev => ({ ...prev, [actionKey]: false }));
     }
@@ -495,7 +519,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENT_TYPES_002075AC', fallbackText: 'Failed to load document types', type: 'error' });
       setDocumentTypes([]);
     }
   };
@@ -570,8 +594,35 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     }
     
     if (validationErrors.length > 0) {
-      toast.error(`Required fields missing: ${validationErrors.join(', ')}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_REQUIRED_FIELDS_MISSING_90B2EA4C',
+        fallbackText: `Required fields missing: ${validationErrors.join(', ')}`,
+        type: 'error',
+      });
       return;
+    }
+
+    const assetNameTrimmed = form.description?.trim();
+    if (
+      !isWarrantyActionMode &&
+      isColumnVisible('description') &&
+      assetNameTrimmed
+    ) {
+      const conflictingName = findConflictingAssetName(
+        assetNameTrimmed,
+        existingAssets,
+        assetData?.asset_id
+      );
+      if (conflictingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
+          fallbackText: t('assets.similarAssetNameExists', { name: conflictingName }),
+          type: 'error',
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -601,7 +652,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           updateData.serial_number = form.serialNumber;
         }
         if (isColumnVisible('description')) {
-          updateData.description = form.description;
+          updateData.description = form.description?.trim() || null;
         }
         if (isColumnVisible('branch_id')) {
           updateData.branch_id = userBranchId; // Auto-populate user's branch
@@ -666,6 +717,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
       // Use the asset_id from the passed assetData prop
       await API.put(`/assets/${assetData.asset_id}`, updateData);
+      useAssetsStore.getState().invalidateAssetsCache();
       
       // Log asset update action
       await recordActionByNameWithFetch('Update', { 
@@ -679,12 +731,33 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         action: 'Asset Updated Successfully'
       });
       
-      toast.success(t('assets.assetUpdatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETUPDATEDSUCCESSFULLY_563A4BA1', fallbackText: t('assets.assetUpdatedSuccessfully'), type: 'success' });
       onClose(true);
     } catch (err) {
       console.error('Error updating asset:', err);
-      const errorMessage = err.response?.data?.error || 'Failed to update asset';
-      toast.error(errorMessage);
+      const responseData = err.response?.data;
+      if (responseData?.existingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
+          fallbackText: t('assets.similarAssetNameExists', {
+            name: responseData.existingName,
+          }),
+          type: 'error',
+        });
+        return;
+      }
+
+      const errorMessage =
+        responseData?.message ||
+        responseData?.error ||
+        t('assets.failedToUpdateAsset');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_ASSET_8578544F',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -693,20 +766,25 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Handle document uploads
   const handleUploadDocuments = async () => {
     if (uploadRows.length === 0) {
-      toast.error('Add at least one file');
+      showBackendTextToast({ toast, tmdId: 'TMD_ADD_AT_LEAST_ONE_FILE_76BB747B', fallbackText: 'Add at least one file', type: 'error' });
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error('Select document type and choose a file for all rows');
+        showBackendTextToast({ toast, tmdId: 'TMD_SELECT_DOCUMENT_TYPE_AND_CHOOSE_A_FILE_FOR_ALL_ROWS_58610967', fallbackText: 'Select document type and choose a file for all rows', type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
-        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ENTER_CUSTOM_DOCUMENT_NAME_B9E20D65',
+          fallbackText: `Enter custom name for ${selectedDocType.text} documents`,
+          type: 'error',
+        });
         return;
       }
     }
@@ -752,9 +830,14 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success('All files uploaded successfully');
+          showBackendTextToast({ toast, tmdId: 'TMD_ALL_FILES_UPLOADED_SUCCESSFULLY_2B7F645F', fallbackText: 'All files uploaded successfully', type: 'success' });
         } else {
-          toast.success(`${successCount} files uploaded, ${failCount} failed`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_FILES_UPLOADED_WITH_FAILURES_44AF4F5A',
+            fallbackText: `${successCount} files uploaded, ${failCount} failed`,
+            type: 'success',
+          });
         }
         setUploadRows([]); // Clear all attachments after upload
         // Refresh the documents list using the correct endpoint
@@ -762,11 +845,11 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         const arr = Array.isArray(res.data) ? res.data : [];
         setDocs(arr);
       } else {
-        toast.error('Failed to upload any files');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPLOAD_ANY_FILES_7C811EA6', fallbackText: 'Failed to upload any files', type: 'error' });
       }
     } catch (err) {
       console.error('Upload process error:', err);
-      toast.error('Upload process failed');
+      showBackendTextToast({ toast, tmdId: 'TMD_UPLOAD_PROCESS_FAILED_55943AED', fallbackText: 'Upload process failed', type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -1412,7 +1495,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                             onChange={e => {
                               const f = e.target.files?.[0] || null;
                               if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                toast.error('File size exceeds 15MB limit');
+                                showBackendTextToast({ toast, tmdId: 'TMD_FILE_SIZE_EXCEEDS_15MB_LIMIT_5CCBDF10', fallbackText: 'File size exceeds 15MB limit', type: 'error' });
                                 e.target.value = '';
                                 return;
                               }
@@ -1669,7 +1752,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                   if (isQSNPrintLoading) return; // Prevent multiple clicks
                   
                   if (!qsnPrintReason.trim()) {
-                    toast.error(t('assets.pleaseEnterReasonForQsn'));
+                    showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASEENTERREASONFORQSN_01F00806', fallbackText: t('assets.pleaseEnterReasonForQsn'), type: 'error' });
                     return;
                   }
                   
@@ -1698,7 +1781,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                       reason: qsnPrintReason.trim()
                     });
                     
-                    toast.success('QSN print request submitted successfully');
+                    showBackendTextToast({ toast, tmdId: 'TMD_QSN_PRINT_REQUEST_SUBMITTED_SUCCESSFULLY_34A3E19C', fallbackText: 'QSN print request submitted successfully', type: 'success' });
                     setShowQSNPrintModal(false);
                     setQsnPrintReason("");
                   } catch (error) {
@@ -1707,11 +1790,16 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
                     // Handle specific cases
                     if (error.response?.status === 409) {
                       // Serial number already exists in print queue
-                      toast.error('This serial number is already in the print queue');
+                      showBackendTextToast({ toast, tmdId: 'TMD_THIS_SERIAL_NUMBER_IS_ALREADY_IN_THE_PRINT_QUEUE_44EAC51B', fallbackText: 'This serial number is already in the print queue', type: 'error' });
                     } else {
                       // Other errors
                       const errorMessage = error.response?.data?.message || 'Failed to submit QSN print request';
-                      toast.error(errorMessage);
+                      showBackendTextToast({
+                        toast,
+                        tmdId: 'TMD_FAILED_TO_SUBMIT_QSN_PRINT_REQUEST_39D8A39B',
+                        fallbackText: errorMessage,
+                        type: 'error',
+                      });
                     }
                   } finally {
                     setIsQSNPrintLoading(false);

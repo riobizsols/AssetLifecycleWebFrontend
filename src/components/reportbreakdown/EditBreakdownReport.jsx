@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -153,7 +154,7 @@ const EditBreakdownReport = () => {
       setReasonCodes(uniqueCodes);
     } catch (err) {
       console.error(t("breakdownDetails.failedToFetchReasonCodes"), err);
-      toast.error(t("breakdownDetails.failedToFetchReasonCodes"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOFETCHREASONCODES_6E29510F', fallbackText: t("breakdownDetails.failedToFetchReasonCodes"), type: 'error' });
       setReasonCodes([]);
     }
   };
@@ -191,15 +192,15 @@ const EditBreakdownReport = () => {
 
     try {
       if (!hideDecisionCode && !decisionCode) {
-        toast.error(t("breakdownDetails.pleaseSelectDecisionCode"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_PLEASESELECTDECISIONCODE_4D7612A0', fallbackText: t("breakdownDetails.pleaseSelectDecisionCode"), type: 'error' });
         return;
       }
       if (!description?.trim()) {
-        toast.error(t("breakdownDetails.pleaseEnterDescription"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_PLEASEENTERDESCRIPTION_53FCC7A1', fallbackText: t("breakdownDetails.pleaseEnterDescription"), type: 'error' });
         return;
       }
       if (description.trim().length > 500) {
-        toast.error(t("breakdownDetails.descriptionCannotExceed500Characters"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_DESCRIPTIONCANNOTEXCEED500CHAR_22128BFD', fallbackText: t("breakdownDetails.descriptionCannotExceed500Characters"), type: 'error' });
         return;
       }
 
@@ -214,14 +215,16 @@ const EditBreakdownReport = () => {
         breakdownData,
       );
 
-      toast.success(t("breakdownDetails.breakdownReportUpdatedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_BREAKDOWNREPORTUPDATEDSUCCESSF_47AFAE22', fallbackText: t("breakdownDetails.breakdownReportUpdatedSuccessfully"), type: 'success' });
       navigate("/report-breakdown");
     } catch (err) {
       console.error(t("breakdownDetails.failedToUpdateBreakdownReport"), err);
-      toast.error(
-        err.response?.data?.error ||
-          t("breakdownDetails.failedToUpdateBreakdownReport"),
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOUPDATEBREAKDOWNREPORT_6152E7A3',
+        fallbackText: err.response?.data?.error || t("breakdownDetails.failedToUpdateBreakdownReport"),
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -230,12 +233,12 @@ const EditBreakdownReport = () => {
   // Handle create new reason code
   const handleCreateNewReasonCode = async () => {
     if (!newReasonCodeText.trim()) {
-      toast.error("Please enter a breakdown reason code");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_BREAKDOWN_REASON_CODE_2D303A93', fallbackText: 'Please enter a breakdown reason code', type: 'error' });
       return;
     }
 
     if (!assetTypeId) {
-      toast.error("Asset type is required to create a reason code");
+      showBackendTextToast({ toast, tmdId: 'TMD_ASSET_TYPE_IS_REQUIRED_TO_CREATE_A_REASON_CODE_50D89E76', fallbackText: 'Asset type is required to create a reason code', type: 'error' });
       return;
     }
 
@@ -247,7 +250,7 @@ const EditBreakdownReport = () => {
       });
 
       if (res.data && res.data.success) {
-        toast.success("Breakdown reason code created successfully");
+        showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODE_CREATED_SUCCESSFULLY_75EC1395', fallbackText: 'Breakdown reason code created successfully', type: 'success' });
         setNewReasonCodeText("");
         setShowCreateModal(false);
 
@@ -262,10 +265,12 @@ const EditBreakdownReport = () => {
       }
     } catch (error) {
       console.error("Error creating breakdown reason code:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to create breakdown reason code",
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_BREAKDOWN_REASON_CODE_1D7DF739',
+        fallbackText: error.response?.data?.message || "Failed to create breakdown reason code",
+        type: 'error',
+      });
     } finally {
       setIsCreatingReasonCode(false);
     }
@@ -289,11 +294,16 @@ const EditBreakdownReport = () => {
   const processConfirmAction = async (abr_id) => {
     try {
       await API.post(`/reportbreakdown/${abr_id}/confirm`);
-      toast.success(t("breakdownDetails.breakdownConfirmedSuccessfully") || "Breakdown confirmed successfully");
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_BREAKDOWNDETAILS_BREAKDOWNCONFIRMEDSUCCESSFULLY_73E5A7AA',
+        fallbackText: t("breakdownDetails.breakdownConfirmedSuccessfully") || "Breakdown confirmed successfully",
+        type: 'success',
+      });
       navigate("/report-breakdown");
     } catch (err) {
       console.error("Failed to confirm breakdown", err);
-      toast.error(err.response?.data?.error || err.message);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOCONFIRMBREAKDOWN_2C1FA7E9', fallbackText: err.response?.data?.error || err.message, type: 'error' });
     } finally {
       setShowConfirmModal(false);
     }
@@ -303,20 +313,31 @@ const EditBreakdownReport = () => {
     const abr_id = abr_id_from_modal || breakdown?.abr_id;
     if (!abr_id) return;
 
-    const toastId = toast.loading(
-      t("breakdownDetails.reopeningBreakdown") || "Reopening breakdown…",
-    );
+    const toastId = showBackendTextToast({
+      toast,
+      tmdId: 'TMD_I18N_BREAKDOWNDETAILS_REOPENINGBREAKDOWN_C4785738',
+      fallbackText: t("breakdownDetails.reopeningBreakdown") || "Reopening breakdown…",
+      type: 'loading',
+    });
     try {
       await API.post(`/reportbreakdown/${abr_id}/reopen`, { notes });
-      toast.success(
-        t("breakdownDetails.breakdownReopenedSuccessfully") ||
-          "Breakdown reopened successfully!",
-        { id: toastId },
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_BREAKDOWNDETAILS_BREAKDOWNREOPENEDSUCCESSFULLY_9E1BDFEA',
+        fallbackText: t("breakdownDetails.breakdownReopenedSuccessfully") || "Breakdown reopened successfully!",
+        type: 'success',
+        toastOptions: { id: toastId },
+      });
       navigate("/report-breakdown");
     } catch (err) {
       console.error("Failed to reopen breakdown", err);
-      toast.error(err.response?.data?.error || err.message, { id: toastId });
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOREOPENBREAKDOWN_3F04E8EE',
+        fallbackText: err.response?.data?.error || err.message,
+        type: 'error',
+        toastOptions: { id: toastId },
+      });
     } finally {
       setShowReopenModal(false);
     }

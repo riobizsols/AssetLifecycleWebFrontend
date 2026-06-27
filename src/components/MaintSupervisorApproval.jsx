@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { CheckCircle, ArrowLeft, ClipboardCheck, FileText, Upload, Eye, Download, X, Plus, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -5,6 +6,9 @@ import { toast } from "react-hot-toast";
 import { createPortal } from "react-dom";
 import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
+import { useAssetsStore } from "../store/useAssetsStore";
+import { useMaintenanceSupervisorStore } from "../store/useMaintenanceSupervisorStore";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import ChecklistModal from "./ChecklistModal";
 import SearchableDropdown from "./ui/SearchableDropdown";
 import { generateUUID } from '../utils/uuid';
@@ -24,10 +28,12 @@ export default function MaintSupervisorApproval() {
   const { getAccessLevel } = useNavigation();
   const accessLevel = getAccessLevel('SUPERVISORAPPROVAL');
   const isReadOnly = accessLevel === 'D';
-  const [maintenanceData, setMaintenanceData] = useState(null);
+
+  const cachedDetail = useMaintenanceSupervisorStore.getState().getCachedDetail(id);
+  const [maintenanceData, setMaintenanceData] = useState(cachedDetail);
   const [checklist, setChecklist] = useState([]);
   const [loadingChecklist, setLoadingChecklist] = useState(true);
-  const [loadingData, setLoadingData] = useState(true);
+  const [loadingData, setLoadingData] = useState(!cachedDetail);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [softwareAtId, setSoftwareAtId] = useState(null);
@@ -117,18 +123,23 @@ export default function MaintSupervisorApproval() {
           return;
         }
 
-        // If backend already provided asset_type_id, no need to resolve.
         if (maintenanceData?.asset_type_id) {
           setResolvedAssetTypeId(null);
           return;
         }
 
-        const res = await API.get(`/assets/${encodeURIComponent(assetId)}`, {
-          params: { context: "SUPERVISORAPPROVAL" },
-        });
+        const cached = useAssetsStore.getState().getCachedAssetById(assetId);
+        if (cached) {
+          const atId = cached?.asset_type_id || cached?.assetTypeId || null;
+          setResolvedAssetTypeId(atId || null);
+          return;
+        }
+
+        const asset = await useAssetsStore
+          .getState()
+          .fetchAssetById(assetId, { force: false });
         if (cancelled) return;
 
-        const asset = res.data?.data || res.data;
         const atId = asset?.asset_type_id || asset?.assetTypeId || null;
         setResolvedAssetTypeId(atId || null);
       } catch {
@@ -155,19 +166,39 @@ export default function MaintSupervisorApproval() {
     return maintenanceDocTypes;
   }, [maintenanceDocTypes, isSubscriptionRenewal]);
   
+  const buildFormFromDetail = (detail) => {
+    if (!detail) {
+      return {
+        notes: "",
+        status: "",
+        po_number: "",
+        invoice: "",
+        technician_name: "",
+        technician_email: "",
+        technician_phno: "",
+        cost: "",
+        hours_spent: "",
+        maint_notes: "",
+      };
+    }
+    const rawStatus = detail.status || "";
+    const normalizedStatus = rawStatus === "RO" ? "IN" : rawStatus;
+    return {
+      notes: detail.notes || "",
+      status: normalizedStatus,
+      po_number: detail.po_number || "",
+      invoice: detail.invoice || "",
+      technician_name: detail.technician_name || "",
+      technician_email: detail.technician_email || "",
+      technician_phno: detail.technician_phno || "",
+      cost: detail.cost || "",
+      hours_spent: detail.hours_spent || "",
+      maint_notes: detail.maint_notes || "",
+    };
+  };
+
   // Form state for updatable fields
-  const [formData, setFormData] = useState({
-    notes: "",
-    status: "",
-    po_number: "",
-    invoice: "",
-    technician_name: "",
-    technician_email: "",
-    technician_phno: "",
-    cost: "",
-    hours_spent: "",
-    maint_notes: ""
-  });
+  const [formData, setFormData] = useState(() => buildFormFromDetail(cachedDetail));
 
   // Validation state for each field
   const [validationErrors, setValidationErrors] = useState({
@@ -187,22 +218,60 @@ export default function MaintSupervisorApproval() {
       fetchMaintenanceData();
       fetchDocumentTypes();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, orgId]);
 
-  // Fetch checklist when maintenance data is available (skip for software asset type)
+  useRevalidateOnFocus(() => {
+    fetchMaintenanceData({ force: true });
+  });
+
+  const applyDocTypesFromApi = (rows) => {
+    const source = Array.isArray(rows) ? rows : [];
+    const docTypes = source
+      .filter((docType) =>
+        docType.doc_type !== 'BP' && docType.doc_type !== 'AP' &&
+        !docType.doc_type_text.toLowerCase().includes('photo') &&
+        !docType.doc_type_text.toLowerCase().includes('before') &&
+        !docType.doc_type_text.toLowerCase().includes('after'))
+      .map((docType) => ({
+        id: docType.dto_id,
+        text: docType.doc_type_text,
+        doc_type: docType.doc_type,
+      }));
+    const photoTypes = source
+      .filter((docType) =>
+        docType.doc_type === 'BP' || docType.doc_type === 'AP' ||
+        docType.doc_type_text.toLowerCase().includes('photo') ||
+        docType.doc_type_text.toLowerCase().includes('before') ||
+        docType.doc_type_text.toLowerCase().includes('after'))
+      .map((docType) => ({
+        id: docType.dto_id,
+        text: docType.doc_type_text,
+        doc_type: docType.doc_type,
+      }));
+    setMaintenanceDocTypes(docTypes);
+    setPhotoDocTypes(photoTypes);
+  };
+
+  // Fetch checklist/docs after primary detail is shown (non-blocking)
   useEffect(() => {
-    if (!effectiveAssetTypeId) return;
+    if (!maintenanceData || !effectiveAssetTypeId) return;
 
-    if (isSoftwareMaintenance) {
-      setChecklist([]);
-      setLoadingChecklist(false);
+    const loadSecondary = () => {
+      if (isSoftwareMaintenance) {
+        setChecklist([]);
+        setLoadingChecklist(false);
+        fetchMaintenanceDocuments();
+        return;
+      }
+      fetchChecklist();
       fetchMaintenanceDocuments();
-      return;
-    }
+    };
 
-    fetchChecklist();
-    fetchMaintenanceDocuments();
-  }, [maintenanceData, isSoftwareMaintenance, effectiveAssetTypeId]);
+    const timer = window.setTimeout(loadSecondary, 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maintenanceData?.ams_id, isSoftwareMaintenance, effectiveAssetTypeId]);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -239,41 +308,26 @@ export default function MaintSupervisorApproval() {
   }, []);
 
 
-  const fetchMaintenanceData = async () => {
+  const fetchMaintenanceData = async ({ force = false } = {}) => {
+    if (!id) return;
+    if (!maintenanceData) setLoadingData(true);
     try {
-      setLoadingData(true);
-      const apiUrl = `/maintenance-schedules/${id}`;
-      // Pass context so logs go to SUPERVISORAPPROVAL CSV
-      const res = await API.get(apiUrl, {
-        params: {
-          context: "SUPERVISORAPPROVAL",
-          ...(orgId ? { orgId } : {}),
-        },
+      const data = await useMaintenanceSupervisorStore.getState().fetchScheduleDetail(id, {
+        orgId,
+        revalidate: true,
+        force,
       });
-      if (res.data.success) {
-        setMaintenanceData(res.data.data);
-        // Initialize form data with existing values
-        const rawStatus = res.data.data.status || "";
-        // RO was removed from the supervisor dropdown; map legacy rows so the select stays valid
-        const normalizedStatus = rawStatus === "RO" ? "IN" : rawStatus;
-        setFormData({
-          notes: res.data.data.notes || "",
-          status: normalizedStatus,
-          po_number: res.data.data.po_number || "",
-          invoice: res.data.data.invoice || "",
-          technician_name: res.data.data.technician_name || "",
-          technician_email: res.data.data.technician_email || "",
-          technician_phno: res.data.data.technician_phno || "",
-          cost: res.data.data.cost || "",
-          hours_spent: res.data.data.hours_spent || "",
-          maint_notes: res.data.data.maint_notes || ""
-        });
-      } else {
-        toast.error(res.data.message || t('maintenanceSupervisor.failedToFetchMaintenanceData'));
-      }
+      setMaintenanceData(data);
+      setFormData(buildFormFromDetail(data));
     } catch (err) {
       console.error("Failed to fetch maintenance data:", err);
-      toast.error(t('maintenanceSupervisor.failedToFetchMaintenanceData'));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHMAINTENANCED_556133F6',
+        fallbackText: t('maintenanceSupervisor.failedToFetchMaintenanceData'),
+        type: 'error',
+      });
+      if (!maintenanceData) setMaintenanceData(null);
     } finally {
       setLoadingData(false);
     }
@@ -301,7 +355,7 @@ export default function MaintSupervisorApproval() {
       }
     } catch (err) {
       console.error("Failed to fetch checklist:", err);
-      toast.error(t('maintenanceSupervisor.failedToFetchChecklist'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHCHECKLIST_7827CE13', fallbackText: t('maintenanceSupervisor.failedToFetchChecklist'), type: 'error' });
       setChecklist([]);
     } finally {
       setLoadingChecklist(false);
@@ -310,53 +364,18 @@ export default function MaintSupervisorApproval() {
 
   const fetchDocumentTypes = async () => {
     try {
-      console.log('Fetching document types for maintenance...');
-      
-      // Fetch maintenance document types
-      const maintenanceRes = await API.get('/doc-type-objects/object-type/maintenance');
-      console.log('Maintenance document types response:', maintenanceRes.data);
-
-      if (maintenanceRes.data && maintenanceRes.data.success && Array.isArray(maintenanceRes.data.data)) {
-        // Transform API data to dropdown format, excluding photo types
-        const docTypes = maintenanceRes.data.data
-          .filter(docType => 
-            docType.doc_type !== 'BP' && docType.doc_type !== 'AP' && 
-            !docType.doc_type_text.toLowerCase().includes('photo') &&
-            !docType.doc_type_text.toLowerCase().includes('before') &&
-            !docType.doc_type_text.toLowerCase().includes('after')
-          )
-          .map(docType => ({
-            id: docType.dto_id,  // Use dto_id instead of doc_type
-            text: docType.doc_type_text,
-            doc_type: docType.doc_type  // Keep doc_type for reference
-          }));
-        setMaintenanceDocTypes(docTypes);
-        console.log('Maintenance document types loaded (excluding photos):', docTypes);
-      } else {
-        console.log('No maintenance document types found');
-        setMaintenanceDocTypes([]);
-      }
-
-      // Filter photo document types (Before Photos, After Photos)
-      const photoTypes = maintenanceRes.data.data
-        .filter(docType => 
-          docType.doc_type === 'BP' || docType.doc_type === 'AP' || 
-          docType.doc_type_text.toLowerCase().includes('photo') ||
-          docType.doc_type_text.toLowerCase().includes('before') ||
-          docType.doc_type_text.toLowerCase().includes('after')
-        )
-        .map(docType => ({
-          id: docType.dto_id,  // Use dto_id instead of doc_type
-          text: docType.doc_type_text,
-          doc_type: docType.doc_type  // Keep doc_type for reference
-        }));
-      
-      setPhotoDocTypes(photoTypes);
-      console.log('Photo document types loaded:', photoTypes);
-      
+      const rows = await useMaintenanceSupervisorStore
+        .getState()
+        .fetchMaintenanceDocTypes({ revalidate: true });
+      applyDocTypesFromApi(rows);
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('maintenanceSupervisor.failedToLoadDocumentTypes'));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOLOADDOCUMENTTYPES_7B15E28F',
+        fallbackText: t('maintenanceSupervisor.failedToLoadDocumentTypes'),
+        type: 'error',
+      });
       setMaintenanceDocTypes([]);
       setPhotoDocTypes([]);
     }
@@ -411,10 +430,11 @@ export default function MaintSupervisorApproval() {
 
   const fetchSlaRecords = async () => {
     if (!id || !maintenanceData?.vendor_id) return;
-    
+
     try {
       const res = await API.get(`/vendor-sla-records/maintenance/${id}`, {
-        params: { context: 'SUPERVISORAPPROVAL' }
+        params: { context: 'SUPERVISORAPPROVAL' },
+        validateStatus: (status) => status >= 200 && status < 300,
       });
       
       if (res.data.success && res.data.data && Array.isArray(res.data.data)) {
@@ -443,8 +463,8 @@ export default function MaintSupervisorApproval() {
         setSlaDataLoaded(true); // Mark as loaded even if no data
       }
     } catch (err) {
-      // If endpoint doesn't exist yet or no records, that's okay
-      console.log("No existing SLA records found or endpoint not available yet");
+      // No SLA table/records yet — not an error for the supervisor screen
+      setSlaDataLoaded(true);
     }
   };
 
@@ -550,7 +570,12 @@ export default function MaintSupervisorApproval() {
         rating: ratingToUse || 'not set',
         response: response.data
       });
-      toast.success(`SLA records saved successfully (${recordsToSave.length} SLA${recordsToSave.length > 1 ? 's' : ''})`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SLA_RECORDS_SAVED_SUCCESSFULLY_B65BD350',
+        fallbackText: `SLA records saved successfully (${recordsToSave.length} SLA${recordsToSave.length > 1 ? 's' : ''})`,
+        type: 'success',
+      });
     } catch (err) {
       console.error("❌ Failed to auto-save SLA records to tblvendorslarecs:", err);
       console.error("Error details:", err.response?.data);
@@ -560,7 +585,7 @@ export default function MaintSupervisorApproval() {
         records: recordsToSave
       });
       // Show error toast for auto-save failures so user knows something went wrong
-      toast.error("Failed to auto-save SLA records. Please try again.");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_AUTO_SAVE_SLA_RECORDS_PLEASE_TRY_AGAIN_7DE3DF8C', fallbackText: 'Failed to auto-save SLA records. Please try again.', type: 'error' });
     }
   };
 
@@ -709,162 +734,86 @@ export default function MaintSupervisorApproval() {
   };
 
 
-  const fetchMaintenanceDocuments = async () => {
-    if (!maintenanceData?.ams_id && !maintenanceData?.asset_id) {
-      console.log('No ams_id or asset_id available for fetching maintenance documents');
-      return;
-    }
-    
-    setLoadingMaintenanceDocs(true);
-    try {
-      let res;
-      
-      // For group maintenance or when ams_id is available, fetch by work order (ams_id)
-      // This ensures we get documents uploaded for the maintenance schedule
-      if (maintenanceData?.ams_id) {
-        console.log('Fetching maintenance documents for work order:', maintenanceData.ams_id);
-        res = await API.get(`/asset-maint-docs/work-order/${maintenanceData.ams_id}`, {
-          validateStatus: function (status) {
-            return status === 200 || status === 404;
-          },
-          params: { context: 'SUPERVISORAPPROVAL' }
-        });
-      } else {
-        // Fallback to asset documents if ams_id is not available
-        console.log('Fetching all documents for asset:', maintenanceData.asset_id);
-        res = await API.get(`/assets/${maintenanceData.asset_id}/docs`, {
-          validateStatus: function (status) {
-            return status === 200 || status === 404;
-          },
-          params: { context: 'SUPERVISORAPPROVAL' }
-        });
-      }
-      
-      console.log('Documents API response:', res.data);
-      
-      // If 404, set empty arrays
-      if (res.status === 404) {
-        console.log('No documents found');
-        setMaintenanceDocs([]);
-        setArchivedDocs([]);
-        setManualDocs([]);
-        return;
-      }
-      
-      // Process the response - API returns { success: true, data: [...] } for work order endpoint
-      // or array directly for asset endpoint
-      const allDocs = res.data?.data ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-      console.log('All documents from assets endpoint:', allDocs);
-      
-      // Debug each document's structure
-      allDocs.forEach((doc, index) => {
-        console.log(`Document ${index + 1}:`, {
-          amd_id: doc.amd_id,
-          a_d_id: doc.a_d_id,
-          doc_type: doc.doc_type,
-          doc_type_text: doc.doc_type_text,
-          doc_type_name: doc.doc_type_name,
-          file_name: doc.file_name,
-          is_archived: doc.is_archived,
-          source: maintenanceData?.ams_id ? 'maintenance' : 'asset'
-        });
-      });
-      
-      if (allDocs.length > 0) {
-        // Filter documents for technical manual display (case-insensitive)
-        const manualDocs = allDocs.filter(doc => {
-          const docTypeText = (doc.doc_type_text || '').toLowerCase();
-          const docType = (doc.doc_type || '').toLowerCase();
-          const fileName = (doc.file_name || '').toLowerCase();
-          const docTypeName = (doc.doc_type_name || '').toLowerCase();
-          
-          // Check for technical manual by document type code 'TM' or text 'technical manual'
-          const hasTechnicalManualCode = docType === 'tm';
-          const hasTechnicalManualText = docTypeText.includes('technical manual') || docTypeText === 'technical manual';
-          const hasTechnicalManualName = docTypeName.includes('technical manual') || docTypeName === 'technical manual';
-          
-          // Also check if the original text (not lowercased) contains "Technical Manual"
-          const hasTechnicalManualOriginal = (doc.doc_type_text || '').includes('Technical Manual');
-          
-          const isTechnicalManual = hasTechnicalManualCode || hasTechnicalManualText || hasTechnicalManualName || hasTechnicalManualOriginal;
-          
-            console.log('Technical Manual filter check:', {
-            amd_id: doc.amd_id,
-            a_d_id: doc.a_d_id,
-            doc_type: doc.doc_type,
-            doc_type_text: doc.doc_type_text,
-            file_name: doc.file_name,
-            doc_type_name: doc.doc_type_name,
-            hasTechnicalManualCode: hasTechnicalManualCode,
-            hasTechnicalManualText: hasTechnicalManualText,
-            hasTechnicalManualName: hasTechnicalManualName,
-            hasTechnicalManualOriginal: hasTechnicalManualOriginal,
-            isTechnicalManual: isTechnicalManual
-          });
-          
-          return isTechnicalManual;
-        });
-        
-        console.log('Filtered manualDocs result:', manualDocs);
-        
-        // Separate active and archived documents (same logic as Assets screen)
-        const active = allDocs.filter(doc => !doc.is_archived || doc.is_archived === false);
-        const archived = allDocs.filter(doc => doc.is_archived === true || doc.is_archived === 'true');
-        
-        setMaintenanceDocs(active);
-        setArchivedDocs(archived);
-        setManualDocs(manualDocs);
-        
-        console.log('All documents loaded:', { 
-          total: allDocs.length,
-          active: active.length, 
-          archived: archived.length,
-          manualDocs: manualDocs.length,
-          activeDocs: active,
-          archivedDocs: archived,
-          manualDocsList: manualDocs
-        });
-        
-        console.log('Technical Manual documents found:', manualDocs.map(doc => ({
-          id: doc.amd_id || doc.a_d_id,
-          doc_type_text: doc.doc_type_text,
-          file_name: doc.file_name,
-          doc_type_name: doc.doc_type_name,
-          source: maintenanceData?.ams_id ? 'maintenance' : 'asset'
-        })));
-        
-        // Test the specific case for technical manual
-        const testDoc = { doc_type: 'TM', doc_type_text: 'Technical Manual', file_name: 'test.pdf', doc_type_name: 'technical manual' };
-        const testDocType = (testDoc.doc_type || '').toLowerCase();
-        const testDocTypeText = (testDoc.doc_type_text || '').toLowerCase();
-        const testDocTypeName = (testDoc.doc_type_name || '').toLowerCase();
-        const testHasTechnicalManualCode = testDocType === 'tm';
-        const testHasTechnicalManualText = testDocTypeText.includes('technical manual');
-        const testHasTechnicalManualName = testDocTypeName.includes('technical manual');
-        const testIsTechnicalManual = testHasTechnicalManualCode || testHasTechnicalManualText || testHasTechnicalManualName;
-        
-        console.log('Test case "Technical Manual (TM)":', {
-          doc_type: testDoc.doc_type,
-          doc_type_text: testDoc.doc_type_text,
-          doc_type_name: testDoc.doc_type_name,
-          hasTechnicalManualCode: testHasTechnicalManualCode,
-          hasTechnicalManualText: testHasTechnicalManualText,
-          hasTechnicalManualName: testHasTechnicalManualName,
-          isTechnicalManual: testIsTechnicalManual
-        });
-      } else {
-        console.log('No documents found for asset');
-        setMaintenanceDocs([]);
-        setArchivedDocs([]);
-        setManualDocs([]);
-      }
-    } catch (err) {
-      console.error("Failed to fetch documents:", err);
-      console.error("Error details:", err.response?.data);
-      toast.error(t('maintenanceSupervisor.failedToFetchDocuments'));
+  const applyMaintenanceDocuments = (allDocs) => {
+    const docs = Array.isArray(allDocs) ? allDocs : [];
+    if (!docs.length) {
       setMaintenanceDocs([]);
       setArchivedDocs([]);
       setManualDocs([]);
+      return;
+    }
+
+    const manualDocs = docs.filter((doc) => {
+      const docTypeText = (doc.doc_type_text || '').toLowerCase();
+      const docType = (doc.doc_type || '').toLowerCase();
+      const docTypeName = (doc.doc_type_name || '').toLowerCase();
+      return (
+        docType === 'tm' ||
+        docTypeText.includes('technical manual') ||
+        docTypeName.includes('technical manual') ||
+        (doc.doc_type_text || '').includes('Technical Manual')
+      );
+    });
+
+    const active = docs.filter((doc) => !doc.is_archived || doc.is_archived === false);
+    const archived = docs.filter((doc) => doc.is_archived === true || doc.is_archived === 'true');
+
+    setMaintenanceDocs(active);
+    setArchivedDocs(archived);
+    setManualDocs(manualDocs);
+  };
+
+  const fetchMaintenanceDocuments = async () => {
+    if (!maintenanceData?.ams_id && !maintenanceData?.asset_id) return;
+
+    setLoadingMaintenanceDocs(true);
+    const docParams = { context: 'SUPERVISORAPPROVAL' };
+    const isSoftStatus = (status) => [200, 403, 404].includes(status);
+
+    try {
+      let res = null;
+
+      if (maintenanceData?.ams_id) {
+        res = await API.get(`/asset-maint-docs/work-order/${maintenanceData.ams_id}`, {
+          params: docParams,
+          validateStatus: isSoftStatus,
+        });
+      }
+
+      if ((!res || res.status !== 200) && maintenanceData?.asset_id) {
+        res = await API.get(`/asset-maint-docs/asset/${maintenanceData.asset_id}`, {
+          params: docParams,
+          validateStatus: isSoftStatus,
+        });
+      }
+
+      if ((!res || res.status !== 200) && maintenanceData?.asset_id) {
+        res = await API.get(`/assets/${maintenanceData.asset_id}/docs`, {
+          params: docParams,
+          validateStatus: isSoftStatus,
+        });
+      }
+
+      if (!res || res.status !== 200) {
+        applyMaintenanceDocuments([]);
+        return;
+      }
+
+      const allDocs = res.data?.data
+        ? res.data.data
+        : (Array.isArray(res.data) ? res.data : []);
+      applyMaintenanceDocuments(allDocs);
+    } catch (err) {
+      console.error('Failed to fetch documents:', err);
+      if (err.response?.status >= 500) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHDOCUMENTS_6767B0DB',
+          fallbackText: t('maintenanceSupervisor.failedToFetchDocuments'),
+          type: 'error',
+        });
+      }
+      applyMaintenanceDocuments([]);
     } finally {
       setLoadingMaintenanceDocs(false);
     }
@@ -944,11 +893,11 @@ export default function MaintSupervisorApproval() {
         });
         console.log('Archive response:', res.data);
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
-          toast.success(t('maintenanceSupervisor.documentArchivedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_DOCUMENTARCHIVEDSUCCESSFU_6FADC173', fallbackText: t('maintenanceSupervisor.documentArchivedSuccessfully'), type: 'success' });
           // Refresh documents
           fetchMaintenanceDocuments();
         } else {
-          toast.error(t('maintenanceSupervisor.failedToArchiveDocument'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOARCHIVEDOCUMENT_1FE782D6', fallbackText: t('maintenanceSupervisor.failedToArchiveDocument'), type: 'error' });
         }
       } else if (action === 'unarchive') {
         // Use maintenance document API if amd_id exists, otherwise use asset document API
@@ -960,17 +909,22 @@ export default function MaintSupervisorApproval() {
         });
         console.log('Unarchive response:', res.data);
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
-          toast.success(t('maintenanceSupervisor.documentUnarchivedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_DOCUMENTUNARCHIVEDSUCCESS_7060FF0C', fallbackText: t('maintenanceSupervisor.documentUnarchivedSuccessfully'), type: 'success' });
           // Refresh documents
           fetchMaintenanceDocuments();
         } else {
-          toast.error(t('maintenanceSupervisor.failedToUnarchiveDocument'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUNARCHIVEDOCUMENT_049EFCDD', fallbackText: t('maintenanceSupervisor.failedToUnarchiveDocument'), type: 'error' });
         }
       }
     } catch (err) {
       console.error(`Failed to ${action} document:`, err);
       console.error('Error response:', err.response?.data);
-      toast.error(err.response?.data?.message || t('maintenanceSupervisor.failedToActionDocument', { action }));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOACTIONDOCUMENT_24E03157',
+        fallbackText: err.response?.data?.message || t('maintenanceSupervisor.failedToActionDocument', { action }),
+        type: 'error',
+      });
     }
   };
 
@@ -1046,20 +1000,20 @@ export default function MaintSupervisorApproval() {
 
   const handleInvoiceUpload = async () => {
     if (invoiceUploads.length === 0) {
-      toast.error(t('maintenanceSupervisor.addAtLeastOneInvoiceFile'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ADDATLEASTONEINVOICEFILE_134AB607', fallbackText: t('maintenanceSupervisor.addAtLeastOneInvoiceFile'), type: 'error' });
       return;
     }
 
     // Validate all uploads
     for (const upload of invoiceUploads) {
       if (!upload.type || !upload.file) {
-        toast.error(t('maintenanceSupervisor.selectDocumentTypeAndChooseFile'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_SELECTDOCUMENTTYPEANDCHOO_4A1C636A', fallbackText: t('maintenanceSupervisor.selectDocumentTypeAndChooseFile'), type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = maintenanceDocTypes.find(dt => dt.id === upload.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !upload.docTypeName?.trim()) {
-        toast.error(t('maintenanceSupervisor.enterCustomNameForDocument', { docType: selectedDocType.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ENTERCUSTOMNAMEFORDOCUMEN_5A84EA9F', fallbackText: t('maintenanceSupervisor.enterCustomNameForDocument', { docType: selectedDocType.text }), type: 'error' });
         return;
       }
     }
@@ -1093,19 +1047,19 @@ export default function MaintSupervisorApproval() {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('maintenanceSupervisor.allInvoiceFilesUploadedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ALLINVOICEFILESUPLOADEDSU_2653579D', fallbackText: t('maintenanceSupervisor.allInvoiceFilesUploadedSuccessfully'), type: 'success' });
         } else {
-          toast.success(t('maintenanceSupervisor.filesUploadedFailed', { successCount, failCount }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FILESUPLOADEDFAILED_74B090DB', fallbackText: t('maintenanceSupervisor.filesUploadedFailed', { successCount, failCount }), type: 'success' });
         }
         setInvoiceUploads([]); // Clear uploads after successful upload
         // Refresh maintenance documents
         fetchMaintenanceDocuments();
       } else {
-        toast.error(t('maintenanceSupervisor.failedToUploadAnyFiles'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPLOADANYFILES_4C0D7713', fallbackText: t('maintenanceSupervisor.failedToUploadAnyFiles'), type: 'error' });
       }
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error(t('maintenanceSupervisor.uploadFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_UPLOADFAILED_441C5CAD', fallbackText: t('maintenanceSupervisor.uploadFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -1113,20 +1067,20 @@ export default function MaintSupervisorApproval() {
 
   const handleBeforeAfterUpload = async () => {
     if (beforeAfterUploads.length === 0) {
-      toast.error(t('maintenanceSupervisor.addAtLeastOneImageFile'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ADDATLEASTONEIMAGEFILE_4158D34B', fallbackText: t('maintenanceSupervisor.addAtLeastOneImageFile'), type: 'error' });
       return;
     }
 
     // Validate all uploads
     for (const upload of beforeAfterUploads) {
       if (!upload.type || !upload.file) {
-        toast.error(t('maintenanceSupervisor.selectImageTypeAndChooseFile'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_SELECTIMAGETYPEANDCHOOSEF_1351C960', fallbackText: t('maintenanceSupervisor.selectImageTypeAndChooseFile'), type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = photoDocTypes.find(dt => dt.id === upload.type);
       if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !upload.docTypeName?.trim()) {
-        toast.error(t('maintenanceSupervisor.enterCustomNameForImage', { docType: selectedDocType.text }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ENTERCUSTOMNAMEFORIMAGE_5A109E57', fallbackText: t('maintenanceSupervisor.enterCustomNameForImage', { docType: selectedDocType.text }), type: 'error' });
         return;
       }
     }
@@ -1160,19 +1114,19 @@ export default function MaintSupervisorApproval() {
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('maintenanceSupervisor.allImagesUploadedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ALLIMAGESUPLOADEDSUCCESSF_40259211', fallbackText: t('maintenanceSupervisor.allImagesUploadedSuccessfully'), type: 'success' });
         } else {
-          toast.success(t('maintenanceSupervisor.imagesUploadedFailed', { successCount, failCount }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_IMAGESUPLOADEDFAILED_1D440764', fallbackText: t('maintenanceSupervisor.imagesUploadedFailed', { successCount, failCount }), type: 'success' });
         }
         setBeforeAfterUploads([]); // Clear uploads after successful upload
         // Refresh maintenance documents
         fetchMaintenanceDocuments();
       } else {
-        toast.error(t('maintenanceSupervisor.failedToUploadAnyImages'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPLOADANYIMAGES_3AF3595C', fallbackText: t('maintenanceSupervisor.failedToUploadAnyImages'), type: 'error' });
       }
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error(t('maintenanceSupervisor.uploadFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_UPLOADFAILED_441C5CAD', fallbackText: t('maintenanceSupervisor.uploadFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -1266,7 +1220,7 @@ export default function MaintSupervisorApproval() {
     setValidationErrors(errors);
     
     if (hasErrors) {
-      toast.error(t('maintenanceSupervisor.pleaseFillAllRequiredFields'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_PLEASEFILLALLREQUIREDFIEL_12125B3D', fallbackText: t('maintenanceSupervisor.pleaseFillAllRequiredFields'), type: 'error' });
       return;
     }
     
@@ -1292,18 +1246,24 @@ export default function MaintSupervisorApproval() {
       });
       
       if (res.data.success) {
-        toast.success(t('maintenanceSupervisor.maintenanceScheduleUpdatedSuccessfully'));
+        useMaintenanceSupervisorStore.getState().invalidateMaintenanceCache();
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_MAINTENANCESCHEDULEUPDATE_396CC527', fallbackText: t('maintenanceSupervisor.maintenanceScheduleUpdatedSuccessfully'), type: 'success' });
         navigate("/maintenance-list");
       } else {
-        toast.error(res.data.message || t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPDATEMAINTENANCE_1A285ADA',
+          fallbackText: res.data.message || t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'),
+          type: 'error',
+        });
       }
     } catch (err) {
       console.error("Failed to update maintenance schedule:", err);
-      toast.error(t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOUPDATEMAINTENANCE_1A285ADA', fallbackText: t('maintenanceSupervisor.failedToUpdateMaintenanceSchedule'), type: 'error' });
     }
   };
 
-  if (loadingData) {
+  if (loadingData && !maintenanceData) {
     return (
       <div className="max-w-7xl mx-auto min-h-[600px] overflow-y-auto p-8 bg-white md:rounded shadow-lg mt-155">
         <div className="text-center text-gray-500">{t('maintenanceSupervisor.loadingMaintenanceData')}</div>
@@ -2255,7 +2215,7 @@ export default function MaintSupervisorApproval() {
               {!isSubscriptionRenewal && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.name')}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.name')} <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       name="technician_name"
@@ -2271,7 +2231,7 @@ export default function MaintSupervisorApproval() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.phone')}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.phone')} <span className="text-red-500">*</span></label>
                     <input
                       type="tel"
                       name="technician_phno"
@@ -2290,7 +2250,7 @@ export default function MaintSupervisorApproval() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')} <span className="text-red-500">*</span></label>
                 <input
                   type="number"
                   name="cost"
@@ -2307,7 +2267,7 @@ export default function MaintSupervisorApproval() {
                 )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')} <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     name="po_number"
@@ -2326,7 +2286,7 @@ export default function MaintSupervisorApproval() {
               {/* Email field - hide for subscription renewal */}
               {!isSubscriptionRenewal && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')} <span className="text-red-500">*</span></label>
                   <input
                     type="email"
                     name="technician_email"
@@ -2349,7 +2309,7 @@ export default function MaintSupervisorApproval() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')} <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   name="invoice"
@@ -2412,7 +2372,7 @@ export default function MaintSupervisorApproval() {
 
             {showAdditionalNotesField && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')} <span className="text-red-500">*</span></label>
                 <textarea
                   name="notes"
                   value={formData.notes}

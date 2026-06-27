@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -6,6 +7,8 @@ import { toast } from 'react-hot-toast';
 import { Plus, ArrowLeft, BarChart3, AlertTriangle } from 'lucide-react';
 import ContentBox from '../ContentBox';
 import CustomTable from '../CustomTable';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { useScrapAssetsStore } from '../../store/useScrapAssetsStore';
 
 const ExpiringByCategory = () => {
   const navigate = useNavigate();
@@ -16,24 +19,17 @@ const ExpiringByCategory = () => {
   // Fetch assets expiring within 30 days by type from API
   const fetchExpiringByCategory = async () => {
     try {
-      console.log('🔍 Fetching assets expiring by category...');
-      const response = await API.get('/assets/expiring-30-days-by-type');
-      console.log('📊 Expiring by Category API Response:', response.data);
-      
-      if (response.data && response.data.asset_types) {
-        console.log('✅ Expiring by category data:', response.data.asset_types);
-        return response.data.asset_types.map(type => ({
+      const types = await useScrapAssetsStore.getState().fetchExpiringByCategory({ revalidate: true });
+      if (types?.length) {
+        return types.map((type) => ({
           asset_type_id: type.asset_type_id,
           asset_type_name: type.asset_type_name,
-          asset_count: parseInt(type.asset_count),
+          asset_count: parseInt(type.asset_count, 10),
           total_assets: type.assets ? type.assets.length : 0,
-          earliest_expiry: type.assets && type.assets.length > 0 ? 
-            type.assets[0].expiry_date : null,
-          latest_expiry: type.assets && type.assets.length > 0 ? 
-            type.assets[type.assets.length - 1].expiry_date : null
+          earliest_expiry: type.assets?.length ? type.assets[0].expiry_date : null,
+          latest_expiry: type.assets?.length ? type.assets[type.assets.length - 1].expiry_date : null,
         }));
       }
-      console.log('⚠️ Expiring by category API response format unexpected:', response.data);
       return [];
     } catch (error) {
       console.error('❌ Error fetching expiring by category:', error);
@@ -41,7 +37,7 @@ const ExpiringByCategory = () => {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
       }
-      toast.error('Failed to fetch expiring assets data');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_EXPIRING_ASSETS_DATA_28EC9FF5', fallbackText: 'Failed to fetch expiring assets data', type: 'error' });
       return [];
     }
   };
@@ -54,7 +50,7 @@ const ExpiringByCategory = () => {
         setAssetTypes(data);
       } catch (error) {
         console.error('Error fetching data:', error);
-        toast.error('Failed to fetch data');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_DATA_54044992', fallbackText: 'Failed to fetch data', type: 'error' });
       } finally {
         setLoading(false);
       }

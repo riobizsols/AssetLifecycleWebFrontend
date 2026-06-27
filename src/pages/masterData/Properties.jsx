@@ -1,13 +1,18 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Plus, Edit2, Trash2, X, Save, ChevronDown, ChevronUp, Filter, Search } from 'lucide-react';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { usePropertiesStore } from '../../store/usePropertiesStore';
+import { invalidateCache } from '../../utils/apiCache';
 
 const Properties = () => {
   const { t } = useLanguage();
-  const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const properties = usePropertiesStore((s) => s.properties);
+  const listLoading = usePropertiesStore((s) => s.listLoading);
+  const fetchPropertiesStore = usePropertiesStore((s) => s.fetchProperties);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [expandedProperties, setExpandedProperties] = useState(new Set());
   
@@ -42,25 +47,23 @@ const Properties = () => {
     };
   }, [showFilters]);
 
-  // Fetch all properties with their list values
-  const fetchProperties = async () => {
-    setLoading(true);
+  const fetchProperties = async ({ force = false } = {}) => {
     try {
-      const res = await API.get('/properties/with-values');
-      if (res.data && res.data.success) {
-        setProperties(res.data.data || []);
-      }
+      await fetchPropertiesStore({ revalidate: true, force });
     } catch (error) {
       console.error('Error fetching properties:', error);
-      toast.error('Failed to fetch properties');
-    } finally {
-      setLoading(false);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_PROPERTIES_2421D91B', fallbackText: 'Failed to fetch properties', type: 'error' });
     }
   };
 
   useEffect(() => {
     fetchProperties();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchPropertiesStore({ revalidate: true });
+  });
 
   // Toggle property expansion
   const togglePropertyExpansion = (propId) => {
@@ -97,7 +100,7 @@ const Properties = () => {
     e.preventDefault();
     
     if (!propertyName.trim()) {
-      toast.error('Property name is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_IS_REQUIRED_4FAAE28B', fallbackText: 'Property name is required', type: 'error' });
       return;
     }
 
@@ -112,34 +115,27 @@ const Properties = () => {
       });
 
       if (res.data && res.data.success) {
-        toast.success(`Property created successfully with ${validValues.length} list value(s)`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_PROPERTY_CREATED_WITH_LIST_VALUES_COUNT_7A8D7937',
+          fallbackText: 'Property created successfully with {{count}} list value(s)',
+          type: 'success',
+          values: { count: validValues.length },
+        });
         setPropertyName('');
         setListValues(['']);
         setShowCreateForm(false);
-        fetchProperties();
+        invalidateCache('properties:');
+        fetchProperties({ force: true });
       }
     } catch (error) {
       console.error('Error creating property:', error);
       
       // Handle duplicate property error
       if (error.response?.data?.code === 'DUPLICATE_PROPERTY') {
-        toast.error(
-          error.response?.data?.message || 'A property with this name already exists',
-          {
-            duration: 6000,
-            style: {
-              background: '#FEF3C7',
-              color: '#92400E',
-              border: '2px solid #F59E0B',
-              padding: '16px',
-              fontSize: '14px',
-              maxWidth: '500px'
-            },
-            icon: '⚠️'
-          }
-        );
+        showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_ALREADY_EXISTS_CE58E9C6', fallbackText: 'A property with this name already exists', type: 'error' });
       } else {
-        toast.error(error.response?.data?.message || 'Failed to create property');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_CREATE_PROPERTY_AA95D244', fallbackText: 'Failed to create property', type: 'error' });
       }
     } finally {
       setIsSubmitting(false);
@@ -161,7 +157,7 @@ const Properties = () => {
   // Handle update property
   const handleUpdateProperty = async (propId) => {
     if (!editingPropertyName.trim()) {
-      toast.error('Property name is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_IS_REQUIRED_4FAAE28B', fallbackText: 'Property name is required', type: 'error' });
       return;
     }
 
@@ -172,31 +168,18 @@ const Properties = () => {
         property: editingPropertyName.trim()
       });
 
-      toast.success('Property name updated successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_UPDATED_SUCCESSFULLY_48F2170A', fallbackText: 'Property name updated successfully', type: 'success' });
       handleCancelEdit();
-      fetchProperties();
+      invalidateCache('properties:');
+      fetchProperties({ force: true });
     } catch (error) {
       console.error('Error updating property:', error);
       
       // Handle duplicate property error
       if (error.response?.data?.code === 'DUPLICATE_PROPERTY') {
-        toast.error(
-          error.response?.data?.message || 'A property with this name already exists',
-          {
-            duration: 6000,
-            style: {
-              background: '#FEF3C7',
-              color: '#92400E',
-              border: '2px solid #F59E0B',
-              padding: '16px',
-              fontSize: '14px',
-              maxWidth: '500px'
-            },
-            icon: '⚠️'
-          }
-        );
+        showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_NAME_ALREADY_EXISTS_CE58E9C6', fallbackText: 'A property with this name already exists', type: 'error' });
       } else {
-        toast.error(error.response?.data?.message || 'Failed to update property');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_PROPERTY_FF2A7E3B', fallbackText: 'Failed to update property', type: 'error' });
       }
     } finally {
       setIsSubmitting(false);
@@ -211,18 +194,19 @@ const Properties = () => {
 
     try {
       await API.delete(`/properties/${propId}`);
-      toast.success('Property deleted successfully');
-      fetchProperties();
+      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_DELETED_SUCCESSFULLY_1BF88C67', fallbackText: 'Property deleted successfully', type: 'success' });
+      invalidateCache('properties:');
+      fetchProperties({ force: true });
     } catch (error) {
       console.error('Error deleting property:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete property');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_PROPERTY_57B769A4', fallbackText: 'Failed to delete property', type: 'error' });
     }
   };
 
   // Handle add list value to existing property
   const handleAddListValue = async (propId, value) => {
     if (!value || !value.trim()) {
-      toast.error('Value is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_VALUE_IS_REQUIRED_04140986', fallbackText: 'Value is required', type: 'error' });
       return;
     }
 
@@ -231,11 +215,12 @@ const Properties = () => {
         propId: propId,
         value: value.trim()
       });
-      toast.success('List value added successfully');
-      fetchProperties();
+      showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_ADDED_SUCCESSFULLY_78135CF8', fallbackText: 'List value added successfully', type: 'success' });
+      invalidateCache('properties:');
+      fetchProperties({ force: true });
     } catch (error) {
       console.error('Error adding list value:', error);
-      toast.error(error.response?.data?.message || 'Failed to add list value');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_ADD_LIST_VALUE_00EA07EC', fallbackText: 'Failed to add list value', type: 'error' });
     }
   };
 
@@ -247,11 +232,12 @@ const Properties = () => {
 
     try {
       await API.delete(`/properties/list-values/${aplvId}`);
-      toast.success('List value deleted successfully');
-      fetchProperties();
+      showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_DELETED_SUCCESSFULLY_118BD63F', fallbackText: 'List value deleted successfully', type: 'success' });
+      invalidateCache('properties:');
+      fetchProperties({ force: true });
     } catch (error) {
       console.error('Error deleting list value:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete list value');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_LIST_VALUE_6971E732', fallbackText: 'Failed to delete list value', type: 'error' });
     }
   };
 
@@ -473,7 +459,7 @@ const Properties = () => {
 
         {/* Properties List */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-          {loading ? (
+          {listLoading && properties.length === 0 ? (
             <div className="text-center py-20">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E2F4B]"></div>
               <p className="mt-4 text-gray-500">Loading properties...</p>
@@ -658,7 +644,7 @@ const AddListValueForm = ({ propId, onAdd }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!value.trim()) {
-      toast.error('Value is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_VALUE_IS_REQUIRED_04140986', fallbackText: 'Value is required', type: 'error' });
       return;
     }
 

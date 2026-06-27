@@ -2,16 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import MaintenanceDetails from '../../components/MaintenanceDetails';
 import MaintenanceFrequency from '../../components/MaintenanceFrequency';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { useMaintenanceConfigStore } from '../../store/useMaintenanceConfigStore';
 
 const MaintenanceConfiguration = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('maintenanceDetails');
+  const fetchDetailsBase = useMaintenanceConfigStore((s) => s.fetchDetailsBase);
+  const fetchFrequencyBundle = useMaintenanceConfigStore((s) => s.fetchFrequencyBundle);
 
   useEffect(() => {
     if (location.state?.maintenanceConfigTab === 'maintenanceFrequency') {
       setActiveTab('maintenanceFrequency');
     }
   }, [location.state]);
+
+  useEffect(() => {
+    fetchDetailsBase({ revalidate: true });
+    fetchFrequencyBundle({ revalidate: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchDetailsBase({ revalidate: true });
+    fetchFrequencyBundle({ revalidate: true });
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">

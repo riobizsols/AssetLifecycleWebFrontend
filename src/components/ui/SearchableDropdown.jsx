@@ -11,6 +11,7 @@ const SearchableDropdown = ({
   searchPlaceholder = "Search...",
   createNewText = "Create New",
   createNewPath,
+  onCreateNew,
   disabled = false,
   className = "",
   displayKey = "text",
@@ -166,12 +167,21 @@ const SearchableDropdown = ({
           </div>
 
           {/* Create New option */}
-          {createNewPath && (
+          {(createNewPath || onCreateNew) && (
             <div
               className="sticky bottom-0 border-t bg-white"
             >
               <button
-                onClick={() => navigate(createNewPath)}
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  setSearchTerm("");
+                  if (onCreateNew) {
+                    onCreateNew();
+                  } else if (createNewPath) {
+                    navigate(createNewPath);
+                  }
+                }}
                 className="w-full px-3 py-2 text-left text-blue-600 hover:bg-blue-50 font-medium"
               >
                 + {createNewText}

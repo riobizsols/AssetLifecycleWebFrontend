@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from "react";
 import { Maximize, Minimize, Pencil, Trash2 } from "lucide-react";
 import API from "../../lib/axios";
@@ -6,9 +7,13 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { DEPARTMENTS_APP_ID } from "../../constants/departmentsAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useDepartmentsStore } from "../../store/useDepartmentsStore";
+import { invalidateCache } from "../../utils/apiCache";
 
 const Departments = () => {
-  const [departments, setDepartments] = useState([]);
+  const departments = useDepartmentsStore((s) => s.departments);
+  const fetchDepartmentsStore = useDepartmentsStore((s) => s.fetchDepartments);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedDept, setSelectedDept] = useState(null);
@@ -48,13 +53,11 @@ const Departments = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showDeleteModal, showEditModal]);
 
-    const fetchDepartments = async () => {
+    const fetchDepartments = async ({ force = false } = {}) => {
       try {
-      const res = await API.get("/departments");
-      setDepartments(Array.isArray(res.data) ? res.data : []);
+      await fetchDepartmentsStore({ revalidate: true, force });
     } catch (err) {
       console.error("Error fetching departments:", err);
-      setDepartments([]);
     }
   };
 
@@ -75,12 +78,17 @@ const Departments = () => {
   useEffect(() => {
     fetchDepartments();
     fetchNextDeptId();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchDepartmentsStore({ revalidate: true });
+  });
 
   const handleCreate = async () => {
     setSubmitAttempted(true);
     if (!newDeptName.trim()) {
-      toast.error(t('departments.departmentNameRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTNAMEREQUIRED_43518C3B', fallbackText: t('departments.departmentNameRequired'), type: 'error' });
       return;
     }
     try {
@@ -94,14 +102,20 @@ const Departments = () => {
       });
       
       setNewDeptName("");
-      fetchDepartments();
+      invalidateCache('departments:');
+      fetchDepartments({ force: true });
       fetchNextDeptId();
-      toast.success(t('departments.departmentCreatedSuccessfully', { name: newDeptName }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTCREATEDSUCCESSFULLY_3510E42C', fallbackText: t('departments.departmentCreatedSuccessfully', { name: newDeptName }), type: 'success' });
       setSubmitAttempted(false);
     } catch (err) {
       console.error("Error creating department:", err);
       const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToCreateDepartment')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_DEPARTMENT_8A22D911',
+        fallbackText: `${t('departments.failedToCreateDepartment')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 
@@ -130,27 +144,27 @@ const Departments = () => {
       setShowDeleteModal(false);
       fetchDepartments();
       fetchNextDeptId();
-      toast.success(t('departments.departmentDeletedSuccessfully', { name: selectedDept.text }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTDELETEDSUCCESSFULLY_581D8B85', fallbackText: t('departments.departmentDeletedSuccessfully', { name: selectedDept.text }), type: 'success' });
     } catch (err) {
       console.error("Error deleting department:", err);
       
       // Handle specific foreign key constraint errors
       if (err.response?.data?.error === "Cannot delete department") {
         const hint = err.response?.data?.hint || "";
-        toast.error(
-          `${err.response?.data?.message || t('departments.cannotDeleteDepartment')}. ${hint}`,
-          {
-            duration: 6000,
-            style: {
-              borderRadius: '8px',
-              background: '#7F1D1D',
-              color: '#fff',
-            },
-          }
-        );
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_CANNOT_DELETE_DEPARTMENT_WITH_REASON_18D8A14C',
+          fallbackText: `${err.response?.data?.message || t('departments.cannotDeleteDepartment')}. ${hint}`,
+          type: 'error',
+        });
       } else {
         const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-        toast.error(`${t('departments.failedToDeleteDepartment')}: ${errorMessage}`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_DELETE_DEPARTMENT_CFB60274',
+          fallbackText: `${t('departments.failedToDeleteDepartment')}: ${errorMessage}`,
+          type: 'error',
+        });
       }
     }
   };
@@ -165,7 +179,7 @@ const Departments = () => {
   const confirmUpdate = async () => {
     setSubmitAttempted(true);
     if (!editName.trim()) {
-      toast.error(t('departments.departmentNameRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTNAMEREQUIRED_43518C3B', fallbackText: t('departments.departmentNameRequired'), type: 'error' });
       return;
     }
     try {
@@ -184,12 +198,17 @@ const Departments = () => {
       
       setShowEditModal(false);
       fetchDepartments();
-      toast.success(t('departments.departmentUpdatedSuccessfully', { name: editName }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTUPDATEDSUCCESSFULLY_671C5927', fallbackText: t('departments.departmentUpdatedSuccessfully', { name: editName }), type: 'success' });
       setSubmitAttempted(false);
     } catch (err) {
       console.error("Error updating department:", err);
       const errorMessage = err.response?.data?.message || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToUpdateDepartment')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_DEPARTMENT_7D24C793',
+        fallbackText: `${t('departments.failedToUpdateDepartment')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 

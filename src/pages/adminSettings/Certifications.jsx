@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { 
@@ -24,17 +25,50 @@ import DeleteConfirmModal from "../../components/DeleteConfirmModal";
 import SearchableDropdown from "../../components/ui/SearchableDropdown";
 import { generateUUID } from "../../utils/uuid";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useCertificationsStore, CERTIFICATIONS_CACHE_KEYS, CERTIFICATIONS_TTL_MS } from "../../store/useCertificationsStore";
+import { invalidateCache, peekCache } from "../../utils/apiCache";
+
+const parseApiList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
+const deriveMaintTypesFromFrequencies = (frequencyRows, allMaintTypes = []) => {
+  const byId = new Map();
+  frequencyRows.forEach((row) => {
+    if (!row?.maint_type_id) return;
+    const id = String(row.maint_type_id);
+    if (byId.has(id)) return;
+    const master = allMaintTypes.find((type) => String(type.maint_type_id) === id);
+    byId.set(id, {
+      maint_type_id: row.maint_type_id,
+      text: row.maint_type_name || master?.text || id,
+    });
+  });
+  return [...byId.values()];
+};
 
 const Certifications = () => {
   const location = useLocation();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("create");
-  const [certificates, setCertificates] = useState([]);
-  const [assetTypes, setAssetTypes] = useState([]);
-  const [maintTypes, setMaintTypes] = useState([]);
+  const [certificates, setCertificates] = useState(
+    () => peekCache(CERTIFICATIONS_CACHE_KEYS.certificates, CERTIFICATIONS_TTL_MS) || [],
+  );
+  const [assetTypes, setAssetTypes] = useState(
+    () => peekCache(CERTIFICATIONS_CACHE_KEYS.assetTypes, CERTIFICATIONS_TTL_MS) || [],
+  );
+  const [inspectionAssetTypes, setInspectionAssetTypes] = useState([]);
+  const [maintTypes, setMaintTypes] = useState(
+    () => peekCache(CERTIFICATIONS_CACHE_KEYS.maintTypes, CERTIFICATIONS_TTL_MS) || [],
+  );
   const [assetTypeMaintTypeIds, setAssetTypeMaintTypeIds] = useState([]);
   const [filteredMaintTypes, setFilteredMaintTypes] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(
+    () => !peekCache(CERTIFICATIONS_CACHE_KEYS.certificates, CERTIFICATIONS_TTL_MS),
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -83,7 +117,9 @@ const Certifications = () => {
   const inspectionFormInitRef = useRef({ assetType: '' });
 
   // Inspection Certificates states
-  const [inspectionCertificates, setInspectionCertificates] = useState([]);
+  const [inspectionCertificates, setInspectionCertificates] = useState(
+    () => peekCache(CERTIFICATIONS_CACHE_KEYS.inspectionCerts, CERTIFICATIONS_TTL_MS) || [],
+  );
   const [selectedInspectionAssetType, setSelectedInspectionAssetType] = useState("");
   const [inspectionFilterOpen, setInspectionFilterOpen] = useState(false);
   const [inspectionColumnFilters, setInspectionColumnFilters] = useState([
@@ -138,40 +174,60 @@ const Certifications = () => {
     );
   };
 
-  const fetchCertificates = async () => {
-    setIsLoading(true);
+  const fetchCertificates = async ({ force = false } = {}) => {
+    const hasCached = !force && peekCache(CERTIFICATIONS_CACHE_KEYS.certificates, CERTIFICATIONS_TTL_MS);
+    if (!hasCached && certificates.length === 0) setIsLoading(true);
     try {
-      const response = await API.get("/tech-certificates");
-      const data = response.data?.data || [];
-      console.log("✅ Fetched technical certificates:", data);
+      const data = await useCertificationsStore.getState().fetchCertificates({
+        revalidate: true,
+        force,
+        onFresh: setCertificates,
+      });
       setCertificates(data);
     } catch (error) {
       console.error("❌ Failed to fetch certificates:", error);
-      toast.error(t("certifications.failedToLoadCertificates"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOLOADCERTIFICATES_3205C28D', fallbackText: "Failed to load certificates", type: 'error' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchAssetTypes = async () => {
+  const fetchAssetTypes = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/asset-types");
-      const data = response.data || [];
+      const data = await useCertificationsStore.getState().fetchAssetTypes({
+        revalidate: true,
+        force,
+        onFresh: setAssetTypes,
+      });
       setAssetTypes(data);
     } catch (error) {
       console.error("Failed to fetch asset types:", error);
-      toast.error(t("certifications.failedToLoadAssetTypes"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOLOADASSETTYPES_3547A0E0', fallbackText: "Failed to load asset types", type: 'error' });
     }
   };
 
-  const fetchMaintTypes = async () => {
+  const fetchInspectionAssetTypes = async () => {
     try {
-      const response = await API.get("/maint-types");
-      const data = response.data || [];
+      const response = await API.get("/asset-types/inspection-required");
+      const data = parseApiList(response.data);
+      setInspectionAssetTypes(data);
+    } catch (error) {
+      console.error("Failed to fetch inspection asset types:", error);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOLOADASSETTYPES_3547A0E0', fallbackText: "Failed to load asset types", type: 'error' });
+    }
+  };
+
+  const fetchMaintTypes = async ({ force = false } = {}) => {
+    try {
+      const data = await useCertificationsStore.getState().fetchMaintTypes({
+        revalidate: true,
+        force,
+        onFresh: setMaintTypes,
+      });
       setMaintTypes(data);
     } catch (error) {
       console.error("Failed to fetch maintenance types:", error);
-      toast.error(t("certifications.failedToLoadMaintTypes"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOLOADMAINTTYPES_093574D5', fallbackText: "Failed to load maintenance types", type: 'error' });
     }
   };
 
@@ -190,44 +246,56 @@ const Certifications = () => {
     }
   };
 
-  const fetchDocumentTypes = async () => {
+  const fetchDocumentTypes = async ({ force = false } = {}) => {
     try {
-      console.log('Fetching document types for inspection certificates...');
-      // Using 'inspection certificate' object type
-      const res = await API.get('/doc-type-objects/object-type/inspection certificate');
-      console.log('Document types response:', res.data);
-
-      if (res.data && res.data.success && Array.isArray(res.data.data)) {
-        const docTypes = res.data.data.map(docType => ({
-          id: docType.dto_id,
-          text: docType.doc_type_text,
-          doc_type: docType.doc_type
-        }));
-        setDocumentTypes(docTypes);
-      } else {
-        setDocumentTypes([]);
-      }
+      const docTypes = await useCertificationsStore.getState().fetchDocumentTypes({
+        revalidate: true,
+        force,
+        onFresh: setDocumentTypes,
+      });
+      setDocumentTypes(docTypes);
     } catch (err) {
       console.error('Error fetching document types:', err);
       setDocumentTypes([]);
     }
   };
 
-  const fetchInspectionCertificates = async () => {
+  const fetchInspectionCertificates = async ({ force = false } = {}) => {
     try {
-      const response = await API.get("/asset-types/inspection-certificates");
-      const data = response.data?.data || [];
-      console.log("📍 Fetched all inspection certificates:", data);
+      const data = await useCertificationsStore.getState().fetchInspectionCertificates({
+        revalidate: true,
+        force,
+        onFresh: setInspectionCertificates,
+      });
       setInspectionCertificates(data);
     } catch (error) {
       console.error("Failed to fetch inspection certificates:", error);
-      // Don't show error toast on initial load
     }
   };
 
   useEffect(() => {
+    fetchCertificates({ revalidate: true });
+    fetchAssetTypes({ revalidate: true });
+    fetchInspectionAssetTypes();
+    fetchMaintTypes({ revalidate: true });
+    fetchInspectionCertificates({ revalidate: true });
+    fetchDocumentTypes({ revalidate: true });
+
+    const saved = localStorage.getItem("lastSelectedAssetType");
+    if (saved) {
+      setSelectedAssetType(saved);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useRevalidateOnFocus(() => {
+    useCertificationsStore.getState().prefetchCertifications();
+    fetchCertificates({ revalidate: true });
+  });
+
+  useEffect(() => {
     if (activeTab === "inspection") {
-      fetchInspectionCertificates();
+      fetchInspectionCertificates({ revalidate: true });
       fetchDocumentTypes();
     }
   }, [activeTab]);
@@ -242,9 +310,9 @@ const Certifications = () => {
     }
 
     try {
-      const response = await API.get(`/asset-types/${assetTypeId}/maintenance-certificates`);
-      const data = response.data?.data || [];
-      console.log("📍 Fetched mapped certificates for asset type:", assetTypeId, "Data:", data);
+      const data = await useCertificationsStore.getState().fetchMappedCertificates(assetTypeId, {
+        revalidate: true,
+      });
       setMappedCertificates(data);
       setSelectedCertificateIds(data.map((cert) => cert.tech_cert_id));
       const maintTypeId = data.find((cert) => cert.maint_type_id)?.maint_type_id || "";
@@ -263,36 +331,19 @@ const Certifications = () => {
     }
 
     try {
-      const response = await API.get(`/maintenance-schedules/frequency/${assetTypeId}`);
-      const rows = Array.isArray(response.data) ? response.data : response.data?.data || [];
-      const ids = Array.from(new Set(rows.map((row) => row.maint_type_id).filter(Boolean)));
-      if (ids.length > 0) {
-        setAssetTypeMaintTypeIds(ids);
-      } else {
-        // Fallback: use maint_type_id from asset type master if frequency rows are missing.
-        const assetTypeRow = assetTypes.find((type) => String(type.asset_type_id) === String(assetTypeId));
-        setAssetTypeMaintTypeIds(assetTypeRow?.maint_type_id ? [assetTypeRow.maint_type_id] : []);
-      }
+      const rows = await useCertificationsStore.getState().fetchMaintFrequencies(assetTypeId, {
+        revalidate: true,
+      });
+      const ids = Array.from(
+        new Set(rows.map((row) => row.maint_type_id).filter(Boolean).map(String))
+      );
+      setAssetTypeMaintTypeIds(ids);
     } catch (error) {
       console.error("Failed to fetch maintenance types for asset type:", error);
-      toast.error(t("certifications.failedToLoadMaintTypesForAssetType"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOLOADMAINTTYPESFORASSETTY_140AF30A', fallbackText: "Failed to load maintenance types for asset type", type: 'error' });
       setAssetTypeMaintTypeIds([]);
     }
   };
-
-  useEffect(() => {
-    fetchCertificates();
-    fetchAssetTypes();
-    fetchMaintTypes();
-    fetchInspectionCertificates();
-    
-    // Restore last selected asset type from localStorage
-    const saved = localStorage.getItem("lastSelectedAssetType");
-    if (saved) {
-      console.log("📌 Restoring last selected asset type:", saved);
-      setSelectedAssetType(saved);
-    }
-  }, []);
 
   // Browser back button: close any open form and stay on /certifications
   useEffect(() => {
@@ -323,14 +374,19 @@ const Certifications = () => {
     }
   }, [selectedAssetType]);
 
-  // Auto-select first asset type when asset types are loaded
+  // Auto-select first asset type with maintenance configured
   useEffect(() => {
-    if (assetTypes.length > 0 && !selectedAssetType) {
+    if (assetTypes.length === 0) return;
+
+    const isCurrentValid = assetTypes.some(
+      (type) => String(type.asset_type_id) === String(selectedAssetType)
+    );
+    if (!selectedAssetType || !isCurrentValid) {
       const firstAssetTypeId = assetTypes[0].asset_type_id;
-      console.log("🔶 Auto-selecting first asset type:", firstAssetTypeId);
+      console.log("🔶 Auto-selecting first maintenance asset type:", firstAssetTypeId);
       setSelectedAssetType(firstAssetTypeId);
     }
-  }, [assetTypes]);
+  }, [assetTypes, selectedAssetType]);
 
   useEffect(() => {
     if (!selectedAssetType) {
@@ -343,17 +399,27 @@ const Certifications = () => {
       return;
     }
 
-    const filtered = maintTypes.filter((type) => assetTypeMaintTypeIds.includes(type.maint_type_id));
+    const filtered = maintTypes.filter((type) =>
+      assetTypeMaintTypeIds.includes(String(type.maint_type_id))
+    );
     setFilteredMaintTypes(filtered);
   }, [maintTypes, assetTypeMaintTypeIds, selectedAssetType]);
 
   useEffect(() => {
-    if (!selectedMaintType) return;
-    const stillValid = filteredMaintTypes.some((type) => type.maint_type_id === selectedMaintType);
-    if (!stillValid) {
+    if (!selectedAssetType) return;
+
+    if (filteredMaintTypes.length === 0) {
       setSelectedMaintType("");
+      return;
     }
-  }, [filteredMaintTypes, selectedMaintType]);
+
+    setSelectedMaintType((current) => {
+      const stillValid = filteredMaintTypes.some(
+        (type) => String(type.maint_type_id) === String(current)
+      );
+      return stillValid ? current : filteredMaintTypes[0].maint_type_id;
+    });
+  }, [filteredMaintTypes, selectedAssetType]);
 
   // When update modal is open for mapping, load maintenance types for selected asset type
   useEffect(() => {
@@ -364,23 +430,11 @@ const Certifications = () => {
     let cancelled = false;
     const load = async () => {
       try {
-        const response = await API.get(`/maintenance-schedules/frequency/${updateCertAssetType}`);
-        const rows = Array.isArray(response.data) ? response.data : response.data?.data || [];
-        const ids = Array.from(new Set(rows.map((row) => row.maint_type_id).filter(Boolean)));
+        const rows = await useCertificationsStore.getState().fetchMaintFrequencies(updateCertAssetType, {
+          revalidate: true,
+        });
         if (!cancelled) {
-          if (ids.length > 0) {
-            setUpdateModalMaintTypes(maintTypes.filter((t) => ids.includes(t.maint_type_id)));
-          } else {
-            const assetTypeRow = assetTypes.find(
-              (type) => String(type.asset_type_id) === String(updateCertAssetType),
-            );
-            const fallbackMaintTypeId = assetTypeRow?.maint_type_id;
-            setUpdateModalMaintTypes(
-              fallbackMaintTypeId
-                ? maintTypes.filter((t) => String(t.maint_type_id) === String(fallbackMaintTypeId))
-                : [],
-            );
-          }
+          setUpdateModalMaintTypes(deriveMaintTypesFromFrequencies(rows, maintTypes));
         }
       } catch (err) {
         if (!cancelled) setUpdateModalMaintTypes([]);
@@ -404,28 +458,13 @@ const Certifications = () => {
     let cancelled = false;
     const load = async () => {
       try {
-        const [freqRes, mapRes] = await Promise.all([
-          API.get(`/maintenance-schedules/frequency/${mappingFormAssetType}`),
-          API.get(`/asset-types/${mappingFormAssetType}/maintenance-certificates`)
+        const [rows, mapped] = await Promise.all([
+          useCertificationsStore.getState().fetchMaintFrequencies(mappingFormAssetType, { revalidate: true }),
+          useCertificationsStore.getState().fetchMappedCertificates(mappingFormAssetType, { revalidate: true }),
         ]);
         if (cancelled) return;
-        const rows = Array.isArray(freqRes.data) ? freqRes.data : freqRes.data?.data || [];
-        const maintIds = Array.from(new Set(rows.map((r) => r.maint_type_id).filter(Boolean)));
-        if (maintIds.length > 0) {
-          setMappingFormMaintTypes(maintTypes.filter((t) => maintIds.includes(t.maint_type_id)));
-        } else {
-          const assetTypeRow = assetTypes.find(
-            (type) => String(type.asset_type_id) === String(mappingFormAssetType),
-          );
-          const fallbackMaintTypeId = assetTypeRow?.maint_type_id;
-          setMappingFormMaintTypes(
-            fallbackMaintTypeId
-              ? maintTypes.filter((t) => String(t.maint_type_id) === String(fallbackMaintTypeId))
-              : [],
-          );
-        }
-        const mapData = mapRes.data?.data || [];
-        setMappingFormMappedCertificates(mapData);
+        setMappingFormMaintTypes(deriveMaintTypesFromFrequencies(rows, maintTypes));
+        setMappingFormMappedCertificates(mapped || []);
         setMappingFormMappedLoaded(true);
       } catch (err) {
         if (!cancelled) {
@@ -496,12 +535,12 @@ const Certifications = () => {
 
   const handleCreateCertificate = async () => {
     if (!certName.trim()) {
-      toast.error(t("certifications.certificateNameRequired"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATENAMEREQUIRED_2ACD9368', fallbackText: "Certificate name is required", type: 'error' });
       return;
     }
 
     if (!certNumber.trim()) {
-      toast.error(t("certifications.certificateNumberRequired"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATENUMBERREQUIRED_655CC6A6', fallbackText: "Certificate number is required", type: 'error' });
       return;
     }
 
@@ -513,19 +552,19 @@ const Certifications = () => {
       });
 
       const created = response.data?.data;
+      useCertificationsStore.getState().invalidateCertificationsCache();
       if (created) {
         setCertificates((prev) => [created, ...prev]);
-      } else {
-        await fetchCertificates();
       }
+      await fetchCertificates({ force: true });
 
       setCertName("");
       setCertNumber("");
       setShowCreateForm(false);
-      toast.success(t("certifications.certificateCreatedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATECREATEDSUCCESSFULLY_74BEAED1', fallbackText: "Certificate created successfully", type: 'success' });
     } catch (error) {
       console.error("Failed to create certificate:", error);
-      toast.error(error.response?.data?.message || t("certifications.failedToCreateCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOCREATECERTIFICATE_20C5E5BA', fallbackText: error.response?.data?.message || t("certifications.failedToCreateCertificate"), type: 'error' });
     } finally {
       setIsCreating(false);
     }
@@ -550,22 +589,22 @@ const Certifications = () => {
 
   const handleUpdateCertificate = async () => {
     if (!updateCertName.trim()) {
-      toast.error(t("certifications.certificateNameRequired"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATENAMEREQUIRED_2ACD9368', fallbackText: "Certificate name is required", type: 'error' });
       return;
     }
 
     if (!updateCertNumber.trim()) {
-      toast.error(t("certifications.certificateNumberRequired"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATENUMBERREQUIRED_655CC6A6', fallbackText: "Certificate number is required", type: 'error' });
       return;
     }
 
     if (updateModalSource === "mapping") {
       if (!updateCertAssetType) {
-        toast.error(t("certifications.assetTypeRequired"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_ASSETTYPEREQUIRED_5DE391D0', fallbackText: "Asset type is required", type: 'error' });
         return;
       }
       if (!updateCertMaintType) {
-        toast.error(t("certifications.maintenanceTypeRequired"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_MAINTENANCETYPEREQUIRED_75B61F6D', fallbackText: "Maintenance type is required", type: 'error' });
         return;
       }
     }
@@ -592,8 +631,10 @@ const Certifications = () => {
           certificate_ids: nextOldIds,
           maint_type_id: oldMaintType
         });
-        const newRes = await API.get(`/asset-types/${updateCertAssetType}/maintenance-certificates`);
-        const newData = newRes.data?.data || [];
+        const newData = await useCertificationsStore.getState().fetchMappedCertificates(
+          updateCertAssetType,
+          { revalidate: true, force: true },
+        );
         const existingNewIds = newData
           .filter((c) => String(c.maint_type_id) === String(updateCertMaintType))
           .map((c) => c.tech_cert_id);
@@ -606,20 +647,21 @@ const Certifications = () => {
         });
       }
 
-      toast.success(t("certifications.certificateUpdatedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATEUPDATEDSUCCESSFULLY_10EBEC24', fallbackText: "Certificate updated successfully", type: 'success' });
       const otherAssetType = updateModalSource === "mapping" && updateCertAssetType !== selectedAssetType ? updateCertAssetType : null;
       setShowUpdateModal(false);
       setUpdateModalSource(null);
       setUpdateCertAssetType("");
       setUpdateCertMaintType("");
       setUpdateModalMaintTypes([]);
-      fetchCertificates();
+      useCertificationsStore.getState().invalidateCertificationsCache();
+      await fetchCertificates({ force: true });
       if (selectedAssetType) fetchMappedCertificates(selectedAssetType);
       if (otherAssetType) fetchMappedCertificates(otherAssetType);
       if (selectedInspectionAssetType) fetchInspectionCertificates();
     } catch (error) {
       console.error("Failed to update certificate:", error);
-      toast.error(error.response?.data?.message || t("certifications.failedToUpdateCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOUPDATECERTIFICATE_D6BB47D8', fallbackText: error.response?.data?.message || t("certifications.failedToUpdateCertificate"), type: 'error' });
     } finally {
       setIsUpdatingCert(false);
     }
@@ -627,12 +669,12 @@ const Certifications = () => {
 
   const handleUnmapCertificate = async (certId) => {
     if (!selectedAssetType) {
-      toast.error(t("certifications.pleaseSelectAssetType"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTASSETTYPE_149CC9F5', fallbackText: "Please select an asset type", type: 'error' });
       return;
     }
 
     if (!selectedMaintType) {
-      toast.error(t("certifications.pleaseSelectMaintenanceType"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTMAINTENANCETYPE_02D5DFEE', fallbackText: "Please select a maintenance type", type: 'error' });
       return;
     }
 
@@ -649,10 +691,10 @@ const Certifications = () => {
 
       setSelectedCertificateIds(nextIds);
       setMappedCertificates(response.data?.data || []);
-      toast.success(t("certifications.certificateUnmappedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATEUNMAPPEDSUCCESSFULLY_1A1817F1', fallbackText: "Certificate unmapped successfully", type: 'success' });
     } catch (error) {
       console.error("Failed to unmap certificate:", error);
-      toast.error(error.response?.data?.message || t("certifications.failedToUnmapCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOUNMAPCERTIFICATE_3C84D64C', fallbackText: error.response?.data?.message || t("certifications.failedToUnmapCertificate"), type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -665,11 +707,12 @@ const Certifications = () => {
     setIsCreating(true);
     try {
       await API.delete(`/tech-certificates/${id}`);
+      useCertificationsStore.getState().invalidateCertificationsCache();
       setCertificates((prev) => prev.filter((cert) => cert.tech_cert_id !== id));
-      toast.success(t("certifications.certificateDeletedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATEDELETEDSUCCESSFULLY_01ED1E82', fallbackText: "Certificate deleted successfully", type: 'success' });
     } catch (error) {
       console.error("Failed to delete certificate:", error);
-      toast.error(error.response?.data?.message || t("certifications.failedToDeleteCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTODELETECERTIFICATE_3B0090B4', fallbackText: error.response?.data?.message || t("certifications.failedToDeleteCertificate"), type: 'error' });
     } finally {
       setIsCreating(false);
     }
@@ -677,7 +720,7 @@ const Certifications = () => {
 
   const handleDeleteSelectedCertificates = async () => {
     if (selectedCertificateRows.length === 0) {
-      toast.error(t("certifications.pleaseSelectAtLeastOneCertificate"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTATLEASTONECERTIFICAT_1D392528', fallbackText: "Please select at least one certificate", type: 'error' });
       return;
     }
 
@@ -689,15 +732,16 @@ const Certifications = () => {
     setIsBulkDeleting(true);
     try {
       await Promise.all(selectedCertificateRows.map((id) => API.delete(`/tech-certificates/${id}`)));
-      toast.success(`${selectedCertificateRows.length} certificate(s) deleted successfully`);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATESDELETEDSUCCESSFULLYCOUNT_5293EF87', fallbackText: `${selectedCertificateRows.length} certificate(s) deleted successfully`, type: 'success' });
       setSelectedCertificateRows([]);
-      await fetchCertificates();
+      useCertificationsStore.getState().invalidateCertificationsCache();
+      await fetchCertificates({ force: true });
       if (selectedAssetType) {
         await fetchMappedCertificates(selectedAssetType);
       }
     } catch (error) {
       console.error("Failed to delete selected certificates:", error);
-      toast.error(t("certifications.failedToDeleteSomeCertificates"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTODELETESOMECERTIFICATES_58A96C74', fallbackText: "Failed to delete some certificates", type: 'error' });
     } finally {
       setIsBulkDeleting(false);
       setShowDeleteModal(false);
@@ -707,12 +751,12 @@ const Certifications = () => {
 
   const handleSaveMapping = async () => {
     if (!mappingFormAssetType) {
-      toast.error(t("certifications.pleaseSelectAssetType"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTASSETTYPE_149CC9F5', fallbackText: "Please select an asset type", type: 'error' });
       return;
     }
 
     if (!mappingFormMaintType) {
-      toast.error(t("certifications.pleaseSelectMaintenanceType"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTMAINTENANCETYPE_02D5DFEE', fallbackText: "Please select a maintenance type", type: 'error' });
       return;
     }
 
@@ -738,10 +782,10 @@ const Certifications = () => {
         await fetchMappedCertificates(mappingFormAssetType);
       }
 
-      toast.success(t("certifications.certificatesMappedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATESMAPPEDSUCCESSFULLY_2912338F', fallbackText: "Certificates mapped successfully", type: 'success' });
     } catch (error) {
       console.error("❌ Failed to map certificates:", error);
-      toast.error(error.response?.data?.message || t("certifications.failedToMapCertificates"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOMAPCERTIFICATES_2C5AF44D', fallbackText: error.response?.data?.message || t("certifications.failedToMapCertificates"), type: 'error' });
     } finally {
       setIsSaving(false);
       setShowMappingForm(false);
@@ -800,17 +844,17 @@ const Certifications = () => {
 
   const handleUnmapSelected = async () => {
     if (!selectedAssetType) {
-      toast.error(t("certifications.pleaseSelectAssetType"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTASSETTYPE_149CC9F5', fallbackText: "Please select an asset type", type: 'error' });
       return;
     }
 
     if (!selectedMaintType) {
-      toast.error(t("certifications.pleaseSelectMaintenanceType"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTMAINTENANCETYPE_02D5DFEE', fallbackText: "Please select a maintenance type", type: 'error' });
       return;
     }
 
     if (selectedMappedRows.length === 0) {
-      toast.error(t("certifications.pleaseSelectAtLeastOneToUnmap"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTATLEASTONETOUNMAP_032D7187', fallbackText: "Please select at least one certificate to unmap", type: 'error' });
       return;
     }
 
@@ -833,10 +877,10 @@ const Certifications = () => {
       // Refetch the mapped certificates from backend to ensure persistence
       await fetchMappedCertificates(selectedAssetType);
       setSelectedMappedRows([]);
-      toast.success(t("certifications.certificatesUnmappedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATESUNMAPPEDSUCCESSFULLY_6B678358', fallbackText: "Certificates unmapped successfully", type: 'success' });
     } catch (error) {
       console.error("Failed to unmap selected certificates:", error);
-      toast.error(error.response?.data?.message || t("certifications.failedToUnmapCertificates"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOUNMAPCERTIFICATES_2EA7E194', fallbackText: error.response?.data?.message || t("certifications.failedToUnmapCertificates"), type: 'error' });
     } finally {
       setIsSaving(false);
       setShowDeleteModal(false);
@@ -846,12 +890,12 @@ const Certifications = () => {
 
   const handleSaveInspectionCertificates = async () => {
     if (!selectedInspectionAssetType) {
-      toast.error(t("certifications.pleaseSelectAssetType"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTASSETTYPE_149CC9F5', fallbackText: "Please select an asset type", type: 'error' });
       return;
     }
 
     if (selectedCertificatesForInspection.length === 0) {
-      toast.error(t("certifications.pleaseSelectAtLeastOneCertificateForInspection"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTATLEASTONECERTIFICAT_04DE852B', fallbackText: "Please select at least one certificate for inspection", type: 'error' });
       return;
     }
 
@@ -892,15 +936,15 @@ const Certifications = () => {
 
       // Refetch inspection certificates from backend to ensure persistence
       await fetchInspectionCertificates();
-      toast.success(t("certifications.inspectionCertificatesAddedSuccessfully"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_INSPECTIONCERTIFICATESADDEDSUCCE_3CD59E3E', fallbackText: "Inspection certificates added successfully", type: 'success' });
     } catch (error) {
       console.error("Failed to add inspection certificates:", error);
       
       // Check if the error is about the database table not existing
       if (error.response?.data?.error && error.response.data.error.includes('tblATInspCert')) {
-        toast.error(t("certifications.databaseSetupRequiredInspection"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_DATABASESETUPREQUIREDINSPECTION_6DED59BC', fallbackText: "Database setup required for inspection certificate mapping", type: 'error' });
       } else {
-        toast.error(error.response?.data?.message || t("certifications.failedToAddInspectionCertificates"));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOADDINSPECTIONCERTIFICATES_3B55DFF1', fallbackText: error.response?.data?.message || t("certifications.failedToAddInspectionCertificates"), type: 'error' });
       }
     } finally {
       setIsSaving(false);
@@ -916,7 +960,7 @@ const Certifications = () => {
 
   const handleDeleteInspectionCertificates = () => {
     if (selectedInspectionRows.length === 0) {
-      toast.error(t("certifications.pleaseSelectCertificatesToRemove"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_PLEASESELECTCERTIFICATESTOREMOVE_32CD2DA6', fallbackText: "Please select certificates to remove", type: 'error' });
       return;
     }
     setDeleteType('inspection');
@@ -929,10 +973,10 @@ const Certifications = () => {
       await Promise.all(selectedInspectionRows.map(id => API.delete(`/asset-types/inspection-certificates/${id}`)));
       await fetchInspectionCertificates();
       setSelectedInspectionRows([]);
-      toast.success(t("certifications.inspectionCertificatesRemoved"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_INSPECTIONCERTIFICATESREMOVED_3D242097', fallbackText: "Inspection certificates removed successfully", type: 'success' });
     } catch (error) {
       console.error("Failed to remove inspection certificates:", error);
-      toast.error("Failed to remove some certificates");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_REMOVE_SOME_CERTIFICATES_17253272', fallbackText: 'Failed to remove some certificates', type: 'error' });
     } finally {
       setIsSaving(false);
       setShowDeleteModal(false);
@@ -978,8 +1022,14 @@ const Certifications = () => {
     selectableCertificateIds.every((id) => selectedCertificateRows.includes(id));
 
   const filteredMappedCertificates = useMemo(() => {
-    return filterData(mappedCertificates, { columnFilters: mappingColumnFilters }, []);
-  }, [mappedCertificates, mappingColumnFilters]);
+    let rows = mappedCertificates;
+    if (selectedMaintType) {
+      rows = rows.filter(
+        (cert) => String(cert.maint_type_id) === String(selectedMaintType)
+      );
+    }
+    return filterData(rows, { columnFilters: mappingColumnFilters }, []);
+  }, [mappedCertificates, mappingColumnFilters, selectedMaintType]);
 
   const selectableMappedIds = useMemo(() => {
     return filteredMappedCertificates
@@ -1223,7 +1273,7 @@ const Certifications = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {isLoading ? (
+                  {isLoading && certificates.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-4 py-4 text-center text-gray-500">Loading certificates...</td>
                     </tr>
@@ -1328,6 +1378,45 @@ const Certifications = () => {
                 )}
               </div>
             </div>
+
+            {!showMappingForm && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.assetType")}</label>
+                  <select
+                    value={selectedAssetType}
+                    onChange={(e) => {
+                      setSelectedAssetType(e.target.value);
+                      setSelectedMaintType("");
+                    }}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40"
+                  >
+                    <option value="">{t("certifications.selectAssetType")}</option>
+                    {assetTypes.map((type) => (
+                      <option key={type.asset_type_id} value={type.asset_type_id}>
+                        {type.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("certifications.maintenanceType")}</label>
+                  <select
+                    value={selectedMaintType}
+                    onChange={(e) => setSelectedMaintType(e.target.value)}
+                    disabled={!selectedAssetType || filteredMaintTypes.length === 0}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/40 disabled:bg-gray-100 disabled:text-gray-500"
+                  >
+                    <option value="">Select maintenance type</option>
+                    {filteredMaintTypes.map((type) => (
+                      <option key={type.maint_type_id} value={type.maint_type_id}>
+                        {type.text}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             {mappingFilterOpen && (
               <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
@@ -1807,7 +1896,7 @@ const Certifications = () => {
                       >
                         <span className={selectedInspectionAssetType ? 'text-gray-900' : 'text-gray-500'}>
                           {selectedInspectionAssetType ? 
-                            (assetTypes.find(t => t.asset_type_id === selectedInspectionAssetType)?.text || selectedInspectionAssetType) 
+                            (inspectionAssetTypes.find(t => t.asset_type_id === selectedInspectionAssetType)?.text || selectedInspectionAssetType) 
                             : t("certifications.selectAssetType")}
                         </span>
                         <ChevronDown size={16} className="text-gray-400" />
@@ -1829,7 +1918,7 @@ const Certifications = () => {
                             </div>
                           </div>
                           <div className="max-h-48 overflow-y-auto">
-                            {assetTypes
+                            {inspectionAssetTypes
                               .filter(type => 
                                 type.text?.toLowerCase().includes(dropdownSearchTerm.toLowerCase()) ||
                                 type.asset_type_id?.toLowerCase().includes(dropdownSearchTerm.toLowerCase())
@@ -2068,7 +2157,7 @@ const Certifications = () => {
                                     onChange={e => {
                                       const f = e.target.files?.[0] || null;
                                       if (f && f.size > 15 * 1024 * 1024) {
-                                        toast.error("File size exceeds 15MB limit");
+                                        showBackendTextToast({ toast, tmdId: 'TMD_FILE_SIZE_EXCEEDS_15MB_LIMIT_5CCBDF10', fallbackText: 'File size exceeds 15MB limit', type: 'error' });
                                         e.target.value = '';
                                         return;
                                       }

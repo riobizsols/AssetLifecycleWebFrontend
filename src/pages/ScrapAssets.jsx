@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { showBackendTextToast } from '../utils/errorTranslation';
+import React, { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
-import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import { TrendingUp, AlertTriangle, XCircle, BarChart3, PieChart, Plus } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigation } from '../hooks/useNavigation';
+import { useScrapAssetsStore } from '../store/useScrapAssetsStore';
+import { useRevalidateOnFocus } from '../hooks/useRevalidateOnFocus';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -17,205 +18,43 @@ import {
 
 const ScrapAssets = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   const { t } = useLanguage();
   
   // Get navigation permissions
   const { getAccessLevel } = useNavigation();
   const accessLevel = getAccessLevel('SCRAPASSETS');
   const isReadOnly = accessLevel === 'D';
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalAssets: 0,
-    nearingExpiry: 0,
-    expired: 0
-  });
+  const stats = useScrapAssetsStore((s) => s.stats);
+  const expiringByCategory = useScrapAssetsStore((s) => s.expiringByCategory);
+  const loading = useScrapAssetsStore((s) => s.loading);
+  const fetchSummary = useScrapAssetsStore((s) => s.fetchSummary);
 
-  const [chartData, setChartData] = useState({
-    expiryDistribution: [
-      { name: t('scrapAssets.active'), value: 0, color: '#10B981' },
-      { name: t('scrapAssets.nearingExpiry'), value: 0, color: '#F59E0B' },
-      { name: t('scrapAssets.expired'), value: 0, color: '#EF4444' }
-    ],
-    expiringByCategory: []
-  });
-
-  // Fetch total assets count from API
-  const fetchTotalAssetsCount = async () => {
-    try {
-      console.log('🔍 Fetching total assets count...');
-      const response = await API.get('/assets/count', {
-        params: { context: 'SCRAPASSETS' }
-      });
-      console.log('📊 API Response:', response.data);
-      
-      if (response.data && response.data.success) {
-        console.log('✅ Total assets count:', response.data.count);
-        return response.data.count;
-      }
-      console.log('⚠️ API response format unexpected:', response.data);
-      return 0;
-    } catch (error) {
-      console.error('❌ Error fetching total assets count:', error);
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-      }
-      toast.error(t('scrapAssets.failedToFetchTotalAssetsCount'));
-      return 0;
-    }
-  };
-
-  // Fetch nearing expiry count from API
-  const fetchNearingExpiryCount = async () => {
-    try {
-      console.log('🔍 Fetching nearing expiry count...');
-      const response = await API.get('/assets/expiry/expiring_soon?days=30', {
-        params: { context: 'SCRAPASSETS' }
-      });
-      console.log('📊 Nearing Expiry API Response:', response.data);
-      
-      if (response.data && response.data.count !== undefined) {
-        console.log('✅ Nearing expiry count:', response.data.count);
-        return response.data.count;
-      }
-      console.log('⚠️ Nearing expiry API response format unexpected:', response.data);
-      return 0;
-    } catch (error) {
-      console.error('❌ Error fetching nearing expiry count:', error);
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-      }
-      toast.error(t('scrapAssets.failedToFetchNearingExpiryCount'));
-      return 0;
-    }
-  };
-
-  // Fetch expired assets count from API
-  const fetchExpiredCount = async () => {
-    try {
-      console.log('🔍 Fetching expired assets count...');
-      const response = await API.get('/assets/expiry/expired', {
-        params: { context: 'SCRAPASSETS' }
-      });
-      console.log('📊 Expired Assets API Response:', response.data);
-      
-      if (response.data && response.data.count !== undefined) {
-        console.log('✅ Expired assets count:', response.data.count);
-        return response.data.count;
-      }
-      console.log('⚠️ Expired assets API response format unexpected:', response.data);
-      return 0;
-    } catch (error) {
-      console.error('❌ Error fetching expired assets count:', error);
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-      }
-      toast.error(t('scrapAssets.failedToFetchExpiredAssetsCount'));
-      return 0;
-    }
-  };
-
-  // Fetch assets expiring within 30 days by type from API
-  const fetchExpiringByCategory = async () => {
-    try {
-      console.log('🔍 Fetching assets expiring by category...');
-      const response = await API.get('/assets/expiring-30-days-by-type', {
-        params: { context: 'SCRAPASSETS' }
-      });
-      console.log('📊 Expiring by Category API Response:', response.data);
-      
-      if (response.data && response.data.asset_types) {
-        console.log('✅ Expiring by category data:', response.data.asset_types);
-        return response.data.asset_types.map(type => ({
-          category: type.asset_type_name,
-          count: parseInt(type.asset_count),
-          asset_type_id: type.asset_type_id
-        }));
-      }
-      console.log('⚠️ Expiring by category API response format unexpected:', response.data);
-      return [];
-    } catch (error) {
-      console.error('❌ Error fetching expiring by category:', error);
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-      }
-      toast.error(t('scrapAssets.failedToFetchExpiringAssetsData'));
-      return [];
-    }
-  };
+  const chartData = useMemo(() => {
+    const activeValue = Math.max(0, stats.totalAssets - stats.nearingExpiry - stats.expired);
+    return {
+      expiryDistribution: [
+        { name: t('scrapAssets.active'), value: activeValue, color: '#10B981' },
+        { name: t('scrapAssets.nearingExpiry'), value: stats.nearingExpiry, color: '#F59E0B' },
+        { name: t('scrapAssets.expired'), value: stats.expired, color: '#EF4444' },
+      ].filter((item) => item.value > 0),
+      expiringByCategory,
+    };
+  }, [stats, expiringByCategory, t]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        console.log('🚀 Starting to fetch data...');
-        setLoading(true);
-        
-        // Fetch real total assets count
-        const totalAssetsCount = await fetchTotalAssetsCount();
-        console.log('📈 Fetched total assets count:', totalAssetsCount);
-        
-        // Fetch real nearing expiry count
-        const nearingExpiryCount = await fetchNearingExpiryCount();
-        console.log('📈 Fetched nearing expiry count:', nearingExpiryCount);
-        
-        // Fetch real expired assets count
-        const expiredCount = await fetchExpiredCount();
-        console.log('📈 Fetched expired assets count:', expiredCount);
-        
-        // Fetch real expiring by category data
-        const expiringByCategoryData = await fetchExpiringByCategory();
-        console.log('📈 Fetched expiring by category data:', expiringByCategoryData);
-        
-        // Update stats with real data
-        const updatedStats = {
-          totalAssets: totalAssetsCount,
-          nearingExpiry: nearingExpiryCount,
-          expired: expiredCount
-        };
-        
-        console.log('📊 Updated stats:', updatedStats);
-        setStats(updatedStats);
+    fetchSummary({ revalidate: true }).catch(() => {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_SCRAPASSETS_FAILEDTOFETCHTOTALASSETSCOUNT_47E47B74',
+        fallbackText: t('scrapAssets.failedToFetchTotalAssetsCount'),
+        type: 'error',
+      });
+    });
+  }, [fetchSummary, t]);
 
-        // Update chart data with real counts
-        // Filter out categories with 0 value
-        const activeValue = Math.max(0, totalAssetsCount - nearingExpiryCount - expiredCount);
-        const expiryDistributionData = [
-          { name: t('scrapAssets.active'), value: activeValue, color: '#10B981' },
-          { name: t('scrapAssets.nearingExpiry'), value: nearingExpiryCount, color: '#F59E0B' },
-          { name: t('scrapAssets.expired'), value: expiredCount, color: '#EF4444' }
-        ].filter(item => item.value > 0); // Filter out 0% values
-        
-        const updatedChartData = {
-          expiryDistribution: expiryDistributionData,
-          expiringByCategory: expiringByCategoryData
-        };
-        
-        console.log('📊 Updated chart data:', updatedChartData);
-        setChartData(updatedChartData);
-      } catch (error) {
-        console.error('❌ Error in fetchData:', error);
-        // Fallback to empty data if API fails
-        setStats({ totalAssets: 0, nearingExpiry: 0, expired: 0 });
-        setChartData({
-          expiryDistribution: [
-            { name: t('scrapAssets.active'), value: 0, color: '#10B981' },
-            { name: t('scrapAssets.nearingExpiry'), value: 0, color: '#F59E0B' },
-            { name: t('scrapAssets.expired'), value: 0, color: '#EF4444' }
-          ],
-          expiringByCategory: []
-        });
-      } finally {
-        setLoading(false);
-        console.log('✅ Data fetching completed');
-      }
-    };
-
-    fetchData();
-  }, [t]);
+  useRevalidateOnFocus(() => {
+    fetchSummary({ revalidate: true });
+  });
 
   const handleCardClick = (type) => {
     switch (type) {
