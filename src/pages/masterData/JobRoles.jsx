@@ -206,13 +206,19 @@ const JobRoles = () => {
         toast.success("Job role updated successfully");
       } else {
         // For create, don't send job_role_id (backend will generate)
-        await API.post("/job-roles", {
+        const response = await API.post("/job-roles", {
           text: roleFormData.text,
           job_function: roleFormData.job_function,
           notif_warranty: !!roleFormData.notif_warranty,
           notif_scrap: !!roleFormData.notif_scrap
         });
         toast.success("Job role created successfully");
+        if (response.data?.role) {
+          setRolesData((prev) => {
+            const exists = prev.some((r) => r.job_role_id === response.data.role.job_role_id);
+            return exists ? prev : [response.data.role, ...prev];
+          });
+        }
       }
 
       setShowRoleModal(false);
@@ -228,6 +234,25 @@ const JobRoles = () => {
       ...prev,
       [filterType]: value
     }));
+  };
+
+  const handleDeleteRoles = async () => {
+    if (selectedRoleRows.length === 0) return false;
+    const count = selectedRoleRows.length;
+    const ids = [...selectedRoleRows];
+    try {
+      await API.delete("/job-roles", { data: { ids } });
+      setRolesData((prev) =>
+        prev.filter((role) => !ids.includes(role.job_role_id))
+      );
+      setSelectedRoleRows([]);
+      toast.success(`${count} job role(s) deleted`);
+      return true;
+    } catch (error) {
+      console.error("Error deleting job roles:", error);
+      toast.error(error.response?.data?.message || "Failed to delete job roles");
+      return false;
+    }
   };
 
   // ============ NAVIGATION TAB HANDLERS ============
@@ -278,6 +303,25 @@ const JobRoles = () => {
     }));
   };
 
+  const handleDeleteNav = async () => {
+    if (selectedNavRows.length === 0) return false;
+    const count = selectedNavRows.length;
+    const ids = [...selectedNavRows];
+    try {
+      await API.delete("/job-role-navigation", { data: { ids } });
+      setNavData((prev) =>
+        prev.filter((nav) => !ids.includes(nav.job_role_nav_id))
+      );
+      setSelectedNavRows([]);
+      toast.success(`${count} navigation entry(ies) deleted`);
+      return true;
+    } catch (error) {
+      console.error("Error deleting navigation entries:", error);
+      toast.error(error.response?.data?.message || "Failed to delete navigation entries");
+      return false;
+    }
+  };
+
   // ============ RENDER ============
 
   return (
@@ -315,7 +359,7 @@ const JobRoles = () => {
         <ContentBox
           filters={roleFilters}
           onFilterChange={handleRoleFilterChange}
-          onDeleteSelected={null}
+          onDeleteSelected={canEdit ? handleDeleteRoles : null}
           data={rolesData}
           selectedRows={selectedRoleRows}
           setSelectedRows={setSelectedRoleRows}
@@ -374,7 +418,7 @@ const JobRoles = () => {
         <ContentBox
           filters={navFilters}
           onFilterChange={handleNavFilterChange}
-          onDeleteSelected={null}
+          onDeleteSelected={canEdit ? handleDeleteNav : null}
           data={navData}
           selectedRows={selectedNavRows}
           setSelectedRows={setSelectedNavRows}

@@ -89,6 +89,14 @@ const CreateUser = () => {
       toast.error("Branch is required");
       return;
     }
+    if (!form.employee_type) {
+      toast.error("Employment type is required");
+      return;
+    }
+    if (!form.joining_date) {
+      toast.error("Joining date is required");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -295,13 +303,15 @@ const CreateUser = () => {
 
           <div>
             <label className="block text-sm mb-1 font-medium">
-              Employment Type
+              Employment Type <span className="text-red-500">*</span>
             </label>
             <select
               name="employee_type"
               value={form.employee_type}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
+              className={`w-full px-3 py-2 border text-sm bg-white ${
+                isFieldInvalid(form.employee_type) ? 'border-red-500' : 'border-gray-300'
+              }`}
             >
               <option value="">Select Employment Type</option>
               <option value="Full-time">Full-time</option>
@@ -315,14 +325,16 @@ const CreateUser = () => {
 
           <div>
             <label className="block text-sm mb-1 font-medium">
-              Joining Date
+              Joining Date <span className="text-red-500">*</span>
             </label>
             <input
               name="joining_date"
               type="date"
               value={form.joining_date}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
+              className={`w-full px-3 py-2 border text-sm bg-white ${
+                isFieldInvalid(form.joining_date) ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
           </div>
 
