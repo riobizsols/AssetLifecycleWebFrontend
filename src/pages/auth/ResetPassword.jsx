@@ -92,19 +92,22 @@ const ResetPassword = () => {
             </label>
             <div className="relative mb-4">
               <input
-                type={showNew ? "text" : "password"}
+                type="password"
                 placeholder="Enter New Password"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className={`app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400${showNew ? " app-password-input--visible" : ""}`}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
               />
-              <span
-                className="absolute right-3 top-2.5 cursor-pointer"
+              <button
+                type="button"
+                tabIndex={-1}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 cursor-pointer z-10"
                 onClick={() => setShowNew(!showNew)}
+                aria-label={showNew ? "Hide password" : "Show password"}
               >
                 {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
-              </span>
+              </button>
             </div>
 
             <label className="block text-sm font-medium mb-1">
@@ -112,19 +115,22 @@ const ResetPassword = () => {
             </label>
             <div className="relative mb-4">
               <input
-                type={showConfirm ? "text" : "password"}
+                type="password"
                 placeholder="Re-enter New Password"
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className={`app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400${showConfirm ? " app-password-input--visible" : ""}`}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
-              <span
-                className="absolute right-3 top-2.5 cursor-pointer"
+              <button
+                type="button"
+                tabIndex={-1}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 cursor-pointer z-10"
                 onClick={() => setShowConfirm(!showConfirm)}
+                aria-label={showConfirm ? "Hide password" : "Show password"}
               >
                 {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-              </span>
+              </button>
             </div>
 
             <button

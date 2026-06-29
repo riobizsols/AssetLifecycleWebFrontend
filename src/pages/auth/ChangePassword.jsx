@@ -6,6 +6,9 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
 
+const passwordInputClass =
+  "app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400";
+
 const ChangePassword = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -135,20 +138,23 @@ const ChangePassword = () => {
               </label>
               <div className="relative">
                 <input
-                  type={showCurrent ? "text" : "password"}
+                  type="password"
                   name="currentPassword"
                   placeholder="Enter Current Password"
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className={`${passwordInputClass}${showCurrent ? " app-password-input--visible" : ""}`}
                   value={form.currentPassword}
                   onChange={handleChange}
                   required
                 />
-                <span
-                  className="absolute right-3 top-2.5 cursor-pointer"
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 cursor-pointer z-10"
                   onClick={() => setShowCurrent(!showCurrent)}
+                  aria-label={showCurrent ? "Hide password" : "Show password"}
                 >
                   {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
-                </span>
+                </button>
               </div>
             </div>
 
@@ -158,20 +164,23 @@ const ChangePassword = () => {
               </label>
               <div className="relative">
                 <input
-                  type={showNew ? "text" : "password"}
+                  type="password"
                   name="newPassword"
                   placeholder="Enter New Password"
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className={`${passwordInputClass}${showNew ? " app-password-input--visible" : ""}`}
                   value={form.newPassword}
                   onChange={handleChange}
                   required
                 />
-                <span
-                  className="absolute right-3 top-2.5 cursor-pointer"
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 cursor-pointer z-10"
                   onClick={() => setShowNew(!showNew)}
+                  aria-label={showNew ? "Hide password" : "Show password"}
                 >
                   {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
-                </span>
+                </button>
               </div>
             </div>
 
@@ -181,20 +190,23 @@ const ChangePassword = () => {
               </label>
               <div className="relative">
                 <input
-                  type={showConfirm ? "text" : "password"}
+                  type="password"
                   name="confirmPassword"
                   placeholder="Re-enter New Password"
-                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className={`${passwordInputClass}${showConfirm ? " app-password-input--visible" : ""}`}
                   value={form.confirmPassword}
                   onChange={handleChange}
                   required
                 />
-                <span
-                  className="absolute right-3 top-2.5 cursor-pointer"
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 cursor-pointer z-10"
                   onClick={() => setShowConfirm(!showConfirm)}
+                  aria-label={showConfirm ? "Hide password" : "Show password"}
                 >
                   {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-                </span>
+                </button>
               </div>
             </div>
 
