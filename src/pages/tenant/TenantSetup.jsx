@@ -25,6 +25,18 @@ const isValidPhone = (phone) => {
   return digitCount >= 10 && digitCount <= 15;
 };
 
+const resolveTenantSubdomainUrl = (url, subdomain) => {
+  if (typeof window !== "undefined" && window.location.port) {
+    if (url?.includes(".localhost")) {
+      return url.replace(/\.localhost:\d+/, `.localhost:${window.location.port}`);
+    }
+    if (subdomain) {
+      return `http://${subdomain}.localhost:${window.location.port}`;
+    }
+  }
+  return url;
+};
+
 export default function TenantSetup() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
@@ -49,6 +61,41 @@ export default function TenantSetup() {
     phone: "",
   });
   const [createdTenant, setCreatedTenant] = useState(null);
+  const [redirectScheduled, setRedirectScheduled] = useState(false);
+
+  const goToTenantLogin = (tenantData) => {
+    const subdomainUrl = resolveTenantSubdomainUrl(
+      tenantData?.subdomainUrl,
+      tenantData?.subdomain || form.subdomain.toLowerCase(),
+    );
+
+    if (subdomainUrl) {
+      window.location.href = subdomainUrl;
+      return;
+    }
+
+    navigate("/", {
+      state: {
+        message: "Tenant is ready. Please login with your credentials.",
+        orgId: tenantData?.orgId || form.orgId.toUpperCase(),
+        email: tenantData?.adminCredentials?.email || adminUser.email,
+      },
+    });
+  };
+
+  const completeTenantSetup = (tenantData, { alreadyExists = false } = {}) => {
+    setCreatedTenant(tenantData);
+    toast.success(
+      alreadyExists
+        ? "This tenant is already set up. Taking you to login..."
+        : "Tenant created successfully!",
+    );
+
+    if (!redirectScheduled) {
+      setRedirectScheduled(true);
+      setTimeout(() => goToTenantLogin(tenantData), 3000);
+    }
+  };
 
   const steps = [
     {
@@ -217,7 +264,6 @@ export default function TenantSetup() {
     }
 
     setLoading(true);
-    setCreatedTenant(null);
 
     try {
       const payload = {
@@ -238,32 +284,44 @@ export default function TenantSetup() {
         timeout: 900000,
       });
 
-      if (response.data.success) {
-        toast.success("Tenant created successfully!");
-        setCreatedTenant(response.data.data);
-        
-        // Redirect to subdomain URL after 5 seconds (give user time to see credentials)
-        setTimeout(() => {
-          const subdomainUrl = response.data.data.subdomainUrl;
-          if (subdomainUrl) {
-            // Navigate to the subdomain URL
-            window.location.href = subdomainUrl;
-          } else {
-            // Fallback: navigate to login page if subdomain URL not available
-            navigate("/", { 
-              state: { 
-                message: "Tenant created successfully! Please login with your credentials.",
-                orgId: response.data.data.orgId,
-                email: response.data.data.adminCredentials?.email
-              } 
-            });
-          }
-        }, 5000);
+      const tenantData = response.data?.data;
+      if (response.data?.success && tenantData?.orgId) {
+        completeTenantSetup(tenantData, { alreadyExists: !!tenantData.alreadyExists });
+        return;
       }
+
+      toast.error(response.data?.message || "Tenant creation did not complete. Please try again.");
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to create tenant. Please try again."
-      );
+      const message = error.response?.data?.message || "Failed to create tenant. Please try again.";
+      const looksLikeExistingTenant =
+        /already exists|already taken/i.test(message) &&
+        form.orgId &&
+        form.subdomain;
+
+      if (looksLikeExistingTenant) {
+        completeTenantSetup(
+          {
+            orgId: form.orgId.toUpperCase(),
+            orgName: form.orgName,
+            orgCity: form.orgCity,
+            subdomain: form.subdomain.toLowerCase(),
+            subdomainUrl: resolveTenantSubdomainUrl(
+              null,
+              form.subdomain.toLowerCase(),
+            ),
+            database: `${form.subdomain.toLowerCase()}_db`,
+            alreadyExists: true,
+            adminCredentials: {
+              email: adminUser.email,
+              password: adminUser.password,
+            },
+          },
+          { alreadyExists: true },
+        );
+        return;
+      }
+
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -695,7 +753,9 @@ export default function TenantSetup() {
                       <CheckCircle2 className="h-6 w-6 text-green-600 mt-0.5" />
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-green-900 mb-3">
-                          Tenant Created Successfully! 🎉
+                          {createdTenant.alreadyExists
+                            ? "Tenant Already Set Up"
+                            : "Tenant Created Successfully! 🎉"}
                         </h3>
                         <div className="space-y-3 text-sm text-green-800">
                           <div className="bg-white rounded-lg p-4 border border-green-200">
@@ -723,10 +783,17 @@ export default function TenantSetup() {
                                 </a>
                               </p>
                               <p className="text-xs text-blue-700 mt-2">
-                                You will be redirected to this URL in a few seconds. Use your email and password to login.
+                                Redirecting in a few seconds. You can also continue now with the button below.
                               </p>
                             </div>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => goToTenantLogin(createdTenant)}
+                            className="mt-4 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
+                          >
+                            Go to login now
+                          </button>
                           <p>
                             <strong>Database:</strong> {createdTenant.database}
                           </p>
