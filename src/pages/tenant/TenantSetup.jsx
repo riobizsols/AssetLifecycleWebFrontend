@@ -13,28 +13,16 @@ import {
   X
 } from "lucide-react";
 
-const INDIAN_PHONE_REGEX = /^\+91 9\d{4} 8\d{4}$/;
+const sanitizePhoneInput = (raw) => raw.replace(/[^\d+\s\-().]/g, "");
 
-const formatIndianPhoneInput = (raw) => {
-  let digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("91")) {
-    digits = digits.slice(2);
-  }
-  digits = digits.slice(0, 10);
-  if (!digits) return "";
+const isValidPhone = (phone) => {
+  const trimmed = phone.trim();
+  if (!trimmed) return true;
 
-  if (digits[0] !== "9") {
-    return "";
-  }
+  if (!/^[+]?[\d\s\-().]+$/.test(trimmed)) return false;
 
-  if (digits.length > 5 && digits[5] !== "8") {
-    digits = digits.slice(0, 5);
-  }
-
-  if (digits.length <= 5) {
-    return `+91 ${digits}`;
-  }
-  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  const digitCount = trimmed.replace(/\D/g, "").length;
+  return digitCount >= 10 && digitCount <= 15;
 };
 
 export default function TenantSetup() {
@@ -163,7 +151,7 @@ export default function TenantSetup() {
 
   const handleAdminChange = (e) => {
     const { name, value } = e.target;
-    const newValue = name === "phone" ? formatIndianPhoneInput(value) : value;
+    const newValue = name === "phone" ? sanitizePhoneInput(value) : value;
     setAdminUser((prev) => ({
       ...prev,
       [name]: newValue,
@@ -207,8 +195,8 @@ export default function TenantSetup() {
         toast.error("Admin email is required");
         return;
       }
-      if (adminUser.phone.trim() && !INDIAN_PHONE_REGEX.test(adminUser.phone.trim())) {
-        toast.error("Phone must be in format +91 9XXXX 8XXXX (e.g., +91 98765 81234)");
+      if (adminUser.phone.trim() && !isValidPhone(adminUser.phone)) {
+        toast.error("Please enter a valid phone number (10–15 digits, optional country code)");
         return;
       }
       // Password is fixed as \"Initial1\" and not editable,
@@ -223,8 +211,8 @@ export default function TenantSetup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (adminUser.phone.trim() && !INDIAN_PHONE_REGEX.test(adminUser.phone.trim())) {
-      toast.error("Phone must be in format +91 9XXXX 8XXXX (e.g., +91 98765 81234)");
+    if (adminUser.phone.trim() && !isValidPhone(adminUser.phone)) {
+      toast.error("Please enter a valid phone number (10–15 digits, optional country code)");
       return;
     }
 
@@ -579,15 +567,13 @@ export default function TenantSetup() {
                         name="phone"
                         value={adminUser.phone}
                         onChange={handleAdminChange}
-                        inputMode="numeric"
+                        inputMode="tel"
                         autoComplete="tel"
-                        placeholder="+91 98765 81234"
-                        pattern="\+91 9\d{4} 8\d{4}"
-                        title="+91 9XXXX 8XXXX"
+                        placeholder="+1 234 567 8900"
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                       <p className="mt-1 text-xs text-gray-500">
-                        Format: +91 9XXXX 8XXXX (digits only)
+                        Optional. Use 10–15 digits; country code and spaces are allowed.
                       </p>
                     </div>
                   </div>
