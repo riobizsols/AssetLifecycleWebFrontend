@@ -178,7 +178,7 @@ const SearchableDropdown = ({
                   setSearchTerm("");
                   if (onCreateNew) {
                     onCreateNew();
-                  } else if (createNewPath) {
+                  } else {
                     navigate(createNewPath);
                   }
                 }}

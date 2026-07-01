@@ -7,7 +7,7 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
 
 const passwordInputClass =
-  "w-full px-4 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden";
+  "app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden";
 
 const ChangePassword = () => {
   const navigate = useNavigate();
@@ -138,10 +138,10 @@ const ChangePassword = () => {
               </label>
               <div className="relative">
                 <input
-                  type={showCurrent ? "text" : "password"}
+                  type="password"
                   name="currentPassword"
                   placeholder="Enter Current Password"
-                  className={passwordInputClass}
+                  className={`${passwordInputClass}${showCurrent ? " app-password-input--visible" : ""}`}
                   value={form.currentPassword}
                   onChange={handleChange}
                   required
@@ -164,10 +164,10 @@ const ChangePassword = () => {
               </label>
               <div className="relative">
                 <input
-                  type={showNew ? "text" : "password"}
+                  type="password"
                   name="newPassword"
                   placeholder="Enter New Password"
-                  className={passwordInputClass}
+                  className={`${passwordInputClass}${showNew ? " app-password-input--visible" : ""}`}
                   value={form.newPassword}
                   onChange={handleChange}
                   required
@@ -190,10 +190,10 @@ const ChangePassword = () => {
               </label>
               <div className="relative">
                 <input
-                  type={showConfirm ? "text" : "password"}
+                  type="password"
                   name="confirmPassword"
                   placeholder="Re-enter New Password"
-                  className={passwordInputClass}
+                  className={`${passwordInputClass}${showConfirm ? " app-password-input--visible" : ""}`}
                   value={form.confirmPassword}
                   onChange={handleChange}
                   required

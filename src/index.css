@@ -124,4 +124,39 @@
   body {
     @apply bg-background text-foreground;
     }
+
+  /* Hide browser-native password reveal so only our toggle icon shows */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+
+  input[type="password"]::-webkit-textfield-decoration-container {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+/* Password fields: hide native reveal/clear across browsers (keep type="password") */
+.app-password-input::-ms-reveal,
+.app-password-input::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.app-password-input::-webkit-textfield-decoration-container,
+.app-password-input::-webkit-credentials-auto-fill-button,
+.app-password-input::-webkit-strong-password-auto-fill-button {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+}
+
+.app-password-input--visible {
+  -webkit-text-security: none !important;
+  text-security: none !important;
 }
