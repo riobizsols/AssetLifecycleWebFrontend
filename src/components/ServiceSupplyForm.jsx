@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { showBackendTextToast } from '../utils/errorTranslation';
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Maximize, Minimize, Trash2 } from "lucide-react";
 import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
@@ -7,10 +9,18 @@ import SearchableDropdown from "./ui/SearchableDropdown";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 
-const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger, onTabSaved }) => {
+const ServiceSupplyForm = ({
+  vendorId,
+  orgId,
+  vendorSaved = false,
+  onSaveTrigger,
+  onTabSaved,
+  onPersistVendorDraft,
+}) => {
   // Debug logs
   console.log('ServiceSupplyForm render:', { vendorId, orgId });
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [assetTypes, setAssetTypes] = useState([]);
   const [services, setServices] = useState([]);
   const [form, setForm] = useState({ assetType: "", description: "" });
@@ -19,13 +29,64 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
   const [allServiceDescriptions, setAllServiceDescriptions] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
 
+  const refreshServiceDescriptions = useCallback(async () => {
+    try {
+      const res = await API.get('/prodserv');
+      const filtered = Array.isArray(res.data)
+        ? res.data.filter((p) => p.ps_type === 'service')
+        : [];
+      setAllServiceDescriptions(filtered);
+    } catch {
+      setAllServiceDescriptions([]);
+    }
+  }, []);
+
+  const goToProdServ = () => {
+    if (!form.assetType) return;
+    onPersistVendorDraft?.("Service Details");
+    sessionStorage.setItem(
+      'vendorServiceDraft',
+      JSON.stringify({ ...form, returnTab: 'Service Details' })
+    );
+    sessionStorage.setItem('vendorServiceReturnTab', 'Service Details');
+    const params = new URLSearchParams({
+      assetType: form.assetType,
+      tab: 'service',
+      focus: 'description',
+      returnTo: 'vendor-add',
+    });
+    navigate(`/master-data/prod-serv?${params.toString()}`);
+  };
+
+  const goToAddAssetType = () => {
+    onPersistVendorDraft?.("Service Details");
+    sessionStorage.setItem("vendorServiceReturnTab", "Service Details");
+    navigate("/master-data/asset-types/add");
+  };
+
   useEffect(() => {
     fetchAssetTypes();
     fetchAllServiceDescriptions();
-    // On mount, load services from sessionStorage
     const stored = sessionStorage.getItem('services');
     if (stored) setServices(JSON.parse(stored));
-  }, []);
+
+    const draft = sessionStorage.getItem('vendorServiceDraft');
+    if (!draft) return;
+    try {
+      const parsed = JSON.parse(draft);
+      if (parsed.assetType) {
+        setForm((prev) => ({
+          ...prev,
+          assetType: parsed.assetType,
+          description: parsed.description || prev.description,
+        }));
+      }
+      sessionStorage.removeItem('vendorServiceDraft');
+      refreshServiceDescriptions();
+    } catch {
+      sessionStorage.removeItem('vendorServiceDraft');
+    }
+  }, [refreshServiceDescriptions]);
 
   // Listen for save trigger from parent
   useEffect(() => {
@@ -43,7 +104,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     } catch (err) {
       console.error("Error fetching asset types:", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || "Failed to fetch asset types";
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOFETCHASSETTYPES_27D8A8FF', fallbackText: errorMessage, type: 'error' });
       setAssetTypes([]);
     }
   };
@@ -57,7 +118,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     } catch (err) {
       console.error("Error fetching service descriptions:", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || "Failed to fetch service descriptions";
-      toast.error(errorMessage);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOFETCHSERVICEDESCRIPTIONS_2C81B918', fallbackText: errorMessage, type: 'error' });
       setAllServiceDescriptions([]);
     }
   };
@@ -85,12 +146,12 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     // Validate required fields first
     if (!form.assetType) {
       setSubmitAttempted(true);
-      toast.error(t('vendors.pleaseSelectAnAssetType'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_PLEASESELECTANASSETTYPE_0D820118', fallbackText: t('vendors.pleaseSelectAnAssetType'), type: 'error' });
       return;
     }
     if (!form.description) {
       setSubmitAttempted(true);
-      toast.error(t('vendors.descriptionRequired'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_DESCRIPTIONREQUIRED_7714F5E4', fallbackText: t('vendors.descriptionRequired'), type: 'error' });
       return;
     }
 
@@ -99,7 +160,12 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       service => service.asset_type_id === form.assetType && service.description === form.description
     );
     if (isDuplicate) {
-      toast.error(t('vendors.serviceAlreadyAdded') || 'This service is already added');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_SERVICEALREADYADDED_18571D3E',
+        fallbackText: t('vendors.serviceAlreadyAdded') || 'This service is already added',
+        type: 'error',
+      });
       return;
     }
 
@@ -116,10 +182,15 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       sessionStorage.setItem('services', JSON.stringify(newServices));
       setForm({ assetType: '', description: '' });
       setSubmitAttempted(false); // Reset validation state after successful add
-      toast.success("Service added to list");
+      showBackendTextToast({ toast, tmdId: 'TMD_SERVICE_ADDED_TO_LIST_33DACDB8', fallbackText: 'Service added to list', type: 'success' });
     } catch (err) {
       console.error("Error adding service:", err);
-      toast.error(t('vendors.failedToAddService') || 'Failed to add service');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_FAILEDTOADDSERVICE_77B7DE0B',
+        fallbackText: t('vendors.failedToAddService') || 'Failed to add service',
+        type: 'error',
+      });
     }
   };
 
@@ -187,20 +258,30 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     try {
       // Check vendor dependency
       if (!vendorSaved) {
-        toast.error(t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving services.');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_PLEASESAVEVENDORFIRST_4D3BFE9E',
+          fallbackText: t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving services.',
+          type: 'error',
+        });
         return;
       }
       
       // Validate required data
       if (!vendorId || !orgId) {
-        toast.error(t('vendors.pleaseCreateVendorFirst'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_PLEASECREATEVENDORFIRST_47C50D3D', fallbackText: t('vendors.pleaseCreateVendorFirst'), type: 'error' });
         return;
       }
 
       setIsSaving(true);
 
       if (!services.length) {
-        toast.error(t('vendors.pleaseAddAtLeastOneService') || 'Please add at least one service');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_PLEASEADDATLEASTONESERVICE_73C766ED',
+          fallbackText: t('vendors.pleaseAddAtLeastOneService') || 'Please add at least one service',
+          type: 'error',
+        });
         return;
       }
 
@@ -213,12 +294,17 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
         }
       } catch (parseErr) {
         console.error('Error parsing services from sessionStorage:', parseErr);
-        toast.error(t('vendors.errorReadingServicesData') || 'Error reading services data');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_ERRORREADINGSERVICESDATA_5B342F15',
+          fallbackText: t('vendors.errorReadingServicesData') || 'Error reading services data',
+          type: 'error',
+        });
         return;
       }
 
       // Show loading toast
-      const loadingToast = toast.loading('Processing services...');
+      const loadingToast = showBackendTextToast({ toast, tmdId: 'TMD_PROCESSING_SERVICES_1EAEDFE3', fallbackText: 'Processing services...', type: 'loading' });
 
       // Process each service
       let prodServIds = [];
@@ -236,12 +322,12 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
           if (match?.prod_serv_id) {
             prodServIds.push(match.prod_serv_id);
           } else {
-            toast.error(t('vendors.serviceNotFound', { service: `${s.asset_type_text || s.asset_type_id} - ${s.description}` }) || `Service not found: ${s.asset_type_text || s.asset_type_id} - ${s.description}`);
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_SERVICENOTFOUND_37AA4B10', fallbackText: t('vendors.serviceNotFound', { service: `${s.asset_type_text || s.asset_type_id} - ${s.description}` }) || `Service not found: ${s.asset_type_text || s.asset_type_id} - ${s.description}`, type: 'error' });
           }
         } catch (apiErr) {
           console.error('Error fetching service:', apiErr);
           const errorMessage = apiErr.response?.data?.message || apiErr.response?.data?.error || "Error looking up service";
-          toast.error(errorMessage);
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORLOOKINGUPSERVICE_4CC6342E', fallbackText: errorMessage, type: 'error' });
           toast.dismiss(loadingToast);
           return;
         }
@@ -251,7 +337,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       prodServIds = [...new Set(prodServIds)];
 
       if (!prodServIds.length) {
-        toast.error(t('vendors.noValidServicesToLink') || 'No valid services to link');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_NOVALIDSERVICESTOLINK_183E4A9E', fallbackText: t('vendors.noValidServicesToLink') || 'No valid services to link', type: 'error' });
         toast.dismiss(loadingToast);
         return;
       }
@@ -275,7 +361,7 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             console.log('Service already linked to vendor:', prod_serv_id);
           } else {
             const errorMessage = postErr.response?.data?.message || postErr.response?.data?.error || "Error linking service";
-            toast.error(errorMessage);
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORLINKINGSERVICE_67A88E5A', fallbackText: errorMessage, type: 'error' });
           }
         }
       }
@@ -287,11 +373,23 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       const totalProcessed = successCount + duplicateCount;
       if (totalProcessed === prodServIds.length) {
         if (duplicateCount > 0 && successCount > 0) {
-          toast.success(`${successCount} services linked successfully, ${duplicateCount} were already linked`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_SERVICESLINKEDSUCCESSFULLYWITHDUP_3A4568A1',
+            fallbackText: '{{successCount}} services linked successfully, {{duplicateCount}} were already linked',
+            type: 'success',
+            values: { successCount, duplicateCount },
+          });
         } else if (duplicateCount > 0 && successCount === 0) {
-          toast.success(`All ${duplicateCount} services were already linked to this vendor`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_ALLSERVICESALREADYLINKED_4B5CE66A',
+            fallbackText: 'All {{duplicateCount}} services were already linked to this vendor',
+            type: 'success',
+            values: { duplicateCount },
+          });
         } else {
-          toast.success('All services linked successfully');
+          showBackendTextToast({ toast, tmdId: 'TMD_ALL_SERVICES_LINKED_SUCCESSFULLY_307E4035', fallbackText: 'All services linked successfully', type: 'success' });
         }
         // Clear form and storage
         setServices([]);
@@ -299,15 +397,21 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
         // Mark tab as saved
         if (onTabSaved) onTabSaved('Service Details');
       } else if (totalProcessed > 0) {
-        toast.success(`${totalProcessed} out of ${prodServIds.length} services processed successfully`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_SERVICESPROCESSEDSUCCESSFULLY_4265EE45',
+          fallbackText: '{{totalProcessed}} out of {{totalCount}} services processed successfully',
+          type: 'success',
+          values: { totalProcessed, totalCount: prodServIds.length },
+        });
         // Mark tab as saved even if partial success
         if (onTabSaved) onTabSaved('Service Details');
       } else {
-        toast.error(t('vendors.failedToLinkAnyServices') || 'Failed to link any services');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOLINKANYSERVICES_1AB086B5', fallbackText: t('vendors.failedToLinkAnyServices') || 'Failed to link any services', type: 'error' });
       }
     } catch (err) {
       console.error('Unexpected error:', err);
-      toast.error(t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred');
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_UNEXPECTEDERROROCCURRED_39B6A99A', fallbackText: t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred', type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -326,9 +430,9 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             value={form.assetType}
             onChange={(value) => handleChange({ target: { name: "assetType", value }})}
             placeholder={t('vendors.selectAssetType')}
-            searchPlaceholder="Search Asset Types..."
-            createNewText="Create New"
-            createNewPath="/master-data/asset-types"
+            searchPlaceholder={t('vendors.searchAssetTypes', { defaultValue: 'Search Asset Types...' })}
+            createNewText={t('vendors.addAssetType', { defaultValue: 'Add Asset Type' })}
+            onCreateNew={goToAddAssetType}
             className={`w-48 ${isFieldInvalid(form.assetType) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="asset_type_id"
@@ -343,8 +447,10 @@ const ServiceSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             value={form.description}
             onChange={(value) => handleChange({ target: { name: "description", value }})}
             placeholder={t('vendors.selectDescription')}
-            searchPlaceholder="Search Descriptions..."
+            searchPlaceholder={t('vendors.searchDescriptions', { defaultValue: 'Search Descriptions...' })}
             disabled={!form.assetType}
+            createNewText={t('vendors.addDescription', { defaultValue: 'Add Description' })}
+            onCreateNew={form.assetType ? goToProdServ : undefined}
             className={`w-80 ${isFieldInvalid(form.description) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="id"

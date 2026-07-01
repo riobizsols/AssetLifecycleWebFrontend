@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { showBackendTextToast } from '../utils/errorTranslation';
+import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Maximize, Minimize, Trash2 } from "lucide-react";
 import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
@@ -7,10 +9,18 @@ import SearchableDropdown from "./ui/SearchableDropdown";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
 
-const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger, onTabSaved }) => {
+const ProductSupplyForm = ({
+  vendorId,
+  orgId,
+  vendorSaved = false,
+  onSaveTrigger,
+  onTabSaved,
+  onPersistVendorDraft,
+}) => {
   // Debug logs
   console.log('ProductSupplyForm render:', { vendorId, orgId });
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [assetTypes, setAssetTypes] = useState([]);
   const [brands, setBrands] = useState([]);
   const [models, setModels] = useState([]);
@@ -63,6 +73,82 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     fetchAssetTypes();
   }, []);
 
+  const refreshBrands = useCallback(async (assetTypeId) => {
+    if (!assetTypeId) {
+      setBrands([]);
+      return;
+    }
+    try {
+      const res = await API.get(`/brands?assetTypeId=${assetTypeId}`);
+      setBrands(res.data);
+    } catch {
+      setBrands([]);
+    }
+  }, []);
+
+  const refreshModels = useCallback(async (assetTypeId, brand) => {
+    if (!assetTypeId || !brand) {
+      setModels([]);
+      return;
+    }
+    try {
+      const res = await API.get(
+        `/models?assetTypeId=${assetTypeId}&brand=${encodeURIComponent(brand)}`
+      );
+      setModels(res.data);
+    } catch {
+      setModels([]);
+    }
+  }, []);
+
+  const goToProdServ = (focus) => {
+    if (!form.assetType) return;
+    onPersistVendorDraft?.("Product Details");
+    sessionStorage.setItem(
+      'vendorProductDraft',
+      JSON.stringify({ ...form, returnTab: 'Product Details' })
+    );
+    sessionStorage.setItem('vendorProductReturnTab', 'Product Details');
+    const params = new URLSearchParams({
+      assetType: form.assetType,
+      focus,
+      returnTo: 'vendor-add',
+    });
+    if (focus === 'model' && form.brand) {
+      params.set('brand', form.brand);
+    }
+    navigate(`/master-data/prod-serv?${params.toString()}`);
+  };
+
+  const goToAddAssetType = () => {
+    onPersistVendorDraft?.("Product Details");
+    sessionStorage.setItem("vendorProductReturnTab", "Product Details");
+    navigate("/master-data/asset-types/add");
+  };
+
+  useEffect(() => {
+    const draft = sessionStorage.getItem('vendorProductDraft');
+    if (!draft) return;
+    try {
+      const parsed = JSON.parse(draft);
+      if (parsed.assetType) {
+        setForm((prev) => ({
+          ...prev,
+          assetType: parsed.assetType,
+          brand: parsed.brand || prev.brand,
+          model: parsed.model || prev.model,
+        }));
+        refreshBrands(parsed.assetType);
+        if (parsed.brand) {
+          refreshModels(parsed.assetType, parsed.brand);
+        }
+      }
+      sessionStorage.removeItem('vendorProductDraft');
+    } catch {
+      sessionStorage.removeItem('vendorProductDraft');
+    }
+  }, [refreshBrands, refreshModels]);
+
   // On mount, load products from sessionStorage
   useEffect(() => {
     const stored = sessionStorage.getItem('products');
@@ -114,7 +200,12 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
     // Find the selected asset type object by asset_type_id
     const selectedAsset = assetTypes.find((t) => String(t.asset_type_id) === String(form.assetType));
     if (!selectedAsset) {
-      toast.error(t('vendors.invalidAssetTypeSelected') || 'Invalid asset type selected');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_INVALIDASSETTYPESELECTED_5E93A00D',
+        fallbackText: t('vendors.invalidAssetTypeSelected') || 'Invalid asset type selected',
+        type: 'error',
+      });
       return;
     }
 
@@ -139,9 +230,9 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       sessionStorage.setItem('products', JSON.stringify(newProducts));
       setForm({ assetType: "", brand: "", model: "", description: "" });
       setSubmitAttempted(false); // Reset validation state after successful add
-      toast.success("Product added to list");
+      showBackendTextToast({ toast, tmdId: 'TMD_PRODUCT_ADDED_TO_LIST_5E27998E', fallbackText: 'Product added to list', type: 'success' });
     } catch (err) {
-      toast.error(t('vendors.failedToAddProductSupply') + ': ' + (err.response?.data?.error || err.message) || 'Failed to add product supply: ' + (err.response?.data?.error || err.message));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOADDPRODUCTSUPPLY_32A38E6C', fallbackText: t('vendors.failedToAddProductSupply') + ': ' + (err.response?.data?.error || err.message) || 'Failed to add product supply: ' + (err.response?.data?.error || err.message), type: 'error' });
     }
   };
 
@@ -220,12 +311,17 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       
       // Check vendor dependency
       if (!vendorSaved) {
-        toast.error(t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving products.');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_PLEASESAVEVENDORFIRST_4D3BFE9E',
+          fallbackText: t('vendors.pleaseSaveVendorFirst') || 'Please save vendor details first before saving products.',
+          type: 'error',
+        });
         return;
       }
       
       if (!vendorId || !orgId) {
-        toast.error(t('vendors.vendorMustBeCreatedFirst') || 'Vendor must be created first.');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORMUSTBECREATEDFIRST_66C0316E', fallbackText: t('vendors.vendorMustBeCreatedFirst') || 'Vendor must be created first.', type: 'error' });
         return;
       }
 
@@ -235,12 +331,17 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
         productsFromStorage = JSON.parse(sessionStorage.getItem('products') || '[]');
       } catch (parseErr) {
         console.error('Error parsing products from sessionStorage:', parseErr);
-        toast.error(t('vendors.errorReadingProductsFromStorage') || 'Error reading products from local storage.');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORREADINGPRODUCTSFROMSTORAGE_42DE5425', fallbackText: t('vendors.errorReadingProductsFromStorage') || 'Error reading products from local storage.', type: 'error' });
         return;
       }
       if (!Array.isArray(productsFromStorage)) {
         console.error('productsFromStorage is not an array:', productsFromStorage);
-        toast.error(t('vendors.internalErrorProductsDataInvalid') || 'Internal error: products data is invalid.');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_INTERNALERRORPRODUCTSDATAINVALID_40DB8923',
+          fallbackText: t('vendors.internalErrorProductsDataInvalid') || 'Internal error: products data is invalid.',
+          type: 'error',
+        });
         return;
       }
       let prodServIds = [];
@@ -253,17 +354,17 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
           if (match && match.prod_serv_id) prodServIds.push(match.prod_serv_id);
           else {
             console.warn('No matching prod_serv_id found for product:', p);
-            toast.error(t('vendors.noMatchingProductFound', { product: `${p.assetType}, ${p.brand}, ${p.model}` }) || `No matching product found in master list for: ${p.assetType}, ${p.brand}, ${p.model}`);
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_NOMATCHINGPRODUCTFOUND_7011AB88', fallbackText: t('vendors.noMatchingProductFound', { product: `${p.assetType}, ${p.brand}, ${p.model}` }) || `No matching product found in master list for: ${p.assetType}, ${p.brand}, ${p.model}`, type: 'error' });
           }
         } catch (apiErr) {
           console.error('Error fetching /prodserv for product:', p, apiErr);
-          toast.error(t('vendors.errorLookingUpProduct') || 'Error looking up product in master list.');
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORLOOKINGUPPRODUCT_50502E89', fallbackText: t('vendors.errorLookingUpProduct') || 'Error looking up product in master list.', type: 'error' });
         }
       }
       prodServIds = [...new Set(prodServIds)];
       
       if (!prodServIds.length) {
-        toast.error(t('vendors.noValidProductsToLink') || 'No valid products to link');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_NOVALIDPRODUCTSTOLINK_30709AEA', fallbackText: t('vendors.noValidProductsToLink') || 'No valid products to link', type: 'error' });
         return;
       }
 
@@ -286,7 +387,7 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             console.log('Product already linked to vendor:', prod_serv_id);
           } else {
             const errorMessage = postErr.response?.data?.message || postErr.response?.data?.error || "Error linking product";
-            toast.error(errorMessage);
+            showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ERRORLINKINGPRODUCT_0A01DDC7', fallbackText: errorMessage, type: 'error' });
           }
         }
       }
@@ -295,11 +396,23 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
       const totalProcessed = successCount + duplicateCount;
       if (totalProcessed === prodServIds.length) {
         if (duplicateCount > 0 && successCount > 0) {
-          toast.success(`${successCount} products linked successfully, ${duplicateCount} were already linked`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_PRODUCTSLINKEDSUCCESSFULLYWITHDUP_7F7C7BC8',
+            fallbackText: '{{successCount}} products linked successfully, {{duplicateCount}} were already linked',
+            type: 'success',
+            values: { successCount, duplicateCount },
+          });
         } else if (duplicateCount > 0 && successCount === 0) {
-          toast.success(`All ${duplicateCount} products were already linked to this vendor`);
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_ALLPRODUCTSALREADYLINKED_5FB0807B',
+            fallbackText: 'All {{duplicateCount}} products were already linked to this vendor',
+            type: 'success',
+            values: { duplicateCount },
+          });
         } else {
-          toast.success('All products linked successfully');
+          showBackendTextToast({ toast, tmdId: 'TMD_ALL_PRODUCTS_LINKED_SUCCESSFULLY_4723C1D1', fallbackText: 'All products linked successfully', type: 'success' });
         }
         // Clear form and storage
         setProducts([]);
@@ -307,15 +420,21 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
         // Mark tab as saved
         if (onTabSaved) onTabSaved('Product Details');
       } else if (totalProcessed > 0) {
-        toast.success(`${totalProcessed} out of ${prodServIds.length} products processed successfully`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORS_PRODUCTSPROCESSEDSUCCESSFULLY_3B13C421',
+          fallbackText: '{{totalProcessed}} out of {{totalCount}} products processed successfully',
+          type: 'success',
+          values: { totalProcessed, totalCount: prodServIds.length },
+        });
         // Mark tab as saved even if partial success
         if (onTabSaved) onTabSaved('Product Details');
       } else {
-        toast.error(t('vendors.failedToLinkAnyProducts') || 'Failed to link any products');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOLINKANYPRODUCTS_293A70FD', fallbackText: t('vendors.failedToLinkAnyProducts') || 'Failed to link any products', type: 'error' });
       }
     } catch (err) {
       console.error('Unexpected error in handleDone:', err);
-      toast.error(t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred');
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_UNEXPECTEDERROROCCURRED_39B6A99A', fallbackText: t('vendors.unexpectedErrorOccurred') || 'An unexpected error occurred', type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -335,8 +454,8 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             onChange={(value) => handleChange({ target: { name: "assetType", value }})}
             placeholder={t('vendors.selectAssetType')}
             searchPlaceholder="Search Asset Types..."
-            createNewText="Create New"
-            createNewPath="/master-data/asset-types"
+            createNewText={t('vendors.addAssetType', { defaultValue: 'Add Asset Type' })}
+            onCreateNew={goToAddAssetType}
             className={`w-48 ${isFieldInvalid(form.assetType) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="asset_type_id"
@@ -351,8 +470,10 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             value={form.brand}
             onChange={(value) => handleChange({ target: { name: "brand", value }})}
             placeholder={t('vendors.selectBrand')}
-            searchPlaceholder="Search Brands..."
+            searchPlaceholder={t('vendors.searchBrands', { defaultValue: 'Search Brands...' })}
             disabled={!form.assetType}
+            createNewText={t('vendors.addBrand', { defaultValue: 'Add Brand' })}
+            onCreateNew={form.assetType ? () => goToProdServ('brand') : undefined}
             className={`w-48 ${isFieldInvalid(form.brand) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="id"
@@ -367,8 +488,10 @@ const ProductSupplyForm = ({ vendorId, orgId, vendorSaved = false, onSaveTrigger
             value={form.model}
             onChange={(value) => handleChange({ target: { name: "model", value }})}
             placeholder={t('vendors.selectModel')}
-            searchPlaceholder="Search Models..."
+            searchPlaceholder={t('vendors.searchModels', { defaultValue: 'Search Models...' })}
             disabled={!form.brand}
+            createNewText={t('vendors.addModel', { defaultValue: 'Add Model' })}
+            onCreateNew={form.assetType ? () => goToProdServ('model') : undefined}
             className={`w-48 ${isFieldInvalid(form.model) ? 'border border-red-500' : ''}`}
             displayKey="text"
             valueKey="id"

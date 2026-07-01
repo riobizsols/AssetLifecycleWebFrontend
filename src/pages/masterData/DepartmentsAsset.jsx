@@ -1,4 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import { showBackendTextToast, translateErrorMessage } from '../../utils/errorTranslation';
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { useLocalizedMasterDataLabel } from '../../hooks/useLocalizedMasterDataLabel';
 import API from "../../lib/axios";
 import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -34,6 +36,43 @@ const DepartmentsAsset = () => {
   
   // Language context
   const { t } = useLanguage();
+  const { label, language: uiLanguage } = useLocalizedMasterDataLabel();
+
+  const localizedDepartments = useMemo(
+    () =>
+      departments.map((d) => ({
+        ...d,
+        displayText: label(d.text || d.dept_name || d.name),
+      })),
+    [departments, label, uiLanguage]
+  );
+
+  const localizedAssetTypes = useMemo(
+    () =>
+      assetTypes.map((at) => ({
+        ...at,
+        displayText: label(at.text || at.asset_type_name || at.name),
+      })),
+    [assetTypes, label, uiLanguage]
+  );
+
+  const localizedDeptAssets = useMemo(
+    () =>
+      deptAssets.map((item) => ({
+        ...item,
+        displayDeptName: label(item.dept_name),
+        displayAssetName: label(item.asset_name),
+      })),
+    [deptAssets, label, uiLanguage]
+  );
+
+  const formatDeptAssetError = (rawMessage) => {
+    const raw = String(rawMessage || '').trim();
+    if (!raw) return t('departments.failedToAddAsset');
+    const translated = translateErrorMessage(raw);
+    if (translated !== raw) return translated;
+    return `${t('departments.failedToAddAsset')}: ${label(raw)}`;
+  };
 
   const toggleMaximize = () => setIsMaximized((prev) => !prev);
 
@@ -78,13 +117,13 @@ const DepartmentsAsset = () => {
   const handleAdd = async () => {
     setSubmitAttempted(true);
     if (!selectedDeptId || !selectedAssetTypeId) {
-      toast.error(t('departments.pleaseSelectBothDepartmentAndAssetType'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDASSETT_0FEC304B', fallbackText: t('departments.pleaseSelectBothDepartmentAndAssetType'), type: 'error' });
       return;
     }
     
     try {
-      const selectedDeptName = departments.find(d => d.dept_id === selectedDeptId)?.text;
-      const selectedAssetTypeName = assetTypes.find(at => at.asset_type_id === selectedAssetTypeId)?.text;
+      const selectedDeptName = label(departments.find(d => d.dept_id === selectedDeptId)?.text);
+      const selectedAssetTypeName = label(assetTypes.find(at => at.asset_type_id === selectedAssetTypeId)?.text);
       
       const response = await API.post("/dept-assets", {
         dept_id: selectedDeptId,
@@ -104,11 +143,22 @@ const DepartmentsAsset = () => {
       setSelectedAssetTypeId("");
       setSubmitAttempted(false); // Reset submit attempt flag to remove red border
       fetchDeptAssets();
-      toast.success(t('departments.assetMappingAddedSuccessfully', { assetTypeName: selectedAssetTypeName, deptName: selectedDeptName }));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGADDEDSUCCESSFULLY_0D092680',
+        fallbackText: t('departments.assetMappingAddedSuccessfully'),
+        type: 'success',
+        values: { assetTypeName: selectedAssetTypeName, deptName: selectedDeptName },
+      });
     } catch (err) {
       console.error("Failed to add asset", err);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToAddAsset')}: ${errorMessage}`);
+      const rawError = err.response?.data?.message || err.response?.data?.error || err.message || '';
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_ADD_DEPARTMENT_ASSET_MAPPING_E18A82E9',
+        fallbackText: formatDeptAssetError(rawError),
+        type: 'error',
+      });
     }
   };
 
@@ -145,11 +195,20 @@ const DepartmentsAsset = () => {
       
       setShowDeleteModal(false);
       fetchDeptAssets();
-      toast.success(t('departments.assetMappingRemovedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGREMOVEDSUCCESSFULLY_2C0043A0', fallbackText: t('departments.assetMappingRemovedSuccessfully'), type: 'success' });
     } catch (err) {
       console.error("Failed to delete", err);
-      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`${t('departments.failedToRemoveAssetMapping')}: ${errorMessage}`);
+      const rawError = err.response?.data?.message || err.response?.data?.error || err.message || '';
+      const translated = translateErrorMessage(rawError);
+      const fallbackText = translated !== rawError && rawError
+        ? translated
+        : (rawError ? `${t('departments.failedToRemoveAssetMapping')}: ${label(rawError)}` : t('departments.failedToRemoveAssetMapping'));
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_REMOVE_DEPARTMENT_ASSET_MAPPING_49A0783C',
+        fallbackText,
+        type: 'error',
+      });
     }
   };
 
@@ -158,15 +217,13 @@ const DepartmentsAsset = () => {
 
   // Get available asset types for the selected department (exclude already assigned ones)
   const getAvailableAssetTypes = () => {
-    if (!selectedDeptId) return assetTypes;
-    
-    // Get asset type IDs already assigned to this department
+    if (!selectedDeptId) return localizedAssetTypes;
+
     const assignedAssetTypeIds = deptAssets
-      .filter(da => da.dept_id === selectedDeptId)
-      .map(da => da.asset_type_id);
-    
-    // Return only unassigned asset types
-    return assetTypes.filter(at => !assignedAssetTypeIds.includes(at.asset_type_id));
+      .filter((da) => da.dept_id === selectedDeptId)
+      .map((da) => da.asset_type_id);
+
+    return localizedAssetTypes.filter((at) => !assignedAssetTypeIds.includes(at.asset_type_id));
   };
 
   useEffect(() => {
@@ -215,7 +272,7 @@ const DepartmentsAsset = () => {
                 type="button"
               >
                 {selectedDeptId
-                  ? departments.find((d) => d.dept_id === selectedDeptId)?.text || t('departments.selectDepartment')
+                  ? localizedDepartments.find((d) => d.dept_id === selectedDeptId)?.displayText || t('departments.selectDepartment')
                   : t('departments.selectDepartment')}
                 <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
               </button>
@@ -237,11 +294,15 @@ const DepartmentsAsset = () => {
                   />
                 </div>
                 {/* Filtered Departments */}
-                {departments
-                  .filter(d => 
-                    d.text.toLowerCase().includes(searchDept.toLowerCase()) ||
-                    d.dept_id.toLowerCase().includes(searchDept.toLowerCase())
-                  )
+                {localizedDepartments
+                  .filter((d) => {
+                    const q = searchDept.toLowerCase();
+                    return (
+                      d.displayText.toLowerCase().includes(q) ||
+                      d.text.toLowerCase().includes(q) ||
+                      d.dept_id.toLowerCase().includes(q)
+                    );
+                  })
                   .map((dept) => (
                     <div
                       key={dept.dept_id}
@@ -252,7 +313,7 @@ const DepartmentsAsset = () => {
                         setSearchDept("");
                       }}
                     >
-                      <div className="font-medium">{dept.text}</div>
+                      <div className="font-medium">{dept.displayText}</div>
                       <div className="text-xs text-gray-500">ID: {dept.dept_id}</div>
                     </div>
                   ))}
@@ -282,7 +343,9 @@ const DepartmentsAsset = () => {
                 type="button"
               >
                 {selectedAssetTypeId
-                  ? getAvailableAssetTypes().find((at) => at.asset_type_id === selectedAssetTypeId)?.text || assetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.text || t('departments.selectAssetType')
+                  ? (localizedAssetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.displayText
+                    || label(assetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.text))
+                  || t('departments.selectAssetType')
                   : selectedDeptId
                   ? t('departments.selectAssetType')
                   : t('departments.selectDepartmentFirst')}
@@ -307,7 +370,13 @@ const DepartmentsAsset = () => {
                 </div>
                 {/* Filtered Asset Types */}
                 {getAvailableAssetTypes()
-                  .filter(at => at.text.toLowerCase().includes(searchAssetType.toLowerCase()))
+                  .filter((at) => {
+                    const q = searchAssetType.toLowerCase();
+                    return (
+                      at.displayText.toLowerCase().includes(q) ||
+                      at.text.toLowerCase().includes(q)
+                    );
+                  })
                   .map((at) => (
                     <div
                       key={at.asset_type_id}
@@ -319,10 +388,13 @@ const DepartmentsAsset = () => {
                         setSearchAssetType("");
                       }}
                     >
-                      {at.text}
+                      {at.displayText}
                     </div>
                   ))}
-                {getAvailableAssetTypes().filter(at => at.text.toLowerCase().includes(searchAssetType.toLowerCase())).length === 0 && (
+                {getAvailableAssetTypes().filter((at) => {
+                  const q = searchAssetType.toLowerCase();
+                  return at.displayText.toLowerCase().includes(q) || at.text.toLowerCase().includes(q);
+                }).length === 0 && (
                   <div className="px-4 py-2 text-sm text-gray-500 text-center">
                     {t('departments.noAvailableAssetTypes')}
                   </div>
@@ -373,15 +445,15 @@ const DepartmentsAsset = () => {
             <div
               className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}
             >
-              {deptAssets.map((item, i) => (
+              {localizedDeptAssets.map((item, i) => (
                 <div
                   key={item.dept_asset_type_id}
                   className={`grid grid-cols-3 px-4 py-2 items-center border-b ${
                     i % 2 === 0 ? "bg-white" : "bg-gray-100"
                   } text-gray-800`}
                 >
-                  <div>{item.dept_name}</div>
-                  <div>{item.asset_name}</div>
+                  <div>{item.displayDeptName}</div>
+                  <div>{item.displayAssetName}</div>
                   <div className="flex justify-center">
                     <button
                       onClick={() => {

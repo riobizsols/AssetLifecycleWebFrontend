@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ContentBox from "../components/ContentBox";
@@ -9,15 +10,24 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import ReopenModal from "../components/reportbreakdown/ReopenModal";
 import ConfirmBreakdownModal from "../components/reportbreakdown/ConfirmBreakdownModal";
-import { Check, RefreshCw, Pencil, MoreVertical, RotateCcw } from "lucide-react";
+import { Check, Pencil } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { applyListFilterChange } from "../utils/listFilterState";
+import { useEmployeeReportBreakdownStore } from "../store/useEmployeeReportBreakdownStore";
 
 const ReportsBreakdown2 = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { user } = useAuthStore();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const reports = useEmployeeReportBreakdownStore((s) => s.reports);
+  const listLoading = useEmployeeReportBreakdownStore((s) => s.listLoading);
+  const fetchBreakdowns = useEmployeeReportBreakdownStore((s) => s.fetchBreakdowns);
+  const patchReport = useEmployeeReportBreakdownStore((s) => s.patchReport);
+  const invalidateForUser = useEmployeeReportBreakdownStore((s) => s.invalidateForUser);
+
+  const data = reports;
+  const isLoading = listLoading && data.length === 0;
   const [selectedRows, setSelectedRows] = useState([]);
   const [sortConfig, setSortConfig] = useState({ sorts: [] });
   const [filterValues, setFilterValues] = useState({
@@ -40,12 +50,7 @@ const ReportsBreakdown2 = () => {
   const hasDeleteAccess = canDelete('EMPLOYEE REPORT BREAKDOWN');
   const accessLevel = getAccessLevel('EMPLOYEE REPORT BREAKDOWN');
   const isReadOnly = accessLevel === 'D';
-  
-  // Debug logging
-  console.log('ReportsBreakdown2 - Access Level:', accessLevel);
-  console.log('ReportsBreakdown2 - Has Edit Access:', hasEditAccess);
-  console.log('ReportsBreakdown2 - Has Delete Access:', hasDeleteAccess);
-  console.log('ReportsBreakdown2 - Is Read Only:', isReadOnly);
+
   const columns = useMemo(() => [
     { label: t("breakdownDetails.reportedBy"), name: "reported_by", visible: true },
     { label: t("breakdownDetails.status"), name: "status", visible: true },
@@ -62,63 +67,31 @@ const ReportsBreakdown2 = () => {
     });
   };
 
-  const fetchBreakdowns = async () => {
-    if (!user) return; // Wait for user data to be available
-    
-    setIsLoading(true);
-    try {
-      const res = await API.get("/reportbreakdown/reports");
-      const raw = Array.isArray(res.data?.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-        ? res.data
-        : [];
-      
-      // Match by user_id, emp_int_id, or dept_id depending on what's in reported_by
-      const currentUserId = user?.user_id || user?.emp_int_id;
-      const currentDeptId = user?.dept_id;
-      
-      const userBreakdowns = raw.filter((b) => {
-        return b.reported_by === currentUserId || b.reported_by === currentDeptId;
-      });
-      
-      const formatted = userBreakdowns.map((b) => ({
-        ...b,
-        created_on: b.created_on
-          ? new Date(b.created_on).toLocaleString()
-          : "",
-      }));
-      setData(formatted);
-    } catch (err) {
-      console.error("Failed to fetch breakdowns", err);
-      toast.error(t("breakdownDetails.failedToFetchBreakdowns"));
-      setData([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchBreakdowns();
-  }, [user]);
+    if (!user) return;
+    fetchBreakdowns(user, { revalidate: true }).catch((err) => {
+      console.error("Failed to fetch breakdowns", err);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_FAILEDTOFETCHBREAKDOWNS_406575E3', fallbackText: t("breakdownDetails.failedToFetchBreakdowns"), type: 'error' });
+    });
+  }, [user, fetchBreakdowns, t]);
+
+  useRevalidateOnFocus(() => {
+    if (user) fetchBreakdowns(user, { revalidate: true });
+  });
 
   const processConfirmAction = async (abr_id) => {
     try {
       // Trigger API call
       await API.post(`/reportbreakdown/${abr_id}/confirm`);
       
-      // Immediate UI Refresh: Update local state without waiting for full refetch
-      setData(prevData => 
-        prevData.map(item => 
-          item.abr_id === abr_id ? { ...item, status: 'CF' } : item
-        )
-      );
+      patchReport(abr_id, { status: 'CF' });
+      invalidateForUser(user);
       
       setSuccessMessage(t("breakdownDetails.breakdownConfirmedSuccessfully"));
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
       console.error("Failed to confirm breakdown", err);
-      toast.error(t("breakdownDetails.errorConfirmingBreakdown") + ": " + (err.response?.data?.error || err.message));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ERRORCONFIRMINGBREAKDOWN_123BEDF8', fallbackText: t("breakdownDetails.errorConfirmingBreakdown") + ": " + (err.response?.data?.error || err.message), type: 'error' });
     } finally {
       setShowConfirmModal(false);
       setSelectedConfirmReport(null);
@@ -130,7 +103,7 @@ const ReportsBreakdown2 = () => {
     const abr_id = abr_id_from_modal || selectedReport?.abr_id;
 
     if (!abr_id) {
-      toast.error(t("breakdownDetails.noReportSelectedOrIdMissing"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_NOREPORTSELECTEDORIDMISSING_683D7F47', fallbackText: t("breakdownDetails.noReportSelectedOrIdMissing"), type: 'error' });
       console.error('Reopen aborted: missing abr_id', { abr_id_from_modal, selectedReport });
       return;
     }
@@ -138,16 +111,11 @@ const ReportsBreakdown2 = () => {
     try {
       await API.post(`/reportbreakdown/${abr_id}/reopen`, { notes });
       
-      // Immediate UI Refresh: Update local state to 'Reopened'
-      setData(prevData => 
-        prevData.map(item => 
-          item.abr_id === abr_id ? { 
-            ...item, 
-            status: 'Reopened',
-            description: item.description + ` [Reopened: ${notes}]`
-          } : item
-        )
-      );
+      patchReport(abr_id, {
+        status: 'Reopened',
+        description: `${selectedReport?.description || ''} [Reopened: ${notes}]`,
+      });
+      invalidateForUser(user);
       
       setSuccessMessage(t("breakdownDetails.breakdownReopenedSuccessfully"));
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -155,7 +123,7 @@ const ReportsBreakdown2 = () => {
       setSelectedReport(null);
     } catch (err) {
       console.error("Failed to reopen breakdown", err);
-      toast.error(t("breakdownDetails.errorReopeningBreakdown") + ": " + (err.response?.data?.error || err.message));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ERRORREOPENINGBREAKDOWN_65995BD3', fallbackText: t("breakdownDetails.errorReopeningBreakdown") + ": " + (err.response?.data?.error || err.message), type: 'error' });
     }
   };
 
@@ -209,16 +177,8 @@ const ReportsBreakdown2 = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues((prev) => {
-      if (filterType === "columnFilters") {
-        return { ...prev, columnFilters: value };
-      } else if (filterType === "fromDate" || filterType === "toDate") {
-        return { ...prev, [filterType]: value };
-      } else {
-        return { ...prev, [filterType]: value };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const filters = columns.map((col) => ({

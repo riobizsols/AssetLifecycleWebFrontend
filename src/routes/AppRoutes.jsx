@@ -115,6 +115,7 @@ import TechnicianCertificates from "../pages/TechnicianCertificates";
 import TechCertApprovals from "../pages/TechCertApprovals";
 import CostCenterTransfer from "../pages/CostCenterTransfer";
 import DatabaseConnectionSwitcher from "../pages/internal/DatabaseConnectionSwitcher";
+import NotAuthorized from "../pages/NotAuthorized";
 
 // import MaintenanceApprovalDetail from "../pages/MaintenanceApproval";
 
@@ -144,23 +145,9 @@ export default function AppRoutes() {
         <Route
           path="/not-authorized"
           element={
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-              <div className="text-center">
-                <div className="text-6xl mb-4">🚫</div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                  Access Denied
-                </h1>
-                <p className="text-gray-600 mb-4">
-                  You don't have permission to access this page.
-                </p>
-                <button
-                  onClick={() => window.history.back()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Go Back
-                </button>
-              </div>
-            </div>
+            <ProtectedRoute>
+              <NotAuthorized />
+            </ProtectedRoute>
           }
         />
         <Route
@@ -349,7 +336,14 @@ export default function AppRoutes() {
         <Route
           path="/cron-management"
           element={
-            <ProtectedRoute requiredAppId="CRONMANAGEMENT">
+            <ProtectedRoute
+              requiredAnyOfAppIds={[
+                'CRONMANAGEMENT',
+                'JOBMONITOR',
+                'ONETIMECRON',
+                'ADMINSETTINGS',
+              ]}
+            >
               <MainLayout>
                 <CronJobManagement />
               </MainLayout>
@@ -1169,7 +1163,9 @@ export default function AppRoutes() {
         <Route
           path="/adminsettings/configuration/job-monitor"
           element={
-            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["JOBMONITOR", "ADMINSETTINGS"]}
+            >
               <AdminSettingsLayout>
                 <JobMonitor />
               </AdminSettingsLayout>

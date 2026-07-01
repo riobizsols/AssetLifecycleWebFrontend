@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { jsPDF } from "jspdf";
@@ -48,7 +49,7 @@ const WorkOrderDetail = () => {
       let workOrderData = woResponse.data?.data;
       
       if (!workOrderData) {
-        toast.error(t('workorderManagement.workOrderNotFound'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_WORKORDERMANAGEMENT_WORKORDERNOTFOUND_08D2AA82', fallbackText: t('workorderManagement.workOrderNotFound'), type: 'error' });
         navigate("/workorder-management");
         return;
       }
@@ -90,7 +91,7 @@ const WorkOrderDetail = () => {
 
     } catch (error) {
       console.error("Error fetching work order details:", error);
-      toast.error(t('workorderManagement.failedToFetchWorkOrderDetails'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_WORKORDERMANAGEMENT_FAILEDTOFETCHWORKORDERDETAI_7F80421D', fallbackText: t('workorderManagement.failedToFetchWorkOrderDetails'), type: 'error' });
       navigate("/workorder-management");
     } finally {
       setIsLoading(false);
@@ -169,10 +170,15 @@ const WorkOrderDetail = () => {
       pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
       pdf.save(`WorkOrder_${workOrder?.ams_id || id}_${new Date().toISOString().split('T')[0]}.pdf`);
       
-      toast.success(t('workorderManagement.pdfExportedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_WORKORDERMANAGEMENT_PDFEXPORTEDSUCCESSFULLY_61A0DC62', fallbackText: t('workorderManagement.pdfExportedSuccessfully'), type: 'success' });
     } catch (error) {
       console.error("Error exporting PDF:", error);
-      toast.error(t('workorderManagement.failedToExportPDF') + `: ${error.message}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_WORKORDERMANAGEMENT_FAILEDTOEXPORTPDF_7573CBE4',
+        fallbackText: `${t('workorderManagement.failedToExportPDF')}: ${error.message}`,
+        type: 'error',
+      });
     } finally {
       setIsExporting(false);
     }

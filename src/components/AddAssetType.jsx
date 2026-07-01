@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from "react";
 import API from "../lib/axios";
 import { useNavigate } from "react-router-dom";
@@ -8,6 +9,7 @@ import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import { findConflictingAssetTypeName } from "../utils/assetTypeNameValidation";
 
 const AddAssetType = () => {
   const navigate = useNavigate();
@@ -42,9 +44,11 @@ const AddAssetType = () => {
   // Properties state variables
   const [properties, setProperties] = useState([]);
   const [selectedProperties, setSelectedProperties] = useState([]);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(true);
   
   // Document types from API
   const [documentTypes, setDocumentTypes] = useState([]);
+  const [existingAssetTypes, setExistingAssetTypes] = useState([]);
 
   useEffect(() => {
     // Reset parent selection when parentChild changes
@@ -61,7 +65,18 @@ const AddAssetType = () => {
     fetchMaintenanceTypes();
     fetchDocumentTypes();
     fetchProperties();
+    fetchExistingAssetTypes();
   }, []);
+
+  const fetchExistingAssetTypes = async () => {
+    try {
+      const res = await API.get("/asset-types");
+      setExistingAssetTypes(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Error fetching asset types for validation:", err);
+      setExistingAssetTypes([]);
+    }
+  };
 
   const fetchParentAssetTypes = async () => {
     try {
@@ -69,7 +84,7 @@ const AddAssetType = () => {
       setParentAssetTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching parent asset types:', err);
-      toast.error(t('assetTypes.failedToFetchParentAssetTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOFETCHPARENTASSETTYPES_54ADC7EC', fallbackText: t('assetTypes.failedToFetchParentAssetTypes'), type: 'error' });
       setParentAssetTypes([]);
     }
   };
@@ -80,7 +95,7 @@ const AddAssetType = () => {
       setMaintenanceTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching maintenance types:', err);
-      toast.error(t('assetTypes.failedToFetchMaintenanceTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOFETCHMAINTENANCETYPES_70273AA1', fallbackText: t('assetTypes.failedToFetchMaintenanceTypes'), type: 'error' });
       setMaintenanceTypes([]);
     }
   };
@@ -106,12 +121,13 @@ const AddAssetType = () => {
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error(t('assetTypes.failedToLoadDocumentTypes'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOLOADDOCUMENTTYPES_16E96DB7', fallbackText: t('assetTypes.failedToLoadDocumentTypes'), type: 'error' });
       setDocumentTypes([]);
     }
   };
 
   const fetchProperties = async () => {
+    setIsLoadingProperties(true);
     try {
       console.log('Fetching properties from tblProps...');
       const res = await API.get('/properties');
@@ -132,8 +148,10 @@ const AddAssetType = () => {
       }
     } catch (err) {
       console.error('Error fetching properties:', err);
-      toast.error(t('assetTypes.failedToLoadProperties'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FAILEDTOLOADPROPERTIES_068941C6', fallbackText: t('assetTypes.failedToLoadProperties'), type: 'error' });
       setProperties([]);
+    } finally {
+      setIsLoadingProperties(false);
     }
   };
 
@@ -167,49 +185,48 @@ const AddAssetType = () => {
     
     // Validate form
     if (!assetType.trim()) {
-      toast(
-        t('assetTypes.assetTypeNameRequired'),
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_NAME_REQUIRED_D9DE7807',
+        fallbackText: t('assetTypes.assetTypeNameRequired'),
+        type: 'error',
+      });
+      return;
+    }
+
+    const conflictingName = findConflictingAssetTypeName(
+      assetType.trim(),
+      existingAssetTypes
+    );
+    if (conflictingName) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
+        fallbackText: t('assetTypes.similarAssetTypeNameExists', { name: conflictingName }),
+        type: 'error',
+      });
       return;
     }
 
     // Validate parent selection for child asset types
     if (parentChild === "child" && !selectedParentType) {
-      toast(
-        t('assetTypes.pleaseSelectParentAssetType'),
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PLEASE_SELECT_PARENT_ASSET_TYPE_8B4E9A91',
+        fallbackText: t('assetTypes.pleaseSelectParentAssetType'),
+        type: 'error',
+      });
       return;
     }
 
     // Validate maintenance fields when maintenance is required
     if (requireMaintenance && !selectedMaintenanceType) {
-      toast(
-        t('assetTypes.pleaseSelectMaintenanceType'),
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PLEASE_SELECT_MAINTENANCE_TYPE_745B6797',
+        fallbackText: t('assetTypes.pleaseSelectMaintenanceType'),
+        type: 'error',
+      });
       return;
     }
 
@@ -218,34 +235,24 @@ const AddAssetType = () => {
     if (checklistUploads.length > 0) {
       for (const upload of checklistUploads) {
         if (!upload.type || !upload.file) {
-          toast(
-            t('assetTypes.pleaseSelectDocumentType'),
-            {
-              icon: '❌',
-              style: {
-                borderRadius: '8px',
-                background: '#7F1D1D',
-                color: '#fff',
-              },
-            }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_PLEASE_SELECT_DOCUMENT_TYPE_9F0D10E7',
+            fallbackText: t('assetTypes.pleaseSelectDocumentType'),
+            type: 'error',
+          });
           return;
         }
         
         // Check if the selected document type requires a custom name
         const selectedDocType = documentTypes.find(dt => dt.id === upload.type);
         if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !upload.docTypeName?.trim()) {
-          toast(
-            t('assetTypes.pleaseEnterCustomName', { type: selectedDocType.text }),
-            {
-              icon: '❌',
-              style: {
-                borderRadius: '8px',
-                background: '#7F1D1D',
-                color: '#fff',
-              },
-            }
-          );
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_PLEASE_ENTER_CUSTOM_DOCUMENT_NAME_7667B432',
+            fallbackText: t('assetTypes.pleaseEnterCustomName', { type: selectedDocType.text }),
+            type: 'error',
+          });
           return;
         }
       }
@@ -260,11 +267,9 @@ const AddAssetType = () => {
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
-        maint_required: requireMaintenance ? 1 : 0,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
-        maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
-        maint_lead_type: requireMaintenance ? maintenanceLeadType : null,
+        maint_lead_type: maintenanceLeadType || null,
         depreciation_type: depreciationType,
         properties: selectedProperties
       };
@@ -290,17 +295,14 @@ const AddAssetType = () => {
         action: 'Asset Type Created'
       });
 
-      toast(
-        t('assetTypes.assetTypeCreatedSuccessfully', { name: assetType }),
-        {
-          icon: '✅',
-          style: {
-            borderRadius: '8px',
-            background: '#064E3B',
-            color: '#fff',
-          },
-        }
-      );
+      const createdName = assetType.trim();
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_CREATED_SUCCESSFULLY_FD64A758',
+        fallbackText: t('assetTypes.assetTypeCreatedSuccessfully', { name: createdName }),
+        values: { name: createdName },
+        type: 'success',
+      });
       // Upload checklist files if any are provided
       const newId = response.data?.asset_type?.asset_type_id;
       console.log('Asset type creation response:', response.data);
@@ -324,33 +326,48 @@ const AddAssetType = () => {
             } catch (upErr) {
               console.error('Checklist upload failed', upErr);
               console.error('Upload error details:', upErr.response?.data);
-                toast.error(`${t('assetTypes.failedToUploadFile', { fileName: upload.file.name })}: ${upErr.response?.data?.message || upErr.message}`);
+                showBackendTextToast({
+                  toast,
+                  tmdId: 'TMD_FAILED_TO_UPLOAD_FILE_FOR_ASSET_TYPE_AFC322A8',
+                  fallbackText: `${t('assetTypes.failedToUploadFile', { fileName: upload.file.name })}: ${upErr.response?.data?.message || upErr.message}`,
+                  type: 'error',
+                });
             }
           }
         }
       }
       navigate('/master-data/asset-types');
     } catch (error) {
-      const errorMessage = error.response?.data?.error || "Failed to create asset type";
-      const errorDetails = error.response?.data?.details || "";
-      const errorHint = error.response?.data?.hint || "";
-      
+      const responseData = error.response?.data;
+      if (responseData?.existingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
+          fallbackText: t('assetTypes.similarAssetTypeNameExists', {
+            name: responseData.existingName,
+          }),
+          type: 'error',
+        });
+        return;
+      }
+
+      const errorMessage =
+        responseData?.message ||
+        responseData?.error ||
+        t('assetTypes.failedToCreateAssetType');
+      const errorDetails = responseData?.details || "";
+      const errorHint = responseData?.hint || "";
+
       let fullError = errorMessage;
       if (errorDetails) fullError += `\n${errorDetails}`;
       if (errorHint) fullError += `\n\nHint: ${errorHint}`;
 
-      toast(
-        fullError,
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-          duration: 5000,
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_ASSET_TYPE_477F730A',
+        fallbackText: fullError,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -455,8 +472,14 @@ const AddAssetType = () => {
         {/* Properties Selection - Enhanced UI */}
         <div className="mb-6">
           <label className="block text-sm font-medium mb-3">{t('assetTypes.properties')}</label>
-          {properties.length === 0 ? (
+          {isLoadingProperties ? (
             <div className="text-sm text-gray-500">{t('assetTypes.loadingProperties')}</div>
+          ) : properties.length === 0 ? (
+            <div className="text-sm text-gray-500">
+              {t('assetTypes.noPropertiesConfigured', {
+                defaultValue: 'No properties configured yet. Add them under Settings → Configuration → Properties, then refresh this page.'
+              })}
+            </div>
           ) : (
             <div className="space-y-4">
               {/* Selected Properties - Shown at top */}

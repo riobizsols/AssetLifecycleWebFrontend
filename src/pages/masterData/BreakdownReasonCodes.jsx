@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import API from '../../lib/axios';
 import { toast } from 'react-hot-toast';
@@ -5,12 +6,18 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { Edit2, Trash2, Save, X } from 'lucide-react';
 import ContentBox from '../../components/ContentBox';
 import { filterData } from '../../utils/filterData';
+import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
+import { useBreakdownReasonCodesStore } from '../../store/useBreakdownReasonCodesStore';
+import { invalidateCache } from '../../utils/apiCache';
+import { applyListFilterChange } from '../../utils/listFilterState';
 
 const BreakdownReasonCodes = () => {
   const { t } = useLanguage();
-  const [reasonCodes, setReasonCodes] = useState([]);
-  const [assetTypes, setAssetTypes] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const reasonCodes = useBreakdownReasonCodesStore((s) => s.reasonCodes);
+  const assetTypes = useBreakdownReasonCodesStore((s) => s.assetTypes);
+  const listLoading = useBreakdownReasonCodesStore((s) => s.listLoading);
+  const fetchReasonCodesStore = useBreakdownReasonCodesStore((s) => s.fetchReasonCodes);
+  const fetchAssetTypesStore = useBreakdownReasonCodesStore((s) => s.fetchAssetTypes);
   const [selectedRows, setSelectedRows] = useState([]);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
@@ -37,53 +44,46 @@ const BreakdownReasonCodes = () => {
     { label: 'Reason Code', name: 'text', visible: true },
   ];
 
-  // Fetch all breakdown reason codes
-  const fetchReasonCodes = async () => {
-    setLoading(true);
+  const fetchReasonCodes = async ({ force = false } = {}) => {
     try {
-      const res = await API.get('/breakdown-reason-codes');
-      if (res.data && res.data.success) {
-        setReasonCodes(res.data.data || []);
-      }
+      await fetchReasonCodesStore({ revalidate: true, force });
     } catch (error) {
       console.error('Error fetching breakdown reason codes:', error);
-      toast.error('Failed to fetch breakdown reason codes');
-    } finally {
-      setLoading(false);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_BREAKDOWN_REASON_CODES_66AA4AD1', fallbackText: 'Failed to fetch breakdown reason codes', type: 'error' });
     }
   };
 
-  // Fetch asset types
   const fetchAssetTypes = async () => {
     try {
-      const res = await API.get('/asset-types');
-      if (res.data && Array.isArray(res.data)) {
-        setAssetTypes(res.data.filter(at => at.int_status === 1));
-      } else if (res.data && res.data.data) {
-        setAssetTypes(res.data.data.filter(at => at.int_status === 1));
-      }
+      await fetchAssetTypesStore({ revalidate: true });
     } catch (error) {
       console.error('Error fetching asset types:', error);
-      toast.error('Failed to fetch asset types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPES_02F89461', fallbackText: 'Failed to fetch asset types', type: 'error' });
     }
   };
 
   useEffect(() => {
     fetchReasonCodes();
     fetchAssetTypes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchReasonCodesStore({ revalidate: true });
+    fetchAssetTypesStore({ revalidate: true });
+  });
 
   // Handle create breakdown reason code
   const handleCreateReasonCode = async (e) => {
     e.preventDefault();
     
     if (!newReasonCode.asset_type_id) {
-      toast.error('Please select an asset type');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ASSET_TYPE_35E7C26F', fallbackText: 'Please select an asset type', type: 'error' });
       return;
     }
 
     if (!newReasonCode.text.trim()) {
-      toast.error('Reason code text is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_REASON_CODE_TEXT_IS_REQUIRED_19880387', fallbackText: 'Reason code text is required', type: 'error' });
       return;
     }
 
@@ -95,14 +95,15 @@ const BreakdownReasonCodes = () => {
       });
 
       if (res.data && res.data.success) {
-        toast.success('Breakdown reason code created successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODE_CREATED_SUCCESSFULLY_75EC1395', fallbackText: 'Breakdown reason code created successfully', type: 'success' });
         setNewReasonCode({ asset_type_id: '', text: '' });
         setShowCreateModal(false);
-        fetchReasonCodes();
+        invalidateCache('breakdown-reason-codes:');
+        fetchReasonCodes({ force: true });
       }
     } catch (error) {
       console.error('Error creating breakdown reason code:', error);
-      toast.error(error.response?.data?.message || 'Failed to create breakdown reason code');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_CREATE_BREAKDOWN_REASON_CODE_8B2E4E0B', fallbackText: 'Failed to create breakdown reason code', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -125,7 +126,7 @@ const BreakdownReasonCodes = () => {
   // Handle update reason code
   const handleUpdateReasonCode = async (atbrrcId) => {
     if (!editingReasonCodeText.trim()) {
-      toast.error('Reason code text is required');
+      showBackendTextToast({ toast, tmdId: 'TMD_REASON_CODE_TEXT_IS_REQUIRED_19880387', fallbackText: 'Reason code text is required', type: 'error' });
       return;
     }
 
@@ -136,13 +137,14 @@ const BreakdownReasonCodes = () => {
       });
 
       if (res.data && res.data.success) {
-        toast.success('Breakdown reason code updated successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODE_UPDATED_SUCCESSFULLY_5F6680A2', fallbackText: 'Breakdown reason code updated successfully', type: 'success' });
         handleCancelEdit();
-        fetchReasonCodes();
+        invalidateCache('breakdown-reason-codes:');
+        fetchReasonCodes({ force: true });
       }
     } catch (error) {
       console.error('Error updating breakdown reason code:', error);
-      toast.error(error.response?.data?.message || 'Failed to update breakdown reason code');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_BREAKDOWN_REASON_CODE_47D88F80', fallbackText: 'Failed to update breakdown reason code', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -157,19 +159,20 @@ const BreakdownReasonCodes = () => {
     try {
       const res = await API.delete(`/breakdown-reason-codes/${atbrrcId}`);
       if (res.data && res.data.success) {
-        toast.success('Breakdown reason code deleted successfully');
-        fetchReasonCodes();
+        showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODE_DELETED_SUCCESSFULLY_717465FC', fallbackText: 'Breakdown reason code deleted successfully', type: 'success' });
+        invalidateCache('breakdown-reason-codes:');
+        fetchReasonCodes({ force: true });
       }
     } catch (error) {
       console.error('Error deleting breakdown reason code:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete breakdown reason code');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_BREAKDOWN_REASON_CODE_E2DF765E', fallbackText: 'Failed to delete breakdown reason code', type: 'error' });
     }
   };
 
   // Handle delete selected
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error('Please select at least one reason code to delete');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AT_LEAST_ONE_REASON_CODE_TO_DELETE_2324F9C9', fallbackText: 'Please select at least one reason code to delete', type: 'error' });
       return;
     }
 
@@ -182,12 +185,19 @@ const BreakdownReasonCodes = () => {
         API.delete(`/breakdown-reason-codes/${rowId}`)
       );
       await Promise.all(deletePromises);
-      toast.success(`${selectedRows.length} reason code(s) deleted successfully`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_REASON_CODES_DELETED_SUCCESSFULLY_17B3A2BD',
+        fallbackText: '{{count}} reason code(s) deleted successfully',
+        type: 'success',
+        values: { count: selectedRows.length },
+      });
       setSelectedRows([]);
-      fetchReasonCodes();
+      invalidateCache('breakdown-reason-codes:');
+      fetchReasonCodes({ force: true });
     } catch (error) {
       console.error('Error deleting reason codes:', error);
-      toast.error('Failed to delete some reason codes');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_SOME_REASON_CODES_72CCFF7D', fallbackText: 'Failed to delete some reason codes', type: 'error' });
     }
   };
 
@@ -216,37 +226,16 @@ const BreakdownReasonCodes = () => {
       link.click();
       document.body.removeChild(link);
       
-      toast.success('Breakdown reason codes exported successfully');
+      showBackendTextToast({ toast, tmdId: 'TMD_BREAKDOWN_REASON_CODES_EXPORTED_SUCCESSFULLY_0808437D', fallbackText: 'Breakdown reason codes exported successfully', type: 'success' });
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast.error('Failed to export breakdown reason codes');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_EXPORT_BREAKDOWN_REASON_CODES_3FA53D53', fallbackText: 'Failed to export breakdown reason codes', type: 'error' });
     }
   };
 
   // Handle filter change
   const handleFilterChange = (columnName, value) => {
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: value,
-      }));
-    } else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({
-        ...prev,
-        [columnName]: value,
-      }));
-    } else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const filters = columns.map((col) => ({
@@ -342,7 +331,7 @@ const BreakdownReasonCodes = () => {
           const filteredData = filterData(reasonCodes, filterValues, visibleColumns);
           const visibleCols = visibleColumns.filter((col) => col.visible);
 
-          if (loading) {
+          if (listLoading && reasonCodes.length === 0) {
             const colSpan = visibleCols.length + (showActions ? 1 : 0);
             return (
               <tr>

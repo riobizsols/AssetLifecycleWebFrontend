@@ -1,5 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { clearCache } from "../utils/apiCache";
+import { useNavigationStore } from "./useNavigationStore";
+import { useAssetsStore } from "./useAssetsStore";
 
 export const useAuthStore = create(
     persist(
@@ -24,7 +27,14 @@ export const useAuthStore = create(
                     requiresPasswordChange: data.requiresPasswordChange || false, // Store password change requirement
                 }),
 
-            logout: () =>
+            logout: () => {
+                clearCache();
+                useNavigationStore.getState().resetNavigation();
+                useAssetsStore.setState({
+                    currentPage: 1,
+                    filterValues: { columnFilters: [], fromDate: '', toDate: '' },
+                    isFullListMode: false,
+                });
                 set({
                     isAuthenticated: false,
                     user: null,
@@ -37,7 +47,8 @@ export const useAuthStore = create(
                     dept_id: null,
                     dept_name: null,
                     requiresPasswordChange: false,
-                }),
+                });
+            },
 
             clearPasswordChangeRequirement: () =>
                 set({

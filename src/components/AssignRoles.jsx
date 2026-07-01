@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { showBackendTextToast } from '../utils/errorTranslation';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
 import toast from 'react-hot-toast';
@@ -8,12 +9,19 @@ import useAuditLog from '../hooks/useAuditLog';
 import { USERS_APP_ID } from '../constants/usersAuditEvents';
 import ContentBox from './ContentBox';
 import CustomTable from './CustomTable';
+import { filterData } from '../utils/filterData';
+import { applyListFilterChange } from '../utils/listFilterState';
 import SearchableDropdown from './ui/SearchableDropdown';
+import { useLanguage } from '../contexts/LanguageContext';
+import { translateJobRoleName } from '../utils/jobRoleTranslations';
 
 const AssignRoles = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const { recordActionByNameWithFetch } = useAuditLog(USERS_APP_ID);
+  const u = (key, options) => t(`users.${key}`, options);
+  const trRole = (name, id) => translateJobRoleName(t, name, id);
   
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -26,23 +34,27 @@ const AssignRoles = () => {
   const [availableRoles, setAvailableRoles] = useState([]);
   const [currentEmployeeRoles, setCurrentEmployeeRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filterValues, setFilterValues] = useState({
+    columnFilters: [],
+    fromDate: '',
+    toDate: '',
+    search: '',
+  });
 
-  const columns = [
-    { label: "Employee ID", name: "employee_id", visible: true },
-    { label: "Name", name: "name", visible: true },
-    { label: "Full Name", name: "full_name", visible: true },
-    { label: "Email", name: "email_id", visible: true },
-    { label: "Department", name: "dept_id", visible: true },
-    { label: "Phone", name: "phone_number", visible: true },
-    { label: "Status", name: "int_status", visible: true },
-    { label: "Current Role", name: "job_role_name", visible: true }
-  ];
+  const columns = useMemo(() => [
+    { label: u("employeeId"), name: "employee_id", visible: true },
+    { label: u("nameLabel"), name: "name", visible: true },
+    { label: u("fullName"), name: "full_name", visible: true },
+    { label: u("email"), name: "email_id", visible: true },
+    { label: u("department"), name: "dept_id", visible: true },
+    { label: u("phone"), name: "phone_number", visible: true },
+    { label: u("status"), name: "int_status", visible: true },
+    { label: u("currentRole"), name: "job_role_name", visible: true }
+  ], [t]);
 
-  // Initialize filters when component mounts
   useEffect(() => {
     setFilters(columns);
-  }, []);
+  }, [columns]);
 
   // Fetch employees with their current job roles
   const fetchEmployees = async () => {
@@ -53,7 +65,7 @@ const AssignRoles = () => {
       setEmployees(employeesData);
     } catch (error) {
       console.error('Error fetching employees:', error);
-      toast.error('Failed to fetch employees');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_EMPLOYEES_2E477963', fallbackText: u('failedToFetchEmployees'), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -70,7 +82,7 @@ const AssignRoles = () => {
       setAvailableRoles(rolesData);
     } catch (error) {
       console.error('Error fetching roles:', error);
-      toast.error('Failed to fetch roles');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ROLES_2D5071D5', fallbackText: u('failedToFetchJobRoles'), type: 'error' });
     } finally {
       setRolesLoading(false);
     }
@@ -125,37 +137,12 @@ const AssignRoles = () => {
     });
   };
 
-  const getFilteredData = () => {
-    let filtered = getSortedData();
-    
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(employee => {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          (employee.employee_id && employee.employee_id.toLowerCase().includes(searchLower)) ||
-          (employee.name && employee.name.toLowerCase().includes(searchLower)) ||
-          (employee.full_name && employee.full_name.toLowerCase().includes(searchLower)) ||
-          (employee.email_id && employee.email_id.toLowerCase().includes(searchLower)) ||
-          (employee.dept_id && employee.dept_id.toLowerCase().includes(searchLower)) ||
-          (employee.phone_number && employee.phone_number.toLowerCase().includes(searchLower)) ||
-          (employee.job_role_name && employee.job_role_name.toLowerCase().includes(searchLower))
-        );
-      });
-    }
-    
-    return filtered;
+  const getFilteredData = (visibleColumns) => {
+    return filterData(getSortedData(), filterValues, visibleColumns);
   };
 
-  // ContentBox handlers
-  const handleFilterChange = (filterType, value) => {
-    // Handle different filter types
-    if (filterType === 'search') {
-      setSearchTerm(value);
-    } else if (filterType === 'columnFilters') {
-      // Apply column-based filtering
-      // This would be implemented based on your specific filtering needs
-    }
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleRefresh = () => {
@@ -208,7 +195,7 @@ const AssignRoles = () => {
 
   const handleRoleAssignment = async () => {
     if (!selectedEmployee || selectedRoles.length === 0) {
-      toast.error('Please select an employee and at least one role');
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_EMPLOYEE_AND_AT_LEAST_ONE_ROLE_29FF6922', fallbackText: 'Please select an employee and at least one role', type: 'error' });
       return;
     }
 
@@ -216,7 +203,7 @@ const AssignRoles = () => {
       // Get the emp_int_id for the selected employee
       const selectedEmp = employees.find(emp => emp.employee_id === selectedEmployee);
       if (!selectedEmp || !selectedEmp.emp_int_id) {
-        toast.error('Employee internal ID not found');
+        showBackendTextToast({ toast, tmdId: 'TMD_EMPLOYEE_INTERNAL_ID_NOT_FOUND_3A05781F', fallbackText: 'Employee internal ID not found', type: 'error' });
         return;
       }
 
@@ -239,9 +226,24 @@ const AssignRoles = () => {
       });
 
       if (response.data.skippedRoles?.length > 0) {
-        toast.success(`Successfully assigned ${response.data.assignedRoles.length} role(s). ${response.data.skippedRoles.length} role(s) were already assigned.`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSIGNROLES_SUCCESSFULLYASSIGNEDWITHSKIPPED_13D5E43F',
+          fallbackText: 'Successfully assigned {{assignedCount}} role(s). {{skippedCount}} role(s) were already assigned.',
+          type: 'success',
+          values: {
+            assignedCount: response.data.assignedRoles.length,
+            skippedCount: response.data.skippedRoles.length,
+          },
+        });
       } else {
-        toast.success(`Successfully assigned ${response.data.assignedRoles.length} role(s)`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSIGNROLES_SUCCESSFULLYASSIGNED_0A2D6462',
+          fallbackText: 'Successfully assigned {{assignedCount}} role(s)',
+          type: 'success',
+          values: { assignedCount: response.data.assignedRoles.length },
+        });
       }
       
       // Refresh employees list
@@ -256,11 +258,9 @@ const AssignRoles = () => {
       setCurrentEmployeeRoles([]);
     } catch (error) {
       console.error('Error assigning roles:', error);
-      toast.error('Failed to assign roles');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_ASSIGN_ROLES_2A9BB80E', fallbackText: 'Failed to assign roles', type: 'error' });
     }
   };
-
-  const filteredData = getFilteredData();
 
   return (
     <div className="p-3">
@@ -290,14 +290,16 @@ const AssignRoles = () => {
             }}
             className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-3 py-1 hover:bg-gray-100 bg-[#0E2F4B] text-sm"
           >
-            Create
+            {t("common.create")}
           </button>
         }
       >
-        {({ visibleColumns, showActions }) => (
+        {({ visibleColumns, showActions }) => {
+          const tableData = getFilteredData(visibleColumns);
+          return (
           <CustomTable
             visibleColumns={visibleColumns}
-            data={filteredData}
+            data={tableData}
             selectedRows={selectedRows}
             setSelectedRows={setSelectedRows}
             onEdit={handleAssignRole}
@@ -307,27 +309,28 @@ const AssignRoles = () => {
             showActions={showActions}
             showCheckbox={false}  // Hide checkboxes for this screen
             showAddButton={false}  // Hide add button, use only action button
-            actionLabel="Assign Role"
+            actionLabel={u("assignRole")}
             renderCell={(col, row) => {
               if (col.name === 'int_status') {
+                const isActive = row.int_status === 'Active' || row.int_status === 1;
                 return (
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    row.int_status === 'Active' || row.int_status === 1
+                    isActive
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {row.int_status === 1 ? 'Active' : row.int_status}
+                    {isActive ? t('common.active') : t('common.inactive')}
                   </span>
                 );
               }
               if (col.name === 'job_role_name') {
                 return row.job_role_name ? (
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                    {row.job_role_name}
+                    {trRole(row.job_role_name, row.job_role_id)}
                   </span>
                 ) : (
                   <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
-                    No Role
+                    {u("noRole")}
                   </span>
                 );
               }
@@ -337,7 +340,8 @@ const AssignRoles = () => {
               return row[col.name] || '-';
             }}
           />
-        )}
+          );
+        }}
       </ContentBox>
 
       {/* Assign Role Modal */}
@@ -345,7 +349,7 @@ const AssignRoles = () => {
         <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-start z-50 overflow-y-auto py-8">
           <div className="bg-white w-[600px] rounded-lg shadow-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="bg-[#003366] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t-lg">
-              <h3>Assign Role</h3>
+              <h3>{u("assignRole")}</h3>
               <button
                 onClick={() => setShowAssignModal(false)}
                 className="text-white hover:text-gray-200"
@@ -356,7 +360,7 @@ const AssignRoles = () => {
             <div className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Selected Employee
+                  {u("selectedEmployee")}
                 </label>
                 <div className="p-3 bg-gray-50 rounded-lg border">
                   {(() => {
@@ -369,22 +373,22 @@ const AssignRoles = () => {
                         <div className="text-sm text-gray-600 mt-1">
                           {currentEmployeeRoles.length > 0 ? (
                             <div>
-                              <div className="text-orange-600 font-medium mb-1">Current Roles:</div>
+                              <div className="text-orange-600 font-medium mb-1">{u("currentRoles")}:</div>
                               <div className="space-y-1">
                                 {currentEmployeeRoles.map((role, index) => (
                                   <div key={index} className="text-orange-600 text-xs">
-                                    • {role.job_role_name} (ID: {role.job_role_id})
+                                    • {trRole(role.job_role_name, role.job_role_id)} ({u("roleId")}: {role.job_role_id})
                                   </div>
                                 ))}
                               </div>
                             </div>
                           ) : (
-                            <span className="text-gray-500">No Roles Assigned</span>
+                            <span className="text-gray-500">{u("noRolesAssigned")}</span>
                           )}
                         </div>
                       </div>
                     ) : (
-                      <div className="text-gray-500">Employee not found</div>
+                      <div className="text-gray-500">{u("employeeNotFound")}</div>
                     );
                   })()}
                 </div>
@@ -392,11 +396,11 @@ const AssignRoles = () => {
               
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Roles to Assign (Select Multiple)
+                  {u("rolesToAssign")}
                 </label>
                 {rolesLoading ? (
                   <div className="p-3 bg-gray-50 rounded-lg text-center text-gray-600">
-                    Loading roles...
+                    {u("loadingRoles")}
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
@@ -414,7 +418,7 @@ const AssignRoles = () => {
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <div className="font-medium text-gray-800">{role.text}</div>
+                              <div className="font-medium text-gray-800">{trRole(role.text, role.job_role_id)}</div>
                             </div>
                             <div className="flex items-center">
                               {isSelected && (
@@ -435,12 +439,12 @@ const AssignRoles = () => {
                 <div className="mb-6">
                   <div className="p-3 bg-blue-50 rounded-lg">
                     <div className="font-medium text-blue-800 mb-2">
-                      Selected Roles ({selectedRoles.length})
+                      {u("selectedRolesCount", { count: selectedRoles.length })}
                     </div>
                     <div className="space-y-1">
                       {selectedRoles.map((role, index) => (
                         <div key={index} className="text-sm text-blue-700">
-                          • {role.text}
+                          • {trRole(role.text, role.job_role_id)}
                         </div>
                       ))}
                     </div>
@@ -453,13 +457,17 @@ const AssignRoles = () => {
                   onClick={() => setShowAssignModal(false)}
                   className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   onClick={handleRoleAssignment}
                   className="px-4 py-2 rounded-lg bg-[#003366] hover:bg-[#002347] text-white"
                 >
-                  Assign {selectedRoles.length > 0 ? `${selectedRoles.length} Role${selectedRoles.length > 1 ? 's' : ''}` : 'Roles'}
+                  {selectedRoles.length > 1
+                    ? u("assignRolesCount", { count: selectedRoles.length })
+                    : selectedRoles.length === 1
+                      ? u("assignRoleCount", { count: 1 })
+                      : u("assignRolesButton")}
                 </button>
               </div>
             </div>

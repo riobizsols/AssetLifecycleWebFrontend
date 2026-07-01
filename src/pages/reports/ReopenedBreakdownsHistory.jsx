@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { reopenedBreakdownsService } from "../../services/reopenedBreakdownsService";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { buildCacheKey, peekCache } from "../../utils/apiCache";
+import { REPORT_CACHE_TTL_MS } from "../../utils/reportCache";
 import toast from "react-hot-toast";
 import RouteDataLoading from "../../components/loading/RouteDataLoading";
-import { getCache } from "../../utils/apiCache";
 
 const formatDt = (d) => (d ? new Date(d).toLocaleString() : "—");
 const statusLabel = (s) => {
@@ -26,51 +28,46 @@ const statusLabel = (s) => {
 export default function ReopenedBreakdownsHistory() {
   const { amsId } = useParams();
   const { t } = useLanguage();
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const orgId = localStorage.getItem("org_id") || "ORG001";
+  const cacheKey = buildCacheKey(["report", "reopened-breakdowns", "hist", orgId, amsId]);
+  const cachedRows = amsId ? peekCache(cacheKey, REPORT_CACHE_TTL_MS)?.data : null;
+  const [rows, setRows] = useState(Array.isArray(cachedRows) ? cachedRows : []);
+  const [loading, setLoading] = useState(!cachedRows);
+
+  const loadHistory = async ({ revalidate = true } = {}) => {
+    if (!amsId) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await reopenedBreakdownsService.getBrHistForAmsId(amsId, { revalidate });
+      const data = Array.isArray(res?.data) ? res.data : [];
+      setRows(data);
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || t("reports.reopenedBreakdownsHistory.loadFailed"),
+      );
+      if (!peekCache(cacheKey, REPORT_CACHE_TTL_MS)) {
+        setRows([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (!amsId) {
-        setRows([]);
-        setLoading(false);
-        return;
-      }
+    loadHistory({ revalidate: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amsId]);
 
-      // If we already have cached data for this AMS, show it immediately
-      // and only refetch once the TTL expires (handled in service).
-      const orgId = localStorage.getItem("org_id") || "ORG001";
-      const cacheKey = `reopenedBreakdowns:hist:${orgId}:${amsId}`;
-      const cached = getCache(cacheKey);
-      if (cached?.data && Array.isArray(cached.data)) {
-        setRows(cached.data);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const res = await reopenedBreakdownsService.getBrHistForAmsId(amsId);
-        const data = Array.isArray(res?.data) ? res.data : [];
-        if (!cancelled) setRows(data);
-      } catch (err) {
-        if (!cancelled) {
-          toast.error(
-            err.response?.data?.message ||
-              t("reports.reopenedBreakdownsHistory.loadFailed"),
-          );
-          setRows([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [amsId, t]);
+  useRevalidateOnFocus(() => {
+    if (amsId) {
+      reopenedBreakdownsService.getBrHistForAmsId(amsId, { revalidate: true }).then((res) => {
+        setRows(Array.isArray(res?.data) ? res.data : []);
+      }).catch(() => {});
+    }
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 max-w-6xl mx-auto">
@@ -78,7 +75,7 @@ export default function ReopenedBreakdownsHistory() {
         {t("reports.reopenedBreakdownsHistory.subtitle", { id: amsId || "—" })}
       </p>
 
-      {loading ? (
+      {loading && rows.length === 0 ? (
         <RouteDataLoading
           variant="fullscreen"
           message={t("reports.reopenedBreakdownsHistory.loading")}

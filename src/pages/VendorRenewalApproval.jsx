@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useMemo, useState } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
@@ -8,6 +9,7 @@ import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const VendorRenewalApproval = () => {
   const navigate = useNavigate();
@@ -61,6 +63,7 @@ const VendorRenewalApproval = () => {
 
         return {
           ...item,
+          raw_scheduled_date: item.scheduled_date,
           scheduled_date: formatDate(item.scheduled_date),
           actual_date: formatDate(item.actual_date),
           maintenance_created_on: formatDate(item.maintenance_created_on),
@@ -75,40 +78,14 @@ const VendorRenewalApproval = () => {
       setData(formattedData);
     } catch (err) {
       console.error("Failed to fetch vendor renewal approvals", err);
-      toast.error(t('vendorRenewalApproval.failedToFetchApprovals'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORRENEWALAPPROVAL_FAILEDTOFETCHAPPROVALS_48EBF89B', fallbackText: t('vendorRenewalApproval.failedToFetchApprovals'), type: 'error' });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleFilterChange = (columnName, value) => {
-    // Handle columnFilters array from ContentBox
-    if (columnName === "columnFilters") {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: value,
-      }));
-    }
-    // Handle date filters
-    else if (columnName === "fromDate" || columnName === "toDate") {
-      setFilterValues((prev) => ({
-        ...prev,
-        [columnName]: value,
-      }));
-    }
-    // Handle individual column filters (legacy support)
-    else {
-      setFilterValues((prev) => ({
-        ...prev,
-        columnFilters: prev.columnFilters.filter((f) => f.column !== columnName),
-        ...(value && {
-          columnFilters: [
-            ...prev.columnFilters.filter((f) => f.column !== columnName),
-            { column: columnName, value },
-          ],
-        }),
-      }));
-    }
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleSort = (column) => {
@@ -144,33 +121,39 @@ const VendorRenewalApproval = () => {
       );
 
       if (success) {
-        toast(
-          t('vendorRenewalApproval.approvalsExportedSuccessfully'),
-          {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_VENDORRENEWALAPPROVAL_APPROVALSEXPORTEDSUCCESSFULLY_4A9E2D91',
+          fallbackText: 'Vendor renewal approvals exported successfully',
+          type: 'success',
+          toastOptions: {
             icon: '✅',
             style: {
               borderRadius: '8px',
               background: '#064E3B',
               color: '#fff',
             },
-          }
-        );
+          },
+        });
       } else {
         throw new Error('Export failed');
       }
     } catch (error) {
       console.error('Error exporting data:', error);
-      toast(
-        t('vendorRenewalApproval.failedToExportApprovals'),
-        {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORRENEWALAPPROVAL_FAILEDTOEXPORTAPPROVALS_79CC438E',
+        fallbackText: 'Failed to export vendor renewal approvals',
+        type: 'error',
+        toastOptions: {
           icon: '❌',
           style: {
             borderRadius: '8px',
             background: '#7F1D1D',
             color: '#fff',
           },
-        }
-      );
+        },
+      });
     }
   };
 
@@ -211,6 +194,7 @@ const VendorRenewalApproval = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="scheduled_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

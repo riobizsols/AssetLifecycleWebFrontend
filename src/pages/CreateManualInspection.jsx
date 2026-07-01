@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QrCode, Maximize, Minimize, X } from 'lucide-react';
@@ -8,6 +9,7 @@ import SearchableDropdown from '../components/ui/SearchableDropdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useAppData } from '../contexts/AppDataContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { translateMasterDataLabel } from '../utils/masterDataLabel';
 
 const CreateManualInspection = () => {
   const navigate = useNavigate();
@@ -21,10 +23,28 @@ const CreateManualInspection = () => {
   const [loadingAssetTypeCounts, setLoadingAssetTypeCounts] = useState(false);
   const [assetTypeCounts, setAssetTypeCounts] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [creatingAssetId, setCreatingAssetId] = useState(null);
   const [scannedAssetId, setScannedAssetId] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const scannerRef = useRef(null);
+
+  const getCreateInspectionErrorConfig = (rawMessage) => {
+    const message = String(rawMessage || '').trim();
+    const normalized = message.toLowerCase();
+
+    if (normalized.includes('no inspection frequency configured for this asset type')) {
+      return {
+        tmdId: 'TMD_I18N_CREATEINSPECTION_NOINSPFREQUENCYCONFIGURED_E6D3B9F4',
+        fallbackText: t('inspectionView.noInspectionFrequencyConfigured'),
+      };
+    }
+
+    return {
+      tmdId: 'TMD_I18N_INSPECTIONVIEW_FAILEDTOCREATEINSPECTION_58DA658B',
+      fallbackText: message || t('inspectionView.failedToCreateInspection'),
+    };
+  };
 
   useEffect(() => {
     if (showScanner && !scannerRef.current) {
@@ -62,7 +82,12 @@ const CreateManualInspection = () => {
       );
     } catch (err) {
       console.error('Error starting scanner:', err);
-      toast.error(t('assets.couldNotAccessCamera') || 'Could not access camera');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_ASSETS_COULDNOTACCESSCAMERA_7EF238B6',
+        fallbackText: t('assets.couldNotAccessCamera'),
+        type: 'error',
+      });
       setShowScanner(false);
     }
   };
@@ -74,7 +99,7 @@ const CreateManualInspection = () => {
     }
     setScannedAssetId(decodedText);
     setShowScanner(false);
-    toast.success(t('assets.assetIdScannedSuccessfully') || 'Asset ID scanned successfully');
+    showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETIDSCANNEDSUCCESSFULLY_5A8AF033', fallbackText: t('assets.assetIdScannedSuccessfully'), type: 'success' });
   };
 
   const onScanError = () => {};
@@ -101,7 +126,7 @@ const CreateManualInspection = () => {
       setAssets(assetsList);
     } catch (err) {
       console.error('Failed to fetch assets:', err);
-      toast.error(t('assets.failedToFetchAssets') || 'Failed to fetch assets');
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETS_59117016', fallbackText: t('assets.failedToFetchAssets'), type: 'error' });
       setAssets([]);
     } finally {
       setLoadingAssets(false);
@@ -144,32 +169,44 @@ const CreateManualInspection = () => {
 
   const createInspectionForAsset = async (asset) => {
     if (!asset?.asset_id) {
-      toast.error(t('maintenanceSupervisor.pleaseSelectAsset') || 'Please select an asset');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_PLEASESELECTASSET_0DAB20A5',
+        fallbackText: t('maintenanceSupervisor.pleaseSelectAsset'),
+        type: 'error',
+      });
       return;
     }
-    setSubmitting(true);
+    setCreatingAssetId(asset.asset_id);
     try {
       const res = await API.post('/inspection/create-manual', {
         asset_id: asset.asset_id,
       });
       if (res.data?.success) {
-        toast.success(t('inspectionView.inspectionCreatedSuccessfully') || 'Inspection created successfully');
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_INSPECTIONCREATEDSUCCESSFULLY_05A4A5E6', fallbackText: t('inspectionView.inspectionCreatedSuccessfully'), type: 'success' });
         navigate('/inspection-view');
       } else {
-        toast.error(res.data?.message || (t('inspectionView.failedToCreateInspection') || 'Failed to create inspection'));
+        const errorConfig = getCreateInspectionErrorConfig(res.data?.message);
+        showBackendTextToast({ toast, tmdId: errorConfig.tmdId, fallbackText: errorConfig.fallbackText, type: 'error' });
       }
     } catch (err) {
       console.error('Failed to create inspection:', err);
-      toast.error(err.response?.data?.message || (t('inspectionView.failedToCreateInspection') || 'Failed to create inspection'));
+      const errorConfig = getCreateInspectionErrorConfig(err.response?.data?.message);
+      showBackendTextToast({ toast, tmdId: errorConfig.tmdId, fallbackText: errorConfig.fallbackText, type: 'error' });
     } finally {
-      setSubmitting(false);
+      setCreatingAssetId(null);
     }
   };
 
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId?.trim()) {
-      toast.error(t('assets.pleaseEnterAssetId') || 'Please enter or scan asset ID');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_ASSETS_PLEASEENTERASSETID_5202CAD4',
+        fallbackText: t('assets.pleaseEnterAssetId'),
+        type: 'error',
+      });
       return;
     }
     setSubmitting(true);
@@ -177,7 +214,12 @@ const CreateManualInspection = () => {
       const res = await API.get(`/assets/${encodeURIComponent(scannedAssetId.trim())}`);
       const asset = res.data;
       if (!asset?.asset_id) {
-        toast.error(t('assets.assetNotFoundOrNotAvailable') || 'Asset not found');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_ASSETS_ASSETNOTFOUNDORNOTAVAILABLE_6BCC1309',
+          fallbackText: t('assets.assetNotFoundOrNotAvailable'),
+          type: 'error',
+        });
         setSubmitting(false);
         return;
       }
@@ -185,9 +227,9 @@ const CreateManualInspection = () => {
     } catch (err) {
       console.error('Failed to resolve scanned asset:', err);
       const msg = err.response?.status === 404
-        ? (t('assets.assetNotFoundOrNotAvailable') || 'Asset not found')
-        : (err.response?.data?.message || t('assets.assetNotFoundOrNotAvailable') || 'Asset not found');
-      toast.error(msg);
+        ? t('assets.assetNotFound')
+        : (err.response?.data?.message || t('assets.assetNotFound'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETNOTFOUNDORNOTAVAILABLE_6BCC1309', fallbackText: msg, type: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -196,12 +238,12 @@ const CreateManualInspection = () => {
   const assetTypeOptions = [
     {
       id: '',
-      text: t('assets.allAssetTypes') || 'All Asset Types',
+      text: t('assets.allAssetTypes'),
       count: Object.values(assetTypeCounts).reduce((sum, count) => sum + (count || 0), 0),
     },
     ...(assetTypes || []).map((at) => ({
       id: at.asset_type_id,
-      text: at.text || at.asset_type_name || at.name || at.asset_type_id,
+      text: translateMasterDataLabel(at.text || at.asset_type_name || at.name || at.asset_type_id, t),
       count: assetTypeCounts[at.asset_type_id] || 0,
     })),
   ];
@@ -210,7 +252,7 @@ const CreateManualInspection = () => {
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="bg-white rounded shadow mb-4">
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          {t('inspectionView.createManualInspection') || 'Trigger Inspection for Asset'}
+          {t('inspectionView.createManualInspection')}
         </div>
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
@@ -223,7 +265,7 @@ const CreateManualInspection = () => {
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t('assets.selectAsset') || 'Select Asset'}
+              {t('assets.selectAsset')}
             </button>
             <button
               type="button"
@@ -234,7 +276,7 @@ const CreateManualInspection = () => {
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {t('assets.scanAsset') || 'Scan Asset'}
+              {t('assets.scanAsset')}
             </button>
           </nav>
         </div>
@@ -244,14 +286,14 @@ const CreateManualInspection = () => {
             <div className="flex gap-4 items-end mb-4">
               <div className="w-64">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('assets.assetType') || 'Asset Type'} <span className="text-red-500">*</span>
+                  {t('assets.assetType')} <span className="text-red-500">*</span>
                 </label>
                 <SearchableDropdown
                   options={assetTypeOptions}
                   value={selectedAssetType}
                   onChange={setSelectedAssetType}
-                  placeholder={t('assets.selectAssetType') || 'Select Asset Type'}
-                  searchPlaceholder={t('assets.searchAssetType') || 'Search asset type...'}
+                  placeholder={t('assets.selectAssetType')}
+                  searchPlaceholder={t('assets.searchAssetType')}
                   displayKey="text"
                   valueKey="id"
                   secondaryDisplayKey="count"
@@ -263,20 +305,20 @@ const CreateManualInspection = () => {
                 onClick={() => navigate('/inspection-view')}
                 className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
               >
-                {t('common.cancel') || 'Cancel'}
+                {t('common.cancel')}
               </button>
             </div>
           ) : (
             <form onSubmit={handleScanSubmit} className="flex gap-4 items-end flex-wrap">
               <div className="w-64">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('assets.assetId') || 'Asset ID'} <span className="text-red-500">*</span>
+                  {t('assets.assetId')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     className="border border-gray-300 px-3 py-2 text-sm w-full bg-white text-black focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] rounded"
-                    placeholder={t('assets.scanOrEnterAssetId') || 'Scan or enter asset ID'}
+                    placeholder={t('assets.scanOrEnterAssetId')}
                     value={scannedAssetId}
                     onChange={(e) => setScannedAssetId(e.target.value)}
                   />
@@ -284,7 +326,7 @@ const CreateManualInspection = () => {
                     type="button"
                     onClick={() => setShowScanner(true)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#0E2F4B]"
-                    title={t('assets.scanBarcode') || 'Scan Barcode'}
+                    title={t('assets.scanBarcode')}
                   >
                     <QrCode size={20} />
                   </button>
@@ -297,14 +339,14 @@ const CreateManualInspection = () => {
                   className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded text-sm"
                   disabled={submitting}
                 >
-                  {t('common.cancel') || 'Cancel'}
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || !scannedAssetId?.trim()}
                   className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting ? (t('common.creating') || 'Creating...') : (t('inspectionView.createManualInspection') || 'Trigger Inspection')}
+                  {submitting ? t('common.creating') : t('inspectionView.triggerInspection')}
                 </button>
               </div>
             </form>
@@ -320,7 +362,7 @@ const CreateManualInspection = () => {
         >
           <div className="bg-white rounded shadow">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center justify-between">
-              {t('assets.availableAssets') || 'Available Assets'}
+              {t('assets.availableAssets')}
               <button
                 type="button"
                 onClick={() => setIsMaximized((prev) => !prev)}
@@ -335,21 +377,21 @@ const CreateManualInspection = () => {
                   className="grid px-4 py-2 font-semibold border-b-4 border-yellow-400"
                   style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr)' }}
                 >
-                  <div>{t('employees.assetTypeName') || 'Asset Type'}</div>
-                  <div>{t('assets.assetName') || 'Asset Name'}</div>
-                  <div className="flex justify-center">{t('common.actions') || 'Actions'}</div>
+                  <div>{t('employees.assetTypeName')}</div>
+                  <div>{t('assets.assetName')}</div>
+                  <div className="flex justify-center">{t('common.actions')}</div>
                 </div>
               )}
               <div className={isMaximized ? 'max-h-[60vh] overflow-y-auto' : ''}>
                 {loadingAssets ? (
                   <div className="px-4 py-8 text-center text-gray-600 bg-white">
-                    {t('common.loading') || 'Loading...'}
+                    {t('common.loading')}
                   </div>
                 ) : assets.length === 0 ? (
                   <div className="px-4 py-8 text-center text-gray-500 bg-white rounded-b">
                     {selectedAssetType
-                      ? t('assets.noInactiveAssetsFound') || 'No available assets for this type.'
-                      : t('assets.selectAssetTypeToContinue') || 'Select an asset type to see available assets.'}
+                      ? t('assets.noInactiveAssetsFound')
+                      : t('assets.selectAssetTypeToContinue')}
                   </div>
                 ) : (
                   assets.map((asset, i) => (
@@ -361,19 +403,21 @@ const CreateManualInspection = () => {
                       style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,2fr) minmax(0,1fr)' }}
                     >
                       <div className="min-w-0 truncate" title={asset.asset_type_name}>
-                        {asset.asset_type_name || '-'}
+                        {translateMasterDataLabel(asset.asset_type_name, t) || '-'}
                       </div>
                       <div className="min-w-0 truncate" title={asset.description}>
-                        {asset.description || asset.text || asset.asset_id || '-'}
+                        {translateMasterDataLabel(asset.description || asset.text, t) || asset.asset_id || '-'}
                       </div>
                       <div className="flex justify-center">
                         <button
                           type="button"
                           onClick={() => createInspectionForAsset(asset)}
-                          disabled={submitting}
+                          disabled={Boolean(creatingAssetId)}
                           className="bg-[#0E2F4B] text-white px-3 py-1 rounded text-sm hover:bg-[#1a4971] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {submitting ? (t('common.creating') || 'Creating...') : (t('inspectionView.createManualInspection') || 'Trigger Inspection')}
+                          {creatingAssetId === asset.asset_id
+                            ? t('common.creating')
+                            : t('inspectionView.triggerInspection')}
                         </button>
                       </div>
                     </div>
@@ -390,7 +434,7 @@ const CreateManualInspection = () => {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
-                {t('assets.scanBarcode') || 'Scan Barcode'}
+                {t('assets.scanBarcode')}
               </h3>
               <button type="button" onClick={stopScanner} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
@@ -405,7 +449,7 @@ const CreateManualInspection = () => {
             </div>
             <div className="p-4 text-center">
               <p className="text-sm text-gray-600">
-                {t('assets.positionBarcodeInScanningArea') || 'Position the barcode within the scanning area.'}
+                {t('assets.positionBarcodeInScanningArea')}
               </p>
             </div>
             <div className="p-4 border-t flex justify-end">
@@ -414,7 +458,7 @@ const CreateManualInspection = () => {
                 onClick={stopScanner}
                 className="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-300"
               >
-                {t('common.cancel') || 'Cancel'}
+                {t('common.cancel')}
               </button>
             </div>
           </div>

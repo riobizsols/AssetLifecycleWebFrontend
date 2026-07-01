@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import API from "../lib/axios";
@@ -7,6 +8,7 @@ import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import { findConflictingAssetTypeName } from "../utils/assetTypeNameValidation";
 import { X } from "lucide-react";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }) => {
@@ -20,7 +22,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const { t } = useLanguage();
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
-  const [requireMaintenance, setRequireMaintenance] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [parentChild, setParentChild] = useState("parent");
   const [parentAssetTypes, setParentAssetTypes] = useState([]);
@@ -37,15 +38,12 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   
-  // New state variables for maintenance fields
-  const [maintenanceTypes, setMaintenanceTypes] = useState([]);
-  const [selectedMaintenanceType, setSelectedMaintenanceType] = useState("");
-  const [maintenanceLeadType, setMaintenanceLeadType] = useState("");
   // Properties state variables
   const [properties, setProperties] = useState([]);
   const [selectedProperties, setSelectedProperties] = useState([]);
   const [existingProperties, setExistingProperties] = useState([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(false);
+  const [existingAssetTypes, setExistingAssetTypes] = useState([]);
 
   useEffect(() => {
     if (assetData) {
@@ -54,12 +52,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       setAssignmentType(assetData.assignment_type || "user");
       setGroupRequired(!!assetData.group_required); // Convert to boolean
       setRequireInspection(!!assetData.inspection_required); // Convert to boolean
-      setRequireMaintenance(!!assetData.maint_required); // Convert to boolean
       setIsActive(assetData.int_status === 1 || assetData.int_status === "1" || assetData.int_status === true);
       setParentChild(assetData.is_child ? "child" : "parent");
       setSelectedParentType(assetData.parent_asset_type_id || "");
-      setSelectedMaintenanceType(assetData.maint_type_id || "");
-      setMaintenanceLeadType(assetData.maint_lead_type || "");
 
       // Log the data for debugging
       console.log('Asset Type Data:', {
@@ -67,12 +62,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         assignment_type: assetData.assignment_type,
         group_required: assetData.group_required,
         inspection_required: assetData.inspection_required,
-        maint_required: assetData.maint_required,
         int_status: assetData.int_status,
         is_child: assetData.is_child,
-        parent_asset_type_id: assetData.parent_asset_type_id,
-        maint_type_id: assetData.maint_type_id,
-        maint_lead_type: assetData.maint_lead_type
+        parent_asset_type_id: assetData.parent_asset_type_id
       });
     }
   }, [assetData]);
@@ -87,12 +79,21 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
     }
   }, [parentChild]);
 
-  // Fetch maintenance types when component mounts
   useEffect(() => {
-    fetchMaintenanceTypes();
     fetchDocumentTypes();
     fetchProperties();
+    fetchExistingAssetTypes();
   }, []);
+
+  const fetchExistingAssetTypes = async () => {
+    try {
+      const res = await API.get("/asset-types");
+      setExistingAssetTypes(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Error fetching asset types for validation:", err);
+      setExistingAssetTypes([]);
+    }
+  };
 
   // Fetch checklist and properties when asset type is loaded
   useEffect(() => {
@@ -152,7 +153,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       // Only show error if it's not a 404 (no checklist yet)
       if (err.response?.status !== 404) {
         console.error('Failed to fetch checklist:', err);
-        toast.error('Failed to load checklist');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_CHECKLIST_321C51D2', fallbackText: 'Failed to load checklist', type: 'error' });
       }
       setChecklist([]);
       setArchivedDocs([]);
@@ -194,7 +195,14 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         });
         
         if (res.data && res.data.message && res.data.message.includes('successfully')) {
-          toast.success(archiveStatus ? t('assetTypes.documentArchivedSuccessfully') : t('assetTypes.documentUnarchivedSuccessfully'));
+          showBackendTextToast({
+            toast,
+            tmdId: archiveStatus
+              ? 'TMD_DOCUMENT_ARCHIVED_SUCCESSFULLY_169C69DB'
+              : 'TMD_DOCUMENT_UNARCHIVED_SUCCESSFULLY_C6AA930A',
+            fallbackText: archiveStatus ? t('assetTypes.documentArchivedSuccessfully') : t('assetTypes.documentUnarchivedSuccessfully'),
+            type: 'success',
+          });
           console.log('🔄 Refreshing documents after archive action...');
           // Refresh the documents list
           fetchChecklist();
@@ -218,7 +226,12 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       closeAllDropdowns();
     } catch (err) {
       console.error(`Error ${action}ing document:`, err);
-      toast.error(`Failed to ${action} document. Please try again.`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_PROCESS_ASSET_TYPE_DOCUMENT_ACTION_79C8D9E0',
+        fallbackText: `Failed to ${action} document. Please try again.`,
+        type: 'error',
+      });
     } finally {
       setLoadingActions(prev => ({ ...prev, [actionKey]: false }));
     }
@@ -230,22 +243,10 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       setParentAssetTypes(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error fetching parent asset types:', err);
-      toast.error('Failed to fetch parent asset types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_PARENT_ASSET_TYPES_4CC8B345', fallbackText: 'Failed to fetch parent asset types', type: 'error' });
       setParentAssetTypes([]);
     }
   };
-
-  const fetchMaintenanceTypes = async () => {
-    try {
-      const res = await API.get('/maint-types');
-      setMaintenanceTypes(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error('Error fetching maintenance types:', err);
-      toast.error('Failed to fetch maintenance types');
-      setMaintenanceTypes([]);
-    }
-  };
-
 
   const fetchDocumentTypes = async () => {
     try {
@@ -268,12 +269,13 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       }
     } catch (err) {
       console.error('Error fetching document types:', err);
-      toast.error('Failed to load document types');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENT_TYPES_002075AC', fallbackText: 'Failed to load document types', type: 'error' });
       setDocumentTypes([]);
     }
   };
 
   const fetchProperties = async () => {
+    setIsLoadingProperties(true);
     try {
       console.log('Fetching properties from tblProps...');
       const res = await API.get('/properties');
@@ -306,8 +308,10 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       console.error('Error fetching properties:', err);
       console.error('Error response:', err.response?.data);
       console.error('Error status:', err.response?.status);
-      toast.error('Failed to load properties');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_PROPERTIES_2A6DBE55', fallbackText: 'Failed to load properties', type: 'error' });
       setProperties([]);
+    } finally {
+      setIsLoadingProperties(false);
     }
   };
 
@@ -347,7 +351,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       console.error('Error response:', err.response?.data);
       console.error('Error status:', err.response?.status);
       console.error('Error message:', err.message);
-      toast.error('Failed to load existing properties');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_EXISTING_PROPERTIES_3E0E2D70', fallbackText: 'Failed to load existing properties', type: 'error' });
       setExistingProperties([]);
     } finally {
       setIsLoadingProperties(false);
@@ -366,20 +370,30 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       console.log('Add property response:', res.data);
       
       if (res.data && res.data.success) {
-        toast.success(t('assetTypes.propertyAddedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_PROPERTYADDEDSUCCESSFULLY_29D64309', fallbackText: t('assetTypes.propertyAddedSuccessfully'), type: 'success' });
         // Clear the selected property
         setSelectedProperties([]);
         // Refresh existing properties
         fetchExistingProperties();
       } else {
         const errorMessage = res.data?.error || res.data?.message || 'Failed to add property';
-        toast.error(errorMessage);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_ADD_PROPERTY_A70E17D5',
+          fallbackText: errorMessage,
+          type: 'error',
+        });
       }
     } catch (err) {
       console.error('Error adding property:', err);
       console.error('Error response:', err.response?.data);
       const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to add property';
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_ADD_PROPERTY_A70E17D5',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     }
   };
 
@@ -391,7 +405,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       const res = await API.delete(`/asset-types/properties/${assetTypePropId}`);
       
       if (res.data && res.data.success) {
-        toast.success(t('assetTypes.propertyRemovedSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_PROPERTYREMOVEDSUCCESSFULLY_49F861E9', fallbackText: t('assetTypes.propertyRemovedSuccessfully'), type: 'success' });
         // Refresh existing properties
         fetchExistingProperties();
       } else {
@@ -399,7 +413,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       }
     } catch (err) {
       console.error('Error removing property:', err);
-      toast.error('Failed to remove property');
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_REMOVE_PROPERTY_74D0D911', fallbackText: 'Failed to remove property', type: 'error' });
     }
   };
 
@@ -408,52 +422,40 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
     
     // Validate form
     if (!assetType.trim()) {
-      toast(
-        "Asset type name is required",
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_NAME_IS_REQUIRED_F4B83CC5',
+        fallbackText: t('assetTypes.assetTypeNameRequired'),
+        type: 'error',
+      });
+      return;
+    }
+
+    const conflictingName = findConflictingAssetTypeName(
+      assetType.trim(),
+      existingAssetTypes,
+      assetData?.asset_type_id
+    );
+    if (conflictingName) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
+        fallbackText: t('assetTypes.similarAssetTypeNameExists', { name: conflictingName }),
+        type: 'error',
+      });
       return;
     }
 
     // Validate parent selection for child asset types
     if (parentChild === "child" && !selectedParentType) {
-      toast(
-        "Please select a parent asset type",
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PLEASE_SELECT_A_PARENT_ASSET_TYPE_F9A518FE',
+        fallbackText: "Please select a parent asset type",
+        type: 'error',
+      });
       return;
     }
-
-    // Validate maintenance fields when maintenance is required
-    if (requireMaintenance && !selectedMaintenanceType) {
-      toast(
-        "Please select a maintenance type when maintenance is required",
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-        }
-      );
-      return;
-    }
-
 
     setIsSubmitting(true);
 
@@ -464,11 +466,9 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
-        maint_required: requireMaintenance ? 1 : 0,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
-        maint_type_id: requireMaintenance ? selectedMaintenanceType : null,
-        maint_lead_type: requireMaintenance ? maintenanceLeadType : null
+        maint_lead_type: null
       };
 
       // Make API call
@@ -487,7 +487,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         assetTypeId: assetData.asset_type_id,
         assetTypeName: assetType.trim(),
         assignmentType: assignmentType,
-        maintenanceSchedule: requireMaintenance,
         inspectionRequired: requireInspection,
         groupRequired: groupRequired,
         status: isActive ? 'Active' : 'Inactive',
@@ -495,41 +494,47 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         action: 'Asset Type Updated'
       });
 
-      toast(
-        t('assetTypes.assetTypeUpdatedSuccessfully', { name: assetType }),
-        {
-          icon: '✅',
-          style: {
-            borderRadius: '8px',
-            background: '#064E3B',
-            color: '#fff',
-          },
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_ASSET_TYPE_UPDATED_SUCCESSFULLY_76CD38EC',
+        fallbackText: t('assetTypes.assetTypeUpdatedSuccessfully', { name: assetType.trim() }),
+        values: { name: assetType.trim() },
+        type: 'success',
+      });
       
       // Call onClose with a flag to trigger refresh in parent
       onClose(true);
     } catch (error) {
-      const errorMessage = error.response?.data?.error || "Failed to update asset type";
-      const errorDetails = error.response?.data?.details || "";
-      const errorHint = error.response?.data?.hint || "";
-      
+      const responseData = error.response?.data;
+      if (responseData?.existingName) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
+          fallbackText: t('assetTypes.similarAssetTypeNameExists', {
+            name: responseData.existingName,
+          }),
+          type: 'error',
+        });
+        return;
+      }
+
+      const errorMessage =
+        responseData?.message ||
+        responseData?.error ||
+        t('assetTypes.failedToUpdateAssetType');
+      const errorDetails = responseData?.details || "";
+      const errorHint = responseData?.hint || "";
+
       let fullError = errorMessage;
       if (errorDetails) fullError += `\n${errorDetails}`;
       if (errorHint) fullError += `\n\nHint: ${errorHint}`;
 
-      toast(
-        fullError,
-        {
-          icon: '❌',
-          style: {
-            borderRadius: '8px',
-            background: '#7F1D1D',
-            color: '#fff',
-          },
-          duration: 5000,
-        }
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_ASSET_TYPE_6848FB6D',
+        fallbackText: fullError,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -538,20 +543,25 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   // Handle checklist uploads
   const handleUploadChecklist = async () => {
     if (uploadRows.length === 0) {
-      toast.error('Add at least one file');
+      showBackendTextToast({ toast, tmdId: 'TMD_ADD_AT_LEAST_ONE_FILE_76BB747B', fallbackText: 'Add at least one file', type: 'error' });
       return;
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
-        toast.error('Select document type and choose a file for all rows');
+        showBackendTextToast({ toast, tmdId: 'TMD_SELECT_DOCUMENT_TYPE_AND_CHOOSE_A_FILE_FOR_ALL_ROWS_58610967', fallbackText: 'Select document type and choose a file for all rows', type: 'error' });
         return;
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && selectedDocType.text.toLowerCase().includes('other') && !r.docTypeName?.trim()) {
-        toast.error(`Enter custom name for ${selectedDocType.text} documents`);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_ENTER_CUSTOM_NAME_FOR_DOCUMENTS_A5B0C4C8',
+          fallbackText: `Enter custom name for ${selectedDocType.text} documents`,
+          type: 'error',
+        });
         return;
       }
     }
@@ -583,19 +593,19 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
 
       if (successCount > 0) {
         if (failCount === 0) {
-          toast.success(t('assetTypes.allFilesUploadedSuccessfully'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_ALLFILESUPLOADEDSUCCESSFULLY_284DCDA6', fallbackText: t('assetTypes.allFilesUploadedSuccessfully'), type: 'success' });
         } else {
-          toast.success(t('assetTypes.filesUploadedWithFailures', { successCount, failCount }));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_FILESUPLOADEDWITHFAILURES_7D6C4C3D', fallbackText: t('assetTypes.filesUploadedWithFailures', { successCount, failCount }), type: 'success' });
         }
         setUploadRows([]); // Clear all attachments after upload
         // Refresh the checklist
         fetchChecklist();
       } else {
-        toast.error('Failed to upload any files');
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPLOAD_ANY_FILES_7C811EA6', fallbackText: 'Failed to upload any files', type: 'error' });
       }
     } catch (err) {
       console.error('Upload process error:', err);
-      toast.error(t('assetTypes.uploadProcessFailed'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPES_UPLOADPROCESSFAILED_144ADA1E', fallbackText: t('assetTypes.uploadProcessFailed'), type: 'error' });
     } finally {
       setIsUploading(false);
     }
@@ -801,61 +811,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
               <span>{t('assetTypes.requireInspection')}</span>
             </label>
 
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={requireMaintenance}
-                onChange={(e) => setRequireMaintenance(e.target.checked)}
-                disabled={isReadOnly}
-                className="form-checkbox text-blue-500 rounded"
-              />
-              <span>{t('assetTypes.requireMaintenance')}</span>
-            </label>
-
           </div>
-
-          {/* Maintenance Fields - Conditional Rendering */}
-          {requireMaintenance && (
-            <div className="mt-6 grid grid-cols-2 gap-6">
-              {/* Maintenance Type Dropdown */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  {t('assetTypes.selectMaintenanceType')} <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedMaintenanceType}
-                  onChange={(e) => setSelectedMaintenanceType(e.target.value)}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                >
-                  <option value="">{t('assetTypes.selectMaintenanceTypeOption')}</option>
-                  {maintenanceTypes
-                    .filter((type) => !type.text?.toLowerCase().includes('vendor contract renewal'))
-                    .map((type) => (
-                      <option key={type.maint_type_id} value={type.maint_type_id}>
-                        {type.text}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              {/* Maintenance Lead Time Input */}
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  {t('assetTypes.maintenanceLeadType')}
-                </label>
-                <input
-                  type="text"
-                  value={maintenanceLeadType}
-                  onChange={(e) => setMaintenanceLeadType(e.target.value)}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('assetTypes.enterMaintenanceLeadType')}
-                />
-              </div>
-
-            </div>
-          )}
 
           {/* Document Management Section - Always Visible */}
           <div className="mt-6">
@@ -991,7 +947,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                             onChange={e => {
                               const f = e.target.files?.[0] || null;
                               if (f && f.size > 15 * 1024 * 1024) { // 15MB limit
-                                toast.error('File size exceeds 15MB limit');
+                                showBackendTextToast({ toast, tmdId: 'TMD_FILE_SIZE_EXCEEDS_15MB_LIMIT_5CCBDF10', fallbackText: 'File size exceeds 15MB limit', type: 'error' });
                                 e.target.value = '';
                                 return;
                               }

@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useMemo } from "react";
 import { 
   Plus, Edit2, Trash2, X, Search 
@@ -41,7 +42,7 @@ const AssetTypeChecklistMapping = () => {
       setMappingSummaries(fetchedSummaries);
     } catch (error) {
       console.error("Error fetching mapping summaries:", error);
-      toast.error(t("assetTypeChecklistMapping.failedToLoadMappings"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPECHECKLISTMAPPING_FAILEDTOLOADMAPPINGS_67029D45', fallbackText: 'Failed to load mappings', type: 'error' });
     } finally {
       setIsLoadingMain(false);
     }
@@ -65,7 +66,7 @@ const AssetTypeChecklistMapping = () => {
       }
       
       if (successCount > 0) {
-        toast.success(t("assetTypeChecklistMapping.successfullyDeletedMappingCount", { count: successCount }));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPECHECKLISTMAPPING_SUCCESSFULLYDELETEDMA_518EECDB', fallbackText: 'Successfully deleted {{count}} mapping(s)', type: 'success', values: { count: successCount } });
         fetchMappingSummaries();
         setSelectedRows([]);
         return true;
@@ -73,7 +74,7 @@ const AssetTypeChecklistMapping = () => {
       return false;
     } catch (error) {
       console.error("Error deleting mapping groups:", error);
-      toast.error(t("assetTypeChecklistMapping.failedToDeleteMappings"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETTYPECHECKLISTMAPPING_FAILEDTODELETEMAPPING_1FB43A80', fallbackText: 'Failed to delete mappings', type: 'error' });
       return false;
     } finally {
       setIsDeleting(false);

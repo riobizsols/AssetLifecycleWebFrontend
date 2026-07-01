@@ -7,6 +7,9 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
 
+const passwordInputClass =
+  "app-password-input mt-1 w-full px-3 py-2 pr-11 border rounded-md shadow-sm border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]";
+
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
@@ -139,20 +142,24 @@ export default function Login() {
                 <input
                   id="password"
                   name="password"
-                  type={show ? "text" : "password"}
+                  type="password"
                   required
                   placeholder={t('auth.password')}
                   value={form.password}
                   onChange={handleChange}
-                  className="mt-1 w-full px-3 py-2 pr-10 border rounded-md shadow-sm border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]"
+                  className={`${passwordInputClass}${show ? " app-password-input--visible" : ""}`}
+                  autoComplete="current-password"
                 />
 
-                <span
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 cursor-pointer"
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute right-3 top-[calc(50%+2px)] -translate-y-1/2 text-gray-600 cursor-pointer z-10"
                   onClick={() => setShow(!show)}
+                  aria-label={show ? "Hide password" : "Show password"}
                 >
                   {show ? <EyeOff size={18} /> : <Eye size={18} />}
-                </span>
+                </button>
               </div>
             </div>
 

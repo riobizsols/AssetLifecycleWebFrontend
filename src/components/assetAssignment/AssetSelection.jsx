@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Maximize, Minimize, QrCode, X } from "lucide-react";
@@ -8,6 +9,8 @@ import useAuditLog from "../../hooks/useAuditLog";
 import { DEPT_ASSIGNMENT_APP_ID } from "../../constants/deptAssignmentAuditEvents";
 import { EMP_ASSIGNMENT_APP_ID } from "../../constants/empAssignmentAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAssignmentStore } from "../../store/useAssignmentStore";
+import { useAssetsStore } from "../../store/useAssetsStore";
 import SearchableDropdown from "../ui/SearchableDropdown";
  
 
@@ -73,7 +76,7 @@ const AssetSelection = () => {
       );
     } catch (err) {
       console.error("Error starting scanner:", err);
-      toast.error(t('assets.couldNotAccessCamera'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_COULDNOTACCESSCAMERA_7EF238B6', fallbackText: t('assets.couldNotAccessCamera'), type: 'error' });
       setShowScanner(false);
     }
   };
@@ -89,7 +92,7 @@ const AssetSelection = () => {
     }
     setScannedAssetId(decodedText);
     setShowScanner(false);
-    toast.success(t('assets.assetIdScannedSuccessfully'));
+    showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETIDSCANNEDSUCCESSFULLY_6BAA847B', fallbackText: t('assets.assetIdScannedSuccessfully'), type: 'success' });
   };
 
   const onScanError = (error) => {
@@ -112,7 +115,7 @@ const AssetSelection = () => {
     console.log("AssetSelection - entityType:", entityType);
     
     if (!entityId || !entityType) {
-      toast.error(t('assets.invalidNavigation'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_INVALIDNAVIGATION_0D0D5F9C', fallbackText: t('assets.invalidNavigation'), type: 'error' });
       navigate(-1);
       return;
     }
@@ -175,120 +178,37 @@ const AssetSelection = () => {
 
   const fetchAssetTypes = async () => {
     try {
-      let incoming = [];
-      
-      // For department assignments, fetch only asset types assigned to that department
-      if (entityType === "department" && entityId) {
-        const res = await API.get(`/dept-assets/department/${entityId}/asset-types`);
-        // Handle nested data structure from backend
-        incoming = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        // Transform asset_type_name to text for consistency
-        incoming = incoming.map(item => ({
-          ...item,
-          text: item.asset_type_name || item.text
-        }));
-        console.log('Department asset types for dept', entityId, ':', incoming);
-      } 
-      else if (entityType === "employee") {
-        // For employee assignments, fetch only 'user' assignment type asset types
-        const res = await API.get("/dept-assets/asset-types?assignment_type=user");
-        incoming = Array.isArray(res.data) ? res.data : [];
-        console.log('User assignment type asset types:', incoming);
-      }
-      else {
-        // Fallback: fetch all asset types
-        const res = await API.get("/dept-assets/asset-types");
-        incoming = Array.isArray(res.data) ? res.data : [];
-        console.log('All asset types:', incoming);
-      }
+      const incoming = await useAssignmentStore
+        .getState()
+        .fetchAssetTypesForAssignment(entityType, entityId, { revalidate: true });
 
-      // Backend already filters by assignment_type, so just use the results
       setAssetTypes(incoming);
-      fetchAssetTypeCounts(incoming);
-      console.log('Final asset types:', incoming);
-    } catch (err) {
-      console.error("Failed to fetch asset types", err);
-      toast.error(t('assets.failedToFetchAssetTypes'));
-      setAssetTypes([]);
-    }
-  };
-
-  const fetchAssetTypeCounts = async (types = []) => {
-    try {
-      setCountsLoading(true);
-      if (!Array.isArray(types) || types.length === 0) {
-        setAssetTypeCounts({});
-        setCountsLoading(false);
-        return;
-      }
-
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
-      const responses = await Promise.all(
-        types.map((type) =>
-          API.get(`/assets/type/${type.asset_type_id}/inactive`, { params: { context } })
-        )
-      );
-
-      const counts = {};
-      types.forEach((type, index) => {
-        const res = responses[index];
-        const list = Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data)
-          ? res.data
-          : [];
-        counts[type.asset_type_id] = list.length;
-      });
-
+      setCountsLoading(true);
+      const counts = await useAssignmentStore
+        .getState()
+        .fetchInactiveCountsForTypes(context, incoming);
       setAssetTypeCounts(counts);
     } catch (err) {
-      console.error("Failed to fetch asset type counts", err);
-      setAssetTypeCounts({});
+      console.error("Failed to fetch asset types", err);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHASSETTYPES_6D6CB184', fallbackText: t('assets.failedToFetchAssetTypes'), type: 'error' });
+      setAssetTypes([]);
     } finally {
       setCountsLoading(false);
     }
   };
 
-  const fetchAvailableAssets = async () => {
-    try {
-      const endpoint =
-        entityType === "department"
-          ? `/admin/available-assets-for-department/${entityId}`
-          : `/admin/available-assets-for-employee/${entityId}`;
-
-      const res = await API.get(endpoint);
-      setAssets(res.data);
-    } catch (err) {
-      console.error("Failed to fetch available assets", err);
-      toast.error(t('assets.failedToFetchAvailableAssets'));
-    }
-  };
-
   const fetchInactiveAssetsByType = async (assetTypeId) => {
     try {
-      // Determine context based on entityType
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
-      
-      const res = await API.get(`/assets/type/${assetTypeId}/inactive`, {
-        params: { context }
-      });
-      // If the response is an object with a 'data' array, use that
-      const assetsArr = Array.isArray(res.data.data)
-        ? res.data.data
-        : Array.isArray(res.data)
-        ? res.data
-        : [];
+      const assetsArr = await useAssignmentStore
+        .getState()
+        .fetchInactiveAssetsByType(context, assetTypeId, { revalidate: true });
       setInactiveAssets(assetsArr);
-      setInactiveAssetsRaw(res.data); // for debugging if needed
-      console.log(
-        "Inactive assets for asset type",
-        assetTypeId,
-        ":",
-        assetsArr
-      );
+      setInactiveAssetsRaw(assetsArr);
     } catch (err) {
       console.error("Failed to fetch inactive assets", err);
-      toast.error(t('assets.failedToFetchInactiveAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
       setInactiveAssets([]);
     }
   };
@@ -301,26 +221,16 @@ const AssetSelection = () => {
         return;
       }
 
-      // Reuse existing API by querying each type, then de-duplicate by asset_id.
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
-      const requests = assetTypes.map((type) =>
-        API.get(`/assets/type/${type.asset_type_id}/inactive`, { params: { context } })
-      );
-
-      const responses = await Promise.all(requests);
-      const combined = responses.flatMap((res) =>
-        Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data) ? res.data : []
-      );
-
-      const uniqueByAssetId = Array.from(
-        new Map(combined.map((asset) => [asset.asset_id, asset])).values()
-      );
+      const uniqueByAssetId = await useAssignmentStore
+        .getState()
+        .fetchAllInactiveAssets(context, assetTypes);
 
       setInactiveAssets(uniqueByAssetId);
-      setInactiveAssetsRaw(combined);
+      setInactiveAssetsRaw(uniqueByAssetId);
     } catch (err) {
       console.error("Failed to fetch all inactive assets", err);
-      toast.error(t('assets.failedToFetchInactiveAssets'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
       setInactiveAssets([]);
       setInactiveAssetsRaw([]);
     }
@@ -331,12 +241,12 @@ const AssetSelection = () => {
 
   const handleAssignAsset = async (asset) => {
     if (!asset) {
-      toast.error(t('assets.pleaseSelectAssetFromList'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASESELECTASSETFROMLIST_5C6301C3', fallbackText: t('assets.pleaseSelectAssetFromList'), type: 'error' });
       return;
     }
   
     if (!asset.asset_type_id) {
-      toast.error(t('assets.assetTypeInformationMissing'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETTYPEINFORMATIONMISSING_3F87B575', fallbackText: t('assets.assetTypeInformationMissing'), type: 'error' });
       return;
     }
   
@@ -346,20 +256,20 @@ const AssetSelection = () => {
       const assetType = typeRes.data;
   
       if (!assetType) {
-        toast.error(t('assets.failedToValidateAssetType'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOVALIDATEASSETTYPE_4ADF3BB3', fallbackText: t('assets.failedToValidateAssetType'), type: 'error' });
         return;
       }
   
       if (entityType === "employee") {
         // Logic for Employee Assignment
         if (assetType.assignment_type !== "user") {
-          toast.error(t('assets.assetTypeCanOnlyBeAssignedToDepartments'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETTYPECANONLYBEASSIGNEDTODEPARTMENTS_1397F954', fallbackText: t('assets.assetTypeCanOnlyBeAssignedToDepartments'), type: 'error' });
           return;
         }
         // Use local state if entityIntId from props is missing
         const finalEntityIntId = entityIntIdLocal || entityIntId;
         if (!finalEntityIntId) {
-          toast.error(t('assets.employeeInternalIdMissing'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_EMPLOYEEINTERNALIDMISSING_12C6E04F', fallbackText: t('assets.employeeInternalIdMissing'), type: 'error' });
           return;
         }
   
@@ -382,17 +292,17 @@ const AssetSelection = () => {
           action: 'Asset Assigned to Employee'
         });
         
-        toast.success(t('assets.assetAssignedToEmployeeSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETASSIGNEDTOEMPLOYEESUCCESSFULLY_06EBA501', fallbackText: t('assets.assetAssignedToEmployeeSuccessfully'), type: 'success' });
   
       } else if (entityType === "department") {
         // Logic for Department Assignment
         // CORRECTED: Check for 'department' assignment type
         if (assetType.assignment_type !== "department") {
-          toast.error(t('assets.assetTypeCanOnlyBeAssignedToUsers'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETTYPECANONLYBEASSIGNEDTOUSERS_4279923B', fallbackText: t('assets.assetTypeCanOnlyBeAssignedToUsers'), type: 'error' });
           return;
         }
         if (!entityId && !departmentId) {
-          toast.error(t('assets.departmentIdMissing'));
+          showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_DEPARTMENTIDMISSING_3C595776', fallbackText: t('assets.departmentIdMissing'), type: 'error' });
           return;
         }
   
@@ -413,9 +323,12 @@ const AssetSelection = () => {
           action: 'Asset Assigned to Department'
         });
         
-        toast.success(t('assets.assetAssignedToDepartmentSuccessfully'));
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETASSIGNEDTODEPARTMENTSUCCESSFULLY_439AD8DD', fallbackText: t('assets.assetAssignedToDepartmentSuccessfully'), type: 'success' });
       }
       
+      useAssignmentStore.getState().invalidateAssignmentCache();
+      useAssetsStore.getState().invalidateAssetsCache();
+
       // Redirect after successful assignment
       navigate(-1);
   
@@ -423,25 +336,30 @@ const AssetSelection = () => {
       console.error("Failed to assign asset", err);
       const errorMessage =
         err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
-      toast.error(`${t('assets.failedToAssignAsset')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_ASSIGN_ASSET_A21E866D',
+        fallbackText: `${t('assets.failedToAssignAsset')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 
   // const handleAssignAsset = async (asset) => {
   //   if (!asset) {
-  //     toast.error("Please select an asset from the list");
+  //     showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ASSET_FROM_THE_LIST_5BA720F2', fallbackText: 'Please select an asset from the list', type: 'error' });
   //     return;
   //   }
 
   //   // Check if asset type exists and has assignment_type
   //   if (!asset.asset_type_id) {
-  //     toast.error("Asset type information is missing");
+  //     showBackendTextToast({ toast, tmdId: 'TMD_ASSET_TYPE_INFORMATION_IS_MISSING_1E3E363A', fallbackText: 'Asset type information is missing', type: 'error' });
   //     return;
   //   }
 
   //   if (entityType === "employee") {
   //     if (!entityIntId) {
-  //       toast.error("Employee internal ID is missing");
+  //       showBackendTextToast({ toast, tmdId: 'TMD_EMPLOYEE_INTERNAL_ID_IS_MISSING_5DAC0204', fallbackText: 'Employee internal ID is missing', type: 'error' });
   //       return;
   //     }
 
@@ -451,12 +369,12 @@ const AssetSelection = () => {
   //       const assetType = typeRes.data;
 
   //       if (!assetType) {
-  //         toast.error("Failed to validate asset type");
+  //         showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_VALIDATE_ASSET_TYPE_366FE24E', fallbackText: 'Failed to validate asset type', type: 'error' });
   //         return;
   //       }
 
   //       if (assetType.assignment_type !== "User") {
-  //         toast.error("This asset type can only be assigned to departments");
+  //         showBackendTextToast({ toast, tmdId: 'TMD_THIS_ASSET_TYPE_CAN_ONLY_BE_ASSIGNED_TO_DEPARTMENTS_6A267081', fallbackText: 'This asset type can only be assigned to departments', type: 'error' });
   //         return;
   //       }
 
@@ -470,7 +388,7 @@ const AssetSelection = () => {
   //         action: "A",
   //       };
   //       await API.post("/asset-assignments/employee", payload);
-  //       toast.success("Asset assigned to employee successfully");
+  //       showBackendTextToast({ toast, tmdId: 'TMD_ASSET_ASSIGNED_TO_EMPLOYEE_SUCCESSFULLY_539B6D4A', fallbackText: 'Asset assigned to employee successfully', type: 'success' });
   //       navigate(-1);
   //     } catch (err) {
   //       console.error("Failed to assign asset to employee", err);
@@ -483,7 +401,7 @@ const AssetSelection = () => {
   //     }
   //   } else if (entityType === "department") {
   //     if (!entityId && !departmentId) {
-  //       toast.error("Department ID missing");
+  //       showBackendTextToast({ toast, tmdId: 'TMD_DEPARTMENT_ID_MISSING_71A4A731', fallbackText: 'Department ID missing', type: 'error' });
   //       return;
   //     }
 
@@ -493,12 +411,12 @@ const AssetSelection = () => {
   //       const assetType = typeRes.data;
 
   //       if (!assetType) {
-  //         toast.error("Failed to validate asset type");
+  //         showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_VALIDATE_ASSET_TYPE_366FE24E', fallbackText: 'Failed to validate asset type', type: 'error' });
   //         return;
   //       }
 
   //       if (assetType.assignment_type !== "Department") {
-  //         toast.error("This asset type can only be assigned to users");
+  //         showBackendTextToast({ toast, tmdId: 'TMD_THIS_ASSET_TYPE_CAN_ONLY_BE_ASSIGNED_TO_USERS_19B7D0D8', fallbackText: 'This asset type can only be assigned to users', type: 'error' });
   //         return;
   //       }
 
@@ -511,7 +429,7 @@ const AssetSelection = () => {
   //         action: "A",
   //       };
   //       await API.post("/asset-assignments", payload);
-  //       toast.success("Asset assigned to department successfully");
+  //       showBackendTextToast({ toast, tmdId: 'TMD_ASSET_ASSIGNED_TO_DEPARTMENT_SUCCESSFULLY_6021E2AE', fallbackText: 'Asset assigned to department successfully', type: 'success' });
   //       navigate(-1);
   //     } catch (err) {
   //       console.error("Failed to assign asset to department", err);
@@ -528,13 +446,13 @@ const AssetSelection = () => {
   const handleScanSubmit = async (e) => {
     e.preventDefault();
     if (!scannedAssetId) {
-      toast.error(t('assets.pleaseEnterAssetId'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_PLEASEENTERASSETID_5202CAD4', fallbackText: t('assets.pleaseEnterAssetId'), type: 'error' });
       return;
     }
     // Find the asset in inactiveAssets by asset_id
     const asset = inactiveAssets.find((a) => a.asset_id === scannedAssetId);
     if (!asset) {
-      toast.error(t('assets.assetNotFoundOrNotAvailable'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETNOTFOUNDORNOTAVAILABLE_6BCC1309', fallbackText: t('assets.assetNotFoundOrNotAvailable'), type: 'error' });
       return;
     }
     handleAssignAsset(asset);

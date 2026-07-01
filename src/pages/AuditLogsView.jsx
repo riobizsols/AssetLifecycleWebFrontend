@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
@@ -268,7 +269,7 @@ const AuditLogsView = () => {
       }
     } catch (error) {
       console.error('Error fetching audit logs:', error);
-      toast.error(t('auditLogs.failedToFetchAuditLogs'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGS_FAILEDTOFETCHAUDITLOGS_79448468', fallbackText: t('auditLogs.failedToFetchAuditLogs'), type: 'error' });
       setAuditLogs([]);
       setTotalRecords(0);
       setTotalPages(1);
@@ -328,7 +329,7 @@ const AuditLogsView = () => {
   const handleExport = () => {
     const csvContent = generateCSV(auditLogs);
     downloadCSV(csvContent, 'audit_logs.csv');
-    toast.success(t('auditLogs.auditLogsExportedSuccessfully'));
+    showBackendTextToast({ toast, tmdId: 'TMD_I18N_AUDITLOGS_AUDITLOGSEXPORTEDSUCCESSFULLY_18A3703C', fallbackText: t('auditLogs.auditLogsExportedSuccessfully'), type: 'success' });
   };
 
   const generateCSV = (data) => {

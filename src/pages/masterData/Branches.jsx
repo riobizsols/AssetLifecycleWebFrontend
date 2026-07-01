@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
@@ -11,11 +12,18 @@ import { useNavigation } from "../../hooks/useNavigation";
 import useAuditLog from "../../hooks/useAuditLog";
 import { BRANCHES_APP_ID } from "../../constants/branchesAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
+import { useBranchesStore } from "../../store/useBranchesStore";
+import { applyListFilterChange } from "../../utils/listFilterState";
+import { invalidateCache } from "../../utils/apiCache";
 
 const Branches = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const branches = useBranchesStore((s) => s.branches);
+  const listLoading = useBranchesStore((s) => s.listLoading);
+  const fetchBranchesStore = useBranchesStore((s) => s.fetchBranches);
+  const data = branches;
+  const isLoading = listLoading && data.length === 0;
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: "",
@@ -54,27 +62,21 @@ const Branches = () => {
   ];
 
   useEffect(() => {
-    const fetchBranches = async () => {
-      setIsLoading(true);
+    const load = async () => {
       try {
-        const response = await API.get("/branches");
-        const formattedData = response.data.map(item => ({
-          ...item,
-          int_status: item.int_status === 1 ? 'Active' : 'Inactive',
-          created_on: item.created_on ? new Date(item.created_on).toLocaleString() : '',
-          changed_on: item.changed_on ? new Date(item.changed_on).toLocaleString() : ''
-        }));
-        setData(formattedData);
+        await fetchBranchesStore({ revalidate: true });
       } catch (error) {
         console.error("Error fetching branches:", error);
-        toast.error(t('branches.failedToFetchBranches'));
-      } finally {
-        setIsLoading(false);
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_FAILEDTOFETCHBRANCHES_65E26530', fallbackText: t('branches.failedToFetchBranches'), type: 'error' });
       }
     };
-
-    fetchBranches();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchBranchesStore({ revalidate: true });
+  });
 
   const handleSort = (column) => {
     setSortConfig(prevConfig => {
@@ -132,25 +134,8 @@ const Branches = () => {
     });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => {
-      if (filterType === 'columnFilters') {
-        return {
-          ...prev,
-          columnFilters: value
-        };
-      } else if (filterType === 'fromDate' || filterType === 'toDate') {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      } else {
-        return {
-          ...prev,
-          [filterType]: value
-        };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const handleEdit = (branch) => {
@@ -172,20 +157,21 @@ const Branches = () => {
         action: 'Branch Updated'
       });
       
-      // Update the data state with the updated branch
-      setData(prev => prev.map(branch => 
-        branch.branch_id === editingBranch.branch_id 
-          ? { ...branch, ...response.data.data }
-          : branch
-      ));
+      invalidateCache('branches:');
+      await fetchBranchesStore({ revalidate: true, force: true });
       
       setShowEditModal(false);
       setEditingBranch(null);
-      toast.success(t('branches.branchUpdatedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_BRANCHUPDATEDSUCCESSFULLY_5B5376C2', fallbackText: t('branches.branchUpdatedSuccessfully'), type: 'success' });
     } catch (error) {
       console.error("Error updating branch:", error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t('branches.failedToUpdateBranch');
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UPDATE_BRANCH_0AD95E61',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     }
   };
 
@@ -202,16 +188,19 @@ const Branches = () => {
         action: `${selectedRows.length} Branch(es) Deleted`
       });
 
-      // Update the data state to remove deleted branches
-      setData((prev) =>
-        prev.filter((branch) => !selectedRows.includes(branch.branch_id))
-      );
+      invalidateCache('branches:');
+      await fetchBranchesStore({ revalidate: true, force: true });
       setSelectedRows([]);
-      toast.success(t('branches.branchesDeletedSuccessfully', { count: selectedRows.length }));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_BRANCHESDELETEDSUCCESSFULLY_05CD82D2', fallbackText: t('branches.branchesDeletedSuccessfully', { count: selectedRows.length }), type: 'success' });
     } catch (error) {
       console.error("Error deleting branches:", error);
       const errorMessage = error.response?.data?.error || t('branches.failedToDeleteBranches');
-      toast.error(errorMessage);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_DELETE_BRANCHES_CF3A7071',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
     }
   };
 
@@ -227,13 +216,23 @@ const Branches = () => {
           action: 'Branches Data Downloaded'
         });
         
-        toast(t('branches.branchesExportedSuccessfully'), { icon: '✅' });
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_BRANCHES_EXPORTED_SUCCESSFULLY_498FC7C7',
+          fallbackText: t('branches.branchesExportedSuccessfully'),
+          type: 'success',
+        });
       } else {
         throw new Error(t('branches.exportFailed'));
       }
     } catch (error) {
       console.error('Error downloading branches:', error);
-      toast(t('branches.failedToExportBranches'), { icon: '❌' });
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_EXPORT_BRANCHES_3E370899',
+        fallbackText: t('branches.failedToExportBranches'),
+        type: 'error',
+      });
     }
   };
 

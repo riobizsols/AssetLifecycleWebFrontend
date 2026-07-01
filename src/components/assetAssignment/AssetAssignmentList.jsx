@@ -1,5 +1,6 @@
+import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState } from "react";
-import { Maximize, Minimize, Trash2, History } from "lucide-react";
+import { Maximize, Minimize, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import API from '../../lib/axios';
@@ -10,6 +11,8 @@ import { EMP_ASSIGNMENT_APP_ID } from '../../constants/empAssignmentAuditEvents'
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useNavigation } from '../../hooks/useNavigation';
 import { useAppData } from '../../contexts/AppDataContext';
+import { useAssignmentStore } from '../../store/useAssignmentStore';
+import { useAssetsStore } from '../../store/useAssetsStore';
 import SearchableDropdown from '../ui/SearchableDropdown';
 
 const AssetAssignmentList = ({
@@ -22,6 +25,9 @@ const AssetAssignmentList = ({
   onDelete, // eslint-disable-line no-unused-vars
   assignmentList,
   fetchAssignments,
+  assignmentsLoading = false,
+  entitiesLoading = false,
+  departmentsLoading = false,
   // Department filter props
   showDepartmentFilter = false,
   departments = [],
@@ -104,14 +110,21 @@ const AssetAssignmentList = ({
       }
       
       await recordActionByNameWithFetch('Unassign', auditData);
-      
+
+      useAssignmentStore.getState().invalidateAssignmentCache();
+      useAssetsStore.getState().invalidateAssetsCache();
       fetchAssignments();
       setShowDeleteModal(false);
-      toast.success(t('departments.assetUnassignedSuccessfully'));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ASSETUNASSIGNEDSUCCESSFULLY_3A64C755', fallbackText: t('departments.assetUnassignedSuccessfully'), type: 'success' });
     } catch (err) {
       console.error('Failed to unassign asset', err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'An error occurred';
-      toast.error(`${t('departments.failedToUnassignAsset')}: ${errorMessage}`);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_UNASSIGN_ASSET_36BB99A2',
+        fallbackText: `${t('departments.failedToUnassignAsset')}: ${errorMessage}`,
+        type: 'error',
+      });
     }
   };
 
@@ -144,12 +157,14 @@ const AssetAssignmentList = ({
                 searchPlaceholder={t('departments.searchDepartment') || 'Search department...'}
                 displayKey="text"
                 valueKey="id"
+                disabled={departmentsLoading}
               />
             </div>
           )}
           
           {/* Entity Dropdown */}
           {(!showDepartmentFilter || (showDepartmentFilter && selectedDepartment)) && (
+            <>
             <div className="w-64">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {entityType === 'department' ? t('common.department') : t('employees.title')}
@@ -165,11 +180,10 @@ const AssetAssignmentList = ({
                 searchPlaceholder={entityType === 'department' ? t('departments.searchDepartment') : t('employees.searchEmployee')}
                 displayKey="text"
                 valueKey="id"
+                disabled={entitiesLoading}
               />
             </div>
-          )}
-
-          {!isReadOnly && (
+            {!isReadOnly && (
             <div className="flex gap-2">
               <button
                 className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50 flex items-center gap-2"
@@ -189,6 +203,8 @@ const AssetAssignmentList = ({
                 {t('employees.assignAsset')}
               </button>
             </div>
+            )}
+            </>
           )}
         </div>
       </div>
@@ -206,21 +222,22 @@ const AssetAssignmentList = ({
               <div className="flex items-center gap-2">
                 {(entityType === 'employee' || entityType === 'department') && selectedEntity && (
                   <button
-                    onClick={async () => {
-                      // Log history view action
+                    onClick={() => {
                       const auditData = {
                         action: `${entityType === 'department' ? 'Department' : 'Employee'} Assignment History Viewed`
                       };
-                      
+
                       if (entityType === 'department') {
                         auditData.deptId = selectedEntity;
                       } else {
                         auditData.employeeId = selectedEntity;
                         auditData.employeeIntId = selectedEntityIntId;
                       }
-                      
-                      await recordActionByNameWithFetch('History', auditData);
+
                       setShowHistory(true);
+                      recordActionByNameWithFetch('History', auditData).catch((err) => {
+                        console.error('Failed to log history view:', err);
+                      });
                     }}
                     className="flex items-center gap-1 px-4 py-2 rounded-lg bg-white/30 backdrop-blur-md border border-white/40 shadow-sm text-[#0E2F4B] font-semibold hover:bg-white/50 transition"
                     style={{ boxShadow: '0 4px 24px 0 rgba(30, 41, 59, 0.08)' }}
@@ -249,7 +266,9 @@ const AssetAssignmentList = ({
                 <div>{t('employees.assignedBy')}</div>
                 {!isReadOnly && <div className="text-center">{t('common.actions')}</div>}
               </div>
-              {assignmentList.length === 0 ? (
+              {assignmentsLoading ? (
+                <div className="px-4 py-6 text-center text-gray-500 bg-white rounded-b">{t('common.loading') || 'Loading...'}</div>
+              ) : assignmentList.length === 0 ? (
                 <div className="px-4 py-6 text-center text-gray-500 col-span-8 bg-white rounded-b">{t('employees.noAssetsAssigned')}</div>
               ) : (
                 <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}> 
@@ -290,11 +309,14 @@ const AssetAssignmentList = ({
                 <div>{t('employees.assignedBy')}</div>
                 {!isReadOnly && <div className="text-center">{t('common.actions')}</div>}
               </div>
-              {assignmentList.length === 0 && (
+              {assignmentsLoading ? (
+                <div className="px-4 py-6 text-center text-gray-500 bg-white rounded-b">{t('common.loading') || 'Loading...'}</div>
+              ) : assignmentList.length === 0 ? (
                 <div className="px-4 py-6 text-center text-gray-500 col-span-7 bg-white rounded-b">
                   {t('employees.noAssetsAssigned')}
                 </div>
-              )}
+              ) : null}
+              {!assignmentsLoading && assignmentList.length > 0 && (
               <div className={`${isMaximized ? "max-h-[60vh] overflow-y-auto" : ""}`}> 
                 {assignmentList.map((item, i) => (
                   <div
@@ -322,6 +344,7 @@ const AssetAssignmentList = ({
                   </div>
                 ))}
               </div>
+              )}
             </div>
           )}
         </div>

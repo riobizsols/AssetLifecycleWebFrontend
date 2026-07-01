@@ -3,6 +3,7 @@ import { Clock, RefreshCw } from "lucide-react";
 import { toast } from "react-hot-toast";
 import API from "../../lib/axios";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { showBackendTextToast } from "../../utils/errorTranslation";
 
 /**
  * Manual triggers for workflow backfill jobs (same logic as scheduled crons).
@@ -26,17 +27,19 @@ const OneTimeCron = () => {
         "/cron-jobs/one-time/set-default-workflow-sequence",
       );
       setMaintenanceResult(response.data?.result || null);
-      toast.success(
-        t("oneTimeCron.maintenanceSuccess") ||
-          "Maintenance workflow backfill completed",
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: "TMD_MAINTENANCE_WORKFLOW_BACKFILL_COMPLETED_DF2FB438",
+        fallbackText: "Maintenance workflow backfill completed",
+        type: "success",
+      });
     } catch (error) {
       const msg =
         error?.response?.data?.message ||
         error?.response?.data?.error ||
         "Request failed";
       setMaintenanceError(msg);
-      toast.error(msg);
+      showBackendTextToast({ toast, tmdId: "TMD_REQUEST_FAILED_1F879319", fallbackText: "Request failed", type: "error" });
     } finally {
       setRunningMaintenance(false);
     }
@@ -52,16 +55,19 @@ const OneTimeCron = () => {
         "/cron-jobs/one-time/set-default-scrap-workflow-sequence",
       );
       setScrapResult(response.data?.result || null);
-      toast.success(
-        t("oneTimeCron.scrapSuccess") || "Scrap workflow backfill completed",
-      );
+      showBackendTextToast({
+        toast,
+        tmdId: "TMD_SCRAP_WORKFLOW_BACKFILL_COMPLETED_56394E97",
+        fallbackText: "Scrap workflow backfill completed",
+        type: "success",
+      });
     } catch (error) {
       const msg =
         error?.response?.data?.message ||
         error?.response?.data?.error ||
         "Request failed";
       setScrapError(msg);
-      toast.error(msg);
+      showBackendTextToast({ toast, tmdId: "TMD_REQUEST_FAILED_1F879319", fallbackText: "Request failed", type: "error" });
     } finally {
       setRunningScrap(false);
     }

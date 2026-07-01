@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -5,6 +6,10 @@ import { Card, CardContent } from "./ui/card";
 import { Clock, CheckCircle2 } from "lucide-react";
 import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
+import { useAssetsStore } from "../store/useAssetsStore";
+import { useScrapApprovalStore } from "../store/useScrapApprovalStore";
+import { useScrapAssetsStore } from "../store/useScrapAssetsStore";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 
 // Keep the same look & feel as MaintenanceApprovalDetail
 const getStepIcon = (status) => {
@@ -68,11 +73,40 @@ const ScrapMaintenanceApprovalDetail = () => {
   const context = searchParams.get("context") || location.state?.context || "SCRAPMAINTENANCEAPPROVAL";
 
   const { user } = useAuthStore();
-  const userRoles = user?.roles || [];
-  const userRoleIds = userRoles.map((r) => r.job_role_id);
+  const [userRoleIds, setUserRoleIds] = useState([]);
 
-  const [loading, setLoading] = useState(true);
-  const [detail, setDetail] = useState(null);
+  useEffect(() => {
+    const loadUserRoleIds = async () => {
+      const ids = new Set();
+      (user?.roles || []).forEach((role) => {
+        if (role?.job_role_id) ids.add(role.job_role_id);
+      });
+      if (user?.job_role_id) ids.add(user.job_role_id);
+
+      if (user?.user_id) {
+        try {
+          const res = await API.get(`/employees/users/${user.user_id}/roles`);
+          (res.data?.data || []).forEach((role) => {
+            if (role?.job_role_id) ids.add(role.job_role_id);
+          });
+        } catch (err) {
+          console.warn("Could not refresh user roles for scrap approval:", err);
+        }
+      }
+
+      setUserRoleIds([...ids]);
+    };
+
+    if (user) {
+      loadUserRoleIds();
+    } else {
+      setUserRoleIds([]);
+    }
+  }, [user]);
+
+  const cachedDetail = useScrapApprovalStore.getState().getCachedDetail(id);
+  const [loading, setLoading] = useState(!cachedDetail?.header);
+  const [detail, setDetail] = useState(cachedDetail);
   const [activeTab, setActiveTab] = useState("approval");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -80,55 +114,37 @@ const ScrapMaintenanceApprovalDetail = () => {
   const [rejectNote, setRejectNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllAssets, setShowAllAssets] = useState(false);
-  const [workflowHistory, setWorkflowHistory] = useState([]);
+  const [workflowHistory, setWorkflowHistory] = useState(() => {
+    const wfId = cachedDetail?.header?.wfscrap_h_id;
+    return wfId ? useScrapApprovalStore.getState().getCachedHistory(wfId) || [] : [];
+  });
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [assetDetails, setAssetDetails] = useState(null);
+  const [assetDetails, setAssetDetails] = useState(() => {
+    const assetId = cachedDetail?.assets?.length === 1 ? cachedDetail.assets[0].asset_id : null;
+    return assetId ? useAssetsStore.getState().getCachedAssetById(assetId) : null;
+  });
   const [loadingAssetDetails, setLoadingAssetDetails] = useState(false);
 
-  const fetchDetail = async () => {
-    setLoading(true);
+  const fetchDetail = async ({ force = false } = {}) => {
+    if (!id) return;
+    if (!detail?.header) setLoading(true);
     try {
-      const res = await API.get(`/scrap-maintenance/workflow/${id}`);
-      if (!res.data?.success) {
-        toast.error(res.data?.message || "Failed to load scrap workflow");
-        setDetail(null);
-        return;
-      }
-      setDetail({
-        header: res.data.header,
-        assets: res.data.assets || [],
-        workflowSteps: res.data.workflowSteps || [],
+      const data = await useScrapApprovalStore.getState().fetchWorkflowDetail(id, {
+        revalidate: true,
+        force,
       });
+      setDetail(data);
     } catch (e) {
       console.error("Failed to load scrap workflow detail", e);
-      toast.error("Failed to load scrap workflow detail");
-      setDetail(null);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_LOAD_SCRAP_WORKFLOW_DETAIL_3D5229F5',
+        fallbackText: 'Failed to load scrap workflow detail',
+        type: 'error',
+      });
+      if (!detail?.header) setDetail(null);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchWorkflowHistory = async () => {
-    if (!detail?.header?.wfscrap_h_id) {
-      console.log("No wfscrap_h_id available to fetch workflow history");
-      return;
-    }
-    
-    setLoadingHistory(true);
-    try {
-      console.log("Fetching workflow history for wfscrap_h_id:", detail.header.wfscrap_h_id);
-      const response = await API.get(`/scrap-maintenance/workflow-history/${detail.header.wfscrap_h_id}`);
-      console.log("Workflow history API response:", response.data);
-      
-      if (response.data.success) {
-        setWorkflowHistory(response.data.data);
-      } else {
-        console.error("Failed to fetch workflow history:", response.data.message);
-      }
-    } catch (error) {
-      console.error("Error fetching workflow history:", error);
-    } finally {
-      setLoadingHistory(false);
     }
   };
 
@@ -137,50 +153,56 @@ const ScrapMaintenanceApprovalDetail = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Fetch workflow history when detail is loaded
+  useRevalidateOnFocus(() => {
+    fetchDetail({ force: true });
+  });
+
   useEffect(() => {
-    fetchWorkflowHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail?.header?.wfscrap_h_id]);
+    if (activeTab !== 'history' || !detail?.header?.wfscrap_h_id) return;
 
-  // Fetch asset details when there's a single asset
+    const wfscrapHId = detail.header.wfscrap_h_id;
+    const cached = useScrapApprovalStore.getState().getCachedHistory(wfscrapHId);
+    if (cached?.length) {
+      setWorkflowHistory(cached);
+      setLoadingHistory(false);
+    } else {
+      setLoadingHistory(true);
+    }
+
+    useScrapApprovalStore
+      .getState()
+      .fetchWorkflowHistory(wfscrapHId, { revalidate: true })
+      .then((rows) => setWorkflowHistory(rows || []))
+      .catch((error) => {
+        console.error("Error fetching workflow history:", error);
+        setWorkflowHistory([]);
+      })
+      .finally(() => setLoadingHistory(false));
+  }, [activeTab, detail?.header?.wfscrap_h_id]);
+
   useEffect(() => {
-    const fetchAssetDetails = async () => {
-      if (!detail?.assets || detail.assets.length !== 1) {
-        console.log("Not fetching asset details - either no assets or multiple assets");
-        setAssetDetails(null);
-        return;
-      }
+    if (activeTab !== 'asset' || !detail?.assets || detail.assets.length !== 1) return;
 
-      const assetId = detail.assets[0].asset_id;
-      if (!assetId) {
-        console.log("No asset ID available");
-        return;
-      }
+    const assetId = detail.assets[0].asset_id;
+    if (!assetId) return;
 
-      setLoadingAssetDetails(true);
-      try {
-        console.log("Fetching asset details for asset ID:", assetId);
-        const response = await API.get(`/assets/${assetId}`, {
-          params: { context: 'SCRAPMAINTENANCEAPPROVAL' }
-        });
-        console.log("Asset details API response:", response.data);
+    const cached = useAssetsStore.getState().getCachedAssetById(assetId);
+    if (cached) {
+      setAssetDetails(cached);
+      return;
+    }
 
-        if (response.data) {
-          setAssetDetails(response.data);
-        } else {
-          console.error("Failed to fetch asset details");
-        }
-      } catch (error) {
+    setLoadingAssetDetails(true);
+    useAssetsStore
+      .getState()
+      .fetchAssetById(assetId)
+      .then((data) => setAssetDetails(data))
+      .catch((error) => {
         console.error("Error fetching asset details:", error);
-      } finally {
-        setLoadingAssetDetails(false);
-      }
-    };
-
-    fetchAssetDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail?.assets]);
+        setAssetDetails(null);
+      })
+      .finally(() => setLoadingAssetDetails(false));
+  }, [activeTab, detail?.assets]);
 
   const steps = useMemo(() => {
     if (!detail?.header) return [];
@@ -272,24 +294,51 @@ const ScrapMaintenanceApprovalDetail = () => {
     setIsSubmitting(true);
     let toastId = null;
     try {
-      toastId = toast.loading("Approving scrap...", { duration: Infinity });
+      toastId = await showBackendTextToast({
+        toast,
+        tmdId: 'TMD_APPROVING_SCRAP_IN_PROGRESS_3F395E78',
+        fallbackText: "Approving scrap...",
+        type: 'loading',
+      });
       const res = await API.post(`/scrap-maintenance/${id}/approve`, {
         note: approveNote,
         empIntId: user?.emp_int_id,
       });
       if (toastId) toast.dismiss(toastId);
       if (res.data?.success) {
-        toast.success(res.data?.message || "Approved");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SCRAP_APPROVED_SUCCESSFULLY_29930D4C',
+          fallbackText: res.data?.message || "Approved",
+          type: 'success',
+        });
         setShowApproveModal(false);
         setApproveNote("");
-        await fetchDetail();
-        await fetchWorkflowHistory();
+        useScrapApprovalStore.getState().invalidateScrapApprovalCache();
+        useScrapAssetsStore.getState().invalidateSummary();
+        await fetchDetail({ force: true });
+        if (activeTab === 'history' && detail?.header?.wfscrap_h_id) {
+          const rows = await useScrapApprovalStore
+            .getState()
+            .fetchWorkflowHistory(detail.header.wfscrap_h_id, { force: true });
+          setWorkflowHistory(rows || []);
+        }
       } else {
-        toast.error(res.data?.message || "Failed to approve");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_APPROVE_SCRAP_1EA9E4DC',
+          fallbackText: res.data?.message || "Failed to approve",
+          type: 'error',
+        });
       }
     } catch (e) {
       if (toastId) toast.dismiss(toastId);
-      toast.error(e.response?.data?.message || "Failed to approve");
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_APPROVE_SCRAP_1EA9E4DC',
+        fallbackText: e.response?.data?.message || "Failed to approve",
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -300,30 +349,57 @@ const ScrapMaintenanceApprovalDetail = () => {
     setIsSubmitting(true);
     let toastId = null;
     try {
-      toastId = toast.loading("Rejecting scrap...", { duration: Infinity });
+      toastId = await showBackendTextToast({
+        toast,
+        tmdId: 'TMD_REJECTING_SCRAP_IN_PROGRESS_09A2E790',
+        fallbackText: "Rejecting scrap...",
+        type: 'loading',
+      });
       const res = await API.post(`/scrap-maintenance/${id}/reject`, {
         reason: rejectNote,
         empIntId: user?.emp_int_id,
       });
       if (toastId) toast.dismiss(toastId);
       if (res.data?.success) {
-        toast.success(res.data?.message || "Rejected");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SCRAP_REJECTED_SUCCESSFULLY_8EAD62F7',
+          fallbackText: res.data?.message || "Rejected",
+          type: 'success',
+        });
         setShowRejectModal(false);
         setRejectNote("");
-        await fetchDetail();
-        await fetchWorkflowHistory();
+        useScrapApprovalStore.getState().invalidateScrapApprovalCache();
+        useScrapAssetsStore.getState().invalidateSummary();
+        await fetchDetail({ force: true });
+        if (activeTab === 'history' && detail?.header?.wfscrap_h_id) {
+          const rows = await useScrapApprovalStore
+            .getState()
+            .fetchWorkflowHistory(detail.header.wfscrap_h_id, { force: true });
+          setWorkflowHistory(rows || []);
+        }
       } else {
-        toast.error(res.data?.message || "Failed to reject");
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_REJECT_SCRAP_505743B6',
+          fallbackText: res.data?.message || "Failed to reject",
+          type: 'error',
+        });
       }
     } catch (e) {
       if (toastId) toast.dismiss(toastId);
-      toast.error(e.response?.data?.message || "Failed to reject");
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_REJECT_SCRAP_505743B6',
+        fallbackText: e.response?.data?.message || "Failed to reject",
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (loading && !detail?.header) {
     return (
       <div className="min-h-screen bg-[#f7f7f7] flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#0E2F4B]" />

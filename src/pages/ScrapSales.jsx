@@ -1,79 +1,44 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
-import { Plus } from 'lucide-react';
 import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
 import { useLanguage } from '../contexts/LanguageContext';
-
+import { useRevalidateOnFocus } from '../hooks/useRevalidateOnFocus';
+import { useScrapSalesStore } from '../store/useScrapSalesStore';
+import { invalidateCache } from '../utils/apiCache';
+import { filterData } from '../utils/filterData';
+import { applyListFilterChange } from '../utils/listFilterState';
 
 const ScrapSales = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   const { t } = useLanguage();
-  const [scrapSales, setScrapSales] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const scrapSales = useScrapSalesStore((s) => s.scrapSales);
+  const listLoading = useScrapSalesStore((s) => s.listLoading);
+  const fetchScrapSalesStore = useScrapSalesStore((s) => s.fetchScrapSales);
+  const removeSales = useScrapSalesStore((s) => s.removeSales);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
+  const loading = listLoading && scrapSales.length === 0;
+
+  const loadScrapSales = async ({ force = false } = {}) => {
     try {
-      const d = new Date(dateString);
-      if (isNaN(d.getTime())) return '';
-      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch (e) {
-      return '';
-    }
-  };
-
-
-  const fetchScrapSales = async () => {
-    try {
-      setLoading(true);
-      const res = await API.get('/scrap-sales', {
-        params: { context: 'SCRAPSALES' }
-      });
-      const list = Array.isArray(res.data?.scrap_sales)
-        ? res.data.scrap_sales
-        : Array.isArray(res.data?.data)
-          ? res.data.data
-          : Array.isArray(res.data?.rows)
-            ? res.data.rows
-            : Array.isArray(res.data)
-              ? res.data
-              : [];
-
-      const normalized = list.map(item => ({
-        ssh_id: item.ssh_id || item.scrap_id || item.id || '',
-        text: item.text || item.group_name || item.name || '',
-        buyer_name: item.buyer_name || item.buyer_details?.buyer_name || '',
-        buyer_company: item.buyer_company || item.buyer_details?.company_name || '',
-        buyer_phone: item.buyer_phone || item.buyer_details?.buyer_contact || '',
-        sale_date: formatDate(item.sale_date || item.scrap_date || ''),
-        collection_date: formatDate(item.collection_date || ''),
-        invoice_no: item.invoice_no || '',
-        po_no: item.po_no || '',
-        total_assets: item.total_assets || '',
-        total_sale_value: Array.isArray(item.total_sale_value) ? (item.total_sale_value[0] ?? '') : (item.total_sale_value ?? ''),
-        status: item.status || '',
-        created_by: item.created_by || '',
-        created_on: formatDate(item.created_on || item.created_date || '')
-      }));
-
-      setScrapSales(normalized);
+      await fetchScrapSalesStore({ revalidate: true, force });
     } catch (error) {
       console.error(t('scrapSales.failedToFetchScrapSales'), error);
-      toast.error(t('scrapSales.failedToLoadScrapSales'));
-      setScrapSales([]);
-    } finally {
-      setLoading(false);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_SCRAPSALES_FAILEDTOLOADSCRAPSALES_690537D0', fallbackText: t('scrapSales.failedToLoadScrapSales'), type: 'error' });
     }
   };
 
   useEffect(() => {
-    fetchScrapSales();
-  }, [t]);
+    loadScrapSales();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchScrapSalesStore({ revalidate: true });
+  });
 
   const columns = [
     { key: 'ssh_id', name: 'ssh_id', label: t('scrapSales.saleId'), sortable: true, visible: true },
@@ -148,40 +113,35 @@ const ScrapSales = () => {
       });
       
       if (response.data.success) {
-        toast.success(t('scrapSales.scrapSaleDeletedSuccessfully'), {
-          style: {
-            borderRadius: '10px',
-            background: '#10B981',
-            color: '#fff',
-          },
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_SCRAPSALES_SCRAPSALEDELETEDSUCCESSFULLY_681E7681',
+          fallbackText: t('scrapSales.scrapSaleDeletedSuccessfully'),
+          type: 'success',
         });
-        
-        // Refresh the scrap sales list
-        fetchScrapSales();
+        removeSales([row.ssh_id]);
+        invalidateCache('scrap-sales:');
       } else {
         throw new Error(response.data.message || 'Delete failed');
       }
     } catch (error) {
       console.error('Error deleting scrap sale:', error);
-      toast.error(error.response?.data?.message || t('scrapSales.errorDeletingScrapSale'), {
-        style: {
-          borderRadius: '10px',
-          background: '#EF4444',
-          color: '#fff',
-        },
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_SCRAPSALES_ERRORDELETINGSCRAPSALE_7E3B6D31',
+        fallbackText: error.response?.data?.message || t('scrapSales.errorDeletingScrapSale'),
+        type: 'error',
       });
     }
   };
 
   const handleDeleteSelected = async () => {
     if (!selectedRows || selectedRows.length === 0) {
-      toast(t('scrapSales.pleaseSelectScrapSalesToDelete'), {
-        icon: '⚠️',
-        style: {
-          borderRadius: '10px',
-          background: '#F59E0B',
-          color: '#fff',
-        },
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_SCRAPSALES_PLEASESELECTSCRAPSALESTODELETE_1E4D8AAF',
+        fallbackText: t('scrapSales.pleaseSelectScrapSalesToDelete'),
+        type: 'error',
       });
       return false; // Return false to keep modal open
     }
@@ -203,40 +163,38 @@ const ScrapSales = () => {
       const failed = results.length - successful;
       
       if (successful > 0) {
-        toast.success(t('scrapSales.scrapSalesDeletedSuccessfully', { count: successful }), {
-          style: {
-            borderRadius: '10px',
-            background: '#10B981',
-            color: '#fff',
-          },
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_SCRAPSALES_SCRAPSALESDELETEDSUCCESSFULLY_4D654472',
+          fallbackText: t('scrapSales.scrapSalesDeletedSuccessfully', { count: successful }),
+          type: 'success',
         });
-        
-        // Refresh the scrap sales list
-        fetchScrapSales();
-        
-        // Clear selected rows
+
+        const deletedIds = selectedRows.filter((_, i) =>
+          results[i].status === 'fulfilled' && results[i].value.data.success
+        );
+        removeSales(deletedIds);
+        invalidateCache('scrap-sales:');
         setSelectedRows([]);
       }
       
       if (failed > 0) {
-        toast.error(t('scrapSales.errorDeletingScrapSales', { count: failed }), {
-          style: {
-            borderRadius: '10px',
-            background: '#EF4444',
-            color: '#fff',
-          },
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_SCRAPSALES_ERRORDELETINGSCRAPSALESCOUNT_65224FA7',
+          fallbackText: t('scrapSales.errorDeletingScrapSales', { count: failed }),
+          type: 'error',
         });
       }
       
       return true; // Return true to close modal
     } catch (error) {
       console.error('Error deleting scrap sales:', error);
-      toast.error(t('scrapSales.errorDeletingScrapSales'), {
-        style: {
-          borderRadius: '10px',
-          background: '#EF4444',
-          color: '#fff',
-        },
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_SCRAPSALES_ERRORDELETINGSCRAPSALES_31497D1F',
+        fallbackText: t('scrapSales.errorDeletingScrapSales'),
+        type: 'error',
       });
       return false; // Return false to keep modal open
     }
@@ -245,7 +203,11 @@ const ScrapSales = () => {
 
 
   const [selectedRows, setSelectedRows] = useState([]);
-  const [filterValues, setFilterValues] = useState({});
+  const [filterValues, setFilterValues] = useState({
+    columnFilters: [],
+    fromDate: '',
+    toDate: '',
+  });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const handleSort = (column) => {
@@ -268,30 +230,8 @@ const ScrapSales = () => {
     });
   };
 
-  const filterData = (data, filters, visibleColumns) => {
-    return data.filter(item => {
-      return Object.keys(filters).every(key => {
-        const filterValue = filters[key];
-        if (!filterValue || filterValue === '') return true;
-        
-        const itemValue = item[key];
-        if (itemValue === null || itemValue === undefined) return false;
-        
-        return itemValue.toString().toLowerCase().includes(filterValue.toString().toLowerCase());
-      });
-    });
-  };
-
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues(prev => {
-      if (filterType === 'columnFilters') {
-        return { ...prev, columnFilters: value };
-      } else if (filterType === 'fromDate' || filterType === 'toDate') {
-        return { ...prev, [filterType]: value };
-      } else {
-        return { ...prev, [filterType]: value };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const filters = columns.map((col) => ({
@@ -309,6 +249,7 @@ const ScrapSales = () => {
     <div className="p-4">
       <ContentBox
         filters={filters}
+        dateFilterField="sale_date"
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}

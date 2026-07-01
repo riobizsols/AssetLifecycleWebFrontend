@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import { showBackendTextToast } from '../../utils/errorTranslation';
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ExclamationTriangleIcon,
@@ -7,27 +8,8 @@ import {
   ClockIcon,
 } from "@heroicons/react/24/outline";
 import API from "../../lib/axios";
-import { useAuthStore } from "../../store/useAuthStore";
 import toast from "react-hot-toast";
-
-const mockAlerts = [
-  {
-    alertType: "Regular Maintenance",
-    alertText: "Laptop Maintenance",
-    dueOn: "2024-07-25",
-    actionBy: "John Doe",
-    cutoffDate: "2024-07-30",
-    isUrgent: false,
-  },
-  {
-    alertType: "Regular Maintenance",
-    alertText: "Printer Maintenance",
-    dueOn: "2024-07-22",
-    actionBy: "Jane Smith",
-    cutoffDate: "2024-07-24",
-    isUrgent: true,
-  },
-];
+import { useDashboardStore } from "../../store/useDashboardStore";
 
 const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
@@ -39,9 +21,13 @@ const badgeColors = {
 
 const NotificationsPanel = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const [alerts, setAlerts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const alerts = useDashboardStore((s) => s.notifications);
+  const loading = useDashboardStore((s) => s.notificationsLoading);
+  const setNotifications = useDashboardStore((s) => s.setNotifications);
+  const patchAlerts = (updater) => {
+    const current = useDashboardStore.getState().notifications;
+    setNotifications(typeof updater === 'function' ? updater(current) : updater);
+  };
   const [error, setError] = useState(null);
   const [openActionMenuId, setOpenActionMenuId] = useState(null);
   const [openSnoozeMenuId, setOpenSnoozeMenuId] = useState(null);
@@ -53,126 +39,6 @@ const NotificationsPanel = () => {
     return normalized === "NEW" || normalized === "UNREAD";
   };
 
-  // Debug: Log user data
-  useEffect(() => {
-    console.log("Auth store user data:", user);
-  }, [user]);
-
-  const fetchNotifications = async () => {
-    if (!user || !user.emp_int_id) {
-      console.log("No user or emp_int_id found:", user);
-      setAlerts([]);
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      const url = `/notifications/user/${user.emp_int_id}`;
-      console.log("Fetching notifications from:", url);
-      console.log("Current user:", user);
-      const response = await API.get(url);
-      const notifications = response.data.data || [];
-      console.log("API response:", response.data);
-      console.log("Notifications received:", notifications);
-      // Transform API data to match the existing UI structure
-      const transformedAlerts = notifications.map(notification => {
-        // Determine alert type based on workflowType or maintenanceType
-        let alertType = "Regular Maintenance";
-        if (notification.workflowType === 'INSPECTION') {
-          alertType = "Inspection";
-        } else if (notification.workflowType === "WARRANTY") {
-          alertType = "Warranty Expiry";
-        } else if (notification.maintenanceType) {
-          alertType = notification.maintenanceType;
-        }
-        
-        let alertText = "";
-        
-        if (alertType === 'Inspection') {
-           alertText = `${notification.assetTypeName} Inspection`;
-        } else if (alertType === "Warranty Expiry") {
-           alertText = `${notification.assetId} - ${notification.title || "Warranty Expiry"}`;
-        } else if (String(notification.maintenanceType || "").toLowerCase().includes("subscription")) {
-           alertText = `${notification.assetTypeName}`;
-        } else if (alertType === 'Vendor Contract Renewal') {
-           alertText = `${notification.assetTypeName}`; 
-        } else if (notification.isGroupMaintenance && notification.groupName) {
-           alertText = `${notification.groupName} (${notification.groupAssetCount} assets)`;
-        } else {
-           alertText = `${notification.assetTypeName} Maintenance`;
-        }
-        
-        return {
-        alertType: alertType,
-        alertText: alertText,
-        dueOn: formatDate(notification.dueDate),
-        actionBy: notification.userName || "Unassigned",
-        cutoffDate: formatDate(notification.cutoffDate),
-        isUrgent: notification.daysUntilCutoff <= 2, // Show urgent only when 2 days or less until cutoff
-        wfamshId: notification.wfamshId, // For navigation
-        route: notification.route,
-        workflowType: notification.workflowType,
-        workflowId: notification.workflowId,
-        id: notification.id,
-        daysUntilCutoff: notification.daysUntilCutoff,
-        assetId: notification.assetId, // Add assetId to the transformed alert
-        // Group asset maintenance information
-        isGroupMaintenance: notification.isGroupMaintenance || false,
-        groupId: notification.groupId,
-        groupName: notification.groupName,
-        groupAssetCount: notification.groupAssetCount,
-        assetTypeName: notification.assetTypeName
-        ,
-        notifyId: notification.notifyId,
-        notificationStatus: notification.notificationStatus,
-        canChangeVendor: !!notification.canChangeVendor
-      }});
-      
-      // Filter to show up to 2 notifications with smart fallback
-      const maintenanceAlerts = transformedAlerts.filter(alert => 
-        alert.alertType !== 'Inspection' && alert.workflowType !== 'INSPECTION'
-      );
-      const inspectionAlerts = transformedAlerts.filter(alert => 
-        alert.alertType === 'Inspection' || alert.workflowType === 'INSPECTION'
-      );
-      
-      const dashboardAlerts = [];
-      
-      // Smart selection logic for dashboard display
-      if (maintenanceAlerts.length > 0 && inspectionAlerts.length > 0) {
-        // Both types available: show 1 of each
-        dashboardAlerts.push(maintenanceAlerts[0]);
-        dashboardAlerts.push(inspectionAlerts[0]);
-      } else if (maintenanceAlerts.length > 0) {
-        // Only maintenance available: show up to 2 maintenance
-        dashboardAlerts.push(...maintenanceAlerts.slice(0, 2));
-      } else if (inspectionAlerts.length > 0) {
-        // Only inspection available: show up to 2 inspection  
-        dashboardAlerts.push(...inspectionAlerts.slice(0, 2));
-      }
-      
-      console.log("Dashboard alerts selection:");
-      console.log(`  - Total available: ${transformedAlerts.length}`);
-      console.log(`  - Maintenance available: ${maintenanceAlerts.length}`);  
-      console.log(`  - Inspection available: ${inspectionAlerts.length}`);
-      console.log(`  - Selected for dashboard: ${dashboardAlerts.length}`, dashboardAlerts);
-      
-      setAlerts(dashboardAlerts);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching notifications:", err);
-      setError("Failed to load notifications");
-      setAlerts(mockAlerts.slice(0, 2)); // Limit mock data to 2 as well
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString();
-  };
-
   const handleAlertClick = (alert) => {
     if (alert.workflowType === "WARRANTY" && alert.notifyId) {
       const currentStatus = String(alert.notificationStatus || "").toUpperCase();
@@ -181,7 +47,7 @@ const NotificationsPanel = () => {
       }
 
       // Optimistic row update for immediate bold -> normal feedback.
-      setAlerts((prev) =>
+      patchAlerts((prev) =>
         prev.map((item) => {
           const sameNotification =
             (item.notifyId && item.notifyId === alert.notifyId) ||
@@ -193,7 +59,7 @@ const NotificationsPanel = () => {
       setOpeningNotifyIds((prev) => ({ ...prev, [alert.notifyId]: true }));
       API.put(`/notifications/warranty/${alert.notifyId}/open`)
         .catch(() => {
-          setAlerts((prev) =>
+          patchAlerts((prev) =>
             prev.map((item) => {
               const sameNotification =
                 (item.notifyId && item.notifyId === alert.notifyId) ||
@@ -244,36 +110,48 @@ const NotificationsPanel = () => {
     try {
       if (action === "discard") {
         await API.put(`/notifications/warranty/${alert.notifyId}/discard`);
-        setAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
+        patchAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
         return;
       }
       if (action === "snooze") {
         const draft = snoozeDrafts[alert.notifyId] || { option: "5", custom: "" };
         const days = draft.option === "custom" ? Number(draft.custom) : Number(draft.option);
         if (!Number.isFinite(days) || days < 0) {
-          toast.error("Invalid snooze value");
+          showBackendTextToast({ toast, tmdId: 'TMD_INVALID_SNOOZE_VALUE_167A15A0', fallbackText: 'Invalid snooze value', type: 'error' });
           return;
         }
         await API.put(`/notifications/warranty/${alert.notifyId}/snooze`, { snooze_days: days });
-        setAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
+        patchAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
         return;
       }
       if (action === "extend") {
         navigate(`/assets?editAssetId=${alert.assetId}&warrantyAction=warranty&notifyId=${alert.notifyId}`);
+        return;
       }
       if (action === "vendor") {
         navigate(`/assets?editAssetId=${alert.assetId}&warrantyAction=vendor&notifyId=${alert.notifyId}`);
+        return;
+      }
+      if (action === "scrap") {
+        const confirmed = window.confirm(
+          `Initiate scrap approval for asset ${alert.assetId}? This will start the scrap approval workflow.`
+        );
+        if (!confirmed) return;
+        const res = await API.put(`/notifications/warranty/${alert.notifyId}/scrap`);
+        setAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
+        showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_APPROVAL_INITIATED_WARRANTY', fallbackText: 'Scrap approval initiated successfully', type: 'success' });
+        // Navigate to scrap approval list
+        if (res.data?.data?.wfscrap_h_id) {
+          navigate(`/scrap-approval-detail/${res.data.data.wfscrap_h_id}?context=SCRAPMAINTENANCEAPPROVAL`);
+        } else {
+          navigate('/scrap-approval');
+        }
+        return;
       }
     } catch (error) {
-      toast.error("Failed to process action");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_PROCESS_ACTION_4490D849', fallbackText: 'Failed to process action', type: 'error' });
     }
   };
-
-  // Fetch notifications when user changes
-  useEffect(() => {
-    fetchNotifications();
-    // eslint-disable-next-line
-  }, [user && user.emp_int_id]);
 
   return (
     <div>
@@ -356,7 +234,11 @@ const NotificationsPanel = () => {
                     </button>
                     {openActionMenuId === alert.notifyId && (
                       <div className="absolute z-20 mt-2 w-52 rounded-lg border bg-white shadow-lg p-2 space-y-1">
-                        <button onClick={(e) => handleWarrantyAction(e, alert, "discard")} className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100">Discard</button>
+                        {/* 1. Discard */}
+                        <button onClick={(e) => handleWarrantyAction(e, alert, "discard")} className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-100 text-gray-700">Discard</button>
+                        {/* 2. Extend Expiry */}
+                        <button onClick={(e) => handleWarrantyAction(e, alert, "extend")} className="w-full text-left px-2 py-1.5 rounded hover:bg-green-50 text-green-700">Extend Expiry</button>
+                        {/* 3. Remind Again */}
                         <button
                           onClick={() =>
                             setOpenSnoozeMenuId((prev) =>
@@ -413,10 +295,8 @@ const NotificationsPanel = () => {
                             </button>
                           </div>
                         )}
-                        <button onClick={(e) => handleWarrantyAction(e, alert, "extend")} className="w-full text-left px-2 py-1.5 rounded hover:bg-green-50 text-green-700">Extend Warranty</button>
-                        {alert.canChangeVendor && (
-                          <button onClick={(e) => handleWarrantyAction(e, alert, "vendor")} className="w-full text-left px-2 py-1.5 rounded hover:bg-purple-50 text-purple-700">Change Vendor</button>
-                        )}
+                        {/* 4. Scrap */}
+                        <button onClick={(e) => handleWarrantyAction(e, alert, "scrap")} className="w-full text-left px-2 py-1.5 rounded hover:bg-red-50 text-red-600 font-medium">Scrap</button>
                       </div>
                     )}
                   </div>

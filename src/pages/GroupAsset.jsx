@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
@@ -9,62 +10,42 @@ import CustomTable from "../components/CustomTable";
 import { useAuditLog } from "../hooks/useAuditLog";
 import { GROUP_ASSETS_APP_ID } from "../constants/groupAssetsAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { useGroupAssetStore } from "../store/useGroupAssetStore";
+import { invalidateCache } from "../utils/apiCache";
+import { filterData } from "../utils/filterData";
+import { applyListFilterChange } from "../utils/listFilterState";
 
 const GroupAsset = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { t } = useLanguage();
-  const [groupAssets, setGroupAssets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const groupAssets = useGroupAssetStore((s) => s.groupAssets);
+  const listLoading = useGroupAssetStore((s) => s.listLoading);
+  const fetchGroupAssetsStore = useGroupAssetStore((s) => s.fetchGroupAssets);
+  const removeGroups = useGroupAssetStore((s) => s.removeGroups);
+  const loading = listLoading && groupAssets.length === 0;
 
   // Audit logging
   const { recordActionByNameWithFetch } = useAuditLog(GROUP_ASSETS_APP_ID);
 
-  // Fetch asset groups from API
-  const fetchAssetGroups = async () => {
+  const fetchAssetGroups = async ({ force = false } = {}) => {
     try {
-      setLoading(true);
-      const response = await API.get("/asset-groups");
-
-      if (response.data && Array.isArray(response.data)) {
-        // Transform the backend data to match table structure
-        const transformedData = response.data.map((group) => ({
-          group_id: group.assetgroup_h_id,
-          group_name: group.text,
-          org_id: group.org_id,
-          asset_count: group.asset_count,
-          created_by: group.created_by,
-          created_date: new Date(group.created_on).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
-          changed_by: group.changed_by,
-          changed_date: new Date(group.changed_on).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          }),
-          status: "Active", // Default status since backend doesn't provide this
-        }));
-
-        setGroupAssets(transformedData);
-      } else {
-        setGroupAssets([]);
-        toast.error(t("groupAssets.failedToFetchAssetGroups"));
-      }
+      await fetchGroupAssetsStore({ revalidate: true, force });
     } catch (error) {
       console.error("Error fetching asset groups:", error);
-      toast.error(t("groupAssets.failedToFetchAssetGroups"));
-      setGroupAssets([]);
-    } finally {
-      setLoading(false);
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTOFETCHASSETGROUPS_25C4A6EA', fallbackText: t("groupAssets.failedToFetchAssetGroups"), type: 'error' });
     }
   };
 
   useEffect(() => {
     fetchAssetGroups();
-  }, [t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useRevalidateOnFocus(() => {
+    fetchGroupAssetsStore({ revalidate: true });
+  });
 
   const columns = [
     {
@@ -166,18 +147,19 @@ const GroupAsset = () => {
         action: "Group Asset Deleted Successfully",
       });
 
-      toast.success(t("groupAssets.assetGroupDeletedSuccessfully"));
-      // Refresh the data
-      fetchAssetGroups();
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_ASSETGROUPDELETEDSUCCESSFULLY_32EB5DF7', fallbackText: t("groupAssets.assetGroupDeletedSuccessfully"), type: 'success' });
+      removeGroups([row.group_id]);
+      invalidateCache('asset-groups:');
+      fetchAssetGroups({ force: true });
     } catch (error) {
       console.error("Error deleting asset group:", error);
-      toast.error(t("groupAssets.failedToDeleteAssetGroup"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETEASSETGROUP_59E22566', fallbackText: t("groupAssets.failedToDeleteAssetGroup"), type: 'error' });
     }
   };
 
   const handleDeleteSelected = async () => {
     if (selectedRows.length === 0) {
-      toast.error(t("groupAssets.pleaseSelectAssetGroupsToDelete"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_PLEASESELECTASSETGROUPSTODELETE_4A5C073C', fallbackText: t("groupAssets.pleaseSelectAssetGroupsToDelete"), type: 'error' });
       return;
     }
 
@@ -196,23 +178,32 @@ const GroupAsset = () => {
         action: "Multiple Group Assets Deleted Successfully",
       });
 
-      toast.success(
-        t("groupAssets.assetGroupsDeletedSuccessfully", {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_GROUPASSETS_ASSETGROUPSDELETEDSUCCESSFULLY_23CAB444',
+        fallbackText: t("groupAssets.assetGroupsDeletedSuccessfully", {
           count: selectedRows.length,
         }),
-      );
+        type: 'success',
+      });
 
       // Clear selection and refresh data
       setSelectedRows([]);
-      fetchAssetGroups();
+      removeGroups(selectedRows);
+      invalidateCache('asset-groups:');
+      fetchAssetGroups({ force: true });
     } catch (error) {
       console.error("Error deleting selected asset groups:", error);
-      toast.error(t("groupAssets.failedToDeleteSomeAssetGroups"));
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETESOMEASSETGROUPS_781931A5', fallbackText: t("groupAssets.failedToDeleteSomeAssetGroups"), type: 'error' });
     }
   };
 
   const [selectedRows, setSelectedRows] = useState([]);
-  const [filterValues, setFilterValues] = useState({});
+  const [filterValues, setFilterValues] = useState({
+    columnFilters: [],
+    fromDate: "",
+    toDate: "",
+  });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
   const handleSort = (column) => {
@@ -236,33 +227,8 @@ const GroupAsset = () => {
     });
   };
 
-  const filterData = (data, filters, visibleColumns) => {
-    return data.filter((item) => {
-      return Object.keys(filters).every((key) => {
-        const filterValue = filters[key];
-        if (!filterValue || filterValue === "") return true;
-
-        const itemValue = item[key];
-        if (itemValue === null || itemValue === undefined) return false;
-
-        return itemValue
-          .toString()
-          .toLowerCase()
-          .includes(filterValue.toString().toLowerCase());
-      });
-    });
-  };
-
-  const handleFilterChange = (filterType, value) => {
-    setFilterValues((prev) => {
-      if (filterType === "columnFilters") {
-        return { ...prev, columnFilters: value };
-      } else if (filterType === "fromDate" || filterType === "toDate") {
-        return { ...prev, [filterType]: value };
-      } else {
-        return { ...prev, [filterType]: value };
-      }
-    });
+  const handleFilterChange = (columnName, value) => {
+    setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
   };
 
   const filters = columns.map((col) => ({
@@ -292,6 +258,7 @@ const GroupAsset = () => {
       ) : (
         <ContentBox
           filters={filters}
+          dateFilterField="created_date"
           onFilterChange={handleFilterChange}
           onSort={handleSort}
           sortConfig={sortConfig}

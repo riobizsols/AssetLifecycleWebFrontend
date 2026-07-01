@@ -1,3 +1,4 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../lib/axios";
@@ -10,10 +11,15 @@ import {
   X
 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useAppData } from "../contexts/AppDataContext";
+import { translateMasterDataLabel } from "../utils/masterDataLabel";
 
 const InspectionExecutionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
+  const { getStatusText } = useAppData();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checklist, setChecklist] = useState([]);
@@ -60,7 +66,7 @@ const InspectionExecutionDetail = () => {
       }
     } catch (error) {
       console.error("Error fetching inspection:", error);
-      toast.error("Failed to load inspection details");
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_INSPECTION_DETAILS_75F3A40E', fallbackText: t('inspectionExecution.failedToLoadDetails'), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -110,14 +116,25 @@ const InspectionExecutionDetail = () => {
     setShowModal(true);
   };
 
+  const getNumericRange = (question) => {
+    const min = question.min_range != null && question.min_range !== ''
+      ? parseFloat(question.min_range)
+      : null;
+    const max = question.max_range != null && question.max_range !== ''
+      ? parseFloat(question.max_range)
+      : null;
+    return {
+      min: Number.isFinite(min) ? min : null,
+      max: Number.isFinite(max) ? max : null,
+    };
+  };
+
   const validateValue = (question, value) => {
     if (question.response_type === 'QN') {
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return false;
-      
-      const min = question.min_range;
-      const max = question.max_range;
-      
+
+      const { min, max } = getNumericRange(question);
       if (min !== null && numValue < min) return false;
       if (max !== null && numValue > max) return false;
     }
@@ -126,21 +143,34 @@ const InspectionExecutionDetail = () => {
 
   const isValueOutOfRange = (question, value) => {
     if (question.response_type === 'QN' && value) {
-      const numValue = parseFloat(value);
-      if (isNaN(numValue)) return true;
-      
-      const min = question.min_range;
-      const max = question.max_range;
-      
-      if (min !== null && numValue < min) return true;
-      if (max !== null && numValue > max) return true;
+      return !validateValue(question, value);
     }
     return false;
   };
 
+  const validatePendingRecords = (records) => {
+    for (const record of records) {
+      const question = checklist.find((q) => q.insp_check_id === record.insp_check_id);
+      if (!question) continue;
+      if (!validateValue(question, record.recorded_value)) {
+        return question;
+      }
+    }
+    return null;
+  };
+
   const handleAddRecord = async () => {
     if (!recordedValue.trim()) {
-      toast.error("Please enter a value");
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_VALUE_2C0B41EC', fallbackText: t('inspectionExecution.pleaseEnterValue'), type: 'error' });
+      return;
+    }
+
+    if (!validateValue(selectedQuestion, recordedValue)) {
+      showBackendTextToast({
+        toast,
+        fallbackText: t('inspectionExecution.valueOutsideRange'),
+        type: 'error',
+      });
       return;
     }
 
@@ -166,13 +196,25 @@ const InspectionExecutionDetail = () => {
       return [...without, { insp_check_id: selectedQuestion.insp_check_id, recorded_value: recordedValue }];
     });
 
-    toast.success("Value saved locally. Click Save to persist all values.");
+    showBackendTextToast({ toast, tmdId: 'TMD_VALUE_SAVED_LOCALLY_CLICK_SAVE_TO_PERSIST_ALL_VALUES_02259CFB', fallbackText: t('inspectionExecution.valueSavedLocally'), type: 'success' });
     setShowModal(false);
     setRecordedValue('');
     setSelectedQuestion(null);
   };
 
   const handleFinalSave = async () => {
+    if (Array.isArray(pendingRecords) && pendingRecords.length > 0) {
+      const invalidQuestion = validatePendingRecords(pendingRecords);
+      if (invalidQuestion) {
+        showBackendTextToast({
+          toast,
+          fallbackText: t('inspectionExecution.valueOutsideRange'),
+          type: 'error',
+        });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       // First, persist any pending checklist records.
@@ -197,7 +239,7 @@ const InspectionExecutionDetail = () => {
       if (shouldSendRecPayload) {
         const recRes = await API.post('/inspection/records', recPayload);
         if (recRes.data.success) {
-          toast.success("Inspection updated successfully");
+          showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
           navigate('/inspection-view');
           return;
         }
@@ -212,16 +254,16 @@ const InspectionExecutionDetail = () => {
       };
       const res = await API.put(`/inspection/${id}`, payload);
       if (res.data.success) {
-        toast.success("Inspection updated successfully");
+        showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
         navigate('/inspection-view');
       }
     } catch (error) {
       console.error("Error updating inspection:", error);
       if (error.response && error.response.data) {
         console.error('Server response:', error.response.data);
-        toast.error(error.response.data.message || 'Failed to update inspection');
+        toast.error(error.response.data.message || t('inspectionExecution.failedToUpdate'));
       } else {
-        toast.error("Failed to update inspection");
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_INSPECTION_5F02CAA9', fallbackText: t('inspectionExecution.failedToUpdate'), type: 'error' });
       }
     } finally {
       setSaving(false);
@@ -245,8 +287,8 @@ const InspectionExecutionDetail = () => {
     return match[1].trim();
   };
 
-  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>;
-  if (!data) return <div className="min-h-screen bg-white flex items-center justify-center text-red-500">Inspection not found</div>;
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center">{t('common.loading')}</div>;
+  if (!data) return <div className="min-h-screen bg-white flex items-center justify-center text-red-500">{t('inspectionExecution.notFound')}</div>;
 
   return (
     <div className="min-h-screen bg-white">
@@ -257,22 +299,22 @@ const InspectionExecutionDetail = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Asset Information */}
         <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <h2 className="text-lg font-medium mb-4 text-gray-700 border-b pb-2">Asset Information</h2>
+            <h2 className="text-lg font-medium mb-4 text-gray-700 border-b pb-2">{t('inspectionExecution.assetInformation')}</h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                    <label className="text-gray-500 block">Asset Type</label>
-                    <span className="font-medium">{data.asset_type_name}</span>
+                    <label className="text-gray-500 block">{t('inspectionExecution.assetType')}</label>
+                    <span className="font-medium">{translateMasterDataLabel(data.asset_type_name, t)}</span>
                 </div>
                 <div>
-                    <label className="text-gray-500 block">Asset</label>
+                    <label className="text-gray-500 block">{t('inspectionExecution.asset')}</label>
                     <span className="font-medium">{data.asset_code}</span>
                 </div>
                 <div>
-                    <label className="text-gray-500 block">Serial No</label>
+                    <label className="text-gray-500 block">{t('inspectionExecution.serialNo')}</label>
                     <span className="font-medium">{data.serial_number || '-'}</span>
                 </div>
                 <div>
-                    <label className="text-gray-500 block">Current Status</label>
+                    <label className="text-gray-500 block">{t('inspectionExecution.currentStatus')}</label>
                     <StatusBadge status={data.status} />
                 </div>
             </div>
@@ -280,27 +322,27 @@ const InspectionExecutionDetail = () => {
 
         {/* Schedule Details */}
         <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <h2 className="text-lg font-medium mb-4 text-gray-700 border-b pb-2">Schedule Details</h2>
+            <h2 className="text-lg font-medium mb-4 text-gray-700 border-b pb-2">{t('inspectionExecution.scheduleDetails')}</h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                    <label className="text-gray-500 block">Start Date</label>
+                    <label className="text-gray-500 block">{t('inspectionExecution.startDate')}</label>
                     <span className="font-medium">
                         {data.act_insp_st_date ? new Date(data.act_insp_st_date).toLocaleDateString() : '-'}
                     </span>
                 </div>
                 <div>
-                    <label className="text-gray-500 block">End Date</label>
+                    <label className="text-gray-500 block">{t('inspectionExecution.endDate')}</label>
                     <span className="font-medium">
                         {data.act_insp_end_date ? new Date(data.act_insp_end_date).toLocaleDateString() : '-'}
                     </span>
                 </div>
                 <div>
-                    <label className="text-gray-500 block">Vendor</label>
+                    <label className="text-gray-500 block">{t('inspectionExecution.vendor')}</label>
                     <span className="font-medium">{data.vendor_name || '-'}</span>
                 </div>
                 <div>
-                    <label className="text-gray-500 block">Branch</label>
-                    <span className="font-medium">{data.branch_name || '-'}</span>
+                    <label className="text-gray-500 block">{t('inspectionExecution.branch')}</label>
+                    <span className="font-medium">{translateMasterDataLabel(data.branch_name, t) || '-'}</span>
                 </div>
             </div>
         </div>
@@ -309,12 +351,12 @@ const InspectionExecutionDetail = () => {
 
       {/* Inspection Checklist */}
       <div className="bg-white p-6 rounded-lg shadow border border-gray-200 mb-6">
-        <h2 className="text-lg font-medium mb-4 text-gray-700 border-b pb-2">Inspection Checklist</h2>
+        <h2 className="text-lg font-medium mb-4 text-gray-700 border-b pb-2">{t('inspectionExecution.inspectionChecklist')}</h2>
         
         {checklistLoading ? (
-          <p className="text-gray-500 text-center py-8">Loading checklist...</p>
+          <p className="text-gray-500 text-center py-8">{t('inspectionExecution.loadingChecklist')}</p>
         ) : checklist.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No checklist questions found for this asset type.</p>
+          <p className="text-gray-500 text-center py-8">{t('inspectionExecution.noChecklistQuestions')}</p>
         ) : (
           <div className="space-y-3">
             {checklist.map((question, index) => {
@@ -330,23 +372,23 @@ const InspectionExecutionDetail = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-800 mb-2">
-                        {index + 1}. {question.inspection_text}
+                        {index + 1}. {translateMasterDataLabel(question.inspection_text, t)}
                       </h3>
                       <div className="flex items-center gap-4 text-sm text-gray-600">
                         <span className="bg-gray-100 px-2 py-1 rounded">
-                          {question.response_type === 'QN' ? 'Quantitative' : 'Qualitative'}
+                          {question.response_type === 'QN' ? t('inspectionExecution.quantitative') : t('inspectionExecution.qualitative')}
                         </span>
                         {question.response_type === 'QN' && (
                           <span>
-                            Range: {question.min_range || 'N/A'} - {question.max_range || 'N/A'}
+                            {t('inspectionExecution.range')}: {question.min_range ?? t('common.na')} - {question.max_range ?? t('common.na')}
                           </span>
                         )}
                         {question.response_type === 'QL' && question.expected_value && (
-                          <span>Expected: {question.expected_value}</span>
+                          <span>{t('inspectionExecution.expected')}: {question.expected_value}</span>
                         )}
                         {recordedValue && (
                           <span className={`font-medium ${isOutOfRange ? 'text-red-600' : 'text-green-600'}`}>
-                            Recorded: {recordedValue}
+                            {t('inspectionExecution.recorded')}: {recordedValue}
                           </span>
                         )}
                       </div>
@@ -362,45 +404,45 @@ const InspectionExecutionDetail = () => {
 
       {/* Final Actions */}
       <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-        <h2 className="text-lg font-medium mb-4 text-gray-700 border-b pb-2">Complete Inspection</h2>
+        <h2 className="text-lg font-medium mb-4 text-gray-700 border-b pb-2">{t('inspectionExecution.completeInspection')}</h2>
         
         {/* Notes */}
         <div className="mb-6">
-          <label className="text-sm font-medium text-gray-700 block mb-2">Notes</label>
+          <label className="text-sm font-medium text-gray-700 block mb-2">{t('inspectionExecution.notes')}</label>
           <textarea
             name="notes"
             value={formData.notes}
             onChange={handleChange}
             rows={3}
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-            placeholder="Enter any additional notes or observations..."
+            placeholder={t('inspectionExecution.notesPlaceholder')}
           />
         </div>
 
         {/* Inspector fields for vendor-maintained inspections */}
         {data.maintained_by && String(data.maintained_by).toLowerCase() === 'vendor' && (
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Inspector Details (Vendor)</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">{t('inspectionExecution.inspectorDetailsVendor')}</h3>
             <div className="grid grid-cols-3 gap-3">
               <input
                 name="inspector_name"
                 value={formData.inspector_name || ''}
                 onChange={handleChange}
-                placeholder="Inspector Name"
+                placeholder={t('inspectionExecution.inspectorName')}
                 className="w-full p-2 border border-gray-300 rounded"
               />
               <input
                 name="inspector_email"
                 value={formData.inspector_email || ''}
                 onChange={handleChange}
-                placeholder="Inspector Email"
+                placeholder={t('inspectionExecution.inspectorEmail')}
                 className="w-full p-2 border border-gray-300 rounded"
               />
               <input
                 name="inspector_phone"
                 value={formData.inspector_phone || ''}
                 onChange={handleChange}
-                placeholder="Inspector Phone"
+                placeholder={t('inspectionExecution.inspectorPhone')}
                 className="w-full p-2 border border-gray-300 rounded"
               />
             </div>
@@ -419,19 +461,19 @@ const InspectionExecutionDetail = () => {
                 onChange={(e) => setTriggerMaintenance(e.target.checked)}
                 className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
               />
-              <span className="text-sm font-medium text-gray-700">Trigger Maintenance</span>
+              <span className="text-sm font-medium text-gray-700">{t('inspectionExecution.triggerMaintenance')}</span>
             </label>
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Status:</label>
+              <label className="text-sm font-medium text-gray-700">{t('inspectionExecution.status')}:</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               >
-                <option value="IN">Initiated</option>
-                <option value="IP">In Progress</option>
-                <option value="CO">Completed</option>
-                <option value="CA">Cancelled</option>
+                <option value="IN">{getStatusText('IN') || t('inspectionView.initiated')}</option>
+                <option value="IP">{getStatusText('IP') || t('inspectionView.inProgress')}</option>
+                <option value="CO">{getStatusText('CO') || t('inspectionView.completed')}</option>
+                <option value="CA">{getStatusText('CA') || t('inspectionView.cancelled')}</option>
               </select>
             </div>
           </div>
@@ -444,12 +486,12 @@ const InspectionExecutionDetail = () => {
             {saving ? (
               <span className="flex items-center">
                 <svg className="animate-spin h-4 w-4 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-                Saving...
+                {t('common.saving')}
               </span>
             ) : (
               <>
                 <Save size={18} className="mr-2" />
-                Save Changes
+                {t('inspectionExecution.saveChanges')}
               </>
             )}
           </button>
@@ -461,7 +503,7 @@ const InspectionExecutionDetail = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4 border border-gray-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-800">Record Value</h3>
+              <h3 className="text-lg font-medium text-gray-800">{t('inspectionExecution.recordValue')}</h3>
               <button
                 onClick={() => setShowModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -471,12 +513,12 @@ const InspectionExecutionDetail = () => {
             </div>
 
             <div className="mb-4">
-              <p className="text-gray-700 mb-3">{selectedQuestion.inspection_text}</p>
+              <p className="text-gray-700 mb-3">{translateMasterDataLabel(selectedQuestion.inspection_text, t)}</p>
               
               {selectedQuestion.response_type === 'QN' && (
                 <div className="bg-gray-50 p-3 rounded mb-3">
                   <p className="text-sm text-gray-600">
-                    <strong>Range:</strong> {selectedQuestion.min_range || 'N/A'} - {selectedQuestion.max_range || 'N/A'}
+                    <strong>{t('inspectionExecution.range')}:</strong> {selectedQuestion.min_range ?? t('common.na')} - {selectedQuestion.max_range ?? t('common.na')}
                   </p>
                 </div>
               )}
@@ -484,25 +526,25 @@ const InspectionExecutionDetail = () => {
               {selectedQuestion.response_type === 'QL' && selectedQuestion.expected_value && (
                 <div className="bg-gray-50 p-3 rounded mb-3">
                   <p className="text-sm text-gray-600">
-                    <strong>Expected Value:</strong> {selectedQuestion.expected_value}
+                    <strong>{t('inspectionExecution.expectedValue')}:</strong> {selectedQuestion.expected_value}
                   </p>
                 </div>
               )}
 
               <label className="text-sm font-medium text-gray-700 block mb-2">
-                Recorded Value
+                {t('inspectionExecution.recordedValue')}
               </label>
               <input
                 type={selectedQuestion.response_type === 'QN' ? 'number' : 'text'}
                 value={recordedValue}
                 onChange={(e) => setRecordedValue(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                placeholder={`Enter ${selectedQuestion.response_type === 'QN' ? 'numeric' : 'text'} value...`}
+                placeholder={selectedQuestion.response_type === 'QN' ? t('inspectionExecution.enterNumericValue') : t('inspectionExecution.enterTextValue')}
               />
               
               {recordedValue && isValueOutOfRange(selectedQuestion, recordedValue) && (
                 <p className="text-red-600 text-sm mt-2">
-                  ⚠️ Value is outside the expected range
+                  {t('inspectionExecution.valueOutsideRange')}
                 </p>
               )}
             </div>
@@ -512,13 +554,18 @@ const InspectionExecutionDetail = () => {
                 onClick={() => setShowModal(false)}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleAddRecord}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                disabled={!recordedValue.trim() || isValueOutOfRange(selectedQuestion, recordedValue)}
+                className={`flex-1 px-4 py-2 rounded-lg transition ${
+                  !recordedValue.trim() || isValueOutOfRange(selectedQuestion, recordedValue)
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
-                Add
+                {t('common.add')}
               </button>
             </div>
           </div>

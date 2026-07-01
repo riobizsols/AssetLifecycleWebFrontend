@@ -1,61 +1,14 @@
-import React, { useState, useEffect } from "react";
-import API from "../../lib/axios";
-
-// Color palette for asset types (blue shades)
-const COLORS = [
-  "bg-blue-500",
-  "bg-blue-400",
-  "bg-blue-300",
-  "bg-blue-200",
-  "bg-blue-100",
-];
+import React from "react";
+import { useDashboardStore } from "../../store/useDashboardStore";
 
 const AssetTypeChart = () => {
-  const [assetTypes, setAssetTypes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const assetTypes = useDashboardStore((s) => s.top5AssetTypes);
+  const loading = useDashboardStore((s) => s.top5Loading);
 
-  useEffect(() => {
-    const fetchTop5AssetTypes = async () => {
-      try {
-        setLoading(true);
-        const response = await API.get("/assets/top-5-asset-types");
-        
-        if (response.data.success && response.data.data) {
-          // Map API data to chart format with colors
-          const chartData = response.data.data.map((type, index) => ({
-            name: type.name,
-            count: type.count,
-            color: COLORS[index % COLORS.length],
-          }));
-          setAssetTypes(chartData);
-        } else {
-          setAssetTypes([]);
-        }
-      } catch (err) {
-        console.error("Error fetching top 5 asset types:", err);
-        setError("Failed to load asset types");
-        setAssetTypes([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTop5AssetTypes();
-  }, []);
-
-  if (loading) {
+  if (loading && assetTypes.length === 0) {
     return (
       <div className="space-y-4">
         <div className="text-center text-gray-500 py-8">Loading...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center text-red-500 py-8">{error}</div>
       </div>
     );
   }
