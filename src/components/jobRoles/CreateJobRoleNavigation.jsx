@@ -3,10 +3,14 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
-import { FaSave, FaSearch, FaPlus, FaTrash } from "react-icons/fa";
+import { FaSave, FaSearch } from "react-icons/fa";
 import { useAuthStore } from "../../store/useAuthStore";
 import SearchableDropdown from "../ui/SearchableDropdown";
 import { useAdminSettings } from "../../contexts/AdminSettingsContext";
+import NavigationTreeBuilder, {
+  DEFAULT_ACCESS_LEVEL,
+  DEFAULT_MOB_DESK,
+} from "./NavigationTreeBuilder";
 
 const CreateJobRoleNavigation = () => {
   const navigate = useNavigate();
@@ -64,19 +68,10 @@ const CreateJobRoleNavigation = () => {
       editingNav?.int_status !== undefined ? editingNav.int_status : 1,
   });
 
-  // For create mode - multiple rows
+  // For create mode - tree-based navigation builder
   const [selectedJobRole, setSelectedJobRole] = useState("");
-  const [navigationRows, setNavigationRows] = useState([
-    {
-      app_id: "",
-      parent_id: "",
-      label: "",
-      sequence: 1,
-      access_level: "D",
-      mob_desk: "D",
-      is_group: false,
-    },
-  ]);
+  const [navigationGroups, setNavigationGroups] = useState([]);
+  const [referenceNavigation, setReferenceNavigation] = useState([]);
 
   const [availableRoles, setAvailableRoles] = useState([]);
   const [availableAppIds, setAvailableAppIds] = useState([]);
@@ -170,7 +165,10 @@ const CreateJobRoleNavigation = () => {
   const fetchAvailableParentIds = async () => {
     try {
       const response = await API.get("/job-role-navigation");
-      setAvailableParentIds(response.data.navigation || []);
+      const navigation = response.data.navigation || [];
+      setAvailableParentIds(navigation);
+      const jr001Nav = navigation.filter((n) => n.job_role_id === "JR001");
+      setReferenceNavigation(jr001Nav.length > 0 ? jr001Nav : navigation);
     } catch (error) {
       console.error("Error fetching parent IDs:", error);
     }
@@ -184,80 +182,116 @@ const CreateJobRoleNavigation = () => {
     }));
   };
 
-  // ============ CREATE MODE - MULTI-ROW HANDLERS ============
+  // ============ CREATE MODE - TREE BUILDER HANDLERS ============
 
-  const handleAddRow = () => {
-    setNavigationRows((prev) => [
-      ...prev,
-      {
-        app_id: "",
-        parent_id: "",
-        label: "",
-        sequence: prev.length + 1,
-        access_level: "D",
-        mob_desk: "D",
-        is_group: false,
-      },
-    ]);
+  const buildGroupsFromNavigation = (navigation, jobRoleId) => {
+    const roleNav = navigation.filter((n) => n.job_role_id === jobRoleId);
+    return roleNav
+      .filter((n) => n.is_group && !n.parent_id)
+      .sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
+      .map((g) => ({
+        id: g.job_role_nav_id,
+        navId: g.job_role_nav_id,
+        name: g.label || "",
+        sequence: g.sequence,
+        items: roleNav
+          .filter((n) => n.parent_id === g.job_role_nav_id)
+          .sort((a, b) => (a.sequence || 0) - (b.sequence || 0))
+          .map((i) => ({
+            id: i.job_role_nav_id,
+            navId: i.job_role_nav_id,
+            name: i.label || "",
+            appId: i.app_id,
+            sequence: i.sequence,
+          })),
+      }));
   };
 
-  const handleRemoveRow = (index) => {
-    if (navigationRows.length > 1) {
-      setNavigationRows((prev) => prev.filter((_, i) => i !== index));
-    } else {
-      showBackendTextToast({ toast, tmdId: 'TMD_AT_LEAST_ONE_ROW_IS_REQUIRED_6F152111', fallbackText: 'At least one row is required', type: 'error' });
+  const getNextSequence = (groups) => {
+    let max = 0;
+    groups.forEach((g) => {
+      max = Math.max(max, g.sequence || 0);
+      (g.items || []).forEach((i) => {
+        max = Math.max(max, i.sequence || 0);
+      });
+    });
+    return max + 1;
+  };
+
+  const loadNavigationForRole = async (jobRoleId) => {
+    try {
+      const response = await API.get("/job-role-navigation");
+      setNavigationGroups(
+        buildGroupsFromNavigation(response.data.navigation || [], jobRoleId),
+      );
+    } catch (error) {
+      console.error("Error loading navigation:", error);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_NAVIGATION_DATA_7C1458BE', fallbackText: 'Failed to load navigation for this role', type: 'error' });
+      setNavigationGroups([]);
     }
   };
 
-  const handleRowChange = (index, field, value) => {
-    setNavigationRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
-    );
+  const handleJobRoleSelect = (jobRoleId) => {
+    setSelectedJobRole(jobRoleId);
+    loadNavigationForRole(jobRoleId);
   };
 
-  const handleSaveMultiple = async () => {
-    try {
-      if (!selectedJobRole) {
-        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_JOB_ROLE_079844DA', fallbackText: 'Please select a Job Role', type: 'error' });
-        return;
-      }
+  const createGroupEntry = async (name, currentGroups = navigationGroups) => {
+    const response = await API.post("/job-role-navigation", {
+      job_role_id: selectedJobRole,
+      app_id: null,
+      label: name.trim(),
+      parent_id: null,
+      sequence: getNextSequence(currentGroups),
+      access_level: DEFAULT_ACCESS_LEVEL,
+      mob_desk: DEFAULT_MOB_DESK,
+      is_group: true,
+    });
+    return response.data.navigation;
+  };
 
-      // Validate all rows
-      const invalidRows = navigationRows.filter((row) => !row.app_id);
-      if (invalidRows.length > 0) {
-        showBackendTextToast({ toast, tmdId: 'TMD_ALL_ROWS_MUST_HAVE_AN_APP_ID_SELECTED_4040C6E9', fallbackText: 'All rows must have an App ID selected', type: 'error' });
-        return;
-      }
+  const updateGroupEntry = async (navId, name) => {
+    await API.put(`/job-role-navigation/${navId}`, {
+      label: name.trim(),
+      is_group: true,
+    });
+  };
 
-      // Prepare entries for bulk creation
-      const entries = navigationRows.map((row) => ({
-        job_role_id: selectedJobRole,
-        app_id: row.app_id,
-        parent_id: row.parent_id || null,
-        label: row.label || "",
-        sequence: row.sequence || 1,
-        access_level: row.access_level || "D",
-        mob_desk: row.mob_desk || "D",
-        is_group: row.is_group || false,
-      }));
+  const deleteGroupEntry = async (group) => {
+    const ids = [
+      ...(group.items || []).map((i) => i.navId).filter(Boolean),
+      group.navId,
+    ].filter(Boolean);
+    if (ids.length > 0) {
+      await API.delete("/job-role-navigation", { data: { ids } });
+    }
+  };
 
-      // Bulk create all navigation entries in a single transaction
-      const response = await API.post("/job-role-navigation/bulk", { entries });
+  const createSubMenuEntry = async (groupNavId, name, appId, currentGroups = navigationGroups) => {
+    const response = await API.post("/job-role-navigation", {
+      job_role_id: selectedJobRole,
+      app_id: appId,
+      label: name.trim(),
+      parent_id: groupNavId,
+      sequence: getNextSequence(currentGroups),
+      access_level: DEFAULT_ACCESS_LEVEL,
+      mob_desk: DEFAULT_MOB_DESK,
+      is_group: false,
+    });
+    return response.data.navigation;
+  };
 
-      showBackendTextToast({
-        toast,
-        tmdId: 'TMD_NAVIGATION_ENTRIES_CREATED_SUCCESSFULLY_725B0E48',
-        fallbackText: 'Successfully created {{count}} navigation {{entryLabel}}',
-        type: 'success',
-        values: {
-          count: entries.length,
-          entryLabel: entries.length === 1 ? "entry" : "entries",
-        },
-      });
-      navigate(getBackRoute(), { state: getBackState() });
-    } catch (error) {
-      console.error("Error creating navigation entries:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_CREATE_NAVIGATION_ENTRIES_00DDF2FA', fallbackText: 'Failed to create navigation entries', type: 'error' });
+  const updateSubMenuEntry = async (navId, { name, appId }) => {
+    await API.put(`/job-role-navigation/${navId}`, {
+      label: name.trim(),
+      app_id: appId,
+      is_group: false,
+    });
+  };
+
+  const deleteSubMenuEntry = async (navId) => {
+    if (navId) {
+      await API.delete("/job-role-navigation", { data: { ids: [navId] } });
     }
   };
 
@@ -611,19 +645,9 @@ const CreateJobRoleNavigation = () => {
     );
   }
 
-  // Create Mode - Multi-Row Form
+  // Create Mode - Tree builder
   return (
     <div className="p-6 w-full">
-      {/* Header */}
-      <div className="mb-6 bg-white rounded-lg shadow-sm p-6 w-full">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Create Role Navigation
-        </h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Configure multiple navigation entries for a job role at once
-        </p>
-      </div>
-
       {/* Job Role Selector */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6 w-full">
         <div ref={roleDropdownRef} className="max-w-md">
@@ -662,7 +686,7 @@ const CreateJobRoleNavigation = () => {
                       <div
                         key={role.job_role_id}
                         onClick={() => {
-                          setSelectedJobRole(role.job_role_id);
+                          handleJobRoleSelect(role.job_role_id);
                           setRoleDropdownOpen(false);
                           setRoleSearch("");
                         }}
@@ -686,192 +710,24 @@ const CreateJobRoleNavigation = () => {
         </div>
       </div>
 
-      {/* Navigation Rows Table */}
-      <div className="bg-white rounded-lg shadow-md p-6 w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Navigation Entries
-          </h2>
-          <button
-            onClick={handleAddRow}
-            className="flex items-center gap-2 px-4 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#1a3f5f] transition-colors"
-          >
-            <FaPlus /> Add Row
-          </button>
+      {/* Navigation Tree Builder */}
+      {selectedJobRole && (
+        <div className="bg-white rounded-lg shadow-md p-6 w-full">
+          <NavigationTreeBuilder
+            groups={navigationGroups}
+            onGroupsChange={setNavigationGroups}
+            availableAppIds={availableAppIds}
+            referenceNavigation={referenceNavigation}
+            onCreateGroup={createGroupEntry}
+            onUpdateGroup={updateGroupEntry}
+            onDeleteGroup={deleteGroupEntry}
+            onCreateSubMenu={createSubMenuEntry}
+            onUpdateSubMenu={updateSubMenuEntry}
+            onDeleteSubMenu={deleteSubMenuEntry}
+            onDone={() => navigate(getBackRoute(), { state: getBackState() })}
+          />
         </div>
-
-        <div className="overflow-x-auto w-full">
-          <table className="w-full border-collapse min-w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b-2 border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  App ID *
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  Parent Navigation
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  Display Label
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  Display Order
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  Access Level
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  Screen Type
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  Is Group
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {navigationRows.map((row, index) => {
-                // Format App ID options for SearchableDropdown
-                const appIdOptions = availableAppIds.map((app) => ({
-                  id: app.app_id,
-                  text: `${app.app_id} - ${app.label}`,
-                }));
-
-                // Format Parent Navigation options for SearchableDropdown (include "None" option)
-                const parentNavOptions = [
-                  { id: "", text: "None (Top Level Menu)" },
-                  ...availableParentIds.map((parent) => ({
-                    id: parent.job_role_nav_id,
-                    text: `${parent.label || parent.app_id} (${parent.job_role_nav_id})`,
-                  })),
-                ];
-
-                return (
-                  <tr
-                    key={index}
-                    className="border-b border-gray-200 hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3 min-w-[250px]">
-                      <SearchableDropdown
-                        options={appIdOptions}
-                        value={row.app_id}
-                        onChange={(value) =>
-                          handleRowChange(index, "app_id", value)
-                        }
-                        placeholder="Select App ID"
-                        searchPlaceholder="Search app ID..."
-                        valueKey="id"
-                        displayKey="text"
-                        className="text-sm w-full"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <SearchableDropdown
-                        options={parentNavOptions}
-                        value={row.parent_id || ""}
-                        onChange={(value) =>
-                          handleRowChange(index, "parent_id", value || "")
-                        }
-                        placeholder="None (Top Level Menu)"
-                        searchPlaceholder="Search parent navigation..."
-                        valueKey="id"
-                        displayKey="text"
-                        className="text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={row.label}
-                        onChange={(e) =>
-                          handleRowChange(index, "label", e.target.value)
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
-                        placeholder="Optional label"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        value={row.sequence}
-                        onChange={(e) =>
-                          handleRowChange(
-                            index,
-                            "sequence",
-                            parseInt(e.target.value) || 1,
-                          )
-                        }
-                        min="1"
-                        className="w-full max-w-[80px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={row.access_level}
-                        onChange={(e) =>
-                          handleRowChange(index, "access_level", e.target.value)
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
-                      >
-                        <option value="D">Display Only</option>
-                        <option value="A">Full Access</option>
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={row.mob_desk}
-                        onChange={(e) =>
-                          handleRowChange(index, "mob_desk", e.target.value)
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
-                      >
-                        <option value="D">Desktop</option>
-                        <option value="M">Mobile</option>
-                      </select>
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={row.is_group}
-                        onChange={(e) =>
-                          handleRowChange(index, "is_group", e.target.checked)
-                        }
-                        className="h-5 w-5 text-[#0E2F4B] focus:ring-[#0E2F4B] border-gray-300 rounded"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleRemoveRow(index)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                        disabled={navigationRows.length === 1}
-                      >
-                        <FaTrash />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
-          <button
-            onClick={() => navigate(getBackRoute(), { state: getBackState() })}
-            className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSaveMultiple}
-            className="flex items-center gap-2 px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#1a3f5f] transition-colors"
-          >
-            <FaSave /> Create All Navigation Entries
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

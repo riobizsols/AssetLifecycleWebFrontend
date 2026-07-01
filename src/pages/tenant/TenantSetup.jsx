@@ -818,6 +818,7 @@ export default function TenantSetup() {
                         <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
                           <li>A new database will be created automatically</li>
                           <li>All tables, constraints, and relationships will be set up</li>
+                          <li>Menu groups are created in navigation only — screen apps are linked to submenus</li>
                           <li>You'll be redirected to the login page</li>
                           <li>Use your Organization ID to access your tenant</li>
                         </ul>

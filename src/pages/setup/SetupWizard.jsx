@@ -1271,7 +1271,8 @@ API_BASE_URL=http://localhost:5000/api
               <h3 className="text-lg font-semibold text-slate-900">Administrator & Employee</h3>
               <p className="text-sm text-slate-500">
                 The wizard creates a master employee record and pairs it with the administrator user
-                account. You can add more users after signing in.
+                account. Sidebar menu groups are stored in navigation only; screen apps are linked when
+                you configure submenus. You can add more users after signing in.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
