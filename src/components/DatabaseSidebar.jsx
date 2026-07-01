@@ -44,7 +44,10 @@ function injectOneTimeCronUnderMasterData(items) {
     const children = item.children?.length
       ? injectOneTimeCronUnderMasterData(item.children)
       : item.children;
-    if (item.app_id === "MASTERDATA" && item.is_group) {
+    if (
+      item.is_group &&
+      (item.app_id === "MASTERDATA" || item.label === "Master Data")
+    ) {
       const ch = children || [];
       if (ch.some((c) => c.app_id === "ONETIMECRON")) {
         return { ...item, children: ch };
@@ -75,6 +78,7 @@ const DatabaseSidebar = () => {
     navigation,
     loading,
     error,
+    isTenant,
     getAccessLevel,
     getAccessLevelLabel,
     getAccessLevelColor,
@@ -720,7 +724,15 @@ const DatabaseSidebar = () => {
           <li className="text-center py-4 text-gray-300">
             <div className="text-sm">
               <p>No navigation items found.</p>
-              <p className="text-xs mt-1">Please check your database setup.</p>
+              {isTenant ? (
+                <p className="text-xs mt-1">
+                  This tenant database has no menu permissions yet. Run the setup wizard at /setup against your tenant database to seed menus and master data.
+                </p>
+              ) : (
+                <p className="text-xs mt-1">
+                  Try logging out and back in. If menus are still missing, run the setup wizard at /setup.
+                </p>
+              )}
             </div>
           </li>
         ) : (

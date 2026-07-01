@@ -41,13 +41,13 @@ const SearchableDropdown = ({
     setOpenUpwards(shouldOpenUp);
 
     const top = shouldOpenUp
-      ? rect.top + window.scrollY - estimatedDropdownHeight
-      : rect.bottom + window.scrollY;
+      ? rect.top - estimatedDropdownHeight
+      : rect.bottom;
 
     setDropdownPosition({
-      top: Math.max(viewportPadding + window.scrollY, top),
-      left: rect.left + window.scrollX,
-      width: rect.width
+      top: Math.max(viewportPadding, top),
+      left: rect.left,
+      width: rect.width,
     });
   };
 

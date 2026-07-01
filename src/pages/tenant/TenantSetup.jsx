@@ -273,9 +273,23 @@ export default function TenantSetup() {
         }, 5000);
       }
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to create tenant. Please try again."
-      );
+      const message = error.response?.data?.message || error.message || "Failed to create tenant. Please try again.";
+      if (message.toLowerCase().includes("already exists")) {
+        toast.info(
+          "This organization may already be created. Try logging in with your Organization ID and admin email."
+        );
+        navigate("/tenant-login", {
+          state: {
+            message: "If setup finished, sign in with your Organization ID and admin credentials.",
+            orgId: form.orgId.toUpperCase(),
+            email: adminUser.email,
+          },
+        });
+      } else if (error.code === "ECONNABORTED") {
+        toast.error("Request timed out. The tenant may still have been created — try tenant login.");
+      } else {
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -764,12 +778,24 @@ export default function TenantSetup() {
                         <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
                           <li>A new database will be created automatically</li>
                           <li>All tables, constraints, and relationships will be set up</li>
+                          <li>Menu groups are created in navigation only — screen apps are linked to submenus</li>
                           <li>You'll be redirected to the login page</li>
                           <li>Use your Organization ID to access your tenant</li>
                         </ul>
                       </div>
                     </div>
                   </div>
+                )}
+
+                {loading && (
+                  <p className="text-sm text-amber-700 mt-4">
+                    Creating the database and tables can take several minutes on a remote server. Do not close this tab.
+                    If it seems stuck, refresh and try{" "}
+                    <a href="/tenant-login" className="text-indigo-600 underline font-medium">
+                      tenant login
+                    </a>{" "}
+                    with org ID <strong>{form.orgId.toUpperCase()}</strong>.
+                  </p>
                 )}
 
                 <div className="flex justify-between pt-6 border-t border-gray-200">
