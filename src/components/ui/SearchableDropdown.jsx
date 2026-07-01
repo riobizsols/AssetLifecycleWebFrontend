@@ -41,13 +41,13 @@ const SearchableDropdown = ({
     setOpenUpwards(shouldOpenUp);
 
     const top = shouldOpenUp
-      ? rect.top + window.scrollY - estimatedDropdownHeight
-      : rect.bottom + window.scrollY;
+      ? rect.top - estimatedDropdownHeight
+      : rect.bottom;
 
     setDropdownPosition({
-      top: Math.max(viewportPadding + window.scrollY, top),
-      left: rect.left + window.scrollX,
-      width: rect.width
+      top: Math.max(viewportPadding, top),
+      left: rect.left,
+      width: rect.width,
     });
   };
 
@@ -117,7 +117,7 @@ const SearchableDropdown = ({
       {isOpen && !disabled && createPortal(
         <div 
           ref={dropdownRef}
-          className="fixed z-[9999] bg-white border rounded-md shadow-lg"
+          className="fixed z-[10050] bg-white border rounded-md shadow-lg"
           style={{
             top: dropdownPosition.top,
             left: dropdownPosition.left,
