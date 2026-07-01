@@ -33,6 +33,7 @@ import {
 } from "./ReportComponents";
 import { generateComprehensiveReport } from "../../utils/reportGenerator";
 import { useTranslatedReport, getTranslatedColumnHeader } from "../../utils/reportTranslations";
+import { assetValuationService } from "../../services/assetValuationService";
 import ReportDisplay from "./ReportDisplay";
 
 export default function ReportLayout({ 
@@ -572,9 +573,6 @@ export default function ReportLayout({
 
   const handleAssetValuationExport = async (format) => {
     try {
-      // Import the asset valuation service
-      const { assetValuationService } = await import('../../services/assetValuationService');
-      
       // Prepare filters for the API call
       const apiFilters = {
         assetStatus: quick.assetStatus && quick.assetStatus.length > 0 ? quick.assetStatus[0] : null,

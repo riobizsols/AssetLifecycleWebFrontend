@@ -14,23 +14,50 @@ import {
   X
 } from "lucide-react";
 
+const INDIAN_PHONE_REGEX = /^\+91 9\d{4} 8\d{4}$/;
+
+const formatIndianPhoneInput = (raw) => {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("91")) {
+    digits = digits.slice(2);
+  }
+  digits = digits.slice(0, 10);
+  if (!digits) return "";
+
+  if (digits[0] !== "9") {
+    return "";
+  }
+
+  if (digits.length > 5 && digits[5] !== "8") {
+    digits = digits.slice(0, 5);
+  }
+
+  if (digits.length <= 5) {
+    return `+91 ${digits}`;
+  }
+  return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+};
+
 export default function TenantSetup() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [checkingOrgId, setCheckingOrgId] = useState(false);
+  const [checkingSubdomain, setCheckingSubdomain] = useState(false);
   const [orgIdAvailable, setOrgIdAvailable] = useState(null);
+  const [subdomainAvailable, setSubdomainAvailable] = useState(null);
   const [form, setForm] = useState({
     orgId: "",
     orgName: "",
-    orgCode: "",
+    subdomain: "",
     orgCity: "",
   });
   const [adminUser, setAdminUser] = useState({
     fullName: "System Administrator",
     email: "",
-    password: "",
-    confirmPassword: "",
+    // Fixed initial password; user does not type this
+    password: "Initial1",
+    confirmPassword: "Initial1",
     username: "USR001",
     phone: "",
   });
@@ -56,15 +83,52 @@ export default function TenantSetup() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const newValue = name === 'orgId' || name === 'orgCode' ? value.toUpperCase() : value;
+    let newValue = value;
+    if (name === 'orgId') {
+      newValue = value.toUpperCase();
+    } else if (name === 'subdomain') {
+      newValue = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    }
     setForm((prev) => ({
       ...prev,
       [name]: newValue,
     }));
     
-    // Reset availability check when orgId changes
     if (name === 'orgId') {
       setOrgIdAvailable(null);
+    }
+    if (name === 'subdomain') {
+      setSubdomainAvailable(null);
+    }
+  };
+
+  const checkSubdomain = async () => {
+    if (!form.subdomain || form.subdomain.length < 3) {
+      toast.error("Please enter a valid Sub-domain name (at least 3 characters)");
+      return;
+    }
+
+    setCheckingSubdomain(true);
+    try {
+      const response = await API.post("/tenant-setup/check-subdomain", {
+        subdomain: form.subdomain.toLowerCase(),
+      }, { timeout: 60000 });
+
+      if (response.data.success) {
+        setSubdomainAvailable(response.data.available);
+        if (response.data.available) {
+          toast.success(response.data.message);
+        } else {
+          toast.error(response.data.message);
+        }
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to check sub-domain name"
+      );
+      setSubdomainAvailable(null);
+    } finally {
+      setCheckingSubdomain(false);
     }
   };
 
@@ -78,7 +142,7 @@ export default function TenantSetup() {
     try {
       const response = await API.post("/tenant-setup/check-org-id", {
         orgId: form.orgId.toUpperCase(),
-      });
+      }, { timeout: 60000 });
 
       if (response.data.success) {
         setOrgIdAvailable(response.data.available);
@@ -92,7 +156,7 @@ export default function TenantSetup() {
       toast.error(
         error.response?.data?.message || "Failed to check organization ID"
       );
-      setOrgIdAvailable(false);
+      setOrgIdAvailable(null);
     } finally {
       setCheckingOrgId(false);
     }
@@ -100,9 +164,10 @@ export default function TenantSetup() {
 
   const handleAdminChange = (e) => {
     const { name, value } = e.target;
+    const newValue = name === "phone" ? formatIndianPhoneInput(value) : value;
     setAdminUser((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: newValue,
     }));
   };
 
@@ -115,6 +180,18 @@ export default function TenantSetup() {
       }
       if (!form.orgName) {
         showBackendTextToast({ toast, tmdId: 'TMD_ORGANIZATION_NAME_IS_REQUIRED_1149F0F3', fallbackText: 'Organization Name is required', type: 'error' });
+        return;
+      }
+      if (!form.subdomain || form.subdomain.length < 3) {
+        toast.error("Sub-domain name is required (minimum 3 characters)");
+        return;
+      }
+      if (subdomainAvailable === null) {
+        toast.error("Please check if Sub-domain name is available");
+        return;
+      }
+      if (!subdomainAvailable) {
+        toast.error("Sub-domain name is not available. Please choose a different one.");
         return;
       }
       if (orgIdAvailable === null) {
@@ -131,14 +208,12 @@ export default function TenantSetup() {
         showBackendTextToast({ toast, tmdId: 'TMD_ADMIN_EMAIL_IS_REQUIRED_166924A0', fallbackText: 'Admin email is required', type: 'error' });
         return;
       }
-      if (!adminUser.password || adminUser.password.length < 6) {
-        showBackendTextToast({ toast, tmdId: 'TMD_PASSWORD_IS_REQUIRED_MINIMUM_6_CHARACTERS_52E91375', fallbackText: 'Password is required (minimum 6 characters)', type: 'error' });
+      if (adminUser.phone.trim() && !INDIAN_PHONE_REGEX.test(adminUser.phone.trim())) {
+        toast.error("Phone must be in format +91 9XXXX 8XXXX (e.g., +91 98765 81234)");
         return;
       }
-      if (adminUser.password !== adminUser.confirmPassword) {
-        showBackendTextToast({ toast, tmdId: 'TMD_PASSWORDS_DO_NOT_MATCH_7D02CAEB', fallbackText: 'Passwords do not match', type: 'error' });
-        return;
-      }
+      // Password is fixed as "Initial1" and not editable,
+      // so no need to validate password/confirm password here.
     }
     setCurrentStep(currentStep + 1);
   };
@@ -149,6 +224,11 @@ export default function TenantSetup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (adminUser.phone.trim() && !INDIAN_PHONE_REGEX.test(adminUser.phone.trim())) {
+      toast.error("Phone must be in format +91 9XXXX 8XXXX (e.g., +91 98765 81234)");
+      return;
+    }
+
     setLoading(true);
     setCreatedTenant(null);
 
@@ -156,7 +236,7 @@ export default function TenantSetup() {
       const payload = {
         orgId: form.orgId.toUpperCase(),
         orgName: form.orgName,
-        orgCode: form.orgCode.toUpperCase(),
+        subdomain: form.subdomain.toLowerCase(),
         orgCity: form.orgCity,
         adminUser: {
           fullName: adminUser.fullName,
@@ -167,7 +247,9 @@ export default function TenantSetup() {
         },
       };
 
-      const response = await API.post("/tenant-setup/create", payload);
+      const response = await API.post("/tenant-setup/create", payload, {
+        timeout: 900000,
+      });
 
       if (response.data.success) {
         showBackendTextToast({ toast, tmdId: 'TMD_TENANT_CREATED_SUCCESSFULLY_17F24D4C', fallbackText: 'Tenant created successfully!', type: 'success' });
@@ -180,8 +262,8 @@ export default function TenantSetup() {
             // Navigate to the subdomain URL
             window.location.href = subdomainUrl;
           } else {
-            // Fallback: navigate to tenant login if subdomain URL not available
-            navigate("/tenant-login", { 
+            // Fallback: navigate to login page if subdomain URL not available
+            navigate("/", { 
               state: { 
                 message: "Tenant created successfully! Please login with your credentials.",
                 orgId: response.data.data.orgId,
@@ -284,7 +366,7 @@ export default function TenantSetup() {
                         onChange={handleChange}
                         required
                         placeholder="e.g., ACME, COMPANY123"
-                        maxLength={20}
+                        maxLength={10}
                         className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent uppercase font-medium"
                       />
                       <button
@@ -324,7 +406,7 @@ export default function TenantSetup() {
                       </div>
                     )}
                     <p className="mt-1 text-xs text-gray-500">
-                      This will be used for tenant identification and login. Must be unique and 3-20 characters. A separate organization ID will be generated for internal use.
+                      Used across all tables in your tenant database. Must be unique and 3-10 characters.
                     </p>
                   </div>
 
@@ -346,19 +428,57 @@ export default function TenantSetup() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Organization Code
+                        Sub-domain Name <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        name="orgCode"
-                        value={form.orgCode}
-                        onChange={handleChange}
-                        placeholder="e.g., ACME"
-                        maxLength={10}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent uppercase"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          name="subdomain"
+                          value={form.subdomain}
+                          onChange={handleChange}
+                          required
+                          placeholder="e.g., acme"
+                          maxLength={63}
+                          className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent lowercase"
+                        />
+                        <button
+                          type="button"
+                          onClick={checkSubdomain}
+                          disabled={checkingSubdomain || !form.subdomain || form.subdomain.length < 3}
+                          className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium whitespace-nowrap"
+                        >
+                          {checkingSubdomain ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Checking...
+                            </>
+                          ) : (
+                            <>
+                              <Check className="h-4 w-4" />
+                              Check
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      {subdomainAvailable !== null && (
+                        <p className={`mt-2 text-sm flex items-center gap-1 ${
+                          subdomainAvailable ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {subdomainAvailable ? (
+                            <>
+                              <Check className="h-4 w-4" />
+                              Sub-domain name is available
+                            </>
+                          ) : (
+                            <>
+                              <X className="h-4 w-4" />
+                              Sub-domain name is not available
+                            </>
+                          )}
+                        </p>
+                      )}
                       <p className="mt-1 text-xs text-gray-500">
-                        Used for database naming
+                        Your login URL will be https://your-subdomain.yourdomain.com
                       </p>
                     </div>
                     <div>
@@ -381,7 +501,7 @@ export default function TenantSetup() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={!orgIdAvailable || !form.orgName}
+                    disabled={!orgIdAvailable || !subdomainAvailable || !form.orgName}
                     className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
                     Next
@@ -460,47 +580,50 @@ export default function TenantSetup() {
                         name="phone"
                         value={adminUser.phone}
                         onChange={handleAdminChange}
-                        placeholder="e.g., +1234567890"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        placeholder="+91 98765 81234"
+                        pattern="\+91 9\d{4} 8\d{4}"
+                        title="+91 9XXXX 8XXXX"
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Format: +91 9XXXX 8XXXX (digits only)
+                      </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Password <span className="text-red-500">*</span>
+                        Password
                       </label>
                       <input
                         type="password"
                         name="password"
-                        value={adminUser.password}
-                        onChange={handleAdminChange}
-                        required
-                        placeholder="Minimum 6 characters"
-                        minLength={6}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        value="Initial1"
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Confirm Password <span className="text-red-500">*</span>
+                        Confirm Password
                       </label>
                       <input
                         type="password"
                         name="confirmPassword"
-                        value={adminUser.confirmPassword}
-                        onChange={handleAdminChange}
-                        required
-                        placeholder="Re-enter password"
-                        minLength={6}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        value="Initial1"
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
                       />
                     </div>
                   </div>
-                  {adminUser.password && adminUser.confirmPassword && adminUser.password !== adminUser.confirmPassword && (
-                    <p className="text-sm text-red-600">Passwords do not match</p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    The initial password will be set to <span className="font-semibold">Initial1</span> and emailed to the admin user.
+                  </p>
                 </div>
 
                 <div className="flex justify-between pt-6 border-t border-gray-200">
@@ -515,7 +638,7 @@ export default function TenantSetup() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={!adminUser.email || !adminUser.password || adminUser.password !== adminUser.confirmPassword}
+                    disabled={!adminUser.email}
                     className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
                     Next
@@ -549,12 +672,10 @@ export default function TenantSetup() {
                         <span className="font-medium text-gray-700">Organization Name:</span>
                         <span className="font-semibold text-gray-900">{form.orgName}</span>
                       </div>
-                      {form.orgCode && (
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-700">Organization Code:</span>
-                          <span className="font-semibold text-gray-900">{form.orgCode}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700">Sub-domain Name:</span>
+                        <span className="font-semibold text-gray-900">{form.subdomain}</span>
+                      </div>
                       {form.orgCity && (
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-gray-700">City:</span>

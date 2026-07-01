@@ -7,7 +7,7 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
 
 const passwordInputClass =
-  "app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400";
+  "app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden";
 
 const ChangePassword = () => {
   const navigate = useNavigate();
