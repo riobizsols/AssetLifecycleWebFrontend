@@ -25,3 +25,33 @@ export function applyListFilterChange(prev, columnName, value) {
 
   return { ...base, columnFilters: nextFilters };
 }
+
+/** True when any list filter (column, date, or search) is actively set. */
+export function hasActiveListFilters(filterValues) {
+  if (!filterValues || typeof filterValues !== 'object') return false;
+
+  const {
+    columnFilters = [],
+    fromDate = '',
+    toDate = '',
+    search = '',
+  } = filterValues;
+
+  if (fromDate || toDate) return true;
+  if (String(search).trim()) return true;
+
+  if (!Array.isArray(columnFilters)) return false;
+
+  return columnFilters.some((filter) => {
+    if (!filter?.column) return false;
+    const value = filter.value;
+    if (Array.isArray(value)) return value.length > 0;
+    return value != null && value !== '';
+  });
+}
+
+export const EMPTY_LIST_FILTERS = {
+  columnFilters: [],
+  fromDate: '',
+  toDate: '',
+};

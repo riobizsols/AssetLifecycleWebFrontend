@@ -89,6 +89,24 @@ const EMPLOYEE_TECH_CERT_APP_IDS = [
   "EMPLOYEE TECH CERTIFICATION",
 ];
 
+const SYNTHETIC_APPROVAL_APP_IDS = new Set(
+  [
+    "MAINTENANCEAPPROVAL",
+    "INSPECTIONAPPROVAL",
+    "SCRAPMAINTENANCEAPPROVAL",
+    "VENDORRENEWALAPPROVAL",
+    "HR/MANAGERAPPROVAL",
+  ].map((id) => normalizeNavAppId(id)),
+);
+
+function hasAnyApprovalItems(flatItems) {
+  return flatItems.some(
+    (item) =>
+      item.app_id &&
+      SYNTHETIC_APPROVAL_APP_IDS.has(normalizeNavAppId(item.app_id)),
+  );
+}
+
 const SIDEBAR_MENU_GROUPS = [
   {
     id: "synthetic-approvals",
@@ -238,9 +256,26 @@ function collectGroupChildren(flatItems, groupDef, accessMap, options = {}) {
   return children;
 }
 
-function getGroupedAppIds() {
+const normalizeGroupLabel = (label) =>
+  String(label || "").trim().toLowerCase();
+
+function getDbMenuGroupLabels(items) {
+  const labels = new Set();
+  const walk = (nodes) => {
+    for (const item of nodes || []) {
+      if (item.is_group && item.children?.length) {
+        labels.add(normalizeGroupLabel(item.label));
+      }
+      if (item.children?.length) walk(item.children);
+    }
+  };
+  walk(items);
+  return labels;
+}
+
+function getGroupedAppIdsForDefs(groupDefs) {
   const groupedAppIds = new Set();
-  SIDEBAR_MENU_GROUPS.forEach((group) => {
+  groupDefs.forEach((group) => {
     group.children.forEach((child) => {
       groupedAppIds.add(normalizeNavAppId(child.app_id));
       (child.aliases || []).forEach((alias) =>
@@ -251,47 +286,88 @@ function getGroupedAppIds() {
   return groupedAppIds;
 }
 
+function pruneEmptyGroups(items) {
+  if (!items?.length) return items;
+  return items
+    .map((item) => ({
+      ...item,
+      children: item.children?.length
+        ? pruneEmptyGroups(item.children)
+        : item.children,
+    }))
+    .filter((item) => !item.is_group || item.children?.length);
+}
+
 /** Groups Approvals, Certificates, and Report Breakdown into dropdown menus. */
 function reorganizeSidebarGroups(items) {
   if (!items?.length) return items;
 
   const flatItems = flattenNavItems(items);
   const accessMap = buildFlatAccessMap(flatItems);
-  const groupedAppIds = getGroupedAppIds();
+  const dbGroupLabels = getDbMenuGroupLabels(items);
+  const syntheticGroupDefs = SIDEBAR_MENU_GROUPS.filter((groupDef) => {
+    const label = normalizeGroupLabel(groupDef.label);
+    if (dbGroupLabels.has(label)) return false;
+    if (label === "approvals" && dbGroupLabels.has("approval")) return false;
+    if (groupDef.id === "synthetic-approvals" && hasAnyApprovalItems(flatItems)) {
+      return false;
+    }
+    if (
+      groupDef.id === "synthetic-approvals" &&
+      (dbGroupLabels.has("maintenance") ||
+        dbGroupLabels.has("inspection") ||
+        dbGroupLabels.has("scrap"))
+    ) {
+      return false;
+    }
+    return true;
+  });
 
-  const syntheticGroups = SIDEBAR_MENU_GROUPS.map((groupDef) => {
-    const isReportBreakdownGroup = groupDef.id === "synthetic-report-breakdown";
-    const reportBreakdownAccess =
-      resolveInheritedAccess((id) => accessMap.get(id), "REPORTBREAKDOWN") ||
-      resolveInheritedAccess((id) => accessMap.get(id), "REOPENEDBREAKDOWNS");
+  if (!syntheticGroupDefs.length) {
+    return pruneEmptyGroups(items);
+  }
 
-    const children = collectGroupChildren(flatItems, groupDef, accessMap, {
-      forceAllChildren: isReportBreakdownGroup && hasViewAccess(reportBreakdownAccess),
-      fallbackAccessLevel: reportBreakdownAccess,
-    });
+  const syntheticGroups = syntheticGroupDefs
+    .map((groupDef) => {
+      const isReportBreakdownGroup = groupDef.id === "synthetic-report-breakdown";
+      const reportBreakdownAccess =
+        resolveInheritedAccess((id) => accessMap.get(id), "REPORTBREAKDOWN") ||
+        resolveInheritedAccess((id) => accessMap.get(id), "REOPENEDBREAKDOWNS");
 
-    if (!children.length) return null;
+      const children = collectGroupChildren(flatItems, groupDef, accessMap, {
+        forceAllChildren:
+          isReportBreakdownGroup && hasViewAccess(reportBreakdownAccess),
+        fallbackAccessLevel: reportBreakdownAccess,
+      });
 
-    const minSeq = Math.min(...children.map((child) => child.seq ?? 9999));
+      if (!children.length) return null;
 
-    return {
-      id: groupDef.id,
-      app_id: groupDef.app_id,
-      label: groupDef.label,
-      is_group: true,
-      seq: minSeq,
-      access_level: children.some((child) => child.access_level === "A")
-        ? "A"
-        : children[0].access_level,
-      children,
-    };
-  }).filter(Boolean);
+      const minSeq = Math.min(...children.map((child) => child.seq ?? 9999));
 
-  if (!syntheticGroups.length) return items;
+      return {
+        id: groupDef.id,
+        app_id: groupDef.app_id,
+        label: groupDef.label,
+        is_group: true,
+        seq: minSeq,
+        access_level: children.some((child) => child.access_level === "A")
+          ? "A"
+          : children[0].access_level,
+        children,
+      };
+    })
+    .filter(Boolean);
 
-  const remainingItems = removeAppIdsFromTree(items, groupedAppIds);
+  if (!syntheticGroups.length) {
+    return pruneEmptyGroups(items);
+  }
+
+  const groupedAppIds = getGroupedAppIdsForDefs(syntheticGroupDefs);
+  const remainingItems = pruneEmptyGroups(
+    removeAppIdsFromTree(items, groupedAppIds),
+  );
   return [...remainingItems, ...syntheticGroups].sort(
-    (a, b) => (a.seq ?? 9999) - (b.seq ?? 9999)
+    (a, b) => (a.seq ?? 9999) - (b.seq ?? 9999),
   );
 }
 
@@ -663,7 +739,8 @@ const DatabaseSidebar = () => {
   };
 
   // Dynamic icon component
-  const getIconComponent = (appId) => {
+  const getIconComponent = (appId, label) => {
+    const resolvedAppId = resolveAppIdForPath(appId, label);
     const iconMap = {
       DASHBOARD: LayoutDashboard,
       ASSETS: Package,
@@ -727,7 +804,11 @@ const DatabaseSidebar = () => {
     };
 
     const IconComponent =
-      iconMap[appId] || iconMap[resolveNavAppId(appId)] || Building;
+      iconMap[resolvedAppId] ||
+      iconMap[appId] ||
+      iconMap[resolveNavAppId(resolvedAppId)] ||
+      iconMap[resolveNavAppId(appId)] ||
+      Building;
     return () => <IconComponent size={16} />;
   };
 
@@ -754,6 +835,13 @@ const DatabaseSidebar = () => {
   const LABEL_TO_APP_ID = {
     "job monitor": "JOBMONITOR",
     "admin settings": "ADMINSETTINGS",
+    maintenance: "WORKORDERMANAGEMENT",
+    inspection: "INSPECTION",
+    scrap: "SCRAPASSETS",
+    certificates: "CERTIFICATESGROUP",
+    approval: "APPROVALS",
+    approvals: "APPROVALS",
+    "report breakdown": "REPORTBREAKDOWNGROUP",
   };
 
   const resolveAppIdForPath = (appId, label) => {
@@ -865,7 +953,7 @@ const DatabaseSidebar = () => {
   const shouldShowItem = (item) => {
     const isAdminSettingsOnlyItem = isAdminSettingsOnlyAppId(item.app_id, item.label);
 
-    // Admin Settings hub is always visible outside admin-settings mode (children are admin-only).
+    // Admin Settings dropdown (with audit children) or legacy hub link.
     if (!isAdminSettingsMode && isAdminSettingsHub(item.app_id, item.label)) {
       return hasViewAccess(
         resolveEffectiveAccess("ADMINSETTINGS", item.access_level)
@@ -924,32 +1012,26 @@ const DatabaseSidebar = () => {
       return null;
     }
 
-    if (!path) {
-      return null;
-    }
-    const accessLevel = resolveEffectiveAccess(
-      isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
-      item.access_level || getAccessLevel(item.app_id)
-    );
-    const IconComponent = getIconComponent(
-      isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id
-    );
+    const isDropdownGroup = item.is_group && item.children?.length > 0;
 
-    if (
-      item.is_group &&
-      item.children?.length > 0 &&
-      !( !isAdminSettingsMode && isAdminSettingsHub(item.app_id, item.label) )
-    ) {
+    if (isDropdownGroup) {
+      const accessLevel = resolveEffectiveAccess(
+        isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
+        item.access_level || getAccessLevel(item.app_id)
+      );
+      const IconComponent = getIconComponent(
+        isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
+        item.label
+      );
       const hasChildren = true;
       const isAnyChildActive =
         hasChildren &&
         item.children.some((child) => {
           const childPath = getPath(child.app_id, child.label);
-          // For COLUMNACCESSCONFIG, check exact match since it shares path with ADMINSETTINGS
           if (child.app_id === "COLUMNACCESSCONFIG") {
             return location.pathname === childPath;
           }
-          return location.pathname.startsWith(childPath);
+          return childPath && location.pathname.startsWith(childPath);
         });
 
       return (
@@ -961,7 +1043,7 @@ const DatabaseSidebar = () => {
                 ? "bg-[#FFC107] text-white"
                 : "hover:bg-[#143d65] text-white"
             }`}
-            title={!collapsed ? translateLabel(item.label) : ""} // Tooltip for collapsed state
+            title={!collapsed ? translateLabel(item.label) : ""}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               {IconComponent && <IconComponent className="flex-shrink-0" />}
@@ -987,12 +1069,10 @@ const DatabaseSidebar = () => {
               {item.children.map((child) => {
                 const isAdminSettingsOnlyChild = isAdminSettingsOnlyAppId(child.app_id, child.label);
 
-                // Hide admin settings only items when NOT in admin settings mode
                 if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
                   return null;
                 }
 
-                // In admin settings mode, only show admin settings only children
                 if (isAdminSettingsMode && !isAdminSettingsOnlyChild) {
                   return null;
                 }
@@ -1003,13 +1083,12 @@ const DatabaseSidebar = () => {
                   child.app_id,
                   child.access_level || getAccessLevel(child.app_id)
                 );
-                const ChildIconComponent = getIconComponent(child.app_id);
+                const ChildIconComponent = getIconComponent(child.app_id, child.label);
 
-                // Only show children that have access
                 if (!hasViewAccess(childAccessLevel)) return null;
 
                 const requiresExactMatch = isAdminSettingsRouteAppId(child.app_id, child.label);
-                const isActiveForAdminRoute = requiresExactMatch 
+                const isActiveForAdminRoute = requiresExactMatch
                   ? location.pathname === childPath
                   : undefined;
 
@@ -1021,9 +1100,8 @@ const DatabaseSidebar = () => {
                       end={requiresExactMatch}
                       onMouseEnter={() => prefetchRouteData(child.app_id)}
                       className={({ isActive }) => {
-                        // Use exact match check for admin settings routes
-                        const active = requiresExactMatch 
-                          ? isActiveForAdminRoute 
+                        const active = requiresExactMatch
+                          ? isActiveForAdminRoute
                           : isActive;
                         return `group flex items-center gap-2 px-4 py-2 rounded text-sm ${
                           active
@@ -1050,53 +1128,74 @@ const DatabaseSidebar = () => {
           )}
         </li>
       );
-    } else {
-      const effectiveAccess = resolveEffectiveAccess(
-        item.app_id,
-        accessLevel || item.access_level
-      );
-      if (!hasViewAccess(effectiveAccess)) return null;
-
-      const requiresExactMatch = isAdminSettingsRouteAppId(item.app_id, item.label);
-      const isActiveForAdminRoute = requiresExactMatch 
-        ? location.pathname === path
-        : undefined;
-
-      return (
-        <li key={item.id} className="mb-2">
-          <NavLink
-            to={path}
-            state={navLinkState}
-            end={requiresExactMatch || resolveNavAppId(item.app_id) === "DASHBOARD"}
-            onMouseEnter={() => prefetchRouteData(item.app_id)}
-            className={({ isActive }) => {
-              // Use exact match check for admin settings routes
-              const active = requiresExactMatch 
-                ? isActiveForAdminRoute 
-                : isActive;
-              return `group flex items-center gap-2 px-4 py-2 rounded ${
-                active
-                  ? "bg-[#FFC107] text-white"
-                  : "hover:bg-[#143d65] text-white"
-              } ${getAccessColorClass(effectiveAccess)}`;
-            }}
-              title={!collapsed ? translateLabel(item.label) : ""}
-            >
-              {IconComponent && <IconComponent className="flex-shrink-0" />}
-              {!collapsed && (
-                <span className="truncate flex-1 min-w-0 text-sm font-medium">
-                  {translateLabel(item.label)}
-                </span>
-              )}
-            {!collapsed && (
-              <span className="flex-shrink-0">
-                {getAccessIcon(effectiveAccess)}
-              </span>
-            )}
-          </NavLink>
-        </li>
-      );
     }
+
+    if (!path) {
+      return null;
+    }
+
+    // Legacy hub: only link when Admin Settings is not a dropdown group.
+    if (
+      isAdminSettingsHub(item.app_id, item.label) &&
+      item.is_group &&
+      item.children?.length > 0
+    ) {
+      return null;
+    }
+
+    const accessLevel = resolveEffectiveAccess(
+      isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
+      item.access_level || getAccessLevel(item.app_id)
+    );
+    const IconComponent = getIconComponent(
+      isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
+      item.label
+    );
+
+    const effectiveAccess = resolveEffectiveAccess(
+      item.app_id,
+      accessLevel || item.access_level
+    );
+    if (!hasViewAccess(effectiveAccess)) return null;
+
+    const requiresExactMatch = isAdminSettingsRouteAppId(item.app_id, item.label);
+    const isActiveForAdminRoute = requiresExactMatch
+      ? location.pathname === path
+      : undefined;
+
+    return (
+      <li key={item.id} className="mb-2">
+        <NavLink
+          to={path}
+          state={navLinkState}
+          end={requiresExactMatch || resolveNavAppId(item.app_id) === "DASHBOARD"}
+          onMouseEnter={() => prefetchRouteData(item.app_id)}
+          className={({ isActive }) => {
+            const active = requiresExactMatch
+              ? isActiveForAdminRoute
+              : isActive;
+            return `group flex items-center gap-2 px-4 py-2 rounded ${
+              active
+                ? "bg-[#FFC107] text-white"
+                : "hover:bg-[#143d65] text-white"
+            } ${getAccessColorClass(effectiveAccess)}`;
+          }}
+          title={!collapsed ? translateLabel(item.label) : ""}
+        >
+          {IconComponent && <IconComponent className="flex-shrink-0" />}
+          {!collapsed && (
+            <span className="truncate flex-1 min-w-0 text-sm font-medium">
+              {translateLabel(item.label)}
+            </span>
+          )}
+          {!collapsed && (
+            <span className="flex-shrink-0">
+              {getAccessIcon(effectiveAccess)}
+            </span>
+          )}
+        </NavLink>
+      </li>
+    );
   };
 
   if (loading) {

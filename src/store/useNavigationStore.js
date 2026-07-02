@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import API from '../lib/axios';
-import { buildCacheKey, peekCache, setCache } from '../utils/apiCache';
+import { buildCacheKey, peekCache, setCache, invalidateCache } from '../utils/apiCache';
 
-const NAV_CACHE_KEY = 'app:navigation';
+const NAV_CACHE_KEY = 'app:navigation:v4';
 const NAV_TTL_MS = 10 * 60 * 1000;
 
 const detectPlatform = () => {
@@ -55,6 +55,7 @@ export const useNavigationStore = create((set, get) => ({
   },
 
   resetNavigation: () => {
+    invalidateCache('app:navigation');
     set({ navigation: [], loading: false, error: null, fetchedForUserId: null });
   },
 }));

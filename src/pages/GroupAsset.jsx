@@ -14,7 +14,7 @@ import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useGroupAssetStore } from "../store/useGroupAssetStore";
 import { invalidateCache } from "../utils/apiCache";
 import { filterData } from "../utils/filterData";
-import { applyListFilterChange } from "../utils/listFilterState";
+import { applyListFilterChange, hasActiveListFilters, EMPTY_LIST_FILTERS } from "../utils/listFilterState";
 
 const GroupAsset = () => {
   const navigate = useNavigate();
@@ -279,32 +279,33 @@ const GroupAsset = () => {
               visibleColumns,
             );
             const sortedData = sortData(filteredData);
+            const visibleCols = visibleColumns.filter((col) => col.visible);
+            const emptyColSpan = visibleCols.length + 1;
 
-            if (
-              filteredData.length === 0 &&
-              Object.keys(filterValues).some((key) => filterValues[key])
-            ) {
+            if (filteredData.length === 0 && hasActiveListFilters(filterValues)) {
               return (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">
-                    {t("groupAssets.noAssetGroupsMatchFilters")}
-                  </p>
-                  <button
-                    onClick={() => setFilterValues({})}
-                    className="mt-2 text-blue-600 hover:text-blue-800 underline"
-                  >
-                    {t("groupAssets.clearAllFilters")}
-                  </button>
-                </div>
+                <tr>
+                  <td colSpan={emptyColSpan} className="text-center py-16">
+                    <div className="flex flex-col items-center justify-center">
+                      <p className="text-gray-500">
+                        {t("groupAssets.noAssetGroupsMatchFilters")}
+                      </p>
+                      <button
+                        onClick={() => setFilterValues({ ...EMPTY_LIST_FILTERS })}
+                        className="mt-2 text-blue-600 hover:text-blue-800 underline text-sm"
+                      >
+                        {t("groupAssets.clearAllFilters")}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               );
             }
 
             if (sortedData.length === 0) {
-              const visibleCols = visibleColumns.filter((col) => col.visible);
-              const colSpan = visibleCols.length + 1; // +1 for actions column
               return (
                 <tr>
-                  <td colSpan={colSpan} className="text-center py-16">
+                  <td colSpan={emptyColSpan} className="text-center py-16">
                     <div className="flex flex-col items-center justify-center">
                       <p className="text-xl font-semibold text-gray-800 mb-2">
                         {t("groupAssets.noAssetGroupsFound")}
