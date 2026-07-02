@@ -50,7 +50,12 @@ const AdminSettingsView = () => {
     // Find Admin Settings in navigation
     const findAdminSettings = (items) => {
       for (const item of items) {
-        if (item.app_id === "ADMINSETTINGS" && item.children) {
+        if (
+          (item.app_id === "ADMINSETTINGS" ||
+            (item.is_group &&
+              String(item.label || "").trim().toLowerCase() === "admin settings")) &&
+          item.children
+        ) {
           return item.children.filter((child) => {
             // Only show items the user has access to
             return hasAccess(child.app_id);

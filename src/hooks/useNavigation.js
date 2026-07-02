@@ -21,9 +21,20 @@ export const useNavigation = () => {
         }
     }, [user?.user_id, fetchNavigation]);
 
+    const isAdminSettingsNavItem = (item) => {
+        if (appIdsMatch(item.app_id, 'ADMINSETTINGS')) return true;
+        return (
+            item.is_group &&
+            String(item.label || '').trim().toLowerCase() === 'admin settings'
+        );
+    };
+
     const findAccessLevelByAppId = (items, id) => {
         for (const item of items) {
             if (appIdsMatch(item.app_id, id)) {
+                return item.access_level;
+            }
+            if (appIdsMatch(id, 'ADMINSETTINGS') && isAdminSettingsNavItem(item)) {
                 return item.access_level;
             }
             if (item.children?.length) {

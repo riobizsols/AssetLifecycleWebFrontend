@@ -58,7 +58,8 @@ const getDynamicApiBaseUrl = () => {
     
     // No subdomain - use configured URL
     if (currentEnv === 'development') {
-      return config.development.API_BASE_URL;
+      const apiPort = import.meta.env.VITE_API_PORT || '5001';
+      return `http://localhost:${apiPort}/api`;
     }
   }
   

@@ -79,6 +79,10 @@ const compactNavAppId = (id) =>
 
 const resolveNavAppId = (appId) => compactNavAppId(appId) || normalizeNavAppId(appId);
 
+const isAdminSettingsHub = (appId, label) =>
+  resolveNavAppId(appId) === "ADMINSETTINGS" ||
+  String(label || "").trim().toLowerCase() === "admin settings";
+
 const EMPLOYEE_TECH_CERT_APP_IDS = [
   "TECHCERTUPLOAD",
   "TECHNICIANCERTIFICATES",
@@ -747,12 +751,31 @@ const DatabaseSidebar = () => {
     return fallbackLevel;
   };
 
+  const LABEL_TO_APP_ID = {
+    "job monitor": "JOBMONITOR",
+    "admin settings": "ADMINSETTINGS",
+  };
+
+  const resolveAppIdForPath = (appId, label) => {
+    const key = resolveNavAppId(appId);
+    if (key) return appId;
+    const fromLabel = LABEL_TO_APP_ID[String(label || "").trim().toLowerCase()];
+    return fromLabel || appId;
+  };
+
   // Get path - in admin settings mode, use simplified paths under /adminsettings/configuration
-  const getPath = (appId) => {
-    const navKey = resolveNavAppId(appId);
-    const basePath = appIdToPath[appId] || appIdToPath[navKey];
+  const getPath = (appId, label) => {
+    if (isAdminSettingsHub(appId, label)) {
+      return isAdminSettingsMode
+        ? "/adminsettings/configuration"
+        : "/admin-settings-view";
+    }
+
+    const pathAppId = resolveAppIdForPath(appId, label);
+    const navKey = resolveNavAppId(pathAppId);
+    const basePath = appIdToPath[pathAppId] || appIdToPath[navKey];
     if (!basePath) {
-      return isAdminSettingsMode ? "/adminsettings/configuration" : "/dashboard";
+      return isAdminSettingsMode ? "/adminsettings/configuration" : null;
     }
     
     // If in admin settings mode, use simplified paths
@@ -797,7 +820,7 @@ const DatabaseSidebar = () => {
     const activeGroup = navigationForRender.find((item) => {
       if (!item.is_group || !item.children?.length) return false;
       return item.children.some((child) => {
-        const childPath = getPath(child.app_id);
+        const childPath = getPath(child.app_id, child.label);
         return childPath && location.pathname.startsWith(childPath);
       });
     });
@@ -828,17 +851,26 @@ const DatabaseSidebar = () => {
     "ONETIMECRON",
     "JOBMONITOR",
   ];
-  const isAdminSettingsOnlyAppId = (appId) =>
+  const isAdminSettingsOnlyAppId = (appId, label) =>
     adminSettingsOnlyAppIds.some(
       (id) => resolveNavAppId(id) === resolveNavAppId(appId)
-    );
-  const isAdminSettingsRouteAppId = (appId) =>
+    ) ||
+    String(label || "").trim().toLowerCase() === "job monitor";
+  const isAdminSettingsRouteAppId = (appId, label) =>
     adminSettingsRoutes.some(
       (id) => resolveNavAppId(id) === resolveNavAppId(appId)
-    );
+    ) ||
+    String(label || "").trim().toLowerCase() === "job monitor";
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
-    const isAdminSettingsOnlyItem = isAdminSettingsOnlyAppId(item.app_id);
+    const isAdminSettingsOnlyItem = isAdminSettingsOnlyAppId(item.app_id, item.label);
+
+    // Admin Settings hub is always visible outside admin-settings mode (children are admin-only).
+    if (!isAdminSettingsMode && isAdminSettingsHub(item.app_id, item.label)) {
+      return hasViewAccess(
+        resolveEffectiveAccess("ADMINSETTINGS", item.access_level)
+      );
+    }
     
     // Hide admin settings only items when NOT in admin settings mode
     if (!isAdminSettingsMode) {
@@ -848,12 +880,12 @@ const DatabaseSidebar = () => {
       // Check if any child is an admin settings only item and hide the parent if needed
       if (item.children && item.children.length > 0) {
         const hasAdminSettingsChild = item.children.some(child => 
-          isAdminSettingsOnlyAppId(child.app_id)
+          isAdminSettingsOnlyAppId(child.app_id, child.label)
         );
         if (hasAdminSettingsChild) {
           // Hide parent groups that only contain admin settings items
           const nonAdminSettingsChildren = item.children.filter(child => 
-            !isAdminSettingsOnlyAppId(child.app_id)
+            !isAdminSettingsOnlyAppId(child.app_id, child.label)
           );
           // If all children are admin settings items, hide the parent
           if (nonAdminSettingsChildren.length === 0) {
@@ -872,7 +904,7 @@ const DatabaseSidebar = () => {
     
     // Check children for admin settings only items
     if (item.children && item.children.length > 0) {
-      return item.children.some(child => isAdminSettingsOnlyAppId(child.app_id));
+      return item.children.some(child => isAdminSettingsOnlyAppId(child.app_id, child.label));
     }
     
     return false;
@@ -885,16 +917,34 @@ const DatabaseSidebar = () => {
       return null;
     }
 
-    const path = getPath(item.app_id);
-    const accessLevel = getAccessLevel(item.app_id);
-    const IconComponent = getIconComponent(item.app_id);
+    const path = getPath(item.app_id, item.label);
 
-    if (item.is_group && item.children?.length > 0) {
+    // Empty group headers should not render as links (avoids false /dashboard highlight)
+    if (item.is_group && !item.children?.length && !isAdminSettingsHub(item.app_id, item.label)) {
+      return null;
+    }
+
+    if (!path) {
+      return null;
+    }
+    const accessLevel = resolveEffectiveAccess(
+      isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
+      item.access_level || getAccessLevel(item.app_id)
+    );
+    const IconComponent = getIconComponent(
+      isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id
+    );
+
+    if (
+      item.is_group &&
+      item.children?.length > 0 &&
+      !( !isAdminSettingsMode && isAdminSettingsHub(item.app_id, item.label) )
+    ) {
       const hasChildren = true;
       const isAnyChildActive =
         hasChildren &&
         item.children.some((child) => {
-          const childPath = getPath(child.app_id);
+          const childPath = getPath(child.app_id, child.label);
           // For COLUMNACCESSCONFIG, check exact match since it shares path with ADMINSETTINGS
           if (child.app_id === "COLUMNACCESSCONFIG") {
             return location.pathname === childPath;
@@ -935,7 +985,7 @@ const DatabaseSidebar = () => {
           {!collapsed && openDropdown === item.id && hasChildren && (
             <ul className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
-                const isAdminSettingsOnlyChild = isAdminSettingsOnlyAppId(child.app_id);
+                const isAdminSettingsOnlyChild = isAdminSettingsOnlyAppId(child.app_id, child.label);
 
                 // Hide admin settings only items when NOT in admin settings mode
                 if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
@@ -947,7 +997,8 @@ const DatabaseSidebar = () => {
                   return null;
                 }
 
-                const childPath = getPath(child.app_id);
+                const childPath = getPath(child.app_id, child.label);
+                if (!childPath) return null;
                 const childAccessLevel = resolveEffectiveAccess(
                   child.app_id,
                   child.access_level || getAccessLevel(child.app_id)
@@ -957,7 +1008,7 @@ const DatabaseSidebar = () => {
                 // Only show children that have access
                 if (!hasViewAccess(childAccessLevel)) return null;
 
-                const requiresExactMatch = isAdminSettingsRouteAppId(child.app_id);
+                const requiresExactMatch = isAdminSettingsRouteAppId(child.app_id, child.label);
                 const isActiveForAdminRoute = requiresExactMatch 
                   ? location.pathname === childPath
                   : undefined;
@@ -965,9 +1016,9 @@ const DatabaseSidebar = () => {
                 return (
                   <li key={child.id} className="mb-1">
                     <NavLink
-                      to={childPath || "/dashboard"}
+                      to={childPath}
                       state={navLinkState}
-                      end={requiresExactMatch} // Use exact match for admin settings routes
+                      end={requiresExactMatch}
                       onMouseEnter={() => prefetchRouteData(child.app_id)}
                       className={({ isActive }) => {
                         // Use exact match check for admin settings routes
@@ -1006,7 +1057,7 @@ const DatabaseSidebar = () => {
       );
       if (!hasViewAccess(effectiveAccess)) return null;
 
-      const requiresExactMatch = isAdminSettingsRouteAppId(item.app_id);
+      const requiresExactMatch = isAdminSettingsRouteAppId(item.app_id, item.label);
       const isActiveForAdminRoute = requiresExactMatch 
         ? location.pathname === path
         : undefined;
@@ -1014,9 +1065,9 @@ const DatabaseSidebar = () => {
       return (
         <li key={item.id} className="mb-2">
           <NavLink
-            to={path || "/dashboard"}
+            to={path}
             state={navLinkState}
-            end={requiresExactMatch} // Use exact match for admin settings routes
+            end={requiresExactMatch || resolveNavAppId(item.app_id) === "DASHBOARD"}
             onMouseEnter={() => prefetchRouteData(item.app_id)}
             className={({ isActive }) => {
               // Use exact match check for admin settings routes
