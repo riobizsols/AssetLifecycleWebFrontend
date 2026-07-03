@@ -15,25 +15,34 @@ const config = {
 // Get current environment
 const currentEnv = import.meta.env.MODE || 'development';
 
+// Reserved subdomains are main-app hosts (web/www/api), not tenant orgs.
+const RESERVED_SUBDOMAINS = (import.meta.env.VITE_RESERVED_SUBDOMAINS || 'web,www,api')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+const isReservedSubdomain = (hostname) => {
+  const parts = hostname.split('.');
+  if (parts.length < 2 || !parts[0]) return false;
+  return RESERVED_SUBDOMAINS.includes(parts[0].toLowerCase());
+};
+
 // Function to get API base URL dynamically based on current hostname
-// This ensures subdomain requests go to the correct backend
+// This ensures tenant subdomain requests go to the correct backend
 const getDynamicApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
     const currentPort = window.location.port;
     
-    // Check if we have a subdomain (e.g., rio.localhost, rio.riowebworks.net)
-    // A subdomain exists if:
-    // 1. hostname contains a dot AND
-    // 2. hostname is not just 'localhost' AND
-    // 3. hostname has at least 2 parts when split by dots
+    // Check if we have a tenant subdomain (e.g., acme.rioassetmanagement.net)
     const parts = hostname.split('.');
     const hasSubdomain = hostname.includes('.') && 
                         hostname !== 'localhost' && 
                         !hostname.startsWith('127.0.0.1') &&
                         parts.length >= 2 &&
-                        parts[0] !== ''; // First part is the subdomain
+                        parts[0] !== '' &&
+                        !isReservedSubdomain(hostname);
     
     if (hasSubdomain) {
       // In development, backend is typically on port 5001 (or from env)
