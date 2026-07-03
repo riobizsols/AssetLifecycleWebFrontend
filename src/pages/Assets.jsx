@@ -19,6 +19,7 @@ import useColumnAccess from "../hooks/useColumnAccess";
 import { useAssetsStore } from "../store/useAssetsStore";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { applyListFilterChange } from "../utils/listFilterState";
+import { prefetchAddAssetFormData } from "../services/addAssetFormData";
 
 const Assets = () => {
   const navigate = useNavigate();

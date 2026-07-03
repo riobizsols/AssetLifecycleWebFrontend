@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import API from '../lib/axios';
-import { buildCacheKey, peekCache, setCache, invalidateCache } from '../utils/apiCache';
+import { buildCacheKey, invalidateCache, peekCache, setCache } from '../utils/apiCache';
 
-const NAV_CACHE_KEY = 'app:navigation:v4';
+const NAV_CACHE_PREFIX = 'app:navigation:v4';
 const NAV_TTL_MS = 10 * 60 * 1000;
+
+const navCacheKey = (userId) => buildCacheKey([NAV_CACHE_PREFIX, userId]);
 
 const detectPlatform = () => {
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -13,35 +15,38 @@ const detectPlatform = () => {
 };
 
 export const useNavigationStore = create((set, get) => ({
-  navigation: peekCache(NAV_CACHE_KEY, NAV_TTL_MS) || [],
-  loading: !peekCache(NAV_CACHE_KEY, NAV_TTL_MS),
+  navigation: [],
+  loading: false,
   error: null,
   fetchedForUserId: null,
 
   fetchNavigation: async (userId, { force = false } = {}) => {
     if (!userId) {
-      set({ navigation: [], loading: false, error: null });
+      set({ navigation: [], loading: false, error: null, fetchedForUserId: null });
       return;
     }
 
-    const { fetchedForUserId, loading } = get();
+    const cacheKey = navCacheKey(userId);
     if (!force) {
-      const cached = peekCache(NAV_CACHE_KEY, NAV_TTL_MS);
-      if (cached && fetchedForUserId === userId) {
-        set({ navigation: cached, loading: false, error: null });
+      const cached = peekCache(cacheKey, NAV_TTL_MS);
+      if (cached) {
+        set({ navigation: cached, loading: false, error: null, fetchedForUserId: userId });
         return cached;
       }
     }
 
-    if (!loading || force) {
-      set({ loading: true, error: null });
-    }
+    set({
+      loading: true,
+      error: null,
+      navigation: get().fetchedForUserId === userId ? get().navigation : [],
+      fetchedForUserId: null,
+    });
 
     try {
       const platform = detectPlatform();
       const response = await API.get(`/navigation/user/navigation?platform=${platform}`);
       const data = response.data.success ? response.data.data : [];
-      setCache(NAV_CACHE_KEY, data);
+      setCache(cacheKey, data);
       set({ navigation: data, loading: false, error: null, fetchedForUserId: userId });
       return data;
     } catch (err) {
@@ -49,13 +54,14 @@ export const useNavigationStore = create((set, get) => ({
       set({
         loading: false,
         error: err.response?.data?.message || 'Failed to fetch navigation',
+        fetchedForUserId: null,
       });
       return get().navigation;
     }
   },
 
   resetNavigation: () => {
-    invalidateCache('app:navigation');
+    invalidateCache(NAV_CACHE_PREFIX);
     set({ navigation: [], loading: false, error: null, fetchedForUserId: null });
   },
 }));

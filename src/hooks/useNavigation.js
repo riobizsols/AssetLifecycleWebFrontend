@@ -15,7 +15,13 @@ export const useNavigation = () => {
     const navigation = useNavigationStore((state) => state.navigation);
     const loading = useNavigationStore((state) => state.loading);
     const error = useNavigationStore((state) => state.error);
+    const fetchedForUserId = useNavigationStore((state) => state.fetchedForUserId);
     const fetchNavigation = useNavigationStore((state) => state.fetchNavigation);
+
+    const navReady =
+        Boolean(user?.user_id) &&
+        fetchedForUserId === user.user_id &&
+        !loading;
 
     useEffect(() => {
         if (user?.user_id) {
@@ -134,6 +140,7 @@ export const useNavigation = () => {
         navigation,
         loading,
         error,
+        navReady,
         hasAccess,
         hasEditAccess,
         canView,

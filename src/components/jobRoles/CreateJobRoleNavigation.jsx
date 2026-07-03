@@ -12,11 +12,17 @@ import NavigationTreeBuilder, {
   DEFAULT_MOB_DESK,
 } from "./NavigationTreeBuilder";
 
-const CreateJobRoleNavigation = () => {
+const CreateJobRoleNavigation = ({
+  embedded = false,
+  embeddedNav = null,
+  onClose,
+  onSaved,
+} = {}) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { navId } = useParams();
-  const editingNav = location.state?.navigation || null;
+  const { navId: routeNavId } = useParams();
+  const navId = embedded ? embeddedNav?.job_role_nav_id : routeNavId;
+  const editingNav = embedded ? embeddedNav : location.state?.navigation || null;
   const { user } = useAuthStore();
 
   // Check if we're in admin settings mode - handle case where context might not- be available
@@ -49,8 +55,24 @@ const CreateJobRoleNavigation = () => {
   };
 
   // Check if we're in edit mode or create mode
-  const isEditMode = !!(editingNav || navId);
+  const isEditMode = embedded ? !!embeddedNav : !!(editingNav || navId);
   const isCreateMode = !isEditMode;
+
+  const closeEditView = () => {
+    if (embedded) {
+      onClose?.();
+      return;
+    }
+    navigate(getBackRoute(), { state: getBackState() });
+  };
+
+  const finishEditSave = () => {
+    if (embedded) {
+      onSaved?.();
+      return;
+    }
+    navigate(getBackRoute(), { state: getBackState() });
+  };
 
   // For edit mode - single entry
   const [formData, setFormData] = useState({
@@ -90,10 +112,37 @@ const CreateJobRoleNavigation = () => {
 
   useEffect(() => {
     // If navId is in URL, fetch the navigation data
-    if (navId && !editingNav) {
+    if (navId && !editingNav && !embedded) {
       fetchNavigationById(navId);
     }
-  }, [navId, editingNav]);
+  }, [navId, editingNav, embedded]);
+
+  useEffect(() => {
+    if (embedded && embeddedNav) {
+      setFormData({
+        job_role_nav_id: embeddedNav.job_role_nav_id,
+        job_role_id: embeddedNav.job_role_id,
+        parent_id: embeddedNav.parent_id || "",
+        app_id: embeddedNav.app_id,
+        label: embeddedNav.label || "",
+        sequence: embeddedNav.sequence || 1,
+        access_level: embeddedNav.access_level || "D",
+        is_group:
+          embeddedNav.is_group === true ||
+          embeddedNav.is_group === "Yes" ||
+          embeddedNav.is_group === 1,
+        mob_desk:
+          embeddedNav.mob_desk === "Desktop"
+            ? "D"
+            : embeddedNav.mob_desk === "Mobile"
+              ? "M"
+              : embeddedNav.mob_desk || "D",
+        org_id: embeddedNav.org_id || user?.org_id || "",
+        int_status:
+          embeddedNav.int_status !== undefined ? embeddedNav.int_status : 1,
+      });
+    }
+  }, [embedded, embeddedNav, user?.org_id]);
 
   const fetchNavigationById = async (navId) => {
     try {
@@ -320,7 +369,7 @@ const CreateJobRoleNavigation = () => {
         int_status: formData.int_status ? 1 : 0,
       });
       showBackendTextToast({ toast, tmdId: 'TMD_NAVIGATION_UPDATED_SUCCESSFULLY_3E75DCA8', fallbackText: 'Navigation updated successfully', type: 'success' });
-      navigate(getBackRoute(), { state: getBackState() });
+      finishEditSave();
     } catch (error) {
       console.error("Error saving navigation:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_NAVIGATION_2F25C877', fallbackText: 'Failed to save navigation', type: 'error' });
@@ -338,20 +387,8 @@ const CreateJobRoleNavigation = () => {
 
   // Edit Mode - Single Entry Form
   if (isEditMode) {
-    return (
-      <div className="p-6 w-full">
-        {/* Header */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm p-6 w-full">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Update Role Navigation
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Configure navigation access for job roles
-          </p>
-        </div>
-
-        {/* Form */}
-        <div className="bg-white rounded-lg shadow-md p-6 w-full">
+    const editForm = (
+      <div className={embedded ? "p-6" : "bg-white rounded-lg shadow-md p-6 w-full"}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Navigation ID */}
             {(editingNav || navId) && (
@@ -631,9 +668,9 @@ const CreateJobRoleNavigation = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
+          <div className={`flex justify-end gap-3 mt-8 pt-6 border-t ${embedded ? "bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg" : ""}`}>
             <button
-              onClick={() => navigate(getBackRoute(), { state: getBackState() })}
+              onClick={closeEditView}
               className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
             >
               Cancel
@@ -646,6 +683,23 @@ const CreateJobRoleNavigation = () => {
             </button>
           </div>
         </div>
+    );
+
+    if (embedded) {
+      return editForm;
+    }
+
+    return (
+      <div className="p-6 w-full">
+        <div className="mb-6 bg-white rounded-lg shadow-sm p-6 w-full">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Update Role Navigation
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Configure navigation access for job roles
+          </p>
+        </div>
+        {editForm}
       </div>
     );
   }

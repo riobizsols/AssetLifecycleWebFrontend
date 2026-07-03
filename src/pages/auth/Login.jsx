@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
+import { useNavigationStore } from "../../store/useNavigationStore";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
@@ -61,6 +62,9 @@ export default function Login() {
 
       // Store user + token in Zustand (including requiresPasswordChange flag)
       login({ ...user, token, requiresPasswordChange });
+
+      // Load permissions before routing to protected admin screens
+      await useNavigationStore.getState().fetchNavigation(user?.user_id, { force: true });
 
       // Log audit event for successful login
       await recordActionByNameWithFetch('Logging In', { 
