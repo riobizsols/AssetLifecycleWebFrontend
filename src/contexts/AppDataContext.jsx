@@ -2,6 +2,7 @@
 import API from '../lib/axios';
 import { useAuthStore } from '../store/useAuthStore';
 import i18n from '../i18n/config';
+import { refreshAssetTypeCaches } from '../utils/refreshAssetTypeCaches';
 
 const AppDataContext = createContext();
 
@@ -102,6 +103,20 @@ export const AppDataProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Error fetching asset types:', err);
+      setError('Failed to fetch asset types');
+    }
+  }, [isAuthenticated]);
+
+  const refreshAssetTypes = useCallback(async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const { assignmentTypes } = await refreshAssetTypeCaches();
+      if (assignmentTypes) {
+        setAssetTypes(assignmentTypes);
+      }
+    } catch (err) {
+      console.error('Error refreshing asset types:', err);
       setError('Failed to fetch asset types');
     }
   }, [isAuthenticated]);
@@ -227,6 +242,7 @@ export const AppDataProvider = ({ children }) => {
     fetchBranches,
     fetchVendors,
     fetchAssetTypes,
+    refreshAssetTypes,
     fetchStatusCodes,
     
     // Helper functions

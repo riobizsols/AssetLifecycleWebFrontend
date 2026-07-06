@@ -37,12 +37,11 @@ import { usePropertiesStore } from "../store/usePropertiesStore";
 import { useBreakdownReasonCodesStore } from "../store/useBreakdownReasonCodesStore";
 import { useTextMessagesStore } from "../store/useTextMessagesStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { ensureDefaultDashboardNav, ensureUsersInMasterData } from "../utils/navigationDefaults";
 import {
   Menu,
-  Eye,
   Edit,
   Shield,
-  Lock,
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
@@ -99,13 +98,67 @@ const SYNTHETIC_APPROVAL_APP_IDS = new Set(
   ].map((id) => normalizeNavAppId(id)),
 );
 
-function hasAnyApprovalItems(flatItems) {
-  return flatItems.some(
-    (item) =>
-      item.app_id &&
-      SYNTHETIC_APPROVAL_APP_IDS.has(normalizeNavAppId(item.app_id)),
-  );
+function hasGroupedApprovalItems(items) {
+  const walk = (nodes) => {
+    for (const node of nodes || []) {
+      if (!node.children?.length) continue;
+      const hasApprovalChild = node.children.some(
+        (child) =>
+          child.app_id &&
+          SYNTHETIC_APPROVAL_APP_IDS.has(normalizeNavAppId(child.app_id)),
+      );
+      if (hasApprovalChild) return true;
+      if (walk(node.children)) return true;
+    }
+    return false;
+  };
+  return walk(items);
 }
+
+const DEFAULT_NAV_GROUP_MEMBERS = {
+  Maintenance: [
+    "SUPERVISORAPPROVAL",
+    "MAINTENANCESCHEDULE",
+    "MAINTENANCEAPPROVAL",
+  ],
+  Scrap: ["SCRAPSALES", "SCRAPASSETS", "SCRAPMAINTENANCEAPPROVAL"],
+  Inspection: [
+    "INSPECTIONVIEW",
+    "INSPECTIONFREQUENCY",
+    "INSPECTIONCHECKLISTS",
+    "ASSETTYPECHECKLISTMAPPING",
+    "INSPECTIONAPPROVAL",
+  ],
+  "Admin Settings": ["AUDITLOGS", "AUDITLOGCONFIG"],
+  "Asset Assignment": ["DEPTASSIGNMENT", "EMPASSIGNMENT"],
+  "Master Data": [
+    "USERROLES",
+    "ASSETTYPES",
+    "DEPARTMENTS",
+    "DEPARTMENTSADMIN",
+    "DEPARTMENTSASSET",
+    "BRANCHES",
+    "VENDORS",
+    "PRODSERV",
+    "ROLES",
+    "USERS",
+    "MAINTENANCESCHEDULE",
+    "INSPECTIONCHECKLISTS",
+    "INSPECTIONFREQUENCY",
+    "ASSETTYPECHECKLISTMAPPING",
+  ],
+};
+
+const isNavGroup = (item) =>
+  Boolean(
+    item?.is_group === true ||
+    item?.is_group === 1 ||
+    item?.is_group === "Yes" ||
+    item?.children?.length,
+  );
+
+const getNavItemKey = (item) =>
+  item?.combineKey || item?.id || `${item?.app_id || "group"}-${item?.label || ""}`;
 
 const SIDEBAR_MENU_GROUPS = [
   {
@@ -259,11 +312,77 @@ function collectGroupChildren(flatItems, groupDef, accessMap, options = {}) {
 const normalizeGroupLabel = (label) =>
   String(label || "").trim().toLowerCase();
 
+const CANONICAL_GROUP_LABELS = {
+  maintainance: "maintenance",
+};
+
+function canonicalGroupLabel(label) {
+  const normalized = normalizeGroupLabel(label);
+  return CANONICAL_GROUP_LABELS[normalized] || normalized;
+}
+
+function findNavGroupByLabel(items, groupLabel) {
+  const canonical = canonicalGroupLabel(groupLabel);
+  return items.find(
+    (item) => isNavGroup(item) && canonicalGroupLabel(item.label) === canonical,
+  );
+}
+
+function isSyntheticNavGroup(item) {
+  const id = String(item?.id || "");
+  return (
+    id.startsWith("ensure-") ||
+    id.startsWith("repair-") ||
+    id.startsWith("synthetic-")
+  );
+}
+
+function isJobRoleConfiguredGroup(item) {
+  return (
+    isNavGroup(item) &&
+    !isAdminSettingsHub(item.app_id, item.label) &&
+    !isSyntheticNavGroup(item)
+  );
+}
+
+function isNavMemberGrouped(items, member, groupLabel) {
+  const canonical = canonicalGroupLabel(groupLabel);
+  return items.some(
+    (parent) =>
+      isNavGroup(parent) &&
+      canonicalGroupLabel(parent.label) === canonical &&
+      (parent.children || []).some(
+        (child) =>
+          normalizeNavAppId(child.app_id) === normalizeNavAppId(member.app_id),
+      ),
+  );
+}
+
+/** True when app_id is already nested under any sidebar group (any label). */
+function isNavMemberUnderAnyGroup(items, member) {
+  const memberKey = normalizeNavAppId(member.app_id);
+  const walk = (nodes) => {
+    for (const item of nodes || []) {
+      if (!isNavGroup(item)) continue;
+      if (
+        (item.children || []).some(
+          (child) => normalizeNavAppId(child.app_id) === memberKey,
+        )
+      ) {
+        return true;
+      }
+      if (walk(item.children)) return true;
+    }
+    return false;
+  };
+  return walk(items);
+}
+
 function getDbMenuGroupLabels(items) {
   const labels = new Set();
   const walk = (nodes) => {
     for (const item of nodes || []) {
-      if (item.is_group && item.children?.length) {
+      if (isNavGroup(item)) {
         labels.add(normalizeGroupLabel(item.label));
       }
       if (item.children?.length) walk(item.children);
@@ -295,7 +414,367 @@ function pruneEmptyGroups(items) {
         ? pruneEmptyGroups(item.children)
         : item.children,
     }))
-    .filter((item) => !item.is_group || item.children?.length);
+    .filter((item) => !isNavGroup(item) || item.children?.length);
+}
+
+function dedupeTopLevelNavItems(items) {
+  if (!items?.length) return items;
+
+  const merged = [];
+  const indexByKey = new Map();
+
+  for (const item of items) {
+    const key = isNavGroup(item)
+      ? `group:${canonicalGroupLabel(item.label)}`
+      : `app:${normalizeNavAppId(item.app_id) || item.id}`;
+
+    if (!indexByKey.has(key)) {
+      indexByKey.set(key, merged.length);
+      merged.push(item);
+      continue;
+    }
+
+    const existingIndex = indexByKey.get(key);
+    const existing = merged[existingIndex];
+    if (!isNavGroup(item) || !isNavGroup(existing) || !item.children?.length) {
+      continue;
+    }
+
+    const childKeys = new Set(
+      (existing.children || []).map(
+        (child) => normalizeNavAppId(child.app_id) || String(child.id || ""),
+      ),
+    );
+    const extraChildren = item.children.filter((child) => {
+      const childKey = normalizeNavAppId(child.app_id) || String(child.id || "");
+      return childKey && !childKeys.has(childKey);
+    });
+
+    if (extraChildren.length) {
+      merged[existingIndex] = {
+        ...existing,
+        label: isSyntheticNavGroup(existing) ? item.label : existing.label,
+        children: [...(existing.children || []), ...extraChildren],
+      };
+    }
+  }
+
+  return merged;
+}
+
+function rebuildNavigationTree(items) {
+  const flat = flattenNavItems(items);
+  const byId = new Map();
+
+  flat.forEach((item) => {
+    byId.set(item.id, { ...item, children: [] });
+  });
+
+  const roots = [];
+  const seenRoots = new Set();
+
+  flat.forEach((item) => {
+    const node = byId.get(item.id);
+    const parentKey = item.parent_id;
+
+    if (parentKey) {
+      const parent =
+        byId.get(parentKey) ||
+        [...byId.values()].find(
+          (candidate) => candidate.combineKey === parentKey,
+        );
+      if (parent) {
+        parent.children.push(node);
+        return;
+      }
+    }
+
+    if (!seenRoots.has(node.id)) {
+      seenRoots.add(node.id);
+      roots.push(node);
+    }
+  });
+
+  return roots.sort((a, b) => (a.seq ?? 9999) - (b.seq ?? 9999));
+}
+
+function stripOrphanedTopLevelDuplicates(items) {
+  const nestedChildKeys = new Set();
+
+  const collectChildKeys = (nodes) => {
+    for (const node of nodes || []) {
+      if (!node.children?.length) continue;
+      for (const child of node.children) {
+        const key = normalizeNavAppId(child.app_id) || String(child.id || "");
+        if (key) nestedChildKeys.add(key);
+        collectChildKeys([child]);
+      }
+    }
+  };
+
+  collectChildKeys(items);
+
+  return items.filter((item) => {
+    if (isNavGroup(item)) return true;
+    const key = normalizeNavAppId(item.app_id) || String(item.id || "");
+    return !nestedChildKeys.has(key);
+  });
+}
+
+function normalizeNavigationTree(items) {
+  if (!items?.length) return items;
+
+  const hasNestedGroups = items.some((item) => item.children?.length > 0);
+  const hasParentRefs = items.some((item) => item.parent_id);
+
+  let tree = items;
+
+  if (!hasNestedGroups && hasParentRefs) {
+    tree = rebuildNavigationTree(items);
+  }
+
+  tree = stripOrphanedTopLevelDuplicates(tree);
+
+  return pruneEmptyGroups(tree);
+}
+
+const TOP_LEVEL_APPROVAL_APP_IDS = new Set([
+  "VENDORRENEWALAPPROVAL",
+  "HR/MANAGERAPPROVAL",
+]);
+
+function flattenApprovalsGroup(items) {
+  const approvalsGroup = items.find(
+    (item) =>
+      isNavGroup(item) && normalizeGroupLabel(item.label) === "approvals",
+  );
+  if (!approvalsGroup) return items;
+
+  const topLevelChildren = [];
+  const nestedChildren = [];
+
+  for (const child of approvalsGroup.children || []) {
+    const appKey = normalizeNavAppId(child.app_id);
+    if (TOP_LEVEL_APPROVAL_APP_IDS.has(appKey)) {
+      topLevelChildren.push({ ...child, is_group: false, children: undefined });
+    } else {
+      nestedChildren.push({ ...child, is_group: false, children: undefined });
+    }
+  }
+
+  let next = items.filter(
+    (item) =>
+      !(isNavGroup(item) && normalizeGroupLabel(item.label) === "approvals"),
+  );
+
+  for (const child of topLevelChildren) {
+    const appKey = normalizeNavAppId(child.app_id);
+    if (
+      !next.some(
+        (item) => normalizeNavAppId(item.app_id) === appKey,
+      )
+    ) {
+      next.push(child);
+    }
+  }
+
+  if (nestedChildren.length) {
+    next = repairOrphanedNavGroups([...next, ...nestedChildren]);
+  }
+
+  return next;
+}
+
+function ensureDomainNavGroups(items) {
+  const flat = flattenNavItems(items);
+  let result = [...items];
+
+  for (const [groupLabel, appIds] of Object.entries(DEFAULT_NAV_GROUP_MEMBERS)) {
+    const groupKey = canonicalGroupLabel(groupLabel);
+    const memberKeys = appIds.map(normalizeNavAppId);
+
+    let group = findNavGroupByLabel(result, groupLabel);
+
+    const looseMembers = flat.filter(
+      (item) =>
+        !isNavGroup(item) &&
+        item.app_id &&
+        memberKeys.includes(normalizeNavAppId(item.app_id)) &&
+        !isNavMemberGrouped(result, item, groupLabel) &&
+        !isNavMemberUnderAnyGroup(result, item),
+    );
+
+    if (!looseMembers.length) continue;
+
+    if (!group) {
+      group = {
+        id: `ensure-${groupKey}`,
+        label: groupLabel,
+        is_group: true,
+        seq: Math.min(...looseMembers.map((m) => m.seq ?? 9999)),
+        access_level: looseMembers[0].access_level,
+        children: [],
+      };
+      result.push(group);
+    } else {
+      group = {
+        ...group,
+        children: [...(group.children || [])],
+      };
+      result = result.map((item) =>
+        isNavGroup(item) &&
+        canonicalGroupLabel(item.label) === groupKey
+          ? group
+          : item,
+      );
+    }
+
+    for (const member of looseMembers) {
+      const appKey = normalizeNavAppId(member.app_id);
+      if (
+        !group.children.some(
+          (child) => normalizeNavAppId(child.app_id) === appKey,
+        )
+      ) {
+        group.children.push({
+          ...member,
+          is_group: false,
+          children: undefined,
+        });
+      }
+    }
+
+    result = result.filter(
+      (item) =>
+        isNavGroup(item) ||
+        !memberKeys.includes(normalizeNavAppId(item.app_id)),
+    );
+  }
+
+  return result;
+}
+
+const SIDEBAR_LABEL_ORDER = [
+  "dashboard",
+  "assets",
+  "asset assignment",
+  "maintenance",
+  "inspection",
+  "reports",
+  "scrap",
+  "admin settings",
+  "master data",
+  "workorder management",
+  "serial number print",
+  "vendor renewal approval",
+  "hr/manager approval",
+  "certificates",
+  "report breakdown",
+  "asset groups",
+  "group asset",
+];
+
+function sortSidebarNav(items) {
+  const rank = (item) => {
+    const label = normalizeGroupLabel(item.label);
+    const idx = SIDEBAR_LABEL_ORDER.indexOf(label);
+    if (idx >= 0) return idx;
+    return 1000 + (item.seq ?? 9999);
+  };
+  return [...items].sort((a, b) => rank(a) - rank(b));
+}
+
+function finalizeSidebarNavigation(items) {
+  if (!items?.length) return items;
+
+  let tree = normalizeNavigationTree(items);
+  tree = ensureDefaultDashboardNav(tree);
+  tree = ensureUsersInMasterData(tree);
+  tree = reorganizeSidebarGroups(tree);
+  tree = repairOrphanedNavGroups(tree);
+  tree = flattenApprovalsGroup(tree);
+  tree = ensureDomainNavGroups(tree);
+  tree = stripOrphanedTopLevelDuplicates(tree);
+  tree = pruneEmptyGroups(tree);
+  return dedupeTopLevelNavItems(sortSidebarNav(tree));
+}
+
+function repairOrphanedNavGroups(items) {
+  if (!items?.length) return items;
+
+  const repairedGroups = new Map();
+
+  for (const item of items) {
+    if (!isNavGroup(item)) continue;
+    repairedGroups.set(canonicalGroupLabel(item.label), {
+      ...item,
+      children: [...(item.children || [])],
+    });
+  }
+
+  const absorbed = new Set();
+
+  for (const item of items) {
+    if (isNavGroup(item)) continue;
+
+    const appKey = normalizeNavAppId(item.app_id);
+    if (!appKey) continue;
+
+    for (const [groupLabel, appIds] of Object.entries(DEFAULT_NAV_GROUP_MEMBERS)) {
+      if (!appIds.map(normalizeNavAppId).includes(appKey)) continue;
+
+      const groupKey = canonicalGroupLabel(groupLabel);
+      if (!repairedGroups.has(groupKey)) {
+        repairedGroups.set(groupKey, {
+          id: `repair-${groupKey}`,
+          label: groupLabel,
+          is_group: true,
+          seq: item.seq ?? 9999,
+          access_level: item.access_level,
+          children: [],
+        });
+      }
+
+      const group = repairedGroups.get(groupKey);
+      if (
+        !group.children.some(
+          (child) => normalizeNavAppId(child.app_id) === appKey,
+        )
+      ) {
+        group.children.push(item);
+      }
+      absorbed.add(appKey);
+      break;
+    }
+  }
+
+  const result = [];
+  const addedGroups = new Set();
+
+  for (const item of items) {
+    if (isNavGroup(item)) {
+      const groupKey = canonicalGroupLabel(item.label);
+      if (addedGroups.has(groupKey)) continue;
+      const repaired = repairedGroups.get(groupKey);
+      if (repaired?.children?.length) {
+        result.push(repaired);
+        addedGroups.add(groupKey);
+      }
+      continue;
+    }
+
+    if (!absorbed.has(normalizeNavAppId(item.app_id))) {
+      result.push(item);
+    }
+  }
+
+  for (const [groupKey, group] of repairedGroups) {
+    if (!addedGroups.has(groupKey) && group.children?.length) {
+      result.push(group);
+    }
+  }
+
+  return result.sort((a, b) => (a.seq ?? 9999) - (b.seq ?? 9999));
 }
 
 /** Groups Approvals, Certificates, and Report Breakdown into dropdown menus. */
@@ -306,10 +785,12 @@ function reorganizeSidebarGroups(items) {
   const accessMap = buildFlatAccessMap(flatItems);
   const dbGroupLabels = getDbMenuGroupLabels(items);
   const syntheticGroupDefs = SIDEBAR_MENU_GROUPS.filter((groupDef) => {
+    if (groupDef.id === "synthetic-approvals") return false;
+
     const label = normalizeGroupLabel(groupDef.label);
     if (dbGroupLabels.has(label)) return false;
     if (label === "approvals" && dbGroupLabels.has("approval")) return false;
-    if (groupDef.id === "synthetic-approvals" && hasAnyApprovalItems(flatItems)) {
+    if (groupDef.id === "synthetic-approvals" && hasGroupedApprovalItems(items)) {
       return false;
     }
     if (
@@ -362,7 +843,11 @@ function reorganizeSidebarGroups(items) {
     return pruneEmptyGroups(items);
   }
 
-  const groupedAppIds = getGroupedAppIdsForDefs(syntheticGroupDefs);
+  const groupedAppIds = getGroupedAppIdsForDefs(
+    syntheticGroupDefs.filter((groupDef) =>
+      syntheticGroups.some((group) => group.id === groupDef.id),
+    ),
+  );
   const remainingItems = pruneEmptyGroups(
     removeAppIdsFromTree(items, groupedAppIds),
   );
@@ -412,10 +897,7 @@ const DatabaseSidebar = () => {
     navigation,
     loading,
     error,
-    isTenant,
     getAccessLevel,
-    getAccessLevelLabel,
-    getAccessLevelColor,
   } = useNavigation();
   const location = useLocation();
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -427,9 +909,11 @@ const DatabaseSidebar = () => {
 
   const navigationForRender = useMemo(() => {
     if (isAdminSettingsMode) {
-      return injectOneTimeCronUnderMasterData(navigation);
+      return dedupeTopLevelNavItems(
+        injectOneTimeCronUnderMasterData(finalizeSidebarNavigation(navigation)),
+      );
     }
-    return reorganizeSidebarGroups(navigation);
+    return finalizeSidebarNavigation(navigation);
   }, [navigation, isAdminSettingsMode]);
 
   const toggleDropdown = (id) => {
@@ -450,7 +934,10 @@ const DatabaseSidebar = () => {
   };
 
   // Translate navigation labels
-  const translateLabel = (label) => {
+  const translateLabel = (label, appId = null) => {
+    if (normalizeNavAppId(appId) === "USERS") {
+      return t("navigation.users");
+    }
     // Create a mapping from English labels to translation keys
     const labelMap = {
       'Dashboard': t('navigation.dashboard'),
@@ -548,32 +1035,6 @@ const DatabaseSidebar = () => {
     }
 
     return label;
-  };
-
-  // Get icon based on access level
-  const getAccessIcon = (accessLevel) => {
-    switch (accessLevel) {
-      case "A":
-        return <Shield size={12} className="text-green-400" />;
-      case "D":
-      case "V":
-        return <Eye size={12} className="text-yellow-400" />;
-      default:
-        return <Lock size={12} className="text-red-400" />;
-    }
-  };
-
-  // Get color class based on access level
-  const getAccessColorClass = (accessLevel) => {
-    switch (accessLevel) {
-      case "A":
-        return "border-l-2 border-green-400";
-      case "D":
-      case "V":
-        return "border-l-2 border-yellow-400";
-      default:
-        return "border-l-2 border-red-400";
-    }
   };
 
   // Map app_id to route paths
@@ -759,6 +1220,7 @@ const DatabaseSidebar = () => {
       APPROVALS: ClipboardList,
       CERTIFICATESGROUP: FileText,
       REPORTBREAKDOWNGROUP: BarChart3,
+      REPORTS: Building,
       SUPERVISORAPPROVAL: UserCheck,
       REPORTBREAKDOWN: BarChart3,
       "EMPLOYEE REPORT BREAKDOWN": BarChart3,
@@ -838,10 +1300,13 @@ const DatabaseSidebar = () => {
     maintenance: "WORKORDERMANAGEMENT",
     inspection: "INSPECTION",
     scrap: "SCRAPASSETS",
+    reports: "REPORTS",
     certificates: "CERTIFICATESGROUP",
     approval: "APPROVALS",
     approvals: "APPROVALS",
     "report breakdown": "REPORTBREAKDOWNGROUP",
+    "master data": "MASTERDATA",
+    "asset assignment": "ASSETASSIGNMENT",
   };
 
   const resolveAppIdForPath = (appId, label) => {
@@ -906,7 +1371,7 @@ const DatabaseSidebar = () => {
     if (isAdminSettingsMode || collapsed) return;
 
     const activeGroup = navigationForRender.find((item) => {
-      if (!item.is_group || !item.children?.length) return false;
+      if (!isNavGroup(item) || !item.children?.length) return false;
       return item.children.some((child) => {
         const childPath = getPath(child.app_id, child.label);
         return childPath && location.pathname.startsWith(childPath);
@@ -914,7 +1379,7 @@ const DatabaseSidebar = () => {
     });
 
     if (activeGroup) {
-      setOpenDropdown(activeGroup.id);
+      setOpenDropdown(getNavItemKey(activeGroup));
     }
   }, [location.pathname, navigationForRender, isAdminSettingsMode, collapsed]);
 
@@ -976,7 +1441,7 @@ const DatabaseSidebar = () => {
             !isAdminSettingsOnlyAppId(child.app_id, child.label)
           );
           // If all children are admin settings items, hide the parent
-          if (nonAdminSettingsChildren.length === 0) {
+          if (nonAdminSettingsChildren.length === 0 && !isJobRoleConfiguredGroup(item)) {
             return false;
           }
         }
@@ -1008,11 +1473,11 @@ const DatabaseSidebar = () => {
     const path = getPath(item.app_id, item.label);
 
     // Empty group headers should not render as links (avoids false /dashboard highlight)
-    if (item.is_group && !item.children?.length && !isAdminSettingsHub(item.app_id, item.label)) {
+    if (isNavGroup(item) && !item.children?.length && !isAdminSettingsHub(item.app_id, item.label)) {
       return null;
     }
 
-    const isDropdownGroup = item.is_group && item.children?.length > 0;
+    const isDropdownGroup = isNavGroup(item) && item.children?.length > 0;
 
     if (isDropdownGroup) {
       const accessLevel = resolveEffectiveAccess(
@@ -1035,27 +1500,27 @@ const DatabaseSidebar = () => {
         });
 
       return (
-        <li key={item.id} className="mb-2">
+        <li key={getNavItemKey(item)} className="mb-2">
           <div
-            onClick={() => toggleDropdown(item.id)}
+            onClick={() => toggleDropdown(getNavItemKey(item))}
             className={`group flex items-center justify-between px-3 py-2 cursor-pointer rounded ${
               isAnyChildActive
                 ? "bg-[#FFC107] text-white"
                 : "hover:bg-[#143d65] text-white"
             }`}
-            title={!collapsed ? translateLabel(item.label) : ""}
+            title={!collapsed ? translateLabel(item.label, item.app_id) : ""}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               {IconComponent && <IconComponent className="flex-shrink-0" />}
               {!collapsed && (
                 <span className="truncate text-sm font-medium">
-                  {translateLabel(item.label)}
+                  {translateLabel(item.label, item.app_id)}
                 </span>
               )}
             </div>
             {!collapsed && hasChildren && (
               <span className="flex-shrink-0 ml-2">
-                {openDropdown === item.id ? (
+                {openDropdown === getNavItemKey(item) ? (
                   <ChevronDown size={16} />
                 ) : (
                   <ChevronRight size={16} />
@@ -1064,12 +1529,16 @@ const DatabaseSidebar = () => {
             )}
           </div>
 
-          {!collapsed && openDropdown === item.id && hasChildren && (
+          {!collapsed && openDropdown === getNavItemKey(item) && hasChildren && (
             <ul className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
                 const isAdminSettingsOnlyChild = isAdminSettingsOnlyAppId(child.app_id, child.label);
+                const allowConfiguredAdminChild =
+                  !isAdminSettingsMode &&
+                  isAdminSettingsOnlyChild &&
+                  isJobRoleConfiguredGroup(item);
 
-                if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
+                if (!isAdminSettingsMode && isAdminSettingsOnlyChild && !allowConfiguredAdminChild) {
                   return null;
                 }
 
@@ -1107,18 +1576,15 @@ const DatabaseSidebar = () => {
                           active
                             ? "bg-[#FFC107] text-white"
                             : "hover:bg-[#143d65] text-white"
-                        } ${getAccessColorClass(childAccessLevel)}`;
+                        }`;
                       }}
-                      title={translateLabel(child.label)}
+                      title={translateLabel(child.label, child.app_id)}
                     >
                       {ChildIconComponent && (
                         <ChildIconComponent className="flex-shrink-0" />
                       )}
                       <span className="truncate flex-1 min-w-0">
-                        {translateLabel(child.label)}
-                      </span>
-                      <span className="flex-shrink-0">
-                        {getAccessIcon(childAccessLevel)}
+                        {translateLabel(child.label, child.app_id)}
                       </span>
                     </NavLink>
                   </li>
@@ -1164,7 +1630,7 @@ const DatabaseSidebar = () => {
       : undefined;
 
     return (
-      <li key={item.id} className="mb-2">
+      <li key={getNavItemKey(item)} className="mb-2">
         <NavLink
           to={path}
           state={navLinkState}
@@ -1174,23 +1640,18 @@ const DatabaseSidebar = () => {
             const active = requiresExactMatch
               ? isActiveForAdminRoute
               : isActive;
-            return `group flex items-center gap-2 px-4 py-2 rounded ${
+            return `group flex items-center gap-2 px-3 py-2 rounded ${
               active
                 ? "bg-[#FFC107] text-white"
                 : "hover:bg-[#143d65] text-white"
-            } ${getAccessColorClass(effectiveAccess)}`;
+            }`;
           }}
-          title={!collapsed ? translateLabel(item.label) : ""}
+          title={!collapsed ? translateLabel(item.label, item.app_id) : ""}
         >
           {IconComponent && <IconComponent className="flex-shrink-0" />}
           {!collapsed && (
             <span className="truncate flex-1 min-w-0 text-sm font-medium">
-              {translateLabel(item.label)}
-            </span>
-          )}
-          {!collapsed && (
-            <span className="flex-shrink-0">
-              {getAccessIcon(effectiveAccess)}
+              {translateLabel(item.label, item.app_id)}
             </span>
           )}
         </NavLink>
@@ -1270,15 +1731,9 @@ const DatabaseSidebar = () => {
           <li className="text-center py-4 text-gray-300">
             <div className="text-sm">
               <p>No navigation items found.</p>
-              {isTenant ? (
-                <p className="text-xs mt-1">
-                  This tenant database has no menu permissions yet. Run the setup wizard at /setup against your tenant database to seed menus and master data.
-                </p>
-              ) : (
-                <p className="text-xs mt-1">
-                  Try logging out and back in. If menus are still missing, run the setup wizard at /setup.
-                </p>
-              )}
+              <p className="text-xs mt-1">
+                Try logging out and back in. If menus are still missing, run the setup wizard at /setup.
+              </p>
             </div>
           </li>
         ) : (

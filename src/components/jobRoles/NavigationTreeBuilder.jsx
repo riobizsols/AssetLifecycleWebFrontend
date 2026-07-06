@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   FaChevronDown,
   FaChevronRight,
@@ -6,91 +6,55 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import SearchableDropdown from "../ui/SearchableDropdown";
+import {
+  APPLICATION_TYPE_OPTIONS,
+  filterAppsByApplicationType,
+  getAppDisplayLabel,
+  getApplicationTypesForApp,
+} from "../../utils/applicationTypeGroups";
 
 const DEFAULT_ACCESS_LEVEL = "D";
 const DEFAULT_MOB_DESK = "D";
 
+const ACCESS_LEVEL_OPTIONS = [
+  { id: "A", label: "Full Access (Edit/Manage)" },
+  { id: "D", label: "Display Only (View Access)" },
+];
+
 const createId = () =>
   `nav-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-const buildAppHierarchy = (navigation, availableAppIds) => {
-  const navById = Object.fromEntries(
-    navigation.map((n) => [n.job_role_nav_id || n.id, n]),
-  );
-
-  const groupKey = (group) =>
-    group.app_id || group.job_role_nav_id || group.id || group.label;
-
-  const groups = navigation
-    .filter((n) => n.is_group && !n.parent_id)
-    .map((g) => ({
-      app_id: groupKey(g),
-      label: g.label || g.app_id || "Group",
-    }));
-
-  const appToApplication = {};
-
-  navigation.forEach((n) => {
-    if (!n.app_id || n.is_group) return;
-    if (n.parent_id && navById[n.parent_id]) {
-      const parent = navById[n.parent_id];
-      appToApplication[n.app_id] = groupKey(parent);
-    } else if (!n.parent_id) {
-      appToApplication[n.app_id] = n.app_id;
-    }
-  });
-
-  availableAppIds.forEach((app) => {
-    if (!appToApplication[app.app_id]) {
-      appToApplication[app.app_id] = "__OTHER__";
-    }
-  });
-
-  const applicationOptions = [
-    ...groups,
-    { app_id: "__OTHER__", label: "Other" },
-  ];
-
-  return { applicationOptions, appToApplication };
-};
 
 const LinkAppModal = ({
   show,
   onClose,
   onAssign,
   availableAppIds,
-  applicationOptions,
-  appToApplication,
-  initialApplication,
+  initialApplicationType,
   initialAppId,
+  initialAccessLevel,
 }) => {
-  const [application, setApplication] = useState("");
+  const [applicationType, setApplicationType] = useState("");
   const [appId, setAppId] = useState("");
+  const [accessLevel, setAccessLevel] = useState(DEFAULT_ACCESS_LEVEL);
 
   useEffect(() => {
     if (show) {
-      setApplication(initialApplication || "");
+      setApplicationType(initialApplicationType || "");
       setAppId(initialAppId || "");
+      setAccessLevel(initialAccessLevel || DEFAULT_ACCESS_LEVEL);
     }
-  }, [show, initialApplication, initialAppId]);
+  }, [show, initialApplicationType, initialAppId, initialAccessLevel]);
 
-  const filteredAppIds = useMemo(() => {
-    if (!application) return availableAppIds;
-    if (application === "__OTHER__") {
-      return availableAppIds.filter(
-        (app) => appToApplication[app.app_id] === "__OTHER__",
-      );
-    }
-    return availableAppIds.filter(
-      (app) => appToApplication[app.app_id] === application,
-    );
-  }, [application, availableAppIds, appToApplication]);
+  const filteredApps = useMemo(
+    () => filterAppsByApplicationType(availableAppIds, applicationType),
+    [availableAppIds, applicationType],
+  );
 
   useEffect(() => {
-    if (appId && !filteredAppIds.some((a) => a.app_id === appId)) {
+    if (appId && !filteredApps.some((app) => app.app_id === appId)) {
       setAppId("");
     }
-  }, [application, filteredAppIds, appId]);
+  }, [applicationType, filteredApps, appId]);
 
   if (!show) return null;
 
@@ -111,18 +75,18 @@ const LinkAppModal = ({
         <div className="px-6 py-6 space-y-5 overflow-visible">
           <div className="relative w-full">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Application
+              Application Type
             </label>
             <SearchableDropdown
               className="w-full"
-              options={applicationOptions.map((app) => ({
-                id: app.app_id,
-                text: app.label,
+              options={APPLICATION_TYPE_OPTIONS.map((type) => ({
+                id: type.id,
+                text: type.label,
               }))}
-              value={application}
-              onChange={setApplication}
-              placeholder="Select Application"
-              searchPlaceholder="Search applications..."
+              value={applicationType}
+              onChange={setApplicationType}
+              placeholder="Select Application Type"
+              searchPlaceholder="Search application types..."
               valueKey="id"
               displayKey="text"
             />
@@ -133,17 +97,35 @@ const LinkAppModal = ({
             </label>
             <SearchableDropdown
               className="w-full"
-              options={filteredAppIds.map((app) => ({
+              options={filteredApps.map((app) => ({
                 id: app.app_id,
-                text: `${app.app_id} - ${app.label}`,
+                text: getAppDisplayLabel(app),
               }))}
               value={appId}
               onChange={setAppId}
-              placeholder="Select App ID"
-              searchPlaceholder="Search app IDs..."
+              placeholder="Select application"
+              searchPlaceholder="Search applications..."
               valueKey="id"
               displayKey="text"
-              disabled={!application}
+              disabled={!applicationType}
+            />
+          </div>
+          <div className="relative w-full">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Access
+            </label>
+            <SearchableDropdown
+              className="w-full"
+              options={ACCESS_LEVEL_OPTIONS.map((level) => ({
+                id: level.id,
+                text: level.label,
+              }))}
+              value={accessLevel}
+              onChange={setAccessLevel}
+              placeholder="Select access level"
+              searchPlaceholder="Search access levels..."
+              valueKey="id"
+              displayKey="text"
             />
           </div>
         </div>
@@ -158,8 +140,8 @@ const LinkAppModal = ({
           <button
             type="button"
             className="bg-[#0E2F4B] hover:bg-[#1a3f5f] text-white text-sm font-medium py-1.5 px-5 rounded disabled:opacity-50"
-            disabled={!application || !appId}
-            onClick={() => onAssign({ applicationId: application, appId })}
+            disabled={!applicationType || !appId || !accessLevel}
+            onClick={() => onAssign({ applicationType, appId, accessLevel })}
           >
             Assign
           </button>
@@ -212,7 +194,6 @@ const NavigationTreeBuilder = ({
   groups,
   onGroupsChange,
   availableAppIds,
-  referenceNavigation = [],
   onCreateGroup,
   onUpdateGroup,
   onDeleteGroup,
@@ -226,11 +207,6 @@ const NavigationTreeBuilder = ({
   const [editingNode, setEditingNode] = useState(null);
   const [linkAppModal, setLinkAppModal] = useState(false);
   const editInputRef = useRef(null);
-
-  const { applicationOptions, appToApplication } = useMemo(
-    () => buildAppHierarchy(referenceNavigation, availableAppIds),
-    [referenceNavigation, availableAppIds],
-  );
 
   useEffect(() => {
     if (editingNode && editInputRef.current) {
@@ -459,7 +435,7 @@ const NavigationTreeBuilder = ({
     setLinkAppModal(true);
   };
 
-  const handleAssignApp = async ({ applicationId, appId }) => {
+  const handleAssignApp = async ({ applicationType, appId, accessLevel }) => {
     const { groupId, itemId } = selectedNode;
     const group = groups.find((g) => g.id === groupId);
     const item = group?.items.find((i) => i.id === itemId);
@@ -476,7 +452,9 @@ const NavigationTreeBuilder = ({
             ? {
                 ...g,
                 items: g.items.map((i) =>
-                  i.id === itemId ? { ...i, name, applicationId, appId } : i,
+                  i.id === itemId
+                    ? { ...i, applicationType, appId, accessLevel }
+                    : i,
                 ),
               }
             : g,
@@ -486,6 +464,7 @@ const NavigationTreeBuilder = ({
           item.name,
           appId,
           snapshot,
+          accessLevel,
         );
         const navId = created?.job_role_nav_id;
         updateGroups((prev) =>
@@ -498,8 +477,9 @@ const NavigationTreeBuilder = ({
                       ? {
                           ...i,
                           navId,
-                          applicationId,
+                          applicationType,
                           appId,
+                          accessLevel,
                           sequence: created?.sequence ?? i.sequence,
                         }
                       : i,
@@ -510,14 +490,20 @@ const NavigationTreeBuilder = ({
         );
         toast.success("SubMenu created");
       } else {
-        await onUpdateSubMenu(item.navId, { name: item.name, appId });
+        await onUpdateSubMenu(item.navId, {
+          name: item.name,
+          appId,
+          accessLevel,
+        });
         updateGroups((prev) =>
           prev.map((g) =>
             g.id === groupId
               ? {
                   ...g,
                   items: g.items.map((i) =>
-                    i.id === itemId ? { ...i, applicationId, appId } : i,
+                    i.id === itemId
+                      ? { ...i, applicationType, appId, accessLevel }
+                      : i,
                   ),
                 }
               : g,
@@ -725,7 +711,13 @@ const NavigationTreeBuilder = ({
                                   {item.name}
                                   {item.appId && (
                                     <span className="ml-2 text-xs text-gray-500">
-                                      ({item.appId})
+                                      (
+                                      {getAppDisplayLabel(
+                                        availableAppIds.find(
+                                          (app) => app.app_id === item.appId,
+                                        ) || { app_id: item.appId },
+                                      )}
+                                      )
                                     </span>
                                   )}
                                 </span>
@@ -791,10 +783,13 @@ const NavigationTreeBuilder = ({
         onClose={() => setLinkAppModal(false)}
         onAssign={handleAssignApp}
         availableAppIds={availableAppIds}
-        applicationOptions={applicationOptions}
-        appToApplication={appToApplication}
-        initialApplication={selectedItem?.applicationId || ""}
+        initialApplicationType={
+          selectedItem?.applicationType ||
+          getApplicationTypesForApp(selectedItem?.appId)[0] ||
+          ""
+        }
         initialAppId={selectedItem?.appId || ""}
+        initialAccessLevel={selectedItem?.accessLevel || DEFAULT_ACCESS_LEVEL}
       />
     </>
   );

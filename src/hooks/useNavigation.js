@@ -69,6 +69,7 @@ export const useNavigation = () => {
 
     const hasAccess = (appId) => {
         if (isSystemAdmin) return true;
+        if (appIdsMatch(appId, 'DASHBOARD')) return true;
         return hasViewAccess(resolveAccessLevelFromNav(appId));
     };
 

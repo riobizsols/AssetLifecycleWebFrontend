@@ -27,23 +27,29 @@ const SearchableDropdown = ({
   const buttonRef = useRef(null);
   const navigate = useNavigate();
 
+  // Filter options based on search term
+  const filteredOptions = options.filter(option => {
+    const displayValue = option && option[displayKey];
+    return displayValue && displayValue.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
   const updateDropdownPosition = () => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
-
-    // Estimate dropdown height. (Search header + list; list itself is max-h-48)
-    const estimatedDropdownHeight = 260;
     const viewportPadding = 12;
+
+    // Use measured height when available; fall back to estimate on first frame
+    const measuredHeight = dropdownRef.current?.getBoundingClientRect().height;
+    const dropdownHeight = measuredHeight && measuredHeight > 0 ? measuredHeight : 260;
 
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
 
-    const shouldOpenUp = spaceBelow < estimatedDropdownHeight + viewportPadding && spaceAbove > spaceBelow;
+    const shouldOpenUp =
+      spaceBelow < dropdownHeight + viewportPadding && spaceAbove > spaceBelow;
     setOpenUpwards(shouldOpenUp);
 
-    const top = shouldOpenUp
-      ? rect.top - estimatedDropdownHeight
-      : rect.bottom;
+    const top = shouldOpenUp ? rect.top - dropdownHeight : rect.bottom;
 
     setDropdownPosition({
       top: Math.max(viewportPadding, top),
@@ -55,18 +61,21 @@ const SearchableDropdown = ({
   // Update dropdown position when opening + keep it correct on scroll/resize
   useEffect(() => {
     if (!isOpen) return;
+
     updateDropdownPosition();
+    const rafId = requestAnimationFrame(() => updateDropdownPosition());
 
     const handleScroll = () => updateDropdownPosition();
     const handleResize = () => updateDropdownPosition();
     window.addEventListener('scroll', handleScroll, true);
     window.addEventListener('resize', handleResize);
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener('scroll', handleScroll, true);
       window.removeEventListener('resize', handleResize);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, filteredOptions.length, searchTerm]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -81,13 +90,6 @@ const SearchableDropdown = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter options based on search term
-  const filteredOptions = options.filter(option => {
-    // Add a check to ensure the option and its displayKey property are not undefined
-    const displayValue = option && option[displayKey];
-    return displayValue && displayValue.toLowerCase().includes(searchTerm.toLowerCase());
-  });
-
   // Get display value for selected option
   const selectedOption = options.find(option => option[valueKey] === value);
   const displayValue = selectedOption ? selectedOption[displayKey] : placeholder;
@@ -99,12 +101,19 @@ const SearchableDropdown = ({
         type="button"
         onClick={() => {
           if (disabled) return;
-          const next = !isOpen;
-          setIsOpen(next);
-          if (next) {
-            // Position immediately to avoid flicker
-            setTimeout(() => updateDropdownPosition(), 0);
+          if (isOpen) {
+            setIsOpen(false);
+            return;
           }
+          if (buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setDropdownPosition({
+              top: rect.bottom,
+              left: rect.left,
+              width: rect.width,
+            });
+          }
+          setIsOpen(true);
         }}
         className={`w-full px-3 py-2 text-left border rounded-md flex items-center justify-between min-w-0 ${disabled
             ? 'bg-gray-100 cursor-not-allowed text-gray-500'

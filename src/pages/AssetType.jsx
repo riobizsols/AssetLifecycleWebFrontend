@@ -15,7 +15,7 @@ import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useAssetTypeStore } from "../store/useAssetTypeStore";
-import { invalidateCache } from "../utils/apiCache";
+import { refreshAssetTypeCaches } from "../utils/refreshAssetTypeCaches";
 import { applyListFilterChange } from "../utils/listFilterState";
 
 const AssetType = () => {
@@ -237,8 +237,7 @@ const AssetType = () => {
       }
 
       setSelectedRows([]); // Clear selection
-      fetchAssetTypes({ force: true });
-      invalidateCache('asset-types:');
+      await refreshAssetTypeCaches();
       return true; // Return success for ContentBox
     } catch (error) {
       console.error("Error in delete operation:", error);
@@ -251,8 +250,7 @@ const AssetType = () => {
     setUpdateModalOpen(false);
     setSelectedAssetType(null);
     if (wasUpdated) {
-      invalidateCache('asset-types:');
-      fetchAssetTypes({ force: true });
+      refreshAssetTypeCaches();
     }
   };
 

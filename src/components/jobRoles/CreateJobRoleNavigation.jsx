@@ -4,6 +4,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import { FaSave, FaSearch } from "react-icons/fa";
+import { useNavigation } from "../../hooks/useNavigation";
 import { useAuthStore } from "../../store/useAuthStore";
 import SearchableDropdown from "../ui/SearchableDropdown";
 import { useAdminSettings } from "../../contexts/AdminSettingsContext";
@@ -24,6 +25,11 @@ const CreateJobRoleNavigation = ({
   const navId = embedded ? embeddedNav?.job_role_nav_id : routeNavId;
   const editingNav = embedded ? embeddedNav : location.state?.navigation || null;
   const { user } = useAuthStore();
+  const { refreshNavigation } = useNavigation();
+
+  const syncUserNavigation = () => {
+    refreshNavigation();
+  };
 
   // Check if we're in admin settings mode - handle case where context might not- be available
   let isAdminSettingsMode = false;
@@ -67,6 +73,7 @@ const CreateJobRoleNavigation = ({
   };
 
   const finishEditSave = () => {
+    syncUserNavigation();
     if (embedded) {
       onSaved?.();
       return;
@@ -93,7 +100,6 @@ const CreateJobRoleNavigation = ({
   // For create mode - tree-based navigation builder
   const [selectedJobRole, setSelectedJobRole] = useState("");
   const [navigationGroups, setNavigationGroups] = useState([]);
-  const [referenceNavigation, setReferenceNavigation] = useState([]);
 
   const [availableRoles, setAvailableRoles] = useState([]);
   const [availableAppIds, setAvailableAppIds] = useState([]);
@@ -216,8 +222,6 @@ const CreateJobRoleNavigation = ({
       const response = await API.get("/job-role-navigation");
       const navigation = response.data.navigation || [];
       setAvailableParentIds(navigation);
-      const jr001Nav = navigation.filter((n) => n.job_role_id === "JR001");
-      setReferenceNavigation(jr001Nav.length > 0 ? jr001Nav : navigation);
     } catch (error) {
       console.error("Error fetching parent IDs:", error);
     }
@@ -251,6 +255,7 @@ const CreateJobRoleNavigation = ({
             navId: i.job_role_nav_id,
             name: i.label || "",
             appId: i.app_id,
+            accessLevel: i.access_level || DEFAULT_ACCESS_LEVEL,
             sequence: i.sequence,
           })),
       }));
@@ -301,6 +306,7 @@ const CreateJobRoleNavigation = ({
       mob_desk: DEFAULT_MOB_DESK,
       is_group: true,
     });
+    syncUserNavigation();
     return response.data.navigation;
   };
 
@@ -309,6 +315,7 @@ const CreateJobRoleNavigation = ({
       label: name.trim(),
       is_group: true,
     });
+    syncUserNavigation();
   };
 
   const deleteGroupEntry = async (group) => {
@@ -318,34 +325,45 @@ const CreateJobRoleNavigation = ({
     ].filter(Boolean);
     if (ids.length > 0) {
       await API.delete("/job-role-navigation", { data: { ids } });
+      syncUserNavigation();
     }
   };
 
-  const createSubMenuEntry = async (groupNavId, name, appId, currentGroups = navigationGroups) => {
+  const createSubMenuEntry = async (
+    groupNavId,
+    name,
+    appId,
+    currentGroups = navigationGroups,
+    accessLevel = DEFAULT_ACCESS_LEVEL,
+  ) => {
     const response = await API.post("/job-role-navigation", {
       job_role_id: selectedJobRole,
       app_id: appId,
       label: name.trim(),
       parent_id: groupNavId,
       sequence: getNextSequence(currentGroups),
-      access_level: DEFAULT_ACCESS_LEVEL,
+      access_level: accessLevel || DEFAULT_ACCESS_LEVEL,
       mob_desk: DEFAULT_MOB_DESK,
       is_group: false,
     });
+    syncUserNavigation();
     return response.data.navigation;
   };
 
-  const updateSubMenuEntry = async (navId, { name, appId }) => {
+  const updateSubMenuEntry = async (navId, { name, appId, accessLevel }) => {
     await API.put(`/job-role-navigation/${navId}`, {
       label: name.trim(),
       app_id: appId,
+      access_level: accessLevel || DEFAULT_ACCESS_LEVEL,
       is_group: false,
     });
+    syncUserNavigation();
   };
 
   const deleteSubMenuEntry = async (navId) => {
     if (navId) {
       await API.delete("/job-role-navigation", { data: { ids: [navId] } });
+      syncUserNavigation();
     }
   };
 
@@ -776,14 +794,16 @@ const CreateJobRoleNavigation = ({
             groups={navigationGroups}
             onGroupsChange={setNavigationGroups}
             availableAppIds={availableAppIds}
-            referenceNavigation={referenceNavigation}
             onCreateGroup={createGroupEntry}
             onUpdateGroup={updateGroupEntry}
             onDeleteGroup={deleteGroupEntry}
             onCreateSubMenu={createSubMenuEntry}
             onUpdateSubMenu={updateSubMenuEntry}
             onDeleteSubMenu={deleteSubMenuEntry}
-            onDone={() => navigate(getBackRoute(), { state: getBackState() })}
+            onDone={() => {
+              syncUserNavigation();
+              navigate(getBackRoute(), { state: getBackState() });
+            }}
           />
         </div>
       )}

@@ -146,12 +146,12 @@ export default function Login() {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={show ? "text" : "password"}
                   required
                   placeholder={t('auth.password')}
                   value={form.password}
                   onChange={handleChange}
-                  className={`${passwordInputClass}${show ? " app-password-input--visible" : ""}`}
+                  className={passwordInputClass}
                   autoComplete="current-password"
                 />
 
@@ -181,7 +181,7 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-[#0E2F4B] text-white py-2 rounded-md hover:bg-[#123b5d] transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? t('common.loading') : "Tenant Login"}
+              {loading ? t('common.loading') : t('auth.login')}
             </button>
           </form>
         </div>

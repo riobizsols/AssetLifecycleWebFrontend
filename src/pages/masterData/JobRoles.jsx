@@ -66,7 +66,7 @@ const JobRoles = () => {
   const [editingNavItem, setEditingNavItem] = useState(null);
   
   // Access control
-  const { hasEditAccess } = useNavigation();
+  const { hasEditAccess, refreshNavigation } = useNavigation();
   const canEdit = hasEditAccess('USERROLES');
 
   const rolesColumns = [
@@ -297,6 +297,7 @@ const JobRoles = () => {
       );
       setSelectedNavRows([]);
       toast.success(`${count} navigation entry(ies) deleted`);
+      refreshNavigation();
       return true;
     } catch (error) {
       console.error("Error deleting navigation entries:", error);
@@ -645,6 +646,7 @@ const JobRoles = () => {
                   setShowNavModal(false);
                   setEditingNavItem(null);
                   fetchJobRoleNavigation();
+                  refreshNavigation();
                 }}
               />
             </div>

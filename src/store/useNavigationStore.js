@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import API from '../lib/axios';
 import { buildCacheKey, invalidateCache, peekCache, setCache } from '../utils/apiCache';
+import { ensureDefaultDashboardNav, ensureUsersInMasterData } from '../utils/navigationDefaults';
 
-const NAV_CACHE_PREFIX = 'app:navigation:v4';
+const NAV_CACHE_PREFIX = 'app:navigation:v12';
 const NAV_TTL_MS = 10 * 60 * 1000;
 
 const navCacheKey = (userId) => buildCacheKey([NAV_CACHE_PREFIX, userId]);
@@ -13,6 +14,9 @@ const detectPlatform = () => {
   );
   return isMobile ? 'M' : 'D';
 };
+
+const normalizeNavigation = (navigation) =>
+  ensureUsersInMasterData(ensureDefaultDashboardNav(navigation));
 
 export const useNavigationStore = create((set, get) => ({
   navigation: [],
@@ -30,8 +34,9 @@ export const useNavigationStore = create((set, get) => ({
     if (!force) {
       const cached = peekCache(cacheKey, NAV_TTL_MS);
       if (cached) {
-        set({ navigation: cached, loading: false, error: null, fetchedForUserId: userId });
-        return cached;
+        const navigation = normalizeNavigation(cached);
+        set({ navigation, loading: false, error: null, fetchedForUserId: userId });
+        return navigation;
       }
     }
 
@@ -45,7 +50,9 @@ export const useNavigationStore = create((set, get) => ({
     try {
       const platform = detectPlatform();
       const response = await API.get(`/navigation/user/navigation?platform=${platform}`);
-      const data = response.data.success ? response.data.data : [];
+      const data = normalizeNavigation(
+        response.data.success ? response.data.data : [],
+      );
       setCache(cacheKey, data);
       set({ navigation: data, loading: false, error: null, fetchedForUserId: userId });
       return data;

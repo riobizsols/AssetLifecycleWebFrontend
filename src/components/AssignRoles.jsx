@@ -55,6 +55,32 @@ const AssignRoles = () => {
     { label: u("currentRole"), name: "job_role_name", visible: true }
   ], [t]);
 
+  const assignableRoles = useMemo(() => {
+    const assignedIds = new Set(
+      currentEmployeeRoles.map((role) => role.job_role_id).filter(Boolean),
+    );
+    return availableRoles.filter((role) => !assignedIds.has(role.job_role_id));
+  }, [availableRoles, currentEmployeeRoles]);
+
+  const syncEmployeeRolesInTable = (empIntId, roles) => {
+    const roleNames = roles
+      .map((role) => role.job_role_name || role.text)
+      .filter(Boolean);
+    const primaryRole = roles[0];
+
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.emp_int_id === empIntId
+          ? {
+              ...emp,
+              job_role_id: primaryRole?.job_role_id || null,
+              job_role_name: roleNames.length ? roleNames.join(', ') : null,
+            }
+          : emp,
+      ),
+    );
+  };
+
   useEffect(() => {
     setFilters(columns);
   }, [columns]);
@@ -63,7 +89,9 @@ const AssignRoles = () => {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const response = await API.get('/employees/with-roles');
+      const response = await API.get('/employees/with-roles', {
+        params: { _t: Date.now() },
+      });
       const employeesData = response.data || [];
       setEmployees(employeesData);
     } catch (error) {
@@ -172,12 +200,18 @@ const AssignRoles = () => {
   // Fetch all roles for a specific employee
   const fetchEmployeeRoles = async (emp_int_id) => {
     try {
-      const response = await API.get(`/users/employee-roles/${emp_int_id}`);
+      const response = await API.get(`/users/employee-roles/${emp_int_id}`, {
+        params: { _t: Date.now() },
+      });
       const roles = response.data || [];
       setCurrentEmployeeRoles(roles);
+      syncEmployeeRolesInTable(emp_int_id, roles);
+      return roles;
     } catch (error) {
       console.error('Error fetching employee roles:', error);
       setCurrentEmployeeRoles([]);
+      syncEmployeeRolesInTable(emp_int_id, []);
+      return [];
     }
   };
 
@@ -250,9 +284,7 @@ const AssignRoles = () => {
 
       showBackendTextToast({
         toast,
-        fallbackText: response.data?.userDeactivated
-          ? 'Role removed. User has no remaining roles and was deactivated.'
-          : 'Role removed successfully',
+        fallbackText: 'Role removed successfully',
         type: 'success',
       });
 
@@ -402,14 +434,30 @@ const AssignRoles = () => {
                 );
               }
               if (col.name === 'job_role_name') {
-                return row.job_role_name ? (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                    {trRole(row.job_role_name, row.job_role_id)}
-                  </span>
-                ) : (
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
-                    {u("noRole")}
-                  </span>
+                const roleNames = String(row.job_role_name || '')
+                  .split(',')
+                  .map((name) => name.trim())
+                  .filter(Boolean);
+
+                if (!roleNames.length) {
+                  return (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                      {u("noRole")}
+                    </span>
+                  );
+                }
+
+                return (
+                  <div className="flex flex-wrap gap-1">
+                    {roleNames.map((roleName, index) => (
+                      <span
+                        key={`${roleName}-${index}`}
+                        className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium"
+                      >
+                        {trRole(roleName, row.job_role_id)}
+                      </span>
+                    ))}
+                  </div>
                 );
               }
               if (col.name === 'dept_id') {
@@ -497,9 +545,13 @@ const AssignRoles = () => {
                   <div className="p-3 bg-gray-50 rounded-lg text-center text-gray-600">
                     {u("loadingRoles")}
                   </div>
+                ) : assignableRoles.length === 0 ? (
+                  <div className="p-3 bg-gray-50 rounded-lg text-center text-gray-600">
+                    {u("noRolesAssigned")}
+                  </div>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-                    {availableRoles.map(role => {
+                    {assignableRoles.map(role => {
                       const isSelected = selectedRoles.some(r => r.job_role_id === role.job_role_id);
                       return (
                         <div
