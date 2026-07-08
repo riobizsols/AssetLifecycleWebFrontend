@@ -3,6 +3,64 @@ import { appIdsMatch } from './accessLevel';
 const normalizeNavAppId = (id) =>
   String(id || '').trim().toUpperCase().replace(/\s+/g, '');
 
+/** Preferred Master Data submenu order for System Administrator and synced tenants. */
+export const MASTER_DATA_CHILD_ORDER = [
+  'ASSETTYPES',
+  'BRANCHES',
+  'DEPARTMENTS',
+  'DEPARTMENTSADMIN',
+  'DEPARTMENTSASSET',
+  'ROLES',
+  'USERS',
+  'USERROLES',
+  'PRODSERV',
+  'VENDORS',
+];
+
+/** Preferred Scrap submenu order. */
+export const SCRAP_CHILD_ORDER = [
+  'SCRAPASSETS',
+  'SCRAPMAINTENANCEAPPROVAL',
+  'SCRAPSALES',
+];
+
+/** Preferred Admin Settings submenu order (audit items). */
+export const ADMIN_SETTINGS_CHILD_ORDER = ['AUDITLOGS', 'AUDITLOGCONFIG'];
+
+/** Preferred Inspection submenu order. */
+export const INSPECTION_CHILD_ORDER = [
+  'INSPECTIONAPPROVAL',
+  'INSPECTIONVIEW',
+  'INSPECTION',
+  'INSPECTIONFREQUENCY',
+  'INSPECTIONCHECKLISTS',
+  'ASSETTYPECHECKLISTMAPPING',
+];
+
+const childOrderRank = (appId, order) => {
+  const key = normalizeNavAppId(appId);
+  const idx = order.indexOf(key);
+  return idx >= 0 ? idx : 1000;
+};
+
+const sortChildrenByOrder = (children, order) =>
+  [...(children || [])].sort((a, b) => {
+    const rankDiff =
+      childOrderRank(a.app_id, order) - childOrderRank(b.app_id, order);
+    if (rankDiff !== 0) return rankDiff;
+    return (a.seq ?? 9999) - (b.seq ?? 9999);
+  });
+
+const masterDataOrderRank = (appId) => childOrderRank(appId, MASTER_DATA_CHILD_ORDER);
+
+const sortMasterDataChildren = (children) =>
+  [...(children || [])].sort((a, b) => {
+    const rankDiff =
+      masterDataOrderRank(a.app_id) - masterDataOrderRank(b.app_id);
+    if (rankDiff !== 0) return rankDiff;
+    return (a.seq ?? 9999) - (b.seq ?? 9999);
+  });
+
 const flattenNav = (items, result = []) => {
   for (const item of items) {
     result.push(item);
@@ -16,6 +74,27 @@ const isMasterDataGroup = (item) =>
     item?.is_group &&
       (normalizeNavAppId(item.app_id) === 'MASTERDATA' ||
         String(item.label || '').trim().toLowerCase() === 'master data'),
+  );
+
+const isScrapGroup = (item) =>
+  Boolean(
+    item?.is_group &&
+      (normalizeNavAppId(item.app_id) === 'SCRAP' ||
+        String(item.label || '').trim().toLowerCase() === 'scrap'),
+  );
+
+const isAdminSettingsGroup = (item) =>
+  Boolean(
+    item?.is_group &&
+      (normalizeNavAppId(item.app_id) === 'ADMINSETTINGS' ||
+        String(item.label || '').trim().toLowerCase() === 'admin settings'),
+  );
+
+const isInspectionGroup = (item) =>
+  Boolean(
+    item?.is_group &&
+      (normalizeNavAppId(item.app_id) === 'INSPECTION' ||
+        String(item.label || '').trim().toLowerCase() === 'inspection'),
   );
 
 /** USERS app_id must display as "Users", not "User Roles". */
@@ -66,6 +145,98 @@ export const ensureUsersInMasterData = (items) => {
                   children: [],
                 },
               ],
+        };
+      }
+      if (item.children?.length) {
+        return { ...item, children: walk(item.children) };
+      }
+      return item;
+    });
+
+  return walk(items);
+};
+
+/** Sort Master Data submenu items into the product-standard order. */
+export const sortMasterDataNavOrder = (items) => {
+  if (!Array.isArray(items) || !items.length) return items;
+
+  const walk = (nodes) =>
+    nodes.map((item) => {
+      if (isMasterDataGroup(item)) {
+        return {
+          ...item,
+          children: sortMasterDataChildren(
+            normalizeUsersNavLabels(item.children || []),
+          ),
+        };
+      }
+      if (item.children?.length) {
+        return { ...item, children: walk(item.children) };
+      }
+      return item;
+    });
+
+  return walk(items);
+};
+
+/** Sort Scrap submenu: Assets → Approval → Sales. */
+export const sortScrapNavOrder = (items) => {
+  if (!Array.isArray(items) || !items.length) return items;
+
+  const walk = (nodes) =>
+    nodes.map((item) => {
+      if (isScrapGroup(item)) {
+        return {
+          ...item,
+          children: sortChildrenByOrder(item.children || [], SCRAP_CHILD_ORDER),
+        };
+      }
+      if (item.children?.length) {
+        return { ...item, children: walk(item.children) };
+      }
+      return item;
+    });
+
+  return walk(items);
+};
+
+/** Sort Admin Settings audit items: Audit Logs → Audit Log Config. */
+export const sortAdminSettingsNavOrder = (items) => {
+  if (!Array.isArray(items) || !items.length) return items;
+
+  const walk = (nodes) =>
+    nodes.map((item) => {
+      if (isAdminSettingsGroup(item)) {
+        return {
+          ...item,
+          children: sortChildrenByOrder(
+            item.children || [],
+            ADMIN_SETTINGS_CHILD_ORDER,
+          ),
+        };
+      }
+      if (item.children?.length) {
+        return { ...item, children: walk(item.children) };
+      }
+      return item;
+    });
+
+  return walk(items);
+};
+
+/** Sort Inspection submenu: Approval → List → config items. */
+export const sortInspectionNavOrder = (items) => {
+  if (!Array.isArray(items) || !items.length) return items;
+
+  const walk = (nodes) =>
+    nodes.map((item) => {
+      if (isInspectionGroup(item)) {
+        return {
+          ...item,
+          children: sortChildrenByOrder(
+            item.children || [],
+            INSPECTION_CHILD_ORDER,
+          ),
         };
       }
       if (item.children?.length) {

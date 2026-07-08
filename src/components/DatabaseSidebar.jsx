@@ -37,7 +37,14 @@ import { usePropertiesStore } from "../store/usePropertiesStore";
 import { useBreakdownReasonCodesStore } from "../store/useBreakdownReasonCodesStore";
 import { useTextMessagesStore } from "../store/useTextMessagesStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { ensureDefaultDashboardNav, ensureUsersInMasterData } from "../utils/navigationDefaults";
+import {
+  ensureDefaultDashboardNav,
+  ensureUsersInMasterData,
+  sortMasterDataNavOrder,
+  sortScrapNavOrder,
+  sortAdminSettingsNavOrder,
+  sortInspectionNavOrder,
+} from "../utils/navigationDefaults";
 import {
   Menu,
   Edit,
@@ -121,31 +128,42 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "MAINTENANCESCHEDULE",
     "MAINTENANCEAPPROVAL",
   ],
-  Scrap: ["SCRAPSALES", "SCRAPASSETS", "SCRAPMAINTENANCEAPPROVAL"],
+  Scrap: ["SCRAPASSETS", "SCRAPMAINTENANCEAPPROVAL", "SCRAPSALES"],
   Inspection: [
+    "INSPECTIONAPPROVAL",
     "INSPECTIONVIEW",
     "INSPECTIONFREQUENCY",
     "INSPECTIONCHECKLISTS",
     "ASSETTYPECHECKLISTMAPPING",
-    "INSPECTIONAPPROVAL",
   ],
   "Admin Settings": ["AUDITLOGS", "AUDITLOGCONFIG"],
   "Asset Assignment": ["DEPTASSIGNMENT", "EMPASSIGNMENT"],
   "Master Data": [
-    "USERROLES",
     "ASSETTYPES",
+    "BRANCHES",
     "DEPARTMENTS",
     "DEPARTMENTSADMIN",
     "DEPARTMENTSASSET",
-    "BRANCHES",
-    "VENDORS",
-    "PRODSERV",
     "ROLES",
     "USERS",
+    "USERROLES",
+    "PRODSERV",
+    "VENDORS",
     "MAINTENANCESCHEDULE",
     "INSPECTIONCHECKLISTS",
     "INSPECTIONFREQUENCY",
     "ASSETTYPECHECKLISTMAPPING",
+  ],
+  Reports: [
+    "ASSETLIFECYCLEREPORT",
+    "ASSETREPORT",
+    "MAINTENANCEHISTORY",
+    "ASSETVALUATION",
+    "ASSETWORKFLOWHISTORY",
+    "BREAKDOWNHISTORY",
+    "USAGEBASEDASSETREPORT",
+    "REOPENEDBREAKDOWNS",
+    "SLAREPORT",
   ],
 };
 
@@ -585,6 +603,70 @@ function flattenApprovalsGroup(items) {
   return next;
 }
 
+/** Move Reopened Breakdowns from Report Breakdown into the Reports menu group. */
+function moveReopenedBreakdownsToReports(items) {
+  if (!items?.length) return items;
+
+  const reopenKey = normalizeNavAppId("REOPENEDBREAKDOWNS");
+  let reopenedItem = null;
+
+  const stripReopened = (nodes) =>
+    (nodes || [])
+      .map((item) => {
+        if (isNavGroup(item)) {
+          const children = stripReopened(item.children);
+          const removed = (children || []).find(
+            (child) => normalizeNavAppId(child.app_id) === reopenKey,
+          );
+          if (removed) {
+            reopenedItem = reopenedItem || removed;
+          }
+          return {
+            ...item,
+            children: (children || []).filter(
+              (child) => normalizeNavAppId(child.app_id) !== reopenKey,
+            ),
+          };
+        }
+
+        if (normalizeNavAppId(item.app_id) === reopenKey) {
+          reopenedItem = reopenedItem || item;
+          return null;
+        }
+
+        return item;
+      })
+      .filter(Boolean);
+
+  let result = stripReopened(items);
+  if (!reopenedItem) return result;
+
+  const reportsGroup = findNavGroupByLabel(result, "Reports");
+  if (!reportsGroup) {
+    return [...result, { ...reopenedItem, is_group: false, children: undefined }];
+  }
+
+  const alreadyInReports = (reportsGroup.children || []).some(
+    (child) => normalizeNavAppId(child.app_id) === reopenKey,
+  );
+  if (alreadyInReports) return result;
+
+  result = result.map((item) => {
+    if (!isNavGroup(item) || canonicalGroupLabel(item.label) !== "reports") {
+      return item;
+    }
+    return {
+      ...item,
+      children: [
+        ...(item.children || []),
+        { ...reopenedItem, is_group: false, children: undefined },
+      ],
+    };
+  });
+
+  return result;
+}
+
 function ensureDomainNavGroups(items) {
   const flat = flattenNavItems(items);
   let result = [...items];
@@ -644,6 +726,15 @@ function ensureDomainNavGroups(items) {
       }
     }
 
+    group.children.sort((a, b) => {
+      const rankA = memberKeys.indexOf(normalizeNavAppId(a.app_id));
+      const rankB = memberKeys.indexOf(normalizeNavAppId(b.app_id));
+      const safeA = rankA >= 0 ? rankA : 1000;
+      const safeB = rankB >= 0 ? rankB : 1000;
+      if (safeA !== safeB) return safeA - safeB;
+      return (a.seq ?? 9999) - (b.seq ?? 9999);
+    });
+
     result = result.filter(
       (item) =>
         isNavGroup(item) ||
@@ -693,7 +784,12 @@ function finalizeSidebarNavigation(items) {
   tree = reorganizeSidebarGroups(tree);
   tree = repairOrphanedNavGroups(tree);
   tree = flattenApprovalsGroup(tree);
+  tree = moveReopenedBreakdownsToReports(tree);
   tree = ensureDomainNavGroups(tree);
+  tree = sortMasterDataNavOrder(tree);
+  tree = sortScrapNavOrder(tree);
+  tree = sortAdminSettingsNavOrder(tree);
+  tree = sortInspectionNavOrder(tree);
   tree = stripOrphanedTopLevelDuplicates(tree);
   tree = pruneEmptyGroups(tree);
   return dedupeTopLevelNavItems(sortSidebarNav(tree));
@@ -811,9 +907,10 @@ function reorganizeSidebarGroups(items) {
   const syntheticGroups = syntheticGroupDefs
     .map((groupDef) => {
       const isReportBreakdownGroup = groupDef.id === "synthetic-report-breakdown";
-      const reportBreakdownAccess =
-        resolveInheritedAccess((id) => accessMap.get(id), "REPORTBREAKDOWN") ||
-        resolveInheritedAccess((id) => accessMap.get(id), "REOPENEDBREAKDOWNS");
+      const reportBreakdownAccess = resolveInheritedAccess(
+        (id) => accessMap.get(id),
+        "REPORTBREAKDOWN",
+      );
 
       const children = collectGroupChildren(flatItems, groupDef, accessMap, {
         forceAllChildren:
