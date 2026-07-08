@@ -4,6 +4,7 @@ import { useNavigation } from "../hooks/useNavigation";
 import {
   buildFlatAccessMap,
   hasViewAccess,
+  normalizeAppId,
   resolveInheritedAccess,
 } from "../utils/accessLevel";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -71,10 +72,13 @@ import {
   DollarSign,
   GitBranch,
   AlertTriangle,
+  Tag,
   Gauge,
   Printer,
   Clock,
   Activity,
+  MessageSquareText,
+  FileCheck,
 } from "lucide-react";
 
 const normalizeNavAppId = (id) =>
@@ -953,40 +957,130 @@ function reorganizeSidebarGroups(items) {
   );
 }
 
-/** Injects synthetic "One Time Cron" nav row under Master Data (admin settings mode). */
-function injectOneTimeCronUnderMasterData(items) {
-  if (!items?.length) return items;
-  return items.map((item) => {
-    const children = item.children?.length
-      ? injectOneTimeCronUnderMasterData(item.children)
-      : item.children;
-    if (
-      item.is_group &&
-      (item.app_id === "MASTERDATA" || item.label === "Master Data")
-    ) {
-      const ch = children || [];
-      if (ch.some((c) => c.app_id === "ONETIMECRON")) {
-        return { ...item, children: ch };
-      }
-      return {
-        ...item,
-        children: [
-          ...ch,
-          {
-            id: "synthetic-onetime-cron",
-            app_id: "ONETIMECRON",
-            label: "One Time Cron",
-            access_level: "A",
-            is_group: false,
-          },
-        ],
-      };
-    }
-    if (children !== item.children) {
-      return { ...item, children };
-    }
-    return item;
-  });
+/** Admin configuration modules under the Admin Settings sidebar group (excludes Text Messages). */
+const ADMIN_SETTINGS_GROUP_MODULES = [
+  { app_id: "USERROLES", label: "Job Roles", seq: 20 },
+  { app_id: "COLUMNACCESSCONFIG", label: "Column Access Config", seq: 30 },
+  { app_id: "BULKSERIALNUMBERPRINT", label: "Bulk Serial Number Print", seq: 40 },
+  { app_id: "MAINTENANCECONFIG", label: "Maintenance Configuration", seq: 50 },
+  { app_id: "PROPERTIES", label: "Properties", seq: 60 },
+  { app_id: "BREAKDOWNREASONCODES", label: "Breakdown Reason Codes", seq: 70 },
+  { app_id: "CERTIFICATIONS", label: "Certifications", seq: 80 },
+  { app_id: "JOBMONITOR", label: "Job Monitor", seq: 90 },
+];
+
+const MASTER_DATA_CRON_MODULE = {
+  app_id: "ONETIMECRON",
+  label: "One Time Cron",
+  seq: 10,
+};
+
+function canAccessAdminSidebarItem(appId, accessMap, getAccessLevelFn) {
+  const lookup = (id) =>
+    accessMap.get(normalizeAppId(id)) ?? getAccessLevelFn(id);
+  const resolve = (id) => resolveInheritedAccess(lookup, id) ?? lookup(id);
+  const key = normalizeAppId(appId);
+
+  if (key === "ONETIMECRON") {
+    return (
+      hasViewAccess(resolve("ONETIMECRON")) ||
+      hasViewAccess(resolve("ADMINSETTINGS"))
+    );
+  }
+  if (key === "JOBMONITOR") {
+    return (
+      hasViewAccess(resolve("JOBMONITOR")) ||
+      hasViewAccess(resolve("ADMINSETTINGS"))
+    );
+  }
+  if (key === "CERTIFICATIONS") {
+    return (
+      hasViewAccess(resolve("CERTIFICATIONS")) ||
+      hasViewAccess(resolve("ADMINSETTINGS"))
+    );
+  }
+  return hasViewAccess(resolve(appId));
+}
+
+function buildAdminSettingsModuleChild(mod, flatItems, accessMap, getAccessLevelFn, idx) {
+  if (!canAccessAdminSidebarItem(mod.app_id, accessMap, getAccessLevelFn)) {
+    return null;
+  }
+
+  const lookup = (id) =>
+    accessMap.get(normalizeAppId(id)) ?? getAccessLevelFn(id);
+  const resolveItemAccess = (appId) =>
+    resolveInheritedAccess(lookup, appId) ?? lookup(appId);
+
+  const navMatch = flatItems.find(
+    (item) => resolveNavAppId(item.app_id) === resolveNavAppId(mod.app_id),
+  );
+
+  return {
+    id: navMatch?.id || `admin-sidebar-${resolveNavAppId(mod.app_id)}`,
+    app_id: mod.app_id,
+    label: navMatch?.label || navMatch?.app_name || mod.label,
+    access_level: resolveItemAccess(mod.app_id),
+    is_group: false,
+    seq: navMatch?.seq ?? mod.seq ?? idx,
+  };
+}
+
+/** Grouped admin-settings sidebar: Admin Settings + Master Data (One Time Cron only). */
+function buildAdminSettingsSidebarNav(navigation, getAccessLevelFn) {
+  const flatItems = flattenNavItems(navigation);
+  const accessMap = buildFlatAccessMap(flatItems);
+
+  const lookup = (id) =>
+    accessMap.get(normalizeAppId(id)) ?? getAccessLevelFn(id);
+  const resolveItemAccess = (appId) =>
+    resolveInheritedAccess(lookup, appId) ?? lookup(appId);
+
+  const adminSettingsChildren = ADMIN_SETTINGS_GROUP_MODULES.map((mod, idx) =>
+    buildAdminSettingsModuleChild(mod, flatItems, accessMap, getAccessLevelFn, idx),
+  )
+    .filter(Boolean)
+    .sort((a, b) => (a.seq ?? 9999) - (b.seq ?? 9999));
+
+  const masterDataChildren = [
+    buildAdminSettingsModuleChild(
+      MASTER_DATA_CRON_MODULE,
+      flatItems,
+      accessMap,
+      getAccessLevelFn,
+      0,
+    ),
+  ].filter(Boolean);
+
+  const groups = [];
+
+  if (adminSettingsChildren.length) {
+    groups.push({
+      id: "admin-settings-sidebar-group",
+      app_id: "ADMINSETTINGS",
+      label: "Admin Settings",
+      is_group: true,
+      access_level:
+        resolveItemAccess("ADMINSETTINGS") ||
+        adminSettingsChildren[0]?.access_level,
+      seq: 10,
+      children: adminSettingsChildren,
+    });
+  }
+
+  if (masterDataChildren.length) {
+    groups.push({
+      id: "master-data-sidebar-group",
+      app_id: "MASTERDATA",
+      label: "Master Data",
+      is_group: true,
+      access_level: masterDataChildren[0]?.access_level,
+      seq: 20,
+      children: masterDataChildren,
+    });
+  }
+
+  return groups;
 }
 
 const DatabaseSidebar = () => {
@@ -1006,12 +1100,10 @@ const DatabaseSidebar = () => {
 
   const navigationForRender = useMemo(() => {
     if (isAdminSettingsMode) {
-      return dedupeTopLevelNavItems(
-        injectOneTimeCronUnderMasterData(finalizeSidebarNavigation(navigation)),
-      );
+      return buildAdminSettingsSidebarNav(navigation, getAccessLevel);
     }
     return finalizeSidebarNavigation(navigation);
-  }, [navigation, isAdminSettingsMode]);
+  }, [navigation, isAdminSettingsMode, getAccessLevel]);
 
   const toggleDropdown = (id) => {
     setOpenDropdown(openDropdown === id ? null : id);
@@ -1059,7 +1151,10 @@ const DatabaseSidebar = () => {
       'User Roles': t('navigation.userRoles'),
       'Column Access Config': t('navigation.columnAccessConfig'),
       'One Time Cron': t('navigation.oneTimeCron'),
+      'Text Messages': 'Text Messages',
       'Job Monitor': 'Job Monitor',
+      'Maintenance Configuration': 'Maintenance Configuration',
+      'Breakdown Reason Codes': 'Breakdown Reason Codes',
       'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
       'Cost Center Transfer': t('navigation.costCenterTransfer'),
@@ -1350,9 +1445,15 @@ const DatabaseSidebar = () => {
       AUDITLOGS: History,
       AUDITLOGCONFIG: Settings,
       COLUMNACCESSCONFIG: Settings,
+      TEXTMESSAGES: MessageSquareText,
+      BULKSERIALNUMBERPRINT: Printer,
+      MAINTENANCECONFIG: Wrench,
+      PROPERTIES: Tag,
+      BREAKDOWNREASONCODES: AlertTriangle,
       ONETIMECRON: Clock,
       JOBMONITOR: Activity,
-      CERTIFICATIONS: FileText,
+      CERTIFICATIONS: FileCheck,
+      USERROLES: Users,
       TECHCERTUPLOAD: FileText,
       TECHNICIANCERTIFICATES: FileText,
       GROUPASSET: Package,
@@ -1373,6 +1474,13 @@ const DatabaseSidebar = () => {
 
   const resolveEffectiveAccess = (appId, fallbackLevel) => {
     const key = resolveNavAppId(appId);
+    if (key === "TEXTMESSAGES") {
+      return (
+        getAccessLevel("TEXTMESSAGES") ||
+        getAccessLevel("ADMINSETTINGS") ||
+        fallbackLevel
+      );
+    }
     if (key === "ONETIMECRON") {
       return (
         getAccessLevel("ONETIMECRON") ||
@@ -1384,6 +1492,13 @@ const DatabaseSidebar = () => {
     if (key === "JOBMONITOR") {
       return (
         getAccessLevel("JOBMONITOR") ||
+        getAccessLevel("ADMINSETTINGS") ||
+        fallbackLevel
+      );
+    }
+    if (key === "CERTIFICATIONS") {
+      return (
+        getAccessLevel("CERTIFICATIONS") ||
         getAccessLevel("ADMINSETTINGS") ||
         fallbackLevel
       );
@@ -1438,16 +1553,16 @@ const DatabaseSidebar = () => {
       // For admin settings only items, use simplified paths
       // Add custom path mappings here for admin settings items
       const adminSettingsPathMap = {
-        "USERROLES": "/adminsettings/configuration/job-roles",
-        "BULKSERIALNUMBERPRINT": "/adminsettings/configuration/bulk-serial-number-print",
-        "COLUMNACCESSCONFIG": "/adminsettings/configuration/data-config",
-        "MAINTENANCECONFIG": "/adminsettings/configuration/maintenance-config",
-        "PROPERTIES": "/adminsettings/configuration/properties",
-        "BREAKDOWNREASONCODES": "/adminsettings/configuration/breakdown-reason-codes",
-        "ONETIMECRON": "/adminsettings/configuration/one-time-cron",
-        "JOBMONITOR": "/adminsettings/configuration/job-monitor",
-        // Add more mappings here as you add more admin settings menu items
-        // Example: "NEW_APP_ID": "/adminsettings/configuration/new-path",
+        TEXTMESSAGES: "/adminsettings/configuration/text-messages",
+        USERROLES: "/adminsettings/configuration/job-roles",
+        BULKSERIALNUMBERPRINT: "/adminsettings/configuration/bulk-serial-number-print",
+        COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config",
+        MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config",
+        PROPERTIES: "/adminsettings/configuration/properties",
+        BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes",
+        CERTIFICATIONS: "/certifications",
+        ONETIMECRON: "/adminsettings/configuration/one-time-cron",
+        JOBMONITOR: "/adminsettings/configuration/job-monitor",
       };
       
       if (adminSettingsPathMap[appId] || adminSettingsPathMap[navKey]) {
@@ -1477,20 +1592,24 @@ const DatabaseSidebar = () => {
 
     if (activeGroup) {
       setOpenDropdown(getNavItemKey(activeGroup));
+      return;
+    }
+
+    if (location.pathname === "/adminsettings/configuration") {
+      const adminGroup = navigationForRender.find((item) =>
+        isAdminSettingsHub(item.app_id, item.label),
+      );
+      if (adminGroup) {
+        setOpenDropdown(getNavItemKey(adminGroup));
+      }
     }
   }, [location.pathname, navigationForRender, isAdminSettingsMode, collapsed]);
 
   // App IDs that should only be visible in admin settings mode (/adminsettings/configuration routes)
   // Add more app IDs here as needed for future admin settings menu items
   const adminSettingsOnlyAppIds = [
-    "USERROLES", 
-    "BULKSERIALNUMBERPRINT", 
-    "COLUMNACCESSCONFIG",
-    "MAINTENANCECONFIG",
-    "PROPERTIES",
-    "BREAKDOWNREASONCODES",
-    "ONETIMECRON",
-    "JOBMONITOR",
+    ...ADMIN_SETTINGS_GROUP_MODULES.map((mod) => mod.app_id),
+    MASTER_DATA_CRON_MODULE.app_id,
   ];
   const adminSettingsRoutes = [
     "COLUMNACCESSCONFIG",
@@ -1498,6 +1617,7 @@ const DatabaseSidebar = () => {
     "PROPERTIES",
     "BREAKDOWNREASONCODES",
     "USERROLES",
+    "BULKSERIALNUMBERPRINT",
     "ONETIMECRON",
     "JOBMONITOR",
   ];
@@ -1513,6 +1633,10 @@ const DatabaseSidebar = () => {
     String(label || "").trim().toLowerCase() === "job monitor";
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
+    if (isAdminSettingsMode) {
+      return true;
+    }
+
     const isAdminSettingsOnlyItem = isAdminSettingsOnlyAppId(item.app_id, item.label);
 
     // Admin Settings dropdown (with audit children) or legacy hub link.
@@ -1546,17 +1670,7 @@ const DatabaseSidebar = () => {
       // Show all other items normally
       return true;
     }
-    
-    // In admin settings mode, only show admin settings only items
-    if (isAdminSettingsOnlyItem) {
-      return true;
-    }
-    
-    // Check children for admin settings only items
-    if (item.children && item.children.length > 0) {
-      return item.children.some(child => isAdminSettingsOnlyAppId(child.app_id, child.label));
-    }
-    
+
     return false;
   };
 
@@ -1697,8 +1811,9 @@ const DatabaseSidebar = () => {
       return null;
     }
 
-    // Legacy hub: only link when Admin Settings is not a dropdown group.
+    // Legacy hub: only link when Admin Settings is not a dropdown group (normal app mode).
     if (
+      !isAdminSettingsMode &&
       isAdminSettingsHub(item.app_id, item.label) &&
       item.is_group &&
       item.children?.length > 0

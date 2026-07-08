@@ -459,11 +459,9 @@ const AddEntityForm = () => {
         }
       }
       
-      // Show success message only if we actually saved something
-      if (vendorSaveSuccess || tabsToSave.length > 0) {
-        const savedTabsList = tabsToSave.length > 0
-          ? tabsToSave.map(translateTab).join(", ")
-          : translateTab("Vendor Details");
+      // Show success message only when additional tabs were saved (vendor toast is shown in handleSubmit)
+      if (tabsToSave.length > 0) {
+        const savedTabsList = tabsToSave.map(translateTab).join(", ");
         showBackendTextToast({
           toast,
           tmdId: 'TMD_I18N_VENDORS_SUCCESSFULLYSAVED_5ED2C725',
