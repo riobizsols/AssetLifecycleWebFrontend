@@ -18,7 +18,8 @@ export const getTextMessageById = async (tmdId, fallbackText = "") => {
 
   try {
     const res = await API.get(
-      `/text-messages/${encodeURIComponent(key)}?lang=${encodeURIComponent(activeLang)}`
+      `/text-messages/${encodeURIComponent(key)}?lang=${encodeURIComponent(activeLang)}`,
+      { skipAuthRedirect: true },
     );
     const payload = res?.data?.data || {};
     const text = payload?.text;

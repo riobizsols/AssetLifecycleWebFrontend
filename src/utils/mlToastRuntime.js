@@ -5,6 +5,25 @@ import { translateErrorMessage } from "./errorTranslation.js";
 
 let isPatched = false;
 
+const PUBLIC_ML_SKIP_PATHS = new Set([
+  "/",
+  "/login",
+  "/tenant-setup",
+  "/setup",
+  "/forgot-password",
+  "/reset-password",
+]);
+
+const normalizePath = (pathname) => {
+  const path = String(pathname || "/").replace(/\/+$/, "") || "/";
+  return path;
+};
+
+const isPublicMlPage = () => {
+  if (typeof window === "undefined") return false;
+  return PUBLIC_ML_SKIP_PATHS.has(normalizePath(window.location.pathname));
+};
+
 const toSlug = (text) =>
   String(text || "")
     .replace(/\$\{[^}]+\}/g, " ")
@@ -29,20 +48,30 @@ export const getTmdIdForToastText = (message) => {
   return `TMD_${shortSlug}_${hashString(message)}`;
 };
 
+/** Unpatched toast helpers for public flows (tenant setup, login, etc.). */
+export const rawToast = {
+  success: null,
+  error: null,
+};
+
 export const installMlToastRuntime = () => {
   if (isPatched) return;
   isPatched = true;
 
   const originalSuccess = toast.success.bind(toast);
   const originalError = toast.error.bind(toast);
+  rawToast.success = originalSuccess;
+  rawToast.error = originalError;
 
   const resolveAndShow = async (originalFn, message, options) => {
-    if (options?.skipMlResolve) {
-      return originalFn(message, options);
+    const { skipMlResolve, ...toastOptions } = options || {};
+
+    if (skipMlResolve || isPublicMlPage()) {
+      return originalFn(message, toastOptions);
     }
 
     if (typeof message !== "string" || !message.trim()) {
-      return originalFn(message, options);
+      return originalFn(message, toastOptions);
     }
 
     const selectedLang = String(localStorage.getItem("selectedLanguage") || "").toLowerCase();
@@ -55,7 +84,7 @@ export const installMlToastRuntime = () => {
 
     const tmdId = getTmdIdForToastText(message);
     const resolvedText = await getTextMessageById(tmdId, fallbackText);
-    return originalFn(resolvedText, options);
+    return originalFn(resolvedText, toastOptions);
   };
 
   toast.success = (message, options) => {
@@ -68,4 +97,3 @@ export const installMlToastRuntime = () => {
     return undefined;
   };
 };
-

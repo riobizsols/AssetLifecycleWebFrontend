@@ -1,4 +1,5 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
+import { rawToast } from '../../utils/mlToastRuntime';
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -42,10 +43,9 @@ export default function TenantSetup() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [checkingOrgId, setCheckingOrgId] = useState(false);
-  const [checkingSubdomain, setCheckingSubdomain] = useState(false);
-  const [orgIdAvailable, setOrgIdAvailable] = useState(null);
-  const [subdomainAvailable, setSubdomainAvailable] = useState(null);
+  const [checkingDomainDb, setCheckingDomainDb] = useState(false);
+  const [domainDbAvailable, setDomainDbAvailable] = useState(null);
+  const [proposedDatabaseName, setProposedDatabaseName] = useState("");
   const [form, setForm] = useState({
     orgId: "",
     orgName: "",
@@ -98,6 +98,11 @@ export default function TenantSetup() {
     }
   };
 
+  const showToast = {
+    success: (message) => (rawToast.success || toast.success)(message),
+    error: (message) => (rawToast.error || toast.error)(message),
+  };
+
   const steps = [
     {
       id: 0,
@@ -123,77 +128,44 @@ export default function TenantSetup() {
       newValue = value.toUpperCase();
     } else if (name === 'subdomain') {
       newValue = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      setDomainDbAvailable(null);
+      setProposedDatabaseName("");
     }
     setForm((prev) => ({
       ...prev,
       [name]: newValue,
     }));
-    
-    if (name === 'orgId') {
-      setOrgIdAvailable(null);
-    }
-    if (name === 'subdomain') {
-      setSubdomainAvailable(null);
-    }
   };
 
-  const checkSubdomain = async () => {
+  const checkDomainAndDatabase = async () => {
     if (!form.subdomain || form.subdomain.length < 3) {
-      toast.error("Please enter a valid Sub-domain name (at least 3 characters)");
+      showToast.error("Please enter a valid domain & database name (at least 3 characters)");
       return;
     }
 
-    setCheckingSubdomain(true);
+    setCheckingDomainDb(true);
     try {
       const response = await API.post("/tenant-setup/check-subdomain", {
         subdomain: form.subdomain.toLowerCase(),
       }, { timeout: 60000 });
 
       if (response.data.success) {
-        setSubdomainAvailable(response.data.available);
+        setDomainDbAvailable(response.data.available);
+        setProposedDatabaseName(response.data.databaseName || `${form.subdomain.toLowerCase()}_db`);
         if (response.data.available) {
-          toast.success(response.data.message);
+          showToast.success(response.data.message);
         } else {
-          toast.error(response.data.message);
+          showToast.error(response.data.message);
         }
       }
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to check sub-domain name"
+      showToast.error(
+        error.response?.data?.message || "Failed to check domain and database name",
       );
-      setSubdomainAvailable(null);
+      setDomainDbAvailable(null);
+      setProposedDatabaseName("");
     } finally {
-      setCheckingSubdomain(false);
-    }
-  };
-
-  const checkOrgId = async () => {
-    if (!form.orgId || form.orgId.length < 3) {
-      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_ENTER_A_VALID_ORGANIZATION_ID_AT_LEAST_3_CHAR_206E103D', fallbackText: 'Please enter a valid Organization ID (at least 3 characters)', type: 'error' });
-      return;
-    }
-
-    setCheckingOrgId(true);
-    try {
-      const response = await API.post("/tenant-setup/check-org-id", {
-        orgId: form.orgId.toUpperCase(),
-      }, { timeout: 60000 });
-
-      if (response.data.success) {
-        setOrgIdAvailable(response.data.available);
-        if (response.data.available) {
-          toast.success(response.data.message);
-        } else {
-          toast.error(response.data.message);
-        }
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Failed to check organization ID"
-      );
-      setOrgIdAvailable(null);
-    } finally {
-      setCheckingOrgId(false);
+      setCheckingDomainDb(false);
     }
   };
 
@@ -218,23 +190,15 @@ export default function TenantSetup() {
         return;
       }
       if (!form.subdomain || form.subdomain.length < 3) {
-        toast.error("Sub-domain name is required (minimum 3 characters)");
+        showToast.error("Domain & database name is required (minimum 3 characters)");
         return;
       }
-      if (subdomainAvailable === null) {
-        toast.error("Please check if Sub-domain name is available");
+      if (domainDbAvailable === null) {
+        showToast.error("Please check that the domain and database name are available");
         return;
       }
-      if (!subdomainAvailable) {
-        toast.error("Sub-domain name is not available. Please choose a different one.");
-        return;
-      }
-      if (orgIdAvailable === null) {
-        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_CHECK_IF_ORGANIZATION_ID_IS_AVAILABLE_63437D20', fallbackText: 'Please check if Organization ID is available', type: 'error' });
-        return;
-      }
-      if (!orgIdAvailable) {
-        showBackendTextToast({ toast, tmdId: 'TMD_ORGANIZATION_ID_IS_NOT_AVAILABLE_PLEASE_CHOOSE_A_DIF_711BF5EF', fallbackText: 'Organization ID is not available. Please choose a different one.', type: 'error' });
+      if (!domainDbAvailable) {
+        showToast.error("Domain or database name is not available. Please choose a different one.");
         return;
       }
     } else if (currentStep === 1) {
@@ -404,55 +368,19 @@ export default function TenantSetup() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Organization ID <span className="text-red-500">*</span>
                     </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        name="orgId"
-                        value={form.orgId}
-                        onChange={handleChange}
-                        required
-                        placeholder="e.g., ACME, COMPANY123"
-                        maxLength={10}
-                        className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent uppercase font-medium"
-                      />
-                      <button
-                        type="button"
-                        onClick={checkOrgId}
-                        disabled={checkingOrgId || !form.orgId || form.orgId.length < 3}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
-                      >
-                        {checkingOrgId ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Checking...
-                          </>
-                        ) : (
-                          <>
-                            <Check className="h-4 w-4" />
-                            Check
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    {orgIdAvailable !== null && (
-                      <div className={`mt-2 flex items-center gap-2 text-sm ${
-                        orgIdAvailable ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {orgIdAvailable ? (
-                          <>
-                            <CheckCircle2 className="h-4 w-4" />
-                            <span>Organization ID is available</span>
-                          </>
-                        ) : (
-                          <>
-                            <X className="h-4 w-4" />
-                            <span>Organization ID is already taken</span>
-                          </>
-                        )}
-                      </div>
-                    )}
+                    <input
+                      type="text"
+                      name="orgId"
+                      value={form.orgId}
+                      onChange={handleChange}
+                      required
+                      placeholder="e.g., SKASC, HONDA"
+                      maxLength={10}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent uppercase font-medium"
+                    />
                     <p className="mt-1 text-xs text-gray-500">
-                      Used across all tables in your tenant database. Must be unique and 3-10 characters.
+                      Internal code stored in your tenant&apos;s database records (e.g. on assets, users, branches).
+                      Other organizations on the platform can use the same code in their own isolated database.
                     </p>
                   </div>
 
@@ -474,7 +402,7 @@ export default function TenantSetup() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Sub-domain Name <span className="text-red-500">*</span>
+                        Domain &amp; Database Name <span className="text-red-500">*</span>
                       </label>
                       <div className="flex gap-2">
                         <input
@@ -489,11 +417,11 @@ export default function TenantSetup() {
                         />
                         <button
                           type="button"
-                          onClick={checkSubdomain}
-                          disabled={checkingSubdomain || !form.subdomain || form.subdomain.length < 3}
+                          onClick={checkDomainAndDatabase}
+                          disabled={checkingDomainDb || !form.subdomain || form.subdomain.length < 3}
                           className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium whitespace-nowrap"
                         >
-                          {checkingSubdomain ? (
+                          {checkingDomainDb ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin" />
                               Checking...
@@ -506,25 +434,32 @@ export default function TenantSetup() {
                           )}
                         </button>
                       </div>
-                      {subdomainAvailable !== null && (
+                      {domainDbAvailable !== null && (
                         <p className={`mt-2 text-sm flex items-center gap-1 ${
-                          subdomainAvailable ? 'text-green-600' : 'text-red-600'
+                          domainDbAvailable ? 'text-green-600' : 'text-red-600'
                         }`}>
-                          {subdomainAvailable ? (
+                          {domainDbAvailable ? (
                             <>
                               <Check className="h-4 w-4" />
-                              Sub-domain name is available
+                              Domain and database name are available
                             </>
                           ) : (
                             <>
                               <X className="h-4 w-4" />
-                              Sub-domain name is not available
+                              Domain or database name is not available
                             </>
                           )}
                         </p>
                       )}
                       <p className="mt-1 text-xs text-gray-500">
-                        Your login URL will be https://your-subdomain.yourdomain.com
+                        Must be globally unique. Used for your login URL (
+                        <span className="font-medium">https://your-name.yourdomain.com</span>
+                        ) and Postgres database (
+                        <span className="font-medium">your-name_db</span>
+                        {proposedDatabaseName ? (
+                          <> → <span className="font-semibold">{proposedDatabaseName}</span></>
+                        ) : null}
+                        ).
                       </p>
                     </div>
                     <div>
@@ -547,7 +482,7 @@ export default function TenantSetup() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={!orgIdAvailable || !subdomainAvailable || !form.orgName}
+                    disabled={!domainDbAvailable || !form.orgName || !form.orgId}
                     className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
                     Next
@@ -717,9 +652,15 @@ export default function TenantSetup() {
                         <span className="font-semibold text-gray-900">{form.orgName}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-gray-700">Sub-domain Name:</span>
+                        <span className="font-medium text-gray-700">Domain &amp; Database Name:</span>
                         <span className="font-semibold text-gray-900">{form.subdomain}</span>
                       </div>
+                      {proposedDatabaseName && (
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-700">Postgres Database:</span>
+                          <span className="font-semibold text-gray-900">{proposedDatabaseName}</span>
+                        </div>
+                      )}
                       {form.orgCity && (
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-gray-700">City:</span>

@@ -9,6 +9,34 @@ const API = axios.create({
 
 console.log('🔍 [Axios] Base URL configured as:', API_BASE_URL);
 
+const AUTH_OPTIONAL_PATHS = new Set([
+    '/',
+    '/login',
+    '/tenant-setup',
+    '/setup',
+    '/forgot-password',
+    '/reset-password',
+]);
+
+const normalizePath = (pathname) => {
+    const path = String(pathname || '/').replace(/\/+$/, '') || '/';
+    return path;
+};
+
+const isPublicAppPath = () => {
+    if (typeof window === 'undefined') return false;
+    return AUTH_OPTIONAL_PATHS.has(normalizePath(window.location.pathname));
+};
+
+const shouldSkipAuthRedirect = (config) => {
+    const url = String(config?.url || '');
+    return (
+        config?.skipAuthRedirect === true ||
+        url.includes('/text-messages/') ||
+        url.includes('/tenant-setup/')
+    );
+};
+
 API.interceptors.request.use((config) => {
     const token = useAuthStore.getState().token;
     if (token) {
@@ -23,29 +51,35 @@ API.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
-        
-        if (error.response?.status === 401 && !originalRequest._retry) {
+
+        if (!originalRequest || error.response?.status !== 401) {
+            return Promise.reject(error);
+        }
+
+        // Never disrupt public onboarding/auth pages (tenant setup, login, etc.)
+        if (isPublicAppPath() || shouldSkipAuthRedirect(originalRequest)) {
+            return Promise.reject(error);
+        }
+
+        if (!originalRequest._retry) {
             originalRequest._retry = true;
-            
+
             // Try to refresh token if available
             const authStore = useAuthStore.getState();
             if (authStore.token && authStore.user) {
                 try {
                     console.log('🔄 [Axios] Attempting token refresh...');
-                    
-                    // Call refresh token endpoint (if available)
+
                     const refreshResponse = await axios.post(`${API_BASE_URL}/auth/refresh`, {
                         token: authStore.token
                     });
-                    
+
                     if (refreshResponse.data.success) {
-                        // Update token in store
                         authStore.login({
                             ...authStore.user,
                             token: refreshResponse.data.token
                         });
-                        
-                        // Retry original request with new token
+
                         originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.token}`;
                         return API(originalRequest);
                     }
@@ -53,17 +87,12 @@ API.interceptors.response.use(
                     console.log('🔄 [Axios] Token refresh failed:', refreshError.message);
                 }
             }
-            
-            // If refresh failed or no token available, logout
+
             console.log('🔒 [Axios] Authentication failed - logging out');
             authStore.logout();
-            
-            // Only redirect if not already on login page
-            if (window.location.pathname !== '/') {
-                window.location.href = '/';
-            }
+            window.location.href = '/';
         }
-        
+
         return Promise.reject(error);
     }
 );
