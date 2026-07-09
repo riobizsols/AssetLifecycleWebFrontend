@@ -186,6 +186,10 @@ export default function TenantSetup() {
         toast.error("Sub-domain name is required (minimum 3 characters)");
         return;
       }
+      if (!form.orgCity || !form.orgCity.trim()) {
+        toast.error("City is required");
+        return;
+      }
       if (subdomainAvailable === null) {
         toast.error("Please check if Sub-domain name is available");
         return;
@@ -237,7 +241,7 @@ export default function TenantSetup() {
         orgId: form.orgId.toUpperCase(),
         orgName: form.orgName,
         subdomain: form.subdomain.toLowerCase(),
-        orgCity: form.orgCity,
+        orgCity: form.orgCity.trim(),
         adminUser: {
           fullName: adminUser.fullName,
           email: adminUser.email,
@@ -497,13 +501,14 @@ export default function TenantSetup() {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        City
+                        City <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         name="orgCity"
                         value={form.orgCity}
                         onChange={handleChange}
+                        required
                         placeholder="e.g., New York"
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
@@ -515,7 +520,7 @@ export default function TenantSetup() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={!orgIdAvailable || !subdomainAvailable || !form.orgName}
+                    disabled={!orgIdAvailable || !subdomainAvailable || !form.orgName || !form.orgCity.trim()}
                     className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
                     Next

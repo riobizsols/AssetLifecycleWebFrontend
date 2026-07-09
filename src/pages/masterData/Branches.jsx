@@ -47,12 +47,20 @@ const Branches = () => {
   const { t } = useLanguage();
 
   // Create columns with translations
+  const cityFormatter = (value) => {
+    const raw = String(value ?? "").trim();
+    if (!raw || raw.toLowerCase() === "default city") {
+      return <span className="italic text-gray-400">No city</span>;
+    }
+    return raw;
+  };
+
   const columns = [
     { label: t('branches.branchId'), name: "branch_id", visible: true },
     { label: t('branches.organizationId'), name: "org_id", visible: true },
     { label: t('branches.isActive'), name: "int_status", visible: true },
     { label: t('branches.branchName'), name: "text", visible: true },
-    { label: t('branches.city'), name: "city", visible: true },
+    { label: t('branches.city'), name: "city", visible: true, formatter: cityFormatter },
     { label: t('branches.branchCode'), name: "branch_code", visible: true },
     { label: t('branches.createdBy'), name: "created_by", visible: false },
     { label: t('branches.extId'), name: "ext_id", visible: false },
