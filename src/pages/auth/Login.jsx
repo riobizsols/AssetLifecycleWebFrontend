@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
+import { useNavigationStore } from "../../store/useNavigationStore";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
@@ -61,6 +62,9 @@ export default function Login() {
 
       // Store user + token in Zustand (including requiresPasswordChange flag)
       login({ ...user, token, requiresPasswordChange });
+
+      // Load permissions before routing to protected admin screens
+      await useNavigationStore.getState().fetchNavigation(user?.user_id, { force: true });
 
       // Log audit event for successful login
       await recordActionByNameWithFetch('Logging In', { 
@@ -142,12 +146,12 @@ export default function Login() {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={show ? "text" : "password"}
                   required
                   placeholder={t('auth.password')}
                   value={form.password}
                   onChange={handleChange}
-                  className={`${passwordInputClass}${show ? " app-password-input--visible" : ""}`}
+                  className={passwordInputClass}
                   autoComplete="current-password"
                 />
 
@@ -177,7 +181,7 @@ export default function Login() {
               disabled={loading}
               className="w-full bg-[#0E2F4B] text-white py-2 rounded-md hover:bg-[#123b5d] transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? t('common.loading') : "Tenant Login"}
+              {loading ? t('common.loading') : t('auth.login')}
             </button>
           </form>
         </div>

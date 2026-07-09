@@ -4,6 +4,7 @@ import { useNavigation } from "../hooks/useNavigation";
 import {
   buildFlatAccessMap,
   hasViewAccess,
+  normalizeAppId,
   resolveInheritedAccess,
 } from "../utils/accessLevel";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -38,11 +39,17 @@ import { useBreakdownReasonCodesStore } from "../store/useBreakdownReasonCodesSt
 import { useTextMessagesStore } from "../store/useTextMessagesStore";
 import { useAuthStore } from "../store/useAuthStore";
 import {
+  ensureDefaultDashboardNav,
+  ensureUsersInMasterData,
+  sortMasterDataNavOrder,
+  sortScrapNavOrder,
+  sortAdminSettingsNavOrder,
+  sortInspectionNavOrder,
+} from "../utils/navigationDefaults";
+import {
   Menu,
-  Eye,
   Edit,
   Shield,
-  Lock,
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
@@ -65,10 +72,13 @@ import {
   DollarSign,
   GitBranch,
   AlertTriangle,
+  Tag,
   Gauge,
   Printer,
   Clock,
   Activity,
+  MessageSquareText,
+  FileCheck,
 } from "lucide-react";
 
 const normalizeNavAppId = (id) =>
@@ -79,11 +89,98 @@ const compactNavAppId = (id) =>
 
 const resolveNavAppId = (appId) => compactNavAppId(appId) || normalizeNavAppId(appId);
 
+const isAdminSettingsHub = (appId, label) =>
+  resolveNavAppId(appId) === "ADMINSETTINGS" ||
+  String(label || "").trim().toLowerCase() === "admin settings";
+
 const EMPLOYEE_TECH_CERT_APP_IDS = [
   "TECHCERTUPLOAD",
   "TECHNICIANCERTIFICATES",
   "EMPLOYEE TECH CERTIFICATION",
 ];
+
+const SYNTHETIC_APPROVAL_APP_IDS = new Set(
+  [
+    "MAINTENANCEAPPROVAL",
+    "INSPECTIONAPPROVAL",
+    "SCRAPMAINTENANCEAPPROVAL",
+    "VENDORRENEWALAPPROVAL",
+    "HR/MANAGERAPPROVAL",
+  ].map((id) => normalizeNavAppId(id)),
+);
+
+function hasGroupedApprovalItems(items) {
+  const walk = (nodes) => {
+    for (const node of nodes || []) {
+      if (!node.children?.length) continue;
+      const hasApprovalChild = node.children.some(
+        (child) =>
+          child.app_id &&
+          SYNTHETIC_APPROVAL_APP_IDS.has(normalizeNavAppId(child.app_id)),
+      );
+      if (hasApprovalChild) return true;
+      if (walk(node.children)) return true;
+    }
+    return false;
+  };
+  return walk(items);
+}
+
+const DEFAULT_NAV_GROUP_MEMBERS = {
+  Maintenance: [
+    "SUPERVISORAPPROVAL",
+    "MAINTENANCESCHEDULE",
+    "MAINTENANCEAPPROVAL",
+  ],
+  Scrap: ["SCRAPASSETS", "SCRAPMAINTENANCEAPPROVAL", "SCRAPSALES"],
+  Inspection: [
+    "INSPECTIONAPPROVAL",
+    "INSPECTIONVIEW",
+    "INSPECTIONFREQUENCY",
+    "INSPECTIONCHECKLISTS",
+    "ASSETTYPECHECKLISTMAPPING",
+  ],
+  "Admin Settings": ["AUDITLOGS", "AUDITLOGCONFIG"],
+  "Asset Assignment": ["DEPTASSIGNMENT", "EMPASSIGNMENT"],
+  "Master Data": [
+    "ASSETTYPES",
+    "BRANCHES",
+    "DEPARTMENTS",
+    "DEPARTMENTSADMIN",
+    "DEPARTMENTSASSET",
+    "ROLES",
+    "USERS",
+    "USERROLES",
+    "PRODSERV",
+    "VENDORS",
+    "MAINTENANCESCHEDULE",
+    "INSPECTIONCHECKLISTS",
+    "INSPECTIONFREQUENCY",
+    "ASSETTYPECHECKLISTMAPPING",
+  ],
+  Reports: [
+    "ASSETLIFECYCLEREPORT",
+    "ASSETREPORT",
+    "MAINTENANCEHISTORY",
+    "ASSETVALUATION",
+    "ASSETWORKFLOWHISTORY",
+    "BREAKDOWNHISTORY",
+    "USAGEBASEDASSETREPORT",
+    "REOPENEDBREAKDOWNS",
+    "SLAREPORT",
+  ],
+};
+
+const isNavGroup = (item) =>
+  Boolean(
+    item?.is_group === true ||
+    item?.is_group === 1 ||
+    item?.is_group === "Yes" ||
+    item?.children?.length,
+  );
+
+const getNavItemKey = (item) =>
+  item?.combineKey || item?.id || `${item?.app_id || "group"}-${item?.label || ""}`;
 
 const SIDEBAR_MENU_GROUPS = [
   {
@@ -234,9 +331,92 @@ function collectGroupChildren(flatItems, groupDef, accessMap, options = {}) {
   return children;
 }
 
-function getGroupedAppIds() {
+const normalizeGroupLabel = (label) =>
+  String(label || "").trim().toLowerCase();
+
+const CANONICAL_GROUP_LABELS = {
+  maintainance: "maintenance",
+};
+
+function canonicalGroupLabel(label) {
+  const normalized = normalizeGroupLabel(label);
+  return CANONICAL_GROUP_LABELS[normalized] || normalized;
+}
+
+function findNavGroupByLabel(items, groupLabel) {
+  const canonical = canonicalGroupLabel(groupLabel);
+  return items.find(
+    (item) => isNavGroup(item) && canonicalGroupLabel(item.label) === canonical,
+  );
+}
+
+function isSyntheticNavGroup(item) {
+  const id = String(item?.id || "");
+  return (
+    id.startsWith("ensure-") ||
+    id.startsWith("repair-") ||
+    id.startsWith("synthetic-")
+  );
+}
+
+function isJobRoleConfiguredGroup(item) {
+  return (
+    isNavGroup(item) &&
+    !isAdminSettingsHub(item.app_id, item.label) &&
+    !isSyntheticNavGroup(item)
+  );
+}
+
+function isNavMemberGrouped(items, member, groupLabel) {
+  const canonical = canonicalGroupLabel(groupLabel);
+  return items.some(
+    (parent) =>
+      isNavGroup(parent) &&
+      canonicalGroupLabel(parent.label) === canonical &&
+      (parent.children || []).some(
+        (child) =>
+          normalizeNavAppId(child.app_id) === normalizeNavAppId(member.app_id),
+      ),
+  );
+}
+
+/** True when app_id is already nested under any sidebar group (any label). */
+function isNavMemberUnderAnyGroup(items, member) {
+  const memberKey = normalizeNavAppId(member.app_id);
+  const walk = (nodes) => {
+    for (const item of nodes || []) {
+      if (!isNavGroup(item)) continue;
+      if (
+        (item.children || []).some(
+          (child) => normalizeNavAppId(child.app_id) === memberKey,
+        )
+      ) {
+        return true;
+      }
+      if (walk(item.children)) return true;
+    }
+    return false;
+  };
+  return walk(items);
+}
+
+function getDbMenuGroupLabels(items) {
+  const labels = new Set();
+  const walk = (nodes) => {
+    for (const item of nodes || []) {
+      if (isNavGroup(item)) {
+        labels.add(normalizeGroupLabel(item.label));
+      }
+      if (item.children?.length) walk(item.children);
+    }
+  };
+  walk(items);
+  return labels;
+}
+
+function getGroupedAppIdsForDefs(groupDefs) {
   const groupedAppIds = new Set();
-  SIDEBAR_MENU_GROUPS.forEach((group) => {
+  groupDefs.forEach((group) => {
     group.children.forEach((child) => {
       groupedAppIds.add(normalizeNavAppId(child.app_id));
       (child.aliases || []).forEach((alias) =>
@@ -247,84 +427,660 @@ function getGroupedAppIds() {
   return groupedAppIds;
 }
 
+function pruneEmptyGroups(items) {
+  if (!items?.length) return items;
+  return items
+    .map((item) => ({
+      ...item,
+      children: item.children?.length
+        ? pruneEmptyGroups(item.children)
+        : item.children,
+    }))
+    .filter((item) => !isNavGroup(item) || item.children?.length);
+}
+
+function dedupeTopLevelNavItems(items) {
+  if (!items?.length) return items;
+
+  const merged = [];
+  const indexByKey = new Map();
+
+  for (const item of items) {
+    const key = isNavGroup(item)
+      ? `group:${canonicalGroupLabel(item.label)}`
+      : `app:${normalizeNavAppId(item.app_id) || item.id}`;
+
+    if (!indexByKey.has(key)) {
+      indexByKey.set(key, merged.length);
+      merged.push(item);
+      continue;
+    }
+
+    const existingIndex = indexByKey.get(key);
+    const existing = merged[existingIndex];
+    if (!isNavGroup(item) || !isNavGroup(existing) || !item.children?.length) {
+      continue;
+    }
+
+    const childKeys = new Set(
+      (existing.children || []).map(
+        (child) => normalizeNavAppId(child.app_id) || String(child.id || ""),
+      ),
+    );
+    const extraChildren = item.children.filter((child) => {
+      const childKey = normalizeNavAppId(child.app_id) || String(child.id || "");
+      return childKey && !childKeys.has(childKey);
+    });
+
+    if (extraChildren.length) {
+      merged[existingIndex] = {
+        ...existing,
+        label: isSyntheticNavGroup(existing) ? item.label : existing.label,
+        children: [...(existing.children || []), ...extraChildren],
+      };
+    }
+  }
+
+  return merged;
+}
+
+function rebuildNavigationTree(items) {
+  const flat = flattenNavItems(items);
+  const byId = new Map();
+
+  flat.forEach((item) => {
+    byId.set(item.id, { ...item, children: [] });
+  });
+
+  const roots = [];
+  const seenRoots = new Set();
+
+  flat.forEach((item) => {
+    const node = byId.get(item.id);
+    const parentKey = item.parent_id;
+
+    if (parentKey) {
+      const parent =
+        byId.get(parentKey) ||
+        [...byId.values()].find(
+          (candidate) => candidate.combineKey === parentKey,
+        );
+      if (parent) {
+        parent.children.push(node);
+        return;
+      }
+    }
+
+    if (!seenRoots.has(node.id)) {
+      seenRoots.add(node.id);
+      roots.push(node);
+    }
+  });
+
+  return roots.sort((a, b) => (a.seq ?? 9999) - (b.seq ?? 9999));
+}
+
+function stripOrphanedTopLevelDuplicates(items) {
+  const nestedChildKeys = new Set();
+
+  const collectChildKeys = (nodes) => {
+    for (const node of nodes || []) {
+      if (!node.children?.length) continue;
+      for (const child of node.children) {
+        const key = normalizeNavAppId(child.app_id) || String(child.id || "");
+        if (key) nestedChildKeys.add(key);
+        collectChildKeys([child]);
+      }
+    }
+  };
+
+  collectChildKeys(items);
+
+  return items.filter((item) => {
+    if (isNavGroup(item)) return true;
+    const key = normalizeNavAppId(item.app_id) || String(item.id || "");
+    return !nestedChildKeys.has(key);
+  });
+}
+
+function normalizeNavigationTree(items) {
+  if (!items?.length) return items;
+
+  const hasNestedGroups = items.some((item) => item.children?.length > 0);
+  const hasParentRefs = items.some((item) => item.parent_id);
+
+  let tree = items;
+
+  if (!hasNestedGroups && hasParentRefs) {
+    tree = rebuildNavigationTree(items);
+  }
+
+  tree = stripOrphanedTopLevelDuplicates(tree);
+
+  return pruneEmptyGroups(tree);
+}
+
+const TOP_LEVEL_APPROVAL_APP_IDS = new Set([
+  "VENDORRENEWALAPPROVAL",
+  "HR/MANAGERAPPROVAL",
+]);
+
+function flattenApprovalsGroup(items) {
+  const approvalsGroup = items.find(
+    (item) =>
+      isNavGroup(item) && normalizeGroupLabel(item.label) === "approvals",
+  );
+  if (!approvalsGroup) return items;
+
+  const topLevelChildren = [];
+  const nestedChildren = [];
+
+  for (const child of approvalsGroup.children || []) {
+    const appKey = normalizeNavAppId(child.app_id);
+    if (TOP_LEVEL_APPROVAL_APP_IDS.has(appKey)) {
+      topLevelChildren.push({ ...child, is_group: false, children: undefined });
+    } else {
+      nestedChildren.push({ ...child, is_group: false, children: undefined });
+    }
+  }
+
+  let next = items.filter(
+    (item) =>
+      !(isNavGroup(item) && normalizeGroupLabel(item.label) === "approvals"),
+  );
+
+  for (const child of topLevelChildren) {
+    const appKey = normalizeNavAppId(child.app_id);
+    if (
+      !next.some(
+        (item) => normalizeNavAppId(item.app_id) === appKey,
+      )
+    ) {
+      next.push(child);
+    }
+  }
+
+  if (nestedChildren.length) {
+    next = repairOrphanedNavGroups([...next, ...nestedChildren]);
+  }
+
+  return next;
+}
+
+/** Move Reopened Breakdowns from Report Breakdown into the Reports menu group. */
+function moveReopenedBreakdownsToReports(items) {
+  if (!items?.length) return items;
+
+  const reopenKey = normalizeNavAppId("REOPENEDBREAKDOWNS");
+  let reopenedItem = null;
+
+  const stripReopened = (nodes) =>
+    (nodes || [])
+      .map((item) => {
+        if (isNavGroup(item)) {
+          const children = stripReopened(item.children);
+          const removed = (children || []).find(
+            (child) => normalizeNavAppId(child.app_id) === reopenKey,
+          );
+          if (removed) {
+            reopenedItem = reopenedItem || removed;
+          }
+          return {
+            ...item,
+            children: (children || []).filter(
+              (child) => normalizeNavAppId(child.app_id) !== reopenKey,
+            ),
+          };
+        }
+
+        if (normalizeNavAppId(item.app_id) === reopenKey) {
+          reopenedItem = reopenedItem || item;
+          return null;
+        }
+
+        return item;
+      })
+      .filter(Boolean);
+
+  let result = stripReopened(items);
+  if (!reopenedItem) return result;
+
+  const reportsGroup = findNavGroupByLabel(result, "Reports");
+  if (!reportsGroup) {
+    return [...result, { ...reopenedItem, is_group: false, children: undefined }];
+  }
+
+  const alreadyInReports = (reportsGroup.children || []).some(
+    (child) => normalizeNavAppId(child.app_id) === reopenKey,
+  );
+  if (alreadyInReports) return result;
+
+  result = result.map((item) => {
+    if (!isNavGroup(item) || canonicalGroupLabel(item.label) !== "reports") {
+      return item;
+    }
+    return {
+      ...item,
+      children: [
+        ...(item.children || []),
+        { ...reopenedItem, is_group: false, children: undefined },
+      ],
+    };
+  });
+
+  return result;
+}
+
+function ensureDomainNavGroups(items) {
+  const flat = flattenNavItems(items);
+  let result = [...items];
+
+  for (const [groupLabel, appIds] of Object.entries(DEFAULT_NAV_GROUP_MEMBERS)) {
+    const groupKey = canonicalGroupLabel(groupLabel);
+    const memberKeys = appIds.map(normalizeNavAppId);
+
+    let group = findNavGroupByLabel(result, groupLabel);
+
+    const looseMembers = flat.filter(
+      (item) =>
+        !isNavGroup(item) &&
+        item.app_id &&
+        memberKeys.includes(normalizeNavAppId(item.app_id)) &&
+        !isNavMemberGrouped(result, item, groupLabel) &&
+        !isNavMemberUnderAnyGroup(result, item),
+    );
+
+    if (!looseMembers.length) continue;
+
+    if (!group) {
+      group = {
+        id: `ensure-${groupKey}`,
+        label: groupLabel,
+        is_group: true,
+        seq: Math.min(...looseMembers.map((m) => m.seq ?? 9999)),
+        access_level: looseMembers[0].access_level,
+        children: [],
+      };
+      result.push(group);
+    } else {
+      group = {
+        ...group,
+        children: [...(group.children || [])],
+      };
+      result = result.map((item) =>
+        isNavGroup(item) &&
+        canonicalGroupLabel(item.label) === groupKey
+          ? group
+          : item,
+      );
+    }
+
+    for (const member of looseMembers) {
+      const appKey = normalizeNavAppId(member.app_id);
+      if (
+        !group.children.some(
+          (child) => normalizeNavAppId(child.app_id) === appKey,
+        )
+      ) {
+        group.children.push({
+          ...member,
+          is_group: false,
+          children: undefined,
+        });
+      }
+    }
+
+    group.children.sort((a, b) => {
+      const rankA = memberKeys.indexOf(normalizeNavAppId(a.app_id));
+      const rankB = memberKeys.indexOf(normalizeNavAppId(b.app_id));
+      const safeA = rankA >= 0 ? rankA : 1000;
+      const safeB = rankB >= 0 ? rankB : 1000;
+      if (safeA !== safeB) return safeA - safeB;
+      return (a.seq ?? 9999) - (b.seq ?? 9999);
+    });
+
+    result = result.filter(
+      (item) =>
+        isNavGroup(item) ||
+        !memberKeys.includes(normalizeNavAppId(item.app_id)),
+    );
+  }
+
+  return result;
+}
+
+const SIDEBAR_LABEL_ORDER = [
+  "dashboard",
+  "assets",
+  "asset assignment",
+  "maintenance",
+  "inspection",
+  "reports",
+  "scrap",
+  "admin settings",
+  "master data",
+  "workorder management",
+  "serial number print",
+  "vendor renewal approval",
+  "hr/manager approval",
+  "certificates",
+  "report breakdown",
+  "asset groups",
+  "group asset",
+];
+
+function sortSidebarNav(items) {
+  const rank = (item) => {
+    const label = normalizeGroupLabel(item.label);
+    const idx = SIDEBAR_LABEL_ORDER.indexOf(label);
+    if (idx >= 0) return idx;
+    return 1000 + (item.seq ?? 9999);
+  };
+  return [...items].sort((a, b) => rank(a) - rank(b));
+}
+
+function finalizeSidebarNavigation(items) {
+  if (!items?.length) return items;
+
+  let tree = normalizeNavigationTree(items);
+  tree = ensureDefaultDashboardNav(tree);
+  tree = ensureUsersInMasterData(tree);
+  tree = reorganizeSidebarGroups(tree);
+  tree = repairOrphanedNavGroups(tree);
+  tree = flattenApprovalsGroup(tree);
+  tree = moveReopenedBreakdownsToReports(tree);
+  tree = ensureDomainNavGroups(tree);
+  tree = sortMasterDataNavOrder(tree);
+  tree = sortScrapNavOrder(tree);
+  tree = sortAdminSettingsNavOrder(tree);
+  tree = sortInspectionNavOrder(tree);
+  tree = stripOrphanedTopLevelDuplicates(tree);
+  tree = pruneEmptyGroups(tree);
+  return dedupeTopLevelNavItems(sortSidebarNav(tree));
+}
+
+function repairOrphanedNavGroups(items) {
+  if (!items?.length) return items;
+
+  const repairedGroups = new Map();
+
+  for (const item of items) {
+    if (!isNavGroup(item)) continue;
+    repairedGroups.set(canonicalGroupLabel(item.label), {
+      ...item,
+      children: [...(item.children || [])],
+    });
+  }
+
+  const absorbed = new Set();
+
+  for (const item of items) {
+    if (isNavGroup(item)) continue;
+
+    const appKey = normalizeNavAppId(item.app_id);
+    if (!appKey) continue;
+
+    for (const [groupLabel, appIds] of Object.entries(DEFAULT_NAV_GROUP_MEMBERS)) {
+      if (!appIds.map(normalizeNavAppId).includes(appKey)) continue;
+
+      const groupKey = canonicalGroupLabel(groupLabel);
+      if (!repairedGroups.has(groupKey)) {
+        repairedGroups.set(groupKey, {
+          id: `repair-${groupKey}`,
+          label: groupLabel,
+          is_group: true,
+          seq: item.seq ?? 9999,
+          access_level: item.access_level,
+          children: [],
+        });
+      }
+
+      const group = repairedGroups.get(groupKey);
+      if (
+        !group.children.some(
+          (child) => normalizeNavAppId(child.app_id) === appKey,
+        )
+      ) {
+        group.children.push(item);
+      }
+      absorbed.add(appKey);
+      break;
+    }
+  }
+
+  const result = [];
+  const addedGroups = new Set();
+
+  for (const item of items) {
+    if (isNavGroup(item)) {
+      const groupKey = canonicalGroupLabel(item.label);
+      if (addedGroups.has(groupKey)) continue;
+      const repaired = repairedGroups.get(groupKey);
+      if (repaired?.children?.length) {
+        result.push(repaired);
+        addedGroups.add(groupKey);
+      }
+      continue;
+    }
+
+    if (!absorbed.has(normalizeNavAppId(item.app_id))) {
+      result.push(item);
+    }
+  }
+
+  for (const [groupKey, group] of repairedGroups) {
+    if (!addedGroups.has(groupKey) && group.children?.length) {
+      result.push(group);
+    }
+  }
+
+  return result.sort((a, b) => (a.seq ?? 9999) - (b.seq ?? 9999));
+}
+
 /** Groups Approvals, Certificates, and Report Breakdown into dropdown menus. */
 function reorganizeSidebarGroups(items) {
   if (!items?.length) return items;
 
   const flatItems = flattenNavItems(items);
   const accessMap = buildFlatAccessMap(flatItems);
-  const groupedAppIds = getGroupedAppIds();
+  const dbGroupLabels = getDbMenuGroupLabels(items);
+  const syntheticGroupDefs = SIDEBAR_MENU_GROUPS.filter((groupDef) => {
+    if (groupDef.id === "synthetic-approvals") return false;
 
-  const syntheticGroups = SIDEBAR_MENU_GROUPS.map((groupDef) => {
-    const isReportBreakdownGroup = groupDef.id === "synthetic-report-breakdown";
-    const reportBreakdownAccess =
-      resolveInheritedAccess((id) => accessMap.get(id), "REPORTBREAKDOWN") ||
-      resolveInheritedAccess((id) => accessMap.get(id), "REOPENEDBREAKDOWNS");
+    const label = normalizeGroupLabel(groupDef.label);
+    if (dbGroupLabels.has(label)) return false;
+    if (label === "approvals" && dbGroupLabels.has("approval")) return false;
+    if (groupDef.id === "synthetic-approvals" && hasGroupedApprovalItems(items)) {
+      return false;
+    }
+    if (
+      groupDef.id === "synthetic-approvals" &&
+      (dbGroupLabels.has("maintenance") ||
+        dbGroupLabels.has("inspection") ||
+        dbGroupLabels.has("scrap"))
+    ) {
+      return false;
+    }
+    return true;
+  });
 
-    const children = collectGroupChildren(flatItems, groupDef, accessMap, {
-      forceAllChildren: isReportBreakdownGroup && hasViewAccess(reportBreakdownAccess),
-      fallbackAccessLevel: reportBreakdownAccess,
-    });
+  if (!syntheticGroupDefs.length) {
+    return pruneEmptyGroups(items);
+  }
 
-    if (!children.length) return null;
+  const syntheticGroups = syntheticGroupDefs
+    .map((groupDef) => {
+      const isReportBreakdownGroup = groupDef.id === "synthetic-report-breakdown";
+      const reportBreakdownAccess = resolveInheritedAccess(
+        (id) => accessMap.get(id),
+        "REPORTBREAKDOWN",
+      );
 
-    const minSeq = Math.min(...children.map((child) => child.seq ?? 9999));
+      const children = collectGroupChildren(flatItems, groupDef, accessMap, {
+        forceAllChildren:
+          isReportBreakdownGroup && hasViewAccess(reportBreakdownAccess),
+        fallbackAccessLevel: reportBreakdownAccess,
+      });
 
-    return {
-      id: groupDef.id,
-      app_id: groupDef.app_id,
-      label: groupDef.label,
-      is_group: true,
-      seq: minSeq,
-      access_level: children.some((child) => child.access_level === "A")
-        ? "A"
-        : children[0].access_level,
-      children,
-    };
-  }).filter(Boolean);
+      if (!children.length) return null;
 
-  if (!syntheticGroups.length) return items;
+      const minSeq = Math.min(...children.map((child) => child.seq ?? 9999));
 
-  const remainingItems = removeAppIdsFromTree(items, groupedAppIds);
+      return {
+        id: groupDef.id,
+        app_id: groupDef.app_id,
+        label: groupDef.label,
+        is_group: true,
+        seq: minSeq,
+        access_level: children.some((child) => child.access_level === "A")
+          ? "A"
+          : children[0].access_level,
+        children,
+      };
+    })
+    .filter(Boolean);
+
+  if (!syntheticGroups.length) {
+    return pruneEmptyGroups(items);
+  }
+
+  const groupedAppIds = getGroupedAppIdsForDefs(
+    syntheticGroupDefs.filter((groupDef) =>
+      syntheticGroups.some((group) => group.id === groupDef.id),
+    ),
+  );
+  const remainingItems = pruneEmptyGroups(
+    removeAppIdsFromTree(items, groupedAppIds),
+  );
   return [...remainingItems, ...syntheticGroups].sort(
-    (a, b) => (a.seq ?? 9999) - (b.seq ?? 9999)
+    (a, b) => (a.seq ?? 9999) - (b.seq ?? 9999),
   );
 }
 
-/** Injects synthetic "One Time Cron" nav row under Master Data (admin settings mode). */
-function injectOneTimeCronUnderMasterData(items) {
-  if (!items?.length) return items;
-  return items.map((item) => {
-    const children = item.children?.length
-      ? injectOneTimeCronUnderMasterData(item.children)
-      : item.children;
-    if (
-      item.is_group &&
-      (item.app_id === "MASTERDATA" || item.label === "Master Data")
-    ) {
-      const ch = children || [];
-      if (ch.some((c) => c.app_id === "ONETIMECRON")) {
-        return { ...item, children: ch };
-      }
-      return {
-        ...item,
-        children: [
-          ...ch,
-          {
-            id: "synthetic-onetime-cron",
-            app_id: "ONETIMECRON",
-            label: "One Time Cron",
-            access_level: "A",
-            is_group: false,
-          },
-        ],
-      };
-    }
-    if (children !== item.children) {
-      return { ...item, children };
-    }
-    return item;
-  });
+/** Admin configuration modules under the Admin Settings sidebar group (excludes Text Messages). */
+const ADMIN_SETTINGS_GROUP_MODULES = [
+  { app_id: "USERROLES", label: "Job Roles", seq: 20 },
+  { app_id: "COLUMNACCESSCONFIG", label: "Column Access Config", seq: 30 },
+  { app_id: "BULKSERIALNUMBERPRINT", label: "Bulk Serial Number Print", seq: 40 },
+  { app_id: "MAINTENANCECONFIG", label: "Maintenance Configuration", seq: 50 },
+  { app_id: "PROPERTIES", label: "Properties", seq: 60 },
+  { app_id: "BREAKDOWNREASONCODES", label: "Breakdown Reason Codes", seq: 70 },
+  { app_id: "CERTIFICATIONS", label: "Certifications", seq: 80 },
+  { app_id: "JOBMONITOR", label: "Job Monitor", seq: 90 },
+];
+
+const MASTER_DATA_CRON_MODULE = {
+  app_id: "ONETIMECRON",
+  label: "One Time Cron",
+  seq: 10,
+};
+
+function canAccessAdminSidebarItem(appId, accessMap, getAccessLevelFn) {
+  const lookup = (id) =>
+    accessMap.get(normalizeAppId(id)) ?? getAccessLevelFn(id);
+  const resolve = (id) => resolveInheritedAccess(lookup, id) ?? lookup(id);
+  const key = normalizeAppId(appId);
+
+  if (key === "ONETIMECRON") {
+    return (
+      hasViewAccess(resolve("ONETIMECRON")) ||
+      hasViewAccess(resolve("ADMINSETTINGS"))
+    );
+  }
+  if (key === "JOBMONITOR") {
+    return (
+      hasViewAccess(resolve("JOBMONITOR")) ||
+      hasViewAccess(resolve("ADMINSETTINGS"))
+    );
+  }
+  if (key === "CERTIFICATIONS") {
+    return (
+      hasViewAccess(resolve("CERTIFICATIONS")) ||
+      hasViewAccess(resolve("ADMINSETTINGS"))
+    );
+  }
+  return hasViewAccess(resolve(appId));
+}
+
+function buildAdminSettingsModuleChild(mod, flatItems, accessMap, getAccessLevelFn, idx) {
+  if (!canAccessAdminSidebarItem(mod.app_id, accessMap, getAccessLevelFn)) {
+    return null;
+  }
+
+  const lookup = (id) =>
+    accessMap.get(normalizeAppId(id)) ?? getAccessLevelFn(id);
+  const resolveItemAccess = (appId) =>
+    resolveInheritedAccess(lookup, appId) ?? lookup(appId);
+
+  const navMatch = flatItems.find(
+    (item) => resolveNavAppId(item.app_id) === resolveNavAppId(mod.app_id),
+  );
+
+  return {
+    id: navMatch?.id || `admin-sidebar-${resolveNavAppId(mod.app_id)}`,
+    app_id: mod.app_id,
+    label: navMatch?.label || navMatch?.app_name || mod.label,
+    access_level: resolveItemAccess(mod.app_id),
+    is_group: false,
+    seq: navMatch?.seq ?? mod.seq ?? idx,
+  };
+}
+
+/** Grouped admin-settings sidebar: Admin Settings + Master Data (One Time Cron only). */
+function buildAdminSettingsSidebarNav(navigation, getAccessLevelFn) {
+  const flatItems = flattenNavItems(navigation);
+  const accessMap = buildFlatAccessMap(flatItems);
+
+  const lookup = (id) =>
+    accessMap.get(normalizeAppId(id)) ?? getAccessLevelFn(id);
+  const resolveItemAccess = (appId) =>
+    resolveInheritedAccess(lookup, appId) ?? lookup(appId);
+
+  const adminSettingsChildren = ADMIN_SETTINGS_GROUP_MODULES.map((mod, idx) =>
+    buildAdminSettingsModuleChild(mod, flatItems, accessMap, getAccessLevelFn, idx),
+  )
+    .filter(Boolean)
+    .sort((a, b) => (a.seq ?? 9999) - (b.seq ?? 9999));
+
+  const masterDataChildren = [
+    buildAdminSettingsModuleChild(
+      MASTER_DATA_CRON_MODULE,
+      flatItems,
+      accessMap,
+      getAccessLevelFn,
+      0,
+    ),
+  ].filter(Boolean);
+
+  const groups = [];
+
+  if (adminSettingsChildren.length) {
+    groups.push({
+      id: "admin-settings-sidebar-group",
+      app_id: "ADMINSETTINGS",
+      label: "Admin Settings",
+      is_group: true,
+      access_level:
+        resolveItemAccess("ADMINSETTINGS") ||
+        adminSettingsChildren[0]?.access_level,
+      seq: 10,
+      children: adminSettingsChildren,
+    });
+  }
+
+  if (masterDataChildren.length) {
+    groups.push({
+      id: "master-data-sidebar-group",
+      app_id: "MASTERDATA",
+      label: "Master Data",
+      is_group: true,
+      access_level: masterDataChildren[0]?.access_level,
+      seq: 20,
+      children: masterDataChildren,
+    });
+  }
+
+  return groups;
 }
 
 const DatabaseSidebar = () => {
@@ -333,8 +1089,6 @@ const DatabaseSidebar = () => {
     loading,
     error,
     getAccessLevel,
-    getAccessLevelLabel,
-    getAccessLevelColor,
   } = useNavigation();
   const location = useLocation();
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -346,10 +1100,10 @@ const DatabaseSidebar = () => {
 
   const navigationForRender = useMemo(() => {
     if (isAdminSettingsMode) {
-      return injectOneTimeCronUnderMasterData(navigation);
+      return buildAdminSettingsSidebarNav(navigation, getAccessLevel);
     }
-    return reorganizeSidebarGroups(navigation);
-  }, [navigation, isAdminSettingsMode]);
+    return finalizeSidebarNavigation(navigation);
+  }, [navigation, isAdminSettingsMode, getAccessLevel]);
 
   const toggleDropdown = (id) => {
     setOpenDropdown(openDropdown === id ? null : id);
@@ -369,7 +1123,10 @@ const DatabaseSidebar = () => {
   };
 
   // Translate navigation labels
-  const translateLabel = (label) => {
+  const translateLabel = (label, appId = null) => {
+    if (normalizeNavAppId(appId) === "USERS") {
+      return t("navigation.users");
+    }
     // Create a mapping from English labels to translation keys
     const labelMap = {
       'Dashboard': t('navigation.dashboard'),
@@ -394,7 +1151,10 @@ const DatabaseSidebar = () => {
       'User Roles': t('navigation.userRoles'),
       'Column Access Config': t('navigation.columnAccessConfig'),
       'One Time Cron': t('navigation.oneTimeCron'),
+      'Text Messages': 'Text Messages',
       'Job Monitor': 'Job Monitor',
+      'Maintenance Configuration': 'Maintenance Configuration',
+      'Breakdown Reason Codes': 'Breakdown Reason Codes',
       'Bulk Upload': t('navigation.bulkUpload'),
       'Asset Assignment': t('navigation.assetAssignment'),
       'Cost Center Transfer': t('navigation.costCenterTransfer'),
@@ -467,32 +1227,6 @@ const DatabaseSidebar = () => {
     }
 
     return label;
-  };
-
-  // Get icon based on access level
-  const getAccessIcon = (accessLevel) => {
-    switch (accessLevel) {
-      case "A":
-        return <Shield size={12} className="text-green-400" />;
-      case "D":
-      case "V":
-        return <Eye size={12} className="text-yellow-400" />;
-      default:
-        return <Lock size={12} className="text-red-400" />;
-    }
-  };
-
-  // Get color class based on access level
-  const getAccessColorClass = (accessLevel) => {
-    switch (accessLevel) {
-      case "A":
-        return "border-l-2 border-green-400";
-      case "D":
-      case "V":
-        return "border-l-2 border-yellow-400";
-      default:
-        return "border-l-2 border-red-400";
-    }
   };
 
   // Map app_id to route paths
@@ -658,7 +1392,8 @@ const DatabaseSidebar = () => {
   };
 
   // Dynamic icon component
-  const getIconComponent = (appId) => {
+  const getIconComponent = (appId, label) => {
+    const resolvedAppId = resolveAppIdForPath(appId, label);
     const iconMap = {
       DASHBOARD: LayoutDashboard,
       ASSETS: Package,
@@ -677,6 +1412,7 @@ const DatabaseSidebar = () => {
       APPROVALS: ClipboardList,
       CERTIFICATESGROUP: FileText,
       REPORTBREAKDOWNGROUP: BarChart3,
+      REPORTS: Building,
       SUPERVISORAPPROVAL: UserCheck,
       REPORTBREAKDOWN: BarChart3,
       "EMPLOYEE REPORT BREAKDOWN": BarChart3,
@@ -709,9 +1445,15 @@ const DatabaseSidebar = () => {
       AUDITLOGS: History,
       AUDITLOGCONFIG: Settings,
       COLUMNACCESSCONFIG: Settings,
+      TEXTMESSAGES: MessageSquareText,
+      BULKSERIALNUMBERPRINT: Printer,
+      MAINTENANCECONFIG: Wrench,
+      PROPERTIES: Tag,
+      BREAKDOWNREASONCODES: AlertTriangle,
       ONETIMECRON: Clock,
       JOBMONITOR: Activity,
-      CERTIFICATIONS: FileText,
+      CERTIFICATIONS: FileCheck,
+      USERROLES: Users,
       TECHCERTUPLOAD: FileText,
       TECHNICIANCERTIFICATES: FileText,
       GROUPASSET: Package,
@@ -722,12 +1464,23 @@ const DatabaseSidebar = () => {
     };
 
     const IconComponent =
-      iconMap[appId] || iconMap[resolveNavAppId(appId)] || Building;
+      iconMap[resolvedAppId] ||
+      iconMap[appId] ||
+      iconMap[resolveNavAppId(resolvedAppId)] ||
+      iconMap[resolveNavAppId(appId)] ||
+      Building;
     return () => <IconComponent size={16} />;
   };
 
   const resolveEffectiveAccess = (appId, fallbackLevel) => {
     const key = resolveNavAppId(appId);
+    if (key === "TEXTMESSAGES") {
+      return (
+        getAccessLevel("TEXTMESSAGES") ||
+        getAccessLevel("ADMINSETTINGS") ||
+        fallbackLevel
+      );
+    }
     if (key === "ONETIMECRON") {
       return (
         getAccessLevel("ONETIMECRON") ||
@@ -743,15 +1496,51 @@ const DatabaseSidebar = () => {
         fallbackLevel
       );
     }
+    if (key === "CERTIFICATIONS") {
+      return (
+        getAccessLevel("CERTIFICATIONS") ||
+        getAccessLevel("ADMINSETTINGS") ||
+        fallbackLevel
+      );
+    }
     return fallbackLevel;
   };
 
+  const LABEL_TO_APP_ID = {
+    "job monitor": "JOBMONITOR",
+    "admin settings": "ADMINSETTINGS",
+    maintenance: "WORKORDERMANAGEMENT",
+    inspection: "INSPECTION",
+    scrap: "SCRAPASSETS",
+    reports: "REPORTS",
+    certificates: "CERTIFICATESGROUP",
+    approval: "APPROVALS",
+    approvals: "APPROVALS",
+    "report breakdown": "REPORTBREAKDOWNGROUP",
+    "master data": "MASTERDATA",
+    "asset assignment": "ASSETASSIGNMENT",
+  };
+
+  const resolveAppIdForPath = (appId, label) => {
+    const key = resolveNavAppId(appId);
+    if (key) return appId;
+    const fromLabel = LABEL_TO_APP_ID[String(label || "").trim().toLowerCase()];
+    return fromLabel || appId;
+  };
+
   // Get path - in admin settings mode, use simplified paths under /adminsettings/configuration
-  const getPath = (appId) => {
-    const navKey = resolveNavAppId(appId);
-    const basePath = appIdToPath[appId] || appIdToPath[navKey];
+  const getPath = (appId, label) => {
+    if (isAdminSettingsHub(appId, label)) {
+      return isAdminSettingsMode
+        ? "/adminsettings/configuration"
+        : "/admin-settings-view";
+    }
+
+    const pathAppId = resolveAppIdForPath(appId, label);
+    const navKey = resolveNavAppId(pathAppId);
+    const basePath = appIdToPath[pathAppId] || appIdToPath[navKey];
     if (!basePath) {
-      return isAdminSettingsMode ? "/adminsettings/configuration" : "/dashboard";
+      return isAdminSettingsMode ? "/adminsettings/configuration" : null;
     }
     
     // If in admin settings mode, use simplified paths
@@ -764,16 +1553,16 @@ const DatabaseSidebar = () => {
       // For admin settings only items, use simplified paths
       // Add custom path mappings here for admin settings items
       const adminSettingsPathMap = {
-        "USERROLES": "/adminsettings/configuration/job-roles",
-        "BULKSERIALNUMBERPRINT": "/adminsettings/configuration/bulk-serial-number-print",
-        "COLUMNACCESSCONFIG": "/adminsettings/configuration/data-config",
-        "MAINTENANCECONFIG": "/adminsettings/configuration/maintenance-config",
-        "PROPERTIES": "/adminsettings/configuration/properties",
-        "BREAKDOWNREASONCODES": "/adminsettings/configuration/breakdown-reason-codes",
-        "ONETIMECRON": "/adminsettings/configuration/one-time-cron",
-        "JOBMONITOR": "/adminsettings/configuration/job-monitor",
-        // Add more mappings here as you add more admin settings menu items
-        // Example: "NEW_APP_ID": "/adminsettings/configuration/new-path",
+        TEXTMESSAGES: "/adminsettings/configuration/text-messages",
+        USERROLES: "/adminsettings/configuration/job-roles",
+        BULKSERIALNUMBERPRINT: "/adminsettings/configuration/bulk-serial-number-print",
+        COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config",
+        MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config",
+        PROPERTIES: "/adminsettings/configuration/properties",
+        BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes",
+        CERTIFICATIONS: "/certifications",
+        ONETIMECRON: "/adminsettings/configuration/one-time-cron",
+        JOBMONITOR: "/adminsettings/configuration/job-monitor",
       };
       
       if (adminSettingsPathMap[appId] || adminSettingsPathMap[navKey]) {
@@ -794,29 +1583,33 @@ const DatabaseSidebar = () => {
     if (isAdminSettingsMode || collapsed) return;
 
     const activeGroup = navigationForRender.find((item) => {
-      if (!item.is_group || !item.children?.length) return false;
+      if (!isNavGroup(item) || !item.children?.length) return false;
       return item.children.some((child) => {
-        const childPath = getPath(child.app_id);
+        const childPath = getPath(child.app_id, child.label);
         return childPath && location.pathname.startsWith(childPath);
       });
     });
 
     if (activeGroup) {
-      setOpenDropdown(activeGroup.id);
+      setOpenDropdown(getNavItemKey(activeGroup));
+      return;
+    }
+
+    if (location.pathname === "/adminsettings/configuration") {
+      const adminGroup = navigationForRender.find((item) =>
+        isAdminSettingsHub(item.app_id, item.label),
+      );
+      if (adminGroup) {
+        setOpenDropdown(getNavItemKey(adminGroup));
+      }
     }
   }, [location.pathname, navigationForRender, isAdminSettingsMode, collapsed]);
 
   // App IDs that should only be visible in admin settings mode (/adminsettings/configuration routes)
   // Add more app IDs here as needed for future admin settings menu items
   const adminSettingsOnlyAppIds = [
-    "USERROLES", 
-    "BULKSERIALNUMBERPRINT", 
-    "COLUMNACCESSCONFIG",
-    "MAINTENANCECONFIG",
-    "PROPERTIES",
-    "BREAKDOWNREASONCODES",
-    "ONETIMECRON",
-    "JOBMONITOR",
+    ...ADMIN_SETTINGS_GROUP_MODULES.map((mod) => mod.app_id),
+    MASTER_DATA_CRON_MODULE.app_id,
   ];
   const adminSettingsRoutes = [
     "COLUMNACCESSCONFIG",
@@ -824,20 +1617,34 @@ const DatabaseSidebar = () => {
     "PROPERTIES",
     "BREAKDOWNREASONCODES",
     "USERROLES",
+    "BULKSERIALNUMBERPRINT",
     "ONETIMECRON",
     "JOBMONITOR",
   ];
-  const isAdminSettingsOnlyAppId = (appId) =>
+  const isAdminSettingsOnlyAppId = (appId, label) =>
     adminSettingsOnlyAppIds.some(
       (id) => resolveNavAppId(id) === resolveNavAppId(appId)
-    );
-  const isAdminSettingsRouteAppId = (appId) =>
+    ) ||
+    String(label || "").trim().toLowerCase() === "job monitor";
+  const isAdminSettingsRouteAppId = (appId, label) =>
     adminSettingsRoutes.some(
       (id) => resolveNavAppId(id) === resolveNavAppId(appId)
-    );
+    ) ||
+    String(label || "").trim().toLowerCase() === "job monitor";
   // Filter navigation items - admin settings only items visible only in admin settings mode
   const shouldShowItem = (item) => {
-    const isAdminSettingsOnlyItem = isAdminSettingsOnlyAppId(item.app_id);
+    if (isAdminSettingsMode) {
+      return true;
+    }
+
+    const isAdminSettingsOnlyItem = isAdminSettingsOnlyAppId(item.app_id, item.label);
+
+    // Admin Settings dropdown (with audit children) or legacy hub link.
+    if (!isAdminSettingsMode && isAdminSettingsHub(item.app_id, item.label)) {
+      return hasViewAccess(
+        resolveEffectiveAccess("ADMINSETTINGS", item.access_level)
+      );
+    }
     
     // Hide admin settings only items when NOT in admin settings mode
     if (!isAdminSettingsMode) {
@@ -847,15 +1654,15 @@ const DatabaseSidebar = () => {
       // Check if any child is an admin settings only item and hide the parent if needed
       if (item.children && item.children.length > 0) {
         const hasAdminSettingsChild = item.children.some(child => 
-          isAdminSettingsOnlyAppId(child.app_id)
+          isAdminSettingsOnlyAppId(child.app_id, child.label)
         );
         if (hasAdminSettingsChild) {
           // Hide parent groups that only contain admin settings items
           const nonAdminSettingsChildren = item.children.filter(child => 
-            !isAdminSettingsOnlyAppId(child.app_id)
+            !isAdminSettingsOnlyAppId(child.app_id, child.label)
           );
           // If all children are admin settings items, hide the parent
-          if (nonAdminSettingsChildren.length === 0) {
+          if (nonAdminSettingsChildren.length === 0 && !isJobRoleConfiguredGroup(item)) {
             return false;
           }
         }
@@ -863,17 +1670,7 @@ const DatabaseSidebar = () => {
       // Show all other items normally
       return true;
     }
-    
-    // In admin settings mode, only show admin settings only items
-    if (isAdminSettingsOnlyItem) {
-      return true;
-    }
-    
-    // Check children for admin settings only items
-    if (item.children && item.children.length > 0) {
-      return item.children.some(child => isAdminSettingsOnlyAppId(child.app_id));
-    }
-    
+
     return false;
   };
 
@@ -884,45 +1681,57 @@ const DatabaseSidebar = () => {
       return null;
     }
 
-    const path = getPath(item.app_id);
-    const accessLevel = getAccessLevel(item.app_id);
-    const IconComponent = getIconComponent(item.app_id);
+    const path = getPath(item.app_id, item.label);
 
-    if (item.is_group && item.children?.length > 0) {
+    // Empty group headers should not render as links (avoids false /dashboard highlight)
+    if (isNavGroup(item) && !item.children?.length && !isAdminSettingsHub(item.app_id, item.label)) {
+      return null;
+    }
+
+    const isDropdownGroup = isNavGroup(item) && item.children?.length > 0;
+
+    if (isDropdownGroup) {
+      const accessLevel = resolveEffectiveAccess(
+        isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
+        item.access_level || getAccessLevel(item.app_id)
+      );
+      const IconComponent = getIconComponent(
+        isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
+        item.label
+      );
       const hasChildren = true;
       const isAnyChildActive =
         hasChildren &&
         item.children.some((child) => {
-          const childPath = getPath(child.app_id);
-          // For COLUMNACCESSCONFIG, check exact match since it shares path with ADMINSETTINGS
+          const childPath = getPath(child.app_id, child.label);
           if (child.app_id === "COLUMNACCESSCONFIG") {
             return location.pathname === childPath;
           }
-          return location.pathname.startsWith(childPath);
+          return childPath && location.pathname.startsWith(childPath);
         });
 
       return (
-        <li key={item.id} className="mb-2">
+        <li key={getNavItemKey(item)} className="mb-2">
           <div
-            onClick={() => toggleDropdown(item.id)}
+            onClick={() => toggleDropdown(getNavItemKey(item))}
             className={`group flex items-center justify-between px-3 py-2 cursor-pointer rounded ${
               isAnyChildActive
                 ? "bg-[#FFC107] text-white"
                 : "hover:bg-[#143d65] text-white"
             }`}
-            title={!collapsed ? translateLabel(item.label) : ""} // Tooltip for collapsed state
+            title={!collapsed ? translateLabel(item.label, item.app_id) : ""}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               {IconComponent && <IconComponent className="flex-shrink-0" />}
               {!collapsed && (
                 <span className="truncate text-sm font-medium">
-                  {translateLabel(item.label)}
+                  {translateLabel(item.label, item.app_id)}
                 </span>
               )}
             </div>
             {!collapsed && hasChildren && (
               <span className="flex-shrink-0 ml-2">
-                {openDropdown === item.id ? (
+                {openDropdown === getNavItemKey(item) ? (
                   <ChevronDown size={16} />
                 ) : (
                   <ChevronRight size={16} />
@@ -931,64 +1740,62 @@ const DatabaseSidebar = () => {
             )}
           </div>
 
-          {!collapsed && openDropdown === item.id && hasChildren && (
+          {!collapsed && openDropdown === getNavItemKey(item) && hasChildren && (
             <ul className="ml-6 mt-1 space-y-1">
               {item.children.map((child) => {
-                const isAdminSettingsOnlyChild = isAdminSettingsOnlyAppId(child.app_id);
+                const isAdminSettingsOnlyChild = isAdminSettingsOnlyAppId(child.app_id, child.label);
+                const allowConfiguredAdminChild =
+                  !isAdminSettingsMode &&
+                  isAdminSettingsOnlyChild &&
+                  isJobRoleConfiguredGroup(item);
 
-                // Hide admin settings only items when NOT in admin settings mode
-                if (!isAdminSettingsMode && isAdminSettingsOnlyChild) {
+                if (!isAdminSettingsMode && isAdminSettingsOnlyChild && !allowConfiguredAdminChild) {
                   return null;
                 }
 
-                // In admin settings mode, only show admin settings only children
                 if (isAdminSettingsMode && !isAdminSettingsOnlyChild) {
                   return null;
                 }
 
-                const childPath = getPath(child.app_id);
+                const childPath = getPath(child.app_id, child.label);
+                if (!childPath) return null;
                 const childAccessLevel = resolveEffectiveAccess(
                   child.app_id,
                   child.access_level || getAccessLevel(child.app_id)
                 );
-                const ChildIconComponent = getIconComponent(child.app_id);
+                const ChildIconComponent = getIconComponent(child.app_id, child.label);
 
-                // Only show children that have access
                 if (!hasViewAccess(childAccessLevel)) return null;
 
-                const requiresExactMatch = isAdminSettingsRouteAppId(child.app_id);
-                const isActiveForAdminRoute = requiresExactMatch 
+                const requiresExactMatch = isAdminSettingsRouteAppId(child.app_id, child.label);
+                const isActiveForAdminRoute = requiresExactMatch
                   ? location.pathname === childPath
                   : undefined;
 
                 return (
                   <li key={child.id} className="mb-1">
                     <NavLink
-                      to={childPath || "/dashboard"}
+                      to={childPath}
                       state={navLinkState}
-                      end={requiresExactMatch} // Use exact match for admin settings routes
+                      end={requiresExactMatch}
                       onMouseEnter={() => prefetchRouteData(child.app_id)}
                       className={({ isActive }) => {
-                        // Use exact match check for admin settings routes
-                        const active = requiresExactMatch 
-                          ? isActiveForAdminRoute 
+                        const active = requiresExactMatch
+                          ? isActiveForAdminRoute
                           : isActive;
                         return `group flex items-center gap-2 px-4 py-2 rounded text-sm ${
                           active
                             ? "bg-[#FFC107] text-white"
                             : "hover:bg-[#143d65] text-white"
-                        } ${getAccessColorClass(childAccessLevel)}`;
+                        }`;
                       }}
-                      title={translateLabel(child.label)}
+                      title={translateLabel(child.label, child.app_id)}
                     >
                       {ChildIconComponent && (
                         <ChildIconComponent className="flex-shrink-0" />
                       )}
                       <span className="truncate flex-1 min-w-0">
-                        {translateLabel(child.label)}
-                      </span>
-                      <span className="flex-shrink-0">
-                        {getAccessIcon(childAccessLevel)}
+                        {translateLabel(child.label, child.app_id)}
                       </span>
                     </NavLink>
                   </li>
@@ -998,53 +1805,70 @@ const DatabaseSidebar = () => {
           )}
         </li>
       );
-    } else {
-      const effectiveAccess = resolveEffectiveAccess(
-        item.app_id,
-        accessLevel || item.access_level
-      );
-      if (!hasViewAccess(effectiveAccess)) return null;
-
-      const requiresExactMatch = isAdminSettingsRouteAppId(item.app_id);
-      const isActiveForAdminRoute = requiresExactMatch 
-        ? location.pathname === path
-        : undefined;
-
-      return (
-        <li key={item.id} className="mb-2">
-          <NavLink
-            to={path || "/dashboard"}
-            state={navLinkState}
-            end={requiresExactMatch} // Use exact match for admin settings routes
-            onMouseEnter={() => prefetchRouteData(item.app_id)}
-            className={({ isActive }) => {
-              // Use exact match check for admin settings routes
-              const active = requiresExactMatch 
-                ? isActiveForAdminRoute 
-                : isActive;
-              return `group flex items-center gap-2 px-4 py-2 rounded ${
-                active
-                  ? "bg-[#FFC107] text-white"
-                  : "hover:bg-[#143d65] text-white"
-              } ${getAccessColorClass(effectiveAccess)}`;
-            }}
-              title={!collapsed ? translateLabel(item.label) : ""}
-            >
-              {IconComponent && <IconComponent className="flex-shrink-0" />}
-              {!collapsed && (
-                <span className="truncate flex-1 min-w-0 text-sm font-medium">
-                  {translateLabel(item.label)}
-                </span>
-              )}
-            {!collapsed && (
-              <span className="flex-shrink-0">
-                {getAccessIcon(effectiveAccess)}
-              </span>
-            )}
-          </NavLink>
-        </li>
-      );
     }
+
+    if (!path) {
+      return null;
+    }
+
+    // Legacy hub: only link when Admin Settings is not a dropdown group (normal app mode).
+    if (
+      !isAdminSettingsMode &&
+      isAdminSettingsHub(item.app_id, item.label) &&
+      item.is_group &&
+      item.children?.length > 0
+    ) {
+      return null;
+    }
+
+    const accessLevel = resolveEffectiveAccess(
+      isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
+      item.access_level || getAccessLevel(item.app_id)
+    );
+    const IconComponent = getIconComponent(
+      isAdminSettingsHub(item.app_id, item.label) ? "ADMINSETTINGS" : item.app_id,
+      item.label
+    );
+
+    const effectiveAccess = resolveEffectiveAccess(
+      item.app_id,
+      accessLevel || item.access_level
+    );
+    if (!hasViewAccess(effectiveAccess)) return null;
+
+    const requiresExactMatch = isAdminSettingsRouteAppId(item.app_id, item.label);
+    const isActiveForAdminRoute = requiresExactMatch
+      ? location.pathname === path
+      : undefined;
+
+    return (
+      <li key={getNavItemKey(item)} className="mb-2">
+        <NavLink
+          to={path}
+          state={navLinkState}
+          end={requiresExactMatch || resolveNavAppId(item.app_id) === "DASHBOARD"}
+          onMouseEnter={() => prefetchRouteData(item.app_id)}
+          className={({ isActive }) => {
+            const active = requiresExactMatch
+              ? isActiveForAdminRoute
+              : isActive;
+            return `group flex items-center gap-2 px-3 py-2 rounded ${
+              active
+                ? "bg-[#FFC107] text-white"
+                : "hover:bg-[#143d65] text-white"
+            }`;
+          }}
+          title={!collapsed ? translateLabel(item.label, item.app_id) : ""}
+        >
+          {IconComponent && <IconComponent className="flex-shrink-0" />}
+          {!collapsed && (
+            <span className="truncate flex-1 min-w-0 text-sm font-medium">
+              {translateLabel(item.label, item.app_id)}
+            </span>
+          )}
+        </NavLink>
+      </li>
+    );
   };
 
   if (loading) {
@@ -1119,7 +1943,9 @@ const DatabaseSidebar = () => {
           <li className="text-center py-4 text-gray-300">
             <div className="text-sm">
               <p>No navigation items found.</p>
-              <p className="text-xs mt-1">Please check your database setup.</p>
+              <p className="text-xs mt-1">
+                Try logging out and back in. If menus are still missing, run the setup wizard at /setup.
+              </p>
             </div>
           </li>
         ) : (

@@ -9,6 +9,7 @@ import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import { findConflictingAssetTypeName } from "../utils/assetTypeNameValidation";
+import { refreshAssetTypeCaches } from "../utils/refreshAssetTypeCaches";
 import { X } from "lucide-react";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }) => {
@@ -501,8 +502,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         values: { name: assetType.trim() },
         type: 'success',
       });
-      
-      // Call onClose with a flag to trigger refresh in parent
+
+      await refreshAssetTypeCaches();
       onClose(true);
     } catch (error) {
       const responseData = error.response?.data;

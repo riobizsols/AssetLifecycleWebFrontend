@@ -532,9 +532,9 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white w-[1000px] rounded shadow-lg max-h-[90vh] overflow-y-auto" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="bg-white w-[1000px] rounded shadow-lg max-h-[90vh] flex flex-col" onMouseDown={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t sticky top-0">
+        <div className="bg-[#003b6f] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t shrink-0">
           <span>{t('vendors.editVendor')}</span>
           <button
             onClick={onClose}
@@ -547,10 +547,11 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         </div>
 
         {/* Divider */}
-        <div className="h-[3px] bg-[#ffc107]" />
+        <div className="h-[3px] bg-[#ffc107] shrink-0" />
 
+        <div className="flex-1 min-h-0 overflow-y-auto">
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <form id="edit-vendor-form" onSubmit={handleSubmit} className="p-6">
           <div className="grid grid-cols-2 gap-4">
             {/* Basic Information */}
             <div className="space-y-4">
@@ -882,26 +883,6 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             </div>
           )}
 
-          {/* Footer */}
-          <div className="sticky bottom-0 z-30 mt-6 px-2 py-3 border-t border-gray-200 bg-white">
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
-            >
-              {t('common.cancel')}
-            </button>
-            {!isReadOnly && (
-              <button
-                type="submit"
-                className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
-              >
-                {t('common.update')}
-              </button>
-            )}
-          </div>
-          </div>
         </form>
 
         {/* Document Management Section - Outside Form */}
@@ -1175,6 +1156,29 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                   </div>
                 )}
               </div>
+            )}
+          </div>
+        </div>
+        </div>
+
+        {/* Footer — Cancel / Update at bottom of modal */}
+        <div className="shrink-0 border-t border-gray-200 bg-white px-6 py-4">
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium py-1.5 px-5 rounded"
+            >
+              {t('common.cancel')}
+            </button>
+            {!isReadOnly && (
+              <button
+                type="submit"
+                form="edit-vendor-form"
+                className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
+              >
+                {t('common.update')}
+              </button>
             )}
           </div>
         </div>

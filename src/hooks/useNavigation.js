@@ -7,13 +7,21 @@ import {
     hasViewAccess,
     resolveInheritedAccess,
 } from '../utils/accessLevel';
+import { userHasSystemAdminRole } from '../utils/systemAdmin';
 
 export const useNavigation = () => {
     const user = useAuthStore((state) => state.user);
+    const roles = useAuthStore((state) => state.roles) || [];
     const navigation = useNavigationStore((state) => state.navigation);
     const loading = useNavigationStore((state) => state.loading);
     const error = useNavigationStore((state) => state.error);
+    const fetchedForUserId = useNavigationStore((state) => state.fetchedForUserId);
     const fetchNavigation = useNavigationStore((state) => state.fetchNavigation);
+
+    const navReady =
+        Boolean(user?.user_id) &&
+        fetchedForUserId === user.user_id &&
+        !loading;
 
     useEffect(() => {
         if (user?.user_id) {
@@ -21,9 +29,20 @@ export const useNavigation = () => {
         }
     }, [user?.user_id, fetchNavigation]);
 
+    const isAdminSettingsNavItem = (item) => {
+        if (appIdsMatch(item.app_id, 'ADMINSETTINGS')) return true;
+        return (
+            item.is_group &&
+            String(item.label || '').trim().toLowerCase() === 'admin settings'
+        );
+    };
+
     const findAccessLevelByAppId = (items, id) => {
         for (const item of items) {
             if (appIdsMatch(item.app_id, id)) {
+                return item.access_level;
+            }
+            if (appIdsMatch(id, 'ADMINSETTINGS') && isAdminSettingsNavItem(item)) {
                 return item.access_level;
             }
             if (item.children?.length) {
@@ -46,28 +65,23 @@ export const useNavigation = () => {
         return findAccessLevelByAppId(navigation, targetAppId);
     };
 
-    const hasAccess = (appId) => hasViewAccess(resolveAccessLevelFromNav(appId));
+    const isSystemAdmin = userHasSystemAdminRole(user, roles);
 
-    const hasEditAccess = (appId) => {
-        if (!navigation || navigation.length === 0) return false;
-
-        const searchNavigation = (items) => {
-            for (const item of items) {
-                if (appIdsMatch(item.app_id, appId)) {
-                    return hasEditAccessLevel(item.access_level);
-                }
-                if (item.children && item.children.length > 0) {
-                    const found = searchNavigation(item.children);
-                    if (found) return found;
-                }
-            }
-            return false;
-        };
-
-        return searchNavigation(navigation);
+    const hasAccess = (appId) => {
+        if (isSystemAdmin) return true;
+        if (appIdsMatch(appId, 'DASHBOARD')) return true;
+        return hasViewAccess(resolveAccessLevelFromNav(appId));
     };
 
-    const getAccessLevel = (appId) => resolveAccessLevelFromNav(appId);
+    const hasEditAccess = (appId) => {
+        if (isSystemAdmin) return true;
+        return hasEditAccessLevel(resolveAccessLevelFromNav(appId));
+    };
+
+    const getAccessLevel = (appId) => {
+        if (isSystemAdmin) return 'A';
+        return resolveAccessLevelFromNav(appId);
+    };
 
     const getNavigationItem = (appId) => {
         if (!navigation || navigation.length === 0) return null;
@@ -127,6 +141,7 @@ export const useNavigation = () => {
         navigation,
         loading,
         error,
+        navReady,
         hasAccess,
         hasEditAccess,
         canView,

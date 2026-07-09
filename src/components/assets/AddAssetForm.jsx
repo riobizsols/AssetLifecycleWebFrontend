@@ -73,7 +73,7 @@ const AddAssetForm = ({ userRole }) => {
     vendors, 
     assetTypes, 
     loading: appDataLoading,
-    fetchAssetTypes,
+    refreshAssetTypes,
     getUserBranchId,
     getUserBranchName,
     getUserDepartmentName 
@@ -330,9 +330,7 @@ const AddAssetForm = ({ userRole }) => {
     if (cached.vendorsService) setServiceSupplyOptions(toVendorOptions(cached.vendorsService));
     if (cached.docTypes) setDocumentTypes(cached.docTypes);
 
-    if (!assetTypes?.length) {
-      fetchAssetTypes?.();
-    }
+    refreshAssetTypes?.();
 
     loadProdServs({
       revalidate: true,

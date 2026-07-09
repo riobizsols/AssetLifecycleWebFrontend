@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { toast } from "react-hot-toast";
 import { generateUUID } from '../../utils/uuid';
 
 const ASSET_CATEGORIES = [
@@ -152,10 +153,19 @@ function getCurrentFYBounds(base = new Date()) {
   return [start, end];
 }
 
-// Dummy function for toast notification
-function showToast(message) {
-  console.log("Toast:", message);
-  alert("Toast: " + message);
+function showToast(message, type = "info") {
+  const text = String(message || "").replace(/^Toast:\s*/i, "").trim();
+  if (!text) return;
+
+  if (type === "success") {
+    toast.success(text);
+    return;
+  }
+  if (type === "error") {
+    toast.error(text);
+    return;
+  }
+  toast(text);
 }
 
 const SectionTitle = ({ children }) => <div className="text-sm font-semibold text-slate-600 uppercase tracking-wider mb-2">{children}</div>;

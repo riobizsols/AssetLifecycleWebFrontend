@@ -13,7 +13,7 @@ export default function ProtectedRoute({
   const user = useAuthStore((state) => state.user);
   const roles = useAuthStore((state) => state.roles) || [];
   const location = useLocation();
-  const { hasAccess, loading } = useNavigation();
+  const { hasAccess, navReady } = useNavigation();
   
   // Get user role IDs from tblUserJobRoles
   const userRoleIds = roles.map(role => role.job_role_id);
@@ -39,7 +39,7 @@ export default function ProtectedRoute({
   }
 
   // Wait for navigation to load before checking permissions
-  if ((requiredAppId || (requiredAnyOfAppIds && requiredAnyOfAppIds.length)) && loading) {
+  if ((requiredAppId || (requiredAnyOfAppIds && requiredAnyOfAppIds.length)) && !navReady) {
     // Show a loading state while navigation permissions are being fetched
     return (
       <div className="flex items-center justify-center min-h-screen">

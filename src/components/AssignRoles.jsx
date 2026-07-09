@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
 import toast from 'react-hot-toast';
-import { MdArrowBack, MdPersonAdd } from 'react-icons/md';
+import { MdArrowBack, MdPersonAdd, MdDeleteOutline } from 'react-icons/md';
 import { useAuthStore } from '../store/useAuthStore';
 import useAuditLog from '../hooks/useAuditLog';
 import { USERS_APP_ID } from '../constants/usersAuditEvents';
@@ -34,6 +34,9 @@ const AssignRoles = () => {
   const [availableRoles, setAvailableRoles] = useState([]);
   const [currentEmployeeRoles, setCurrentEmployeeRoles] = useState([]);
   const [rolesLoading, setRolesLoading] = useState(false);
+  const [rolePendingRemoval, setRolePendingRemoval] = useState(null);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [removingRole, setRemovingRole] = useState(false);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: '',
@@ -52,6 +55,32 @@ const AssignRoles = () => {
     { label: u("currentRole"), name: "job_role_name", visible: true }
   ], [t]);
 
+  const assignableRoles = useMemo(() => {
+    const assignedIds = new Set(
+      currentEmployeeRoles.map((role) => role.job_role_id).filter(Boolean),
+    );
+    return availableRoles.filter((role) => !assignedIds.has(role.job_role_id));
+  }, [availableRoles, currentEmployeeRoles]);
+
+  const syncEmployeeRolesInTable = (empIntId, roles) => {
+    const roleNames = roles
+      .map((role) => role.job_role_name || role.text)
+      .filter(Boolean);
+    const primaryRole = roles[0];
+
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.emp_int_id === empIntId
+          ? {
+              ...emp,
+              job_role_id: primaryRole?.job_role_id || null,
+              job_role_name: roleNames.length ? roleNames.join(', ') : null,
+            }
+          : emp,
+      ),
+    );
+  };
+
   useEffect(() => {
     setFilters(columns);
   }, [columns]);
@@ -60,7 +89,9 @@ const AssignRoles = () => {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const response = await API.get('/employees/with-roles');
+      const response = await API.get('/employees/with-roles', {
+        params: { _t: Date.now() },
+      });
       const employeesData = response.data || [];
       setEmployees(employeesData);
     } catch (error) {
@@ -169,12 +200,18 @@ const AssignRoles = () => {
   // Fetch all roles for a specific employee
   const fetchEmployeeRoles = async (emp_int_id) => {
     try {
-      const response = await API.get(`/users/employee-roles/${emp_int_id}`);
+      const response = await API.get(`/users/employee-roles/${emp_int_id}`, {
+        params: { _t: Date.now() },
+      });
       const roles = response.data || [];
       setCurrentEmployeeRoles(roles);
+      syncEmployeeRolesInTable(emp_int_id, roles);
+      return roles;
     } catch (error) {
       console.error('Error fetching employee roles:', error);
       setCurrentEmployeeRoles([]);
+      syncEmployeeRolesInTable(emp_int_id, []);
+      return [];
     }
   };
 
@@ -190,6 +227,79 @@ const AssignRoles = () => {
           return [...prev, role];
         }
       });
+    }
+  };
+
+  const handleRemoveRoleClick = (role) => {
+    if (!role?.user_job_role_id) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'This role cannot be removed from here. Please contact an administrator.',
+        type: 'error',
+      });
+      return;
+    }
+    setRolePendingRemoval(role);
+    setShowRemoveConfirm(true);
+  };
+
+  const handleCancelRemoveRole = () => {
+    setShowRemoveConfirm(false);
+    setRolePendingRemoval(null);
+  };
+
+  const handleConfirmRemoveRole = async () => {
+    if (!rolePendingRemoval?.user_job_role_id || !rolePendingRemoval?.user_id) {
+      handleCancelRemoveRole();
+      return;
+    }
+
+    const selectedEmp = employees.find((emp) => emp.employee_id === selectedEmployee);
+    if (!selectedEmp?.emp_int_id) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Employee internal ID not found',
+        type: 'error',
+      });
+      handleCancelRemoveRole();
+      return;
+    }
+
+    setRemovingRole(true);
+    try {
+      const response = await API.delete(
+        `/employees/users/${rolePendingRemoval.user_id}/roles/${rolePendingRemoval.user_job_role_id}`,
+      );
+
+      await recordActionByNameWithFetch('Remove Role', {
+        employeeId: selectedEmployee,
+        roleId: rolePendingRemoval.job_role_id,
+        roleName: rolePendingRemoval.job_role_name,
+        action: 'Role Removed',
+      });
+
+      setSelectedRoles((prev) =>
+        prev.filter((role) => role.job_role_id !== rolePendingRemoval.job_role_id),
+      );
+
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Role removed successfully',
+        type: 'success',
+      });
+
+      await fetchEmployees();
+      await fetchEmployeeRoles(selectedEmp.emp_int_id);
+      handleCancelRemoveRole();
+    } catch (error) {
+      console.error('Error removing role:', error);
+      showBackendTextToast({
+        toast,
+        fallbackText: error.response?.data?.error || 'Failed to remove role',
+        type: 'error',
+      });
+    } finally {
+      setRemovingRole(false);
     }
   };
 
@@ -324,14 +434,30 @@ const AssignRoles = () => {
                 );
               }
               if (col.name === 'job_role_name') {
-                return row.job_role_name ? (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                    {trRole(row.job_role_name, row.job_role_id)}
-                  </span>
-                ) : (
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
-                    {u("noRole")}
-                  </span>
+                const roleNames = String(row.job_role_name || '')
+                  .split(',')
+                  .map((name) => name.trim())
+                  .filter(Boolean);
+
+                if (!roleNames.length) {
+                  return (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                      {u("noRole")}
+                    </span>
+                  );
+                }
+
+                return (
+                  <div className="flex flex-wrap gap-1">
+                    {roleNames.map((roleName, index) => (
+                      <span
+                        key={`${roleName}-${index}`}
+                        className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium"
+                      >
+                        {trRole(roleName, row.job_role_id)}
+                      </span>
+                    ))}
+                  </div>
                 );
               }
               if (col.name === 'dept_id') {
@@ -351,7 +477,10 @@ const AssignRoles = () => {
             <div className="bg-[#003366] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t-lg">
               <h3>{u("assignRole")}</h3>
               <button
-                onClick={() => setShowAssignModal(false)}
+                onClick={() => {
+                  setShowAssignModal(false);
+                  handleCancelRemoveRole();
+                }}
                 className="text-white hover:text-gray-200"
               >
                 ×
@@ -375,9 +504,23 @@ const AssignRoles = () => {
                             <div>
                               <div className="text-orange-600 font-medium mb-1">{u("currentRoles")}:</div>
                               <div className="space-y-1">
-                                {currentEmployeeRoles.map((role, index) => (
-                                  <div key={index} className="text-orange-600 text-xs">
-                                    • {trRole(role.job_role_name, role.job_role_id)} ({u("roleId")}: {role.job_role_id})
+                                {currentEmployeeRoles.map((role) => (
+                                  <div
+                                    key={role.user_job_role_id || role.job_role_id}
+                                    className="flex items-center justify-between gap-2 text-orange-600 text-xs bg-orange-50 border border-orange-100 rounded px-2 py-1"
+                                  >
+                                    <span>
+                                      {trRole(role.job_role_name, role.job_role_id)} ({u("roleId")}: {role.job_role_id})
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveRoleClick(role)}
+                                      className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                      title="Remove role"
+                                      aria-label={`Remove ${role.job_role_name}`}
+                                    >
+                                      <MdDeleteOutline size={16} />
+                                    </button>
                                   </div>
                                 ))}
                               </div>
@@ -402,9 +545,13 @@ const AssignRoles = () => {
                   <div className="p-3 bg-gray-50 rounded-lg text-center text-gray-600">
                     {u("loadingRoles")}
                   </div>
+                ) : assignableRoles.length === 0 ? (
+                  <div className="p-3 bg-gray-50 rounded-lg text-center text-gray-600">
+                    {u("noRolesAssigned")}
+                  </div>
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-                    {availableRoles.map(role => {
+                    {assignableRoles.map(role => {
                       const isSelected = selectedRoles.some(r => r.job_role_id === role.job_role_id);
                       return (
                         <div
@@ -454,7 +601,10 @@ const AssignRoles = () => {
 
               <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => setShowAssignModal(false)}
+                  onClick={() => {
+                    setShowAssignModal(false);
+                    handleCancelRemoveRole();
+                  }}
                   className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                 >
                   {t("common.cancel")}
@@ -470,6 +620,41 @@ const AssignRoles = () => {
                       : u("assignRolesButton")}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRemoveConfirm && rolePendingRemoval && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-[60]">
+          <div className="bg-white w-[460px] rounded-lg shadow-lg">
+            <div className="bg-[#003366] text-white font-semibold px-6 py-3 rounded-t-lg">
+              Remove Role
+            </div>
+            <div className="px-6 py-5 text-sm text-gray-700">
+              Are you sure you want to remove{' '}
+              <span className="font-semibold">
+                {trRole(rolePendingRemoval.job_role_name, rolePendingRemoval.job_role_id)}
+              </span>{' '}
+              from this employee?
+            </div>
+            <div className="flex justify-end gap-3 px-6 pb-6">
+              <button
+                type="button"
+                onClick={handleCancelRemoveRole}
+                disabled={removingRole}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+              >
+                {t("common.no")}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRemoveRole}
+                disabled={removingRole}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+              >
+                {removingRole ? 'Removing...' : t("common.yes")}
+              </button>
             </div>
           </div>
         </div>

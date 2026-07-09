@@ -1070,9 +1070,35 @@ const ContentBox = ({
           show={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}
           onConfirm={async () => {
-            const success = await onDeleteSelected();
-            if (success) {
-              setShowDeleteModal(false);
+            // Close immediately to avoid stale modal state ("0 selected" after delete).
+            // Many pages don't return a boolean from onDeleteSelected.
+            setShowDeleteModal(false);
+            try {
+              await onDeleteSelected();
+            } catch (error) {
+              console.error("Delete action failed:", error);
+              showBackendTextToast({
+                toast,
+                tmdId: 'TMD_DELETE_ACTION_FAILED_65D57A7D',
+                fallbackText: t('common.deleteActionFailed', { defaultValue: 'Delete failed' }),
+                type: 'error',
+              });
+            }
+            if (openDropdown !== null) {
+              setOpenDropdown(null);
+            }
+            if (showColumnsDropdown) {
+              setShowColumnsDropdown(false);
+            }
+            if (showAddFilterSubmenu !== null) {
+              setShowAddFilterSubmenu(null);
+            }
+            if (filterMenuOpen) {
+              setFilterMenuOpen(false);
+            }
+            if (Object.values(searchableDropdownOpen).some(Boolean)) {
+              setSearchableDropdownOpen({});
+              setSearchableDropdownSearch({});
             }
           }}
           message={t('assets.areYouSureDelete', { count: selectedRows.length })}

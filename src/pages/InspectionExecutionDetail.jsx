@@ -15,6 +15,18 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useAppData } from "../contexts/AppDataContext";
 import { translateMasterDataLabel } from "../utils/masterDataLabel";
 
+function formatQuantitativeRange(question, t) {
+  const min =
+    question.min_range != null && question.min_range !== ""
+      ? question.min_range
+      : 0;
+  const max =
+    question.max_range != null && question.max_range !== ""
+      ? question.max_range
+      : t("common.notApplicable", "N/A");
+  return `${min} - ${max}`;
+}
+
 const InspectionExecutionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -119,12 +131,12 @@ const InspectionExecutionDetail = () => {
   const getNumericRange = (question) => {
     const min = question.min_range != null && question.min_range !== ''
       ? parseFloat(question.min_range)
-      : null;
+      : 0;
     const max = question.max_range != null && question.max_range !== ''
       ? parseFloat(question.max_range)
       : null;
     return {
-      min: Number.isFinite(min) ? min : null,
+      min: Number.isFinite(min) ? min : 0,
       max: Number.isFinite(max) ? max : null,
     };
   };
@@ -141,23 +153,27 @@ const InspectionExecutionDetail = () => {
     return true;
   };
 
+  const getRecordedValue = (questionId) => {
+    const record = checklistRecords.find(r => r.insp_check_id === questionId);
+    return record?.recorded_value || '';
+  };
+
   const isValueOutOfRange = (question, value) => {
-    if (question.response_type === 'QN' && value) {
+    if (question.response_type === 'QN' && value !== '' && value != null) {
+      const numValue = parseFloat(value);
+      if (isNaN(numValue)) return false;
       return !validateValue(question, value);
     }
     return false;
   };
 
-  const validatePendingRecords = (records) => {
-    for (const record of records) {
-      const question = checklist.find((q) => q.insp_check_id === record.insp_check_id);
-      if (!question) continue;
-      if (!validateValue(question, record.recorded_value)) {
-        return question;
-      }
-    }
-    return null;
-  };
+  const hasOutOfRangeRecordedValues = () =>
+    checklist.some((question) => {
+      const value = getRecordedValue(question.insp_check_id);
+      return value && isValueOutOfRange(question, value);
+    });
+
+  const notesRequired = hasOutOfRangeRecordedValues();
 
   const handleAddRecord = async () => {
     if (!recordedValue.trim()) {
@@ -165,15 +181,7 @@ const InspectionExecutionDetail = () => {
       return;
     }
 
-    if (!validateValue(selectedQuestion, recordedValue)) {
-      showBackendTextToast({
-        toast,
-        fallbackText: t('inspectionExecution.valueOutsideRange'),
-        type: 'error',
-      });
-      return;
-    }
-
+    // Out-of-range values are allowed; notes become mandatory on final save.
     // Save locally and mark as pending; will be sent on final save
     const existing = checklistRecords.find(r => r.insp_check_id === selectedQuestion.insp_check_id);
     const newRecord = {
@@ -203,76 +211,66 @@ const InspectionExecutionDetail = () => {
   };
 
   const handleFinalSave = async () => {
-    if (Array.isArray(pendingRecords) && pendingRecords.length > 0) {
-      const invalidQuestion = validatePendingRecords(pendingRecords);
-      if (invalidQuestion) {
-        showBackendTextToast({
-          toast,
-          fallbackText: t('inspectionExecution.valueOutsideRange'),
-          type: 'error',
-        });
-        return;
-      }
+    if (hasOutOfRangeRecordedValues() && !formData.notes.trim()) {
+      showBackendTextToast({
+        toast,
+        fallbackText: t('inspectionExecution.notesRequiredOutOfRange'),
+        type: 'error',
+      });
+      return;
     }
 
     setSaving(true);
     try {
-      // First, persist any pending checklist records.
-      // Also persist inspector fields for vendor inspections even when no checklist records were changed.
-      const recPayload = {
-        ais_id: id,
-        records: pendingRecords,
-        notes: formData.notes,
-        trigger_maintenance: triggerMaintenance
-      };
+      if (Array.isArray(pendingRecords) && pendingRecords.length > 0) {
+        const recPayload = {
+          ais_id: id,
+          records: pendingRecords,
+          notes: formData.notes,
+          trigger_maintenance: triggerMaintenance,
+        };
 
-      // Include inspector fields only for vendor-maintained inspections
-      if (data?.vendor_id) {
-        recPayload.inspector_name = formData.inspector_name;
-        recPayload.inspector_email = formData.inspector_email;
-        recPayload.inspector_phone = formData.inspector_phone;
-      }
-
-      const shouldSendRecPayload = (Array.isArray(pendingRecords) && pendingRecords.length > 0) ||
-        (data?.vendor_id && (formData.inspector_name || formData.inspector_email || formData.inspector_phone));
-
-      if (shouldSendRecPayload) {
-        const recRes = await API.post('/inspection/records', recPayload);
-        if (recRes.data.success) {
-          showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
-          navigate('/inspection-view');
-          return;
+        if (data?.vendor_id) {
+          recPayload.inspector_name = formData.inspector_name;
+          recPayload.inspector_email = formData.inspector_email;
+          recPayload.inspector_phone = formData.inspector_phone;
         }
+
+        const recRes = await API.post('/inspection/records', recPayload);
+        if (!recRes.data?.success) {
+          throw new Error(recRes.data?.message || t('inspectionExecution.failedToUpdate'));
+        }
+        setPendingRecords([]);
       }
 
-      // Then update the inspection schedule
       const payload = {
         status,
         notes: formData.notes,
         trigger_maintenance: triggerMaintenance,
-        act_insp_end_date: status === 'CO' ? new Date().toISOString() : null
+        act_insp_end_date: status === 'CO' ? new Date().toISOString() : null,
       };
+
+      if (data?.vendor_id) {
+        payload.inspector_name = formData.inspector_name;
+        payload.inspector_email = formData.inspector_email;
+        payload.inspector_phno = formData.inspector_phone;
+      }
+
       const res = await API.put(`/inspection/${id}`, payload);
-      if (res.data.success) {
+      if (res.data?.success) {
         showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
         navigate('/inspection-view');
+        return;
       }
+
+      throw new Error(res.data?.message || t('inspectionExecution.failedToUpdate'));
     } catch (error) {
       console.error("Error updating inspection:", error);
-      if (error.response && error.response.data) {
-        console.error('Server response:', error.response.data);
-        toast.error(error.response.data.message || t('inspectionExecution.failedToUpdate'));
-      } else {
-        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPDATE_INSPECTION_5F02CAA9', fallbackText: t('inspectionExecution.failedToUpdate'), type: 'error' });
-      }
+      const message = error.response?.data?.message || error.message || t('inspectionExecution.failedToUpdate');
+      toast.error(message);
     } finally {
       setSaving(false);
     }
-  };
-
-  const getRecordedValue = (questionId) => {
-    const record = checklistRecords.find(r => r.insp_check_id === questionId);
-    return record?.recorded_value || '';
   };
 
   const handleChange = (e) => {
@@ -380,7 +378,7 @@ const InspectionExecutionDetail = () => {
                         </span>
                         {question.response_type === 'QN' && (
                           <span>
-                            {t('inspectionExecution.range')}: {question.min_range ?? t('common.na')} - {question.max_range ?? t('common.na')}
+                            {t('inspectionExecution.range')}: {formatQuantitativeRange(question, t)}
                           </span>
                         )}
                         {question.response_type === 'QL' && question.expected_value && (
@@ -408,14 +406,27 @@ const InspectionExecutionDetail = () => {
         
         {/* Notes */}
         <div className="mb-6">
-          <label className="text-sm font-medium text-gray-700 block mb-2">{t('inspectionExecution.notes')}</label>
+          <label className="text-sm font-medium text-gray-700 block mb-2">
+            {t('inspectionExecution.notes')}
+            {notesRequired && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          {notesRequired && (
+            <p className="text-sm text-red-600 mb-2">{t('inspectionExecution.notesRequiredHint')}</p>
+          )}
           <textarea
             name="notes"
             value={formData.notes}
             onChange={handleChange}
             rows={3}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-            placeholder={t('inspectionExecution.notesPlaceholder')}
+            required={notesRequired}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${
+              notesRequired && !formData.notes.trim() ? 'border-red-400' : 'border-gray-300'
+            }`}
+            placeholder={
+              notesRequired
+                ? t('inspectionExecution.notesRequiredPlaceholder')
+                : t('inspectionExecution.notesPlaceholder')
+            }
           />
         </div>
 
@@ -478,28 +489,42 @@ const InspectionExecutionDetail = () => {
             </div>
           </div>
 
-          <button
-            onClick={handleFinalSave}
-            disabled={(String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) || saving}
-            className={`flex items-center px-6 py-2 rounded-lg transition shadow-sm ${((String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) || saving) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-[#0E2F4B] text-white hover:bg-[#1a4a76]'}`}
-          >
-            {saving ? (
-              <span className="flex items-center">
-                <svg className="animate-spin h-4 w-4 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
-                {t('common.saving')}
-              </span>
-            ) : (
-              <>
-                <Save size={18} className="mr-2" />
-                {t('inspectionExecution.saveChanges')}
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/inspection-view')}
+              disabled={saving}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={handleFinalSave}
+              disabled={(String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) || saving}
+              className={`flex items-center px-6 py-2 rounded-lg transition shadow-sm ${((String(data.maintained_by || '').toLowerCase() !== 'vendor' && (data.inspected_by || data.emp_int_id) && String(user?.emp_int_id) !== String(data.inspected_by || data.emp_int_id)) || saving) ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-[#0E2F4B] text-white hover:bg-[#1a4a76]'}`}
+            >
+              {saving ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin h-4 w-4 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+                  {t('common.saving')}
+                </span>
+              ) : (
+                <>
+                  <Save size={18} className="mr-2" />
+                  {t('inspectionExecution.saveChanges')}
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Modal for Recording Values */}
-      {showModal && selectedQuestion && (
+      {showModal && selectedQuestion && (() => {
+        const modalOutOfRange = Boolean(
+          recordedValue && isValueOutOfRange(selectedQuestion, recordedValue)
+        );
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4 border border-gray-200">
             <div className="flex items-center justify-between mb-4">
@@ -518,7 +543,7 @@ const InspectionExecutionDetail = () => {
               {selectedQuestion.response_type === 'QN' && (
                 <div className="bg-gray-50 p-3 rounded mb-3">
                   <p className="text-sm text-gray-600">
-                    <strong>{t('inspectionExecution.range')}:</strong> {selectedQuestion.min_range ?? t('common.na')} - {selectedQuestion.max_range ?? t('common.na')}
+                    <strong>{t('inspectionExecution.range')}:</strong> {formatQuantitativeRange(selectedQuestion, t)}
                   </p>
                 </div>
               )}
@@ -538,11 +563,15 @@ const InspectionExecutionDetail = () => {
                 type={selectedQuestion.response_type === 'QN' ? 'number' : 'text'}
                 value={recordedValue}
                 onChange={(e) => setRecordedValue(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                className={`w-full p-3 border rounded-lg focus:ring-2 outline-none transition ${
+                  modalOutOfRange
+                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500 text-red-600'
+                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                }`}
                 placeholder={selectedQuestion.response_type === 'QN' ? t('inspectionExecution.enterNumericValue') : t('inspectionExecution.enterTextValue')}
               />
               
-              {recordedValue && isValueOutOfRange(selectedQuestion, recordedValue) && (
+              {modalOutOfRange && (
                 <p className="text-red-600 text-sm mt-2">
                   {t('inspectionExecution.valueOutsideRange')}
                 </p>
@@ -558,9 +587,9 @@ const InspectionExecutionDetail = () => {
               </button>
               <button
                 onClick={handleAddRecord}
-                disabled={!recordedValue.trim() || isValueOutOfRange(selectedQuestion, recordedValue)}
+                disabled={!recordedValue.trim()}
                 className={`flex-1 px-4 py-2 rounded-lg transition ${
-                  !recordedValue.trim() || isValueOutOfRange(selectedQuestion, recordedValue)
+                  !recordedValue.trim()
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
@@ -570,7 +599,8 @@ const InspectionExecutionDetail = () => {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
       </div>
       </div>
     </div>

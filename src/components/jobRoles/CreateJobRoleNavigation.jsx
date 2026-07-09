@@ -4,6 +4,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
 import { FaSave, FaSearch } from "react-icons/fa";
+import { useNavigation } from "../../hooks/useNavigation";
 import { useAuthStore } from "../../store/useAuthStore";
 import SearchableDropdown from "../ui/SearchableDropdown";
 import { useAdminSettings } from "../../contexts/AdminSettingsContext";
@@ -12,12 +13,23 @@ import NavigationTreeBuilder, {
   DEFAULT_MOB_DESK,
 } from "./NavigationTreeBuilder";
 
-const CreateJobRoleNavigation = () => {
+const CreateJobRoleNavigation = ({
+  embedded = false,
+  embeddedNav = null,
+  onClose,
+  onSaved,
+} = {}) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { navId } = useParams();
-  const editingNav = location.state?.navigation || null;
+  const { navId: routeNavId } = useParams();
+  const navId = embedded ? embeddedNav?.job_role_nav_id : routeNavId;
+  const editingNav = embedded ? embeddedNav : location.state?.navigation || null;
   const { user } = useAuthStore();
+  const { refreshNavigation } = useNavigation();
+
+  const syncUserNavigation = () => {
+    refreshNavigation();
+  };
 
   // Check if we're in admin settings mode - handle case where context might not- be available
   let isAdminSettingsMode = false;
@@ -49,8 +61,25 @@ const CreateJobRoleNavigation = () => {
   };
 
   // Check if we're in edit mode or create mode
-  const isEditMode = !!(editingNav || navId);
+  const isEditMode = embedded ? !!embeddedNav : !!(editingNav || navId);
   const isCreateMode = !isEditMode;
+
+  const closeEditView = () => {
+    if (embedded) {
+      onClose?.();
+      return;
+    }
+    navigate(getBackRoute(), { state: getBackState() });
+  };
+
+  const finishEditSave = () => {
+    syncUserNavigation();
+    if (embedded) {
+      onSaved?.();
+      return;
+    }
+    navigate(getBackRoute(), { state: getBackState() });
+  };
 
   // For edit mode - single entry
   const [formData, setFormData] = useState({
@@ -71,7 +100,6 @@ const CreateJobRoleNavigation = () => {
   // For create mode - tree-based navigation builder
   const [selectedJobRole, setSelectedJobRole] = useState("");
   const [navigationGroups, setNavigationGroups] = useState([]);
-  const [referenceNavigation, setReferenceNavigation] = useState([]);
 
   const [availableRoles, setAvailableRoles] = useState([]);
   const [availableAppIds, setAvailableAppIds] = useState([]);
@@ -90,10 +118,37 @@ const CreateJobRoleNavigation = () => {
 
   useEffect(() => {
     // If navId is in URL, fetch the navigation data
-    if (navId && !editingNav) {
+    if (navId && !editingNav && !embedded) {
       fetchNavigationById(navId);
     }
-  }, [navId, editingNav]);
+  }, [navId, editingNav, embedded]);
+
+  useEffect(() => {
+    if (embedded && embeddedNav) {
+      setFormData({
+        job_role_nav_id: embeddedNav.job_role_nav_id,
+        job_role_id: embeddedNav.job_role_id,
+        parent_id: embeddedNav.parent_id || "",
+        app_id: embeddedNav.app_id,
+        label: embeddedNav.label || "",
+        sequence: embeddedNav.sequence || 1,
+        access_level: embeddedNav.access_level || "D",
+        is_group:
+          embeddedNav.is_group === true ||
+          embeddedNav.is_group === "Yes" ||
+          embeddedNav.is_group === 1,
+        mob_desk:
+          embeddedNav.mob_desk === "Desktop"
+            ? "D"
+            : embeddedNav.mob_desk === "Mobile"
+              ? "M"
+              : embeddedNav.mob_desk || "D",
+        org_id: embeddedNav.org_id || user?.org_id || "",
+        int_status:
+          embeddedNav.int_status !== undefined ? embeddedNav.int_status : 1,
+      });
+    }
+  }, [embedded, embeddedNav, user?.org_id]);
 
   const fetchNavigationById = async (navId) => {
     try {
@@ -167,8 +222,6 @@ const CreateJobRoleNavigation = () => {
       const response = await API.get("/job-role-navigation");
       const navigation = response.data.navigation || [];
       setAvailableParentIds(navigation);
-      const jr001Nav = navigation.filter((n) => n.job_role_id === "JR001");
-      setReferenceNavigation(jr001Nav.length > 0 ? jr001Nav : navigation);
     } catch (error) {
       console.error("Error fetching parent IDs:", error);
     }
@@ -202,6 +255,7 @@ const CreateJobRoleNavigation = () => {
             navId: i.job_role_nav_id,
             name: i.label || "",
             appId: i.app_id,
+            accessLevel: i.access_level || DEFAULT_ACCESS_LEVEL,
             sequence: i.sequence,
           })),
       }));
@@ -226,7 +280,12 @@ const CreateJobRoleNavigation = () => {
       );
     } catch (error) {
       console.error("Error loading navigation:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_NAVIGATION_DATA_7C1458BE', fallbackText: 'Failed to load navigation for this role', type: 'error' });
+      showBackendTextToast({
+        toast,
+        tmdId: "TMD_FAILED_TO_LOAD_NAVIGATION_DATA_7C1458BE",
+        fallbackText: "Failed to load navigation for this role",
+        type: "error",
+      });
       setNavigationGroups([]);
     }
   };
@@ -247,6 +306,7 @@ const CreateJobRoleNavigation = () => {
       mob_desk: DEFAULT_MOB_DESK,
       is_group: true,
     });
+    syncUserNavigation();
     return response.data.navigation;
   };
 
@@ -255,6 +315,7 @@ const CreateJobRoleNavigation = () => {
       label: name.trim(),
       is_group: true,
     });
+    syncUserNavigation();
   };
 
   const deleteGroupEntry = async (group) => {
@@ -264,34 +325,45 @@ const CreateJobRoleNavigation = () => {
     ].filter(Boolean);
     if (ids.length > 0) {
       await API.delete("/job-role-navigation", { data: { ids } });
+      syncUserNavigation();
     }
   };
 
-  const createSubMenuEntry = async (groupNavId, name, appId, currentGroups = navigationGroups) => {
+  const createSubMenuEntry = async (
+    groupNavId,
+    name,
+    appId,
+    currentGroups = navigationGroups,
+    accessLevel = DEFAULT_ACCESS_LEVEL,
+  ) => {
     const response = await API.post("/job-role-navigation", {
       job_role_id: selectedJobRole,
       app_id: appId,
       label: name.trim(),
       parent_id: groupNavId,
       sequence: getNextSequence(currentGroups),
-      access_level: DEFAULT_ACCESS_LEVEL,
+      access_level: accessLevel || DEFAULT_ACCESS_LEVEL,
       mob_desk: DEFAULT_MOB_DESK,
       is_group: false,
     });
+    syncUserNavigation();
     return response.data.navigation;
   };
 
-  const updateSubMenuEntry = async (navId, { name, appId }) => {
+  const updateSubMenuEntry = async (navId, { name, appId, accessLevel }) => {
     await API.put(`/job-role-navigation/${navId}`, {
       label: name.trim(),
       app_id: appId,
+      access_level: accessLevel || DEFAULT_ACCESS_LEVEL,
       is_group: false,
     });
+    syncUserNavigation();
   };
 
   const deleteSubMenuEntry = async (navId) => {
     if (navId) {
       await API.delete("/job-role-navigation", { data: { ids: [navId] } });
+      syncUserNavigation();
     }
   };
 
@@ -315,7 +387,7 @@ const CreateJobRoleNavigation = () => {
         int_status: formData.int_status ? 1 : 0,
       });
       showBackendTextToast({ toast, tmdId: 'TMD_NAVIGATION_UPDATED_SUCCESSFULLY_3E75DCA8', fallbackText: 'Navigation updated successfully', type: 'success' });
-      navigate(getBackRoute(), { state: getBackState() });
+      finishEditSave();
     } catch (error) {
       console.error("Error saving navigation:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_NAVIGATION_2F25C877', fallbackText: 'Failed to save navigation', type: 'error' });
@@ -333,20 +405,8 @@ const CreateJobRoleNavigation = () => {
 
   // Edit Mode - Single Entry Form
   if (isEditMode) {
-    return (
-      <div className="p-6 w-full">
-        {/* Header */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm p-6 w-full">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Update Role Navigation
-          </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Configure navigation access for job roles
-          </p>
-        </div>
-
-        {/* Form */}
-        <div className="bg-white rounded-lg shadow-md p-6 w-full">
+    const editForm = (
+      <div className={embedded ? "p-6" : "bg-white rounded-lg shadow-md p-6 w-full"}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Navigation ID */}
             {(editingNav || navId) && (
@@ -626,9 +686,9 @@ const CreateJobRoleNavigation = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
+          <div className={`flex justify-end gap-3 mt-8 pt-6 border-t ${embedded ? "bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg" : ""}`}>
             <button
-              onClick={() => navigate(getBackRoute(), { state: getBackState() })}
+              onClick={closeEditView}
               className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
             >
               Cancel
@@ -641,6 +701,23 @@ const CreateJobRoleNavigation = () => {
             </button>
           </div>
         </div>
+    );
+
+    if (embedded) {
+      return editForm;
+    }
+
+    return (
+      <div className="p-6 w-full">
+        <div className="mb-6 bg-white rounded-lg shadow-sm p-6 w-full">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Update Role Navigation
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Configure navigation access for job roles
+          </p>
+        </div>
+        {editForm}
       </div>
     );
   }
@@ -717,14 +794,16 @@ const CreateJobRoleNavigation = () => {
             groups={navigationGroups}
             onGroupsChange={setNavigationGroups}
             availableAppIds={availableAppIds}
-            referenceNavigation={referenceNavigation}
             onCreateGroup={createGroupEntry}
             onUpdateGroup={updateGroupEntry}
             onDeleteGroup={deleteGroupEntry}
             onCreateSubMenu={createSubMenuEntry}
             onUpdateSubMenu={updateSubMenuEntry}
             onDeleteSubMenu={deleteSubMenuEntry}
-            onDone={() => navigate(getBackRoute(), { state: getBackState() })}
+            onDone={() => {
+              syncUserNavigation();
+              navigate(getBackRoute(), { state: getBackState() });
+            }}
           />
         </div>
       )}

@@ -10,6 +10,7 @@ import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import { findConflictingAssetTypeName } from "../utils/assetTypeNameValidation";
+import { refreshAssetTypeCaches } from "../utils/refreshAssetTypeCaches";
 
 const AddAssetType = () => {
   const navigate = useNavigate();
@@ -336,6 +337,7 @@ const AddAssetType = () => {
           }
         }
       }
+      await refreshAssetTypeCaches();
       navigate('/master-data/asset-types');
     } catch (error) {
       const responseData = error.response?.data;

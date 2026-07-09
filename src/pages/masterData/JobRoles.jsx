@@ -11,6 +11,7 @@ import { FaSave, FaTimes } from "react-icons/fa";
 import { useNavigation } from "../../hooks/useNavigation";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAdminSettings } from "../../contexts/AdminSettingsContext";
+import CreateJobRoleNavigation from "../../components/jobRoles/CreateJobRoleNavigation";
 
 const JobRoles = () => {
   const navigate = useNavigate();
@@ -61,9 +62,11 @@ const JobRoles = () => {
     fromDate: "",
     toDate: ""
   });
+  const [showNavModal, setShowNavModal] = useState(false);
+  const [editingNavItem, setEditingNavItem] = useState(null);
   
   // Access control
-  const { hasEditAccess } = useNavigation();
+  const { hasEditAccess, refreshNavigation } = useNavigation();
   const canEdit = hasEditAccess('USERROLES');
 
   const rolesColumns = [
@@ -275,24 +278,8 @@ const JobRoles = () => {
   };
 
   const handleEditNav = (nav) => {
-    // Navigate to update route with navId - use appropriate route based on admin settings mode
-    const navState = {
-      activeTab: activeTab,
-      navigation: nav,
-      adminFrom: { pathname: location.pathname, search: location.search },
-      parentAdminFrom: location.state?.adminFrom,
-    };
-    if (isAdminSettingsMode) {
-      navigate(
-        `/adminsettings/configuration/job-roles/update-navigation/${nav.job_role_nav_id}`,
-        { state: navState },
-      );
-    } else {
-      navigate(
-        `/master-data/job-roles/update-navigation/${nav.job_role_nav_id}`,
-        { state: { activeTab: activeTab, navigation: nav } },
-      );
-    }
+    setEditingNavItem(nav);
+    setShowNavModal(true);
   };
 
   const handleNavFilterChange = (columnName, value) => {
@@ -310,6 +297,7 @@ const JobRoles = () => {
       );
       setSelectedNavRows([]);
       toast.success(`${count} navigation entry(ies) deleted`);
+      refreshNavigation();
       return true;
     } catch (error) {
       console.error("Error deleting navigation entries:", error);
@@ -624,6 +612,43 @@ const JobRoles = () => {
               >
                 <FaSave /> Save
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role Navigation Edit Modal */}
+      {showNavModal && editingNavItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+            <div className="bg-[#0E2F4B] text-white px-6 py-4 flex justify-between items-center rounded-t-lg shrink-0">
+              <h2 className="text-xl font-bold">Edit Role Navigation</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNavModal(false);
+                  setEditingNavItem(null);
+                }}
+                className="text-white hover:text-gray-200 transition-colors"
+              >
+                <FaTimes size={24} />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <CreateJobRoleNavigation
+                embedded
+                embeddedNav={editingNavItem}
+                onClose={() => {
+                  setShowNavModal(false);
+                  setEditingNavItem(null);
+                }}
+                onSaved={() => {
+                  setShowNavModal(false);
+                  setEditingNavItem(null);
+                  fetchJobRoleNavigation();
+                  refreshNavigation();
+                }}
+              />
             </div>
           </div>
         </div>

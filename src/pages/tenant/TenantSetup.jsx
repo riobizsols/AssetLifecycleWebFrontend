@@ -193,6 +193,10 @@ export default function TenantSetup() {
         showToast.error("Domain & database name is required (minimum 3 characters)");
         return;
       }
+      if (!form.orgCity || !form.orgCity.trim()) {
+        showToast.error("City is required");
+        return;
+      }
       if (domainDbAvailable === null) {
         showToast.error("Please check that the domain and database name are available");
         return;
@@ -235,7 +239,7 @@ export default function TenantSetup() {
         orgId: form.orgId.toUpperCase(),
         orgName: form.orgName,
         subdomain: form.subdomain.toLowerCase(),
-        orgCity: form.orgCity,
+        orgCity: form.orgCity.trim(),
         adminUser: {
           fullName: adminUser.fullName,
           email: adminUser.email,
@@ -257,7 +261,7 @@ export default function TenantSetup() {
 
       toast.error(response.data?.message || "Tenant creation did not complete. Please try again.");
     } catch (error) {
-      const message = error.response?.data?.message || "Failed to create tenant. Please try again.";
+      const message = error.response?.data?.message || error.message || "Failed to create tenant. Please try again.";
       const looksLikeExistingTenant =
         /already exists|already taken/i.test(message) &&
         form.orgId &&
@@ -286,7 +290,11 @@ export default function TenantSetup() {
         return;
       }
 
-      toast.error(message);
+      if (error.code === "ECONNABORTED") {
+        showToast.error("Request timed out. The tenant may still have been created — try tenant login.");
+      } else {
+        showToast.error(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -464,13 +472,14 @@ export default function TenantSetup() {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        City
+                        City <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         name="orgCity"
                         value={form.orgCity}
                         onChange={handleChange}
+                        required
                         placeholder="e.g., New York"
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
@@ -482,7 +491,7 @@ export default function TenantSetup() {
                   <button
                     type="button"
                     onClick={handleNext}
-                    disabled={!domainDbAvailable || !form.orgName || !form.orgId}
+                    disabled={!domainDbAvailable || !form.orgName || !form.orgId || !form.orgCity.trim()}
                     className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                   >
                     Next
@@ -766,6 +775,17 @@ export default function TenantSetup() {
                       </div>
                     </div>
                   </div>
+                )}
+
+                {loading && (
+                  <p className="text-sm text-amber-700 mt-4">
+                    Creating the database and tables can take several minutes on a remote server. Do not close this tab.
+                    If it seems stuck, refresh and try{" "}
+                    <a href="/tenant-login" className="text-indigo-600 underline font-medium">
+                      tenant login
+                    </a>{" "}
+                    with org ID <strong>{form.orgId.toUpperCase()}</strong>.
+                  </p>
                 )}
 
                 <div className="flex justify-between pt-6 border-t border-gray-200">

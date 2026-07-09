@@ -44,13 +44,19 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    const cleaned = {
+      text: String(formData.text || '').trim(),
+      city: String(formData.city || '').trim(),
+      branch_code: String(formData.branch_code || '').trim(),
+    };
+
     // Validate
-    if (!formData.text || !formData.city || !formData.branch_code) {
+    if (!cleaned.text || !cleaned.city || !cleaned.branch_code) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_ALLFIELDSREQUIRED_6785ABB7', fallbackText: t('branches.allFieldsRequired'), type: 'error' });
       return;
     }
 
-    onConfirm(formData);
+    onConfirm(cleaned);
   };
 
   if (!show) return null;
@@ -105,6 +111,7 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
+                required
                 className="w-full px-3 py-2 border rounded text-sm"
                 placeholder={t('branches.enterCity')}
               />

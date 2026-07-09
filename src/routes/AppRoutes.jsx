@@ -163,7 +163,14 @@ export default function AppRoutes() {
         <Route
           path="/technician-certificates"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute
+              requiredAnyOfAppIds={[
+                "TECHCERTUPLOAD",
+                "TECHNICIANCERTIFICATES",
+                "EMPLOYEE TECH CERTIFICATION",
+                "CERTIFICATIONS",
+              ]}
+            >
               <MainLayout>
                 <TechnicianCertificates />
               </MainLayout>
@@ -173,7 +180,7 @@ export default function AppRoutes() {
         <Route
           path="/tech-cert-approvals"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="HR/MANAGERAPPROVAL">
               <MainLayout>
                 <TechCertApprovals />
               </MainLayout>
@@ -193,7 +200,7 @@ export default function AppRoutes() {
         <Route
           path="/assign-department-assets"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="DEPTASSIGNMENT">
               <MainLayout>
                 <DepartmentWiseAssetAssignment />
               </MainLayout>
@@ -203,7 +210,7 @@ export default function AppRoutes() {
         <Route
           path="/assign-employee-assets"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="EMPASSIGNMENT">
               <MainLayout>
                 <EmployeeWiseAssetAssignment />
               </MainLayout>
@@ -213,7 +220,9 @@ export default function AppRoutes() {
         <Route
           path="/asset-selection"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute
+              requiredAnyOfAppIds={["DEPTASSIGNMENT", "EMPASSIGNMENT"]}
+            >
               <MainLayout>
                 <AssetSelection />
               </MainLayout>
@@ -223,7 +232,9 @@ export default function AppRoutes() {
         <Route
           path="/asset-detail/:asset_id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute
+              requiredAnyOfAppIds={["ASSETS", "DEPTASSIGNMENT", "EMPASSIGNMENT"]}
+            >
               <MainLayout>
                 <AssetsDetail />
               </MainLayout>
@@ -234,7 +245,7 @@ export default function AppRoutes() {
         <Route
           path="/maintenance-approval"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="MAINTENANCEAPPROVAL">
               <MainLayout>
                 <MaintenanceApproval />
               </MainLayout>
@@ -244,7 +255,7 @@ export default function AppRoutes() {
         <Route
           path="/inspection-approval"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="INSPECTIONAPPROVAL">
               <MainLayout>
                 <InspectionApproval />
               </MainLayout>
@@ -254,7 +265,7 @@ export default function AppRoutes() {
         <Route
           path="/inspection-approval-detail/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="INSPECTIONAPPROVAL">
               <MainLayout>
                 <InspectionApprovalDetail />
               </MainLayout>
@@ -264,7 +275,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-approval"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="SCRAPMAINTENANCEAPPROVAL">
               <MainLayout>
                 <ScrapMaintenanceApproval />
               </MainLayout>
@@ -274,7 +285,7 @@ export default function AppRoutes() {
         <Route
           path="/vendor-renewal-approval"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="VENDORRENEWALAPPROVAL">
               <MainLayout>
                 <VendorRenewalApproval />
               </MainLayout>
@@ -284,7 +295,7 @@ export default function AppRoutes() {
         <Route
           path="/approval-detail/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="MAINTENANCEAPPROVAL">
               <MainLayout>
                 <MaintenanceApprovalDetail />
               </MainLayout>
@@ -294,7 +305,7 @@ export default function AppRoutes() {
         <Route
           path="/scrap-approval-detail/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="SCRAPMAINTENANCEAPPROVAL">
               <MainLayout>
                 <ScrapMaintenanceApprovalDetail />
               </MainLayout>
@@ -559,7 +570,7 @@ export default function AppRoutes() {
         <Route
           path="/breakdown-selection"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="REPORTBREAKDOWN">
               <MainLayout>
                 <BreakdownSelection />
               </MainLayout>
@@ -570,7 +581,7 @@ export default function AppRoutes() {
         <Route
           path="/breakdown-selection2"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="EMPLOYEE REPORT BREAKDOWN">
               <MainLayout>
                 <BreakdownSelection2 />
               </MainLayout>
@@ -592,7 +603,7 @@ export default function AppRoutes() {
         <Route
           path="/breakdown-details"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="REPORTBREAKDOWN">
               <MainLayout>
                 <BreakdownDetails />
               </MainLayout>
@@ -603,7 +614,7 @@ export default function AppRoutes() {
         <Route
           path="/breakdown-details2"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="EMPLOYEE REPORT BREAKDOWN">
               <MainLayout>
                 <BreakdownDetails2 />
               </MainLayout>
@@ -669,7 +680,7 @@ export default function AppRoutes() {
         <Route
           path="/audit-logs-view"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="AUDITLOGS">
               <MainLayout>
                 <AuditLogsView />
               </MainLayout>
@@ -767,7 +778,7 @@ export default function AppRoutes() {
         <Route
           path="/group-asset/create"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="GROUPASSET">
               <MainLayout>
                 <CreateGroupAsset />
               </MainLayout>
@@ -777,7 +788,7 @@ export default function AppRoutes() {
         <Route
           path="/group-asset/edit/:groupId"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="GROUPASSET">
               <MainLayout>
                 <EditGroupAsset />
               </MainLayout>
@@ -787,7 +798,7 @@ export default function AppRoutes() {
         <Route
           path="/group-asset/view/:groupId"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredAppId="GROUPASSET">
               <MainLayout>
                 <ViewGroupAsset />
               </MainLayout>
@@ -1131,7 +1142,9 @@ export default function AppRoutes() {
         <Route
           path="/adminsettings/configuration/data-config"
           element={
-            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["COLUMNACCESSCONFIG", "ADMINSETTINGS"]}
+            >
               <AdminSettingsLayout>
                 <ColumnAccessConfig />
               </AdminSettingsLayout>
@@ -1141,7 +1154,9 @@ export default function AppRoutes() {
         <Route
           path="/adminsettings/configuration/maintenance-config"
           element={
-            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["MAINTENANCECONFIG", "ADMINSETTINGS"]}
+            >
               <AdminSettingsLayout>
                 <MaintenanceConfiguration />
               </AdminSettingsLayout>
@@ -1175,7 +1190,9 @@ export default function AppRoutes() {
         <Route
           path="/adminsettings/configuration/text-messages"
           element={
-            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["TEXTMESSAGES", "ADMINSETTINGS"]}
+            >
               <AdminSettingsLayout>
                 <TextMessages />
               </AdminSettingsLayout>
@@ -1245,7 +1262,9 @@ export default function AppRoutes() {
         <Route
           path="/adminsettings/configuration/properties"
           element={
-            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["PROPERTIES", "ADMINSETTINGS"]}
+            >
               <AdminSettingsLayout>
                 <Properties />
               </AdminSettingsLayout>
@@ -1255,7 +1274,9 @@ export default function AppRoutes() {
         <Route
           path="/adminsettings/configuration/breakdown-reason-codes"
           element={
-            <ProtectedRoute requiredAppId="ADMINSETTINGS">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["BREAKDOWNREASONCODES", "ADMINSETTINGS"]}
+            >
               <AdminSettingsLayout>
                 <BreakdownReasonCodes />
               </AdminSettingsLayout>

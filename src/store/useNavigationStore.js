@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import API from '../lib/axios';
-import { buildCacheKey, peekCache, setCache } from '../utils/apiCache';
+import { buildCacheKey, invalidateCache, peekCache, setCache } from '../utils/apiCache';
+import { ensureDefaultDashboardNav, ensureUsersInMasterData, sortAdminSettingsNavOrder, sortInspectionNavOrder, sortMasterDataNavOrder, sortScrapNavOrder } from '../utils/navigationDefaults';
 
-const NAV_CACHE_KEY = 'app:navigation';
+const NAV_CACHE_PREFIX = 'app:navigation:v16';
 const NAV_TTL_MS = 10 * 60 * 1000;
+
+const navCacheKey = (userId) => buildCacheKey([NAV_CACHE_PREFIX, userId]);
 
 const detectPlatform = () => {
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -12,36 +15,53 @@ const detectPlatform = () => {
   return isMobile ? 'M' : 'D';
 };
 
+const normalizeNavigation = (navigation) =>
+  sortInspectionNavOrder(
+    sortAdminSettingsNavOrder(
+      sortScrapNavOrder(
+        sortMasterDataNavOrder(
+          ensureUsersInMasterData(ensureDefaultDashboardNav(navigation)),
+        ),
+      ),
+    ),
+  );
+
 export const useNavigationStore = create((set, get) => ({
-  navigation: peekCache(NAV_CACHE_KEY, NAV_TTL_MS) || [],
-  loading: !peekCache(NAV_CACHE_KEY, NAV_TTL_MS),
+  navigation: [],
+  loading: false,
   error: null,
   fetchedForUserId: null,
 
   fetchNavigation: async (userId, { force = false } = {}) => {
     if (!userId) {
-      set({ navigation: [], loading: false, error: null });
+      set({ navigation: [], loading: false, error: null, fetchedForUserId: null });
       return;
     }
 
-    const { fetchedForUserId, loading } = get();
+    const cacheKey = navCacheKey(userId);
     if (!force) {
-      const cached = peekCache(NAV_CACHE_KEY, NAV_TTL_MS);
-      if (cached && fetchedForUserId === userId) {
-        set({ navigation: cached, loading: false, error: null });
-        return cached;
+      const cached = peekCache(cacheKey, NAV_TTL_MS);
+      if (cached) {
+        const navigation = normalizeNavigation(cached);
+        set({ navigation, loading: false, error: null, fetchedForUserId: userId });
+        return navigation;
       }
     }
 
-    if (!loading || force) {
-      set({ loading: true, error: null });
-    }
+    set({
+      loading: true,
+      error: null,
+      navigation: get().fetchedForUserId === userId ? get().navigation : [],
+      fetchedForUserId: null,
+    });
 
     try {
       const platform = detectPlatform();
       const response = await API.get(`/navigation/user/navigation?platform=${platform}`);
-      const data = response.data.success ? response.data.data : [];
-      setCache(NAV_CACHE_KEY, data);
+      const data = normalizeNavigation(
+        response.data.success ? response.data.data : [],
+      );
+      setCache(cacheKey, data);
       set({ navigation: data, loading: false, error: null, fetchedForUserId: userId });
       return data;
     } catch (err) {
@@ -49,12 +69,14 @@ export const useNavigationStore = create((set, get) => ({
       set({
         loading: false,
         error: err.response?.data?.message || 'Failed to fetch navigation',
+        fetchedForUserId: null,
       });
       return get().navigation;
     }
   },
 
   resetNavigation: () => {
+    invalidateCache(NAV_CACHE_PREFIX);
     set({ navigation: [], loading: false, error: null, fetchedForUserId: null });
   },
 }));

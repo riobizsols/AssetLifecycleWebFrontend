@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { toast } from "react-hot-toast";
 import { useLanguage } from "../../contexts/LanguageContext";
 import API from "../../lib/axios";
 
@@ -983,8 +984,18 @@ export function dateOffset(days) {
   return d.toISOString().slice(0, 10);
 }
 
-// Dummy function for toast notification
-export function showToast(message) {
-  console.log("Toast:", message);
-  alert("Toast: " + message);
+/** Toast helper used by ReportLayout generate/export actions */
+export function showToast(message, type = "info") {
+  const text = String(message || "").replace(/^Toast:\s*/i, "").trim();
+  if (!text) return;
+
+  if (type === "success") {
+    toast.success(text);
+    return;
+  }
+  if (type === "error") {
+    toast.error(text);
+    return;
+  }
+  toast(text);
 }

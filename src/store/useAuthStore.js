@@ -12,7 +12,9 @@ export const useAuthStore = create(
             token: null,
             requiresPasswordChange: false,
 
-            login: (data) =>
+            login: (data) => {
+                clearCache();
+                useNavigationStore.getState().resetNavigation();
                 set({
                     isAuthenticated: true,
                     user: data,
@@ -25,7 +27,8 @@ export const useAuthStore = create(
                     dept_id: data.dept_id || null,
                     dept_name: data.dept_name || null,
                     requiresPasswordChange: data.requiresPasswordChange || false, // Store password change requirement
-                }),
+                });
+            },
 
             logout: () => {
                 clearCache();

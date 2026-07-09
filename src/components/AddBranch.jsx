@@ -3,9 +3,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import API from "../lib/axios";
+import { invalidateCache, peekCache, setCache } from "../utils/apiCache";
+import { formatBranchRows } from "../store/useBranchesStore";
 
 const AddBranch = () => {
   const navigate = useNavigate();
+  const BRANCH_LIST_KEY = "branches:list";
+  const BRANCH_LIST_TTL_MS = 3 * 60 * 1000;
 
   const [form, setForm] = useState({
     text: "", // Branch Name
@@ -41,6 +45,31 @@ const AddBranch = () => {
     try {
       setLoading(true);
       const response = await API.post("/branches", form);
+
+      // Instant UX: add created row into list cache so Branches screen shows it immediately.
+      const cached = peekCache(BRANCH_LIST_KEY, BRANCH_LIST_TTL_MS);
+      const createdRaw =
+        response?.data?.data && !Array.isArray(response.data.data)
+          ? response.data.data
+          : response?.data && !Array.isArray(response.data)
+            ? response.data
+            : null;
+
+      if (createdRaw && cached && Array.isArray(cached)) {
+        const [formattedCreated] = formatBranchRows([createdRaw]);
+        if (formattedCreated?.branch_id) {
+          const withoutDuplicate = cached.filter(
+            (row) => row.branch_id !== formattedCreated.branch_id,
+          );
+          setCache(BRANCH_LIST_KEY, [...withoutDuplicate, formattedCreated]);
+        } else {
+          // Fallback when API shape is unexpected.
+          invalidateCache("branches:");
+        }
+      } else {
+        // Fallback path keeps data correctness.
+        invalidateCache("branches:");
+      }
 
       showBackendTextToast({ toast, tmdId: 'TMD_BRANCH_CREATED_SUCCESSFULLY_62640044', fallbackText: 'Branch created successfully!', type: 'success' });
       navigate("/master-data/branches");
