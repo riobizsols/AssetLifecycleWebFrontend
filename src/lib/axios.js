@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { API_BASE_URL } from "../config/environment";
+import { invalidateOnMutation } from "../utils/apiCache";
 
 const API = axios.create({
     baseURL: API_BASE_URL,
@@ -20,7 +21,13 @@ API.interceptors.request.use((config) => {
 
 // Response interceptor to handle unauthorized responses
 API.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        invalidateOnMutation({
+            method: response?.config?.method,
+            url: response?.config?.url,
+        });
+        return response;
+    },
     async (error) => {
         const originalRequest = error.config;
         
