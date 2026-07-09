@@ -1,4 +1,4 @@
-import { useState, useContext, useMemo, useEffect } from "react";
+import { useState, useContext, useMemo, useEffect, useRef } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useNavigation } from "../hooks/useNavigation";
 import {
@@ -1093,6 +1093,7 @@ const DatabaseSidebar = () => {
   const location = useLocation();
   const [openDropdown, setOpenDropdown] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
+  const lastAutoOpenPathRef = useRef(null);
   const { t } = useLanguage();
   // Get admin settings mode from context (may be undefined if not in provider)
   const adminSettingsContext = useContext(AdminSettingsContext);
@@ -1106,7 +1107,7 @@ const DatabaseSidebar = () => {
   }, [navigation, isAdminSettingsMode, getAccessLevel]);
 
   const toggleDropdown = (id) => {
-    setOpenDropdown(openDropdown === id ? null : id);
+    setOpenDropdown((current) => (current === id ? null : id));
   };
 
   const toggleSidebar = () => setCollapsed(!collapsed);
@@ -1581,6 +1582,15 @@ const DatabaseSidebar = () => {
 
   useEffect(() => {
     if (isAdminSettingsMode || collapsed) return;
+    if (!navigationForRender?.length) return;
+
+    const shouldAutoSync =
+      lastAutoOpenPathRef.current === null ||
+      lastAutoOpenPathRef.current !== location.pathname;
+
+    if (!shouldAutoSync) return;
+
+    lastAutoOpenPathRef.current = location.pathname;
 
     const activeGroup = navigationForRender.find((item) => {
       if (!isNavGroup(item) || !item.children?.length) return false;
@@ -1602,7 +1612,10 @@ const DatabaseSidebar = () => {
       if (adminGroup) {
         setOpenDropdown(getNavItemKey(adminGroup));
       }
+      return;
     }
+
+    setOpenDropdown(null);
   }, [location.pathname, navigationForRender, isAdminSettingsMode, collapsed]);
 
   // App IDs that should only be visible in admin settings mode (/adminsettings/configuration routes)
