@@ -2,14 +2,14 @@ version: "3.9"
 
 services:
   alm-frontend:
-    container_name: alm-main-frontend
+    container_name: alm-tenant-web
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
-        VITE_FRONTEND_URL: ${VITE_FRONTEND_URL}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://rioassetmanagement.net/api}
+        VITE_FRONTEND_URL: ${VITE_FRONTEND_URL:-https://rioassetmanagement.net}
         VITE_API_PORT: ${VITE_API_PORT:-}
     ports:
-      - "3002:80"
+      - "3001:80"
     restart: unless-stopped
