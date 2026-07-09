@@ -2,6 +2,20 @@ const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
 const memoryCache = new Map();
 
+function normalizePath(url = '') {
+  if (!url) return '';
+  const clean = String(url).split('?')[0];
+  if (clean.startsWith('http://') || clean.startsWith('https://')) {
+    try {
+      const parsed = new URL(clean);
+      return parsed.pathname || '';
+    } catch {
+      return clean;
+    }
+  }
+  return clean;
+}
+
 export function buildCacheKey(parts) {
   return parts.filter((p) => p != null && p !== '').join(':');
 }
@@ -39,6 +53,21 @@ export function invalidateCache(prefix) {
 
 export function clearCache() {
   memoryCache.clear();
+}
+
+/**
+ * Global cache invalidation for successful mutation requests.
+ * This prevents stale data when a screen forgets local invalidateCache calls.
+ */
+export function invalidateOnMutation({ method, url } = {}) {
+  const verb = String(method || '').toLowerCase();
+  if (!['post', 'put', 'patch', 'delete'].includes(verb)) return;
+
+  const path = normalizePath(url);
+  // Skip token-refresh calls to avoid unnecessary cache churn.
+  if (path.includes('/auth/refresh')) return;
+
+  clearCache();
 }
 
 export async function fetchWithCache(key, fetcher, { ttlMs = DEFAULT_TTL_MS, force = false } = {}) {
