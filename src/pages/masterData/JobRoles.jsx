@@ -13,6 +13,8 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { useAdminSettings } from "../../contexts/AdminSettingsContext";
 import CreateJobRoleNavigation from "../../components/jobRoles/CreateJobRoleNavigation";
 
+const JOB_FUNCTION_MAX_LENGTH = 100;
+
 const JobRoles = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,6 +37,7 @@ const JobRoles = () => {
   const [isLoadingRoles, setIsLoadingRoles] = useState(false);
   const [selectedRoleRows, setSelectedRoleRows] = useState([]);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [roleFormSubmitAttempted, setRoleFormSubmitAttempted] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [roleFormData, setRoleFormData] = useState({
     job_role_id: "",
@@ -153,6 +156,7 @@ const JobRoles = () => {
   
   const handleAddNewRole = () => {
     setEditingRole(null);
+    setRoleFormSubmitAttempted(false);
     setRoleFormData({
       job_role_id: "",
       text: "",
@@ -167,6 +171,7 @@ const JobRoles = () => {
 
   const handleEditRole = (role) => {
     setEditingRole(role);
+    setRoleFormSubmitAttempted(false);
     setRoleFormData({
       job_role_id: role.job_role_id,
       text: role.text,
@@ -187,11 +192,22 @@ const JobRoles = () => {
     }));
   };
 
+  const jobFunctionLength = roleFormData.job_function.length;
+  const jobFunctionExceeded = jobFunctionLength > JOB_FUNCTION_MAX_LENGTH;
+  const jobFunctionAtLimit = jobFunctionLength === JOB_FUNCTION_MAX_LENGTH;
+  const showJobFunctionError = roleFormSubmitAttempted && jobFunctionExceeded;
+
   const handleSaveRole = async () => {
+    setRoleFormSubmitAttempted(true);
+
     try {
       // Validation - job_role_id not required for new entries (auto-generated)
       if (!roleFormData.text) {
         showBackendTextToast({ toast, tmdId: 'TMD_ROLE_NAME_IS_REQUIRED_20A9EA2A', fallbackText: 'Role Name is required', type: 'error' });
+        return;
+      }
+
+      if (jobFunctionExceeded) {
         return;
       }
 
@@ -227,10 +243,16 @@ const JobRoles = () => {
       }
 
       setShowRoleModal(false);
+      setRoleFormSubmitAttempted(false);
       fetchJobRoles();
     } catch (error) {
       console.error("Error saving job role:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_JOB_ROLE_064A4D27', fallbackText: 'Failed to save job role', type: 'error' });
+      const backendMessage = error.response?.data?.message;
+      if (error.response?.data?.field === 'job_function' && backendMessage) {
+        toast.error(backendMessage);
+        return;
+      }
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_JOB_ROLE_064A4D27', fallbackText: backendMessage || 'Failed to save job role', type: 'error' });
     }
   };
 
@@ -465,7 +487,10 @@ const JobRoles = () => {
                 {editingRole ? "Edit Job Role" : "Create New Job Role"}
               </h2>
               <button
-                onClick={() => setShowRoleModal(false)}
+                onClick={() => {
+                  setShowRoleModal(false);
+                  setRoleFormSubmitAttempted(false);
+                }}
                 className="text-white hover:text-gray-200 transition-colors"
               >
                 <FaTimes size={24} />
@@ -532,9 +557,38 @@ const JobRoles = () => {
                     name="job_function"
                     value={roleFormData.job_function}
                     onChange={handleRoleFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g., dept_admin"
+                    maxLength={JOB_FUNCTION_MAX_LENGTH}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      showJobFunctionError || jobFunctionExceeded
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-blue-500'
+                    }`}
+                    placeholder="e.g., Access to inspections, maintenance, and certificates"
                   />
+                  <div className="flex justify-between items-start mt-1 gap-2">
+                    <p className={`text-xs ${
+                      showJobFunctionError || jobFunctionExceeded
+                        ? 'text-red-600'
+                        : jobFunctionAtLimit
+                          ? 'text-amber-600'
+                          : 'text-gray-500'
+                    }`}>
+                      {jobFunctionExceeded
+                        ? `Limit exceeded by ${jobFunctionLength - JOB_FUNCTION_MAX_LENGTH} character${jobFunctionLength - JOB_FUNCTION_MAX_LENGTH === 1 ? '' : 's'}`
+                        : jobFunctionAtLimit
+                          ? 'Character limit reached'
+                          : `${JOB_FUNCTION_MAX_LENGTH - jobFunctionLength} character${JOB_FUNCTION_MAX_LENGTH - jobFunctionLength === 1 ? '' : 's'} remaining`}
+                    </p>
+                    <p className={`text-xs shrink-0 ${
+                      showJobFunctionError || jobFunctionExceeded
+                        ? 'text-red-600'
+                        : jobFunctionAtLimit
+                          ? 'text-amber-600'
+                          : 'text-gray-500'
+                    }`}>
+                      {jobFunctionLength}/{JOB_FUNCTION_MAX_LENGTH}
+                    </p>
+                  </div>
                 </div>
 
                 <div>
@@ -600,14 +654,18 @@ const JobRoles = () => {
             {/* Modal Footer */}
             <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-lg">
               <button
-                onClick={() => setShowRoleModal(false)}
+                onClick={() => {
+                  setShowRoleModal(false);
+                  setRoleFormSubmitAttempted(false);
+                }}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveRole}
-                className="flex items-center gap-2 px-4 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#1a3f5f] transition-colors"
+                disabled={jobFunctionExceeded}
+                className="flex items-center gap-2 px-4 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#1a3f5f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FaSave /> Save
               </button>
