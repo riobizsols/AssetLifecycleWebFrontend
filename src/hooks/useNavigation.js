@@ -131,9 +131,9 @@ export const useNavigation = () => {
         }
     };
 
-    const refreshNavigation = () => {
+    const refreshNavigation = ({ background = true } = {}) => {
         if (user?.user_id) {
-            fetchNavigation(user.user_id, { force: true });
+            fetchNavigation(user.user_id, { force: true, background });
         }
     };
 

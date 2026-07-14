@@ -55,19 +55,58 @@ export function clearCache() {
   memoryCache.clear();
 }
 
+/** Map API paths to cache key prefixes — avoid clearing the entire app cache on every mutation. */
+function invalidationPrefixesForPath(path = '') {
+  const p = String(path).toLowerCase();
+  const prefixes = new Set();
+
+  const rules = [
+    { match: '/branches', prefix: 'branches:' },
+    { match: '/departments', prefix: 'departments:' },
+    { match: '/vendors', prefix: 'vendors:' },
+    { match: '/users', prefix: 'users:' },
+    { match: '/assets', prefix: 'assets:' },
+    { match: '/asset-types', prefix: 'asset-types:' },
+    { match: '/properties', prefix: 'properties:' },
+    { match: '/job-role-navigation', prefix: 'app:navigation:' },
+    { match: '/navigation/', prefix: 'app:navigation:' },
+    { match: '/job-roles', prefix: 'job-roles:' },
+    { match: '/user-job-roles', prefix: 'user-roles:' },
+    { match: '/text-messages', prefix: 'text-messages:' },
+    { match: '/certifications', prefix: 'certifications:' },
+    { match: '/assignment', prefix: 'assignment:' },
+    { match: '/dashboard', prefix: 'dashboard:' },
+    { match: '/scrap', prefix: 'scrap' },
+    { match: '/maintenance', prefix: 'maintenance' },
+    { match: '/inspection', prefix: 'inspection' },
+  ];
+
+  for (const { match, prefix } of rules) {
+    if (p.includes(match)) prefixes.add(prefix);
+  }
+
+  if (prefixes.size === 0) {
+    const segment = p.split('/').filter(Boolean)[0];
+    if (segment) prefixes.add(`${segment}:`);
+  }
+
+  return [...prefixes];
+}
+
 /**
- * Global cache invalidation for successful mutation requests.
- * This prevents stale data when a screen forgets local invalidateCache calls.
+ * Invalidate caches related to a successful mutation request.
+ * Scoped invalidation keeps in-progress screens (e.g. job-role nav builder) from losing local state.
  */
 export function invalidateOnMutation({ method, url } = {}) {
   const verb = String(method || '').toLowerCase();
   if (!['post', 'put', 'patch', 'delete'].includes(verb)) return;
 
   const path = normalizePath(url);
-  // Skip token-refresh calls to avoid unnecessary cache churn.
   if (path.includes('/auth/refresh')) return;
 
-  clearCache();
+  for (const prefix of invalidationPrefixesForPath(path)) {
+    invalidateCache(prefix);
+  }
 }
 
 export async function fetchWithCache(key, fetcher, { ttlMs = DEFAULT_TTL_MS, force = false } = {}) {
