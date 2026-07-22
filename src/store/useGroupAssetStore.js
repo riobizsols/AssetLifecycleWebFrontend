@@ -97,6 +97,14 @@ export const useGroupAssetStore = create((set, get) => ({
 
   invalidateGroupAssetCache: () => {
     invalidateCache('asset-groups:');
+    invalidateCache('group-assets:');
+    invalidateCache('assets:');
     set({ groupAssets: [] });
+  },
+
+  /** Clear related caches and force-fetch so list screens never paint stale rows. */
+  refreshAfterMutation: async () => {
+    get().invalidateGroupAssetCache();
+    return get().fetchGroupAssets({ force: true });
   },
 }));
