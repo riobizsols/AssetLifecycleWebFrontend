@@ -65,6 +65,9 @@ const AllNotifications = () => {
     console.log("Auth store user data:", user);
   }, [user]);
 
+  const isAssetExpiryNotification = (workflowType) =>
+    workflowType === "ASSETEXPIRY" || workflowType === "ASSET_EXPIRY";
+
   // Filter utility functions
   const getNotificationType = (alert) => {
     // Check for inspection notifications
@@ -76,7 +79,7 @@ const AllNotifications = () => {
       return "warranty";
     }
 
-    if (alert.workflowType === "ASSETEXPIRY") {
+    if (isAssetExpiryNotification(alert.workflowType)) {
       return "assetExpiry";
     }
     
@@ -143,7 +146,7 @@ const AllNotifications = () => {
           ? (notification.isOverdue || notification.title === "Warranty Expired"
               ? t("allNotifications.alertTypeWarrantyExpired")
               : t("allNotifications.alertTypeWarrantyExpiry"))
-          : notification.workflowType === "ASSETEXPIRY"
+          : isAssetExpiryNotification(notification.workflowType)
           ? "Asset Expiry"
           : notification.maintenanceType || "Regular Maintenance",
         alertText: notification.isGroupMaintenance && notification.groupName
@@ -152,7 +155,7 @@ const AllNotifications = () => {
           ? t("allNotifications.assetTypeInspection", { assetType: notification.assetTypeName })
           : notification.workflowType === "WARRANTY"
           ? `${notification.assetId} - ${notification.title || t("allNotifications.alertTypeWarrantyExpiry")}`
-          : notification.workflowType === "ASSETEXPIRY"
+          : isAssetExpiryNotification(notification.workflowType)
           ? `${notification.assetId} - ${notification.title || "Asset Expiry"}`
           : String(notification.maintenanceType || "").toLowerCase().includes("subscription")
           ? `${notification.assetTypeName}`
@@ -199,7 +202,7 @@ const AllNotifications = () => {
 
   const handleAlertClick = (alert) => {
     if (
-      (alert.workflowType === "WARRANTY" || alert.workflowType === "ASSETEXPIRY") &&
+      (alert.workflowType === "WARRANTY" || isAssetExpiryNotification(alert.workflowType)) &&
       alert.notifyId
     ) {
       const currentStatus = String(alert.notificationStatus || "").toUpperCase();
@@ -558,7 +561,7 @@ const AllNotifications = () => {
                   <span>{t("allNotifications.cutoffDate")}: <b className={alert.isUrgent ? "text-red-600" : "text-gray-800"}>{alert.cutoffDate}</b></span>
                 </span>
               </div>
-              {(alert.workflowType === "WARRANTY" || alert.workflowType === "ASSETEXPIRY") && (
+              {(alert.workflowType === "WARRANTY" || isAssetExpiryNotification(alert.workflowType)) && (
                 <div className="pt-2 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
                   <div className="relative inline-block">
                     <button
@@ -590,7 +593,7 @@ const AllNotifications = () => {
                             goToWarrantyEdit(
                               e,
                               alert,
-                              alert.workflowType === "ASSETEXPIRY" ? "expiry" : "warranty"
+                              isAssetExpiryNotification(alert.workflowType) ? "expiry" : "warranty"
                             );
                             setOpenActionMenuId(null);
                           }}
