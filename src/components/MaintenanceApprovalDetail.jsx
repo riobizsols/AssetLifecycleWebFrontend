@@ -18,48 +18,6 @@ function isInhouseMaintenance(approvalDetails) {
   return !maint.includes('vendor');
 }
 
-const mockApiResponse = {
-  steps: [
-    {
-      id: 1,
-      title: "{t('maintenanceApproval.approvalInitiated')}", // Will be translated in UI
-      status: "completed",
-      description: "Initiated by Billy Morganey",
-      date: "18/02/2025",
-      time: "10:15",
-      user: { id: "u1", name: "Billy Morganey" },
-    },
-    {
-      id: 2,
-      title: "Process",
-      status: "current",
-      description: "{t('maintenanceApproval.approved')} by Sarah Morgan",
-      date: "",
-      time: "",
-      user: { id: "u2", name: "Sarah Morgan" },
-    },
-    {
-      id: 3,
-      title: "Inprogress",
-      status: "pending",
-      description: "Awaiting Approval from You",
-      date: "",
-      time: "",
-      user: { id: "u3", name: "You" },
-    },
-    {
-      id: 4,
-      title: "Inprogress",
-      status: "pending",
-      description: "Awaiting Approval from Stefan",
-      date: "",
-      time: "",
-      user: { id: "u4", name: "Stefan" },
-    },
-  ],
-  currentUserId: "u2"
-};
-
 const getStepIcon = (status) => {
   switch (status) {
     case 'completed':
@@ -108,32 +66,6 @@ const ReadOnlyInput = ({ label, value, type = "text", className = "" }) => (
   </div>
 );
 
-const vendorDetails = {
-  vendorName: "VendorX",
-  vendorId: "V001",
-  contact: "9876543210",
-  email: "vendorx@email.com",
-  address: "123, Main Street, City",
-};
-
-const assetTabDetails = {
-  assetType: "Hardware",
-  assetId: "1234553",
-  serialNumber: "SN-987654",
-  model: "Model X",
-  brand: "Brand Y",
-  purchaseDate: "01/01/2024",
-};
-
-const historyDetails = {
-  lastMaintenance: "10/01/2024",
-  lastMaintainedBy: "Sarah Morgan",
-  status: "Completed",
-  notes: "Routine check completed.",
-};
-
-
-
 const getActionColor = (type) => {
   switch (type) {
     case "approved":
@@ -161,7 +93,6 @@ const MaintenanceApprovalDetail = () => {
   // Get context from URL or state (MAINTENANCEAPPROVAL)
   const context = searchParams.get('context') || location.state?.context || 'MAINTENANCEAPPROVAL';
   
-  const [maintenance, setMaintenance] = useState(null);
   const [steps, setSteps] = useState([]);
   const [currentUserEmpId, setCurrentUserEmpId] = useState(""); // Will be set from auth
   const [activeTab, setActiveTab] = useState("approval");
@@ -386,24 +317,19 @@ const MaintenanceApprovalDetail = () => {
           setSteps(workflowData.workflowSteps || []);
         } else {
           console.error("Failed to fetch maintenance workflow:", response.data.message);
+          setApprovalDetails(null);
+          setSteps([]);
+          toast.error(response.data.message || t('maintenanceApproval.loadFailed') || 'Failed to load maintenance workflow');
         }
       } catch (error) {
         console.error("Error fetching maintenance workflow:", error);
-        // Fallback to a safe minimal state if API fails - do NOT set assetId to the workflow id
-        setApprovalDetails({
-          alertType: "Maintenance Alert",
-          alertDueOn: "20/02/2025",
-          actionBy: "John Doe",
-          cutoffDate: "19/02/2025",
-          proposal: "Replace part X",
-          vendor: "VendorX",
-          assetType: "Hardware",
-          assetId: null, // avoid calling /api/assets/{wfamshId}
-          notes: null,
-          checklist: [] // Empty array - real checklist should come from API
-        });
-        // Fallback to mock steps (limited)
-        setSteps(mockApiResponse.steps);
+        setApprovalDetails(null);
+        setSteps([]);
+        toast.error(
+          error.response?.data?.message ||
+            t('maintenanceApproval.loadFailed') ||
+            'Failed to load maintenance workflow'
+        );
       } finally {
         setLoadingApprovalDetails(false);
       }
@@ -411,14 +337,6 @@ const MaintenanceApprovalDetail = () => {
 
   useEffect(() => {
     fetchApprovalDetails();
-  }, [id]);
-
-  useEffect(() => {
-    // Simulate API call to fetch maintenance by id
-    setTimeout(() => {
-      setMaintenance({ ...mockApiResponse, id });
-    }, 300);
-    // TODO: Replace above with real API call using id
   }, [id]);
 
   console.log('🔍 Current user roles:', userRoleIds);
