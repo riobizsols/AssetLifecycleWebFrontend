@@ -10,7 +10,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 
 const DepartmentsAdmin = () => {
   const [departments, setDepartments] = useState([]);
-  const [selectedDepts, setSelectedDepts] = useState([]);
+  const [selectedDept, setSelectedDept] = useState(null);
   const [adminList, setAdminList] = useState([]);
   const [usersToAdd, setUsersToAdd] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -73,38 +73,32 @@ const DepartmentsAdmin = () => {
 
   const handleAddAdmin = async () => {
     setSubmitAttempted(true);
-    if (!selectedUser || selectedDepts.length === 0) {
+    if (!selectedUser || !selectedDept) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDUSER_2DFB9B80', fallbackText: 'Please select both department and user', type: 'error' });
       return;
     }
     
     try {
       const selectedUserName = usersToAdd.find(u => u.user_id === selectedUser)?.full_name;
-      const selectedDeptNames = selectedDepts
-        .map((id) => departments.find((d) => d.dept_id === id)?.text)
-        .filter(Boolean);
-
-      for (const deptId of selectedDepts) {
-        const selectedDeptName = departments.find(d => d.dept_id === deptId)?.text;
-
-        await API.post("/admin/dept-admins", {
-          dept_id: deptId,
-          user_id: selectedUser,
-        });
-
-        // Log create action
-        await recordActionByNameWithFetch('Create', {
-          userId: selectedUser,
-          userName: selectedUserName,
-          deptId: deptId,
-          deptName: selectedDeptName,
-          action: 'Department Admin Created'
-        });
-      }
+      const selectedDeptName = departments.find(d => d.dept_id === selectedDept)?.text;
+      
+      await API.post("/admin/dept-admins", {
+        dept_id: selectedDept,
+        user_id: selectedUser,
+      });
+      
+      // Log create action
+      await recordActionByNameWithFetch('Create', {
+        userId: selectedUser,
+        userName: selectedUserName,
+        deptId: selectedDept,
+        deptName: selectedDeptName,
+        action: 'Department Admin Created'
+      });
       
       fetchAllAdmins();
       setSelectedUser(null);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINADDEDSUCCESSFULLY_3FB28B41', fallbackText: 'Admin {{userName}} added successfully to {{deptName}}', type: 'success', values: { userName: selectedUserName, deptName: selectedDeptNames.join(', ') } });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINADDEDSUCCESSFULLY_3FB28B41', fallbackText: 'Admin {{userName}} added successfully to {{deptName}}', type: 'success', values: { userName: selectedUserName, deptName: selectedDeptName } });
     } catch (err) {
       console.error("Failed to add admin", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
@@ -161,21 +155,7 @@ const DepartmentsAdmin = () => {
   }, []);
 
   // Helper for invalid field
-  const isFieldInvalid = (val) => submitAttempted && (!val || (Array.isArray(val) && val.length === 0));
-
-  const getSelectedDeptLabel = () => {
-    if (selectedDepts.length === 0) return t('departments.selectDepartment');
-    const names = selectedDepts
-      .map((id) => departments.find((d) => d.dept_id === id)?.text)
-      .filter(Boolean);
-    return names.length > 0 ? names.join(", ") : t('departments.selectDepartment');
-  };
-
-  const toggleDeptSelection = (deptId) => {
-    setSelectedDepts((prev) =>
-      prev.includes(deptId) ? prev.filter((id) => id !== deptId) : [...prev, deptId]
-    );
-  };
+  const isFieldInvalid = (val) => submitAttempted && !val;
 
   // Handle click outside to close dropdowns
   useEffect(() => {
@@ -210,14 +190,16 @@ const DepartmentsAdmin = () => {
             </label>
             <div className="relative w-full">
               <button
-                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedDepts) ? 'border-red-500' : 'border-gray-300'}`}
+                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedDept) ? 'border-red-500' : 'border-gray-300'}`}
                 onClick={() => {
                   dropdownDeptRef.current.classList.toggle("hidden");
                 }}
                 type="button"
               >
-                <span className="truncate text-left flex-1">{getSelectedDeptLabel()}</span>
-                <ChevronDown className="ml-2 w-4 h-4 text-gray-500 flex-shrink-0" />
+                {selectedDept
+                  ? departments.find((d) => d.dept_id === selectedDept)?.text || t('departments.selectDepartment')
+                  : t('departments.selectDepartment')}
+                <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
               </button>
               {/* Dropdown List */}
               <div
@@ -245,20 +227,15 @@ const DepartmentsAdmin = () => {
                   .map((dept) => (
                     <div
                       key={dept.dept_id}
-                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm flex items-start gap-2 ${selectedDepts.includes(dept.dept_id) ? "bg-gray-200" : ""}`}
-                      onClick={() => toggleDeptSelection(dept.dept_id)}
+                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedDept === dept.dept_id ? "bg-gray-200" : ""}`}
+                      onClick={() => {
+                        setSelectedDept(dept.dept_id);
+                        dropdownDeptRef.current.classList.add("hidden");
+                        setSearchDept("");
+                      }}
                     >
-                      <input
-                        type="checkbox"
-                        className="mt-1 flex-shrink-0"
-                        checked={selectedDepts.includes(dept.dept_id)}
-                        onChange={() => toggleDeptSelection(dept.dept_id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <div>
-                        <div className="font-medium">{dept.text}</div>
-                        <div className="text-xs text-gray-500">ID: {dept.dept_id}</div>
-                      </div>
+                      <div className="font-medium">{dept.text}</div>
+                      <div className="text-xs text-gray-500">ID: {dept.dept_id}</div>
                     </div>
                   ))}
               </div>
@@ -349,7 +326,7 @@ const DepartmentsAdmin = () => {
           <button
             className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
             onClick={handleAddAdmin}
-            disabled={!selectedUser || selectedDepts.length === 0}
+            disabled={!selectedUser || !selectedDept}
           >
             {t('common.add')}
           </button>
