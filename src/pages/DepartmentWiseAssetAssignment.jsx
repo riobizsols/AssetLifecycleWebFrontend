@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useLocation } from "react-router-dom";
 import AssetAssignmentList from "../components/assetAssignment/AssetAssignmentList";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
@@ -10,7 +11,8 @@ const EMPTY_LIST = [];
 
 const DepartmentWiseAssetAssignment = () => {
   const { t } = useLanguage();
-  const [selectedDept, setSelectedDept] = useState(null);
+  const location = useLocation();
+  const [selectedDept, setSelectedDept] = useState(() => location.state?.selectedDept || null);
 
   const departments = useAssignmentStore((s) => s.departments);
   const departmentsLoading = useAssignmentStore((s) => s.departmentsLoading);

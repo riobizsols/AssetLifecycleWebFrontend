@@ -12,15 +12,15 @@ import { useLanguage } from '../../contexts/LanguageContext';
 // Debug log to confirm component loaded
 console.log('DeleteConfirmModal imported:', DeleteConfirmModal);
 
-// Add this style block for smaller placeholder text
+// Match placeholder size with other master-data screens (text-sm)
 const placeholderStyle = `
   ::placeholder {
-    font-size: 0.75rem; /* text-xs */
+    font-size: 0.875rem; /* text-sm */
   }
 `;
 
 const tabStyles = {
-  base: 'px-6 py-2 cursor-pointer text-xs font-semibold border-b-2',
+  base: 'px-6 py-2 cursor-pointer text-sm font-semibold border-b-2',
   active: 'border-[#003366] text-[#003366] bg-white',
   inactive: 'border-transparent text-gray-500 bg-transparent',
 };
@@ -374,13 +374,13 @@ export default function ProdServ() {
                 {/* Product Form */}
                 <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
-                    <label className="text-xs mb-1">
+                    <label className="text-sm font-medium mb-1">
                       {t('prodServ.assetType')} <span className="text-red-500">*</span>
                     </label>
                     {/* Product Form Asset Type Dropdown */}
                     <div className="relative w-64">
                       <button
-                        className={`border text-black px-3 py-2 text-xs w-full bg-white focus:outline-none flex justify-between items-center ${isProductFieldInvalid(productForm.assetType) ? 'border-red-500' : 'border-gray-300'}`}
+                        className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isProductFieldInvalid(productForm.assetType) ? 'border-red-500' : 'border-gray-300'}`}
                         type="button"
                         onClick={() => setShowDropdownProduct((prev) => !prev)}
                       >
@@ -397,7 +397,7 @@ export default function ProdServ() {
                           <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
                             <input
                               type="text"
-                              className="w-full border px-2 py-1 rounded text-xs"
+                              className="w-full border px-2 py-1 rounded text-sm"
                               placeholder={t('prodServ.searchAssetTypes')}
                               value={searchAssetTypeProduct}
                               onChange={e => setSearchAssetTypeProduct(e.target.value)}
@@ -409,7 +409,7 @@ export default function ProdServ() {
                             .map((at) => (
                               <div
                                 key={at.asset_type_id}
-                                className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${productForm.assetType === at.asset_type_id ? 'bg-gray-200' : ''}`}
+                                className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${productForm.assetType === at.asset_type_id ? 'bg-gray-200' : ''}`}
                                 onClick={() => {
                                   setProductForm(f => ({ ...f, assetType: at.asset_type_id }));
                                   setShowDropdownProduct(false);
@@ -424,33 +424,33 @@ export default function ProdServ() {
                     </div>
                   </div>
                   <div className="flex flex-col min-w-[140px]">
-                    <label className="text-xs mb-1">
+                    <label className="text-sm font-medium mb-1">
                       {t('prodServ.brand')} <span className="text-red-500">*</span>
                     </label>
                     {/* Product Form Brand Dropdown */}
                     <input
                       ref={brandInputRef}
-                      className={`border rounded px-2 py-1 w-full ${isProductFieldInvalid(productForm.brand) ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`border rounded px-3 py-2 text-sm w-full ${isProductFieldInvalid(productForm.brand) ? 'border-red-500' : 'border-gray-300'}`}
                       value={productForm.brand}
                       onChange={e => setProductForm(f => ({ ...f, brand: e.target.value }))}
                       placeholder={t('prodServ.enterBrand')}
                     />
                   </div>
                   <div className="flex flex-col min-w-[140px]">
-                    <label className="text-xs mb-1">
+                    <label className="text-sm font-medium mb-1">
                       {t('prodServ.model')} <span className="text-red-500">*</span>
                     </label>
                     {/* Product Form Model Dropdown */}
                     <input
                       ref={modelInputRef}
-                      className={`border rounded px-2 py-1 w-full ${isProductFieldInvalid(productForm.model) ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`border rounded px-3 py-2 text-sm w-full ${isProductFieldInvalid(productForm.model) ? 'border-red-500' : 'border-gray-300'}`}
                       value={productForm.model}
                       onChange={e => setProductForm(f => ({ ...f, model: e.target.value }))}
                       placeholder={t('prodServ.enterModel')}
                     />
                   </div>
                   <button
-                    className="bg-[#003366] text-white px-6 rounded h-[34px] flex items-center justify-center min-w-[80px]"
+                    className="bg-[#003366] text-white text-sm px-6 rounded py-2 flex items-center justify-center min-w-[80px]"
                     onClick={handleProductAdd}
                     type="button"
                   >
@@ -473,11 +473,11 @@ export default function ProdServ() {
                   </div>
                   <div className="p-4">
                     <div className="flex items-center mb-2">
-                      <label className="text-xs mr-2">{t('prodServ.assetType')}</label>
+                      <label className="text-sm mr-2">{t('prodServ.assetType')}</label>
                       {/* Product Filter Asset Type Dropdown */}
                       <div className="relative w-64">
                         <button
-                          className="border text-black px-3 py-2 text-xs w-full bg-white focus:outline-none flex justify-between items-center"
+                          className="border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center"
                           type="button"
                           onClick={() => setShowDropdownProductFilter((prev) => !prev)}
                         >
@@ -494,7 +494,7 @@ export default function ProdServ() {
                             <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
                               <input
                                 type="text"
-                                className="w-full border px-2 py-1 rounded text-xs"
+                                className="w-full border px-2 py-1 rounded text-sm"
                                 placeholder={t('prodServ.searchAssetTypes')}
                                 value={searchAssetTypeProductFilter}
                                 onChange={e => setSearchAssetTypeProductFilter(e.target.value)}
@@ -503,7 +503,7 @@ export default function ProdServ() {
                             </div>
                             {/* ALL option */}
                             <div
-                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs font-medium ${productFilter === '' ? 'bg-gray-200' : ''}`}
+                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm font-medium ${productFilter === '' ? 'bg-gray-200' : ''}`}
                               onClick={() => {
                                 setProductFilter('');
                                 setShowDropdownProductFilter(false);
@@ -517,7 +517,7 @@ export default function ProdServ() {
                               .map((at) => (
                                 <div
                                   key={at.asset_type_id}
-                                  className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${productFilter === at.asset_type_id ? 'bg-gray-200' : ''}`}
+                                  className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${productFilter === at.asset_type_id ? 'bg-gray-200' : ''}`}
                                   onClick={() => {
                                     setProductFilter(at.asset_type_id);
                                     setShowDropdownProductFilter(false);
@@ -576,13 +576,13 @@ export default function ProdServ() {
                 {/* Service Form */}
                 <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
-                    <label className="text-xs mb-1">
+                    <label className="text-sm font-medium mb-1">
                       {t('prodServ.assetType')} <span className="text-red-500">*</span>
                     </label>
                     {/* Service Form Asset Type Dropdown */}
                     <div className="relative w-64">
                       <button
-                        className={`border text-black px-3 py-2 text-xs w-full bg-white focus:outline-none flex justify-between items-center ${isServiceFieldInvalid(serviceForm.assetType) ? 'border-red-500' : 'border-gray-300'}`}
+                        className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isServiceFieldInvalid(serviceForm.assetType) ? 'border-red-500' : 'border-gray-300'}`}
                         type="button"
                         onClick={() => setShowDropdownService((prev) => !prev)}
                       >
@@ -599,7 +599,7 @@ export default function ProdServ() {
                           <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
                             <input
                               type="text"
-                              className="w-full border px-2 py-1 rounded text-xs"
+                              className="w-full border px-2 py-1 rounded text-sm"
                               placeholder={t('prodServ.searchAssetTypes')}
                               value={searchAssetTypeService}
                               onChange={e => setSearchAssetTypeService(e.target.value)}
@@ -611,7 +611,7 @@ export default function ProdServ() {
                             .map((at) => (
                               <div
                                 key={at.asset_type_id}
-                                className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${serviceForm.assetType === at.asset_type_id ? 'bg-gray-200' : ''}`}
+                                className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${serviceForm.assetType === at.asset_type_id ? 'bg-gray-200' : ''}`}
                                 onClick={() => {
                                   setServiceForm(f => ({ ...f, assetType: at.asset_type_id }));
                                   setShowDropdownService(false);
@@ -626,19 +626,19 @@ export default function ProdServ() {
                     </div>
                   </div>
                   <div className="flex flex-col min-w-[140px]">
-                    <label className="text-xs mb-1">
+                    <label className="text-sm font-medium mb-1">
                       {t('prodServ.description')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       ref={serviceDescriptionInputRef}
-                      className={`border rounded px-2 py-1 w-full ${isServiceFieldInvalid(serviceForm.description) ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`border rounded px-3 py-2 text-sm w-full ${isServiceFieldInvalid(serviceForm.description) ? 'border-red-500' : 'border-gray-300'}`}
                       value={serviceForm.description}
                       onChange={e => setServiceForm(f => ({ ...f, description: e.target.value }))}
                       placeholder={t('prodServ.enterDescription')}
                     />
                   </div>
                   <button
-                    className="bg-[#003366] text-white px-6 rounded h-[34px] flex items-center justify-center min-w-[80px]"
+                    className="bg-[#003366] text-white text-sm px-6 rounded py-2 flex items-center justify-center min-w-[80px]"
                     onClick={handleServiceAdd}
                     type="button"
                   >
@@ -661,11 +661,11 @@ export default function ProdServ() {
                   </div>
                   <div className="p-4">
                     <div className="flex items-center mb-2">
-                      <label className="text-xs mr-2">{t('prodServ.assetType')}</label>
+                      <label className="text-sm mr-2">{t('prodServ.assetType')}</label>
                       {/* Service Filter Asset Type Dropdown */}
                       <div className="relative w-64">
                         <button
-                          className="border text-black px-3 py-2 text-xs w-full bg-white focus:outline-none flex justify-between items-center"
+                          className="border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center"
                           type="button"
                           onClick={() => setShowDropdownServiceFilter((prev) => !prev)}
                         >
@@ -682,7 +682,7 @@ export default function ProdServ() {
                             <div className="sticky top-0 bg-white px-2 py-2 border-b z-20">
                               <input
                                 type="text"
-                                className="w-full border px-2 py-1 rounded text-xs"
+                                className="w-full border px-2 py-1 rounded text-sm"
                                 placeholder={t('prodServ.searchAssetTypes')}
                                 value={searchAssetTypeServiceFilter}
                                 onChange={e => setSearchAssetTypeServiceFilter(e.target.value)}
@@ -691,7 +691,7 @@ export default function ProdServ() {
                             </div>
                             {/* ALL option */}
                             <div
-                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs font-medium ${serviceFilter === '' ? 'bg-gray-200' : ''}`}
+                              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm font-medium ${serviceFilter === '' ? 'bg-gray-200' : ''}`}
                               onClick={() => {
                                 setServiceFilter('');
                                 setShowDropdownServiceFilter(false);
@@ -705,7 +705,7 @@ export default function ProdServ() {
                               .map((at) => (
                                 <div
                                   key={at.asset_type_id}
-                                  className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-xs ${serviceFilter === at.asset_type_id ? 'bg-gray-200' : ''}`}
+                                  className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${serviceFilter === at.asset_type_id ? 'bg-gray-200' : ''}`}
                                   onClick={() => {
                                     setServiceFilter(at.asset_type_id);
                                     setShowDropdownServiceFilter(false);

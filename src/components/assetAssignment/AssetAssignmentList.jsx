@@ -1,6 +1,6 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState } from "react";
-import { Maximize, Minimize, History } from "lucide-react";
+import { Maximize, Minimize, History, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import API from '../../lib/axios';
@@ -135,8 +135,18 @@ const AssetAssignmentList = ({
     <div className="p-6 bg-gray-100 min-h-screen">
       {/* Selection Section */}
       <div className="bg-white rounded shadow mb-4">
-        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          {showDepartmentFilter ? t('departments.selectDepartmentAndEmployee') : t('departments.departmentSelection')}
+        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center justify-center rounded p-0.5 text-[#0E2F4B] hover:bg-white/60"
+            aria-label={t('common.back')}
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <span>
+            {showDepartmentFilter ? t('departments.selectDepartmentAndEmployee') : t('departments.departmentSelection')}
+          </span>
         </div>
         <div className="p-4 flex gap-4 items-end">
           {/* Department Filter Dropdown (Only for Employee view) */}

@@ -317,10 +317,14 @@ const AssignRoles = () => {
         return;
       }
 
-      // Get role IDs for API call
-      const roleIds = selectedRoles.map(role => role.job_role_id);
+      // Only the roles the user explicitly selected (deduped)
+      const roleIds = [...new Set(selectedRoles.map((role) => role.job_role_id).filter(Boolean))];
+      if (roleIds.length === 0) {
+        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_EMPLOYEE_AND_AT_LEAST_ONE_ROLE_29FF6922', fallbackText: 'Please select an employee and at least one role', type: 'error' });
+        return;
+      }
 
-      // Assign multiple roles
+      // Assign selected roles only
       const response = await API.post(`/employees/${selectedEmp.emp_int_id}/assign-role`, {
         job_role_ids: roleIds
       });

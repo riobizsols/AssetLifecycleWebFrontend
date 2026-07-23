@@ -1436,7 +1436,6 @@ const MaintenanceApprovalDetail = () => {
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.action')}</th>
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.user')}</th>
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.jobRole')}</th>
-                            <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.department')}</th>
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.notes')}</th>
                           </tr>
                         </thead>
@@ -1447,7 +1446,6 @@ const MaintenanceApprovalDetail = () => {
                               <td className={`px-6 py-3 text-sm whitespace-nowrap font-medium ${row.actionColor || 'text-gray-600'}`}>{row.action}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.user}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.jobRole || "-"}</td>
-                              <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.department || "-"}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.notes || "-"}</td>
                             </tr>
                           ))}

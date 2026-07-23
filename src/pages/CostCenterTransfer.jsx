@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import { useLanguage } from "../contexts/LanguageContext";
-import { ArrowRight, Building2, Package, Tag, X, Search, ChevronDown, QrCode, Maximize, Minimize } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Package, Tag, X, Search, ChevronDown, QrCode, Maximize, Minimize } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 
 // Searchable Select Component
@@ -473,8 +473,16 @@ const CostCenterTransfer = () => {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="bg-white rounded shadow mb-4">
-          <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          {t('costCenterTransfer.title')}
+          <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center justify-center rounded p-0.5 text-[#0E2F4B] hover:bg-white/60"
+            aria-label={t('common.back')}
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <span>{t('costCenterTransfer.title')}</span>
         </div>
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">
