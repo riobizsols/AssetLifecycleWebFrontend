@@ -157,6 +157,10 @@ export default function ProdServ() {
         psType: 'product',
         action: 'Product Created'
       });
+
+      const createdAssetType = productForm.assetType;
+      const createdBrand = productForm.brand;
+      const createdModel = productForm.model;
       
       setProductForm({ assetType: '', brand: '', model: '', description: '' });
       setProductSubmitAttempted(false);
@@ -167,6 +171,18 @@ export default function ProdServ() {
       
       const returnTo = searchParams.get('returnTo');
       if (returnTo === 'vendor-add') {
+        // Preserve vendor wizard draft + preselect the brand/model just created
+        const assetType = searchParams.get('assetType') || createdAssetType;
+        sessionStorage.setItem('vendorProductReturnTab', 'Product Details');
+        sessionStorage.setItem(
+          'vendorProductDraft',
+          JSON.stringify({
+            assetType,
+            brand: createdBrand,
+            model: createdModel,
+            returnTab: 'Product Details',
+          })
+        );
         navigate('/master-data/add-vendor');
         return;
       }
@@ -220,6 +236,15 @@ export default function ProdServ() {
 
       const returnTo = searchParams.get('returnTo');
       if (returnTo === 'vendor-add') {
+        sessionStorage.setItem('vendorServiceReturnTab', 'Service Details');
+        sessionStorage.setItem(
+          'vendorServiceDraft',
+          JSON.stringify({
+            assetType: searchParams.get('assetType') || serviceForm.assetType,
+            description: serviceForm.description,
+            returnTab: 'Service Details',
+          })
+        );
         navigate('/master-data/add-vendor');
         return;
       }

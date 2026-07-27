@@ -375,7 +375,7 @@ const CreateGroupAsset = () => {
         }
         
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_ASSETGROUPCREATEDSU_4C685FE0', fallbackText: t('groupAsset.createGroupAsset.assetGroupCreatedSuccessfully'), type: 'success' });
-        useGroupAssetStore.getState().invalidateGroupAssetCache();
+        await useGroupAssetStore.getState().refreshAfterMutation();
         navigate('/group-asset');
       } else {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSET_CREATEGROUPASSET_FAILEDTOCREATEASSET_22C2BDDD', fallbackText: response.data?.message || t('groupAsset.createGroupAsset.failedToCreateAssetGroup'), type: 'error' });

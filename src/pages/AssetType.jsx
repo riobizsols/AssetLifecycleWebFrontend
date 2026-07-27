@@ -79,7 +79,7 @@ const AssetType = () => {
   };
 
   useEffect(() => {
-    fetchAssetTypes();
+    fetchAssetTypes({ force: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
