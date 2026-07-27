@@ -72,7 +72,7 @@ const Branches = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        await fetchBranchesStore({ revalidate: true });
+        await fetchBranchesStore({ revalidate: true, force: true });
       } catch (error) {
         console.error("Error fetching branches:", error);
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_FAILEDTOFETCHBRANCHES_65E26530', fallbackText: t('branches.failedToFetchBranches'), type: 'error' });

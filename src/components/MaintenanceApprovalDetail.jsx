@@ -9,6 +9,11 @@ import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "react-hot-toast";
+import { useMaintenanceApprovalStore } from "../store/useMaintenanceApprovalStore";
+
+function bustMaintenanceApprovalListCache() {
+  useMaintenanceApprovalStore.getState().invalidateMaintenanceApprovalCache();
+}
 
 function isInhouseMaintenance(approvalDetails) {
   if (!approvalDetails) return false;
@@ -429,6 +434,7 @@ const MaintenanceApprovalDetail = () => {
         setShowApproveModal(false);
         setApproveNote("");
         setVendorStatusError("");
+        bustMaintenanceApprovalListCache();
         
         // Refresh approval details to show updated vendor and date
         // Wait a bit for the database to be updated
@@ -446,6 +452,7 @@ const MaintenanceApprovalDetail = () => {
           toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approval already completed.');
           setShowApproveModal(false);
           setApproveNote('');
+          bustMaintenanceApprovalListCache();
           fetchApprovalDetails(true);
         } else {
           toast.error(msg || t('maintenanceApproval.failedToApprove'));
@@ -499,6 +506,7 @@ const MaintenanceApprovalDetail = () => {
         console.log("Maintenance rejected successfully");
         setShowRejectModal(false);
         setRejectNote("");
+        bustMaintenanceApprovalListCache();
         navigate('/maintenance-approval');
       } else {
         alert(t('maintenanceApproval.failedToReject'));

@@ -469,7 +469,7 @@ const EditGroupAsset = () => {
         });
         
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_ASSETGROUPUPDATEDSUC_223B1BD8', fallbackText: t('groupAssets.editGroupAsset.assetGroupUpdatedSuccessfully'), type: 'success' });
-        useGroupAssetStore.getState().invalidateGroupAssetCache();
+        await useGroupAssetStore.getState().refreshAfterMutation();
         navigate('/group-asset');
       } else {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_EDITGROUPASSET_FAILEDTOUPDATEASSETG_66EDB19B', fallbackText: t('groupAssets.editGroupAsset.failedToUpdateAssetGroup'), type: 'error' });

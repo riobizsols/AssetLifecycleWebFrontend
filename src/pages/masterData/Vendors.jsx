@@ -78,7 +78,7 @@ const Vendors = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        await fetchVendorsStore({ revalidate: true });
+        await fetchVendorsStore({ revalidate: true, force: true });
       } catch (error) {
         console.error("Error fetching vendors:", error);
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOFETCHVENDORS_00D2C278', fallbackText: t('vendors.failedToFetchVendors'), type: 'error' });
@@ -289,6 +289,14 @@ const Vendors = () => {
           await recordActionByNameWithFetch('Create', {
             action: 'Add Vendor Form Opened'
           });
+          // Fresh add — don't restore an abandoned in-progress wizard draft
+          sessionStorage.removeItem('vendorAddDraft');
+          sessionStorage.removeItem('vendorProductDraft');
+          sessionStorage.removeItem('vendorServiceDraft');
+          sessionStorage.removeItem('vendorProductReturnTab');
+          sessionStorage.removeItem('vendorServiceReturnTab');
+          sessionStorage.removeItem('products');
+          sessionStorage.removeItem('services');
           navigate("/master-data/add-vendor");
         } : null}
         onDeleteSelected={canEdit ? handleDelete : null}
