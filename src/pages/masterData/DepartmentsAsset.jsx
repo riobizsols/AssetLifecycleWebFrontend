@@ -2,7 +2,7 @@ import { showBackendTextToast, translateErrorMessage } from '../../utils/errorTr
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useLocalizedMasterDataLabel } from '../../hooks/useLocalizedMasterDataLabel';
 import API from "../../lib/axios";
-import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
+import { Maximize, Minimize, Trash2, ChevronDown, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import useAuditLog from "../../hooks/useAuditLog";
@@ -15,7 +15,7 @@ const DepartmentsAsset = () => {
   const [deptAssets, setDeptAssets] = useState([]);
 
   const [selectedDeptId, setSelectedDeptId] = useState("");
-  const [selectedAssetTypeId, setSelectedAssetTypeId] = useState("");
+  const [selectedAssetTypeIds, setSelectedAssetTypeIds] = useState([]);
   const [searchAssetType, setSearchAssetType] = useState("");
   const [searchDept, setSearchDept] = useState("");
 
@@ -116,40 +116,61 @@ const DepartmentsAsset = () => {
   // Add mapping
   const handleAdd = async () => {
     setSubmitAttempted(true);
-    if (!selectedDeptId || !selectedAssetTypeId) {
+    if (!selectedDeptId || selectedAssetTypeIds.length === 0) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDASSETT_0FEC304B', fallbackText: t('departments.pleaseSelectBothDepartmentAndAssetType'), type: 'error' });
       return;
     }
     
     try {
       const selectedDeptName = label(departments.find(d => d.dept_id === selectedDeptId)?.text);
-      const selectedAssetTypeName = label(assetTypes.find(at => at.asset_type_id === selectedAssetTypeId)?.text);
-      
-      const response = await API.post("/dept-assets", {
-        dept_id: selectedDeptId,
-        asset_type_id: selectedAssetTypeId,
-      });
-      
-      // Log create action
-      await recordActionByNameWithFetch('Create', {
-        deptId: selectedDeptId,
-        deptName: selectedDeptName,
-        assetTypeId: selectedAssetTypeId,
-        assetTypeName: selectedAssetTypeName,
-        mappingId: response.data?.dept_asset_type_id,
-        action: 'Department Asset Type Mapping Created'
-      });
-      
-      setSelectedAssetTypeId("");
-      setSubmitAttempted(false); // Reset submit attempt flag to remove red border
+      const addedNames = [];
+      let lastError = null;
+
+      for (const assetTypeId of selectedAssetTypeIds) {
+        const selectedAssetTypeName = label(assetTypes.find(at => at.asset_type_id === assetTypeId)?.text);
+        try {
+          const response = await API.post("/dept-assets", {
+            dept_id: selectedDeptId,
+            asset_type_id: assetTypeId,
+          });
+
+          await recordActionByNameWithFetch('Create', {
+            deptId: selectedDeptId,
+            deptName: selectedDeptName,
+            assetTypeId: assetTypeId,
+            assetTypeName: selectedAssetTypeName,
+            mappingId: response.data?.dept_asset_type_id,
+            action: 'Department Asset Type Mapping Created'
+          });
+          if (selectedAssetTypeName) addedNames.push(selectedAssetTypeName);
+        } catch (err) {
+          lastError = err;
+          break;
+        }
+      }
+
+      setSelectedAssetTypeIds([]);
+      setSubmitAttempted(false);
       fetchDeptAssets();
-      showBackendTextToast({
-        toast,
-        tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGADDEDSUCCESSFULLY_0D092680',
-        fallbackText: t('departments.assetMappingAddedSuccessfully'),
-        type: 'success',
-        values: { assetTypeName: selectedAssetTypeName, deptName: selectedDeptName },
-      });
+
+      if (addedNames.length > 0) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_DEPARTMENTS_ASSETMAPPINGADDEDSUCCESSFULLY_0D092680',
+          fallbackText: t('departments.assetMappingAddedSuccessfully'),
+          type: 'success',
+          values: { assetTypeName: addedNames.join(', '), deptName: selectedDeptName },
+        });
+      }
+      if (lastError && addedNames.length === 0) {
+        const rawError = lastError.response?.data?.message || lastError.response?.data?.error || lastError.message || '';
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_ADD_DEPARTMENT_ASSET_MAPPING_E18A82E9',
+          fallbackText: formatDeptAssetError(rawError),
+          type: 'error',
+        });
+      }
     } catch (err) {
       console.error("Failed to add asset", err);
       const rawError = err.response?.data?.message || err.response?.data?.error || err.message || '';
@@ -213,7 +234,7 @@ const DepartmentsAsset = () => {
   };
 
   // Helper for invalid field
-  const isFieldInvalid = (val) => submitAttempted && !val;
+  const isFieldInvalid = (val) => submitAttempted && (!val || (Array.isArray(val) && val.length === 0));
 
   // Get available asset types for the selected department (exclude already assigned ones)
   const getAvailableAssetTypes = () => {
@@ -224,6 +245,30 @@ const DepartmentsAsset = () => {
       .map((da) => da.asset_type_id);
 
     return localizedAssetTypes.filter((at) => !assignedAssetTypeIds.includes(at.asset_type_id));
+  };
+
+  const getSelectedAssetTypesLabel = () => {
+    if (selectedAssetTypeIds.length === 0) {
+      return selectedDeptId ? t('departments.selectAssetType') : t('departments.selectDepartmentFirst');
+    }
+    const names = selectedAssetTypeIds
+      .map((id) => localizedAssetTypes.find((at) => at.asset_type_id === id)?.displayText
+        || label(assetTypes.find((at) => at.asset_type_id === id)?.text))
+      .filter(Boolean);
+    return names.length > 0 ? names.join(", ") : t('departments.selectAssetType');
+  };
+
+  const toggleAssetTypeSelection = (assetTypeId) => {
+    setSubmitAttempted(false);
+    setSelectedAssetTypeIds((prev) =>
+      prev.includes(assetTypeId)
+        ? prev.filter((id) => id !== assetTypeId)
+        : [...prev, assetTypeId]
+    );
+  };
+
+  const removeSelectedAssetType = (assetTypeId) => {
+    setSelectedAssetTypeIds((prev) => prev.filter((id) => id !== assetTypeId));
   };
 
   useEffect(() => {
@@ -309,6 +354,7 @@ const DepartmentsAsset = () => {
                       className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedDeptId === dept.dept_id ? "bg-gray-200" : ""}`}
                       onClick={() => {
                         setSelectedDeptId(dept.dept_id);
+                        setSelectedAssetTypeIds([]);
                         dropdownDeptRef.current.classList.add("hidden");
                         setSearchDept("");
                       }}
@@ -327,7 +373,7 @@ const DepartmentsAsset = () => {
         <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
           {t('departments.addAsset')}
         </div>
-        <div className="p-4 flex gap-4 items-end">
+        <div className="p-4 flex gap-4 items-end flex-wrap">
           <div className="flex flex-col w-64">
             <label className="text-sm font-medium mb-1">
               {t('departments.assetType')} <span className="text-red-500">*</span>
@@ -335,21 +381,15 @@ const DepartmentsAsset = () => {
             {/* Custom Dropdown */}
             <div className="relative w-full">
               <button
-                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed flex justify-between items-center ${isFieldInvalid(selectedAssetTypeId) ? 'border-red-500' : 'border-gray-300'}`}
+                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed flex justify-between items-center ${isFieldInvalid(selectedAssetTypeIds) ? 'border-red-500' : 'border-gray-300'}`}
                 onClick={() => {
                   if (selectedDeptId) dropdownRef.current.classList.toggle("hidden");
                 }}
                 disabled={!selectedDeptId}
                 type="button"
               >
-                {selectedAssetTypeId
-                  ? (localizedAssetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.displayText
-                    || label(assetTypes.find((at) => at.asset_type_id === selectedAssetTypeId)?.text))
-                  || t('departments.selectAssetType')
-                  : selectedDeptId
-                  ? t('departments.selectAssetType')
-                  : t('departments.selectDepartmentFirst')}
-                <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
+                <span className="truncate text-left flex-1">{getSelectedAssetTypesLabel()}</span>
+                <ChevronDown className="ml-2 w-4 h-4 text-gray-500 flex-shrink-0" />
               </button>
               {/* Dropdown List */}
               <div
@@ -380,15 +420,17 @@ const DepartmentsAsset = () => {
                   .map((at) => (
                     <div
                       key={at.asset_type_id}
-                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedAssetTypeId === at.asset_type_id ? "bg-gray-200" : ""}`}
-                      onClick={() => {
-                        setSelectedAssetTypeId(at.asset_type_id);
-                        setSubmitAttempted(false); // Reset validation state when selecting
-                        dropdownRef.current.classList.add("hidden");
-                        setSearchAssetType("");
-                      }}
+                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm flex items-center gap-2 ${selectedAssetTypeIds.includes(at.asset_type_id) ? "bg-gray-200" : ""}`}
+                      onClick={() => toggleAssetTypeSelection(at.asset_type_id)}
                     >
-                      {at.displayText}
+                      <input
+                        type="checkbox"
+                        className="flex-shrink-0"
+                        checked={selectedAssetTypeIds.includes(at.asset_type_id)}
+                        onChange={() => toggleAssetTypeSelection(at.asset_type_id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span>{at.displayText}</span>
                     </div>
                   ))}
                 {getAvailableAssetTypes().filter((at) => {
@@ -412,10 +454,35 @@ const DepartmentsAsset = () => {
           <button
             className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
             onClick={handleAdd}
-            disabled={!selectedDeptId || !selectedAssetTypeId}
+            disabled={!selectedDeptId || selectedAssetTypeIds.length === 0}
           >
             {t('common.add')}
           </button>
+          {selectedAssetTypeIds.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 max-w-xl pb-0.5">
+              {selectedAssetTypeIds.map((id) => {
+                const name = localizedAssetTypes.find((at) => at.asset_type_id === id)?.displayText
+                  || label(assetTypes.find((at) => at.asset_type_id === id)?.text)
+                  || id;
+                return (
+                  <span
+                    key={id}
+                    className="inline-flex items-center gap-1 bg-[#EDF3F7] text-[#0E2F4B] text-xs font-medium px-2 py-1 rounded border border-gray-200"
+                  >
+                    {name}
+                    <button
+                      type="button"
+                      onClick={() => removeSelectedAssetType(id)}
+                      className="inline-flex items-center justify-center hover:text-red-600"
+                      aria-label={`Remove ${name}`}
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       {/* Admin List Table */}

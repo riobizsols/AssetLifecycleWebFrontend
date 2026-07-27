@@ -13,7 +13,7 @@ const DepartmentsAdmin = () => {
   const [selectedDept, setSelectedDept] = useState(null);
   const [adminList, setAdminList] = useState([]);
   const [usersToAdd, setUsersToAdd] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUsers, setSelectedUsers] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
 
@@ -73,32 +73,68 @@ const DepartmentsAdmin = () => {
 
   const handleAddAdmin = async () => {
     setSubmitAttempted(true);
-    if (!selectedUser || !selectedDept) {
+    if (selectedUsers.length === 0 || !selectedDept) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_PLEASESELECTBOTHDEPARTMENTANDUSER_2DFB9B80', fallbackText: 'Please select both department and user', type: 'error' });
       return;
     }
     
     try {
-      const selectedUserName = usersToAdd.find(u => u.user_id === selectedUser)?.full_name;
       const selectedDeptName = departments.find(d => d.dept_id === selectedDept)?.text;
-      
-      await API.post("/admin/dept-admins", {
-        dept_id: selectedDept,
-        user_id: selectedUser,
-      });
-      
-      // Log create action
-      await recordActionByNameWithFetch('Create', {
-        userId: selectedUser,
-        userName: selectedUserName,
-        deptId: selectedDept,
-        deptName: selectedDeptName,
-        action: 'Department Admin Created'
-      });
+      const addedNames = [];
+      const skippedNames = [];
+      let lastError = null;
+
+      for (const userId of selectedUsers) {
+        const selectedUserName = usersToAdd.find(u => u.user_id === userId)?.full_name;
+        try {
+          await API.post("/admin/dept-admins", {
+            dept_id: selectedDept,
+            user_id: userId,
+          });
+
+          // Log create action
+          await recordActionByNameWithFetch('Create', {
+            userId: userId,
+            userName: selectedUserName,
+            deptId: selectedDept,
+            deptName: selectedDeptName,
+            action: 'Department Admin Created'
+          });
+          if (selectedUserName) addedNames.push(selectedUserName);
+        } catch (err) {
+          const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "";
+          if (String(errorMessage).toLowerCase().includes("already an admin")) {
+            if (selectedUserName) skippedNames.push(selectedUserName);
+            continue;
+          }
+          lastError = err;
+          break;
+        }
+      }
       
       fetchAllAdmins();
-      setSelectedUser(null);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINADDEDSUCCESSFULLY_3FB28B41', fallbackText: 'Admin {{userName}} added successfully to {{deptName}}', type: 'success', values: { userName: selectedUserName, deptName: selectedDeptName } });
+      setSelectedUsers([]);
+
+      if (addedNames.length > 0) {
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_ADMINADDEDSUCCESSFULLY_3FB28B41', fallbackText: 'Admin {{userName}} added successfully to {{deptName}}', type: 'success', values: { userName: addedNames.join(', '), deptName: selectedDeptName } });
+      }
+      if (skippedNames.length > 0 && addedNames.length === 0 && !lastError) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_ADD_DEPARTMENT_ADMIN_A84D5E0E',
+          fallbackText: `${t('departments.failedToAddAdmin')}: This user is already an admin for this department`,
+          type: 'error',
+        });
+      }
+      if (lastError) {
+        const errorMessage = lastError.response?.data?.message || lastError.response?.data?.error || lastError.message || "An error occurred";
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_ADD_DEPARTMENT_ADMIN_A84D5E0E',
+          fallbackText: `${t('departments.failedToAddAdmin')}: ${errorMessage}`,
+          type: 'error',
+        });
+      }
     } catch (err) {
       console.error("Failed to add admin", err);
       const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || "An error occurred";
@@ -155,7 +191,21 @@ const DepartmentsAdmin = () => {
   }, []);
 
   // Helper for invalid field
-  const isFieldInvalid = (val) => submitAttempted && !val;
+  const isFieldInvalid = (val) => submitAttempted && (!val || (Array.isArray(val) && val.length === 0));
+
+  const getSelectedUsersLabel = () => {
+    if (selectedUsers.length === 0) return t('departments.selectUser');
+    const names = selectedUsers
+      .map((id) => usersToAdd.find((u) => u.user_id === id)?.full_name)
+      .filter(Boolean);
+    return names.length > 0 ? names.join(", ") : t('departments.selectUser');
+  };
+
+  const toggleUserSelection = (userId) => {
+    setSelectedUsers((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
 
   // Handle click outside to close dropdowns
   useEffect(() => {
@@ -256,16 +306,14 @@ const DepartmentsAdmin = () => {
             </label>
             <div className="relative w-full">
               <button
-                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedUser) ? 'border-red-500' : 'border-gray-300'}`}
+                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedUsers) ? 'border-red-500' : 'border-gray-300'}`}
                 onClick={() => {
                   dropdownUserRef.current.classList.toggle("hidden");
                 }}
                 type="button"
               >
-                {selectedUser
-                  ? usersToAdd.find((u) => u.user_id === selectedUser)?.full_name || t('departments.selectUser')
-                  : t('departments.selectUser')}
-                <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
+                <span className="truncate text-left flex-1">{getSelectedUsersLabel()}</span>
+                <ChevronDown className="ml-2 w-4 h-4 text-gray-500 flex-shrink-0" />
               </button>
               {/* Dropdown List */}
               <div
@@ -293,15 +341,20 @@ const DepartmentsAdmin = () => {
                   .map((user) => (
                     <div
                       key={user.user_id}
-                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm ${selectedUser === user.user_id ? "bg-gray-200" : ""}`}
-                      onClick={() => {
-                        setSelectedUser(user.user_id);
-                        dropdownUserRef.current.classList.add("hidden");
-                        setSearchUser("");
-                      }}
+                      className={`px-4 py-2 cursor-pointer hover:bg-gray-100 text-sm flex items-start gap-2 ${selectedUsers.includes(user.user_id) ? "bg-gray-200" : ""}`}
+                      onClick={() => toggleUserSelection(user.user_id)}
                     >
-                      <div className="font-medium">{user.full_name}</div>
-                      <div className="text-xs text-gray-500">ID: {user.user_id}</div>
+                      <input
+                        type="checkbox"
+                        className="mt-1 flex-shrink-0"
+                        checked={selectedUsers.includes(user.user_id)}
+                        onChange={() => toggleUserSelection(user.user_id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div>
+                        <div className="font-medium">{user.full_name}</div>
+                        <div className="text-xs text-gray-500">ID: {user.user_id}</div>
+                      </div>
                     </div>
                   ))}
                 {/* Sticky Create New User Option */}
@@ -326,7 +379,7 @@ const DepartmentsAdmin = () => {
           <button
             className="bg-[#0E2F4B] text-white px-4 py-2 rounded text-sm disabled:opacity-50"
             onClick={handleAddAdmin}
-            disabled={!selectedUser || !selectedDept}
+            disabled={selectedUsers.length === 0 || !selectedDept}
           >
             {t('common.add')}
           </button>
