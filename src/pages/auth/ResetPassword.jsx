@@ -92,12 +92,13 @@ const ResetPassword = () => {
             </label>
             <div className="relative mb-4">
               <input
-                type="password"
+                type={showNew ? "text" : "password"}
                 placeholder="Enter New Password"
-                className={`app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400${showNew ? " app-password-input--visible" : ""}`}
+                className="app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
+                autoComplete="new-password"
               />
               <button
                 type="button"
@@ -115,12 +116,13 @@ const ResetPassword = () => {
             </label>
             <div className="relative mb-4">
               <input
-                type="password"
+                type={showConfirm ? "text" : "password"}
                 placeholder="Re-enter New Password"
-                className={`app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400${showConfirm ? " app-password-input--visible" : ""}`}
+                className="app-password-input w-full px-4 py-2 pr-11 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                autoComplete="new-password"
               />
               <button
                 type="button"
