@@ -8,7 +8,7 @@ import {
 } from '../utils/apiCache';
 
 const TTL_MS = 3 * 60 * 1000;
-const LIST_KEY = 'asset-groups:list';
+const LIST_KEY = 'asset-groups:list-v2';
 
 export function formatGroupAssetRows(raw) {
   return (raw || []).map((group) => ({
