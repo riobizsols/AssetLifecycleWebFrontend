@@ -55,38 +55,65 @@ export function clearCache() {
   memoryCache.clear();
 }
 
+/** True when `segment` is a full path segment (avoids `/assets` matching `/asset-groups`). */
+function pathHasSegment(path = '', segment = '') {
+  const parts = String(path)
+    .toLowerCase()
+    .split('/')
+    .filter(Boolean)
+    .filter((p) => p !== 'api');
+  return parts.includes(String(segment).toLowerCase());
+}
+
 /** Map API paths to cache key prefixes — avoid clearing the entire app cache on every mutation. */
 function invalidationPrefixesForPath(path = '') {
   const p = String(path).toLowerCase();
   const prefixes = new Set();
 
+  const add = (...keys) => keys.forEach((k) => prefixes.add(k));
+
+  // Group asset mutations must also refresh assets lists (membership changes).
+  if (
+    pathHasSegment(p, 'asset-groups') ||
+    pathHasSegment(p, 'group-assets') ||
+    pathHasSegment(p, 'asset-group-docs')
+  ) {
+    add('asset-groups:', 'group-assets:', 'assets:');
+  }
+
+  // Asset mutations can change group membership / counts on group screens.
+  if (pathHasSegment(p, 'assets') && !pathHasSegment(p, 'asset-groups') && !pathHasSegment(p, 'asset-types')) {
+    add('assets:', 'asset-groups:', 'group-assets:');
+  }
+
   const rules = [
-    { match: '/branches', prefix: 'branches:' },
-    { match: '/departments', prefix: 'departments:' },
-    { match: '/vendors', prefix: 'vendors:' },
-    { match: '/users', prefix: 'users:' },
-    { match: '/assets', prefix: 'assets:' },
-    { match: '/asset-types', prefix: 'asset-types:' },
-    { match: '/properties', prefix: 'properties:' },
+    { segment: 'branches', prefix: 'branches:' },
+    { segment: 'departments', prefix: 'departments:' },
+    { segment: 'vendors', prefix: 'vendors:' },
+    { segment: 'users', prefix: 'users:' },
+    { segment: 'asset-types', prefix: 'asset-types:' },
+    { segment: 'properties', prefix: 'properties:' },
     { match: '/job-role-navigation', prefix: 'app:navigation:' },
     { match: '/navigation/', prefix: 'app:navigation:' },
-    { match: '/job-roles', prefix: 'job-roles:' },
-    { match: '/user-job-roles', prefix: 'user-roles:' },
-    { match: '/text-messages', prefix: 'text-messages:' },
-    { match: '/certifications', prefix: 'certifications:' },
-    { match: '/assignment', prefix: 'assignment:' },
-    { match: '/dashboard', prefix: 'dashboard:' },
-    { match: '/scrap', prefix: 'scrap' },
-    { match: '/maintenance', prefix: 'maintenance' },
-    { match: '/inspection', prefix: 'inspection' },
+    { segment: 'job-roles', prefix: 'job-roles:' },
+    { segment: 'user-job-roles', prefix: 'user-roles:' },
+    { segment: 'text-messages', prefix: 'text-messages:' },
+    { segment: 'certifications', prefix: 'certifications:' },
+    { segment: 'assignment', prefix: 'assignment:' },
+    { segment: 'dashboard', prefix: 'dashboard:' },
+    { segment: 'scrap', prefix: 'scrap' },
+    { segment: 'maintenance', prefix: 'maintenance' },
+    { segment: 'inspection', prefix: 'inspection' },
   ];
 
-  for (const { match, prefix } of rules) {
-    if (p.includes(match)) prefixes.add(prefix);
+  for (const rule of rules) {
+    if (rule.segment && pathHasSegment(p, rule.segment)) prefixes.add(rule.prefix);
+    else if (rule.match && p.includes(rule.match)) prefixes.add(rule.prefix);
   }
 
   if (prefixes.size === 0) {
-    const segment = p.split('/').filter(Boolean)[0];
+    const parts = p.split('/').filter(Boolean).filter((seg) => seg !== 'api');
+    const segment = parts[0];
     if (segment) prefixes.add(`${segment}:`);
   }
 

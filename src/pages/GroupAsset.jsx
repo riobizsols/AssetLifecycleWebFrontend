@@ -12,7 +12,6 @@ import { GROUP_ASSETS_APP_ID } from "../constants/groupAssetsAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useGroupAssetStore } from "../store/useGroupAssetStore";
-import { invalidateCache } from "../utils/apiCache";
 import { filterData } from "../utils/filterData";
 import { applyListFilterChange, hasActiveListFilters, EMPTY_LIST_FILTERS } from "../utils/listFilterState";
 
@@ -149,8 +148,7 @@ const GroupAsset = () => {
 
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_ASSETGROUPDELETEDSUCCESSFULLY_32EB5DF7', fallbackText: t("groupAssets.assetGroupDeletedSuccessfully"), type: 'success' });
       removeGroups([row.group_id]);
-      invalidateCache('asset-groups:');
-      fetchAssetGroups({ force: true });
+      await useGroupAssetStore.getState().refreshAfterMutation();
     } catch (error) {
       console.error("Error deleting asset group:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETEASSETGROUP_59E22566', fallbackText: t("groupAssets.failedToDeleteAssetGroup"), type: 'error' });
@@ -190,8 +188,7 @@ const GroupAsset = () => {
       // Clear selection and refresh data
       setSelectedRows([]);
       removeGroups(selectedRows);
-      invalidateCache('asset-groups:');
-      fetchAssetGroups({ force: true });
+      await useGroupAssetStore.getState().refreshAfterMutation();
     } catch (error) {
       console.error("Error deleting selected asset groups:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETESOMEASSETGROUPS_781931A5', fallbackText: t("groupAssets.failedToDeleteSomeAssetGroups"), type: 'error' });

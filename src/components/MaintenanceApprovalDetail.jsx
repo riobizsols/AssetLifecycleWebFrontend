@@ -9,6 +9,11 @@ import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "react-hot-toast";
+import { useMaintenanceApprovalStore } from "../store/useMaintenanceApprovalStore";
+
+function bustMaintenanceApprovalListCache() {
+  useMaintenanceApprovalStore.getState().invalidateMaintenanceApprovalCache();
+}
 
 function isInhouseMaintenance(approvalDetails) {
   if (!approvalDetails) return false;
@@ -429,6 +434,7 @@ const MaintenanceApprovalDetail = () => {
         setShowApproveModal(false);
         setApproveNote("");
         setVendorStatusError("");
+        bustMaintenanceApprovalListCache();
         
         // Refresh approval details to show updated vendor and date
         // Wait a bit for the database to be updated
@@ -446,6 +452,7 @@ const MaintenanceApprovalDetail = () => {
           toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approval already completed.');
           setShowApproveModal(false);
           setApproveNote('');
+          bustMaintenanceApprovalListCache();
           fetchApprovalDetails(true);
         } else {
           toast.error(msg || t('maintenanceApproval.failedToApprove'));
@@ -499,6 +506,7 @@ const MaintenanceApprovalDetail = () => {
         console.log("Maintenance rejected successfully");
         setShowRejectModal(false);
         setRejectNote("");
+        bustMaintenanceApprovalListCache();
         navigate('/maintenance-approval');
       } else {
         alert(t('maintenanceApproval.failedToReject'));
@@ -1354,7 +1362,6 @@ const MaintenanceApprovalDetail = () => {
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.action')}</th>
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.user')}</th>
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.jobRole')}</th>
-                            <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.department')}</th>
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.notes')}</th>
                           </tr>
                         </thead>
@@ -1365,7 +1372,6 @@ const MaintenanceApprovalDetail = () => {
                               <td className={`px-6 py-3 text-sm whitespace-nowrap font-medium ${row.actionColor || 'text-gray-600'}`}>{row.action}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.user}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.jobRole || "-"}</td>
-                              <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.department || "-"}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.notes || "-"}</td>
                             </tr>
                           ))}

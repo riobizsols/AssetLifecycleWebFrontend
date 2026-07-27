@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useLocation } from "react-router-dom";
 import AssetAssignmentList from "../components/assetAssignment/AssetAssignmentList";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
@@ -10,9 +11,16 @@ const EMPTY_LIST = [];
 
 const EmployeeWiseAssetAssignment = () => {
   const { t } = useLanguage();
-  const [selectedDepartment, setSelectedDepartment] = useState(null);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [selectedEmployeeIntId, setSelectedEmployeeIntId] = useState(null);
+  const location = useLocation();
+  const [selectedDepartment, setSelectedDepartment] = useState(
+    () => location.state?.selectedDepartment || null
+  );
+  const [selectedEmployee, setSelectedEmployee] = useState(
+    () => location.state?.selectedEmployee || null
+  );
+  const [selectedEmployeeIntId, setSelectedEmployeeIntId] = useState(
+    () => location.state?.selectedEmployeeIntId || null
+  );
 
   const departments = useAssignmentStore((s) => s.departments);
   const departmentsLoading = useAssignmentStore((s) => s.departmentsLoading);

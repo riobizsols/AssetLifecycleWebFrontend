@@ -55,7 +55,7 @@ export const useMaintenanceApprovalStore = create((set, get) => ({
   approvals: cachedList || [],
   listLoading: !cachedList,
 
-  fetchApprovals: async ({ revalidate = false, onFresh } = {}) => {
+  fetchApprovals: async ({ revalidate = false, force = false, onFresh } = {}) => {
     const apply = (rows) => {
       set({ approvals: rows, listLoading: false });
       onFresh?.(rows);
@@ -67,7 +67,7 @@ export const useMaintenanceApprovalStore = create((set, get) => ({
     };
 
     try {
-      if (revalidate) {
+      if (revalidate && !force) {
         const cached = peekCache(LIST_KEY, MAINTENANCE_APPROVAL_TTL_MS);
         if (cached?.length) {
           apply(cached);
@@ -81,8 +81,18 @@ export const useMaintenanceApprovalStore = create((set, get) => ({
         return data;
       }
 
+      if (!force && !revalidate) {
+        const cached = peekCache(LIST_KEY, MAINTENANCE_APPROVAL_TTL_MS);
+        if (cached) {
+          apply(cached);
+          return cached;
+        }
+      }
+
+      set({ listLoading: true });
       const { data } = await fetchWithCache(LIST_KEY, fetcher, {
         ttlMs: MAINTENANCE_APPROVAL_TTL_MS,
+        force: force || revalidate,
       });
       apply(data);
       return data;

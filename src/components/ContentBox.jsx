@@ -86,6 +86,7 @@ const ColumnsSubmenu = ({ visibleColumns, toggleColumn, isIdColumnName, triggerB
   const menuContent = (
     <div
       ref={elRef}
+      data-contentbox-columns-submenu=""
       className="fixed bg-white shadow-lg border border-gray-300 z-[60] overflow-y-auto overscroll-contain"
       style={{
         top: 0,
@@ -145,6 +146,7 @@ const ContentBox = ({
   showFilterButton = true, // Add this line
   onAdd, // Add onAdd prop
   customHeaderActions, // Custom header actions
+  leadingActions, // Actions shown before the filter button
   isReadOnly = false, // Add isReadOnly prop
   onHeaderClick, // Add onHeaderClick prop
   dateFilterField = '', // Which column date range applies to (optional)
@@ -226,20 +228,23 @@ const ContentBox = ({
     }
   }, [filters]);
 
-  // Close add filter submenu when column dropdown closes
+  // Close add filter / columns submenu when column dropdown closes
   useEffect(() => {
     if (openDropdown === null) {
       setShowAddFilterSubmenu(null);
+      setShowColumnsDropdown(false);
     }
   }, [openDropdown]);
 
-  // Handle click outside to close searchable dropdowns
+  // Handle click outside to close filter menus and dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
+      const target = event.target;
+
       Object.keys(searchableDropdownOpen).forEach(index => {
         if (searchableDropdownOpen[index] && 
             dropdownRef.current[index] && 
-            !dropdownRef.current[index].contains(event.target)) {
+            !dropdownRef.current[index].contains(target)) {
           setSearchableDropdownOpen(prev => ({
             ...prev,
             [index]: false
@@ -254,11 +259,51 @@ const ContentBox = ({
       // Close add filter submenu if clicking outside
       if (showAddFilterSubmenu !== null) {
         const addFilterButton = document.querySelector(`[data-add-filter-index="${showAddFilterSubmenu}"]`);
-        if (addFilterButton && !addFilterButton.contains(event.target)) {
+        if (addFilterButton && !addFilterButton.contains(target)) {
           const submenu = document.querySelector(`[data-add-filter-submenu="${showAddFilterSubmenu}"]`);
-          if (submenu && !submenu.contains(event.target)) {
+          if (submenu && !submenu.contains(target)) {
             setShowAddFilterSubmenu(null);
           }
+        }
+      }
+
+      // Close column header sort/filter dropdown when clicking elsewhere
+      if (openDropdown !== null) {
+        const columnHeader = document.querySelector(
+          `[data-contentbox-column-dropdown="${openDropdown}"]`
+        );
+        const columnsSubmenu = document.querySelector(
+          "[data-contentbox-columns-submenu]"
+        );
+        const addFilterSubmenu = document.querySelector(
+          `[data-add-filter-submenu="${openDropdown}"]`
+        );
+        const clickedInside =
+          (columnHeader && columnHeader.contains(target)) ||
+          (columnsSubmenu && columnsSubmenu.contains(target)) ||
+          (addFilterSubmenu && addFilterSubmenu.contains(target));
+
+        if (!clickedInside) {
+          setOpenDropdown(null);
+          setShowColumnsDropdown(false);
+          setShowAddFilterSubmenu(null);
+        }
+      }
+
+      // Close filter icon menu when clicking elsewhere
+      if (filterMenuOpen) {
+        const filterButton = document.querySelector(
+          "[data-contentbox-filter-button]"
+        );
+        const filterMenu = document.querySelector(
+          "[data-contentbox-filter-menu]"
+        );
+        const clickedInside =
+          (filterButton && filterButton.contains(target)) ||
+          (filterMenu && filterMenu.contains(target));
+
+        if (!clickedInside) {
+          setFilterMenuOpen(false);
         }
       }
     };
@@ -267,7 +312,7 @@ const ContentBox = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [searchableDropdownOpen, showAddFilterSubmenu]);
+  }, [searchableDropdownOpen, showAddFilterSubmenu, openDropdown, filterMenuOpen]);
 
   const handleColumnChange = (index, column) => {
     const updated = [...columnFilters];
@@ -533,8 +578,11 @@ const ContentBox = ({
       <div className="flex flex-wrap items-start justify-between gap-2 p-2 bg-gray-100 border-b">
         <div className="flex flex-wrap items-center gap-2">
 
+          {leadingActions}
+
           {showFilterButton && (
             <button
+              data-contentbox-filter-button=""
               className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
               onClick={() => setFilterMenuOpen(!filterMenuOpen)}
             >
@@ -761,7 +809,7 @@ const ContentBox = ({
           ))}
 
           {filterMenuOpen && nextAvailableFilters.length > 0 && (
-            <div className="relative">
+            <div className="relative" data-contentbox-filter-menu="">
               <div className="absolute z-50 mt-1 bg-white border text-sm w-60 p-2 shadow-lg left-0">
                 <div className="font-medium border-b pb-1 mb-1">{t('common.addFilter')}</div>
                 {nextAvailableFilters.map((type) => (
@@ -863,6 +911,9 @@ const ContentBox = ({
                   <th
                     key={index}
                     className="px-4 py-3 relative text-left group"
+                    {...(openDropdown === index
+                      ? { "data-contentbox-column-dropdown": index }
+                      : {})}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span
