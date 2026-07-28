@@ -526,18 +526,8 @@ const AddEntityForm = () => {
         });
       }
 
-      // Vendor-only setup: no optional product/service/attachment data to save
-      if (
-        vendorSaveSuccess &&
-        !form.product_supply &&
-        !form.service_supply &&
-        uploadRows.length === 0
-      ) {
-        clearVendorAddSession();
-        bustVendorListCache();
-        navigate("/master-data/vendors");
-      } else if (vendorSaveSuccess && !hasPendingOptionalData() && tabsToSave.length === 0) {
-        // All staged optional data already saved — return to list
+      // Always return to vendor list after a successful Save All
+      if (vendorSaveSuccess) {
         clearVendorAddSession();
         bustVendorListCache();
         navigate("/master-data/vendors");
@@ -570,16 +560,6 @@ const AddEntityForm = () => {
     clearVendorAddSession();
     if (vendorSaved) bustVendorListCache();
     navigate("/master-data/vendors");
-  };
-
-  const hasPendingOptionalData = () => {
-    const products = JSON.parse(sessionStorage.getItem("products") || "[]");
-    const services = JSON.parse(sessionStorage.getItem("services") || "[]");
-    return (
-      (form.product_supply && Array.isArray(products) && products.length > 0 && !savedTabs.has("Product Details")) ||
-      (form.service_supply && Array.isArray(services) && services.length > 0 && !savedTabs.has("Service Details")) ||
-      (uploadRows.length > 0 && !savedTabs.has("Attachments"))
-    );
   };
 
   // Callback to mark tabs as saved
@@ -1072,7 +1052,7 @@ const AddEntityForm = () => {
                 {savingTab ? `Saving ${savingTab}...` : 'Saving...'}
               </span>
             ) : (
-              'Save All'
+              'Save'
             )}
           </button>
         </div>
@@ -1086,7 +1066,7 @@ const AddEntityForm = () => {
               </svg>
               {t('vendors.vendorCreatedContinueSetup', {
                 defaultValue:
-                  'Vendor created successfully. Add products/services or attachments on the other tabs, then click Save All — or use Back to Vendors when you are done.',
+                  'Vendor created successfully. Add products/services or attachments on the other tabs, then click Save — or use Back to Vendors when you are done.',
               })}
             </div>
           </div>
