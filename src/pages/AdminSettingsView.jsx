@@ -161,7 +161,7 @@ const AdminSettingsView = () => {
       description:
         "Create maintenance certificates and map them to asset types",
       icon: FileCheck,
-      route: "/certifications",
+      route: "/adminsettings/configuration/certifications",
       color: "from-emerald-500 to-emerald-600",
       bgColor: "bg-emerald-50",
       iconColor: "text-emerald-600",
@@ -247,7 +247,7 @@ const AdminSettingsView = () => {
       PROPERTIES: "/adminsettings/configuration/properties",
       BREAKDOWNREASONCODES:
         "/adminsettings/configuration/breakdown-reason-codes",
-      CERTIFICATIONS: "/certifications",
+      CERTIFICATIONS: "/adminsettings/configuration/certifications",
       ONETIMECRON: "/adminsettings/configuration/one-time-cron",
       JOBMONITOR: "/adminsettings/configuration/job-monitor",
     };

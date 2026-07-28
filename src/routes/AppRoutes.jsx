@@ -1260,6 +1260,18 @@ export default function AppRoutes() {
           }
         />
         <Route
+          path="/adminsettings/configuration/certifications"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={["CERTIFICATIONS", "ADMINSETTINGS"]}
+            >
+              <AdminSettingsLayout>
+                <Certifications />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/adminsettings/configuration/properties"
           element={
             <ProtectedRoute
