@@ -64,7 +64,7 @@ const Departments = () => {
   const fetchNextDeptId = async () => {
     try {
       console.log("Fetching next department ID...");
-      const res = await API.get("/ids/next-dept-id");
+      const res = await API.get("/departments/next-id");
       console.log("API response:", res.data);
       setNextDeptId(res.data.nextDeptId);
     } catch (err) {
