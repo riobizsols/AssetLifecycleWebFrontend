@@ -11,7 +11,6 @@ import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
 import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
 import { useAssetsStore } from '../../store/useAssetsStore';
 import { useNavigation } from '../../hooks/useNavigation';
 import useColumnAccess from '../../hooks/useColumnAccess';
@@ -120,7 +119,6 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [showQSNPrintModal, setShowQSNPrintModal] = useState(false);
   const [qsnPrintReason, setQsnPrintReason] = useState("");
   const [isQSNPrintLoading, setIsQSNPrintLoading] = useState(false);
-  const [existingAssets, setExistingAssets] = useState([]);
 
   const isWarrantyPeriodInPast = (() => {
     if (!form.warrantyPeriod) return false;
@@ -245,22 +243,6 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   useEffect(() => {
     fetchDocumentTypes();
   }, []);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const fetchExistingAssets = async () => {
-      try {
-        const rows = await useAssetsStore.getState().fetchExistingAssets();
-        setExistingAssets(rows);
-      } catch (err) {
-        console.error('Error fetching assets for name validation:', err);
-        setExistingAssets([]);
-      }
-    };
-
-    fetchExistingAssets();
-  }, [isOpen]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -603,28 +585,6 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       return;
     }
 
-    const assetNameTrimmed = form.description?.trim();
-    if (
-      !isWarrantyActionMode &&
-      isColumnVisible('description') &&
-      assetNameTrimmed
-    ) {
-      const conflictingName = findConflictingAssetName(
-        assetNameTrimmed,
-        existingAssets,
-        assetData?.asset_id
-      );
-      if (conflictingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
-          fallbackText: t('assets.similarAssetNameExists', { name: conflictingName }),
-          type: 'error',
-        });
-        return;
-      }
-    }
-
     setIsSubmitting(true);
     try {
       // Get user's branch ID automatically
@@ -736,18 +696,6 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     } catch (err) {
       console.error('Error updating asset:', err);
       const responseData = err.response?.data;
-      if (responseData?.existingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
-          fallbackText: t('assets.similarAssetNameExists', {
-            name: responseData.existingName,
-          }),
-          type: 'error',
-        });
-        return;
-      }
-
       const errorMessage =
         responseData?.message ||
         responseData?.error ||

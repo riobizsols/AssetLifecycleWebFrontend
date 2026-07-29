@@ -318,12 +318,11 @@ const MaintenanceFrequency = () => {
     };
   }, [filterMenuOpen]);
 
-  // Apply filters when filterValues change
+  // Apply filters when store data or filter values change
   useEffect(() => {
-    if (allFrequencies.length > 0) {
-      applyFilters(allFrequencies);
-    }
-  }, [filterValues]);
+    applyFilters(allFrequencies || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allFrequencies, filterValues]);
 
   // Fetch checklist items
   const fetchChecklistItems = async (freqId) => {

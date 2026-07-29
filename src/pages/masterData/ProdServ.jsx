@@ -268,10 +268,29 @@ export default function ProdServ() {
   const checkVendorAssociations = async (itemId) => {
     try {
       const response = await API.get(`/vendor-prod-services/check/${itemId}`);
-      return response.data;
+      const data = response.data || {};
+      return {
+        hasAssociations: Boolean(data.hasAssociations),
+        vendors: Array.isArray(data.vendors) ? data.vendors : [],
+        count: data.count || 0,
+      };
     } catch (_err) {
       console.error('Error checking vendor associations:', _err);
-      return { hasAssociations: true, vendors: [] };
+      // Fail open only if check API is unavailable — do not block deletes incorrectly
+      try {
+        const fallback = await API.get(`/vendor-prod-services/prod-serv/${itemId}`);
+        const rows = Array.isArray(fallback.data) ? fallback.data : [];
+        return {
+          hasAssociations: rows.length > 0,
+          vendors: rows.map((r) => ({
+            vendor_id: r.vendor_id,
+            vendor_name: r.vendor_name || r.vendor_id,
+          })),
+          count: rows.length,
+        };
+      } catch {
+        return { hasAssociations: false, vendors: [] };
+      }
     }
   };
 

@@ -6,6 +6,7 @@ import API from '../lib/axios';
 import { generateUUID } from '../utils/uuid';
 import { useLanguage } from '../contexts/LanguageContext';
 import { X } from 'lucide-react';
+import VendorProductsPanel from './VendorProductsPanel';
 
 /** HTML date inputs only accept yyyy-MM-dd; API/DB may return ISO strings or Date objects. */
 function formatDateForInput(value) {
@@ -57,7 +58,14 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [showArchived, setShowArchived] = useState(true);
+  const [activeTab, setActiveTab] = useState('Vendor Details');
   const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (show && vendor) {
+      setActiveTab('Vendor Details');
+    }
+  }, [show, vendor?.vendor_id]);
 
   useEffect(() => {
     if (vendor) {
@@ -549,8 +557,31 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         {/* Divider */}
         <div className="h-[3px] bg-[#ffc107] shrink-0" />
 
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 px-6 shrink-0 bg-white">
+          {['Vendor Details', 'Products', 'Attachments'].map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={`px-5 py-2.5 -mb-px font-semibold text-sm border-b-2 focus:outline-none transition-all ${
+                activeTab === tab
+                  ? 'border-[#0E2F4B] text-[#0E2F4B]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === 'Vendor Details'
+                ? t('vendors.vendorDetails') || 'Vendor Details'
+                : tab === 'Products'
+                  ? t('vendors.productDetails') || 'Products'
+                  : t('vendors.attachments') || 'Attachments'}
+            </button>
+          ))}
+        </div>
+
         <div className="flex-1 min-h-0 overflow-y-auto">
         {/* Form */}
+        {activeTab === 'Vendor Details' && (
         <form id="edit-vendor-form" onSubmit={handleSubmit} className="p-6">
           <div className="grid grid-cols-2 gap-4">
             {/* Basic Information */}
@@ -884,8 +915,18 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
           )}
 
         </form>
+        )}
+
+        {activeTab === 'Products' && (
+          <VendorProductsPanel
+            vendorId={vendor?.vendor_id}
+            orgId={vendor?.org_id}
+            isReadOnly={isReadOnly}
+          />
+        )}
 
         {/* Document Management Section - Outside Form */}
+        {activeTab === 'Attachments' && (
         <div className="border-t pt-6 px-6 pb-6">
           <div className="text-md font-medium text-gray-900 mb-4">{t('vendors.vendorDocuments')}</div>
           
@@ -1159,6 +1200,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             )}
           </div>
         </div>
+        )}
         </div>
 
         {/* Footer — Cancel / Update at bottom of modal */}
@@ -1171,7 +1213,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             >
               {t('common.cancel')}
             </button>
-            {!isReadOnly && (
+            {!isReadOnly && activeTab === 'Vendor Details' && (
               <button
                 type="submit"
                 form="edit-vendor-form"

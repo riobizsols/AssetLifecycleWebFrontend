@@ -18,10 +18,11 @@ const MaintenanceConfiguration = () => {
   }, [location.state]);
 
   useEffect(() => {
+    const forceFrequencies = Boolean(location.state?.refreshFrequencies);
     fetchDetailsBase({ revalidate: true });
-    fetchFrequencyBundle({ revalidate: true });
+    fetchFrequencyBundle({ revalidate: true, force: forceFrequencies });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.key, location.state?.refreshFrequencies]);
 
   useRevalidateOnFocus(() => {
     fetchDetailsBase({ revalidate: true });

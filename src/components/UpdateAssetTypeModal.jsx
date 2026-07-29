@@ -8,7 +8,6 @@ import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
-import { findConflictingAssetTypeName } from "../utils/assetTypeNameValidation";
 import { refreshAssetTypeCaches } from "../utils/refreshAssetTypeCaches";
 import { X } from "lucide-react";
 
@@ -44,7 +43,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const [selectedProperties, setSelectedProperties] = useState([]);
   const [existingProperties, setExistingProperties] = useState([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(false);
-  const [existingAssetTypes, setExistingAssetTypes] = useState([]);
 
   useEffect(() => {
     if (assetData) {
@@ -83,18 +81,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   useEffect(() => {
     fetchDocumentTypes();
     fetchProperties();
-    fetchExistingAssetTypes();
   }, []);
-
-  const fetchExistingAssetTypes = async () => {
-    try {
-      const res = await API.get("/asset-types");
-      setExistingAssetTypes(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error("Error fetching asset types for validation:", err);
-      setExistingAssetTypes([]);
-    }
-  };
 
   // Fetch checklist and properties when asset type is loaded
   useEffect(() => {
@@ -432,21 +419,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       return;
     }
 
-    const conflictingName = findConflictingAssetTypeName(
-      assetType.trim(),
-      existingAssetTypes,
-      assetData?.asset_type_id
-    );
-    if (conflictingName) {
-      showBackendTextToast({
-        toast,
-        tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
-        fallbackText: t('assetTypes.similarAssetTypeNameExists', { name: conflictingName }),
-        type: 'error',
-      });
-      return;
-    }
-
     // Validate parent selection for child asset types
     if (parentChild === "child" && !selectedParentType) {
       showBackendTextToast({
@@ -507,18 +479,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       onClose(true);
     } catch (error) {
       const responseData = error.response?.data;
-      if (responseData?.existingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
-          fallbackText: t('assetTypes.similarAssetTypeNameExists', {
-            name: responseData.existingName,
-          }),
-          type: 'error',
-        });
-        return;
-      }
-
       const errorMessage =
         responseData?.message ||
         responseData?.error ||
