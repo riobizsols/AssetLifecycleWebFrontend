@@ -14,7 +14,6 @@ import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
 import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
 import { useAssetsStore } from '../../store/useAssetsStore';
 import {
   getCachedAddFormData,
@@ -108,9 +107,6 @@ const AddAssetForm = ({ userRole }) => {
     vendorRequired: false
   });
   const [isVendorMaintainedType, setIsVendorMaintainedType] = useState(false);
-  const [existingAssets, setExistingAssets] = useState(
-    () => getCachedAddFormData().existingAssets || [],
-  );
 
   const applyProdServData = (data) => {
     if (!Array.isArray(data) || data.length === 0) return;
@@ -139,13 +135,6 @@ const AddAssetForm = ({ userRole }) => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
-
-  useEffect(() => {
-    useAssetsStore.getState().fetchExistingAssets({
-      revalidate: true,
-      onFresh: setExistingAssets,
-    }).then(setExistingAssets).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!users?.length) return;
@@ -1004,24 +993,6 @@ const AddAssetForm = ({ userRole }) => {
     
     // Set validation errors
     setValidationErrors(errors);
-    
-    const assetNameTrimmed = form.description?.trim();
-    if (assetNameTrimmed) {
-      const conflictingName = findConflictingAssetName(
-        assetNameTrimmed,
-        existingAssets
-      );
-      if (conflictingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
-          fallbackText: t('assets.similarAssetNameExists', { name: conflictingName }),
-          type: 'error',
-        });
-        setCollapsedSections((prev) => ({ ...prev, asset: false }));
-        return;
-      }
-    }
 
     if (hasErrors) {
       if (errors.dateMismatch) {
@@ -1261,19 +1232,6 @@ const AddAssetForm = ({ userRole }) => {
     } catch (err) {
       console.error('❌ Error creating asset:', err);
       const responseData = err.response?.data;
-      if (responseData?.existingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
-          fallbackText: t('assets.similarAssetNameExists', {
-            name: responseData.existingName,
-          }),
-          type: 'error',
-        });
-        setCollapsedSections((prev) => ({ ...prev, asset: false }));
-        return;
-      }
-
       const backendError = (responseData?.message || responseData?.error || '').toString();
       const hasPurchaseVendorSelection = Boolean(form.purchaseSupply);
       const looksLikeGenericInternalError = backendError.toLowerCase().includes('internal server error');

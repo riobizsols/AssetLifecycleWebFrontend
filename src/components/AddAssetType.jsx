@@ -9,7 +9,6 @@ import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
-import { findConflictingAssetTypeName } from "../utils/assetTypeNameValidation";
 import { refreshAssetTypeCaches } from "../utils/refreshAssetTypeCaches";
 
 const AddAssetType = () => {
@@ -49,7 +48,6 @@ const AddAssetType = () => {
   
   // Document types from API
   const [documentTypes, setDocumentTypes] = useState([]);
-  const [existingAssetTypes, setExistingAssetTypes] = useState([]);
 
   useEffect(() => {
     // Reset parent selection when parentChild changes
@@ -66,18 +64,7 @@ const AddAssetType = () => {
     fetchMaintenanceTypes();
     fetchDocumentTypes();
     fetchProperties();
-    fetchExistingAssetTypes();
   }, []);
-
-  const fetchExistingAssetTypes = async () => {
-    try {
-      const res = await API.get("/asset-types");
-      setExistingAssetTypes(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error("Error fetching asset types for validation:", err);
-      setExistingAssetTypes([]);
-    }
-  };
 
   const fetchParentAssetTypes = async () => {
     try {
@@ -190,20 +177,6 @@ const AddAssetType = () => {
         toast,
         tmdId: 'TMD_ASSET_TYPE_NAME_REQUIRED_D9DE7807',
         fallbackText: t('assetTypes.assetTypeNameRequired'),
-        type: 'error',
-      });
-      return;
-    }
-
-    const conflictingName = findConflictingAssetTypeName(
-      assetType.trim(),
-      existingAssetTypes
-    );
-    if (conflictingName) {
-      showBackendTextToast({
-        toast,
-        tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
-        fallbackText: t('assetTypes.similarAssetTypeNameExists', { name: conflictingName }),
         type: 'error',
       });
       return;
@@ -341,18 +314,6 @@ const AddAssetType = () => {
       navigate('/master-data/asset-types');
     } catch (error) {
       const responseData = error.response?.data;
-      if (responseData?.existingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
-          fallbackText: t('assetTypes.similarAssetTypeNameExists', {
-            name: responseData.existingName,
-          }),
-          type: 'error',
-        });
-        return;
-      }
-
       const errorMessage =
         responseData?.message ||
         responseData?.error ||
