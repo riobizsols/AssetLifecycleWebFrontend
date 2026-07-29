@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
+    // Avoid colliding with the SPA route /assets (reload would 403 on the build folder)
+    assetsDir: 'static',
     sourcemap: false,
     rollupOptions: {
       output: {

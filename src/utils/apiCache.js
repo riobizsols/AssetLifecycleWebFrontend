@@ -86,6 +86,15 @@ function invalidationPrefixesForPath(path = '') {
     add('assets:', 'asset-groups:', 'group-assets:');
   }
 
+  // Maintenance frequency / details mutations must refresh the config screen bundle.
+  if (
+    pathHasSegment(p, 'maintenance-frequencies') ||
+    pathHasSegment(p, 'maintenance-details') ||
+    pathHasSegment(p, 'maint-types')
+  ) {
+    add('maintenance-config:', 'maintenance');
+  }
+
   const rules = [
     { segment: 'branches', prefix: 'branches:' },
     { segment: 'departments', prefix: 'departments:' },
