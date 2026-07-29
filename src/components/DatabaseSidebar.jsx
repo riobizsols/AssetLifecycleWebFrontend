@@ -1561,7 +1561,7 @@ const DatabaseSidebar = () => {
         MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config",
         PROPERTIES: "/adminsettings/configuration/properties",
         BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes",
-        CERTIFICATIONS: "/certifications",
+        CERTIFICATIONS: "/adminsettings/configuration/certifications",
         ONETIMECRON: "/adminsettings/configuration/one-time-cron",
         JOBMONITOR: "/adminsettings/configuration/job-monitor",
       };
@@ -1580,6 +1580,53 @@ const DatabaseSidebar = () => {
     return basePath;
   };
 
+  // Extra routes that should keep a sidebar item highlighted (e.g. create screens)
+  const getRelatedActivePaths = (appId) => {
+    const key = resolveNavAppId(appId);
+    if (key === "VENDORS") {
+      return [
+        "/master-data/vendors",
+        "/master-data/add-vendor",
+        "/master-data/vendors/add",
+      ];
+    }
+    if (key === "REPORTBREAKDOWN") {
+      return [
+        "/report-breakdown",
+        "/breakdown-selection",
+        "/breakdown-details",
+        "/edit-breakdown",
+      ];
+    }
+    if (
+      key === "EMPLOYEEREPORTBREAKDOWN" ||
+      key === "EMPLOYEE REPORT BREAKDOWN"
+    ) {
+      return [
+        "/employee-report-breakdown",
+        "/breakdown-selection2",
+        "/breakdown-details2",
+      ];
+    }
+    return null;
+  };
+
+  const isNavItemPathActive = (appId, basePath, pathname = location.pathname) => {
+    if (!basePath) return false;
+    const key = resolveNavAppId(appId);
+    // Exact match for column access config (same as existing sidebar behavior)
+    if (key === "COLUMNACCESSCONFIG") {
+      return pathname === basePath;
+    }
+    const related = getRelatedActivePaths(appId);
+    if (related?.length) {
+      return related.some(
+        (p) => pathname === p || pathname.startsWith(`${p}/`)
+      );
+    }
+    return pathname === basePath || pathname.startsWith(`${basePath}/`);
+  };
+
   useEffect(() => {
     if (isAdminSettingsMode || collapsed) return;
     if (!navigationForRender?.length) return;
@@ -1596,7 +1643,7 @@ const DatabaseSidebar = () => {
       if (!isNavGroup(item) || !item.children?.length) return false;
       return item.children.some((child) => {
         const childPath = getPath(child.app_id, child.label);
-        return childPath && location.pathname.startsWith(childPath);
+        return isNavItemPathActive(child.app_id, childPath);
       });
     });
 
@@ -1717,10 +1764,7 @@ const DatabaseSidebar = () => {
         hasChildren &&
         item.children.some((child) => {
           const childPath = getPath(child.app_id, child.label);
-          if (child.app_id === "COLUMNACCESSCONFIG") {
-            return location.pathname === childPath;
-          }
-          return childPath && location.pathname.startsWith(childPath);
+          return isNavItemPathActive(child.app_id, childPath);
         });
 
       return (
@@ -1781,9 +1825,9 @@ const DatabaseSidebar = () => {
                 if (!hasViewAccess(childAccessLevel)) return null;
 
                 const requiresExactMatch = isAdminSettingsRouteAppId(child.app_id, child.label);
-                const isActiveForAdminRoute = requiresExactMatch
+                const childActive = requiresExactMatch
                   ? location.pathname === childPath
-                  : undefined;
+                  : isNavItemPathActive(child.app_id, childPath);
 
                 return (
                   <li key={child.id} className="mb-1">
@@ -1792,12 +1836,9 @@ const DatabaseSidebar = () => {
                       state={navLinkState}
                       end={requiresExactMatch}
                       onMouseEnter={() => prefetchRouteData(child.app_id)}
-                      className={({ isActive }) => {
-                        const active = requiresExactMatch
-                          ? isActiveForAdminRoute
-                          : isActive;
+                      className={() => {
                         return `group flex items-center gap-2 px-4 py-2 rounded text-sm ${
-                          active
+                          childActive
                             ? "bg-[#FFC107] text-white"
                             : "hover:bg-[#143d65] text-white"
                         }`;

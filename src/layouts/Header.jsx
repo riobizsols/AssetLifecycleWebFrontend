@@ -112,6 +112,10 @@ export default function Header() {
       subtitle: t('auditLogs.configSubtitle'),
     },
     "/certifications": { title: t('navigation.certifications'), subtitle: "" },
+    "/adminsettings/configuration/certifications": {
+      title: t('navigation.certifications'),
+      subtitle: "",
+    },
     "/vendor-renewal-approval": { title: t('vendorRenewalApproval.title'), subtitle: "" },
     "/master-data/roles": {
       title: t('masterDataTitles.roleManagement'),
