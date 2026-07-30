@@ -543,7 +543,8 @@ export default function TenantSetup() {
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                     <p className="mt-1 text-xs text-gray-500">
-                      This will be used for login
+                      Used for login. This email will also be used to handle and manage the Organization
+                      (including organization account deletion).
                     </p>
                   </div>
 

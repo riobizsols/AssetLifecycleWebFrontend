@@ -5,6 +5,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "../layouts/MainLayout";
 import ForgotPassword from "../pages/auth/ForgetPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
+import DeleteAccount from "../pages/auth/DeleteAccount";
 import ChangePassword from "../pages/auth/ChangePassword";
 import RequestPasswordChange from "../pages/auth/RequestPasswordChange";
 import SetupWizard from "../pages/setup/SetupWizard";
@@ -129,6 +130,7 @@ export default function AppRoutes() {
         <Route path="/tenant-setup" element={<TenantSetup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/delete-account" element={<DeleteAccount />} />
         <Route path="/internal/db-switcher" element={<DatabaseConnectionSwitcher />} />
         <Route
           path="/request-password-change"

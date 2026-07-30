@@ -17,6 +17,7 @@ const AUTH_OPTIONAL_PATHS = new Set([
     '/setup',
     '/forgot-password',
     '/reset-password',
+    '/delete-account',
 ]);
 
 const normalizePath = (pathname) => {
@@ -34,7 +35,8 @@ const shouldSkipAuthRedirect = (config) => {
     return (
         config?.skipAuthRedirect === true ||
         url.includes('/text-messages/') ||
-        url.includes('/tenant-setup/')
+        url.includes('/tenant-setup/') ||
+        url.includes('/account-deletion/')
     );
 };
 
