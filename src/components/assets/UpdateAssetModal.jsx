@@ -15,6 +15,7 @@ import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
 import { useAssetsStore } from '../../store/useAssetsStore';
 import { useNavigation } from '../../hooks/useNavigation';
 import useColumnAccess from '../../hooks/useColumnAccess';
+import { getActiveOrgId, getActiveBranchId } from '../../utils/acmContext';
 
 const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Initialize audit logging
@@ -627,9 +628,10 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
     setIsSubmitting(true);
     try {
-      // Get user's branch ID automatically
-      const userBranchId = getUserBranchId(user?.user_id);
-      console.log('User branch ID for asset update:', userBranchId);
+      // Prefer ACM branch; fall back to existing asset branch for updates
+      const acmBranchId = getActiveBranchId();
+      const userBranchId = acmBranchId || getUserBranchId(user?.user_id) || assetData?.branch_id || null;
+      console.log('ACM/user branch ID for asset update:', userBranchId);
 
       // Prepare the asset data according to backend requirements
       // Only include fields that are visible (not NONE access)
@@ -804,10 +806,10 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
             fd.append('doc_type_name', r.docTypeName);
           }
           
-          // Get org_id from auth store
-          const user = useAuthStore.getState().user;
-          if (user?.org_id) {
-            fd.append('org_id', user.org_id);
+          // Get org_id from active ACM context
+          const orgId = getActiveOrgId(useAuthStore.getState().user?.org_id);
+          if (orgId) {
+            fd.append('org_id', orgId);
           }
           
           // Use the correct API endpoint for asset documents

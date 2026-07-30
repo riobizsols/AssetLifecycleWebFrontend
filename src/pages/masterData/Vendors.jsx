@@ -307,7 +307,7 @@ const Vendors = () => {
         rowKey="vendor_id"
         showAddButton={canEdit}
         showActions={true}
-        isReadOnly={false}
+        isReadOnly={isReadOnly}
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);

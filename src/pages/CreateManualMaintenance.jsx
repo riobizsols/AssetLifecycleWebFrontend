@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useMaintenanceSupervisorStore } from '../store/useMaintenanceSupervisorStore';
 import { useAppData } from '../contexts/AppDataContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getActiveOrgId } from '../utils/acmContext';
 
 const CreateManualMaintenance = () => {
   const navigate = useNavigate();
@@ -129,7 +130,7 @@ const CreateManualMaintenance = () => {
       const res = await API.get('/assets', {
         params: {
           asset_type_id: selectedAssetType,
-          org_id: user?.org_id,
+          org_id: getActiveOrgId(user?.org_id),
           exclude_in_maintenance: true,
         },
       });
@@ -164,7 +165,7 @@ const CreateManualMaintenance = () => {
       const res = await API.post('/maintenance-schedules/create-manual', {
         asset_id: asset.asset_id,
         asset_type_id: asset.asset_type_id,
-        org_id: user?.org_id,
+        org_id: getActiveOrgId(user?.org_id),
       });
       if (res.data?.success) {
         useMaintenanceSupervisorStore.getState().invalidateMaintenanceCache();

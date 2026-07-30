@@ -7,9 +7,13 @@ import { Plus, Edit2, Trash2, X, Save, ChevronDown, ChevronUp, Filter, Search } 
 import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
 import { usePropertiesStore } from '../../store/usePropertiesStore';
 import { invalidateCache } from '../../utils/apiCache';
+import { useNavigation } from '../../hooks/useNavigation';
 
 const Properties = () => {
   const { t } = useLanguage();
+  const { hasEditAccess, getAccessLevel } = useNavigation();
+  const canEdit = hasEditAccess('PROPERTIES');
+  const isReadOnly = getAccessLevel('PROPERTIES') === 'D' || !canEdit;
   const properties = usePropertiesStore((s) => s.properties);
   const listLoading = usePropertiesStore((s) => s.listLoading);
   const fetchPropertiesStore = usePropertiesStore((s) => s.fetchProperties);
@@ -97,6 +101,7 @@ const Properties = () => {
 
   // Handle create property
   const handleCreateProperty = async (e) => {
+    if (!canEdit) return;
     e.preventDefault();
     
     if (!propertyName.trim()) {
@@ -188,6 +193,7 @@ const Properties = () => {
 
   // Handle delete property
   const handleDeleteProperty = async (propId, propertyName) => {
+    if (!canEdit) return;
     if (!window.confirm(`Are you sure you want to delete the property "${propertyName}"? This will also delete all associated list values.`)) {
       return;
     }
@@ -333,6 +339,7 @@ const Properties = () => {
               </div>
             )}
           </div>
+          {canEdit && (
           <button
             onClick={() => setShowCreateForm(true)}
             className="w-10 h-10 bg-[#0E2F4B] text-white rounded flex items-center justify-center hover:bg-[#143d65] transition-colors shadow-sm"
@@ -340,6 +347,7 @@ const Properties = () => {
           >
             <Plus size={20} />
           </button>
+          )}
         </div>
 
         {/* Create Property Modal */}
@@ -564,6 +572,8 @@ const Properties = () => {
                             </span>
                           </div>
                           <div className="col-span-4 flex justify-end gap-3">
+                            {canEdit && (
+                              <>
                             <button
                               onClick={() => handleStartEdit(property)}
                               className="text-blue-600 hover:text-blue-700"
@@ -578,6 +588,8 @@ const Properties = () => {
                             >
                               <Trash2 size={18} />
                             </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       )}
@@ -598,6 +610,7 @@ const Properties = () => {
                                     className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded border border-gray-200 hover:border-gray-300 transition-colors"
                                   >
                                     <span className="text-sm text-gray-900">{value.value}</span>
+                                    {canEdit && (
                                     <button
                                       onClick={() => handleDeleteListValue(value.aplv_id, value.value)}
                                       className="text-red-500 hover:text-red-700 ml-2"
@@ -605,6 +618,7 @@ const Properties = () => {
                                     >
                                       <Trash2 size={14} />
                                     </button>
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -615,12 +629,14 @@ const Properties = () => {
                             )}
                             
                             {/* Add New Value Form */}
+                            {canEdit && (
                             <div className="pt-3 border-t border-gray-200">
                               <AddListValueForm
                                 propId={property.prop_id}
                                 onAdd={handleAddListValue}
                               />
                             </div>
+                            )}
                           </div>
                         </div>
                       </div>

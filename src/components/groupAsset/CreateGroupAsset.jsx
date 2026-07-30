@@ -23,10 +23,14 @@ import SearchableDropdown from '../ui/SearchableDropdown';
 import { useAuditLog } from '../../hooks/useAuditLog';
 import { GROUP_ASSETS_APP_ID } from '../../constants/groupAssetsAuditEvents';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAcmContextStore } from '../../store/useAcmContextStore';
+import { getActiveOrgId, getActiveBranchId } from '../../utils/acmContext';
 
 const CreateGroupAsset = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
+  const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [groupName, setGroupName] = useState('');
@@ -185,11 +189,13 @@ const CreateGroupAsset = () => {
             ? response.data
             : [];
       
-      // Filter assets to ensure they match the selected asset type, org_id, and branch_id (client-side safety check)
+      // Filter assets to ensure they match the selected asset type + active ACM org/branch
+      const activeOrgId = getActiveOrgId(appliedOrgId || user?.org_id);
+      const activeBranchId = getActiveBranchId(appliedBranchId);
       const filteredList = list.filter(asset => {
         const matchesAssetType = asset.asset_type_id === typeId;
-        const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
-        const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+        const matchesOrg = !activeOrgId || asset.org_id === activeOrgId;
+        const matchesBranch = !activeBranchId || asset.branch_id === activeBranchId;
         return matchesAssetType && matchesOrg && matchesBranch;
       });
       
@@ -197,8 +203,8 @@ const CreateGroupAsset = () => {
       if (filteredList.length !== list.length) {
         console.warn(`Warning: Backend returned ${list.length} assets, but only ${filteredList.length} match filters`);
         const assetTypeMismatch = list.filter(asset => asset.asset_type_id !== typeId);
-        const orgMismatch = list.filter(asset => user?.org_id && asset.org_id !== user.org_id);
-        const branchMismatch = list.filter(asset => user?.branch_id && asset.branch_id !== user.branch_id);
+        const orgMismatch = list.filter(asset => activeOrgId && asset.org_id !== activeOrgId);
+        const branchMismatch = list.filter(asset => activeBranchId && asset.branch_id !== activeBranchId);
         
         if (assetTypeMismatch.length > 0) {
           console.warn('Assets with mismatched asset_type_id:', assetTypeMismatch);
@@ -224,9 +230,11 @@ const CreateGroupAsset = () => {
     // First, filter by selected asset type to ensure correct assets are shown
     const matchesAssetType = !selectedAssetType || asset.asset_type_id === selectedAssetType;
     
-    // Filter by user's organization and branch
-    const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
-    const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+    // Filter by active ACM organization and branch
+    const activeOrgId = getActiveOrgId(appliedOrgId || user?.org_id);
+    const activeBranchId = getActiveBranchId(appliedBranchId);
+    const matchesOrg = !activeOrgId || asset.org_id === activeOrgId;
+    const matchesBranch = !activeBranchId || asset.branch_id === activeBranchId;
     
     // Then filter by search term
     const matchesSearch = (asset.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||

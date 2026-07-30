@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useNavigationStore } from "../../store/useNavigationStore";
+import { useAcmContextStore } from "../../store/useAcmContextStore";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
@@ -66,13 +67,31 @@ export default function Login() {
       // Load permissions before routing to protected admin screens
       await useNavigationStore.getState().fetchNavigation(user?.user_id, { force: true });
 
+      // Seed deterministic default ACM (first ACM row / stable wildcards) before app data loads
+      try {
+        const acmRes = await API.get('/acm/me');
+        const def = acmRes.data?.defaultSelection;
+        if (def?.orgId) {
+          useAcmContextStore.getState().seedAndApply(
+            {
+              orgId: def.orgId,
+              branchId: def.branchId,
+              deptId: def.deptId,
+            },
+            { emitEvent: false }
+          );
+        }
+      } catch (acmErr) {
+        console.error('Failed to seed default ACM after login', acmErr);
+      }
+
       // Log audit event for successful login
       await recordActionByNameWithFetch('Logging In', { 
         action: 'User Logged In Successfully',
         userId: user?.user_id,
         userEmail: user?.email,
         userRole: user?.job_role_id,
-        org_id: user?.org_id
+        org_id: useAcmContextStore.getState().appliedOrgId || user?.org_id
       });
 
       // Navigate immediately based on password change requirement

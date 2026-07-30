@@ -14,11 +14,15 @@ import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useGroupAssetStore } from "../store/useGroupAssetStore";
 import { filterData } from "../utils/filterData";
 import { applyListFilterChange, hasActiveListFilters, EMPTY_LIST_FILTERS } from "../utils/listFilterState";
+import { useNavigation } from "../hooks/useNavigation";
 
 const GroupAsset = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { t } = useLanguage();
+  const { hasEditAccess, getAccessLevel } = useNavigation();
+  const canEdit = hasEditAccess('GROUPASSET');
+  const isReadOnly = getAccessLevel('GROUPASSET') === 'D' || !canEdit;
   const groupAssets = useGroupAssetStore((s) => s.groupAssets);
   const listLoading = useGroupAssetStore((s) => s.listLoading);
   const fetchGroupAssetsStore = useGroupAssetStore((s) => s.fetchGroupAssets);
@@ -259,12 +263,15 @@ const GroupAsset = () => {
           onFilterChange={handleFilterChange}
           onSort={handleSort}
           sortConfig={sortConfig}
-          onAdd={handleAddGroupAsset}
-          onDeleteSelected={handleDeleteSelected}
+          onAdd={canEdit ? handleAddGroupAsset : undefined}
+          onDeleteSelected={canEdit ? handleDeleteSelected : undefined}
           data={groupAssets}
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
           rowKey="group_id"
+          showAddButton={canEdit}
+          showDeleteButton={canEdit}
+          isReadOnly={isReadOnly}
           subtitle={t("groupAssets.assetGroupsFound", {
             count: groupAssets.length,
           })}
@@ -307,12 +314,14 @@ const GroupAsset = () => {
                       <p className="text-xl font-semibold text-gray-800 mb-2">
                         {t("groupAssets.noAssetGroupsFound")}
                       </p>
-                      <button
-                        onClick={handleAddGroupAsset}
-                        className="mt-2 text-blue-600 hover:text-blue-800 underline text-sm"
-                      >
-                        {t("groupAssets.createYourFirstAssetGroup")}
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={handleAddGroupAsset}
+                          className="mt-2 text-blue-600 hover:text-blue-800 underline text-sm"
+                        >
+                          {t("groupAssets.createYourFirstAssetGroup")}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -327,9 +336,11 @@ const GroupAsset = () => {
                 selectedRows={selectedRows}
                 setSelectedRows={setSelectedRows}
                 onView={handleView}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
+                onEdit={canEdit ? handleEdit : undefined}
+                onDelete={canEdit ? handleDelete : undefined}
                 rowKey="group_id"
+                isReadOnly={isReadOnly}
+                showCheckbox={canEdit}
               />
             );
           }}

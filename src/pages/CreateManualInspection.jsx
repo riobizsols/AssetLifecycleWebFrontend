@@ -10,11 +10,14 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useAppData } from '../contexts/AppDataContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translateMasterDataLabel } from '../utils/masterDataLabel';
+import { getActiveOrgId } from '../utils/acmContext';
+import { useAcmContextStore } from '../store/useAcmContextStore';
 
 const CreateManualInspection = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { user } = useAuthStore();
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
   const { assetTypes } = useAppData();
   const [activeTab, setActiveTab] = useState('select');
   const [selectedAssetType, setSelectedAssetType] = useState('');
@@ -68,7 +71,7 @@ const CreateManualInspection = () => {
 
   useEffect(() => {
     fetchAssetTypeCounts();
-  }, [assetTypes, user?.org_id]);
+  }, [assetTypes, appliedOrgId]);
 
   const initializeScanner = async () => {
     try {
@@ -119,7 +122,7 @@ const CreateManualInspection = () => {
       const res = await API.get('/assets', {
         params: {
           asset_type_id: selectedAssetType,
-          org_id: user?.org_id,
+          org_id: getActiveOrgId(user?.org_id),
         },
       });
       const assetsList = Array.isArray(res.data) ? res.data : res.data?.data || [];
@@ -146,7 +149,7 @@ const CreateManualInspection = () => {
           API.get('/assets', {
             params: {
               asset_type_id: at.asset_type_id,
-              org_id: user?.org_id,
+              org_id: getActiveOrgId(user?.org_id),
             },
           })
         )

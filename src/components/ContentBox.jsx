@@ -154,6 +154,10 @@ const ContentBox = ({
   const navigate = useNavigate();
   const { t } = useLanguage();
 
+  // tblJobRoleNav Display (D): never expose create/delete chrome
+  const effectiveShowAddButton = Boolean(showAddButton) && !isReadOnly;
+  const effectiveShowDeleteButton = Boolean(showDeleteButton) && !isReadOnly;
+
   const [openDropdown, setOpenDropdown] = useState(null);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState([]);
@@ -831,7 +835,7 @@ const ContentBox = ({
         </div>
 
         <div className="flex gap-2 justify-end">
-          {showAddButton && (
+          {effectiveShowAddButton && (
             <button
               type="button"
               onClick={(e) => {
@@ -855,7 +859,7 @@ const ContentBox = ({
             </div>
           )}
 
-          {showActions && showDeleteButton && (
+          {showActions && effectiveShowDeleteButton && (
             <button
               onClick={() => {
                 if (selectedRows.length === 0) {

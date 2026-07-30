@@ -10,6 +10,9 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../../hooks/useRevalidateOnFocus";
 import { useDepartmentsStore } from "../../store/useDepartmentsStore";
 import { invalidateCache } from "../../utils/apiCache";
+import { useAuthStore } from "../../store/useAuthStore";
+import { useAcmScope } from "../../hooks/useAcmScope";
+import { useAcmContextStore } from "../../store/useAcmContextStore";
 
 const Departments = () => {
   const departments = useDepartmentsStore((s) => s.departments);
@@ -20,12 +23,19 @@ const Departments = () => {
   const [editName, setEditName] = useState("");
   const [nextDeptId, setNextDeptId] = useState("");
   const [newDeptName, setNewDeptName] = useState("");
+  const [newBranchId, setNewBranchId] = useState("");
+  const [branches, setBranches] = useState([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   
-  // Access control
+  // Screen access = role/nav; data scope = tblACM
   const { hasEditAccess } = useNavigation();
   const canEdit = hasEditAccess('DEPARTMENTS');
+  const user = useAuthStore((state) => state.user);
+  const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
+  const { canWrite: acmCanWrite, canChangeBranch } = useAcmScope();
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(DEPARTMENTS_APP_ID);
@@ -75,11 +85,33 @@ const Departments = () => {
     }
   };
 
+  const fetchBranches = async () => {
+    setLoadingBranches(true);
+    try {
+      // /branches is ACM-scoped on the backend
+      const res = await API.get("/branches");
+      const rows = Array.isArray(res.data) ? res.data : [];
+      const active = rows.filter((b) => b.int_status === 1 || b.int_status === undefined);
+      setBranches(active);
+      if (!newBranchId && appliedBranchId && active.some((b) => b.branch_id === appliedBranchId)) {
+        setNewBranchId(appliedBranchId);
+      } else if (!newBranchId && active.length === 1) {
+        setNewBranchId(active[0].branch_id);
+      }
+    } catch (err) {
+      console.error("Error fetching branches:", err);
+      setBranches([]);
+    } finally {
+      setLoadingBranches(false);
+    }
+  };
+
   useEffect(() => {
     fetchDepartments();
     fetchNextDeptId();
+    fetchBranches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [appliedOrgId, appliedBranchId]);
 
   useRevalidateOnFocus(() => {
     fetchDepartmentsStore({ revalidate: true });
@@ -91,17 +123,26 @@ const Departments = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_DEPARTMENTS_DEPARTMENTNAMEREQUIRED_43518C3B', fallbackText: t('departments.departmentNameRequired'), type: 'error' });
       return;
     }
+    if (!newBranchId) {
+      showBackendTextToast({ toast, tmdId: 'TMD_BRANCH_IS_REQUIRED_21EC5877', fallbackText: t('departments.branchRequired'), type: 'error' });
+      return;
+    }
     try {
-      const response = await API.post("/departments", { text: newDeptName.trim() });
+      const response = await API.post("/departments", {
+        text: newDeptName.trim(),
+        branch_id: newBranchId,
+      });
       
       // Log create action
       await recordActionByNameWithFetch('Create', {
         deptId: response.data?.dept_id || nextDeptId,
         deptName: newDeptName.trim(),
+        branchId: newBranchId,
         action: 'Department Created'
       });
       
       setNewDeptName("");
+      setNewBranchId("");
       invalidateCache('departments:');
       fetchDepartments({ force: true });
       fetchNextDeptId();
@@ -213,18 +254,18 @@ const Departments = () => {
   };
 
   // Helper for invalid field
-  const isFieldInvalid = (val) => submitAttempted && !val.trim();
+  const isFieldInvalid = (val) => submitAttempted && !String(val || "").trim();
 
   return (
     <div className="flex">
       <div className="flex-1 p-6 bg-gray-100 relative">
-        {/* Add Form - Only show for users with edit access */}
-        {canEdit && (
+        {/* Add Form — screen edit (role) + ACM Write */}
+        {canEdit && acmCanWrite && (
           <div className="bg-white rounded shadow mb-6">
             <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
               {t('departments.addModifyDepartments')}
             </div>
-          <div className="p-4 flex gap-4 items-end">
+          <div className="p-4 flex flex-wrap gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('departments.departmentId')}</label>
               <input
@@ -233,6 +274,32 @@ const Departments = () => {
                 value={nextDeptId || t('departments.loading')}
                 disabled
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('departments.branch')} <span className="text-red-500">*</span>
+              </label>
+              <select
+                className={`border px-3 py-2 rounded w-64 text-sm ${isFieldInvalid(newBranchId) ? 'border-red-500' : 'border-gray-300'} ${!canChangeBranch ? 'bg-gray-50' : ''}`}
+                value={newBranchId}
+                onChange={(e) => setNewBranchId(e.target.value)}
+                disabled={!canChangeBranch && branches.length <= 1}
+              >
+                <option value="">
+                  {loadingBranches ? t('departments.loading') : t('departments.selectBranch')}
+                </option>
+                {branches.map((branch) => (
+                  <option key={branch.branch_id} value={branch.branch_id}>
+                    {branch.text || branch.branch_name || branch.branch_id}
+                    {branch.branch_code ? ` (${branch.branch_code})` : ""}
+                    {canChangeBranch && branch.org_name
+                      ? ` — ${branch.org_name}`
+                      : canChangeBranch && branch.org_id
+                        ? ` — ${branch.org_id}`
+                        : ""}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

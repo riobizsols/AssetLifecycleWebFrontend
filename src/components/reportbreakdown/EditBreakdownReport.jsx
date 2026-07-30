@@ -10,11 +10,14 @@ import { useNavigation } from "../../hooks/useNavigation";
 import { Check, RotateCcw, MoreVertical, ChevronDown } from "lucide-react";
 import ConfirmBreakdownModal from "./ConfirmBreakdownModal";
 import ReopenModal from "./ReopenModal";
+import { getActiveOrgId } from '../../utils/acmContext';
+import { useAcmContextStore } from '../../store/useAcmContextStore';
 
 const EditBreakdownReport = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const { user } = useAuthStore();
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
   const { t } = useLanguage();
   const breakdown = state?.breakdown;
   const hideDecisionCode = state?.hideDecisionCode === true;
@@ -130,7 +133,7 @@ const EditBreakdownReport = () => {
       const res = await API.get("/reportbreakdown/reason-codes", {
         params: {
           asset_type_id: assetTypeId,
-          org_id: user?.org_id,
+          org_id: getActiveOrgId(user?.org_id),
         },
       });
       console.log("Reason codes API response:", res.data);
@@ -161,7 +164,7 @@ const EditBreakdownReport = () => {
 
   useEffect(() => {
     fetchReasonCodes();
-  }, [user?.org_id, assetTypeId]);
+  }, [appliedOrgId, user?.org_id, assetTypeId]);
 
   useEffect(() => {
     // Fetch upcoming maintenance date
