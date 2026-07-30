@@ -13,12 +13,23 @@ import API from "../lib/axios";
 
 const EMPTY_LIST = [];
 
+function dedupeDepartments(rows) {
+  const seen = new Set();
+  return (rows || []).filter((d) => {
+    const id = String(d?.id || '');
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 const DepartmentWiseAssetAssignment = () => {
   const { t } = useLanguage();
   const location = useLocation();
-  const user = useAuthStore((state) => state.user);
   const storeBranchId = useAuthStore((state) => state.branch_id);
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
   const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
+  const appliedDeptId = useAcmContextStore((s) => s.appliedDeptId);
   const { canChangeBranch, loading: acmLoading } = useAcmScope();
 
   const [branches, setBranches] = useState([]);
@@ -26,19 +37,54 @@ const DepartmentWiseAssetAssignment = () => {
   const [selectedBranch, setSelectedBranch] = useState(
     () => location.state?.selectedBranch || appliedBranchId || storeBranchId || null
   );
-  const [selectedDept, setSelectedDept] = useState(() => location.state?.selectedDept || null);
+  const [selectedDept, setSelectedDept] = useState(
+    () => location.state?.selectedDept || appliedDeptId || null
+  );
+  const [branchDepartments, setBranchDepartments] = useState([]);
+  const [branchDepartmentsLoading, setBranchDepartmentsLoading] = useState(false);
 
   const departments = useAssignmentStore((s) => s.departments);
   const departmentsLoading = useAssignmentStore((s) => s.departmentsLoading);
   const assignmentsLoading = useAssignmentStore((s) => s.assignmentsLoading);
   const deptAssignmentsMap = useAssignmentStore((s) => s.deptAssignments);
 
+  /**
+   * Prefer /acm/options for the selected branch (same source as ACM picker),
+   * then fall back to /admin/departments with strict branch matching.
+   * When ACM is locked to a department, only that department is shown.
+   */
   const filteredDepartments = useMemo(() => {
-    if (!selectedBranch) return EMPTY_LIST;
-    return (departments || []).filter(
-      (d) => !d.branch_id || d.branch_id === selectedBranch
-    );
-  }, [departments, selectedBranch]);
+    const branch = selectedBranch != null ? String(selectedBranch) : '';
+    const lockedDept = appliedDeptId ? String(appliedDeptId) : '';
+
+    let list = [];
+    if (branchDepartments.length > 0) {
+      list = branchDepartments;
+    } else if (branch) {
+      list = (departments || []).filter((d) => {
+        if (lockedDept && String(d.id) === lockedDept) return true;
+        if (d.branch_id == null || d.branch_id === '') return false;
+        return String(d.branch_id) === branch;
+      });
+    } else if (lockedDept) {
+      list = (departments || []).filter((d) => String(d.id) === lockedDept);
+    }
+
+    if (lockedDept) {
+      list = list.filter((d) => String(d.id) === lockedDept);
+      // ACM dept must remain selectable even if branch join/filter missed it
+      if (list.length === 0) {
+        const fromStore = (departments || []).find((d) => String(d.id) === lockedDept);
+        if (fromStore) {
+          list = [{ ...fromStore, branch_id: fromStore.branch_id || selectedBranch }];
+        } else {
+          list = [{ id: appliedDeptId, name: appliedDeptId, branch_id: selectedBranch }];
+        }
+      }
+    }
+
+    return dedupeDepartments(list);
+  }, [branchDepartments, departments, selectedBranch, appliedDeptId]);
 
   const assignmentList = useMemo(
     () => (selectedDept ? deptAssignmentsMap[selectedDept] ?? EMPTY_LIST : EMPTY_LIST),
@@ -48,10 +94,37 @@ const DepartmentWiseAssetAssignment = () => {
   const fetchDepartments = useAssignmentStore((s) => s.fetchDepartments);
   const fetchDeptAssignments = useAssignmentStore((s) => s.fetchDeptAssignments);
 
+  const loadBranchDepartments = useCallback(async (branchId) => {
+    if (!branchId) {
+      setBranchDepartments([]);
+      return;
+    }
+    setBranchDepartmentsLoading(true);
+    try {
+      const params = { branch_id: branchId };
+      if (appliedOrgId) params.org_id = appliedOrgId;
+      const res = await API.get('/acm/options', { params });
+      const rows = Array.isArray(res.data?.departments) ? res.data.departments : [];
+      setBranchDepartments(
+        dedupeDepartments(
+          rows.map((d) => ({
+            id: d.dept_id,
+            name: d.text,
+            branch_id: d.branch_id || branchId,
+          }))
+        )
+      );
+    } catch (err) {
+      console.error('Failed to fetch branch departments', err);
+      setBranchDepartments([]);
+    } finally {
+      setBranchDepartmentsLoading(false);
+    }
+  }, [appliedOrgId]);
+
   const fetchBranches = useCallback(async () => {
     setBranchesLoading(true);
     try {
-      // Backend already scopes /branches by tblACM (+ ACM header selection)
       const res = await API.get("/branches");
       const rows = Array.isArray(res.data) ? res.data : [];
       const active = rows.filter((b) => b.int_status === 1 || b.int_status === undefined);
@@ -64,7 +137,7 @@ const DepartmentWiseAssetAssignment = () => {
           prev ||
           storeBranchId ||
           null;
-        if (preferred && active.some((b) => b.branch_id === preferred)) {
+        if (preferred && active.some((b) => String(b.branch_id) === String(preferred))) {
           return preferred;
         }
         return active[0]?.branch_id || null;
@@ -77,15 +150,7 @@ const DepartmentWiseAssetAssignment = () => {
     }
   }, [storeBranchId, location.state?.selectedBranch, appliedBranchId]);
 
-  // Keep branch in sync when ACM context is saved
-  useEffect(() => {
-    if (!appliedBranchId) return;
-    setSelectedBranch((prev) => (prev === appliedBranchId ? prev : appliedBranchId));
-    setSelectedDept(null);
-  }, [appliedBranchId]);
-
-  useEffect(() => {
-    fetchBranches();
+  const refreshDepartmentData = useCallback(() => {
     useAssignmentStore.getState().invalidateAssignmentCache();
     fetchDepartments({ revalidate: true, force: true }).catch((err) => {
       console.error("Failed to fetch departments", err);
@@ -96,11 +161,78 @@ const DepartmentWiseAssetAssignment = () => {
         type: 'error',
       });
     });
-  }, [fetchBranches, fetchDepartments, t]);
+  }, [fetchDepartments, t]);
+
+  // Keep branch in sync when ACM context is saved — do not wipe ACM dept selection
+  useEffect(() => {
+    if (!appliedBranchId) return;
+    setSelectedBranch((prev) =>
+      String(prev) === String(appliedBranchId) ? prev : appliedBranchId
+    );
+    if (!appliedDeptId) {
+      setSelectedDept(null);
+    }
+  }, [appliedBranchId, appliedDeptId]);
+
+  useEffect(() => {
+    fetchBranches();
+    refreshDepartmentData();
+  }, [fetchBranches, refreshDepartmentData]);
+
+  useEffect(() => {
+    loadBranchDepartments(selectedBranch);
+  }, [selectedBranch, appliedOrgId, appliedBranchId, appliedDeptId, loadBranchDepartments]);
+
+  // Auto-select ACM department (or the only available option)
+  useEffect(() => {
+    if (!filteredDepartments.length) {
+      if (selectedDept) setSelectedDept(null);
+      return;
+    }
+
+    if (appliedDeptId) {
+      const match = filteredDepartments.find(
+        (d) => String(d.id) === String(appliedDeptId)
+      );
+      if (match && String(selectedDept) !== String(match.id)) {
+        setSelectedDept(match.id);
+      }
+      return;
+    }
+
+    if (filteredDepartments.length === 1) {
+      const onlyId = filteredDepartments[0].id;
+      if (String(selectedDept) !== String(onlyId)) {
+        setSelectedDept(onlyId);
+      }
+      return;
+    }
+
+    if (
+      selectedDept &&
+      !filteredDepartments.some((d) => String(d.id) === String(selectedDept))
+    ) {
+      setSelectedDept(null);
+    }
+  }, [filteredDepartments, appliedDeptId, selectedDept]);
+
+  useEffect(() => {
+    const onAcmChanged = () => {
+      fetchBranches();
+      refreshDepartmentData();
+      const branch =
+        useAcmContextStore.getState().appliedBranchId || selectedBranch;
+      loadBranchDepartments(branch);
+    };
+    window.addEventListener('acm-context-changed', onAcmChanged);
+    return () => window.removeEventListener('acm-context-changed', onAcmChanged);
+  }, [fetchBranches, refreshDepartmentData, loadBranchDepartments, selectedBranch]);
 
   useEffect(() => {
     if (!selectedDept) return;
-    const stillValid = filteredDepartments.some((d) => d.id === selectedDept);
+    const stillValid = filteredDepartments.some(
+      (d) => String(d.id) === String(selectedDept)
+    );
     if (!stillValid) {
       setSelectedDept(null);
       return;
@@ -122,7 +254,8 @@ const DepartmentWiseAssetAssignment = () => {
 
   useRevalidateOnFocus(() => {
     fetchBranches();
-    fetchDepartments({ revalidate: true });
+    refreshDepartmentData();
+    loadBranchDepartments(selectedBranch);
     if (selectedDept) {
       fetchDeptAssignments(selectedDept, { revalidate: true });
     }
@@ -130,7 +263,7 @@ const DepartmentWiseAssetAssignment = () => {
 
   const handleBranchSelect = (branchId) => {
     setSelectedBranch(branchId || null);
-    setSelectedDept(null);
+    if (!appliedDeptId) setSelectedDept(null);
   };
 
   const refreshAssignments = () => {
@@ -140,8 +273,8 @@ const DepartmentWiseAssetAssignment = () => {
     }
   };
 
-  // If ACM saved a branch, lock the picker to that branch
   const branchLocked = Boolean(appliedBranchId) || !canChangeBranch;
+  const deptLocked = Boolean(appliedDeptId);
 
   return (
     <AssetAssignmentList
@@ -153,12 +286,13 @@ const DepartmentWiseAssetAssignment = () => {
       assignmentList={assignmentList}
       fetchAssignments={refreshAssignments}
       assignmentsLoading={assignmentsLoading}
-      entitiesLoading={departmentsLoading}
+      entitiesLoading={departmentsLoading || branchDepartmentsLoading}
       branches={branches}
       selectedBranch={selectedBranch}
       onBranchSelect={handleBranchSelect}
       branchesLoading={branchesLoading || acmLoading}
       branchLocked={branchLocked}
+      entityLocked={deptLocked}
     />
   );
 };

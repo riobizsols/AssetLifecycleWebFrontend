@@ -34,12 +34,14 @@ const AssetAssignmentList = ({
   onBranchSelect = () => {},
   branchesLoading = false,
   branchLocked = true,
+  entityLocked = false,
   // Department filter props
   showDepartmentFilter = false,
   departments = [],
   selectedDepartment = null,
   onDepartmentSelect = () => {},
   onDepartmentChange = () => {}, // Callback to fetch department's employees
+  departmentLocked = false,
 }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -190,10 +192,10 @@ const AssetAssignmentList = ({
                   onDepartmentChange(value);
                 }}
                 placeholder={t('departments.selectDepartment')}
-                searchPlaceholder={t('departments.searchDepartment') || 'Search department...'}
+                searchPlaceholder={t('departments.searchDepartments') || 'Search department...'}
                 displayKey="text"
                 valueKey="id"
-                disabled={departmentsLoading || !selectedBranch}
+                disabled={departmentsLoading || departmentLocked || !selectedBranch}
               />
             </div>
           )}
@@ -213,10 +215,22 @@ const AssetAssignmentList = ({
                 value={selectedEntity || ""}
                 onChange={(value) => onEntitySelect(value)}
                 placeholder={entityType === 'department' ? t('departments.selectDepartment') : t('employees.selectEmployee')}
-                searchPlaceholder={entityType === 'department' ? t('departments.searchDepartment') : t('employees.searchEmployee')}
+                searchPlaceholder={
+                  entityType === 'department'
+                    ? (t('departments.searchDepartments') === 'departments.searchDepartments'
+                        ? 'Search department...'
+                        : t('departments.searchDepartments'))
+                    : (t('employees.searchEmployee') === 'employees.searchEmployee'
+                        ? 'Search employee...'
+                        : t('employees.searchEmployee'))
+                }
                 displayKey="text"
                 valueKey="id"
-                disabled={entitiesLoading || (entityType === 'department' && !selectedBranch)}
+                disabled={
+                  entitiesLoading ||
+                  entityLocked ||
+                  (entityType === 'department' && !selectedBranch)
+                }
               />
             </div>
             {!isReadOnly && (

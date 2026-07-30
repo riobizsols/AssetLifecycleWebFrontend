@@ -941,6 +941,7 @@
     "title": "Employees",
     "failedToFetchEmployees": "Failed to fetch employees",
     "selectEmployee": "Select Employee",
+    "searchEmployee": "Search employee...",
     "noEmployeeSelected": "No employee selected",
     "employeeAssetsList": "Employee Assets List",
     "employeeSelection": "Employee Selection",

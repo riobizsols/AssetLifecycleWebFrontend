@@ -924,6 +924,7 @@
     "title": "Mitarbeiter",
     "failedToFetchEmployees": "Fehler beim Laden der Mitarbeiter",
     "selectEmployee": "Mitarbeiter auswählen",
+    "searchEmployee": "Mitarbeiter suchen...",
     "noEmployeeSelected": "Kein Mitarbeiter ausgewählt",
     "employeeAssetsList": "Mitarbeiter-Anlagenliste",
     "employeeSelection": "Mitarbeiterauswahl",
