@@ -179,8 +179,15 @@ export const useAssignmentStore = create((set, get) => ({
     };
 
     const fetcher = async () => {
-      const res = await API.get(`/asset-assignments/department/${deptId}/assignments`);
-      return res.data.assignedAssets || [];
+      try {
+        const res = await API.get(`/asset-assignments/department/${deptId}/assignments`);
+        return res.data.assignedAssets || [];
+      } catch (err) {
+        // 404 / org mismatch → empty list (not a toast-worthy failure)
+        const status = err?.response?.status;
+        if (status === 404 || status === 403) return [];
+        throw err;
+      }
     };
 
     set({ assignmentsLoading: true });
