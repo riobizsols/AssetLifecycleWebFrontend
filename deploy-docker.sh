@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Docker deploy — FRONTEND container (alm-main-frontend).
-# Pushed with this repo; run on server from ~/alm-main/AssetLifecycleWebFrontend
+# Docker deploy — Pressana FRONTEND (alm-pressana-frontend :3003).
+# Run on server from ~/pressana-ALM/AssetLifecycleWebFrontend
 #
 #   ./deploy-docker.sh           # stash, pull frontend, rebuild
 #   ./deploy-docker.sh --rebuild # rebuild only (no git pull)
@@ -14,7 +14,7 @@ DEPLOY="${ALM_ROOT}/AssetLifecycleBackend/scripts/deploy/deploy-pull-rebuild.sh"
 if [[ ! -f "$DEPLOY" ]]; then
   echo "ERROR: Backend deploy script not found at:"
   echo "  $DEPLOY"
-  echo "Expected sibling folder: ~/alm-main/AssetLifecycleBackend"
+  echo "Expected sibling folder: AssetLifecycleBackend next to AssetLifecycleWebFrontend"
   exit 1
 fi
 
@@ -32,4 +32,9 @@ done
 
 export BACKEND_ONLY=0
 export FRONTEND_ONLY=1
+export BACKEND_CONTAINER_NAME="${BACKEND_CONTAINER_NAME:-alm-pressana-backend}"
+export FRONTEND_CONTAINER_NAME="${FRONTEND_CONTAINER_NAME:-alm-pressana-frontend}"
+export BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-5003}"
+export FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-3003}"
+export MINIO_BUCKET_VALUE="${MINIO_BUCKET_VALUE:-alm-pressana}"
 exec "$DEPLOY"
