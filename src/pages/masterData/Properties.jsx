@@ -7,9 +7,12 @@ import { Plus, Edit2, Trash2, X, Save, ChevronDown, ChevronUp, Filter, Search } 
 import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
 import { usePropertiesStore } from '../../store/usePropertiesStore';
 import { invalidateCache } from '../../utils/apiCache';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Properties = () => {
   const { t } = useLanguage();
+  const location = useLocation();
+  const navigate = useNavigate();
   const properties = usePropertiesStore((s) => s.properties);
   const listLoading = usePropertiesStore((s) => s.listLoading);
   const fetchPropertiesStore = usePropertiesStore((s) => s.fetchProperties);
@@ -60,6 +63,14 @@ const Properties = () => {
     fetchProperties();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Opened from a "Create New Property" action on another screen
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setShowCreateForm(true);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   useRevalidateOnFocus(() => {
     fetchPropertiesStore({ revalidate: true });

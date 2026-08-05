@@ -1,6 +1,7 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import SearchableDropdown from "./ui/SearchableDropdown";
@@ -12,6 +13,7 @@ import { refreshAssetTypeCaches } from "../utils/refreshAssetTypeCaches";
 import { X } from "lucide-react";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }) => {
+  const navigate = useNavigate();
   const [assetType, setAssetType] = useState("");
   const [assignmentType, setAssignmentType] = useState("user");
 
@@ -692,6 +694,11 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                       }}
                       placeholder={t('assetTypes.selectPropertyToAdd')}
                       searchPlaceholder={t('assetTypes.searchProperties')}
+                      createNewText={t('assetTypes.createNewProperty', { defaultValue: 'Create New Property' })}
+                      onCreateNew={() => {
+                        onClose(false);
+                        navigate('/adminsettings/configuration/properties', { state: { openCreate: true } });
+                      }}
                       displayKey="text"
                       valueKey="id"
                       className="w-full"
@@ -1210,6 +1217,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         </div>,
         document.body
       )}
+
     </div>
   );
 };
