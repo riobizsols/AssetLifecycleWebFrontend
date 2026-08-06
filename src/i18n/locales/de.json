@@ -435,6 +435,7 @@
     "addProperty": "Eigenschaft hinzufügen",
     "selectPropertyToAdd": "Eigenschaft zum Hinzufügen auswählen",
     "searchProperties": "Eigenschaften suchen...",
+    "createNewProperty": "Neue Eigenschaft erstellen",
     "currentProperties": "Aktuelle Eigenschaften",
     "noPropertiesAssigned": "Keine Eigenschaften zugewiesen",
     "removeProperty": "Eigenschaft entfernen",

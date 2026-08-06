@@ -436,6 +436,7 @@
     "addProperty": "Add Property",
     "selectPropertyToAdd": "Select property to add",
     "searchProperties": "Search properties...",
+    "createNewProperty": "Create New Property",
     "currentProperties": "Current Properties",
     "noPropertiesAssigned": "No properties assigned",
     "removeProperty": "Remove property",

@@ -2372,7 +2372,7 @@ export default function MaintSupervisorApproval() {
 
             {showAdditionalNotesField && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')} <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceApproval.notes')}</label>
                 <textarea
                   name="notes"
                   value={formData.notes}

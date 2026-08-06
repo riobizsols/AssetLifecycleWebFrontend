@@ -48,8 +48,13 @@ API.interceptors.response.use(
     },
     async (error) => {
         const originalRequest = error.config;
+        const requestUrl = String(originalRequest?.url || '');
+        const isAuthLoginAttempt =
+            requestUrl.includes('/auth/login') ||
+            requestUrl.includes('/auth/forgot-password') ||
+            requestUrl.includes('/auth/reset-password');
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthLoginAttempt) {
             originalRequest._retry = true;
 
             const authStore = useAuthStore.getState();
