@@ -145,6 +145,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
   "Master Data": [
     "ASSETTYPES",
     "BRANCHES",
+    "BRANCHDEPTMAPPING",
     "DEPARTMENTS",
     "DEPARTMENTSADMIN",
     "DEPARTMENTSASSET",
@@ -1278,6 +1279,7 @@ const DatabaseSidebar = () => {
     DEPARTMENTSADMIN: "/master-data/departments-admin",  //not required
     DEPARTMENTSASSET: "/master-data/departments-asset",  //not required
     BRANCHES: "/master-data/branches", //done
+    BRANCHDEPTMAPPING: "/master-data/branch-dept-mapping",
     PRODSERV: "/master-data/prod-serv",  //no required
     ROLES: "/master-data/uploads",
     USERS: "/master-data/user-roles",
@@ -1437,6 +1439,7 @@ const DatabaseSidebar = () => {
       DEPARTMENTSADMIN: UserCheck,
       DEPARTMENTSASSET: Package,
       BRANCHES: Home,
+      BRANCHDEPTMAPPING: GitBranch,
       VENDORS: Truck,
       INSPECTIONCHECKLISTS: ClipboardList,
       PRODSERV: Briefcase,

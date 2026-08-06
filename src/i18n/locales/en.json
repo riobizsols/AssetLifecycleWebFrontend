@@ -3127,7 +3127,21 @@
     "prodServ": "Product / Service",
     "roleManagement": "Role Management",
     "properties": "Properties",
-    "breakdownReasonCodes": "Breakdown Reason Codes"
+    "breakdownReasonCodes": "Breakdown Reason Codes",
+    "branchDeptMapping": "Branch – Department Mapping"
+  },
+  "branchDeptMapping": {
+    "title": "Branch – Department Mapping",
+    "subtitle": "Map departments to branches (tblBR_DEPT). A department can belong to multiple branches.",
+    "addMapping": "Add Branch – Department Mapping",
+    "noMappings": "No branch-department mappings found",
+    "failedToLoad": "Failed to load branch-department mappings",
+    "branchAndDeptRequired": "Branch and department are required",
+    "saved": "Mapping saved successfully",
+    "failedToSave": "Failed to save mapping",
+    "removed": "Mapping removed",
+    "failedToRemove": "Failed to remove mapping",
+    "confirmDelete": "Remove mapping between {{branch}} and {{dept}}?"
   },
   "adminSettingsBreadcrumb": {
     "createNavigation": "Create navigation",

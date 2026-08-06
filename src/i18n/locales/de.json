@@ -1981,8 +1981,8 @@
     "vendor": "Lieferant",
     "scheduleDate": "Geplantes Datum",
     "scheduledDate": "Geplantes Datum",
-    "actualHours": "Tatsächliche Stunden",
-    "variance": "Abweichung",
+    "actualHours": "Act Hours",
+    "variance": "Variance",
     "status": "Status",
     "daysUntilDue": "Tage bis Fälligkeit",
     "createdOn": "Erstellt am",
@@ -2111,8 +2111,6 @@
     "standardHoursRequired": "Standard Hours Required",
     "actualHoursSpent": "Actual Hours Spent",
     "standardHours": "Std Hours",
-    "actualHours": "Act Hours",
-    "variance": "Variance",
     "enterHours": "Enter total hours spent",
     "hoursSpentIsRequired": "Hours spent is required",
     "presetInMaintTypeConfig": "Pre-set in Maintenance Type configuration",
@@ -2956,7 +2954,8 @@
     "prodServ": "Produkte / Dienstleistungen",
     "roleManagement": "Rollenverwaltung",
     "properties": "Eigenschaften",
-    "breakdownReasonCodes": "Störungsgrund-Codes"
+    "breakdownReasonCodes": "Störungsgrund-Codes",
+    "branchDeptMapping": "Filiale – Abteilung Zuordnung"
   },
   "adminSettingsBreadcrumb": {
     "createNavigation": "Navigation anlegen",
@@ -3632,5 +3631,18 @@
     "goBack": "Vorherige Seite",
     "quickLinks": "Verfügbare Bereiche",
     "contactAdmin": "Hilfe benötigt? Wenden Sie sich an Ihren Administrator."
+  },
+  "branchDeptMapping": {
+    "title": "Filiale – Abteilung Zuordnung",
+    "subtitle": "Abteilungen Filialen zuordnen (tblBR_DEPT). Eine Abteilung kann mehreren Filialen zugeordnet werden.",
+    "addMapping": "Zuordnung hinzufügen",
+    "noMappings": "Keine Zuordnungen gefunden",
+    "failedToLoad": "Zuordnungen konnten nicht geladen werden",
+    "branchAndDeptRequired": "Filiale und Abteilung sind erforderlich",
+    "saved": "Zuordnung gespeichert",
+    "failedToSave": "Zuordnung konnte nicht gespeichert werden",
+    "removed": "Zuordnung entfernt",
+    "failedToRemove": "Zuordnung konnte nicht entfernt werden",
+    "confirmDelete": "Zuordnung zwischen {{branch}} und {{dept}} entfernen?"
   }
 }
