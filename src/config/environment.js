@@ -15,8 +15,8 @@ const config = {
 // Get current environment
 const currentEnv = import.meta.env.MODE || 'development';
 
-// Reserved subdomains are main-app hosts (web/www/api), not tenant orgs.
-const RESERVED_SUBDOMAINS = (import.meta.env.VITE_RESERVED_SUBDOMAINS || 'web,www,api')
+// Reserved subdomains are platform hosts (not tenant orgs).
+const RESERVED_SUBDOMAINS = (import.meta.env.VITE_RESERVED_SUBDOMAINS || 'web,www,api,pressanaorg')
   .split(',')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
