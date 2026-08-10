@@ -24,6 +24,9 @@ import Organization from "../pages/masterData/Organization";
 import Vendors from "../pages/masterData/Vendors";
 import AddEntityForm from "../components/AddEntityForm";
 import ProdServ from "../pages/masterData/ProdServ";
+import SpareParts from "../pages/masterData/SpareParts";
+import SparePartsConfiguration from "../pages/masterData/SparePartsConfiguration";
+import AddSparePartCategory from "../components/spareParts/AddSparePartCategory";
 import Properties from "../pages/masterData/Properties";
 import BreakdownReasonCodes from "../pages/masterData/BreakdownReasonCodes";
 import AddAssetForm from "../components/assets/AddAssetForm";
@@ -1001,6 +1004,31 @@ export default function AppRoutes() {
           <Route index element={<Branches />} />
 
           <Route path="add" element={<AddBranch />} />
+        </Route>
+
+        <Route
+          path="/master-data/spare-parts"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTS">
+              <MainLayout>
+                <SpareParts />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/spare-parts-configuration"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTSCONFIG">
+              <MainLayout>
+                <Outlet />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SparePartsConfiguration />} />
+          <Route path="categories/add" element={<AddSparePartCategory />} />
         </Route>
 
         <Route

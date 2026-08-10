@@ -8,6 +8,8 @@ export const APP_ID_TO_PATH = {
   ASSETASSIGNMENT: '/assign-department-assets',
   COSTCENTERTRANSFER: '/cost-center-transfer',
   VENDORS: '/master-data/vendors',
+  SPAREPARTS: '/master-data/spare-parts',
+  SPAREPARTSCONFIG: '/master-data/spare-parts-configuration',
   INSPECTIONCHECKLISTS: '/master-data/inspection-checklists',
   INSPECTIONFREQUENCY: '/master-data/inspection-frequency',
   ASSETTYPECHECKLISTMAPPING: '/master-data/asset-type-checklist-mapping',

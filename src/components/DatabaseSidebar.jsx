@@ -153,6 +153,8 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "USERROLES",
     "PRODSERV",
     "VENDORS",
+    "SPAREPARTS",
+    "SPAREPARTSCONFIG",
     "MAINTENANCESCHEDULE",
     "INSPECTIONCHECKLISTS",
     "INSPECTIONFREQUENCY",
@@ -1128,6 +1130,12 @@ const DatabaseSidebar = () => {
     if (normalizeNavAppId(appId) === "USERS") {
       return t("navigation.users");
     }
+    if (normalizeNavAppId(appId) === "SPAREPARTS") {
+      return t("navigation.spareParts");
+    }
+    if (normalizeNavAppId(appId) === "SPAREPARTSCONFIG") {
+      return t("navigation.sparePartsConfiguration");
+    }
     // Create a mapping from English labels to translation keys
     const labelMap = {
       'Dashboard': t('navigation.dashboard'),
@@ -1146,6 +1154,8 @@ const DatabaseSidebar = () => {
       'Manage Departments Assets Type': t('navigation.departmentsAsset'),
       'Branches': t('navigation.branches'),
       'Vendors': t('navigation.vendors'),
+      'Spare Parts': t('navigation.spareParts'),
+      'Spare Parts Configuration': t('navigation.sparePartsConfiguration'),
       'Products/Services': t('navigation.productsServices'),
       'Roles': t('navigation.roles'),
       'Users': t('navigation.users'),
@@ -1238,6 +1248,8 @@ const DatabaseSidebar = () => {
     ASSETASSIGNMENT: "/assign-department-assets",
     COSTCENTERTRANSFER: "/cost-center-transfer",
     VENDORS: "/master-data/vendors", //done
+    SPAREPARTS: "/master-data/spare-parts",
+    SPAREPARTSCONFIG: "/master-data/spare-parts-configuration",
     INSPECTIONCHECKLISTS: "/master-data/inspection-checklists",
     INSPECTIONFREQUENCY: "/master-data/inspection-frequency",
     ASSETTYPECHECKLISTMAPPING: "/master-data/asset-type-checklist-mapping",
@@ -1438,6 +1450,8 @@ const DatabaseSidebar = () => {
       DEPARTMENTSASSET: Package,
       BRANCHES: Home,
       VENDORS: Truck,
+      SPAREPARTS: Package,
+      SPAREPARTSCONFIG: Package,
       INSPECTIONCHECKLISTS: ClipboardList,
       PRODSERV: Briefcase,
       ROLES: Shield,

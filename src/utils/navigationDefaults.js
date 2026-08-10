@@ -15,6 +15,8 @@ export const MASTER_DATA_CHILD_ORDER = [
   'USERROLES',
   'PRODSERV',
   'VENDORS',
+  'SPAREPARTS',
+  'SPAREPARTSCONFIG',
 ];
 
 /** Preferred Scrap submenu order. */
