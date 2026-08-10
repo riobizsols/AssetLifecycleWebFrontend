@@ -6,6 +6,8 @@
     "departments": "Abteilungen",
     "branches": "Filialen",
     "vendors": "Lieferanten",
+    "spareParts": "Ersatzteile",
+    "sparePartsConfiguration": "Ersatzteil-Konfiguration",
     "users": "Benutzer",
     "userRoles": "Benutzerrollen",
     "bulkUpload": "Massen-Upload",

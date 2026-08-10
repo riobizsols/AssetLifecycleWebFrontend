@@ -6,6 +6,8 @@
     "departments": "Departments",
     "branches": "Branches",
     "vendors": "Vendors",
+    "spareParts": "Spare Parts",
+    "sparePartsConfiguration": "Spare Parts Configuration",
     "users": "Users",
     "userRoles": "User Roles",
     "columnAccessConfig": "Column Access Config",
