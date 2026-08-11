@@ -108,6 +108,16 @@ const SpareParts = () => {
       });
       return false;
     }
+    if (Number(form.quantity) !== quantityInt) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SPARE_PART_QTY_WHOLE_NUMBER',
+        fallbackText:
+          'Quantity must be a whole number so each unit can have a serial number',
+        type: 'error',
+      });
+      return false;
+    }
     if (
       form.unit_price === '' ||
       Number(form.unit_price) < 0 ||
@@ -150,16 +160,6 @@ const SpareParts = () => {
     }
 
     if (form.has_serial_number) {
-      if (quantityInt <= 0 || Number(form.quantity) !== quantityInt) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_SPARE_PART_QTY_WHOLE_NUMBER',
-          fallbackText:
-            'Quantity must be a whole number when serial numbers are enabled',
-          type: 'error',
-        });
-        return false;
-      }
       if (
         serialNumbers.length !== quantityInt ||
         serialNumbers.some((s) => !String(s || '').trim())
@@ -220,7 +220,8 @@ const SpareParts = () => {
       });
 
       const saved = res.data?.data;
-      if (!form.has_serial_number && saved?.lot?.spld_id) {
+      const wasManualSerials = form.has_serial_number;
+      if (saved?.lot?.spld_id) {
         try {
           const indRes = await API.get(
             `/spare-parts/lots/${saved.lot.spld_id}/individuals`
@@ -234,7 +235,16 @@ const SpareParts = () => {
           setAutoIndividuals(saved.individuals || []);
         }
       } else {
-        setAutoIndividuals([]);
+        setAutoIndividuals(saved?.individuals || []);
+      }
+
+      if (!wasManualSerials && (saved?.individuals?.length || 0) > 0) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SPARE_PART_SERIALS_AUTO_GENERATED',
+          fallbackText: `${saved.individuals.length} serial number(s) auto-generated and saved`,
+          type: 'success',
+        });
       }
 
       setForm(emptyForm);
@@ -381,18 +391,26 @@ const SpareParts = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pt-2">
-          <input
-            id="has_serial_number"
-            type="checkbox"
-            name="has_serial_number"
-            checked={form.has_serial_number}
-            onChange={handleInputChange}
-            className="h-4 w-4"
-          />
-          <label htmlFor="has_serial_number" className="text-sm font-medium">
-            Has Serial Number
-          </label>
+        <div className="pt-2 space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              id="has_serial_number"
+              type="checkbox"
+              name="has_serial_number"
+              checked={form.has_serial_number}
+              onChange={handleInputChange}
+              className="h-4 w-4"
+            />
+            <label htmlFor="has_serial_number" className="text-sm font-medium">
+              Has Serial Number
+            </label>
+          </div>
+          {!form.has_serial_number && (
+            <p className="text-xs text-gray-500">
+              Leave unchecked to auto-generate unique sequential serial numbers
+              for each quantity unit.
+            </p>
+          )}
         </div>
 
         {form.has_serial_number && (
@@ -430,14 +448,13 @@ const SpareParts = () => {
           </div>
         )}
 
-        {!form.has_serial_number && autoIndividuals.length > 0 && (
+        {autoIndividuals.length > 0 && (
           <div className="border border-gray-200 rounded p-4 space-y-2">
             <div className="text-sm font-semibold text-[#0E2F4B]">
-              Individual Units (from database)
+              Saved Individual Units
             </div>
             <p className="text-xs text-gray-500">
-              Serial entry was not enabled. Unit records were created and loaded
-              from the database.
+              Each quantity unit was stored with a serial number in the database.
             </p>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm border">
@@ -453,7 +470,7 @@ const SpareParts = () => {
                     <tr key={row.spid_id}>
                       <td className="px-3 py-2 border">{row.spid_id}</td>
                       <td className="px-3 py-2 border">{row.spld_id}</td>
-                      <td className="px-3 py-2 border">
+                      <td className="px-3 py-2 border font-mono">
                         {row.serial_number || '—'}
                       </td>
                     </tr>
