@@ -314,10 +314,6 @@ const SerialNumberPrint = () => {
   };
 
   const handlePreview = () => {
-    if (!selectedItem || !printSettings.printerId || !printSettings.template) {
-      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_PRINTER_NAME_AND_TEMPLATE_75509CC4', fallbackText: 'Please select printer name and template', type: 'error' });
-      return;
-    }
     setShowPreviewModal(true);
   };
 

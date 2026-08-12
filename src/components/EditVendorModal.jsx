@@ -421,6 +421,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         try {
           const fd = new FormData();
           fd.append('file', r.file);
+          fd.append('vendor_id', vendor.vendor_id);
           fd.append('dto_id', r.type);  // Send dto_id instead of doc_type
           if (r.type && r.docTypeName?.trim()) {
             fd.append('doc_type_name', r.docTypeName);

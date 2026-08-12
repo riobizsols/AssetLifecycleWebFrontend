@@ -555,11 +555,11 @@ const EditBreakdownReport = () => {
                     onChange={setDecisionCode}
                     placeholder={t("breakdownDetails.selectDecisionCode")}
                     required
-                    disabled={isReadOnly}
+                    disabled={true}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  {/* <p className="text-xs text-gray-500 mt-1">
                     {t("breakdownDetails.decisionCodeDescription")}
-                  </p>
+                  </p> */}
                 </div>
               )}
             </div>
