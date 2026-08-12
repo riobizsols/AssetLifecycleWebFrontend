@@ -393,6 +393,17 @@ const AssignRoles = () => {
         showHeaderCheckbox={false}  // Hide header checkbox
         showActions={true}
         showFilterButton={true}
+        leadingActions={
+          <button
+            type="button"
+            onClick={() => navigate("/master-data/user-roles")}
+            className="flex items-center justify-center text-[#0E2F4B] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-white"
+            aria-label={t("common.back")}
+            title={t("common.back")}
+          >
+            <MdArrowBack size={18} />
+          </button>
+        }
         customHeaderActions={
           <button
             onClick={async () => {
