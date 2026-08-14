@@ -20,6 +20,7 @@ const badgeColors = {
   "Warranty Expiry": "bg-amber-100 text-amber-800",
   "Asset Expiry": "bg-rose-100 text-rose-800",
   "Urgent": "bg-red-100 text-red-800",
+  "Spare Part Issued": "bg-emerald-100 text-emerald-800",
 };
 
 const AllNotifications = () => {
@@ -38,6 +39,7 @@ const AllNotifications = () => {
     subscriptionRenewal: true,
     warranty: true,
     assetExpiry: true,
+    spareIssued: true,
   });
   const [showFilters, setShowFilters] = useState(false);
   const [snoozeDrafts, setSnoozeDrafts] = useState({});
@@ -51,6 +53,7 @@ const AllNotifications = () => {
       Inspection: t("allNotifications.alertTypeInspection"),
       "Warranty Expiry": t("allNotifications.alertTypeWarrantyExpiry"),
       Urgent: t("allNotifications.alertTypeUrgent"),
+      "Spare Part Issued": t("allNotifications.alertTypeSparePartIssued") || "Spare Part Issued",
     };
     return labels[alertType] || alertType;
   };
@@ -81,6 +84,13 @@ const AllNotifications = () => {
 
     if (isAssetExpiryNotification(alert.workflowType)) {
       return "assetExpiry";
+    }
+
+    if (
+      alert.workflowType === "SPARE_ISSUED" ||
+      alert.alertType === "Spare Part Issued"
+    ) {
+      return "spareIssued";
     }
     
     // Check for subscription renewal notifications
@@ -148,6 +158,8 @@ const AllNotifications = () => {
               : t("allNotifications.alertTypeWarrantyExpiry"))
           : isAssetExpiryNotification(notification.workflowType)
           ? "Asset Expiry"
+          : notification.workflowType === "SPARE_ISSUED"
+          ? "Spare Part Issued"
           : notification.maintenanceType || "Regular Maintenance",
         alertText: notification.isGroupMaintenance && notification.groupName
           ? t("allNotifications.groupNameWithAssets", { groupName: notification.groupName, count: notification.groupAssetCount })
@@ -157,13 +169,15 @@ const AllNotifications = () => {
           ? `${notification.assetId} - ${notification.title || t("allNotifications.alertTypeWarrantyExpiry")}`
           : isAssetExpiryNotification(notification.workflowType)
           ? `${notification.assetId} - ${notification.title || "Asset Expiry"}`
+          : notification.workflowType === "SPARE_ISSUED"
+          ? `${notification.assetTypeName || "-"}`
           : String(notification.maintenanceType || "").toLowerCase().includes("subscription")
           ? `${notification.assetTypeName}`
           : t("allNotifications.assetTypeMaintenance", { assetType: notification.assetTypeName }),
         dueOn: formatDate(notification.dueDate),
         actionBy: notification.userName || t("allNotifications.unassigned"),
         cutoffDate: formatDate(notification.cutoffDate),
-        isUrgent: notification.daysUntilCutoff <= 2, // Show urgent only when 2 days or less until cutoff
+        isUrgent: notification.daysUntilCutoff <= 2 && notification.workflowType !== "SPARE_ISSUED",
         wfamshId: notification.wfamshId, // For navigation
         route: notification.route,
         workflowType: notification.workflowType,
@@ -177,6 +191,10 @@ const AllNotifications = () => {
         groupName: notification.groupName,
         groupAssetCount: notification.groupAssetCount,
         assetTypeName: notification.assetTypeName,
+        categoryName: notification.categoryName,
+        maintenanceId: notification.maintenanceId,
+        quantityIssued: notification.quantityIssued,
+        statusLabel: notification.statusLabel,
         notifyId: notification.notifyId,
         notificationStatus: notification.notificationStatus,
         title: notification.title,
@@ -481,6 +499,21 @@ const AllNotifications = () => {
                     Expiry
                   </span>
                 </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFilters.spareIssued}
+                    onChange={() => handleFilterChange('spareIssued')}
+                    className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {t("allNotifications.filterSpareIssued") || "Spare Issued"} ({getFilterCount('spareIssued')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-emerald-100 text-emerald-800 rounded-full">
+                    {t("sparePartList.issued") || "Issued"}
+                  </span>
+                </label>
               </div>
             </div>
           )}
@@ -522,7 +555,7 @@ const AllNotifications = () => {
                 onClick={() => handleAlertClick(alert)}
               >
               <div className="flex items-center gap-3 flex-wrap">
-                {alert.isUrgent && (
+                {(alert.isUrgent || alert.workflowType === "SPARE_ISSUED") && (
                   <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
                 )}
                 <span className={`text-sm font-bold px-3 py-1 rounded-full ${badgeColors[alert.alertType] || "bg-gray-100 text-gray-800"}`}>
@@ -534,7 +567,7 @@ const AllNotifications = () => {
                   </span>
                 )}
                 <span className={`text-lg ${isUnreadWarranty(alert.notificationStatus) ? "font-bold text-gray-900" : "font-normal text-gray-800"}`}>{alert.alertText}</span>
-                {alert.daysUntilCutoff !== undefined && (
+                {alert.workflowType !== "SPARE_ISSUED" && alert.daysUntilCutoff !== undefined && (
                   <span className={`text-sm px-3 py-1 rounded-full ml-auto ${
                     alert.isUrgent 
                       ? "bg-red-100 text-red-700 font-semibold" 
@@ -546,8 +579,34 @@ const AllNotifications = () => {
                     }
                   </span>
                 )}
+                {alert.workflowType === "SPARE_ISSUED" && (
+                  <span className="text-sm px-3 py-1 rounded-full ml-auto bg-emerald-100 text-emerald-800 font-semibold">
+                    {alert.statusLabel || "Issued"}
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap gap-6 text-sm text-gray-600 items-center">
+                {alert.workflowType === "SPARE_ISSUED" ? (
+                  <>
+                    <span className="flex items-center gap-2">
+                      <CalendarIcon className="w-5 h-5" />
+                      <span>{t("allNotifications.dueOn")}: <b className="text-gray-800">{alert.dueOn}</b></span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <UserIcon className="w-5 h-5" />
+                      <span>{t("allNotifications.actionBy")}: <b className="text-gray-800">{alert.actionBy}</b></span>
+                    </span>
+                    <span>
+                      {t("sparePartList.assetType") || "Asset Type"}:{" "}
+                      <b className="text-gray-800">{alert.assetTypeName || "-"}</b>
+                    </span>
+                    <span>
+                      {t("sparePartApproval.category") || "Category"}:{" "}
+                      <b className="text-gray-800">{alert.categoryName || "-"}</b>
+                    </span>
+                  </>
+                ) : (
+                  <>
                 <span className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5" />
                   <span>{t("allNotifications.dueOn")}: <b className="text-gray-800">{alert.dueOn}</b></span>
@@ -560,6 +619,8 @@ const AllNotifications = () => {
                   <ClockIcon className={`w-5 h-5 ${alert.isUrgent ? "text-red-500" : ""}`} />
                   <span>{t("allNotifications.cutoffDate")}: <b className={alert.isUrgent ? "text-red-600" : "text-gray-800"}>{alert.cutoffDate}</b></span>
                 </span>
+                  </>
+                )}
               </div>
               {(alert.workflowType === "WARRANTY" || isAssetExpiryNotification(alert.workflowType)) && (
                 <div className="pt-2 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>

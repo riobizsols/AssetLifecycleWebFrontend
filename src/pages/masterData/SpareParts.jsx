@@ -270,7 +270,7 @@ const SpareParts = () => {
   return (
     <div className="max-w-[1000px] mx-auto mt-8 bg-white shadow rounded">
       <div className="text-center text-lg font-semibold bg-[#0E2F4B] text-white py-3 border-b-4 border-[#FFC107] rounded-t">
-        Spare Parts
+        Spare Part Lot
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -322,10 +322,9 @@ const SpareParts = () => {
               Unit Price <span className="text-red-500">*</span>
             </label>
             <input
-              type="number"
+              type="text"
               name="unit_price"
-              min="0"
-              step="0.01"
+              inputMode="decimal"
               value={form.unit_price}
               onChange={handleInputChange}
               className={`w-full px-3 py-2 border text-sm bg-white ${

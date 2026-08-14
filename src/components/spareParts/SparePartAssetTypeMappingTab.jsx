@@ -137,14 +137,32 @@ const SparePartAssetTypeMappingTab = () => {
       });
       return;
     }
+    if (!String(form.brand || '').trim()) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MAP_BRAND_REQUIRED',
+        fallbackText: 'Brand is required',
+        type: 'error',
+      });
+      return;
+    }
+    if (!String(form.model || '').trim()) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MAP_MODEL_REQUIRED',
+        fallbackText: 'Model is required',
+        type: 'error',
+      });
+      return;
+    }
 
     try {
       setSaving(true);
       await API.post('/spare-parts/category-mappings', {
         spc_id: form.spc_id,
         asset_type_id: form.asset_type_id,
-        brand: form.brand || null,
-        model: form.model || null,
+        brand: form.brand.trim(),
+        model: form.model.trim(),
       });
       invalidateCache('spare-parts:');
       showBackendTextToast({
@@ -303,25 +321,33 @@ const SparePartAssetTypeMappingTab = () => {
               </div>
 
               <div>
-                <label className="block text-sm mb-1 font-medium">Brand</label>
+                <label className="block text-sm mb-1 font-medium">
+                  Brand <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="brand"
                   value={form.brand}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
+                  className={`w-full px-3 py-2 border text-sm bg-white ${
+                    isInvalid(form.brand) ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Enter brand"
                 />
               </div>
 
               <div>
-                <label className="block text-sm mb-1 font-medium">Model</label>
+                <label className="block text-sm mb-1 font-medium">
+                  Model <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="model"
                   value={form.model}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
+                  className={`w-full px-3 py-2 border text-sm bg-white ${
+                    isInvalid(form.model) ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Enter model"
                 />
               </div>

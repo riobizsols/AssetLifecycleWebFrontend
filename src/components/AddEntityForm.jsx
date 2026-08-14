@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import ProductSupplyForm from "./ProductSupplyForm";
 import ServiceSupplyForm from "./ServiceSupplyForm";
+import SpareSupplyForm from "./SpareSupplyForm";
 import { useAuthStore } from "../store/useAuthStore";
 import { v4 as uuidv4 } from "uuid";
 import { generateUUID } from '../utils/uuid';
@@ -40,6 +41,7 @@ const DEFAULT_VENDOR_FORM = {
   changed_on: null,
   product_supply: false,
   service_supply: false,
+  spare_supply: false,
 };
 
 const bustVendorListCache = () => {
@@ -260,6 +262,8 @@ const AddEntityForm = () => {
           ? "Product Details"
           : name === "service_supply"
           ? "Service Details"
+          : name === "spare_supply"
+          ? "Spare Supply"
           : "")
     ) {
       setActiveTab("Vendor Details");
@@ -487,6 +491,14 @@ const AddEntityForm = () => {
           tabsToSave.push("Service Details");
         }
       }
+
+      // Check Spare Supply tab
+      if (form.spare_supply && !savedTabs.has("Spare Supply")) {
+        const sparesFromStorage = JSON.parse(sessionStorage.getItem('spareSupplies') || '[]');
+        if (Array.isArray(sparesFromStorage) && sparesFromStorage.length > 0) {
+          tabsToSave.push("Spare Supply");
+        }
+      }
       
       // Check Attachments tab
       if (!savedTabs.has("Attachments") && uploadRows.length > 0) {
@@ -504,6 +516,9 @@ const AddEntityForm = () => {
           setSavingTab("Service Details");
           // Trigger the save in ServiceSupplyForm
           // Wait for the save operation to complete
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        } else if (tabName === "Spare Supply") {
+          setSavingTab("Spare Supply");
           await new Promise(resolve => setTimeout(resolve, 3000));
         } else if (tabName === "Attachments") {
           setSavingTab("Attachments");
@@ -553,6 +568,7 @@ const AddEntityForm = () => {
     sessionStorage.removeItem("vendorServiceDraft");
     sessionStorage.removeItem("products");
     sessionStorage.removeItem("services");
+    sessionStorage.removeItem("spareSupplies");
   };
 
   // Leave wizard and return to vendor list
@@ -570,6 +586,7 @@ const AddEntityForm = () => {
   const tabs = ["Vendor Details"];
   if (form.product_supply) tabs.push("Product Details");
   if (form.service_supply) tabs.push("Service Details");
+  if (form.spare_supply) tabs.push("Spare Supply");
   tabs.push("Attachments");
 
   // Function to translate tab names
@@ -578,6 +595,7 @@ const AddEntityForm = () => {
       case "Vendor Details": return t('vendors.vendorDetails');
       case "Product Details": return t('vendors.productDetails');
       case "Service Details": return t('vendors.serviceDetails');
+      case "Spare Supply": return t('vendors.spareSupply', { defaultValue: 'Spare Supply' });
       case "Attachments": return t('vendors.attachments');
       default: return tab;
     }
@@ -835,6 +853,7 @@ const AddEntityForm = () => {
             <div className="flex flex-col gap-3 mb-10 pl-2">
               <FormCheckbox label={t('vendors.productSupply')} name="product_supply" checked={form.product_supply} onChange={handleInputChange} />
               <FormCheckbox label={t('vendors.serviceSupply')} name="service_supply" checked={form.service_supply} onChange={handleInputChange} />
+              <FormCheckbox label={t('vendors.spareSupply', { defaultValue: 'Spare Supply' })} name="spare_supply" checked={form.spare_supply} onChange={handleInputChange} />
             </div>
 
           </form>
@@ -860,6 +879,15 @@ const AddEntityForm = () => {
             onPersistVendorDraft={persistVendorDraft}
           />
         )}
+        {activeTab === "Spare Supply" && (
+          <SpareSupplyForm
+            vendorId={createdVendorId}
+            orgId={org_id}
+            vendorSaved={vendorSaved}
+            onSaveTrigger={savingTab}
+            onTabSaved={markTabAsSaved}
+          />
+        )}
         
         {/* Hidden components for save operations - rendered but not visible */}
         {activeTab !== "Product Details" && form.product_supply && JSON.parse(sessionStorage.getItem('products') || '[]').length > 0 && (
@@ -883,6 +911,17 @@ const AddEntityForm = () => {
               onSaveTrigger={savingTab}
               onTabSaved={markTabAsSaved}
               onPersistVendorDraft={persistVendorDraft}
+            />
+          </div>
+        )}
+        {activeTab !== "Spare Supply" && form.spare_supply && JSON.parse(sessionStorage.getItem('spareSupplies') || '[]').length > 0 && (
+          <div style={{ display: 'none' }}>
+            <SpareSupplyForm
+              vendorId={createdVendorId}
+              orgId={org_id}
+              vendorSaved={vendorSaved}
+              onSaveTrigger={savingTab}
+              onTabSaved={markTabAsSaved}
             />
           </div>
         )}

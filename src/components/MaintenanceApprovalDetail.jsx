@@ -105,6 +105,7 @@ const MaintenanceApprovalDetail = () => {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
   const [approveNote, setApproveNote] = useState("");
+  const [approveNoteError, setApproveNoteError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [approvalDetails, setApprovalDetails] = useState(null);
@@ -387,8 +388,17 @@ const MaintenanceApprovalDetail = () => {
 
   // Approve handler
   const handleApprove = async () => {
-    if (!approveNote.trim()) return;
-    
+    if (!approveNote.trim()) {
+      setApproveNoteError(true);
+      showBackendTextToast({
+        toast,
+        fallbackText: t('maintenanceApproval.noteRequiredToApprove') || 'Approval note is required',
+        type: 'error',
+      });
+      return;
+    }
+    setApproveNoteError(false);
+
     setIsSubmitting(true);
     let loadingToastId = null;
     
@@ -1514,26 +1524,33 @@ const MaintenanceApprovalDetail = () => {
                     </label>
                     <textarea
                       value={approveNote}
-                      onChange={(e) => setApproveNote(e.target.value)}
+                      onChange={(e) => {
+                        setApproveNote(e.target.value);
+                        if (e.target.value.trim()) setApproveNoteError(false);
+                      }}
                       className={`w-full h-32 px-3 py-2 border rounded focus:outline-none ${
-                        !approveNote.trim() && isSubmitting ? 'border-red-500' : 'border-gray-300'
+                        approveNoteError ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder={t('maintenanceApproval.pleaseProvideApprovalNote')}
                     />
-                    {!approveNote.trim() && isSubmitting && (
+                    {approveNoteError && (
                       <div className="text-red-500 text-xs mt-1">{t('maintenanceApproval.noteRequiredToApprove')}</div>
                     )}
                     <div className="flex justify-end gap-3 mt-6">
                       <button
-                        onClick={() => setShowApproveModal(false)}
+                        onClick={() => {
+                          setShowApproveModal(false);
+                          setApproveNoteError(false);
+                        }}
                         className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
                       >
 {t('common.cancel')}
                       </button>
                       <button
+                        type="button"
                         onClick={handleApprove}
-                        className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors"
-                        disabled={!approveNote.trim() || isSubmitting}
+                        className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors disabled:opacity-50"
+                        disabled={isSubmitting}
                       >
                         Approve
                       </button>
