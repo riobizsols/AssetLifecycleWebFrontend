@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   alm-frontend:
     container_name: alm-pressana-frontend
