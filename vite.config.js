@@ -7,15 +7,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          ui: ['lucide-react', 'recharts']
-        }
-      }
-    }
+    minify: 'esbuild',
+    cssMinify: 'esbuild',
+    reportCompressedSize: false,
   },
   server: {
     port: 5173,
