@@ -384,7 +384,7 @@ const MaintenanceApprovalDetail = () => {
     const hasRole = userRoleIds.includes(stepRoleId);
     console.log(`🔍 Checking action step: Required role=${stepRoleId}, User has role=${hasRole}`);
     return hasRole;
-  });
+  }));
   
   console.log('✅ User can approve:', isCurrentActionUser);
   console.log('📊 Current action steps:', currentActionSteps);
