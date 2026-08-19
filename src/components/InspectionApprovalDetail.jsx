@@ -214,6 +214,9 @@ const InspectionApprovalDetail = () => {
           current_status: inspectionData.header.status
         }],
         workflowSteps: inspectionData.approvalLevels || [],
+        viewOnly: Boolean(inspectionData.viewOnly),
+        canAct: inspectionData.canAct !== false,
+        branchAccess: inspectionData.branchAccess || null,
       });
       
       // Fetch technician data: always load certified technicians for this asset type (if available)
@@ -551,7 +554,7 @@ const InspectionApprovalDetail = () => {
       if (r.status === "UR") status = "rejected";
 
       const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
-      const canThisUserApprove = isSystemAdmin || userRoleIds.includes(r.job_role_id);
+      const canThisUserApprove = !detail.viewOnly && (isSystemAdmin || userRoleIds.includes(r.job_role_id));
       const roleName = trRole(r.job_role_name, r.job_role_id);
       const actorName = r.actor_display_name
         ? trRole(r.actor_display_name, r.job_role_id)
@@ -591,6 +594,7 @@ const InspectionApprovalDetail = () => {
 
   const isCurrentActionUser = useMemo(() => {
     const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
+    if (detail?.viewOnly) return false;
     return isSystemAdmin || currentActionSteps.some((s) => (s.role?.id ? userRoleIds.includes(s.role.id) : false));
   }, [currentActionSteps, userRoleIds]);
 
@@ -620,6 +624,7 @@ const InspectionApprovalDetail = () => {
   }, [detail, assetDetails, t, i18n.language]);
 
   const handleApprove = async () => {
+    if (detail?.viewOnly) return;
     if (!approveNote.trim()) return;
     
     // Check if technician selection/assignment is required
@@ -1190,6 +1195,11 @@ const InspectionApprovalDetail = () => {
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4 mt-8">
+            {detail.viewOnly && (
+              <div className="text-amber-700 text-sm self-center">
+                View only — this approval belongs to another branch.
+              </div>
+            )}
             {isCurrentActionUser && detail.header.header_status !== "CO" && detail.header.header_status !== "CA" && (
               <>
                 <button
@@ -1208,7 +1218,7 @@ const InspectionApprovalDetail = () => {
               </>
             )}
 
-            {!isCurrentActionUser && (
+            {!isCurrentActionUser && !detail.viewOnly && (
               <div className="text-gray-500 text-sm italic">
                 {currentActionSteps.length > 0 ? ia("waitingForApprover") : ma("noActionRequiredFromYou")}
               </div>

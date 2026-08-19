@@ -22,6 +22,8 @@ for arg in "$@"; do
   case "$arg" in
     --rebuild)
       export SKIP_GIT_PULL=1
+      export SKIP_FRONTEND_IF_UNCHANGED=0
+      export FRONTEND_FORCE_RECREATE=1
       ;;
     --help|-h)
       echo "Usage: ./deploy-docker.sh [--rebuild]"
@@ -39,7 +41,8 @@ export FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-3003}"
 export MINIO_BUCKET_VALUE="${MINIO_BUCKET_VALUE:-alm-pressana}"
 export PRESSANA_PUBLIC_URL="${PRESSANA_PUBLIC_URL:-https://pressanaorg.rioassetmanagement.net}"
 export PRESSANA_RESERVED_SUBDOMAINS="${PRESSANA_RESERVED_SUBDOMAINS:-web,www,api,pressanaorg}"
-export FORCE_COMPOSE_RECREATE="${FORCE_COMPOSE_RECREATE:-1}"
+export FORCE_COMPOSE_RECREATE="${FORCE_COMPOSE_RECREATE:-0}"
+export SKIP_FRONTEND_IF_UNCHANGED="${SKIP_FRONTEND_IF_UNCHANGED:-1}"
 export COMPOSE_IGNORE_ORPHANS="${COMPOSE_IGNORE_ORPHANS:-1}"
 # Prevent clobbering ~/alm-main compose project (same folder name AssetLifecycleWebFrontend)
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-pressana-alm}"
