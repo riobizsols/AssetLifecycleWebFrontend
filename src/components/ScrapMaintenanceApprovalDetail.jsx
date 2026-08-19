@@ -10,6 +10,7 @@ import { useAssetsStore } from "../store/useAssetsStore";
 import { useScrapApprovalStore } from "../store/useScrapApprovalStore";
 import { useScrapAssetsStore } from "../store/useScrapAssetsStore";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
+import { SYSTEM_ADMIN_JOB_ROLE_ID } from "../utils/systemAdmin";
 
 // Keep the same look & feel as MaintenanceApprovalDetail
 const getStepIcon = (status) => {
@@ -235,8 +236,10 @@ const ScrapMaintenanceApprovalDetail = () => {
       if (r.status === "UA") status = "approved";
       if (r.status === "UR") status = "rejected";
 
-      const canThisUserApprove = userRoleIds.includes(r.job_role_id);
+      const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
+      const canThisUserApprove = isSystemAdmin || userRoleIds.includes(r.job_role_id);
       const roleName = r.job_role_name || r.job_role_id || "Role";
+      const actorName = r.actor_display_name || roleName;
 
       const description =
         status === "current"
@@ -244,9 +247,9 @@ const ScrapMaintenanceApprovalDetail = () => {
             ? "Awaiting Approval from You"
             : `Awaiting Approval from ${roleName}`
           : status === "approved"
-            ? `Approved by ${roleName}`
+            ? `Approved by ${actorName}`
             : status === "rejected"
-              ? `Rejected by ${roleName}`
+              ? `Rejected by ${actorName}`
               : `Awaiting ${roleName}`;
 
       const date = r.changed_on ? formatDate(r.changed_on) : "";
@@ -270,7 +273,8 @@ const ScrapMaintenanceApprovalDetail = () => {
   const currentActionSteps = useMemo(() => steps.filter((s) => s.status === "current"), [steps]);
 
   const isCurrentActionUser = useMemo(() => {
-    return currentActionSteps.some((s) => (s.role?.id ? userRoleIds.includes(s.role.id) : false));
+    const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
+    return isSystemAdmin || currentActionSteps.some((s) => (s.role?.id ? userRoleIds.includes(s.role.id) : false));
   }, [currentActionSteps, userRoleIds]);
 
   const displayTitle = useMemo(() => {
