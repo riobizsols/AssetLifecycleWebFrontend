@@ -23,6 +23,8 @@ export const APP_ID_TO_PATH = {
   VENDORRENEWALAPPROVAL: '/vendor-renewal-approval',
   SCRAPMAINTENANCEAPPROVAL: '/scrap-approval',
   SUPERVISORAPPROVAL: '/maintenance-list',
+  SPAREPARTLIST: '/spare-part-list',
+  SPAREPARTAPPROVAL: '/spare-part-approval',
   REPORTBREAKDOWN: '/report-breakdown',
   'EMPLOYEE REPORT BREAKDOWN': '/employee-report-breakdown',
   ASSETLIFECYCLEREPORT: '/reports/asset-lifecycle-report',

@@ -16,6 +16,7 @@ const badgeColors = {
   "Inspection": "bg-green-100 text-green-800",
   "Vendor Contract Renewal": "bg-orange-100 text-orange-800",
   "Warranty Expiry": "bg-amber-100 text-amber-800",
+  "Spare Part Issued": "bg-emerald-100 text-emerald-800",
   Urgent: "bg-red-100 text-red-800",
 };
 
@@ -179,7 +180,7 @@ const NotificationsPanel = () => {
               onClick={() => handleAlertClick(alert)}
             >
               <div className="flex items-center gap-2 flex-wrap">
-                {alert.isUrgent && (
+                {(alert.isUrgent || alert.workflowType === "SPARE_ISSUED") && (
                   <ExclamationTriangleIcon className="w-5 h-5 text-red-500 mr-1" />
                 )}
                 <span className={`text-xs font-bold px-2 py-1 rounded ${badgeColors[alert.alertType] || "bg-gray-100 text-gray-800"}`}>
@@ -191,7 +192,7 @@ const NotificationsPanel = () => {
                   </span>
                 )}
                 <span className={isUnreadWarranty(alert.notificationStatus) ? "font-bold text-gray-900" : "font-normal text-gray-800"}>{alert.alertText}</span>
-                {alert.daysUntilCutoff !== undefined && (
+                {alert.workflowType !== "SPARE_ISSUED" && alert.daysUntilCutoff !== undefined && (
                   <span className={`text-xs px-2 py-1 rounded ml-auto ${
                     alert.isUrgent 
                       ? "bg-red-100 text-red-700 font-semibold" 
@@ -203,8 +204,32 @@ const NotificationsPanel = () => {
                     }
                   </span>
                 )}
+                {alert.workflowType === "SPARE_ISSUED" && (
+                  <span className="text-xs px-2 py-1 rounded ml-auto bg-emerald-100 text-emerald-800 font-semibold">
+                    {alert.statusLabel || "Issued"}
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap gap-4 text-xs text-gray-600 items-center">
+                {alert.workflowType === "SPARE_ISSUED" ? (
+                  <>
+                    <span className="flex items-center gap-1">
+                      <CalendarIcon className="w-4 h-4" />
+                      Due On: <b>{alert.dueOn}</b>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <UserIcon className="w-4 h-4" />
+                      Action By: <b>{alert.actionBy}</b>
+                    </span>
+                    <span>
+                      Asset Type: <b>{alert.assetTypeName || "-"}</b>
+                    </span>
+                    <span>
+                      Category: <b>{alert.categoryName || "-"}</b>
+                    </span>
+                  </>
+                ) : (
+                  <>
                 <span className="flex items-center gap-1">
                   <CalendarIcon className="w-4 h-4" />
                   Due On: <b>{alert.dueOn}</b>
@@ -218,6 +243,8 @@ const NotificationsPanel = () => {
                   Cut-off Date: {" "}
                   <b className={alert.isUrgent ? "text-red-600" : ""}>{alert.cutoffDate}</b>
                 </span>
+                  </>
+                )}
               </div>
               {alert.workflowType === "WARRANTY" && (
                 <div className="pt-1 text-xs" onClick={(e) => e.stopPropagation()}>

@@ -79,19 +79,25 @@ const AddSparePartCategory = () => {
       });
       return false;
     }
-    if (form.minimum_stock === '' || Number(form.minimum_stock) < 0 || Number.isNaN(Number(form.minimum_stock))) {
+    if (
+      form.minimum_stock !== '' &&
+      (Number(form.minimum_stock) < 0 || Number.isNaN(Number(form.minimum_stock)))
+    ) {
       showBackendTextToast({
         toast,
-        tmdId: 'TMD_SP_MIN_STOCK_REQUIRED',
+        tmdId: 'TMD_SP_MIN_STOCK_INVALID',
         fallbackText: 'Enter a valid minimum stock',
         type: 'error',
       });
       return false;
     }
-    if (form.re_order_level === '' || Number(form.re_order_level) < 0 || Number.isNaN(Number(form.re_order_level))) {
+    if (
+      form.re_order_level !== '' &&
+      (Number(form.re_order_level) < 0 || Number.isNaN(Number(form.re_order_level)))
+    ) {
       showBackendTextToast({
         toast,
-        tmdId: 'TMD_SP_REORDER_REQUIRED',
+        tmdId: 'TMD_SP_REORDER_INVALID',
         fallbackText: 'Enter a valid reorder level',
         type: 'error',
       });
@@ -110,8 +116,8 @@ const AddSparePartCategory = () => {
       await API.post('/spare-parts/categories', {
         text: form.text.trim(),
         uom: form.uom.trim(),
-        minimum_stock: Number(form.minimum_stock),
-        re_order_level: Number(form.re_order_level),
+        minimum_stock: form.minimum_stock === '' ? null : Number(form.minimum_stock),
+        re_order_level: form.re_order_level === '' ? null : Number(form.re_order_level),
       });
       invalidateCache('spare-parts:');
       showBackendTextToast({
@@ -184,36 +190,30 @@ const AddSparePartCategory = () => {
 
           <div>
             <label className="block text-sm mb-1 font-medium">
-              Minimum Stock <span className="text-red-500">*</span>
+              Minimum Stock
             </label>
             <input
-              type="number"
+              type="text"
               name="minimum_stock"
-              min="0"
-              step="1"
+              inputMode="numeric"
               value={form.minimum_stock}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border text-sm bg-white ${
-                isInvalid(form.minimum_stock) ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
               placeholder="Enter minimum stock"
             />
           </div>
 
           <div>
             <label className="block text-sm mb-1 font-medium">
-              Reorder Level <span className="text-red-500">*</span>
+              Reorder Level
             </label>
             <input
-              type="number"
+              type="text"
               name="re_order_level"
-              min="0"
-              step="1"
+              inputMode="numeric"
               value={form.re_order_level}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border text-sm bg-white ${
-                isInvalid(form.re_order_level) ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
               placeholder="Enter reorder level"
             />
           </div>
