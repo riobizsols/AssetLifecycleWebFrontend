@@ -13,8 +13,8 @@ import { invalidateCache } from '../../utils/apiCache';
 const emptyForm = {
   spc_id: '',
   asset_type_id: '',
-  brand: '',
-  model: '',
+  spbm_id: '',
+  prod_serv_id: '',
 };
 
 const SparePartAssetTypeMappingTab = () => {
@@ -24,6 +24,8 @@ const SparePartAssetTypeMappingTab = () => {
   const [form, setForm] = useState(emptyForm);
   const [categories, setCategories] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
+  const [ispModels, setIspModels] = useState([]);
+  const [prodServs, setProdServs] = useState([]);
   const [data, setData] = useState([]);
   const [selectedRows, setSelectedRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,8 +41,8 @@ const SparePartAssetTypeMappingTab = () => {
   const columns = [
     { label: 'Category', name: 'category_name', visible: true },
     { label: 'Asset Type', name: 'asset_type_name', visible: true },
-    { label: 'Brand', name: 'brand', visible: true },
-    { label: 'Model', name: 'model', visible: true },
+    { label: 'Brand / Model', name: 'brand_model', visible: true },
+    { label: 'Product / Service', name: 'prod_serv_label', visible: true },
     {
       label: 'Status',
       name: 'int_status',
@@ -56,6 +58,12 @@ const SparePartAssetTypeMappingTab = () => {
       setData(
         rows.map((row) => ({
           ...row,
+          brand_model: [row.brand_name, row.model_name].filter(Boolean).join(' / ') || row.spbm_id || '',
+          prod_serv_label:
+            row.prod_serv_name ||
+            [row.prod_serv_brand, row.prod_serv_model].filter(Boolean).join(' ') ||
+            row.prod_serv_id ||
+            '',
           int_status:
             row.int_status === 1 || row.int_status === '1' ? 'Active' : 'Inactive',
         }))
@@ -84,6 +92,27 @@ const SparePartAssetTypeMappingTab = () => {
     }
   }, []);
 
+  const fetchIspModels = useCallback(async () => {
+    try {
+      const res = await API.get('/spare-parts/isp-models');
+      setIspModels(Array.isArray(res.data?.data) ? res.data.data : []);
+    } catch (error) {
+      console.error('Error fetching ISP models:', error);
+      setIspModels([]);
+    }
+  }, []);
+
+  const fetchProdServs = useCallback(async () => {
+    try {
+      const res = await API.get('/prodserv');
+      const rows = Array.isArray(res.data) ? res.data : [];
+      setProdServs(rows);
+    } catch (error) {
+      console.error('Error fetching products/services:', error);
+      setProdServs([]);
+    }
+  }, []);
+
   const fetchAssetTypes = useCallback(async () => {
     try {
       const res = await API.get('/asset-types');
@@ -106,7 +135,9 @@ const SparePartAssetTypeMappingTab = () => {
     fetchMappings();
     fetchCategories();
     fetchAssetTypes();
-  }, [fetchMappings, fetchCategories, fetchAssetTypes]);
+    fetchIspModels();
+    fetchProdServs();
+  }, [fetchMappings, fetchCategories, fetchAssetTypes, fetchIspModels, fetchProdServs]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -143,8 +174,8 @@ const SparePartAssetTypeMappingTab = () => {
       await API.post('/spare-parts/category-mappings', {
         spc_id: form.spc_id,
         asset_type_id: form.asset_type_id,
-        brand: form.brand || null,
-        model: form.model || null,
+        spbm_id: form.spbm_id || null,
+        prod_serv_id: form.prod_serv_id || null,
       });
       invalidateCache('spare-parts:');
       showBackendTextToast({
@@ -303,27 +334,39 @@ const SparePartAssetTypeMappingTab = () => {
               </div>
 
               <div>
-                <label className="block text-sm mb-1 font-medium">Brand</label>
-                <input
-                  type="text"
-                  name="brand"
-                  value={form.brand}
+                <label className="block text-sm mb-1 font-medium">Brand / Model</label>
+                <select
+                  name="spbm_id"
+                  value={form.spbm_id}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
-                  placeholder="Enter brand"
-                />
+                >
+                  <option value="">Select brand / model</option>
+                  {ispModels.map((item) => (
+                    <option key={item.spbm_id} value={item.spbm_id}>
+                      {[item.brand_name, item.model_name].filter(Boolean).join(' / ') || item.spbm_id}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <label className="block text-sm mb-1 font-medium">Model</label>
-                <input
-                  type="text"
-                  name="model"
-                  value={form.model}
+                <label className="block text-sm mb-1 font-medium">Product / Service</label>
+                <select
+                  name="prod_serv_id"
+                  value={form.prod_serv_id}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
-                  placeholder="Enter model"
-                />
+                >
+                  <option value="">Select product / service</option>
+                  {prodServs.map((item) => (
+                    <option key={item.prod_serv_id} value={item.prod_serv_id}>
+                      {item.description ||
+                        [item.brand, item.model].filter(Boolean).join(' ') ||
+                        item.prod_serv_id}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

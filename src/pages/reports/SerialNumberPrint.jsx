@@ -22,6 +22,7 @@ import { labelTemplates, assetTypeTemplateMapping } from '../../templates/labelT
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
 import { useSerialNumberPrintStore } from '../../store/useSerialNumberPrintStore';
+import { sortTableRows, updateSortConfig } from '../../utils/tableSort';
 
 const SerialNumberPrint = () => {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ const SerialNumberPrint = () => {
   const [filteredQueue, setFilteredQueue] = useState([]);
   const isLoading = queueLoading && printQueue.length === 0;
   const [selectedItems, setSelectedItems] = useState([]);
+  const [sortConfig, setSortConfig] = useState({ sorts: [] });
   const [showFilters, setShowFilters] = useState(false);
   const [showPrintPage, setShowPrintPage] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -235,6 +237,11 @@ const SerialNumberPrint = () => {
 
     console.log('Final filtered data:', filtered.length, 'items');
     setFilteredQueue(filtered);
+  };
+
+  const handleSort = (column, direction) => {
+    if (column === 'actions') return;
+    setSortConfig((prev) => updateSortConfig(prev, column, direction));
   };
 
   const handleFilterChange = (key, value) => {
@@ -624,7 +631,10 @@ const SerialNumberPrint = () => {
 
   const renderCreatedDate = (col, row) => {
     if (col.name === 'created_at') {
-      return new Date(row.created_at).toLocaleDateString();
+      const value = row.created_at || row.created_on;
+      if (!value) return '';
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? '' : parsed.toLocaleDateString();
     }
     return row[col.name];
   };
@@ -782,15 +792,21 @@ const SerialNumberPrint = () => {
         showAddButton={false}
         showActions={false}
         showFilterButton={false}
+        onSort={handleSort}
+        sortConfig={sortConfig}
+        rowKey="psnq_id"
       >
-        {({ visibleColumns, showActions }) => (
+        {({ visibleColumns, showActions }) => {
+          const sortedQueue = sortTableRows(filteredQueue, sortConfig.sorts);
+          return (
           <CustomTable
             visibleColumns={visibleColumns}
-            data={filteredQueue}
+            data={sortedQueue}
             selectedRows={selectedItems}
             setSelectedRows={setSelectedItems}
             showActions={false}
             onRowClick={handleSelectItem}
+            rowKey="psnq_id"
             rowClassName="hover:bg-blue-50 cursor-pointer transition-colors"
             renderCell={(col, row) => {
               if (col.name === 'serial_number') return renderSerialNumber(col, row);
@@ -802,7 +818,8 @@ const SerialNumberPrint = () => {
               return row[col.name];
             }}
           />
-        )}
+          );
+        }}
       </ContentBox>
 
 
