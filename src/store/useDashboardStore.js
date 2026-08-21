@@ -73,6 +73,10 @@ function transformNotifications(notifications) {
       alertType = 'Inspection';
     } else if (notification.workflowType === 'WARRANTY') {
       alertType = 'Warranty Expiry';
+    } else if (notification.workflowType === 'SPARE_CONFIRMED') {
+      alertType = 'Spare Part Confirmed';
+    } else if (notification.workflowType === 'SPARE_ISSUED') {
+      alertType = 'Spare Part Issued';
     } else if (notification.maintenanceType) {
       alertType = notification.maintenanceType;
     }
@@ -82,6 +86,8 @@ function transformNotifications(notifications) {
       alertText = `${notification.assetTypeName} Inspection`;
     } else if (alertType === 'Warranty Expiry') {
       alertText = `${notification.assetId} - ${notification.title || 'Warranty Expiry'}`;
+    } else if (alertType === 'Spare Part Issued' || alertType === 'Spare Part Confirmed') {
+      alertText = `${notification.assetTypeName || 'Asset'}`;
     } else if (String(notification.maintenanceType || '').toLowerCase().includes('subscription')) {
       alertText = `${notification.assetTypeName}`;
     } else if (alertType === 'Vendor Contract Renewal') {
@@ -98,7 +104,11 @@ function transformNotifications(notifications) {
       dueOn: formatNotificationDate(notification.dueDate),
       actionBy: notification.userName || 'Unassigned',
       cutoffDate: formatNotificationDate(notification.cutoffDate),
-      isUrgent: notification.daysUntilCutoff <= 2,
+      isUrgent:
+        notification.workflowType === 'SPARE_ISSUED' ||
+        notification.workflowType === 'SPARE_CONFIRMED'
+          ? false
+          : notification.daysUntilCutoff <= 2,
       wfamshId: notification.wfamshId,
       route: notification.route,
       workflowType: notification.workflowType,
@@ -111,6 +121,10 @@ function transformNotifications(notifications) {
       groupName: notification.groupName,
       groupAssetCount: notification.groupAssetCount,
       assetTypeName: notification.assetTypeName,
+      categoryName: notification.categoryName,
+      maintenanceId: notification.maintenanceId,
+      quantityIssued: notification.quantityIssued,
+      statusLabel: notification.statusLabel,
       notifyId: notification.notifyId,
       notificationStatus: notification.notificationStatus,
       canChangeVendor: !!notification.canChangeVendor,

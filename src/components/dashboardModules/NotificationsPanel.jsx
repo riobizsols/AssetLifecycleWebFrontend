@@ -11,11 +11,22 @@ import API from "../../lib/axios";
 import toast from "react-hot-toast";
 import { useDashboardStore } from "../../store/useDashboardStore";
 
+const isSpareAlert = (alert) =>
+  alert?.workflowType === "SPARE_ISSUED" || alert?.workflowType === "SPARE_CONFIRMED";
+
+const spareAlertTypeLabel = (alertType) => {
+  if (alertType === "Spare Part Issued") return "Spare Part Reserved";
+  if (alertType === "Spare Part Confirmed") return "Spare Part Issued";
+  return alertType;
+};
+
 const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
   "Inspection": "bg-green-100 text-green-800",
   "Vendor Contract Renewal": "bg-orange-100 text-orange-800",
   "Warranty Expiry": "bg-amber-100 text-amber-800",
+  "Spare Part Issued": "bg-emerald-100 text-emerald-800",
+  "Spare Part Confirmed": "bg-sky-100 text-sky-800",
   Urgent: "bg-red-100 text-red-800",
 };
 
@@ -28,7 +39,7 @@ const NotificationsPanel = () => {
     const current = useDashboardStore.getState().notifications;
     setNotifications(typeof updater === 'function' ? updater(current) : updater);
   };
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
   const [openActionMenuId, setOpenActionMenuId] = useState(null);
   const [openSnoozeMenuId, setOpenSnoozeMenuId] = useState(null);
   const [snoozeDrafts, setSnoozeDrafts] = useState({});
@@ -138,7 +149,7 @@ const NotificationsPanel = () => {
         );
         if (!confirmed) return;
         const res = await API.put(`/notifications/warranty/${alert.notifyId}/scrap`);
-        setAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
+        patchAlerts((prev) => prev.filter((row) => row.notifyId !== alert.notifyId));
         showBackendTextToast({ toast, tmdId: 'TMD_SCRAP_APPROVAL_INITIATED_WARRANTY', fallbackText: 'Scrap approval initiated successfully', type: 'success' });
         // Navigate to scrap approval list
         if (res.data?.data?.wfscrap_h_id) {
@@ -148,7 +159,7 @@ const NotificationsPanel = () => {
         }
         return;
       }
-    } catch (error) {
+    } catch (err) {
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_PROCESS_ACTION_4490D849', fallbackText: 'Failed to process action', type: 'error' });
     }
   };
@@ -179,11 +190,11 @@ const NotificationsPanel = () => {
               onClick={() => handleAlertClick(alert)}
             >
               <div className="flex items-center gap-2 flex-wrap">
-                {alert.isUrgent && (
+                {(alert.isUrgent || isSpareAlert(alert)) && (
                   <ExclamationTriangleIcon className="w-5 h-5 text-red-500 mr-1" />
                 )}
                 <span className={`text-xs font-bold px-2 py-1 rounded ${badgeColors[alert.alertType] || "bg-gray-100 text-gray-800"}`}>
-                  {alert.alertType}
+                  {spareAlertTypeLabel(alert.alertType)}
                 </span>
                 {alert.isGroupMaintenance && (
                   <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 text-blue-800">
@@ -191,7 +202,7 @@ const NotificationsPanel = () => {
                   </span>
                 )}
                 <span className={isUnreadWarranty(alert.notificationStatus) ? "font-bold text-gray-900" : "font-normal text-gray-800"}>{alert.alertText}</span>
-                {alert.daysUntilCutoff !== undefined && (
+                {!isSpareAlert(alert) && alert.daysUntilCutoff !== undefined && (
                   <span className={`text-xs px-2 py-1 rounded ml-auto ${
                     alert.isUrgent 
                       ? "bg-red-100 text-red-700 font-semibold" 
@@ -203,8 +214,37 @@ const NotificationsPanel = () => {
                     }
                   </span>
                 )}
+                {isSpareAlert(alert) && (
+                  <span className={`text-xs px-2 py-1 rounded ml-auto font-semibold ${
+                    alert.workflowType === "SPARE_CONFIRMED"
+                      ? "bg-sky-100 text-sky-800"
+                      : "bg-emerald-100 text-emerald-800"
+                  }`}>
+                    {alert.statusLabel ||
+                      (alert.workflowType === "SPARE_CONFIRMED" ? "Issued" : "Reserved")}
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap gap-4 text-xs text-gray-600 items-center">
+                {isSpareAlert(alert) ? (
+                  <>
+                    <span className="flex items-center gap-1">
+                      <CalendarIcon className="w-4 h-4" />
+                      Due On: <b>{alert.dueOn}</b>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <UserIcon className="w-4 h-4" />
+                      Action By: <b>{alert.actionBy}</b>
+                    </span>
+                    <span>
+                      Asset Type: <b>{alert.assetTypeName || "-"}</b>
+                    </span>
+                    <span>
+                      Category: <b>{alert.categoryName || "-"}</b>
+                    </span>
+                  </>
+                ) : (
+                  <>
                 <span className="flex items-center gap-1">
                   <CalendarIcon className="w-4 h-4" />
                   Due On: <b>{alert.dueOn}</b>
@@ -218,6 +258,8 @@ const NotificationsPanel = () => {
                   Cut-off Date: {" "}
                   <b className={alert.isUrgent ? "text-red-600" : ""}>{alert.cutoffDate}</b>
                 </span>
+                  </>
+                )}
               </div>
               {alert.workflowType === "WARRANTY" && (
                 <div className="pt-1 text-xs" onClick={(e) => e.stopPropagation()}>

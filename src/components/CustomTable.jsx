@@ -33,6 +33,7 @@ const CustomTable = ({
   addButtonTitle = "Add",
   isReadOnly = false,
   renderActions,
+  rowClassName,
 }) => {
   const visible = visibleColumns.filter((col) => col.visible && !isIdColumnName(col.name));
 
@@ -94,10 +95,12 @@ const CustomTable = ({
     <>
       {data.map((row, rowIndex) => {
         const isRowSelected = selectedRows && selectedRows.includes(row[rowKey]);
+        const extraRowClass =
+          typeof rowClassName === 'function' ? rowClassName(row) : rowClassName || '';
         return (
         <tr
           key={row[rowKey] || rowIndex}
-          className={`border-t${onRowClick ? ' cursor-pointer hover:bg-gray-100' : ''}${isRowSelected ? ' bg-blue-50' : ''}`}
+          className={`border-t${onRowClick ? ' cursor-pointer hover:bg-gray-100' : ''}${isRowSelected ? ' bg-blue-50' : ''} ${extraRowClass}`.trim()}
           onClick={onRowClick ? () => onRowClick(row) : undefined}
         >
           {visible.map((col, colIndex) => (
