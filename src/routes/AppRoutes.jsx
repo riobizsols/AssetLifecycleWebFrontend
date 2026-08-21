@@ -25,6 +25,10 @@ import Organization from "../pages/masterData/Organization";
 import Vendors from "../pages/masterData/Vendors";
 import AddEntityForm from "../components/AddEntityForm";
 import ProdServ from "../pages/masterData/ProdServ";
+import SpareParts from "../pages/masterData/SpareParts";
+import SparePartLotList from "../pages/masterData/SparePartLotList";
+import SparePartsConfiguration from "../pages/masterData/SparePartsConfiguration";
+import AddSparePartCategory from "../components/spareParts/AddSparePartCategory";
 import Properties from "../pages/masterData/Properties";
 import BreakdownReasonCodes from "../pages/masterData/BreakdownReasonCodes";
 import AddAssetForm from "../components/assets/AddAssetForm";
@@ -44,6 +48,10 @@ import InspectionApprovalDetail from "../components/InspectionApprovalDetail";
 import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
 import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
+import SparePartList from "../pages/SparePartList";
+import SparePartApproval from "../pages/SparePartApproval";
+import SparePartListDetail from "../components/SparePartListDetail";
+import SparePartApprovalDetail from "../components/SparePartApprovalDetail";
 import CreateManualMaintenance from "../pages/CreateManualMaintenance";
 import CronJobManagement from "../pages/CronJobManagement";
 import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
@@ -341,6 +349,47 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>
                 <MaintSupervisorApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/spare-part-list"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTLIST">
+              <MainLayout>
+                <SparePartList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/spare-part-list-detail/:id"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTLIST">
+              <MainLayout>
+                <SparePartListDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/spare-part-approval"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTAPPROVAL">
+              <MainLayout>
+                <SparePartApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/spare-part-approval-detail/:id"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTAPPROVAL">
+              <MainLayout>
+                <SparePartApprovalDetail />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -1003,6 +1052,42 @@ export default function AppRoutes() {
           <Route index element={<Branches />} />
 
           <Route path="add" element={<AddBranch />} />
+        </Route>
+
+        <Route
+          path="/master-data/spare-parts"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTS">
+              <MainLayout>
+                <SparePartLotList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/spare-parts/add"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTS">
+              <MainLayout>
+                <SpareParts />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/spare-parts-configuration"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTSCONFIG">
+              <MainLayout>
+                <Outlet />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SparePartsConfiguration />} />
+          <Route path="categories/add" element={<AddSparePartCategory />} />
         </Route>
 
         <Route

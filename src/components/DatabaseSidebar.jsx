@@ -14,6 +14,8 @@ import { useMaintenanceSupervisorStore } from "../store/useMaintenanceSupervisor
 import { prefetchReportByAppId } from "../utils/reportCache";
 import { useWorkOrderStore } from "../store/useWorkOrderStore";
 import { useMaintenanceApprovalStore } from "../store/useMaintenanceApprovalStore";
+import { useSparePartListStore } from "../store/useSparePartListStore";
+import { useSparePartApprovalStore } from "../store/useSparePartApprovalStore";
 import { useSerialNumberPrintStore } from "../store/useSerialNumberPrintStore";
 import { useAuditLogConfigStore } from "../store/useAuditLogConfigStore";
 import { useInspectionApprovalStore } from "../store/useInspectionApprovalStore";
@@ -132,6 +134,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "MAINTENANCESCHEDULE",
     "MAINTENANCEAPPROVAL",
   ],
+  "Spare Parts": ["SPAREPARTS", "SPAREPARTLIST", "SPAREPARTAPPROVAL"],
   Scrap: ["SCRAPASSETS", "SCRAPMAINTENANCEAPPROVAL", "SCRAPSALES"],
   Inspection: [
     "INSPECTIONAPPROVAL",
@@ -153,6 +156,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "USERROLES",
     "PRODSERV",
     "VENDORS",
+    "SPAREPARTSCONFIG",
     "MAINTENANCESCHEDULE",
     "INSPECTIONCHECKLISTS",
     "INSPECTIONFREQUENCY",
@@ -671,6 +675,99 @@ function moveReopenedBreakdownsToReports(items) {
   return result;
 }
 
+/** Move Spare Part Lot / List / Approval into a top-level Spare Parts group. */
+function moveSparePartsMenusToGroup(items) {
+  if (!items?.length) return items;
+
+  const memberKeys = ["SPAREPARTS", "SPAREPARTLIST", "SPAREPARTAPPROVAL"].map(
+    normalizeNavAppId,
+  );
+  const collected = new Map();
+
+  const stripMembers = (nodes) =>
+    (nodes || [])
+      .map((item) => {
+        if (isNavGroup(item)) {
+          const children = stripMembers(item.children);
+          for (const child of children || []) {
+            const key = normalizeNavAppId(child.app_id);
+            if (memberKeys.includes(key) && !collected.has(key)) {
+              collected.set(key, { ...child, is_group: false, children: undefined });
+            }
+          }
+          return {
+            ...item,
+            children: (children || []).filter(
+              (child) => !memberKeys.includes(normalizeNavAppId(child.app_id)),
+            ),
+          };
+        }
+
+        const key = normalizeNavAppId(item.app_id);
+        if (memberKeys.includes(key)) {
+          if (!collected.has(key)) {
+            collected.set(key, { ...item, is_group: false, children: undefined });
+          }
+          return null;
+        }
+
+        return item;
+      })
+      .filter(Boolean);
+
+  let result = stripMembers(items);
+  if (!collected.size) return result;
+
+  const orderedChildren = memberKeys
+    .map((key) => collected.get(key))
+    .filter(Boolean)
+    .map((item) => {
+      if (normalizeNavAppId(item.app_id) === "SPAREPARTS") {
+        return { ...item, label: "Spare Part Lot" };
+      }
+      return item;
+    });
+
+  const existing = findNavGroupByLabel(result, "Spare Parts");
+  if (existing) {
+    const existingKeys = new Set(
+      (existing.children || []).map((c) => normalizeNavAppId(c.app_id)),
+    );
+    const mergedChildren = [
+      ...(existing.children || []),
+      ...orderedChildren.filter(
+        (c) => !existingKeys.has(normalizeNavAppId(c.app_id)),
+      ),
+    ];
+    mergedChildren.sort((a, b) => {
+      const rankA = memberKeys.indexOf(normalizeNavAppId(a.app_id));
+      const rankB = memberKeys.indexOf(normalizeNavAppId(b.app_id));
+      return (rankA >= 0 ? rankA : 1000) - (rankB >= 0 ? rankB : 1000);
+    });
+
+    return result.map((item) => {
+      if (
+        !isNavGroup(item) ||
+        canonicalGroupLabel(item.label) !== "spare parts"
+      ) {
+        return item;
+      }
+      return { ...item, label: "Spare Parts", children: mergedChildren };
+    });
+  }
+
+  const group = {
+    id: "ensure-spare-parts",
+    label: "Spare Parts",
+    is_group: true,
+    seq: Math.min(...orderedChildren.map((m) => m.seq ?? 9999)),
+    access_level: orderedChildren[0]?.access_level || "A",
+    children: orderedChildren,
+  };
+
+  return [...result, group];
+}
+
 function ensureDomainNavGroups(items) {
   const flat = flattenNavItems(items);
   let result = [...items];
@@ -754,6 +851,7 @@ const SIDEBAR_LABEL_ORDER = [
   "assets",
   "asset assignment",
   "maintenance",
+  "spare parts",
   "inspection",
   "reports",
   "scrap",
@@ -789,6 +887,7 @@ function finalizeSidebarNavigation(items) {
   tree = repairOrphanedNavGroups(tree);
   tree = flattenApprovalsGroup(tree);
   tree = moveReopenedBreakdownsToReports(tree);
+  tree = moveSparePartsMenusToGroup(tree);
   tree = ensureDomainNavGroups(tree);
   tree = sortMasterDataNavOrder(tree);
   tree = sortScrapNavOrder(tree);
@@ -1128,6 +1227,12 @@ const DatabaseSidebar = () => {
     if (normalizeNavAppId(appId) === "USERS") {
       return t("navigation.users");
     }
+    if (normalizeNavAppId(appId) === "SPAREPARTS") {
+      return t("navigation.sparePartLot");
+    }
+    if (normalizeNavAppId(appId) === "SPAREPARTSCONFIG") {
+      return t("navigation.sparePartsConfiguration");
+    }
     // Create a mapping from English labels to translation keys
     const labelMap = {
       'Dashboard': t('navigation.dashboard'),
@@ -1146,6 +1251,9 @@ const DatabaseSidebar = () => {
       'Manage Departments Assets Type': t('navigation.departmentsAsset'),
       'Branches': t('navigation.branches'),
       'Vendors': t('navigation.vendors'),
+      'Spare Parts': t('navigation.spareParts'),
+      'Spare Part Lot': t('navigation.sparePartLot'),
+      'Spare Parts Configuration': t('navigation.sparePartsConfiguration'),
       'Products/Services': t('navigation.productsServices'),
       'Roles': t('navigation.roles'),
       'Users': t('navigation.users'),
@@ -1164,6 +1272,8 @@ const DatabaseSidebar = () => {
       'Workorder Management': t('navigation.workorderManagement'),
       'Maintenance Approval': t('navigation.maintenanceApproval'),
       'Maintenance List': t('maintenance.maintenanceList'),
+      'Spare Part List': t('sparePartList.title'),
+      'Spare Part Approval': t('sparePartApproval.title'),
       'Maintenance Schedule': t('navigation.maintenanceSchedule'),
       'Maintenance Sche...': t('navigation.maintenanceSchedule'),
       'Supervisor Approval': t('navigation.supervisorApproval'),
@@ -1238,6 +1348,8 @@ const DatabaseSidebar = () => {
     ASSETASSIGNMENT: "/assign-department-assets",
     COSTCENTERTRANSFER: "/cost-center-transfer",
     VENDORS: "/master-data/vendors", //done
+    SPAREPARTS: "/master-data/spare-parts",
+    SPAREPARTSCONFIG: "/master-data/spare-parts-configuration",
     INSPECTIONCHECKLISTS: "/master-data/inspection-checklists",
     INSPECTIONFREQUENCY: "/master-data/inspection-frequency",
     ASSETTYPECHECKLISTMAPPING: "/master-data/asset-type-checklist-mapping",
@@ -1254,6 +1366,8 @@ const DatabaseSidebar = () => {
     REPORTBREAKDOWNGROUP: null,
     SCRAPMAINTENANCEAPPROVAL: "/scrap-approval",
     SUPERVISORAPPROVAL: "/maintenance-list", //done
+    SPAREPARTLIST: "/spare-part-list",
+    SPAREPARTAPPROVAL: "/spare-part-approval",
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
     "EMPLOYEE REPORT BREAKDOWN": "/employee-report-breakdown", // Employee Report Breakdown route //done
     // Report routes
@@ -1315,6 +1429,12 @@ const DatabaseSidebar = () => {
     }
     if (appId === "MAINTENANCEAPPROVAL") {
       useMaintenanceApprovalStore.getState().prefetchApprovals();
+    }
+    if (appId === "SPAREPARTLIST") {
+      useSparePartListStore.getState().fetchList({ revalidate: true }).catch(() => {});
+    }
+    if (appId === "SPAREPARTAPPROVAL") {
+      useSparePartApprovalStore.getState().fetchApprovals({ revalidate: true }).catch(() => {});
     }
     if (appId === "SERIALNUMBERPRINT") {
       useSerialNumberPrintStore.getState().prefetchSerialNumberPrint('New');
@@ -1415,6 +1535,9 @@ const DatabaseSidebar = () => {
       REPORTBREAKDOWNGROUP: BarChart3,
       REPORTS: Building,
       SUPERVISORAPPROVAL: UserCheck,
+      SPAREPARTLIST: Package,
+      SPAREPARTAPPROVAL: ClipboardList,
+      SPAREPARTSGROUP: Package,
       REPORTBREAKDOWN: BarChart3,
       "EMPLOYEE REPORT BREAKDOWN": BarChart3,
       REOPENEDBREAKDOWNS: BarChart3,
@@ -1438,6 +1561,8 @@ const DatabaseSidebar = () => {
       DEPARTMENTSASSET: Package,
       BRANCHES: Home,
       VENDORS: Truck,
+      SPAREPARTS: Package,
+      SPAREPARTSCONFIG: Package,
       INSPECTIONCHECKLISTS: ClipboardList,
       PRODSERV: Briefcase,
       ROLES: Shield,
@@ -1518,6 +1643,7 @@ const DatabaseSidebar = () => {
     approval: "APPROVALS",
     approvals: "APPROVALS",
     "report breakdown": "REPORTBREAKDOWNGROUP",
+    "spare parts": "SPAREPARTSGROUP",
     "master data": "MASTERDATA",
     "asset assignment": "ASSETASSIGNMENT",
   };
@@ -1589,6 +1715,12 @@ const DatabaseSidebar = () => {
         "/master-data/add-vendor",
         "/master-data/vendors/add",
       ];
+    }
+    if (key === "SPAREPARTLIST") {
+      return ["/spare-part-list", "/spare-part-list-detail"];
+    }
+    if (key === "SPAREPARTAPPROVAL") {
+      return ["/spare-part-approval", "/spare-part-approval-detail"];
     }
     if (key === "REPORTBREAKDOWN") {
       return [
