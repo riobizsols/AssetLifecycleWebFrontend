@@ -10,6 +10,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "react-hot-toast";
 import { useMaintenanceApprovalStore } from "../store/useMaintenanceApprovalStore";
+import { SYSTEM_ADMIN_JOB_ROLE_ID } from "../utils/systemAdmin";
 
 function bustMaintenanceApprovalListCache() {
   useMaintenanceApprovalStore.getState().invalidateMaintenanceApprovalCache();
@@ -372,8 +373,9 @@ const MaintenanceApprovalDetail = () => {
     return isCurrentAction;
   });
   
-  // ROLE-BASED: Only users with the required role for the current step can approve (no bypass for System Admin)
-  const isCurrentActionUser = currentActionSteps.some((step) => {
+  // System Admin (JR001) can act on any pending step so the workflow is not stuck on one role.
+  const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
+  const isCurrentActionUser = isSystemAdmin || currentActionSteps.some((step) => {
     // Backend sends role info in step.role.id (job_role_id)
     const stepRoleId = step.role?.id || step.user?.id;
     const hasRole = userRoleIds.includes(stepRoleId);

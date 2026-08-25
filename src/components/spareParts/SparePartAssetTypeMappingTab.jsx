@@ -9,6 +9,7 @@ import { exportToExcel } from '../../utils/exportToExcel';
 import { filterData } from '../../utils/filterData';
 import { applyListFilterChange } from '../../utils/listFilterState';
 import { useNavigation } from '../../hooks/useNavigation';
+import { sortTableRows, updateSortConfig } from '../../utils/tableSort';
 
 const SparePartAssetTypeMappingTab = () => {
   const navigate = useNavigate();
@@ -69,43 +70,11 @@ const SparePartAssetTypeMappingTab = () => {
     setFilterValues((prev) => applyListFilterChange(prev, name, value));
   };
 
-  const handleSort = (column) => {
-    setSortConfig((prevConfig) => {
-      const { sorts } = prevConfig;
-      const existingSort = sorts.find((s) => s.column === column);
-      if (!existingSort) {
-        return {
-          sorts: [...sorts, { column, direction: 'asc', order: sorts.length + 1 }],
-        };
-      }
-      if (existingSort.direction === 'asc') {
-        return {
-          sorts: sorts.map((s) =>
-            s.column === column ? { ...s, direction: 'desc' } : s
-          ),
-        };
-      }
-      return {
-        sorts: sorts
-          .filter((s) => s.column !== column)
-          .map((s, idx) => ({ ...s, order: idx + 1 })),
-      };
-    });
+  const handleSort = (column, direction) => {
+    setSortConfig((prevConfig) => updateSortConfig(prevConfig, column, direction));
   };
 
-  const sortData = (rows) => {
-    const { sorts } = sortConfig;
-    if (!sorts.length) return rows;
-    return [...rows].sort((a, b) => {
-      for (const sort of [...sorts].sort((x, y) => x.order - y.order)) {
-        const aVal = a[sort.column] ?? '';
-        const bVal = b[sort.column] ?? '';
-        if (aVal < bVal) return sort.direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sort.direction === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
-  };
+  const sortData = (rows) => sortTableRows(rows, sortConfig.sorts);
 
   const handleDownload = () => {
     if (!selectedRows.length) {

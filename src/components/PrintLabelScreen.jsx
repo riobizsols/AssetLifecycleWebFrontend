@@ -130,10 +130,10 @@ const PrintLabelScreen = ({
   };
 
   const generatePDF = async () => {
-    if (!selectedItem || !printSettings.printerId || !printSettings.template) {
-      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_PRINTER_NAME_AND_TEMPLATE_75509CC4', fallbackText: 'Please select printer name and template', type: 'error' });
-      return;
-    }
+    // if (!selectedItem || !printSettings.printerId || !printSettings.template) {
+    //   showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_PRINTER_NAME_AND_TEMPLATE_75509CC4', fallbackText: 'Please select printer name and template', type: 'error' });
+    //   return;
+    // }
 
     try {
       toast.loading('Generating PDF...', { duration: 2000 });
@@ -505,12 +505,9 @@ const PrintLabelScreen = ({
       <div className="mt-6 flex justify-center gap-4">
          <button
            onClick={(e) => {
-             console.log('🖱️ Button click event triggered');
-             console.log('Button disabled state:', !printSettings.printerId || !printSettings.template);
              e.preventDefault();
              onPreview();
            }}
-           disabled={!printSettings.printerId || !printSettings.template}
            className="px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
          >
            <Eye className="w-5 h-5" />
@@ -518,7 +515,6 @@ const PrintLabelScreen = ({
          </button>
         <button
           onClick={generatePDF}
-          disabled={!printSettings.printerId || !printSettings.template}
           className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <Download className="w-5 h-5" />

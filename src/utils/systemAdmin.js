@@ -15,3 +15,7 @@ export function collectUserJobRoleIds(user, roles = []) {
 export function userHasSystemAdminRole(user, roles = []) {
   return collectUserJobRoleIds(user, roles).includes(SYSTEM_ADMIN_JOB_ROLE_ID);
 }
+
+export function roleIdsIncludeSystemAdmin(roleIds = []) {
+  return (Array.isArray(roleIds) ? roleIds : [roleIds]).includes(SYSTEM_ADMIN_JOB_ROLE_ID);
+}
