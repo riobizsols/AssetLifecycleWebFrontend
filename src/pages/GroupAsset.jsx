@@ -14,6 +14,7 @@ import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useGroupAssetStore } from "../store/useGroupAssetStore";
 import { filterData } from "../utils/filterData";
 import { applyListFilterChange, hasActiveListFilters, EMPTY_LIST_FILTERS } from "../utils/listFilterState";
+import { sortTableRows, updateSortConfig } from "../utils/tableSort";
 
 const GroupAsset = () => {
   const navigate = useNavigate();
@@ -201,28 +202,13 @@ const GroupAsset = () => {
     fromDate: "",
     toDate: "",
   });
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [sortConfig, setSortConfig] = useState({ sorts: [] });
 
-  const handleSort = (column) => {
-    setSortConfig((prev) => ({
-      key: column,
-      direction:
-        prev.key === column && prev.direction === "asc" ? "desc" : "asc",
-    }));
+  const handleSort = (column, direction) => {
+    setSortConfig((prev) => updateSortConfig(prev, column, direction));
   };
 
-  const sortData = (data) => {
-    if (!sortConfig.key) return data;
-
-    return [...data].sort((a, b) => {
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
-
-      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
-      return 0;
-    });
-  };
+  const sortData = (data) => sortTableRows(data, sortConfig.sorts);
 
   const handleFilterChange = (columnName, value) => {
     setFilterValues((prev) => applyListFilterChange(prev, columnName, value));

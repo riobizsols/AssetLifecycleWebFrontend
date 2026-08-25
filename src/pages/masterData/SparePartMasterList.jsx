@@ -2,18 +2,25 @@ import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import ContentBox from '../ContentBox';
-import CustomTable from '../CustomTable';
+import ContentBox from '../../components/ContentBox';
+import CustomTable from '../../components/CustomTable';
 import API from '../../lib/axios';
 import { exportToExcel } from '../../utils/exportToExcel';
 import { filterData } from '../../utils/filterData';
 import { applyListFilterChange } from '../../utils/listFilterState';
 import { useNavigation } from '../../hooks/useNavigation';
 
-const SparePartCategoryTab = () => {
+const formatDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString();
+};
+
+const SparePartMasterList = () => {
   const navigate = useNavigate();
   const { hasEditAccess } = useNavigation();
-  const canEdit = hasEditAccess('SPAREPARTSCONFIG');
+  const canEdit = hasEditAccess('SPAREPARTMASTER');
 
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,39 +33,33 @@ const SparePartCategoryTab = () => {
   const [sortConfig, setSortConfig] = useState({ sorts: [] });
 
   const columns = [
-    { label: 'Category', name: 'text', visible: true },
+    { label: 'Part Number', name: 'part_number', visible: true },
+    { label: 'Category', name: 'category_name', visible: true },
     { label: 'Brand', name: 'brand_name', visible: true },
     { label: 'Model', name: 'model_name', visible: true },
-    { label: 'UOM', name: 'uom', visible: true },
-    { label: 'Minimum Stock', name: 'minimum_stock', visible: true },
-    { label: 'Reorder Level', name: 're_order_level', visible: true },
     { label: 'Status', name: 'int_status', visible: true },
+    { label: 'Created On', name: 'created_on', visible: true },
   ];
 
-  const fetchCategories = async () => {
+  const fetchMasters = async () => {
     setIsLoading(true);
     try {
-      const res = await API.get('/spare-parts/categories', {
-        params: { activeOnly: false },
-      });
+      const res = await API.get('/spare-parts/master');
       const rows = Array.isArray(res.data?.data) ? res.data.data : [];
       setData(
         rows.map((row) => ({
           ...row,
           int_status:
             row.int_status === 1 || row.int_status === '1' ? 'Active' : 'Inactive',
-          minimum_stock:
-            row.minimum_stock != null ? Number(row.minimum_stock) : row.minimum_stock,
-          re_order_level:
-            row.re_order_level != null ? Number(row.re_order_level) : row.re_order_level,
+          created_on: formatDate(row.created_on),
         }))
       );
     } catch (error) {
-      console.error('Error fetching spare part categories:', error);
+      console.error('Error fetching spare parts:', error);
       showBackendTextToast({
         toast,
-        tmdId: 'TMD_FAILED_TO_FETCH_SPARE_PART_CATEGORIES',
-        fallbackText: 'Failed to fetch spare part categories',
+        fallbackText:
+          error.response?.data?.error || 'Failed to fetch spare parts',
         type: 'error',
       });
       setData([]);
@@ -68,7 +69,7 @@ const SparePartCategoryTab = () => {
   };
 
   useEffect(() => {
-    fetchCategories();
+    fetchMasters();
   }, []);
 
   const handleFilterChange = (name, value) => {
@@ -79,7 +80,6 @@ const SparePartCategoryTab = () => {
     setSortConfig((prevConfig) => {
       const { sorts } = prevConfig;
       const existingSort = sorts.find((s) => s.column === column);
-
       if (!existingSort) {
         return {
           sorts: [...sorts, { column, direction: 'asc', order: sorts.length + 1 }],
@@ -125,8 +125,10 @@ const SparePartCategoryTab = () => {
       return;
     }
     const selectedSet = new Set(selectedRows);
-    const selectedData = data.filter((row) => selectedSet.has(row.spc_id));
-    const success = exportToExcel(selectedData, columns, 'SparePartCategories');
+    const selectedData = data.filter(
+      (row) => selectedSet.has(row.sppns_id) || selectedSet.has(row.part_number)
+    );
+    const success = exportToExcel(selectedData, columns, 'SpareParts');
     if (success) {
       showBackendTextToast({
         toast,
@@ -158,11 +160,9 @@ const SparePartCategoryTab = () => {
         onFilterChange={handleFilterChange}
         onSort={handleSort}
         sortConfig={sortConfig}
-        rowKey="spc_id"
+        rowKey="sppns_id"
         onAdd={
-          canEdit
-            ? () => navigate('/master-data/spare-parts-configuration/categories/add')
-            : undefined
+          canEdit ? () => navigate('/master-data/spare-part/add') : undefined
         }
         onDownload={handleDownload}
         data={data}
@@ -196,7 +196,7 @@ const SparePartCategoryTab = () => {
             return (
               <tr>
                 <td colSpan={colSpan} className="text-center py-16 text-gray-500">
-                  No spare part categories found. Click + to create one.
+                  No spare parts found. Click + to create one.
                 </td>
               </tr>
             );
@@ -207,7 +207,7 @@ const SparePartCategoryTab = () => {
               columns={visibleColumns}
               visibleColumns={visibleColumns}
               data={sorted}
-              rowKey="spc_id"
+              rowKey="sppns_id"
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
               showActions={false}
@@ -219,4 +219,4 @@ const SparePartCategoryTab = () => {
   );
 };
 
-export default SparePartCategoryTab;
+export default SparePartMasterList;

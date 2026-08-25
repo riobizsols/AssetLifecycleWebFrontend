@@ -1,9 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import SparePartCategoryTab from '../../components/spareParts/SparePartCategoryTab';
 import SparePartAssetTypeMappingTab from '../../components/spareParts/SparePartAssetTypeMappingTab';
 
 const SparePartsConfiguration = () => {
-  const [activeTab, setActiveTab] = useState('category');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') === 'mapping' ? 'mapping' : 'category';
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+  useEffect(() => {
+    setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
+
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'mapping') {
+      setSearchParams({ tab: 'mapping' });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -12,7 +28,7 @@ const SparePartsConfiguration = () => {
           <nav className="flex flex-wrap -mb-px" aria-label="Tabs">
             <button
               type="button"
-              onClick={() => setActiveTab('category')}
+              onClick={() => switchTab('category')}
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'category'
                   ? 'border-[#0E2F4B] text-[#0E2F4B]'
@@ -23,7 +39,7 @@ const SparePartsConfiguration = () => {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('mapping')}
+              onClick={() => switchTab('mapping')}
               className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'mapping'
                   ? 'border-[#0E2F4B] text-[#0E2F4B]'

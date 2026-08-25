@@ -14,6 +14,9 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import toast from "react-hot-toast";
 
+const isSpareAlert = (alert) =>
+  alert?.workflowType === "SPARE_ISSUED" || alert?.workflowType === "SPARE_CONFIRMED";
+
 const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
   "Inspection": "bg-green-100 text-green-800",
@@ -21,6 +24,7 @@ const badgeColors = {
   "Asset Expiry": "bg-rose-100 text-rose-800",
   "Urgent": "bg-red-100 text-red-800",
   "Spare Part Issued": "bg-emerald-100 text-emerald-800",
+  "Spare Part Confirmed": "bg-sky-100 text-sky-800",
 };
 
 const AllNotifications = () => {
@@ -40,6 +44,7 @@ const AllNotifications = () => {
     warranty: true,
     assetExpiry: true,
     spareIssued: true,
+    spareConfirmed: true,
   });
   const [showFilters, setShowFilters] = useState(false);
   const [snoozeDrafts, setSnoozeDrafts] = useState({});
@@ -53,7 +58,8 @@ const AllNotifications = () => {
       Inspection: t("allNotifications.alertTypeInspection"),
       "Warranty Expiry": t("allNotifications.alertTypeWarrantyExpiry"),
       Urgent: t("allNotifications.alertTypeUrgent"),
-      "Spare Part Issued": t("allNotifications.alertTypeSparePartIssued") || "Spare Part Issued",
+      "Spare Part Issued": t("allNotifications.alertTypeSparePartIssued") || "Spare Part Reserved",
+      "Spare Part Confirmed": t("allNotifications.alertTypeSparePartConfirmed") || "Spare Part Issued",
     };
     return labels[alertType] || alertType;
   };
@@ -91,6 +97,13 @@ const AllNotifications = () => {
       alert.alertType === "Spare Part Issued"
     ) {
       return "spareIssued";
+    }
+
+    if (
+      alert.workflowType === "SPARE_CONFIRMED" ||
+      alert.alertType === "Spare Part Confirmed"
+    ) {
+      return "spareConfirmed";
     }
     
     // Check for subscription renewal notifications
@@ -158,6 +171,8 @@ const AllNotifications = () => {
               : t("allNotifications.alertTypeWarrantyExpiry"))
           : isAssetExpiryNotification(notification.workflowType)
           ? "Asset Expiry"
+          : notification.workflowType === "SPARE_CONFIRMED"
+          ? "Spare Part Confirmed"
           : notification.workflowType === "SPARE_ISSUED"
           ? "Spare Part Issued"
           : notification.maintenanceType || "Regular Maintenance",
@@ -169,7 +184,8 @@ const AllNotifications = () => {
           ? `${notification.assetId} - ${notification.title || t("allNotifications.alertTypeWarrantyExpiry")}`
           : isAssetExpiryNotification(notification.workflowType)
           ? `${notification.assetId} - ${notification.title || "Asset Expiry"}`
-          : notification.workflowType === "SPARE_ISSUED"
+          : notification.workflowType === "SPARE_ISSUED" ||
+            notification.workflowType === "SPARE_CONFIRMED"
           ? `${notification.assetTypeName || "-"}`
           : String(notification.maintenanceType || "").toLowerCase().includes("subscription")
           ? `${notification.assetTypeName}`
@@ -177,7 +193,7 @@ const AllNotifications = () => {
         dueOn: formatDate(notification.dueDate),
         actionBy: notification.userName || t("allNotifications.unassigned"),
         cutoffDate: formatDate(notification.cutoffDate),
-        isUrgent: notification.daysUntilCutoff <= 2 && notification.workflowType !== "SPARE_ISSUED",
+        isUrgent: notification.daysUntilCutoff <= 2 && notification.workflowType !== "SPARE_ISSUED" && notification.workflowType !== "SPARE_CONFIRMED",
         wfamshId: notification.wfamshId, // For navigation
         route: notification.route,
         workflowType: notification.workflowType,
@@ -508,10 +524,25 @@ const AllNotifications = () => {
                     className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    {t("allNotifications.filterSpareIssued") || "Spare Issued"} ({getFilterCount('spareIssued')})
+                    {t("allNotifications.filterSpareIssued") || "Spare Reserved"} ({getFilterCount('spareIssued')})
                   </span>
                   <span className="px-2 py-1 text-xs bg-emerald-100 text-emerald-800 rounded-full">
-                    {t("sparePartList.issued") || "Issued"}
+                    {t("sparePartList.issued") || "Reserved"}
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFilters.spareConfirmed}
+                    onChange={() => handleFilterChange('spareConfirmed')}
+                    className="w-4 h-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {t("allNotifications.filterSpareConfirmed") || "Spare Issued"} ({getFilterCount('spareConfirmed')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-sky-100 text-sky-800 rounded-full">
+                    {t("sparePartList.confirmedIssued") || "Issued"}
                   </span>
                 </label>
               </div>
@@ -555,7 +586,7 @@ const AllNotifications = () => {
                 onClick={() => handleAlertClick(alert)}
               >
               <div className="flex items-center gap-3 flex-wrap">
-                {(alert.isUrgent || alert.workflowType === "SPARE_ISSUED") && (
+                {(alert.isUrgent || isSpareAlert(alert)) && (
                   <ExclamationTriangleIcon className="w-6 h-6 text-red-500" />
                 )}
                 <span className={`text-sm font-bold px-3 py-1 rounded-full ${badgeColors[alert.alertType] || "bg-gray-100 text-gray-800"}`}>
@@ -567,7 +598,7 @@ const AllNotifications = () => {
                   </span>
                 )}
                 <span className={`text-lg ${isUnreadWarranty(alert.notificationStatus) ? "font-bold text-gray-900" : "font-normal text-gray-800"}`}>{alert.alertText}</span>
-                {alert.workflowType !== "SPARE_ISSUED" && alert.daysUntilCutoff !== undefined && (
+                {!isSpareAlert(alert) && alert.daysUntilCutoff !== undefined && (
                   <span className={`text-sm px-3 py-1 rounded-full ml-auto ${
                     alert.isUrgent 
                       ? "bg-red-100 text-red-700 font-semibold" 
@@ -579,14 +610,20 @@ const AllNotifications = () => {
                     }
                   </span>
                 )}
-                {alert.workflowType === "SPARE_ISSUED" && (
-                  <span className="text-sm px-3 py-1 rounded-full ml-auto bg-emerald-100 text-emerald-800 font-semibold">
-                    {alert.statusLabel || "Issued"}
+                {isSpareAlert(alert) && (
+                  <span className={`text-sm px-3 py-1 rounded-full ml-auto font-semibold ${
+                    alert.workflowType === "SPARE_CONFIRMED"
+                      ? "bg-sky-100 text-sky-800"
+                      : "bg-emerald-100 text-emerald-800"
+                  }`}>
+                    {alert.workflowType === "SPARE_CONFIRMED"
+                      ? (t("sparePartList.confirmedIssued") || "Issued")
+                      : (t("sparePartList.issued") || "Reserved")}
                   </span>
                 )}
               </div>
               <div className="flex flex-wrap gap-6 text-sm text-gray-600 items-center">
-                {alert.workflowType === "SPARE_ISSUED" ? (
+                {isSpareAlert(alert) ? (
                   <>
                     <span className="flex items-center gap-2">
                       <CalendarIcon className="w-5 h-5" />

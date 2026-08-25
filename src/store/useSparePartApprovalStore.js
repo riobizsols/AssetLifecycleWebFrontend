@@ -18,7 +18,7 @@ const KEYS = {
 export function formatSparePartApprovalRows(rows) {
   return (rows || []).map((item) => ({
     ...item,
-    is_disabled: item.is_approved || item.status === 'IS',
+    is_disabled: item.is_approved || item.status === 'IS' || item.status === 'IE',
   }));
 }
 

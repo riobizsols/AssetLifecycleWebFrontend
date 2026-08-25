@@ -4,6 +4,12 @@ import { toast } from 'react-hot-toast';
 import { useLanguage } from '../contexts/LanguageContext';
 import { X } from 'lucide-react';
 
+/** Reject values that are only digits (spaces ignored). */
+const isDigitsOnly = (value) => {
+  const cleaned = String(value || '').trim().replace(/\s+/g, '');
+  return cleaned.length > 0 && /^\d+$/.test(cleaned);
+};
+
 const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
   const { t } = useLanguage();
   
@@ -53,6 +59,26 @@ const EditBranchModal = ({ show, onClose, onConfirm, branch }) => {
     // Validate
     if (!cleaned.text || !cleaned.city || !cleaned.branch_code) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_ALLFIELDSREQUIRED_6785ABB7', fallbackText: t('branches.allFieldsRequired'), type: 'error' });
+      return;
+    }
+
+    if (isDigitsOnly(cleaned.text)) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_BRANCH_NAME_CANNOT_BE_ONLY_NUMBERS_A1B2C3D4',
+        fallbackText: t('branches.branchNameCannotBeOnlyNumbers'),
+        type: 'error',
+      });
+      return;
+    }
+
+    if (isDigitsOnly(cleaned.city)) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_CITY_NAME_CANNOT_BE_ONLY_NUMBERS_B2C3D4E5',
+        fallbackText: t('branches.cityNameCannotBeOnlyNumbers'),
+        type: 'error',
+      });
       return;
     }
 

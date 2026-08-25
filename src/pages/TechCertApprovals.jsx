@@ -67,25 +67,52 @@ const TechCertApprovals = () => {
     }
   };
 
-  const fetchMaintenanceHistory = async (technicianName) => {
-    if (!technicianName) {
+  const fetchMaintenanceHistory = async (technicianId, technicianName) => {
+    if (!technicianId && !technicianName) {
       setMaintenanceHistory([]);
       return;
     }
     setLoadingHistory(true);
     try {
-      const advancedConditions = [
-        { field: "technicianName", operator: "contains", value: technicianName }
-      ];
-      const response = await API.get("/maintenance-history", {
-        params: {
-          page: 1,
-          limit: 50,
-          advancedConditions: JSON.stringify(advancedConditions)
-        }
+      // Backend advancedConditions use { field, op, val }.
+      // Match by emp_int_id (preferred) OR saved technician_name.
+      const requests = [];
+      if (technicianId) {
+        requests.push(
+          API.get("/maintenance-history", {
+            params: {
+              page: 1,
+              limit: 50,
+              advancedConditions: JSON.stringify([
+                { field: "empIntId", op: "=", val: technicianId },
+              ]),
+            },
+          })
+        );
+      }
+      if (technicianName) {
+        requests.push(
+          API.get("/maintenance-history", {
+            params: {
+              page: 1,
+              limit: 50,
+              advancedConditions: JSON.stringify([
+                { field: "technicianName", op: "contains", val: technicianName },
+              ]),
+            },
+          })
+        );
+      }
+
+      const responses = await Promise.all(requests);
+      const byId = new Map();
+      responses.forEach((response) => {
+        (response.data?.data || []).forEach((row) => {
+          const key = row.ams_id || row.wo_id;
+          if (key) byId.set(key, row);
+        });
       });
-      const data = response.data?.data || [];
-      setMaintenanceHistory(data);
+      setMaintenanceHistory(Array.from(byId.values()));
     } catch (error) {
       console.error("Failed to fetch technician job history:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTOLOADJOBHISTORY_2DDBD9B7', fallbackText: t("techCertApprovals.failedToLoadJobHistory"), type: 'error' });
@@ -119,7 +146,9 @@ const TechCertApprovals = () => {
     if (activeTab === "jobHistory" && selectedTechnicianId) {
       const tech = employeeList.find((emp) => emp.emp_int_id === selectedTechnicianId);
       const techName = tech?.name || tech?.full_name || "";
-      fetchMaintenanceHistory(techName);
+      fetchMaintenanceHistory(selectedTechnicianId, techName);
+    } else if (activeTab === "jobHistory" && !selectedTechnicianId) {
+      setMaintenanceHistory([]);
     }
   }, [activeTab, selectedTechnicianId, employeeList]);
 
