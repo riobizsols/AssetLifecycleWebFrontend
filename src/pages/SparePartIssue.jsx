@@ -6,7 +6,7 @@ import { filterData } from '../utils/filterData';
 import { exportToExcel } from '../utils/exportToExcel';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import StatusBadge from '../components/StatusBadge';
+import API from '../lib/axios';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useRevalidateOnFocus } from '../hooks/useRevalidateOnFocus';
 import {
@@ -15,7 +15,7 @@ import {
 } from '../store/useSparePartListStore';
 import { applyListFilterChange } from '../utils/listFilterState';
 
-const SparePartList = () => {
+const SparePartIssue = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const items = useSparePartListStore((s) => s.items);
@@ -28,8 +28,12 @@ const SparePartList = () => {
     toDate: '',
   });
   const [sortConfig, setSortConfig] = useState({ sorts: [] });
+  const [issuingIds, setIssuingIds] = useState({});
 
-  const data = useMemo(() => formatSparePartListRows(items, t), [items, t]);
+  const data = useMemo(
+    () => formatSparePartListRows(items, t).filter((row) => row.status === 'IS'),
+    [items, t],
+  );
 
   const [columns] = useState([
     { label: t('sparePartList.assetType'), name: 'asset_type_name', visible: true },
@@ -38,6 +42,7 @@ const SparePartList = () => {
     { label: t('sparePartList.maintenanceType'), name: 'maintenance_type_name', visible: true },
     { label: t('sparePartList.vendor'), name: 'vendor_name', visible: true },
     { label: t('sparePartList.status'), name: 'status', visible: true },
+    { label: t('sparePartIssue.issueAction'), name: 'action', visible: true },
   ]);
 
   useEffect(() => {
@@ -85,7 +90,7 @@ const SparePartList = () => {
 
   const handleDownload = () => {
     const filteredData = filterData(data, filterValues, columns.filter((c) => c.visible));
-    exportToExcel(sortData(filteredData), columns, 'Spare_Part_List');
+    exportToExcel(sortData(filteredData), columns, 'Spare_Part_Issue');
   };
 
   const filters = columns.map((col) => ({
@@ -93,11 +98,7 @@ const SparePartList = () => {
     name: col.name,
     options:
       col.name === 'status'
-        ? [
-            { label: t('sparePartList.issued'), value: 'IS' },
-            { label: t('sparePartList.confirmedIssued'), value: 'IE' },
-            { label: t('sparePartList.pendingApproval'), value: 'RQ' },
-          ]
+        ? [{ label: t('sparePartList.issued'), value: 'IS' }]
         : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
@@ -107,19 +108,28 @@ const SparePartList = () => {
     navigate(`/spare-part-list-detail/${row.ams_id}`);
   };
 
-  const renderStatus = (status) => {
-    if (!status) return <span className="text-gray-400">-</span>;
-    if (status === 'IS') {
-      return <span className="text-green-600 font-semibold">{t('sparePartList.issued')}</span>;
+  const handleIssue = async (row) => {
+    if (!row?.ams_id || issuingIds[row.ams_id]) return;
+    setIssuingIds((prev) => ({ ...prev, [row.ams_id]: true }));
+    try {
+      await API.post(`/spare-parts/maintenance-list/${row.ams_id}/issue`);
+      toast.success(t('sparePartIssue.issuedSuccessfully'));
+      useSparePartListStore.getState().invalidateListCache();
+      await fetchList({ revalidate: true });
+    } catch (err) {
+      toast.error(err.response?.data?.error || t('sparePartIssue.issueFailed'));
+    } finally {
+      setIssuingIds((prev) => {
+        const next = { ...prev };
+        delete next[row.ams_id];
+        return next;
+      });
     }
-    if (status === 'IE') {
-      return <span className="text-sky-600 font-semibold">{t('sparePartList.confirmedIssued')}</span>;
-    }
-    if (status === 'RQ') {
-      return <span className="text-yellow-600 font-semibold">{t('sparePartList.pendingApproval')}</span>;
-    }
-    return <StatusBadge status={status} />;
   };
+
+  const renderStatus = () => (
+    <span className="text-green-600 font-semibold">{t('sparePartList.issued')}</span>
+  );
 
   return (
     <div className="p-4">
@@ -167,9 +177,27 @@ const SparePartList = () => {
               data={sortedData}
               rowKey="ams_id"
               showActions={false}
-              renderCell={(col, row) =>
-                col.name === 'status' ? renderStatus(row.status) : row[col.name]
-              }
+              renderCell={(col, row) => {
+                if (col.name === 'status') return renderStatus();
+                if (col.name === 'action') {
+                  return (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleIssue(row);
+                      }}
+                      disabled={Boolean(issuingIds[row.ams_id])}
+                      className="px-3 py-1 bg-[#0E2F4B] text-white text-xs font-medium rounded hover:bg-[#14395c] transition disabled:opacity-50"
+                    >
+                      {issuingIds[row.ams_id]
+                        ? t('common.saving')
+                        : t('sparePartIssue.issueAction')}
+                    </button>
+                  );
+                }
+                return row[col.name];
+              }}
               onRowClick={handleRowClick}
             />
           );
@@ -179,4 +207,4 @@ const SparePartList = () => {
   );
 };
 
-export default SparePartList;
+export default SparePartIssue;

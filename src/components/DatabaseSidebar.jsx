@@ -134,7 +134,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "MAINTENANCESCHEDULE",
     "MAINTENANCEAPPROVAL",
   ],
-  "Spare Parts": ["SPAREPARTS", "SPAREPARTLIST", "SPAREPARTAPPROVAL"],
+  "Spare Parts": ["SPAREPARTS", "SPAREPARTLIST", "SPAREPARTAPPROVAL", "SPAREPARTISSUE"],
   Scrap: ["SCRAPASSETS", "SCRAPMAINTENANCEAPPROVAL", "SCRAPSALES"],
   Inspection: [
     "INSPECTIONAPPROVAL",
@@ -157,6 +157,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "PRODSERV",
     "VENDORS",
     "SPAREPARTSCONFIG",
+    "SPAREPARTMASTER",
     "MAINTENANCESCHEDULE",
     "INSPECTIONCHECKLISTS",
     "INSPECTIONFREQUENCY",
@@ -679,7 +680,7 @@ function moveReopenedBreakdownsToReports(items) {
 function moveSparePartsMenusToGroup(items) {
   if (!items?.length) return items;
 
-  const memberKeys = ["SPAREPARTS", "SPAREPARTLIST", "SPAREPARTAPPROVAL"].map(
+  const memberKeys = ["SPAREPARTS", "SPAREPARTLIST", "SPAREPARTAPPROVAL", "SPAREPARTISSUE"].map(
     normalizeNavAppId,
   );
   const collected = new Map();
@@ -766,6 +767,96 @@ function moveSparePartsMenusToGroup(items) {
   };
 
   return [...result, group];
+}
+
+function ensureSparePartIssueMenu(items) {
+  if (!items?.length) return items;
+
+  const inject = (nodes) =>
+    nodes.map((item) => {
+      if (isNavGroup(item) && canonicalGroupLabel(item.label) === "spare parts") {
+        const children = [...(item.children || [])];
+        const hasIssue = children.some(
+          (child) => normalizeNavAppId(child.app_id) === "SPAREPARTISSUE",
+        );
+        const listItem = children.find(
+          (child) => normalizeNavAppId(child.app_id) === "SPAREPARTLIST",
+        );
+        if (hasIssue || !listItem) {
+          return { ...item, children };
+        }
+
+        const issueItem = {
+          id: "ensure-spare-part-issue",
+          app_id: "SPAREPARTISSUE",
+          label: "Spare Part Issue",
+          is_group: false,
+          children: undefined,
+          access_level: listItem.access_level || "A",
+          seq: 4,
+        };
+        const approvalIdx = children.findIndex(
+          (child) => normalizeNavAppId(child.app_id) === "SPAREPARTAPPROVAL",
+        );
+        const nextChildren = [...children];
+        if (approvalIdx >= 0) {
+          nextChildren.splice(approvalIdx + 1, 0, issueItem);
+        } else {
+          nextChildren.push(issueItem);
+        }
+        return { ...item, children: nextChildren };
+      }
+      if (item.children?.length) {
+        return { ...item, children: inject(item.children) };
+      }
+      return item;
+    });
+
+  return inject(items);
+}
+
+function ensureSparePartMasterMenu(items) {
+  if (!items?.length) return items;
+
+  const inject = (nodes) =>
+    nodes.map((item) => {
+      if (isNavGroup(item) && canonicalGroupLabel(item.label) === "master data") {
+        const children = [...(item.children || [])];
+        const hasMaster = children.some(
+          (child) => normalizeNavAppId(child.app_id) === "SPAREPARTMASTER",
+        );
+        if (hasMaster) {
+          return { ...item, children };
+        }
+
+        const configItem = children.find(
+          (child) => normalizeNavAppId(child.app_id) === "SPAREPARTSCONFIG",
+        );
+        if (!configItem) {
+          return { ...item, children };
+        }
+
+        const masterItem = {
+          id: "ensure-spare-part-master",
+          app_id: "SPAREPARTMASTER",
+          label: "Spare Part",
+          is_group: false,
+          children: undefined,
+          access_level: configItem.access_level || "A",
+          seq: (configItem.seq ?? 8) + 1,
+        };
+        const idx = children.indexOf(configItem);
+        const nextChildren = [...children];
+        nextChildren.splice(idx + 1, 0, masterItem);
+        return { ...item, children: nextChildren };
+      }
+      if (item.children?.length) {
+        return { ...item, children: inject(item.children) };
+      }
+      return item;
+    });
+
+  return inject(items);
 }
 
 function ensureDomainNavGroups(items) {
@@ -888,6 +979,8 @@ function finalizeSidebarNavigation(items) {
   tree = flattenApprovalsGroup(tree);
   tree = moveReopenedBreakdownsToReports(tree);
   tree = moveSparePartsMenusToGroup(tree);
+  tree = ensureSparePartIssueMenu(tree);
+  tree = ensureSparePartMasterMenu(tree);
   tree = ensureDomainNavGroups(tree);
   tree = sortMasterDataNavOrder(tree);
   tree = sortScrapNavOrder(tree);
@@ -1230,8 +1323,14 @@ const DatabaseSidebar = () => {
     if (normalizeNavAppId(appId) === "SPAREPARTS") {
       return t("navigation.sparePartLot");
     }
+    if (normalizeNavAppId(appId) === "SPAREPARTISSUE") {
+      return t("navigation.sparePartIssue");
+    }
     if (normalizeNavAppId(appId) === "SPAREPARTSCONFIG") {
       return t("navigation.sparePartsConfiguration");
+    }
+    if (normalizeNavAppId(appId) === "SPAREPARTMASTER") {
+      return t("navigation.sparePartMaster");
     }
     // Create a mapping from English labels to translation keys
     const labelMap = {
@@ -1253,7 +1352,11 @@ const DatabaseSidebar = () => {
       'Vendors': t('navigation.vendors'),
       'Spare Parts': t('navigation.spareParts'),
       'Spare Part Lot': t('navigation.sparePartLot'),
+      'Spare Part Issue': t('navigation.sparePartIssue'),
       'Spare Parts Configuration': t('navigation.sparePartsConfiguration'),
+      'Spare Part Category': t('navigation.sparePartsConfiguration'),
+      'SPARE PART': t('navigation.sparePartMaster'),
+      'Spare Part': t('navigation.sparePartMaster'),
       'Products/Services': t('navigation.productsServices'),
       'Roles': t('navigation.roles'),
       'Users': t('navigation.users'),
@@ -1272,7 +1375,7 @@ const DatabaseSidebar = () => {
       'Workorder Management': t('navigation.workorderManagement'),
       'Maintenance Approval': t('navigation.maintenanceApproval'),
       'Maintenance List': t('maintenance.maintenanceList'),
-      'Spare Part List': t('sparePartList.title'),
+      'Spare Part List': t('sparePartList.sparePartRequest'),
       'Spare Part Approval': t('sparePartApproval.title'),
       'Maintenance Schedule': t('navigation.maintenanceSchedule'),
       'Maintenance Sche...': t('navigation.maintenanceSchedule'),
@@ -1350,6 +1453,7 @@ const DatabaseSidebar = () => {
     VENDORS: "/master-data/vendors", //done
     SPAREPARTS: "/master-data/spare-parts",
     SPAREPARTSCONFIG: "/master-data/spare-parts-configuration",
+    SPAREPARTMASTER: "/master-data/spare-part",
     INSPECTIONCHECKLISTS: "/master-data/inspection-checklists",
     INSPECTIONFREQUENCY: "/master-data/inspection-frequency",
     ASSETTYPECHECKLISTMAPPING: "/master-data/asset-type-checklist-mapping",
@@ -1367,6 +1471,7 @@ const DatabaseSidebar = () => {
     SCRAPMAINTENANCEAPPROVAL: "/scrap-approval",
     SUPERVISORAPPROVAL: "/maintenance-list", //done
     SPAREPARTLIST: "/spare-part-list",
+    SPAREPARTISSUE: "/spare-part-issue",
     SPAREPARTAPPROVAL: "/spare-part-approval",
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
     "EMPLOYEE REPORT BREAKDOWN": "/employee-report-breakdown", // Employee Report Breakdown route //done
@@ -1430,7 +1535,7 @@ const DatabaseSidebar = () => {
     if (appId === "MAINTENANCEAPPROVAL") {
       useMaintenanceApprovalStore.getState().prefetchApprovals();
     }
-    if (appId === "SPAREPARTLIST") {
+    if (appId === "SPAREPARTLIST" || appId === "SPAREPARTISSUE") {
       useSparePartListStore.getState().fetchList({ revalidate: true }).catch(() => {});
     }
     if (appId === "SPAREPARTAPPROVAL") {
@@ -1536,6 +1641,7 @@ const DatabaseSidebar = () => {
       REPORTS: Building,
       SUPERVISORAPPROVAL: UserCheck,
       SPAREPARTLIST: Package,
+      SPAREPARTISSUE: Package,
       SPAREPARTAPPROVAL: ClipboardList,
       SPAREPARTSGROUP: Package,
       REPORTBREAKDOWN: BarChart3,
@@ -1563,6 +1669,7 @@ const DatabaseSidebar = () => {
       VENDORS: Truck,
       SPAREPARTS: Package,
       SPAREPARTSCONFIG: Package,
+      SPAREPARTMASTER: Package,
       INSPECTIONCHECKLISTS: ClipboardList,
       PRODSERV: Briefcase,
       ROLES: Shield,
@@ -1718,6 +1825,9 @@ const DatabaseSidebar = () => {
     }
     if (key === "SPAREPARTLIST") {
       return ["/spare-part-list", "/spare-part-list-detail"];
+    }
+    if (key === "SPAREPARTISSUE") {
+      return ["/spare-part-issue"];
     }
     if (key === "SPAREPARTAPPROVAL") {
       return ["/spare-part-approval", "/spare-part-approval-detail"];

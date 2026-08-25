@@ -25,9 +25,12 @@ import Vendors from "../pages/masterData/Vendors";
 import AddEntityForm from "../components/AddEntityForm";
 import ProdServ from "../pages/masterData/ProdServ";
 import SpareParts from "../pages/masterData/SpareParts";
+import SparePartMaster from "../pages/masterData/SparePartMaster";
+import SparePartMasterList from "../pages/masterData/SparePartMasterList";
 import SparePartLotList from "../pages/masterData/SparePartLotList";
 import SparePartsConfiguration from "../pages/masterData/SparePartsConfiguration";
 import AddSparePartCategory from "../components/spareParts/AddSparePartCategory";
+import AddSparePartAssetTypeMapping from "../components/spareParts/AddSparePartAssetTypeMapping";
 import Properties from "../pages/masterData/Properties";
 import BreakdownReasonCodes from "../pages/masterData/BreakdownReasonCodes";
 import AddAssetForm from "../components/assets/AddAssetForm";
@@ -48,6 +51,7 @@ import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
 import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
 import SparePartList from "../pages/SparePartList";
+import SparePartIssue from "../pages/SparePartIssue";
 import SparePartApproval from "../pages/SparePartApproval";
 import SparePartListDetail from "../components/SparePartListDetail";
 import SparePartApprovalDetail from "../components/SparePartApprovalDetail";
@@ -368,6 +372,16 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="SPAREPARTLIST">
               <MainLayout>
                 <SparePartListDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/spare-part-issue"
+          element={
+            <ProtectedRoute requiredAnyOfAppIds={["SPAREPARTISSUE", "SPAREPARTLIST"]}>
+              <MainLayout>
+                <SparePartIssue />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -1075,6 +1089,20 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/master-data/spare-part"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTMASTER">
+              <MainLayout>
+                <Outlet />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SparePartMasterList />} />
+          <Route path="add" element={<SparePartMaster />} />
+        </Route>
+
+        <Route
           path="/master-data/spare-parts-configuration"
           element={
             <ProtectedRoute requiredAppId="SPAREPARTSCONFIG">
@@ -1086,6 +1114,7 @@ export default function AppRoutes() {
         >
           <Route index element={<SparePartsConfiguration />} />
           <Route path="categories/add" element={<AddSparePartCategory />} />
+          <Route path="mappings/add" element={<AddSparePartAssetTypeMapping />} />
         </Route>
 
         <Route

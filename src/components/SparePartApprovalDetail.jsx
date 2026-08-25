@@ -61,7 +61,7 @@ export default function SparePartApprovalDetail() {
     }
   };
 
-  const isApproveDisabled = approved || approving || detail?.is_approved || detail?.status === 'IS';
+  const isApproveDisabled = approved || approving || detail?.is_approved || detail?.status === 'IS' || detail?.status === 'IE';
 
   if (loading) {
     return (

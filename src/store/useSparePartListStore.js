@@ -18,6 +18,7 @@ const KEYS = {
 export function formatSparePartListRows(rows, t) {
   const spareStatusLabel = (code) => {
     if (code === 'IS') return t('sparePartList.issued');
+    if (code === 'IE') return t('sparePartList.confirmedIssued');
     if (code === 'RQ') return t('sparePartList.pendingApproval');
     return '-';
   };
