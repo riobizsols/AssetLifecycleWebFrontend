@@ -1183,9 +1183,7 @@ const AddAssetForm = ({ userRole }) => {
                 }
                 
                 // Upload to the asset documents API
-                await API.post(`/assets/${createdAssetId}/docs/upload`, fd, {
-                  headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                await API.post(`/assets/${createdAssetId}/docs/upload`, fd);
                 successCount++;
               } catch (uploadErr) {
                 console.error(`❌ Failed to upload ${a.file.name}:`, uploadErr);
@@ -1648,6 +1646,33 @@ const AddAssetForm = ({ userRole }) => {
             <>
               <div className="grid grid-cols-4 gap-6 mb-4">
                 <div>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseDate')} <span className="text-red-500">*</span></label>
+                  <input 
+                    name="purchaseDate" 
+                    type="date" 
+                    onChange={handleChange} 
+                    value={form.purchaseDate} 
+                    className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseDate ? 'border-red-500' : 'border-gray-300'}`} 
+                  />
+                  {validationErrors.purchaseDate && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {validationErrors.dateMismatch 
+                        ? (t('assets.purchaseDateCannotBeSameAsExpiryDate') || 'Purchase date cannot be the same as expiry date')
+                        : (t('assets.purchaseDateIsRequired') || 'Purchase date is required')}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
+                  <input 
+                    name="warrantyPeriod" 
+                    type="date" 
+                    onChange={handleChange} 
+                    value={form.warrantyPeriod} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
+                  />
+                </div>
+                <div>
                   <label className="block text-sm mb-1 font-medium">{t('assets.expiryDate')} <span className="text-red-500">*</span></label>
                   <input 
                     name="expiryDate" 
@@ -1663,33 +1688,6 @@ const AddAssetForm = ({ userRole }) => {
                         : validationErrors.expiryDateBeforePurchase
                         ? (t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date')
                         : (t('assets.expiryDateIsRequired') || 'Expiry date is required')}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
-                  <input 
-                    name="warrantyPeriod" 
-                    type="date" 
-                    onChange={handleChange} 
-                    value={form.warrantyPeriod} 
-                    className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseDate')} <span className="text-red-500">*</span></label>
-                  <input 
-                    name="purchaseDate" 
-                    type="date" 
-                    onChange={handleChange} 
-                    value={form.purchaseDate} 
-                    className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseDate ? 'border-red-500' : 'border-gray-300'}`} 
-                  />
-                  {validationErrors.purchaseDate && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {validationErrors.dateMismatch 
-                        ? (t('assets.purchaseDateCannotBeSameAsExpiryDate') || 'Purchase date cannot be the same as expiry date')
-                        : (t('assets.purchaseDateIsRequired') || 'Purchase date is required')}
                     </p>
                   )}
                 </div>

@@ -29,6 +29,7 @@ const PrintLabelScreen = ({
   onPreview, 
   onPrint,
   printers = [],
+  printersLoading = false,
   labelTemplates = {},
   assetTypeTemplateMapping = {},
   printSettings,
@@ -473,10 +474,15 @@ const PrintLabelScreen = ({
                 })}
                 value={printSettings.printerId}
                 onChange={handlePrinterChange}
-                placeholder="Select a printer..."
+                placeholder={printersLoading ? "Loading printers..." : "Select a printer..."}
                 className="w-full"
+                disabled={printersLoading}
               />
-              {getFilteredPrinters().length === 0 ? (
+              {printersLoading ? (
+                <div className="mt-1 text-xs text-gray-500">
+                  Loading printers...
+                </div>
+              ) : getFilteredPrinters().length === 0 ? (
                 <div className="mt-1 text-xs text-red-600">
                   No printers available
                 </div>

@@ -32,6 +32,7 @@ const SerialNumberPrint = () => {
   // State management
   const queueByStatus = useSerialNumberPrintStore((s) => s.queueByStatus);
   const printers = useSerialNumberPrintStore((s) => s.printers);
+  const printersLoading = useSerialNumberPrintStore((s) => s.printersLoading);
   const queueLoading = useSerialNumberPrintStore((s) => s.queueLoading);
   const fetchPrintQueueStore = useSerialNumberPrintStore((s) => s.fetchPrintQueue);
   const fetchPrintersStore = useSerialNumberPrintStore((s) => s.fetchPrinters);
@@ -55,6 +56,7 @@ const SerialNumberPrint = () => {
 
   // Printer options loaded via store
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Mock printers data for local development
   // const mockPrinters = [
@@ -132,20 +134,34 @@ const SerialNumberPrint = () => {
     template: ''
   });
 
-  const loadPrintQueue = async (status = filters.status) => {
+  const loadPrintQueue = async (status = filters.status, { force = false } = {}) => {
     try {
-      await fetchPrintQueueStore(status, { revalidate: true });
+      await fetchPrintQueueStore(status, { revalidate: !force, force });
     } catch (error) {
       console.error('Error fetching print queue:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_SERIALNUMBERPRINT_FAILEDTOLOADPRINTQUEUE_10B9F0DC', fallbackText: 'Failed to load print queue', type: 'error' });
     }
   };
 
-  const loadPrinters = async () => {
+  const loadPrinters = async ({ force = false } = {}) => {
     try {
-      await fetchPrintersStore({ revalidate: true });
+      await fetchPrintersStore({ revalidate: !force, force });
     } catch (error) {
       console.error('Error loading printers from organization settings:', error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      invalidateSerialPrintCache();
+      await Promise.all([
+        loadPrintQueue(filters.status, { force: true }),
+        loadPrinters({ force: true }),
+      ]);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -258,6 +274,13 @@ const SerialNumberPrint = () => {
 
   const handleSelectItem = async (item) => {
     setSelectedItem(item);
+
+    // Ensure printers are loaded before opening the print screen
+    // (avoids flashing "No printers available" while fetch is in flight).
+    const storeState = useSerialNumberPrintStore.getState();
+    if (!storeState.printers?.length || storeState.printersLoading) {
+      await loadPrinters({ force: !storeState.printers?.length });
+    }
     
     // Fetch asset properties
     try {
@@ -550,7 +573,10 @@ const SerialNumberPrint = () => {
       });
 
       invalidateSerialPrintCache();
-      loadPrintQueue(filters.status);
+      await Promise.all([
+        loadPrintQueue(filters.status),
+        loadPrinters({ force: false }),
+      ]);
       
       showBackendTextToast({
         toast,
@@ -672,6 +698,7 @@ const SerialNumberPrint = () => {
         onPreview={handlePreview}
         onPrint={handlePrint}
         printers={printers}
+        printersLoading={printersLoading}
         labelTemplates={labelTemplates}
         assetTypeTemplateMapping={assetTypeTemplateMapping}
         printSettings={printSettings}
@@ -708,10 +735,12 @@ const SerialNumberPrint = () => {
               {t('serialNumberPrint.filters')}
             </button>
             <button
-              onClick={() => loadPrintQueue(filters.status)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-60"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               {t('serialNumberPrint.refresh')}
             </button>
           </div>
@@ -774,7 +803,7 @@ const SerialNumberPrint = () => {
               <span className="font-semibold ml-1">{selectedItems.length}</span>
             </div>
           </div>
-          {isLoading && (
+          {(isLoading || isRefreshing) && (
             <div className="flex items-center gap-2 text-blue-600">
               <RefreshCw className="w-4 h-4 animate-spin" />
               <span className="text-sm">{t('serialNumberPrint.loading')}</span>

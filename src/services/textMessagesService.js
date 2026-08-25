@@ -22,6 +22,24 @@ export const getTextMessageById = async (tmdId, fallbackText = "") => {
     );
     const payload = res?.data?.data || {};
     const text = payload?.text;
+    // Soft/missing API rows are derived from the tmd_id slug — keep the caller fallback.
+    const softSlug =
+      String(key)
+        .replace(/^TMD_/i, "")
+        .replace(/_[0-9A-F]{8}$/i, "")
+        .replace(/_/g, " ")
+        .trim();
+    const softSlugText = softSlug
+      ? softSlug.charAt(0).toUpperCase() + softSlug.slice(1).toLowerCase()
+      : "";
+    const looksLikeSoftSlug =
+      typeof text === "string" &&
+      softSlugText &&
+      text.trim().toLowerCase() === softSlugText.toLowerCase();
+
+    if (payload?.missing || looksLikeSoftSlug) {
+      return fallbackText;
+    }
     const resolvedLangCode = String(payload?.lang_code || "").toLowerCase();
     const requestedLangCode = String(payload?.requested_lang_code || activeLang).toLowerCase();
     const isNonEnglishActiveLang = !activeLang.startsWith("en");

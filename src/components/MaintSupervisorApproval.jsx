@@ -15,6 +15,14 @@ import { generateUUID } from '../utils/uuid';
 import { useLanguage } from "../contexts/LanguageContext";
 import { useNavigation } from "../hooks/useNavigation";
 
+const PHONE_MAX_DIGITS = 10;
+
+const sanitizePhoneDigits = (value, maxLen = PHONE_MAX_DIGITS) =>
+  String(value ?? "").replace(/\D/g, "").slice(0, maxLen);
+
+const isValidPhoneNumber = (value) =>
+  /^\d{10}$/.test(String(value ?? "").trim());
+
 export default function MaintSupervisorApproval() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -190,7 +198,7 @@ export default function MaintSupervisorApproval() {
       invoice: detail.invoice || "",
       technician_name: detail.technician_name || "",
       technician_email: detail.technician_email || "",
-      technician_phno: detail.technician_phno || "",
+      technician_phno: sanitizePhoneDigits(detail.technician_phno || ""),
       cost: detail.cost || "",
       hours_spent: detail.hours_spent || "",
       maint_notes: detail.maint_notes || "",
@@ -446,7 +454,7 @@ export default function MaintSupervisorApproval() {
           records[record.sla_id] = {
             value: record.sla_value || "",
             technician_name: record.technician_name || "",
-            technician_phno: record.technician_phno || ""
+            technician_phno: sanitizePhoneDigits(record.technician_phno || "")
           };
           // Get rating from first record (since it's the same for all)
           if (!ratingValue && record.rating) {
@@ -473,6 +481,8 @@ export default function MaintSupervisorApproval() {
     
     // Mark this SLA as modified
     slaModifiedRef.current[slaId] = true;
+
+    const nextValue = field === 'technician_phno' ? sanitizePhoneDigits(value) : value;
     
     setSlaRecords(prev => {
       const currentRecord = prev[slaId] || { value: "", technician_name: "", technician_phno: "" };
@@ -480,10 +490,10 @@ export default function MaintSupervisorApproval() {
         ...prev,
         [slaId]: {
           ...currentRecord,
-          [field]: value
+          [field]: nextValue
         }
       };
-      console.log(`State updated for ${slaId}.${field}:`, value);
+      console.log(`State updated for ${slaId}.${field}:`, nextValue);
       return updated;
     });
   };
@@ -496,7 +506,7 @@ export default function MaintSupervisorApproval() {
     return (
       record.value && record.value.trim() !== '' &&
       record.technician_name && record.technician_name.trim() !== '' &&
-      record.technician_phno && record.technician_phno.trim() !== ''
+      isValidPhoneNumber(record.technician_phno)
     );
   };
 
@@ -529,7 +539,7 @@ export default function MaintSupervisorApproval() {
         const isComplete = (
           data && data.value && data.value.trim() !== '' &&
           data.technician_name && data.technician_name.trim() !== '' &&
-          data.technician_phno && data.technician_phno.trim() !== ''
+          isValidPhoneNumber(data.technician_phno)
         );
         console.log(`SLA ${slaId} complete check:`, { isComplete, data });
         return isComplete;
@@ -635,7 +645,7 @@ export default function MaintSupervisorApproval() {
             }
           }
           if (phoneInput) {
-            updatedRecord.technician_phno = phoneInput.value || '';
+            updatedRecord.technician_phno = sanitizePhoneDigits(phoneInput.value || '');
             if (phoneInput.value) {
               console.log(`✅ Read phone number from DOM: "${phoneInput.value}"`);
             }
@@ -652,7 +662,7 @@ export default function MaintSupervisorApproval() {
       const isComplete = (
         updatedRecord.value && updatedRecord.value.trim() !== '' &&
         updatedRecord.technician_name && updatedRecord.technician_name.trim() !== '' &&
-        updatedRecord.technician_phno && updatedRecord.technician_phno.trim() !== ''
+        isValidPhoneNumber(updatedRecord.technician_phno)
       );
 
       console.log(`SLA ${slaId} completeness check:`, {
@@ -661,7 +671,7 @@ export default function MaintSupervisorApproval() {
         technician_phno: updatedRecord.technician_phno,
         valueFilled: !!(updatedRecord.value && updatedRecord.value.trim() !== ''),
         nameFilled: !!(updatedRecord.technician_name && updatedRecord.technician_name.trim() !== ''),
-        phoneFilled: !!(updatedRecord.technician_phno && updatedRecord.technician_phno.trim() !== ''),
+        phoneFilled: isValidPhoneNumber(updatedRecord.technician_phno),
         isComplete
       });
 
@@ -724,7 +734,7 @@ export default function MaintSupervisorApproval() {
         return record && 
           record.value && record.value.trim() !== '' &&
           record.technician_name && record.technician_name.trim() !== '' &&
-          record.technician_phno && record.technician_phno.trim() !== '';
+          isValidPhoneNumber(record.technician_phno);
       });
       if (hasCompleteSLA) {
         console.log("Rating changed, triggering auto-save...");
@@ -937,9 +947,10 @@ export default function MaintSupervisorApproval() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    const nextValue = name === 'technician_phno' ? sanitizePhoneDigits(value) : value;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: nextValue
     }));
     
     // Clear validation error when user starts typing
@@ -1166,6 +1177,9 @@ export default function MaintSupervisorApproval() {
       
       if (!formData.technician_phno || formData.technician_phno.trim() === '') {
         errors.technician_phno = true;
+        hasErrors = true;
+      } else if (!isValidPhoneNumber(formData.technician_phno)) {
+        errors.technician_phno = 'invalid';
         hasErrors = true;
       }
       
@@ -2057,13 +2071,13 @@ export default function MaintSupervisorApproval() {
                                   const record = {
                                     value: valueInput ? (valueInput.value || '') : (slaRecords[slaId]?.value || ''),
                                     technician_name: nameInput ? (nameInput.value || '') : (slaRecords[slaId]?.technician_name || ''),
-                                    technician_phno: phoneInput ? (phoneInput.value || '') : (slaRecords[slaId]?.technician_phno || '')
+                                    technician_phno: phoneInput ? sanitizePhoneDigits(phoneInput.value || '') : sanitizePhoneDigits(slaRecords[slaId]?.technician_phno || '')
                                   };
                                   
                                   const isComplete = (
                                     record.value && record.value.trim() !== '' &&
                                     record.technician_name && record.technician_name.trim() !== '' &&
-                                    record.technician_phno && record.technician_phno.trim() !== ''
+                                    isValidPhoneNumber(record.technician_phno)
                                   );
                                   
                                   if (isComplete) {
@@ -2173,11 +2187,14 @@ export default function MaintSupervisorApproval() {
                                   </label>
                                   <input
                                     type="tel"
+                                    inputMode="numeric"
+                                    pattern="[0-9]{10}"
+                                    maxLength={PHONE_MAX_DIGITS}
                                     data-sla-id={slaId}
                                     data-field="technician_phno"
                                     value={record.technician_phno}
                                     onChange={(e) => handleSlaRecordChange(slaId, 'technician_phno', e.target.value)}
-                                    onBlur={(e) => handleSlaRecordBlur(slaId, 'technician_phno', e.target.value, e)}
+                                    onBlur={(e) => handleSlaRecordBlur(slaId, 'technician_phno', sanitizePhoneDigits(e.target.value), e)}
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter') {
                                         e.preventDefault();
@@ -2187,7 +2204,7 @@ export default function MaintSupervisorApproval() {
                                     disabled={isReadOnly}
                                     required
                                     className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                                    placeholder="Enter technician phone number"
+                                    placeholder="10-digit phone number"
                                   />
                                 </div>
                               </div>
@@ -2234,6 +2251,9 @@ export default function MaintSupervisorApproval() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.phone')} <span className="text-red-500">*</span></label>
                     <input
                       type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]{10}"
+                      maxLength={PHONE_MAX_DIGITS}
                       name="technician_phno"
                       value={formData.technician_phno}
                       onChange={handleInputChange}
@@ -2242,7 +2262,11 @@ export default function MaintSupervisorApproval() {
                       placeholder={t('maintenanceSupervisor.enterTechnicianPhone')}
                     />
                     {validationErrors.technician_phno && (
-                      <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.phoneIsRequired')}</p>
+                      <p className="mt-1 text-sm text-red-600">
+                        {validationErrors.technician_phno === 'invalid'
+                          ? t('maintenanceSupervisor.phoneMustBe10Digits')
+                          : t('maintenanceSupervisor.phoneIsRequired')}
+                      </p>
                     )}
                   </div>
                 </>

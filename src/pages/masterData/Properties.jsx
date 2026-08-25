@@ -8,6 +8,7 @@ import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
 import { usePropertiesStore } from '../../store/usePropertiesStore';
 import { invalidateCache } from '../../utils/apiCache';
 import { useLocation, useNavigate } from 'react-router-dom';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal';
 
 const Properties = () => {
   const { t } = useLanguage();
@@ -32,6 +33,11 @@ const Properties = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const filterMenuRef = useRef(null);
+
+  // Delete confirmation modal (reusable DeleteConfirmModal)
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'listValue'|'property', id, label, propertyName? }
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Close filter menu when clicking outside
   useEffect(() => {
@@ -197,21 +203,14 @@ const Properties = () => {
     }
   };
 
-  // Handle delete property
-  const handleDeleteProperty = async (propId, propertyName) => {
-    if (!window.confirm(`Are you sure you want to delete the property "${propertyName}"? This will also delete all associated list values.`)) {
-      return;
-    }
-
-    try {
-      await API.delete(`/properties/${propId}`);
-      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_DELETED_SUCCESSFULLY_1BF88C67', fallbackText: 'Property deleted successfully', type: 'success' });
-      invalidateCache('properties:');
-      fetchProperties({ force: true });
-    } catch (error) {
-      console.error('Error deleting property:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_PROPERTY_57B769A4', fallbackText: 'Failed to delete property', type: 'error' });
-    }
+  // Handle delete property — open confirm dialog
+  const handleDeleteProperty = (propId, propertyName) => {
+    setDeleteTarget({
+      type: 'property',
+      id: propId,
+      label: propertyName,
+    });
+    setShowDeleteModal(true);
   };
 
   // Handle add list value to existing property
@@ -235,20 +234,46 @@ const Properties = () => {
     }
   };
 
-  // Handle delete list value
-  const handleDeleteListValue = async (aplvId, value) => {
-    if (!window.confirm(`Are you sure you want to delete the value "${value}"?`)) {
-      return;
-    }
+  // Handle delete list value — open confirm dialog
+  const handleDeleteListValue = (aplvId, value) => {
+    setDeleteTarget({
+      type: 'listValue',
+      id: aplvId,
+      label: value,
+    });
+    setShowDeleteModal(true);
+  };
 
+  const handleDeleteCancel = () => {
+    if (isDeleting) return;
+    setShowDeleteModal(false);
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget?.id || isDeleting) return;
+    setIsDeleting(true);
     try {
-      await API.delete(`/properties/list-values/${aplvId}`);
-      showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_DELETED_SUCCESSFULLY_118BD63F', fallbackText: 'List value deleted successfully', type: 'success' });
+      if (deleteTarget.type === 'listValue') {
+        await API.delete(`/properties/list-values/${deleteTarget.id}`);
+        showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_DELETED_SUCCESSFULLY_118BD63F', fallbackText: 'List value deleted successfully', type: 'success' });
+      } else if (deleteTarget.type === 'property') {
+        await API.delete(`/properties/${deleteTarget.id}`);
+        showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_DELETED_SUCCESSFULLY_1BF88C67', fallbackText: 'Property deleted successfully', type: 'success' });
+      }
       invalidateCache('properties:');
       fetchProperties({ force: true });
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
     } catch (error) {
-      console.error('Error deleting list value:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_LIST_VALUE_6971E732', fallbackText: 'Failed to delete list value', type: 'error' });
+      console.error('Error deleting:', error);
+      if (deleteTarget.type === 'listValue') {
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_LIST_VALUE_6971E732', fallbackText: 'Failed to delete list value', type: 'error' });
+      } else {
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_PROPERTY_57B769A4', fallbackText: 'Failed to delete property', type: 'error' });
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -643,6 +668,19 @@ const Properties = () => {
           )}
         </div>
       </div>
+
+      <DeleteConfirmModal
+        show={showDeleteModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        message={
+          deleteTarget?.type === 'listValue'
+            ? `Are you sure you want to delete the value "${deleteTarget.label}"?`
+            : deleteTarget?.type === 'property'
+              ? `Are you sure you want to delete the property "${deleteTarget.label}"? This will also delete all associated list values.`
+              : null
+        }
+      />
     </div>
   );
 };

@@ -36,7 +36,7 @@ export const installMlToastRuntime = () => {
   const originalSuccess = toast.success.bind(toast);
   const originalError = toast.error.bind(toast);
 
-  const resolveAndShow = async (originalFn, message, options) => {
+  const resolveAndShow = (originalFn, message, options) => {
     if (options?.skipMlResolve) {
       return originalFn(message, options);
     }
@@ -53,19 +53,25 @@ export const installMlToastRuntime = () => {
         ? localizedFallback
         : message;
 
+    // Show immediately with a stable id, then replace once DB text resolves.
+    const toastId = options?.id || `ml-${hashString(message)}-${Date.now()}`;
+    const shownId = originalFn(fallbackText, { ...options, id: toastId });
+
     const tmdId = getTmdIdForToastText(message);
-    const resolvedText = await getTextMessageById(tmdId, fallbackText);
-    return originalFn(resolvedText, options);
+    getTextMessageById(tmdId, fallbackText)
+      .then((resolvedText) => {
+        if (!resolvedText || resolvedText === fallbackText) return;
+        originalFn(resolvedText, { ...options, id: toastId, skipMlResolve: true });
+      })
+      .catch(() => {
+        // Keep the fallback toast.
+      });
+
+    return shownId || toastId;
   };
 
-  toast.success = (message, options) => {
-    resolveAndShow(originalSuccess, message, options);
-    return undefined;
-  };
+  toast.success = (message, options) => resolveAndShow(originalSuccess, message, options);
 
-  toast.error = (message, options) => {
-    resolveAndShow(originalError, message, options);
-    return undefined;
-  };
+  toast.error = (message, options) => resolveAndShow(originalError, message, options);
 };
 
