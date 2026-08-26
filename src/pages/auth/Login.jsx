@@ -21,13 +21,26 @@ export default function Login() {
   const location = useLocation();
   const { isAuthenticated, login, requiresPasswordChange } = useAuthStore();
   const { t } = useLanguage();
-  
+
+  const zohoSsoEnabled =
+    String(import.meta.env.VITE_ZOHO_SSO_ENABLED || "").toLowerCase() === "true";
+  const zohoLoginUrl =
+    import.meta.env.VITE_ZOHO_LOGIN_URL ||
+    `${window.location.origin}/api/auth/zoho/login`;
+
   // Check if we're coming from admin settings route
   const isAdminSettingsLogin = location.state?.fromAdminSettings || 
                                 sessionStorage.getItem('redirectToAdminSettings') === 'true';
   
   // Audit logging for login
   const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.LOGIN);
+
+  useEffect(() => {
+    const ssoError = new URLSearchParams(location.search).get("sso_error");
+    if (ssoError) {
+      setError(ssoError);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     // Only redirect to dashboard if authenticated AND password change is not required
@@ -184,6 +197,25 @@ export default function Login() {
               {loading ? t('common.loading') : t('auth.login')}
             </button>
           </form>
+
+          {zohoSsoEnabled && (
+            <div className="mt-6 space-y-3">
+              <div className="relative flex items-center">
+                <div className="flex-grow border-t border-gray-200" />
+                <span className="px-3 text-xs text-gray-500 uppercase">or</span>
+                <div className="flex-grow border-t border-gray-200" />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = zohoLoginUrl;
+                }}
+                className="w-full border border-[#0E2F4B] text-[#0E2F4B] py-2 rounded-md hover:bg-gray-50 transition"
+              >
+                Sign in with Zoho
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
