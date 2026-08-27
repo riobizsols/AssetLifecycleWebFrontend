@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import API from "../../lib/axios";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2, Loader2, Check, X } from "lucide-react";
 
 export default function RequestAccess() {
   const [searchParams] = useSearchParams();
@@ -19,6 +19,9 @@ export default function RequestAccess() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [subdomainStatus, setSubdomainStatus] = useState(null);
+  const [subdomainMessage, setSubdomainMessage] = useState("");
+  const checkTimer = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,9 +54,44 @@ export default function RequestAccess() {
     };
   }, [claim]);
 
+  useEffect(() => {
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    const value = subdomain.trim().toLowerCase();
+    if (!value || value.length < 2) {
+      setSubdomainStatus(null);
+      setSubdomainMessage("");
+      return undefined;
+    }
+    setSubdomainStatus("checking");
+    checkTimer.current = setTimeout(async () => {
+      try {
+        const res = await API.post("/access-requests/check-subdomain", {
+          subdomain: value,
+        });
+        if (res.data?.available) {
+          setSubdomainStatus("ok");
+          setSubdomainMessage(res.data.message || "Available");
+        } else {
+          setSubdomainStatus("taken");
+          setSubdomainMessage(res.data?.message || "Subdomain is not available");
+        }
+      } catch (err) {
+        setSubdomainStatus("taken");
+        setSubdomainMessage(err?.response?.data?.message || "Could not check subdomain");
+      }
+    }, 400);
+    return () => {
+      if (checkTimer.current) clearTimeout(checkTimer.current);
+    };
+  }, [subdomain]);
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (subdomainStatus === "taken" || subdomainStatus === "checking") {
+      setError(subdomainMessage || "Choose an available subdomain");
+      return;
+    }
     setSubmitting(true);
     try {
       await API.post("/access-requests/request", {
@@ -173,6 +211,21 @@ export default function RequestAccess() {
                 .rioassetmanagement.net
               </span>
             </div>
+            {subdomainStatus === "checking" && (
+              <p className="mt-1 text-xs text-slate-500 flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" /> Checking availability…
+              </p>
+            )}
+            {subdomainStatus === "ok" && (
+              <p className="mt-1 text-xs text-green-700 flex items-center gap-1">
+                <Check className="h-3 w-3" /> {subdomainMessage}
+              </p>
+            )}
+            {subdomainStatus === "taken" && (
+              <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                <X className="h-3 w-3" /> {subdomainMessage}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -203,7 +256,9 @@ export default function RequestAccess() {
           </div>
           <button
             type="submit"
-            disabled={submitting || !claim}
+            disabled={
+              submitting || !claim || subdomainStatus === "taken" || subdomainStatus === "checking"
+            }
             className="w-full py-2.5 bg-[#0E2F4B] text-white text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
