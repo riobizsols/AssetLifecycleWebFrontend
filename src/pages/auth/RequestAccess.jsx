@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import API from "../../lib/axios";
 import { Building2, Loader2, Check, X } from "lucide-react";
 
 export default function RequestAccess() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const claim = searchParams.get("claim") || "";
 
   const [email, setEmail] = useState("");
@@ -129,13 +128,6 @@ export default function RequestAccess() {
             We will review your request and email <strong>{email}</strong> when your
             organization is ready. Then open <strong>RIO EAM</strong> from Zoho to sign in.
           </p>
-          <button
-            type="button"
-            onClick={() => navigate("/login")}
-            className="mt-6 w-full py-2.5 bg-[#0E2F4B] text-white text-sm font-medium"
-          >
-            Back to login
-          </button>
         </div>
       </div>
     );
