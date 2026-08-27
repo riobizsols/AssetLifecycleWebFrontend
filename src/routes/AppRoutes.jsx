@@ -11,6 +11,8 @@ import ChangePassword from "../pages/auth/ChangePassword";
 import RequestPasswordChange from "../pages/auth/RequestPasswordChange";
 import SetupWizard from "../pages/setup/SetupWizard";
 import TenantSetup from "../pages/tenant/TenantSetup";
+import RequestAccess from "../pages/auth/RequestAccess";
+import OpsAccessRequests from "../pages/ops/OpsAccessRequests";
 import Assets from "../pages/Assets";
 import UserRoles from "../pages/masterData/UserRoles";
 import JobRoles from "../pages/masterData/JobRoles";
@@ -142,6 +144,8 @@ export default function AppRoutes() {
         <Route path="/auth/sso/complete" element={<SsoComplete />} />
         <Route path="/setup" element={<SetupWizard />} />
         <Route path="/tenant-setup" element={<TenantSetup />} />
+        <Route path="/request-access" element={<RequestAccess />} />
+        <Route path="/ops/access-requests" element={<OpsAccessRequests />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/delete-account" element={<DeleteAccount />} />

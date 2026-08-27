@@ -214,6 +214,10 @@ export default function Login() {
               >
                 Sign in with Zoho
               </button>
+              <p className="text-xs text-center text-gray-500">
+                New to RIO EAM? Open the app from Zoho first — if you have no organization yet,
+                you can request access after Zoho verifies your email.
+              </p>
             </div>
           )}
         </div>
