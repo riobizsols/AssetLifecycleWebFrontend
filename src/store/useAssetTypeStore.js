@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import API from '../lib/axios';
+import { useAcmContextStore } from './useAcmContextStore';
 import {
+  acmCacheSegment,
   fetchWithCache,
   fetchWithRevalidate,
   invalidateCache,
@@ -8,7 +10,10 @@ import {
 } from '../utils/apiCache';
 
 const TTL_MS = 3 * 60 * 1000;
-const LIST_KEY = 'asset-types:list';
+const LIST_KEY_PREFIX = 'asset-types:list';
+
+const getListKey = () =>
+  `${LIST_KEY_PREFIX}:${acmCacheSegment(useAcmContextStore.getState())}`;
 
 export function formatAssetTypeRows(raw) {
   const assetTypeMap = (raw || []).reduce((map, type) => {
@@ -31,13 +36,14 @@ export function formatAssetTypeRows(raw) {
   }));
 }
 
-const cachedList = peekCache(LIST_KEY, TTL_MS);
+const cachedList = peekCache(getListKey(), TTL_MS);
 
 export const useAssetTypeStore = create((set, get) => ({
   assetTypes: cachedList || [],
   listLoading: !cachedList,
 
   fetchAssetTypes: async ({ revalidate = false, force = false, onFresh } = {}) => {
+    const listKey = getListKey();
     const apply = (rows) => {
       set({ assetTypes: rows, listLoading: false });
       onFresh?.(rows);
@@ -49,10 +55,10 @@ export const useAssetTypeStore = create((set, get) => ({
     };
 
     if (revalidate && !force) {
-      const cached = peekCache(LIST_KEY, TTL_MS);
+      const cached = peekCache(listKey, TTL_MS);
       if (cached) apply(cached);
       else if (get().assetTypes.length > 0) set({ listLoading: false });
-      const { data } = await fetchWithRevalidate(LIST_KEY, fetcher, {
+      const { data } = await fetchWithRevalidate(listKey, fetcher, {
         ttlMs: TTL_MS,
         onFresh: apply,
       });
@@ -60,7 +66,7 @@ export const useAssetTypeStore = create((set, get) => ({
     }
 
     if (!force && !revalidate) {
-      const cached = peekCache(LIST_KEY, TTL_MS);
+      const cached = peekCache(listKey, TTL_MS);
       if (cached) {
         apply(cached);
         return cached;
@@ -68,7 +74,7 @@ export const useAssetTypeStore = create((set, get) => ({
     }
 
     set({ listLoading: true });
-    const { data } = await fetchWithCache(LIST_KEY, fetcher, {
+    const { data } = await fetchWithCache(listKey, fetcher, {
       ttlMs: TTL_MS,
       force: force || revalidate,
     });

@@ -15,6 +15,7 @@ import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useAssetTypeStore } from "../store/useAssetTypeStore";
+import { useAcmContextStore } from "../store/useAcmContextStore";
 import { refreshAssetTypeCaches } from "../utils/refreshAssetTypeCaches";
 import { applyListFilterChange } from "../utils/listFilterState";
 
@@ -23,6 +24,9 @@ const AssetType = () => {
   const assetTypes = useAssetTypeStore((s) => s.assetTypes);
   const listLoading = useAssetTypeStore((s) => s.listLoading);
   const fetchAssetTypesStore = useAssetTypeStore((s) => s.fetchAssetTypes);
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
+  const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
+  const appliedDeptId = useAcmContextStore((s) => s.appliedDeptId);
   const data = assetTypes;
   const isLoading = listLoading && data.length === 0;
   const [filterValues, setFilterValues] = useState({
@@ -81,7 +85,7 @@ const AssetType = () => {
   useEffect(() => {
     fetchAssetTypes({ force: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [appliedOrgId, appliedBranchId, appliedDeptId]);
 
   useRevalidateOnFocus(() => {
     fetchAssetTypesStore({ revalidate: true });
