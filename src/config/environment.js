@@ -6,8 +6,8 @@ const config = {
     ENVIRONMENT: 'development'
   },
   production: {
-    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://your-domain.com:5001/api',
-    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'https://your-domain.com',
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://bannari.rioassetmanagement.net/api',
+    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'https://bannari.rioassetmanagement.net',
     ENVIRONMENT: 'production'
   }
 };

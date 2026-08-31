@@ -5,8 +5,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
-        VITE_FRONTEND_URL: ${VITE_FRONTEND_URL}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://bannari.rioassetmanagement.net/api}
+        VITE_FRONTEND_URL: ${VITE_FRONTEND_URL:-https://bannari.rioassetmanagement.net}
         VITE_API_PORT: ${VITE_API_PORT:-}
         VITE_RESERVED_SUBDOMAINS: ${VITE_RESERVED_SUBDOMAINS:-web,www,api,pressanaorg,bannari}
     ports:

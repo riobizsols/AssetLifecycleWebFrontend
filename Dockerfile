@@ -8,10 +8,10 @@ RUN npm ci
 
 COPY . .
 
-ARG VITE_API_BASE_URL=
-ARG VITE_FRONTEND_URL=
+ARG VITE_API_BASE_URL=https://bannari.rioassetmanagement.net/api
+ARG VITE_FRONTEND_URL=https://bannari.rioassetmanagement.net
 ARG VITE_API_PORT=
-ARG VITE_RESERVED_SUBDOMAINS=web,www,api,pressanaorg
+ARG VITE_RESERVED_SUBDOMAINS=web,www,api,pressanaorg,bannari
 
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_FRONTEND_URL=${VITE_FRONTEND_URL}
