@@ -7,20 +7,37 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 const STORAGE_KEY = 'spareSupplies';
 
+const mapBrand = (brand) => ({
+  spb_id: brand.spb_id || brand.spbId || brand.brand_id,
+  text: brand.text || brand.brandName || brand.brand_name || brand.name,
+});
+
+const mapModel = (model) => ({
+  spm_id: model.spm_id || model.spbmId || model.model_id,
+  spb_id: model.spb_id || model.spbId,
+  text: model.text || model.modelName || model.model_name || model.name,
+});
+
 const SpareSupplyForm = ({
   vendorId,
   orgId,
   vendorSaved = false,
   onSaveTrigger,
   onTabSaved,
+  loadExisting = false,
+  isReadOnly = false,
 }) => {
   const { t } = useLanguage();
   const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [models, setModels] = useState([]);
   const [items, setItems] = useState([]);
-  const [form, setForm] = useState({ spc_id: '', brand: '', model: '' });
+  const [form, setForm] = useState({ spc_id: '', spb_id: '', spm_id: '' });
   const [maximized, setMaximized] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadingBrands, setLoadingBrands] = useState(false);
+  const [loadingModels, setLoadingModels] = useState(false);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -30,19 +47,122 @@ const SpareSupplyForm = ({
       } catch (error) {
         console.error('Error fetching spare categories:', error);
         setCategories([]);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_FETCH_SPARE_PART_CATEGORIES',
+          fallbackText: 'Failed to fetch spare part categories',
+          type: 'error',
+        });
       }
     };
     loadCategories();
   }, []);
 
   useEffect(() => {
+    const loadBrands = async () => {
+      if (!form.spc_id) {
+        setBrands([]);
+        setLoadingBrands(false);
+        return;
+      }
+      setLoadingBrands(true);
+      try {
+        const res = await API.get('/spare-parts/brands', {
+          params: { spc_id: form.spc_id },
+        });
+        setBrands(
+          (Array.isArray(res.data?.data) ? res.data.data : [])
+            .map(mapBrand)
+            .filter((row) => row.spb_id && row.text)
+        );
+      } catch (error) {
+        console.error('Error fetching spare part brands:', error);
+        setBrands([]);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SP_BRANDS_FETCH_FAILED',
+          fallbackText: 'Failed to fetch brands',
+          type: 'error',
+        });
+      } finally {
+        setLoadingBrands(false);
+      }
+    };
+    loadBrands();
+  }, [form.spc_id]);
+
+  useEffect(() => {
+    const loadModels = async () => {
+      if (!form.spc_id || !form.spb_id) {
+        setModels([]);
+        setLoadingModels(false);
+        return;
+      }
+      setLoadingModels(true);
+      try {
+        const res = await API.get('/spare-parts/models', {
+          params: { spc_id: form.spc_id, spb_id: form.spb_id },
+        });
+        setModels(
+          (Array.isArray(res.data?.data) ? res.data.data : [])
+            .map(mapModel)
+            .filter((row) => row.spm_id && row.text)
+        );
+      } catch (error) {
+        console.error('Error fetching spare part models:', error);
+        setModels([]);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SP_MODELS_FETCH_FAILED',
+          fallbackText: 'Failed to fetch models',
+          type: 'error',
+        });
+      } finally {
+        setLoadingModels(false);
+      }
+    };
+    loadModels();
+  }, [form.spc_id, form.spb_id]);
+
+  useEffect(() => {
+    if (loadExisting) return;
     try {
       const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored) setItems(JSON.parse(stored));
     } catch {
       setItems([]);
     }
-  }, []);
+  }, [loadExisting]);
+
+  useEffect(() => {
+    if (!loadExisting || !vendorId) return undefined;
+    let cancelled = false;
+    const loadMappings = async () => {
+      try {
+        const res = await API.get('/spare-parts/vendor-mappings', {
+          params: { vendor_id: vendorId },
+        });
+        const rows = Array.isArray(res.data?.data) ? res.data.data : [];
+        if (cancelled) return;
+        setItems(
+          rows.map((row) => ({
+            vspm_id: row.vspm_id,
+            spc_id: row.spc_id,
+            categoryText: row.category_text || row.categoryText || row.spc_id,
+            brand: row.brand || '',
+            model: row.model || '',
+          }))
+        );
+      } catch (error) {
+        console.error('Error loading spare supply mappings:', error);
+        if (!cancelled) setItems([]);
+      }
+    };
+    loadMappings();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadExisting, vendorId]);
 
   useEffect(() => {
     if (onSaveTrigger === 'Spare Supply') {
@@ -53,24 +173,62 @@ const SpareSupplyForm = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      if (name === 'spc_id') {
+        return { spc_id: value, spb_id: '', spm_id: '' };
+      }
+      if (name === 'spb_id') {
+        return { ...prev, spb_id: value, spm_id: '' };
+      }
+      return { ...prev, [name]: value };
+    });
     if (submitAttempted) setSubmitAttempted(false);
   };
 
   const isFieldInvalid = (val) => submitAttempted && !String(val || '').trim();
 
   const handleAdd = () => {
-    if (!form.spc_id || !form.brand.trim() || !form.model.trim()) {
+    if (!form.spc_id || !form.spb_id || !form.spm_id) {
       setSubmitAttempted(true);
       return;
     }
 
-    const selected = categories.find((c) => String(c.spc_id) === String(form.spc_id));
-    if (!selected) {
+    const selected = categories.find(
+      (c) => String(c.spc_id) === String(form.spc_id)
+    );
+    const selectedBrand = brands.find(
+      (b) => String(b.spb_id) === String(form.spb_id)
+    );
+    const selectedModel = models.find(
+      (m) => String(m.spm_id) === String(form.spm_id)
+    );
+    if (!selected || !selectedBrand || !selectedModel) {
       showBackendTextToast({
         toast,
         tmdId: 'TMD_SP_VENDOR_INVALID_CATEGORY',
-        fallbackText: 'Invalid category selected',
+        fallbackText: 'Select a valid category, brand, and model',
+        type: 'error',
+      });
+      return;
+    }
+
+    const duplicate = items.some((row) => {
+      if (String(row.spc_id) !== String(selected.spc_id)) return false;
+      const sameIds =
+        row.spb_id &&
+        row.spm_id &&
+        String(row.spb_id) === String(selectedBrand.spb_id) &&
+        String(row.spm_id) === String(selectedModel.spm_id);
+      const sameText =
+        String(row.brand || '').toLowerCase() === String(selectedBrand.text || '').toLowerCase() &&
+        String(row.model || '').toLowerCase() === String(selectedModel.text || '').toLowerCase();
+      return sameIds || sameText;
+    });
+    if (duplicate) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_VENDOR_ITEM_EXISTS',
+        fallbackText: 'This category, brand, and model is already in the list',
         type: 'error',
       });
       return;
@@ -81,13 +239,17 @@ const SpareSupplyForm = ({
       {
         spc_id: selected.spc_id,
         categoryText: selected.text,
-        brand: form.brand.trim(),
-        model: form.model.trim(),
+        spb_id: selectedBrand.spb_id,
+        spm_id: selectedModel.spm_id,
+        brand: selectedBrand.text,
+        model: selectedModel.text,
       },
     ];
     setItems(next);
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    setForm({ spc_id: '', brand: '', model: '' });
+    if (!loadExisting) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    }
+    setForm({ spc_id: '', spb_id: '', spm_id: '' });
     setSubmitAttempted(false);
     showBackendTextToast({
       toast,
@@ -100,7 +262,9 @@ const SpareSupplyForm = ({
   const handleDelete = (idx) => {
     const next = items.filter((_, i) => i !== idx);
     setItems(next);
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    if (!loadExisting) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    }
   };
 
   const handleDone = async () => {
@@ -128,12 +292,15 @@ const SpareSupplyForm = ({
         return;
       }
 
-      let fromStorage = [];
-      try {
-        fromStorage = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]');
-      } catch {
-        fromStorage = [];
-      }
+      const fromStorage = loadExisting
+        ? items
+        : (() => {
+            try {
+              return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]');
+            } catch {
+              return [];
+            }
+          })();
 
       if (!Array.isArray(fromStorage) || fromStorage.length === 0) {
         showBackendTextToast({
@@ -155,8 +322,10 @@ const SpareSupplyForm = ({
         })),
       });
 
-      setItems([]);
-      sessionStorage.removeItem(STORAGE_KEY);
+      if (!loadExisting) {
+        setItems([]);
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
       if (onTabSaved) onTabSaved('Spare Supply');
       showBackendTextToast({
         toast,
@@ -204,7 +373,7 @@ const SpareSupplyForm = ({
               </th>
               <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.brand')}</th>
               <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.model')}</th>
-              <th className="px-6 py-3 text-center text-sm font-medium w-20" />
+              {!isReadOnly && <th className="px-6 py-3 text-center text-sm font-medium w-20" />}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -215,17 +384,19 @@ const SpareSupplyForm = ({
                 </td>
                 <td className="px-6 py-2 text-sm text-gray-900">{row.brand}</td>
                 <td className="px-6 py-2 text-sm text-gray-900">{row.model}</td>
-                <td className="px-6 py-2 text-center">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(idx)}
-                    className="text-yellow-500 hover:text-red-600 transition-colors"
-                    title="Delete"
-                    disabled={isSaving}
-                  >
-                    <Trash2 className="h-4 w-4 inline" />
-                  </button>
-                </td>
+                {!isReadOnly && (
+                  <td className="px-6 py-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(idx)}
+                      className="text-yellow-500 hover:text-red-600 transition-colors"
+                      title="Delete"
+                      disabled={isSaving}
+                    >
+                      <Trash2 className="h-4 w-4 inline" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -236,6 +407,7 @@ const SpareSupplyForm = ({
 
   return (
     <div className="pb-6">
+      {!isReadOnly && (
       <div className="flex items-end gap-4 mb-8 flex-wrap">
         <div>
           <label className="block text-sm text-gray-700 mb-2">
@@ -265,43 +437,76 @@ const SpareSupplyForm = ({
           <label className="block text-sm text-gray-700 mb-2">
             {t('vendors.brand')} <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            name="brand"
-            value={form.brand}
+          <select
+            name="spb_id"
+            value={form.spb_id}
             onChange={handleChange}
-            className={`w-48 px-3 py-2 border text-sm bg-white rounded ${
-              isFieldInvalid(form.brand) ? 'border-red-500' : 'border-gray-300'
+            disabled={!form.spc_id || loadingBrands}
+            className={`w-48 px-3 py-2 border text-sm bg-white rounded disabled:bg-gray-100 disabled:text-gray-500 ${
+              isFieldInvalid(form.spb_id) ? 'border-red-500' : 'border-gray-300'
             }`}
-            placeholder={t('vendors.enterBrand', { defaultValue: 'Enter brand' })}
-          />
+          >
+            <option value="">
+              {!form.spc_id
+                ? t('vendors.selectCategoryFirst', {
+                    defaultValue: 'Select category first',
+                  })
+                : loadingBrands
+                  ? t('common.loading', { defaultValue: 'Loading...' })
+                  : brands.length
+                    ? t('vendors.selectBrand', { defaultValue: 'Select brand' })
+                    : t('vendors.noBrands', { defaultValue: 'No brands found' })}
+            </option>
+            {brands.map((brand) => (
+              <option key={brand.spb_id} value={brand.spb_id}>
+                {brand.text}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
           <label className="block text-sm text-gray-700 mb-2">
             {t('vendors.model')} <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            name="model"
-            value={form.model}
+          <select
+            name="spm_id"
+            value={form.spm_id}
             onChange={handleChange}
-            className={`w-48 px-3 py-2 border text-sm bg-white rounded ${
-              isFieldInvalid(form.model) ? 'border-red-500' : 'border-gray-300'
+            disabled={!form.spb_id || loadingModels}
+            className={`w-48 px-3 py-2 border text-sm bg-white rounded disabled:bg-gray-100 disabled:text-gray-500 ${
+              isFieldInvalid(form.spm_id) ? 'border-red-500' : 'border-gray-300'
             }`}
-            placeholder={t('vendors.enterModel', { defaultValue: 'Enter model' })}
-          />
+          >
+            <option value="">
+              {!form.spb_id
+                ? t('vendors.selectBrandFirst', {
+                    defaultValue: 'Select brand first',
+                  })
+                : loadingModels
+                  ? t('common.loading', { defaultValue: 'Loading...' })
+                  : models.length
+                    ? t('vendors.selectModel', { defaultValue: 'Select model' })
+                    : t('vendors.noModels', { defaultValue: 'No models found' })}
+            </option>
+            {models.map((model) => (
+              <option key={model.spm_id} value={model.spm_id}>
+                {model.text}
+              </option>
+            ))}
+          </select>
         </div>
 
         <button
           type="button"
           onClick={handleAdd}
           className="bg-[#0E2F4B] text-white px-6 py-1 rounded hover:bg-[#1e40af] transition-colors"
-          disabled={isSaving}
+          disabled={isSaving || loadingBrands || loadingModels}
         >
           {t('vendors.add')}
         </button>
       </div>
+      )}
 
       {maximized ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
@@ -313,6 +518,18 @@ const SpareSupplyForm = ({
         </div>
       ) : (
         tableCard
+      )}
+      {loadExisting && !isReadOnly && (
+        <div className="flex justify-end mt-4">
+          <button
+            type="button"
+            onClick={handleDone}
+            className="bg-[#0E2F4B] text-white px-6 py-2 rounded hover:bg-[#1e40af] transition-colors text-sm"
+            disabled={isSaving}
+          >
+            {isSaving ? t('common.saving', { defaultValue: 'Saving...' }) : t('common.save', { defaultValue: 'Save' })}
+          </button>
+        </div>
       )}
     </div>
   );

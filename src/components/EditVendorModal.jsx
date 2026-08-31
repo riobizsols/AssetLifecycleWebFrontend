@@ -6,7 +6,20 @@ import API from '../lib/axios';
 import { generateUUID } from '../utils/uuid';
 import { useLanguage } from '../contexts/LanguageContext';
 import { X } from 'lucide-react';
+import { useAuthStore } from '../store/useAuthStore';
 import VendorProductsPanel from './VendorProductsPanel';
+import ServiceSupplyForm from './ServiceSupplyForm';
+import SpareSupplyForm from './SpareSupplyForm';
+
+function isTruthySupply(value) {
+  return (
+    value === true ||
+    value === 1 ||
+    value === '1' ||
+    value === 't' ||
+    String(value).toLowerCase() === 'true'
+  );
+}
 
 /** HTML date inputs only accept yyyy-MM-dd; API/DB may return ISO strings or Date objects. */
 function formatDateForInput(value) {
@@ -27,6 +40,7 @@ function formatDateForInput(value) {
 
 const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false }) => {
   const { t } = useLanguage();
+  const authOrgId = useAuthStore((s) => s.user?.org_id);
   
   const [formData, setFormData] = useState({
     vendor_name: '',
@@ -59,6 +73,11 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [showArchived, setShowArchived] = useState(true);
   const [activeTab, setActiveTab] = useState('Vendor Details');
+  const [supplyFlags, setSupplyFlags] = useState({
+    product_supply: false,
+    service_supply: false,
+    spare_supply: false,
+  });
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -66,6 +85,17 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       setActiveTab('Vendor Details');
     }
   }, [show, vendor?.vendor_id]);
+
+  useEffect(() => {
+    const tabs = ['Vendor Details'];
+    if (supplyFlags.product_supply) tabs.push('Product Details');
+    if (supplyFlags.service_supply) tabs.push('Service Details');
+    if (supplyFlags.spare_supply) tabs.push('Spare Supply');
+    tabs.push('Attachments');
+    if (!tabs.includes(activeTab)) {
+      setActiveTab('Vendor Details');
+    }
+  }, [supplyFlags, activeTab]);
 
   useEffect(() => {
     if (vendor) {
@@ -91,6 +121,11 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       };
       
       setFormData({ ...baseFormData });
+      setSupplyFlags({
+        product_supply: isTruthySupply(vendor.product_supply),
+        service_supply: isTruthySupply(vendor.service_supply),
+        spare_supply: isTruthySupply(vendor.spare_supply),
+      });
       // SLA values will be loaded when slaDescriptions are fetched in fetchSLADescriptions
     }
   }, [vendor]);
@@ -132,9 +167,55 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
           if (vendorData.vendor_slas) {
             // Will be loaded when SLA descriptions are fetched
           }
+
+          const flags = {
+            product_supply: isTruthySupply(vendorData.product_supply),
+            service_supply: isTruthySupply(vendorData.service_supply),
+            spare_supply: isTruthySupply(vendorData.spare_supply),
+          };
+
+          if (!flags.spare_supply) {
+            try {
+              const mapRes = await API.get('/spare-parts/vendor-mappings', {
+                params: { vendor_id: vendor.vendor_id },
+              });
+              if (Array.isArray(mapRes.data?.data) && mapRes.data.data.length > 0) {
+                flags.spare_supply = true;
+              }
+            } catch (mapErr) {
+              console.warn('Failed to fetch spare supply mappings', mapErr);
+            }
+          }
+
+          if (!flags.product_supply || !flags.service_supply) {
+            try {
+              const vpsRes = await API.get(`/vendor-prod-services/vendor/${vendor.vendor_id}`);
+              const rows = Array.isArray(vpsRes.data) ? vpsRes.data : [];
+              if (rows.some((row) => String(row.ps_type || '').toLowerCase() === 'product')) {
+                flags.product_supply = true;
+              }
+              if (rows.some((row) => String(row.ps_type || '').toLowerCase() === 'service')) {
+                flags.service_supply = true;
+              }
+            } catch (vpsErr) {
+              console.warn('Failed to fetch vendor product/service links', vpsErr);
+            }
+          }
+
+          setSupplyFlags(flags);
         }
       } catch (err) {
         console.warn('Failed to fetch vendor details', err);
+        try {
+          const mapRes = await API.get('/spare-parts/vendor-mappings', {
+            params: { vendor_id: vendor.vendor_id },
+          });
+          if (Array.isArray(mapRes.data?.data) && mapRes.data.data.length > 0) {
+            setSupplyFlags((prev) => ({ ...prev, spare_supply: true }));
+          }
+        } catch (mapErr) {
+          console.warn('Failed to fetch spare supply mappings', mapErr);
+        }
       }
       
       // Fetch vendor documents
@@ -560,24 +641,43 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
 
         {/* Tabs */}
         <div className="flex border-b border-gray-200 px-6 shrink-0 bg-white">
-          {['Vendor Details', 'Products', 'Attachments'].map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={`px-5 py-2.5 -mb-px font-semibold text-sm border-b-2 focus:outline-none transition-all ${
-                activeTab === tab
-                  ? 'border-[#0E2F4B] text-[#0E2F4B]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab === 'Vendor Details'
-                ? t('vendors.vendorDetails') || 'Vendor Details'
-                : tab === 'Products'
-                  ? t('vendors.productDetails') || 'Products'
-                  : t('vendors.attachments') || 'Attachments'}
-            </button>
-          ))}
+          {(() => {
+            const tabs = ['Vendor Details'];
+            if (supplyFlags.product_supply) tabs.push('Product Details');
+            if (supplyFlags.service_supply) tabs.push('Service Details');
+            if (supplyFlags.spare_supply) tabs.push('Spare Supply');
+            tabs.push('Attachments');
+            const translateTab = (tab) => {
+              switch (tab) {
+                case 'Vendor Details':
+                  return t('vendors.vendorDetails') || 'Vendor Details';
+                case 'Product Details':
+                  return t('vendors.productDetails') || 'Product Details';
+                case 'Service Details':
+                  return t('vendors.serviceDetails') || 'Service Details';
+                case 'Spare Supply':
+                  return t('vendors.spareSupply', { defaultValue: 'Spare Supply' });
+                case 'Attachments':
+                  return t('vendors.attachments') || 'Attachments';
+                default:
+                  return tab;
+              }
+            };
+            return tabs.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                className={`px-5 py-2.5 -mb-px font-semibold text-sm border-b-2 focus:outline-none transition-all ${
+                  activeTab === tab
+                    ? 'border-[#0E2F4B] text-[#0E2F4B]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {translateTab(tab)}
+              </button>
+            ));
+          })()}
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto">
@@ -918,12 +1018,39 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         </form>
         )}
 
-        {activeTab === 'Products' && (
-          <VendorProductsPanel
-            vendorId={vendor?.vendor_id}
-            orgId={vendor?.org_id}
-            isReadOnly={isReadOnly}
-          />
+        {activeTab === 'Product Details' && (
+          <div className="p-6">
+            <VendorProductsPanel
+              vendorId={vendor?.vendor_id}
+              orgId={vendor?.org_id || authOrgId}
+              isReadOnly={isReadOnly}
+              psType="product"
+            />
+          </div>
+        )}
+
+        {activeTab === 'Service Details' && (
+          <div className="p-6">
+            <ServiceSupplyForm
+              vendorId={vendor?.vendor_id}
+              orgId={vendor?.org_id || authOrgId}
+              vendorSaved
+              loadExisting
+              isReadOnly={isReadOnly}
+            />
+          </div>
+        )}
+
+        {activeTab === 'Spare Supply' && (
+          <div className="p-6">
+            <SpareSupplyForm
+              vendorId={vendor?.vendor_id}
+              orgId={vendor?.org_id || authOrgId}
+              vendorSaved
+              loadExisting
+              isReadOnly={isReadOnly}
+            />
+          </div>
         )}
 
         {/* Document Management Section - Outside Form */}

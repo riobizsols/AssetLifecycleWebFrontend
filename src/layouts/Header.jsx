@@ -53,6 +53,7 @@ export default function Header() {
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
     "/master-data/spare-parts": { title: t('navigation.sparePartLot'), subtitle: "" },
     "/master-data/spare-parts/add": { title: t('navigation.sparePartLot'), subtitle: "" },
+    "/master-data/spare-parts/edit": { title: t('navigation.sparePartLot'), subtitle: "" },
     "/master-data/spare-parts-configuration": { title: t('navigation.sparePartsConfiguration'), subtitle: "" },
     "/master-data/spare-parts-configuration/categories/add": { title: "Add Spare Part Category", subtitle: "" },
     "/master-data/spare-parts-configuration/mappings/add": { title: "Asset Type Mapping", subtitle: "" },

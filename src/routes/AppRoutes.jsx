@@ -1089,6 +1089,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/master-data/spare-parts/edit/:spld_id"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTS">
+              <MainLayout>
+                <SpareParts />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/master-data/spare-part"
           element={
             <ProtectedRoute requiredAppId="SPAREPARTMASTER">
