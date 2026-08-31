@@ -8,6 +8,13 @@ import SparePartRequestScreen from './spareParts/SparePartRequestScreen';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useSparePartListStore } from '../store/useSparePartListStore';
 
+const isInhouseMaintenance = (value) => {
+  const normalized = String(value || '')
+    .toLowerCase()
+    .replace(/\s|-/g, '');
+  return Boolean(normalized) && !normalized.includes('vendor');
+};
+
 export default function SparePartListDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -74,6 +81,10 @@ export default function SparePartListDetail() {
     navigate('/spare-part-list');
   };
 
+  const maintenanceProvider =
+    maintenanceData?.maintenance_provider || maintenanceData?.maintained_by;
+  const canRequestSpareParts = isInhouseMaintenance(maintenanceProvider);
+
   if (loadingData && !maintenanceData) {
     return (
       <div className="p-6 text-center">
@@ -127,6 +138,12 @@ export default function SparePartListDetail() {
                 {maintenanceData?.vendor_name || '-'}
               </div>
             </div>
+            <div>
+              <div className="text-xs text-gray-500">Maintenance Provider</div>
+              <div className="font-semibold text-gray-800">
+                {maintenanceProvider || '-'}
+              </div>
+            </div>
           </div>
 
           <div className="border-t border-gray-200 pt-6">
@@ -150,13 +167,19 @@ export default function SparePartListDetail() {
 
           {/* Spare Part Request — same card; quantity fields match approval layout */}
           <div className="border-t border-gray-200 pt-6">
-            <SparePartRequestScreen
-              embedded
-              amsId={id}
-              assetTypeId={maintenanceData?.asset_type_id}
-              onCancel={() => navigate('/spare-part-list')}
-              onSubmitted={handleRequestSubmitted}
-            />
+            {canRequestSpareParts ? (
+              <SparePartRequestScreen
+                embedded
+                amsId={id}
+                assetTypeId={maintenanceData?.asset_type_id}
+                onCancel={() => navigate('/spare-part-list')}
+                onSubmitted={handleRequestSubmitted}
+              />
+            ) : (
+              <p className="text-sm text-gray-500">
+                Spare part requests are available only for in-house maintenance.
+              </p>
+            )}
           </div>
         </div>
       </div>
