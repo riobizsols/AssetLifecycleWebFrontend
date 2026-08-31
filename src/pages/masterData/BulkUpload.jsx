@@ -34,6 +34,26 @@ const clearStorage = () => {
   }
 };
 
+const CommitErrorDetails = ({ details = [] }) => {
+  if (!details.length) return null;
+
+  return (
+    <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      <p className="font-semibold">Commit errors:</p>
+      <div className="mt-1 max-h-40 space-y-1 overflow-y-auto">
+        {details.slice(0, 10).map((detail, index) => (
+          <p key={`${detail.row || detail.asset_id || detail.employee_id || index}-${index}`}>
+            Row {detail.row || index + 1}: {detail.error}
+          </p>
+        ))}
+      </div>
+      {details.length > 10 && (
+        <p className="mt-1 text-xs">Showing the first 10 errors.</p>
+      )}
+    </div>
+  );
+};
+
 // Custom Asset Type Dropdown Component (no portal, stays in place)
 const AssetTypeDropdown = ({ options, value, onChange, placeholder, disabled = false }) => {
   const { t } = useLanguage();
@@ -2135,28 +2155,29 @@ const Roles = () => {
                 inserted: results.inserted,
                 updated: results.updated,
                 errors: results.errors,
-                totalProcessed: results.totalProcessed
+                totalProcessed: results.totalProcessed,
+                errorDetails: results.errorDetails || [],
               }
             }
           }));
       
-          // Reset trial results after commit
-          setTrialResults(prev => ({
-            ...prev,
-            [type]: null
-          }));
-          
-          // Reset upload status
-          setUploadStatus(prev => ({
-            ...prev,
-            [type]: null
-          }));
+          // Keep the upload available for correction/retry when rows fail.
+          if (results.errors === 0) {
+            setTrialResults(prev => ({
+              ...prev,
+              [type]: null
+            }));
+            
+            setUploadStatus(prev => ({
+              ...prev,
+              [type]: null
+            }));
 
-          // Clear localStorage for this type
-          const newUploadStatus = { ...uploadStatus, [type]: null };
-          const newTrialResults = { ...trialResults, [type]: null };
-          saveToStorage('uploadStatus', newUploadStatus);
-          saveToStorage('trialResults', newTrialResults);
+            const newUploadStatus = { ...uploadStatus, [type]: null };
+            const newTrialResults = { ...trialResults, [type]: null };
+            saveToStorage('uploadStatus', newUploadStatus);
+            saveToStorage('trialResults', newTrialResults);
+          }
         } else {
           setCommitResults(prev => ({
             ...prev,
@@ -2566,7 +2587,9 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  {t('bulkUpload.commitSuccessful')}
+                  {commitResults.results.errors > 0
+                    ? 'Commit Completed with Errors'
+                    : t('bulkUpload.commitSuccessful')}
                 </h5>
                 <div className="text-green-700 text-sm space-y-1">
                   <div>• {t('bulkUpload.insertedRecords', { count: commitResults.results.inserted })}</div>
@@ -2574,6 +2597,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
                   <div>• {t('bulkUpload.errorsRecords', { count: commitResults.results.errors })}</div>
                   <div>• {t('bulkUpload.totalProcessedRecords', { count: commitResults.results.totalProcessed })}</div>
                 </div>
+                <CommitErrorDetails details={commitResults.results.errorDetails} />
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
@@ -2808,7 +2832,9 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  {t('bulkUpload.commitSuccessful')}
+                  {commitResults.results.errors > 0
+                    ? 'Commit Completed with Errors'
+                    : t('bulkUpload.commitSuccessful')}
                 </h5>
                 <div className="text-green-700 text-sm space-y-1">
                   <div>• {t('bulkUpload.insertedRecords', { count: commitResults.results.inserted })}</div>
@@ -2816,6 +2842,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
                   <div>• {t('bulkUpload.errorsRecords', { count: commitResults.results.errors })}</div>
                   <div>• {t('bulkUpload.totalProcessedRecords', { count: commitResults.results.totalProcessed })}</div>
                 </div>
+                <CommitErrorDetails details={commitResults.results.errorDetails} />
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
@@ -3038,7 +3065,9 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  {t('bulkUpload.commitSuccessful')}
+                  {commitResults.results.errors > 0
+                    ? 'Commit Completed with Errors'
+                    : t('bulkUpload.commitSuccessful')}
                 </h5>
                 <div className="text-green-700 text-sm space-y-1">
                   <div>• {t('bulkUpload.insertedRecords', { count: commitResults.results.inserted })}</div>
@@ -3046,6 +3075,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
                   <div>• {t('bulkUpload.errorsRecords', { count: commitResults.results.errors })}</div>
                   <div>• {t('bulkUpload.totalProcessedRecords', { count: commitResults.results.totalProcessed })}</div>
                 </div>
+                <CommitErrorDetails details={commitResults.results.errorDetails} />
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
