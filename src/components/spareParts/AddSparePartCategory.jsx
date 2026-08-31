@@ -512,59 +512,31 @@ const AddSparePartCategory = () => {
         Add Spare Part Category
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="p-6 space-y-6" autoComplete="off">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm mb-1 font-medium">
+            <label className="block text-sm mb-1 font-medium" htmlFor="spc_category_name">
               Category <span className="text-red-500">*</span>
             </label>
             <input
-              name="text"
+              id="spc_category_name"
+              name="spc_category_name"
+              type="text"
               value={form.text}
-              onChange={handleChange}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, text: e.target.value }))
+              }
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-form-type="other"
+              data-lpignore="true"
               className={`w-full px-3 py-2 border text-sm bg-white ${
                 isInvalid(form.text) ? 'border-red-500' : 'border-gray-300'
               }`}
               placeholder="Enter category name"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1 font-medium">
-              Brand <span className="text-red-500">*</span>
-            </label>
-            <div className={isInvalid(form.spb_id) ? 'ring-1 ring-red-500 rounded-lg' : ''}>
-              <EnhancedDropdown
-                options={brandOptions}
-                value={form.spb_id}
-                onChange={handleBrandChange}
-                placeholder={brandsLoading ? 'Loading brands...' : 'Select brand'}
-                disabled={brandsLoading}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1 font-medium">
-              Model <span className="text-red-500">*</span>
-            </label>
-            <div className={isInvalid(form.spm_id) ? 'ring-1 ring-red-500 rounded-lg' : ''}>
-              <EnhancedDropdown
-                options={modelOptions}
-                value={form.spm_id}
-                onChange={handleModelChange}
-                placeholder={
-                  !form.spb_id
-                    ? 'Select brand first'
-                    : modelsLoading
-                      ? 'Loading models...'
-                      : 'Select model'
-                }
-                disabled={!form.spb_id || modelsLoading}
-                required
-              />
-            </div>
           </div>
 
           <div>
@@ -591,6 +563,46 @@ const AddSparePartCategory = () => {
 
           <div>
             <label className="block text-sm mb-1 font-medium">
+              Brand <span className="text-red-500">*</span>
+            </label>
+            <div className={isInvalid(form.spb_id) ? 'ring-1 ring-red-500 rounded-lg' : ''}>
+              <EnhancedDropdown
+                options={brandOptions}
+                value={form.spb_id}
+                onChange={handleBrandChange}
+                placeholder={brandsLoading ? 'Loading brands...' : 'Select brand'}
+                disabled={brandsLoading}
+                required
+                compact
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1 font-medium">
+              Model <span className="text-red-500">*</span>
+            </label>
+            <div className={isInvalid(form.spm_id) ? 'ring-1 ring-red-500 rounded-lg' : ''}>
+              <EnhancedDropdown
+                options={modelOptions}
+                value={form.spm_id}
+                onChange={handleModelChange}
+                placeholder={
+                  !form.spb_id
+                    ? 'Select brand first'
+                    : modelsLoading
+                      ? 'Loading models...'
+                      : 'Select model'
+                }
+                disabled={!form.spb_id || modelsLoading}
+                required
+                compact
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1 font-medium">
               Minimum Stock
             </label>
             <input
@@ -599,6 +611,7 @@ const AddSparePartCategory = () => {
               inputMode="numeric"
               value={form.minimum_stock}
               onChange={handleChange}
+              autoComplete="off"
               className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
               placeholder="Enter minimum stock"
             />
@@ -614,6 +627,7 @@ const AddSparePartCategory = () => {
               inputMode="numeric"
               value={form.re_order_level}
               onChange={handleChange}
+              autoComplete="off"
               className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
               placeholder="Enter reorder level"
             />

@@ -11,7 +11,7 @@ import { useAuthStore } from '../store/useAuthStore';
  * Manage product links for an existing vendor (add / remove).
  * Unlinking clears the vendor↔product association so either side can be deleted.
  */
-const VendorProductsPanel = ({ vendorId, orgId, isReadOnly = false }) => {
+const VendorProductsPanel = ({ vendorId, orgId, isReadOnly = false, psType = 'product' }) => {
   const { t } = useLanguage();
   const authOrgId = useAuthStore((s) => s.user?.org_id);
   const effectiveOrgId = orgId || authOrgId;
@@ -86,6 +86,12 @@ const VendorProductsPanel = ({ vendorId, orgId, isReadOnly = false }) => {
     typeof m === 'string' ? { id: m, text: m } : { id: m.model || m.text || String(m), text: m.model || m.text || String(m) }
   );
 
+  const visibleLinks = links.filter((row) => {
+    if (!psType) return true;
+    const type = String(row.ps_type || '').toLowerCase();
+    return type === String(psType).toLowerCase() || (!type && psType === 'product');
+  });
+
   const handleAdd = async () => {
     if (!form.assetType || !form.brand || !form.model) {
       setSubmitAttempted(true);
@@ -109,7 +115,8 @@ const VendorProductsPanel = ({ vendorId, orgId, isReadOnly = false }) => {
         (row) =>
           String(row.asset_type_id) === String(form.assetType) &&
           row.brand === form.brand &&
-          row.model === form.model
+          row.model === form.model &&
+          (!psType || String(row.ps_type || '').toLowerCase() === String(psType).toLowerCase())
       );
       if (!match?.prod_serv_id) {
         showBackendTextToast({
@@ -266,7 +273,7 @@ const VendorProductsPanel = ({ vendorId, orgId, isReadOnly = false }) => {
         </div>
         {loading ? (
           <div className="p-4 text-sm text-gray-500 text-center">Loading...</div>
-        ) : links.length === 0 ? (
+        ) : visibleLinks.length === 0 ? (
           <div className="p-4 text-sm text-gray-500 text-center">
             No products linked to this vendor.
           </div>
@@ -283,7 +290,7 @@ const VendorProductsPanel = ({ vendorId, orgId, isReadOnly = false }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {links.map((row) => (
+                {visibleLinks.map((row) => (
                   <tr key={row.ven_prod_serv_id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 text-gray-900">
                       {row.asset_type_text || row.asset_type_id || '—'}

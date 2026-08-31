@@ -117,6 +117,11 @@ const SparePartLotList = () => {
     });
   };
 
+  const handleEdit = (row) => {
+    if (!row?.spld_id) return;
+    navigate(`/master-data/spare-parts/edit/${row.spld_id}`);
+  };
+
   const handleDownload = () => {
     const visibleCols = columns.filter((c) => c.visible);
     const filtered = filterData(data, filterValues, visibleCols);
@@ -148,13 +153,14 @@ const SparePartLotList = () => {
         setSelectedRows={setSelectedRows}
         showAddButton={hasCreateAccess}
         showDeleteButton={false}
-        showActions={false}
+        showActions={true}
+        showHeaderCheckbox={false}
       >
-        {({ visibleColumns }) => {
+        {({ visibleColumns, showActions }) => {
           const filtered = filterData(data, filterValues, visibleColumns);
           const sorted = sortData(filtered);
           const visibleCols = visibleColumns.filter((col) => col.visible);
-          const colSpan = visibleCols.length;
+          const colSpan = visibleCols.length + (showActions ? 1 : 0);
 
           if (isLoading) {
             return (
@@ -187,7 +193,9 @@ const SparePartLotList = () => {
               rowKey="spld_id"
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
-              showActions={false}
+              onEdit={handleEdit}
+              showActions={Boolean(showActions)}
+              showCheckbox={false}
             />
           );
         }}

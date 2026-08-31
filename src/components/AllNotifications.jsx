@@ -15,7 +15,10 @@ import { useLanguage } from "../contexts/LanguageContext";
 import toast from "react-hot-toast";
 
 const isSpareAlert = (alert) =>
-  alert?.workflowType === "SPARE_ISSUED" || alert?.workflowType === "SPARE_CONFIRMED";
+  alert?.workflowType === "SPARE_APPROVAL" ||
+  alert?.workflowType === "SPARE_REQUESTED" ||
+  alert?.workflowType === "SPARE_ISSUED" ||
+  alert?.workflowType === "SPARE_CONFIRMED";
 
 const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
@@ -23,6 +26,8 @@ const badgeColors = {
   "Warranty Expiry": "bg-amber-100 text-amber-800",
   "Asset Expiry": "bg-rose-100 text-rose-800",
   "Urgent": "bg-red-100 text-red-800",
+  "Spare Part Approval": "bg-violet-100 text-violet-800",
+  "Spare Part Requested": "bg-violet-100 text-violet-800",
   "Spare Part Issued": "bg-emerald-100 text-emerald-800",
   "Spare Part Confirmed": "bg-sky-100 text-sky-800",
 };
@@ -43,6 +48,7 @@ const AllNotifications = () => {
     subscriptionRenewal: true,
     warranty: true,
     assetExpiry: true,
+    spareApproval: true,
     spareIssued: true,
     spareConfirmed: true,
   });
@@ -58,7 +64,9 @@ const AllNotifications = () => {
       Inspection: t("allNotifications.alertTypeInspection"),
       "Warranty Expiry": t("allNotifications.alertTypeWarrantyExpiry"),
       Urgent: t("allNotifications.alertTypeUrgent"),
-      "Spare Part Issued": t("allNotifications.alertTypeSparePartIssued") || "Spare Part Reserved",
+      "Spare Part Approval": t("allNotifications.alertTypeSparePartApproval") || "Spare Part Approval",
+      "Spare Part Requested": t("allNotifications.alertTypeSparePartApproval") || "Spare Part Approval",
+      "Spare Part Issued": t("allNotifications.alertTypeSparePartIssued") || "Spare Part Requested",
       "Spare Part Confirmed": t("allNotifications.alertTypeSparePartConfirmed") || "Spare Part Issued",
     };
     return labels[alertType] || alertType;
@@ -90,6 +98,15 @@ const AllNotifications = () => {
 
     if (isAssetExpiryNotification(alert.workflowType)) {
       return "assetExpiry";
+    }
+
+    if (
+      alert.workflowType === "SPARE_APPROVAL" ||
+      alert.workflowType === "SPARE_REQUESTED" ||
+      alert.alertType === "Spare Part Approval" ||
+      alert.alertType === "Spare Part Requested"
+    ) {
+      return "spareApproval";
     }
 
     if (
@@ -171,10 +188,13 @@ const AllNotifications = () => {
               : t("allNotifications.alertTypeWarrantyExpiry"))
           : isAssetExpiryNotification(notification.workflowType)
           ? "Asset Expiry"
-          : notification.workflowType === "SPARE_CONFIRMED"
-          ? "Spare Part Confirmed"
+          : notification.workflowType === "SPARE_APPROVAL" ||
+            notification.workflowType === "SPARE_REQUESTED"
+          ? "Spare Part Approval"
           : notification.workflowType === "SPARE_ISSUED"
           ? "Spare Part Issued"
+          : notification.workflowType === "SPARE_CONFIRMED"
+          ? "Spare Part Confirmed"
           : notification.maintenanceType || "Regular Maintenance",
         alertText: notification.isGroupMaintenance && notification.groupName
           ? t("allNotifications.groupNameWithAssets", { groupName: notification.groupName, count: notification.groupAssetCount })
@@ -184,7 +204,9 @@ const AllNotifications = () => {
           ? `${notification.assetId} - ${notification.title || t("allNotifications.alertTypeWarrantyExpiry")}`
           : isAssetExpiryNotification(notification.workflowType)
           ? `${notification.assetId} - ${notification.title || "Asset Expiry"}`
-          : notification.workflowType === "SPARE_ISSUED" ||
+          : notification.workflowType === "SPARE_APPROVAL" ||
+            notification.workflowType === "SPARE_REQUESTED" ||
+            notification.workflowType === "SPARE_ISSUED" ||
             notification.workflowType === "SPARE_CONFIRMED"
           ? `${notification.assetTypeName || "-"}`
           : String(notification.maintenanceType || "").toLowerCase().includes("subscription")
@@ -193,7 +215,11 @@ const AllNotifications = () => {
         dueOn: formatDate(notification.dueDate),
         actionBy: notification.userName || t("allNotifications.unassigned"),
         cutoffDate: formatDate(notification.cutoffDate),
-        isUrgent: notification.daysUntilCutoff <= 2 && notification.workflowType !== "SPARE_ISSUED" && notification.workflowType !== "SPARE_CONFIRMED",
+        isUrgent: notification.daysUntilCutoff <= 2 &&
+          notification.workflowType !== "SPARE_APPROVAL" &&
+          notification.workflowType !== "SPARE_REQUESTED" &&
+          notification.workflowType !== "SPARE_ISSUED" &&
+          notification.workflowType !== "SPARE_CONFIRMED",
         wfamshId: notification.wfamshId, // For navigation
         route: notification.route,
         workflowType: notification.workflowType,
@@ -519,15 +545,30 @@ const AllNotifications = () => {
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
+                    checked={selectedFilters.spareApproval}
+                    onChange={() => handleFilterChange('spareApproval')}
+                    className="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {t("allNotifications.filterSpareApproval") || "Spare Approval"} ({getFilterCount('spareApproval')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-violet-100 text-violet-800 rounded-full">
+                    {t("sparePartList.approval") || "Approval"}
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
                     checked={selectedFilters.spareIssued}
                     onChange={() => handleFilterChange('spareIssued')}
                     className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    {t("allNotifications.filterSpareIssued") || "Spare Reserved"} ({getFilterCount('spareIssued')})
+                    {t("allNotifications.filterSpareIssued") || "Spare Requested"} ({getFilterCount('spareIssued')})
                   </span>
                   <span className="px-2 py-1 text-xs bg-emerald-100 text-emerald-800 rounded-full">
-                    {t("sparePartList.issued") || "Reserved"}
+                    {t("allNotifications.statusRequested") || "Requested"}
                   </span>
                 </label>
 
@@ -614,11 +655,17 @@ const AllNotifications = () => {
                   <span className={`text-sm px-3 py-1 rounded-full ml-auto font-semibold ${
                     alert.workflowType === "SPARE_CONFIRMED"
                       ? "bg-sky-100 text-sky-800"
-                      : "bg-emerald-100 text-emerald-800"
+                      : alert.workflowType === "SPARE_APPROVAL" ||
+                          alert.workflowType === "SPARE_REQUESTED"
+                        ? "bg-violet-100 text-violet-800"
+                        : "bg-emerald-100 text-emerald-800"
                   }`}>
                     {alert.workflowType === "SPARE_CONFIRMED"
                       ? (t("sparePartList.confirmedIssued") || "Issued")
-                      : (t("sparePartList.issued") || "Reserved")}
+                      : alert.workflowType === "SPARE_APPROVAL" ||
+                          alert.workflowType === "SPARE_REQUESTED"
+                        ? (t("sparePartList.approval") || "Approval")
+                        : (t("allNotifications.statusRequested") || "Requested")}
                   </span>
                 )}
               </div>

@@ -42,7 +42,7 @@ const SparePartIssue = () => {
     { label: t('sparePartList.maintenanceType'), name: 'maintenance_type_name', visible: true },
     { label: t('sparePartList.vendor'), name: 'vendor_name', visible: true },
     { label: t('sparePartList.status'), name: 'status', visible: true },
-    { label: t('sparePartIssue.issueAction'), name: 'action', visible: true },
+    { label: t('sparePartIssue.action'), name: 'action', visible: true },
   ]);
 
   useEffect(() => {

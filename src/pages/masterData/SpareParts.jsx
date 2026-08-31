@@ -1,8 +1,71 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import API from '../../lib/axios';
 import { invalidateCache } from '../../utils/apiCache';
+import EnhancedDropdown from '../../components/ui/EnhancedDropdown';
+
+const CREATE_NEW = 'CREATE_NEW';
+const lotListPath = '/master-data/spare-parts';
+
+const CreateNameModal = ({
+  title,
+  label,
+  placeholder,
+  value,
+  onChange,
+  onCancel,
+  onCreate,
+  saving,
+}) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-lg border-b-4 border-[#FFC107]">
+        <h2 className="text-xl font-semibold">{title}</h2>
+      </div>
+      <div className="p-6">
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {label} <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onCreate();
+              }
+            }}
+          />
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            disabled={saving}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onCreate}
+            disabled={saving || !value.trim()}
+            className="px-6 py-2.5 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? 'Creating...' : 'Create'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const emptyForm = {
   vendor_id: '',
@@ -18,7 +81,23 @@ const emptyForm = {
   has_serial_number: false,
 };
 
+const toDateInputValue = (value) => {
+  if (!value) return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+};
+
 const SpareParts = () => {
+  const navigate = useNavigate();
+  const { spld_id: editLotId } = useParams();
+  const isEdit = Boolean(editLotId);
+  const preserveLoadedPartNumberRef = useRef(false);
   const [form, setForm] = useState(emptyForm);
   const [vendors, setVendors] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -33,6 +112,13 @@ const SpareParts = () => {
   const [loadingPartNumber, setLoadingPartNumber] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [showBrandModal, setShowBrandModal] = useState(false);
+  const [showModelModal, setShowModelModal] = useState(false);
+  const [newBrandName, setNewBrandName] = useState('');
+  const [newModelName, setNewModelName] = useState('');
+  const [savingBrand, setSavingBrand] = useState(false);
+  const [savingModel, setSavingModel] = useState(false);
+  const [loadingLot, setLoadingLot] = useState(Boolean(editLotId));
 
   const quantityInt = useMemo(() => {
     const n = Number(form.quantity);
@@ -46,13 +132,13 @@ const SpareParts = () => {
     const fetchVendors = async () => {
       setLoadingVendors(true);
       try {
-        const res = await API.get('/get-vendors');
+        const res = await API.get('/spare-parts/lot-options/vendors');
         const rows = Array.isArray(res.data?.data)
           ? res.data.data
           : Array.isArray(res.data)
             ? res.data
             : [];
-        setVendors(rows.filter((v) => v.int_status === 1 || v.int_status === 'Active'));
+        setVendors(rows);
       } catch (error) {
         console.error('Error fetching vendors:', error);
         showBackendTextToast({
@@ -71,11 +157,67 @@ const SpareParts = () => {
   }, []);
 
   useEffect(() => {
+    if (!editLotId) {
+      setLoadingLot(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const loadLot = async () => {
+      setLoadingLot(true);
+      try {
+        const res = await API.get(`/spare-parts/lots/${editLotId}`);
+        const lot = res.data?.data;
+        if (!lot || cancelled) return;
+        preserveLoadedPartNumberRef.current = true;
+        setForm({
+          vendor_id: lot.vendor_id || '',
+          spc_id: lot.spc_id || '',
+          brand_id: lot.brand_id || '',
+          model_id: lot.model_id || '',
+          part_number: lot.part_number || '',
+          quantity: lot.quantity != null ? String(lot.quantity) : '',
+          unit_price: lot.unit_price != null ? String(lot.unit_price) : '',
+          invoice_no: lot.invoice_no || '',
+          lot_purchase_date: toDateInputValue(lot.lot_purchase_date),
+          invoice_item_no: lot.invoice_item_no || '',
+          has_serial_number: false,
+        });
+        setAutoIndividuals(
+          Array.isArray(lot.individuals) ? lot.individuals : []
+        );
+      } catch (error) {
+        console.error('Error loading spare part lot:', error);
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_FAILED_TO_FETCH_SPARE_PART_LOT',
+          fallbackText:
+            error.response?.data?.error || 'Failed to load spare part lot',
+          type: 'error',
+        });
+        if (!cancelled) navigate(lotListPath);
+      } finally {
+        if (!cancelled) setLoadingLot(false);
+      }
+    };
+
+    loadLot();
+    return () => {
+      cancelled = true;
+    };
+  }, [editLotId, navigate]);
+
+  useEffect(() => {
     const fetchCategories = async () => {
+      if (!form.vendor_id) {
+        setCategories([]);
+        setLoadingCategories(false);
+        return;
+      }
       setLoadingCategories(true);
       try {
-        const res = await API.get('/spare-parts/categories', {
-          params: { orgWide: true },
+        const res = await API.get('/spare-parts/lot-options/categories', {
+          params: { vendor_id: form.vendor_id },
         });
         const rows = Array.isArray(res.data?.data) ? res.data.data : [];
         setCategories(rows);
@@ -94,13 +236,18 @@ const SpareParts = () => {
     };
 
     fetchCategories();
-  }, []);
+  }, [form.vendor_id]);
 
   useEffect(() => {
     const fetchBrands = async () => {
+      if (!form.spc_id) {
+        setBrands([]);
+        setLoadingBrands(false);
+        return;
+      }
       setLoadingBrands(true);
       try {
-        const params = form.spc_id ? { spc_id: form.spc_id } : {};
+        const params = { spc_id: form.spc_id };
         const res = await API.get('/spare-parts/lot-options/brands', { params });
         const rows = Array.isArray(res.data?.data)
           ? res.data.data
@@ -176,7 +323,12 @@ const SpareParts = () => {
 
   useEffect(() => {
     if (!selectionComplete) {
+      if (isEdit) return;
       setForm((prev) => (prev.part_number ? { ...prev, part_number: '' } : prev));
+      return;
+    }
+
+    if (preserveLoadedPartNumberRef.current) {
       return;
     }
 
@@ -237,6 +389,59 @@ const SpareParts = () => {
   ]);
 
   useEffect(() => {
+    if (loadingCategories || !form.spc_id) return;
+    setCategories((prev) => {
+      if (prev.some((row) => String(row.spc_id) === String(form.spc_id))) {
+        return prev;
+      }
+      return [{ spc_id: form.spc_id, text: form.spc_id }, ...prev];
+    });
+  }, [form.spc_id, loadingCategories]);
+
+  useEffect(() => {
+    if (loadingVendors || !form.vendor_id) return;
+    setVendors((prev) => {
+      if (prev.some((row) => String(row.vendor_id) === String(form.vendor_id))) {
+        return prev;
+      }
+      return [
+        {
+          vendor_id: form.vendor_id,
+          vendor_name: form.vendor_id,
+          company_name: '',
+        },
+        ...prev,
+      ];
+    });
+  }, [form.vendor_id, loadingVendors]);
+
+  useEffect(() => {
+    if (loadingBrands || !form.brand_id) return;
+    setBrands((prev) => {
+      if (prev.some((row) => String(row.brand_id) === String(form.brand_id))) {
+        return prev;
+      }
+      return [
+        { brand_id: form.brand_id, brand_name: form.brand_id },
+        ...prev,
+      ];
+    });
+  }, [form.brand_id, loadingBrands]);
+
+  useEffect(() => {
+    if (loadingModels || !form.model_id) return;
+    setModels((prev) => {
+      if (prev.some((row) => String(row.model_id) === String(form.model_id))) {
+        return prev;
+      }
+      return [
+        { model_id: form.model_id, model_name: form.model_id },
+        ...prev,
+      ];
+    });
+  }, [form.model_id, loadingModels]);
+
+  useEffect(() => {
     if (!form.has_serial_number) {
       setSerialNumbers([]);
       return;
@@ -256,18 +461,22 @@ const SpareParts = () => {
       };
 
       if (name === 'vendor_id') {
+        preserveLoadedPartNumberRef.current = false;
         next.spc_id = '';
         next.brand_id = '';
         next.model_id = '';
         next.part_number = '';
       } else if (name === 'spc_id') {
+        preserveLoadedPartNumberRef.current = false;
         next.brand_id = '';
         next.model_id = '';
         next.part_number = '';
       } else if (name === 'brand_id') {
+        preserveLoadedPartNumberRef.current = false;
         next.model_id = '';
         next.part_number = '';
       } else if (name === 'model_id') {
+        preserveLoadedPartNumberRef.current = false;
         next.part_number = '';
       }
 
@@ -287,8 +496,227 @@ const SpareParts = () => {
     });
   };
 
+  const handleBrandChange = (value) => {
+    if (value === CREATE_NEW) {
+      setShowBrandModal(true);
+      return;
+    }
+    preserveLoadedPartNumberRef.current = false;
+    setForm((prev) => ({
+      ...prev,
+      brand_id: value,
+      model_id: '',
+      part_number: '',
+    }));
+    setAutoIndividuals([]);
+  };
+
+  const handleModelChange = (value) => {
+    if (value === CREATE_NEW) {
+      if (!form.brand_id) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SP_SELECT_BRAND_FIRST',
+          fallbackText: 'Select a brand first',
+          type: 'error',
+        });
+        return;
+      }
+      setShowModelModal(true);
+      return;
+    }
+    preserveLoadedPartNumberRef.current = false;
+    setForm((prev) => ({
+      ...prev,
+      model_id: value,
+      part_number: '',
+    }));
+    setAutoIndividuals([]);
+  };
+
+  const handleCreateBrand = async () => {
+    if (!newBrandName.trim()) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_BRAND_REQUIRED',
+        fallbackText: 'Please enter a brand name',
+        type: 'error',
+      });
+      return;
+    }
+    const normalized = newBrandName.trim().toLowerCase();
+    if (
+      brands.some(
+        (b) => String(b.brand_name || '').trim().toLowerCase() === normalized
+      )
+    ) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_BRAND_EXISTS',
+        fallbackText: 'A brand with this name already exists',
+        type: 'error',
+      });
+      return;
+    }
+
+    setSavingBrand(true);
+    try {
+      const res = await API.post('/spare-parts/brands', {
+        text: newBrandName.trim(),
+      });
+      const created = res.data?.data;
+      const brand_id = created?.spb_id;
+      const brand_name = created?.text || newBrandName.trim();
+      if (!brand_id) {
+        throw new Error('Brand was created but no id was returned');
+      }
+      setBrands((prev) => {
+        if (prev.some((b) => b.brand_id === brand_id)) return prev;
+        return [...prev, { brand_id, brand_name }].sort((a, b) =>
+          String(a.brand_name || '').localeCompare(String(b.brand_name || ''))
+        );
+      });
+      preserveLoadedPartNumberRef.current = false;
+      setForm((prev) => ({
+        ...prev,
+        brand_id,
+        model_id: '',
+        part_number: '',
+      }));
+      setNewBrandName('');
+      setShowBrandModal(false);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_BRAND_CREATED',
+        fallbackText: 'Brand created successfully',
+        type: 'success',
+      });
+    } catch (error) {
+      console.error('Error creating brand:', error);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_BRAND_CREATE_FAILED',
+        fallbackText:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Failed to create brand',
+        type: 'error',
+      });
+    } finally {
+      setSavingBrand(false);
+    }
+  };
+
+  const handleCreateModel = async () => {
+    if (!newModelName.trim()) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MODEL_REQUIRED',
+        fallbackText: 'Please enter a model name',
+        type: 'error',
+      });
+      return;
+    }
+    if (!form.brand_id) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_SELECT_BRAND_FIRST',
+        fallbackText: 'Select a brand first',
+        type: 'error',
+      });
+      return;
+    }
+    const normalized = newModelName.trim().toLowerCase();
+    if (
+      models.some(
+        (m) => String(m.model_name || '').trim().toLowerCase() === normalized
+      )
+    ) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MODEL_EXISTS',
+        fallbackText: 'A model with this name already exists for the selected brand',
+        type: 'error',
+      });
+      return;
+    }
+
+    setSavingModel(true);
+    try {
+      const res = await API.post('/spare-parts/models', {
+        text: newModelName.trim(),
+        spb_id: form.brand_id,
+      });
+      const created = res.data?.data;
+      const model_id = created?.spm_id;
+      const model_name = created?.text || newModelName.trim();
+      if (!model_id) {
+        throw new Error('Model was created but no id was returned');
+      }
+      setModels((prev) => {
+        if (prev.some((m) => m.model_id === model_id)) return prev;
+        return [...prev, { model_id, model_name }].sort((a, b) =>
+          String(a.model_name || '').localeCompare(String(b.model_name || ''))
+        );
+      });
+      preserveLoadedPartNumberRef.current = false;
+      setForm((prev) => ({
+        ...prev,
+        model_id,
+        part_number: '',
+      }));
+      setNewModelName('');
+      setShowModelModal(false);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MODEL_CREATED',
+        fallbackText: 'Model created successfully',
+        type: 'success',
+      });
+    } catch (error) {
+      console.error('Error creating model:', error);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MODEL_CREATE_FAILED',
+        fallbackText:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Failed to create model',
+        type: 'error',
+      });
+    } finally {
+      setSavingModel(false);
+    }
+  };
+
   const isFieldInvalid = (val) =>
     submitAttempted && (!val || !String(val).trim());
+
+  const brandOptions = [
+    ...brands.map((brand) => ({
+      value: brand.brand_id,
+      label: brand.brand_name,
+    })),
+    {
+      value: CREATE_NEW,
+      label: '+ Create New',
+      description: 'Create a new brand',
+      isCreateNew: true,
+    },
+  ];
+
+  const modelOptions = [
+    ...models.map((model) => ({
+      value: model.model_id,
+      label: model.model_name,
+    })),
+    {
+      value: CREATE_NEW,
+      label: '+ Create New',
+      description: 'Create a new model',
+      isCreateNew: true,
+    },
+  ];
 
   const getVendorLabel = (vendor) =>
     vendor.vendor_name || vendor.company_name || vendor.vendor_id;
@@ -444,6 +872,19 @@ const SpareParts = () => {
           : [],
       };
 
+      if (isEdit) {
+        await API.put(`/spare-parts/lots/${editLotId}`, payload);
+        invalidateCache('spare-parts:');
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SPARE_PART_UPDATED',
+          fallbackText: 'Spare part lot updated successfully',
+          type: 'success',
+        });
+        navigate(lotListPath);
+        return;
+      }
+
       const res = await API.post('/spare-parts/lots', payload);
       invalidateCache('spare-parts:');
 
@@ -505,32 +946,64 @@ const SpareParts = () => {
   };
 
   const handleClear = () => {
-    setForm(emptyForm);
-    setSerialNumbers([]);
-    setAutoIndividuals([]);
-    setBrands([]);
-    setModels([]);
-    setSubmitAttempted(false);
+    navigate(lotListPath);
   };
 
   const fieldClass = (invalid) =>
-    `w-full px-3 py-2 border rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+    `w-full h-[38px] box-border px-3 pr-8 py-0 border rounded text-sm bg-white appearance-none bg-no-repeat bg-[length:16px_16px] bg-[right_8px_center] focus:outline-none focus:ring-2 focus:ring-blue-500 ${
       invalid ? 'border-red-500' : 'border-gray-300'
     }`;
+  const selectArrowStyle = {
+    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 9l6 6 6-6'/></svg>")`,
+  };
 
   return (
-    <div className="max-w-6xl mx-auto bg-white rounded-xl shadow overflow-hidden flex flex-col min-h-[calc(100vh-140px)]">
-      <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
-        <h1 className="text-xl font-semibold">Spare Part Lot</h1>
+    <div className="max-w-6xl mx-auto bg-white rounded-xl shadow overflow-hidden flex flex-col max-h-[calc(100vh-140px)] min-h-[560px]">
+      {showBrandModal && (
+        <CreateNameModal
+          title="Create New Brand"
+          label="Brand"
+          placeholder="Enter brand name"
+          value={newBrandName}
+          onChange={setNewBrandName}
+          onCancel={() => {
+            setShowBrandModal(false);
+            setNewBrandName('');
+          }}
+          onCreate={handleCreateBrand}
+          saving={savingBrand}
+        />
+      )}
+      {showModelModal && (
+        <CreateNameModal
+          title="Create New Model"
+          label="Model"
+          placeholder="Enter model name"
+          value={newModelName}
+          onChange={setNewModelName}
+          onCancel={() => {
+            setShowModelModal(false);
+            setNewModelName('');
+          }}
+          onCreate={handleCreateModel}
+          saving={savingModel}
+        />
+      )}
+
+      <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center shrink-0">
+        <h1 className="text-xl font-semibold">
+          {isEdit ? 'Edit Spare Part Lot' : 'Spare Part Lot'}
+        </h1>
       </div>
 
+      {!loadingLot ? (
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-6">
           <section>
             <h2 className="text-sm font-semibold text-[#0E2F4B] mb-3">
               Part Selection
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
               <div>
                 <label className="block text-sm mb-1 font-medium">
                   Vendor <span className="text-red-500">*</span>
@@ -540,10 +1013,15 @@ const SpareParts = () => {
                   value={form.vendor_id}
                   onChange={handleInputChange}
                   className={fieldClass(isFieldInvalid(form.vendor_id))}
+                  style={selectArrowStyle}
                   disabled={loadingVendors}
                 >
                   <option value="">
-                    {loadingVendors ? 'Loading vendors...' : 'Select vendor'}
+                    {loadingVendors
+                      ? 'Loading vendors...'
+                      : vendors.length
+                        ? 'Select vendor'
+                        : 'No spare-supply vendors mapped'}
                   </option>
                   {vendors.map((vendor) => (
                     <option key={vendor.vendor_id} value={vendor.vendor_id}>
@@ -562,10 +1040,17 @@ const SpareParts = () => {
                   value={form.spc_id}
                   onChange={handleInputChange}
                   className={fieldClass(isFieldInvalid(form.spc_id))}
-                  disabled={loadingCategories}
+                  style={selectArrowStyle}
+                  disabled={loadingCategories || !form.vendor_id}
                 >
                   <option value="">
-                    {loadingCategories ? 'Loading categories...' : 'Select category'}
+                    {!form.vendor_id
+                      ? 'Select vendor first'
+                      : loadingCategories
+                        ? 'Loading categories...'
+                        : categories.length
+                          ? 'Select category'
+                          : 'No categories mapped for this vendor'}
                   </option>
                   {categories.map((cat) => (
                     <option key={cat.spc_id} value={cat.spc_id}>
@@ -579,48 +1064,44 @@ const SpareParts = () => {
                 <label className="block text-sm mb-1 font-medium">
                   Brand <span className="text-red-500">*</span>
                 </label>
-                <select
-                  name="brand_id"
+                <EnhancedDropdown
+                  options={brandOptions}
                   value={form.brand_id}
-                  onChange={handleInputChange}
-                  className={fieldClass(isFieldInvalid(form.brand_id))}
-                  disabled={loadingBrands}
-                >
-                  <option value="">
-                    {loadingBrands ? 'Loading brands...' : 'Select brand'}
-                  </option>
-                  {brands.map((brand) => (
-                    <option key={brand.brand_id} value={brand.brand_id}>
-                      {brand.brand_name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={handleBrandChange}
+                  placeholder={
+                    !form.spc_id
+                      ? 'Select category first'
+                      : loadingBrands
+                        ? 'Loading brands...'
+                        : 'Select brand'
+                  }
+                  disabled={loadingBrands || !form.spc_id}
+                  required
+                  compact
+                  className={isFieldInvalid(form.brand_id) ? '[&>div]:border-red-500' : ''}
+                />
               </div>
 
               <div>
                 <label className="block text-sm mb-1 font-medium">
                   Model <span className="text-red-500">*</span>
                 </label>
-                <select
-                  name="model_id"
+                <EnhancedDropdown
+                  options={modelOptions}
                   value={form.model_id}
-                  onChange={handleInputChange}
-                  className={fieldClass(isFieldInvalid(form.model_id))}
-                  disabled={loadingModels || !form.brand_id}
-                >
-                  <option value="">
-                    {!form.brand_id
+                  onChange={handleModelChange}
+                  placeholder={
+                    !form.brand_id
                       ? 'Select brand first'
                       : loadingModels
                         ? 'Loading models...'
-                        : 'Select model'}
-                  </option>
-                  {models.map((model) => (
-                    <option key={model.model_id} value={model.model_id}>
-                      {model.model_name}
-                    </option>
-                  ))}
-                </select>
+                        : 'Select model'
+                  }
+                  disabled={loadingModels || !form.brand_id}
+                  required
+                  compact
+                  className={isFieldInvalid(form.model_id) ? '[&>div]:border-red-500' : ''}
+                />
               </div>
             </div>
           </section>
@@ -733,6 +1214,7 @@ const SpareParts = () => {
             </div>
           </section>
 
+          {!isEdit && (
           <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
             <div className="flex items-start gap-3">
               <input
@@ -756,8 +1238,9 @@ const SpareParts = () => {
               </div>
             </div>
           </section>
+          )}
 
-          {form.has_serial_number && (
+          {!isEdit && form.has_serial_number && (
             <div className="border border-gray-200 rounded-lg p-4 space-y-3">
               <div className="text-sm font-semibold text-[#0E2F4B]">
                 Serial Numbers ({quantityInt || 0})
@@ -832,18 +1315,32 @@ const SpareParts = () => {
               className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 text-sm"
               disabled={loading}
             >
-              Clear
+              Cancel
             </button>
             <button
               type="submit"
               className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-blue-700 text-sm"
               disabled={loading}
             >
-              {loading ? 'Saving...' : 'Save'}
+              {loading
+                ? isEdit
+                  ? 'Updating...'
+                  : 'Saving...'
+                : isEdit
+                  ? 'Update'
+                  : 'Save'}
             </button>
           </div>
         </div>
       </form>
+      ) : (
+        <div className="flex-1 flex items-center justify-center p-10">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4" />
+            <p className="text-gray-600">Loading lot...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
