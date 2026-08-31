@@ -9,12 +9,16 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ALM_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DEPLOY="${ALM_ROOT}/AssetLifecycleBackend/scripts/deploy/deploy-pull-rebuild.sh"
+DEPLOY="${ALM_ROOT}/backend/scripts/deploy/deploy-pull-rebuild.sh"
+
+export ALM_ROOT
+export BACKEND_DIR="${ALM_ROOT}/backend"
+export FRONTEND_DIR="${SCRIPT_DIR}"
 
 if [[ ! -f "$DEPLOY" ]]; then
   echo "ERROR: Backend deploy script not found at:"
   echo "  $DEPLOY"
-  echo "Expected sibling folder: AssetLifecycleBackend next to AssetLifecycleWebFrontend"
+  echo "Expected sibling folder: backend next to frontend"
   exit 1
 fi
 
