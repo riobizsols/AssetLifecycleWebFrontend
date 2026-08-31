@@ -105,7 +105,7 @@ const Certifications = () => {
   const [selectedCertificatesForMapping, setSelectedCertificatesForMapping] = useState([]);
   const [mappingFormSearchAvailable, setMappingFormSearchAvailable] = useState("");
   const [mappingFormSearchSelected, setMappingFormSearchSelected] = useState("");
-  // Form-only asset/maintenance type (no preselection when adding)
+  // Form-only asset/maintenance type (prefilled from list selection when opening Add)
   const [mappingFormAssetType, setMappingFormAssetType] = useState("");
   const [mappingFormMaintType, setMappingFormMaintType] = useState("");
   const [mappingFormMaintTypes, setMappingFormMaintTypes] = useState([]);
@@ -358,6 +358,36 @@ const Certifications = () => {
 
   const pushCertificationsHistory = () => {
     window.history.pushState({ certificationsForm: true }, "", location.pathname);
+  };
+
+  const closeMappingForm = () => {
+    setShowMappingForm(false);
+    setAvailableCertificatesForMapping([]);
+    setSelectedCertificatesForMapping([]);
+    setMappingFormSearchAvailable("");
+    setMappingFormSearchSelected("");
+    setMappingFormAssetType("");
+    setMappingFormMaintType("");
+    setMappingFormMaintTypes([]);
+    setMappingFormMappedCertificates([]);
+    setMappingFormMappedLoaded(false);
+    mappingFormInitRef.current = { assetType: "", maintType: "" };
+  };
+
+  const openMappingForm = () => {
+    pushCertificationsHistory();
+    setShowMappingForm(true);
+    // Carry over asset type (and maint type if set) from the list screen
+    setMappingFormAssetType(selectedAssetType || "");
+    setMappingFormMaintType(selectedAssetType ? selectedMaintType || "" : "");
+    setMappingFormMaintTypes([]);
+    setMappingFormMappedCertificates([]);
+    setMappingFormMappedLoaded(false);
+    setAvailableCertificatesForMapping(certificates);
+    setSelectedCertificatesForMapping([]);
+    setMappingFormSearchAvailable("");
+    setMappingFormSearchSelected("");
+    mappingFormInitRef.current = { assetType: "", maintType: "" };
   };
 
   useEffect(() => {
@@ -788,17 +818,7 @@ const Certifications = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOMAPCERTIFICATES_2C5AF44D', fallbackText: error.response?.data?.message || t("certifications.failedToMapCertificates"), type: 'error' });
     } finally {
       setIsSaving(false);
-      setShowMappingForm(false);
-      setAvailableCertificatesForMapping([]);
-      setSelectedCertificatesForMapping([]);
-      setMappingFormSearchAvailable("");
-      setMappingFormSearchSelected("");
-      setMappingFormAssetType("");
-      setMappingFormMaintType("");
-      setMappingFormMaintTypes([]);
-      setMappingFormMappedCertificates([]);
-      setMappingFormMappedLoaded(false);
-      mappingFormInitRef.current = { assetType: '', maintType: '' };
+      closeMappingForm();
     }
   };
 
@@ -1331,26 +1351,24 @@ const Certifications = () => {
         <div className="p-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
-              <div>
+              <div className="flex items-center gap-3">
+                {showMappingForm && (
+                  <button
+                    type="button"
+                    onClick={closeMappingForm}
+                    className="flex items-center justify-center text-[#0E2F4B] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-white"
+                    aria-label={t("common.back")}
+                    title={t("common.back")}
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                )}
                 <h2 className="text-lg font-semibold text-gray-900">{t("certifications.maintenanceCertificates")}</h2>
               </div>
               <div className="flex items-center gap-2">
                 {!showMappingForm && (
                   <button
-                    onClick={() => {
-                      pushCertificationsHistory();
-                      setShowMappingForm(true);
-                      setMappingFormAssetType("");
-                      setMappingFormMaintType("");
-                      setMappingFormMaintTypes([]);
-                      setMappingFormMappedCertificates([]);
-                      setMappingFormMappedLoaded(false);
-                      setAvailableCertificatesForMapping(certificates);
-                      setSelectedCertificatesForMapping([]);
-                      setMappingFormSearchAvailable("");
-                      setMappingFormSearchSelected("");
-                      mappingFormInitRef.current = { assetType: '', maintType: '' };
-                    }}
+                    onClick={openMappingForm}
                     className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-2 hover:bg-gray-100 bg-[#0E2F4B]"
                     title="Add"
                   >
@@ -1665,13 +1683,7 @@ const Certifications = () => {
 
                 <div className="flex items-center justify-end gap-3 mb-6">
                   <button
-                    onClick={() => {
-                      setShowMappingForm(false);
-                      setAvailableCertificatesForMapping([]);
-                      setSelectedCertificatesForMapping([]);
-                      setMappingFormSearchAvailable("");
-                      setMappingFormSearchSelected("");
-                    }}
+                    onClick={closeMappingForm}
                     className="px-4 py-2 bg-gray-300 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-400 transition"
                   >
                     Cancel

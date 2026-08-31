@@ -92,9 +92,11 @@ const AddEntityForm = () => {
   const [createdVendorId, setCreatedVendorId] = useState(
     () => initialDraft?.createdVendorId || ""
   );
+  const createdVendorIdRef = useRef(createdVendorId);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  // If draft claimed "saved" but has no id, treat as unsaved so create can run again.
   const [vendorSaved, setVendorSaved] = useState(
-    () => Boolean(initialDraft?.vendorSaved)
+    () => Boolean(initialDraft?.vendorSaved && initialDraft?.createdVendorId)
   );
   const [savingTab, setSavingTab] = useState("");
   const [savedTabs, setSavedTabs] = useState(
@@ -127,6 +129,7 @@ const AddEntityForm = () => {
       vendorSaved,
       savedTabs,
     };
+    createdVendorIdRef.current = createdVendorId;
   }, [form, selectedSLAs, activeTab, createdVendorId, vendorSaved, savedTabs]);
 
   // Debug: Log when selectedSLAs changes
@@ -358,29 +361,51 @@ const AddEntityForm = () => {
     return mapped;
   };
 
+  /** Creates vendor and returns vendor_id (does not manage loading UI). */
+  const createVendor = async () => {
+    setSubmitAttempted(true);
+    const vendor_slas = mapSLAsToForm();
+    const formDataWithSLAs = normalizeVendorFormPayload({ ...form, vendor_slas });
+
+    const response = await API.post("/create-vendor", formDataWithSLAs);
+    const payload = response?.data?.data ?? response?.data;
+    const vendorId = String(payload?.vendor_id || payload?.vendorId || "").trim();
+    if (!vendorId) {
+      console.error("[AddEntityForm] create-vendor response missing vendor_id:", response?.data);
+      throw new Error(t('vendors.failedToCreateVendor') || 'Failed to create vendor');
+    }
+
+    createdVendorIdRef.current = vendorId;
+    setCreatedVendorId(vendorId);
+    setVendorSaved(true);
+    setSavedTabs((prev) => new Set([...prev, "Vendor Details"]));
+    // Keep draft in sync immediately (state updates are async).
+    draftSnapshotRef.current = {
+      ...draftSnapshotRef.current,
+      createdVendorId: vendorId,
+      vendorSaved: true,
+    };
+    bustVendorListCache();
+    return vendorId;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitAttempted(true);
     try {
       setLoading(true);
       setSavingTab("Vendor Details");
-      
-      // Map selected SLAs to vendor_slas array
-      const vendor_slas = mapSLAsToForm();
-      const formDataWithSLAs = normalizeVendorFormPayload({ ...form, vendor_slas });
-      
-      const response = await API.post("/create-vendor", formDataWithSLAs); // Backend adds ext_id, created_on, org_id
-      const vendorId = response.data?.data?.vendor_id;
-      setCreatedVendorId(vendorId || "");
-      setVendorSaved(true); // Mark vendor as saved
-      setSavedTabs(prev => new Set([...prev, "Vendor Details"])); // Mark vendor tab as saved
-      bustVendorListCache();
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_VENDORCREATEDSUCCESSFULLY_4C6423E8', fallbackText: t('vendors.vendorCreatedSuccessfully'), type: 'success' });
-      // Optionally: navigate("/master-data/vendors");
+      await createVendor();
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_VENDORCREATEDSUCCESSFULLY_4C6423E8',
+        fallbackText: t('vendors.vendorCreatedSuccessfully'),
+        type: 'success',
+      });
     } catch (error) {
       console.error(error);
       const errorMessage = error.response?.data?.message || error.response?.data?.error || t('vendors.failedToCreateVendor');
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOCREATEVENDOR_B19D7A9B', fallbackText: errorMessage, type: 'error' });
+      throw error;
     } finally {
       setLoading(false);
       setSavingTab("");
@@ -439,8 +464,10 @@ const AddEntityForm = () => {
       setLoading(true);
       
       // Always try to save vendor details first if not already saved
-      let vendorSaveSuccess = vendorSaved;
-      if (!vendorSaved) {
+      let vendorSaveSuccess = Boolean(vendorSaved && (createdVendorIdRef.current || createdVendorId));
+      // Use a local id — setState is async, so upload must not rely on createdVendorId state yet
+      let vendorIdForUpload = String(createdVendorIdRef.current || createdVendorId || "").trim();
+      if (!vendorSaveSuccess || !vendorIdForUpload) {
         // Validate required fields before saving
         const validationErrors = validateRequiredFields();
         if (validationErrors.length > 0) {
@@ -459,22 +486,36 @@ const AddEntityForm = () => {
         
         setSavingTab("Vendor Details");
         try {
-          await handleSubmit({ preventDefault: () => {} });
-          vendorSaveSuccess = true; // Mark as successful if no error thrown
+          vendorIdForUpload = await createVendor();
+          vendorSaveSuccess = true;
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_VENDORCREATEDSUCCESSFULLY_4C6423E8',
+            fallbackText: t('vendors.vendorCreatedSuccessfully'),
+            type: 'success',
+          });
         } catch (error) {
           vendorSaveSuccess = false;
-          throw error; // Re-throw to be caught by outer catch
+          const errorMessage = error.response?.data?.message || error.response?.data?.error || t('vendors.failedToCreateVendor');
+          showBackendTextToast({
+            toast,
+            tmdId: 'TMD_I18N_VENDORS_FAILEDTOCREATEVENDOR_B19D7A9B',
+            fallbackText: errorMessage,
+            type: 'error',
+          });
+          throw error;
         }
       }
       
       // Only proceed with other tabs if vendor was successfully saved
-      if (!vendorSaveSuccess) {
+      if (!vendorSaveSuccess || !vendorIdForUpload) {
         setLoading(false);
         return;
       }
       
       // Now save other tabs if they have data and vendor is saved
       const tabsToSave = [];
+      const actuallySavedTabs = [];
       
       // Check Product Details tab
       if (form.product_supply && !savedTabs.has("Product Details")) {
@@ -506,29 +547,39 @@ const AddEntityForm = () => {
       }
       
       // Save each tab that has data
+      let attachmentsOk = true;
       for (const tabName of tabsToSave) {
         if (tabName === "Product Details") {
           setSavingTab("Product Details");
           // Trigger the save in ProductSupplyForm
           // Wait for the save operation to complete
           await new Promise(resolve => setTimeout(resolve, 3000));
+          actuallySavedTabs.push(tabName);
         } else if (tabName === "Service Details") {
           setSavingTab("Service Details");
           // Trigger the save in ServiceSupplyForm
           // Wait for the save operation to complete
           await new Promise(resolve => setTimeout(resolve, 3000));
+          actuallySavedTabs.push(tabName);
         } else if (tabName === "Spare Supply") {
           setSavingTab("Spare Supply");
           await new Promise(resolve => setTimeout(resolve, 3000));
+          actuallySavedTabs.push(tabName);
         } else if (tabName === "Attachments") {
           setSavingTab("Attachments");
-          await handleBatchUpload();
+          const uploadResult = await handleBatchUpload(vendorIdForUpload);
+          if (uploadResult?.ok) {
+            actuallySavedTabs.push(tabName);
+          } else {
+            attachmentsOk = false;
+          }
         }
       }
       
-      // Show success message only when additional tabs were saved (vendor toast is shown in handleSubmit)
-      if (tabsToSave.length > 0) {
-        const savedTabsList = tabsToSave.map(translateTab).join(", ");
+      // Only list non-attachment tabs here — attachments already toast on upload success
+      const tabsForSummary = actuallySavedTabs.filter((name) => name !== "Attachments");
+      if (tabsForSummary.length > 0) {
+        const savedTabsList = tabsForSummary.map(translateTab).join(", ");
         showBackendTextToast({
           toast,
           tmdId: 'TMD_I18N_VENDORS_SUCCESSFULLYSAVED_5ED2C725',
@@ -539,6 +590,11 @@ const AddEntityForm = () => {
           type: 'success',
           values: { savedTabs: savedTabsList },
         });
+      }
+
+      // Stay on the form if documents failed so the user can retry
+      if (!attachmentsOk) {
+        return;
       }
 
       // Always return to vendor list after a successful Save All
@@ -604,30 +660,36 @@ const AddEntityForm = () => {
   // Helper for invalid field
   const isFieldInvalid = (val) => submitAttempted && (!val || !val.trim());
 
-  // Handle batch upload for vendor documents
-  const handleBatchUpload = async () => {
+  // Handle batch upload for vendor documents.
+  // vendorIdOverride avoids stale state when Save creates the vendor then uploads in one go.
+  // Returns { ok: boolean } so Save All does not falsely report Attachments as saved.
+  const handleBatchUpload = async (vendorIdOverride) => {
     if (uploadRows.length === 0) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ADDATLEASTONEFILE_70C50032', fallbackText: t('vendors.addAtLeastOneFile'), type: 'error' });
-      return;
+      return { ok: false };
     }
 
+    const vendorId = String(
+      vendorIdOverride || createdVendorIdRef.current || createdVendorId || ""
+    ).trim();
+
     // Check if vendor has been created
-    if (!createdVendorId) {
+    if (!vendorId) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_PLEASECREATEVENDORFIRST_47C50D3D', fallbackText: t('vendors.pleaseCreateVendorFirst'), type: 'error' });
-      return;
+      return { ok: false };
     }
 
     // Validate all attachments
     for (const r of uploadRows) {
       if (!r.type || !r.file) {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_SELECTDOCUMENTTYPEANDFILE_38B5DA43', fallbackText: t('vendors.selectDocumentTypeAndFile'), type: 'error' });
-        return;
+        return { ok: false };
       }
       // Check if the selected document type requires a custom name
       const selectedDocType = documentTypes.find(dt => dt.id === r.type);
       if (selectedDocType && (selectedDocType.text.toLowerCase().includes('other') || selectedDocType.doc_type === 'OT') && !r.docTypeName?.trim()) {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ENTERCUSTOMNAMEFORDOCUMENTS_00699E04', fallbackText: t('vendors.enterCustomNameForDocuments', { type: selectedDocType.text }), type: 'error' });
-        return;
+        return { ok: false };
       }
     }
 
@@ -640,7 +702,7 @@ const AddEntityForm = () => {
         try {
           const fd = new FormData();
           fd.append('file', r.file);
-          fd.append('vendor_id', createdVendorId); // Add vendor_id
+          fd.append('vendor_id', vendorId);
           fd.append('dto_id', r.type);  // Send dto_id instead of doc_type
           if (r.type && r.docTypeName?.trim()) {
             fd.append('doc_type_name', r.docTypeName);
@@ -661,16 +723,19 @@ const AddEntityForm = () => {
         if (failCount === 0) {
           showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_ALLFILESUPLOADEDSUCCESSFULLY_75FB5EA4', fallbackText: t('vendors.allFilesUploadedSuccessfully'), type: 'success' });
           markTabAsSaved("Attachments"); // Mark attachments tab as saved
-        } else {
-          showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FILESUPLOADEDWITHFAILURES_25E0FBB9', fallbackText: t('vendors.filesUploadedWithFailures', { successCount, failCount }), type: 'success' });
+          setUploadRows([]); // Clear attachments after successful upload
+          return { ok: true };
         }
-        setUploadRows([]); // Clear attachments after successful upload
-      } else {
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOUPLOADANYFILES_1540D0C3', fallbackText: t('vendors.failedToUploadAnyFiles'), type: 'error' });
+        showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FILESUPLOADEDWITHFAILURES_25E0FBB9', fallbackText: t('vendors.filesUploadedWithFailures', { successCount, failCount }), type: 'success' });
+        setUploadRows([]);
+        return { ok: false };
       }
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOUPLOADANYFILES_1540D0C3', fallbackText: t('vendors.failedToUploadAnyFiles'), type: 'error' });
+      return { ok: false };
     } catch (err) {
       console.error('Process error:', err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_UPLOADPROCESSFAILED_6D52D294', fallbackText: t('vendors.uploadProcessFailed'), type: 'error' });
+      return { ok: false };
     } finally {
       setIsUploading(false);
     }
@@ -948,11 +1013,6 @@ const AddEntityForm = () => {
 
             <div className="text-sm text-gray-600 mb-3">
               {t('vendors.documentTypesLoadedFromSystem')}
-              {!createdVendorId && (
-                <span className="text-amber-600 font-medium ml-2">
-                  ⚠️ {t('vendors.pleaseCreateVendorFirstBeforeUploading')}
-                </span>
-              )}
             </div>
 
             {uploadRows.length === 0 ? (
