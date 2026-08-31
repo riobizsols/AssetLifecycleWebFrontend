@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Docker deploy — Pressana FRONTEND (alm-pressana-frontend :3003).
-# Run on server from ~/pressana-ALM/AssetLifecycleWebFrontend
+# Docker deploy — Bannari FRONTEND (alm-bannari-frontend :3004).
+# Run on the server from the Bannari frontend directory.
 #
 #   ./deploy-docker.sh           # stash, pull frontend, rebuild
 #   ./deploy-docker.sh --rebuild # rebuild only (no git pull)
@@ -34,16 +34,16 @@ done
 
 export BACKEND_ONLY=0
 export FRONTEND_ONLY=1
-export BACKEND_CONTAINER_NAME="${BACKEND_CONTAINER_NAME:-alm-pressana-backend}"
-export FRONTEND_CONTAINER_NAME="${FRONTEND_CONTAINER_NAME:-alm-pressana-frontend}"
-export BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-5003}"
-export FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-3003}"
-export MINIO_BUCKET_VALUE="${MINIO_BUCKET_VALUE:-alm-pressana}"
-export PRESSANA_PUBLIC_URL="${PRESSANA_PUBLIC_URL:-https://pressanaorg.rioassetmanagement.net}"
-export PRESSANA_RESERVED_SUBDOMAINS="${PRESSANA_RESERVED_SUBDOMAINS:-web,www,api,pressanaorg}"
+export BACKEND_CONTAINER_NAME="${BACKEND_CONTAINER_NAME:-alm-bannari-backend}"
+export FRONTEND_CONTAINER_NAME="${FRONTEND_CONTAINER_NAME:-alm-bannari-frontend}"
+export BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-5004}"
+export FRONTEND_HOST_PORT="${FRONTEND_HOST_PORT:-3004}"
+export MINIO_BUCKET_VALUE="${MINIO_BUCKET_VALUE:-alm-bannari}"
+export BANNARI_PUBLIC_URL="${BANNARI_PUBLIC_URL:-https://bannari.rioassetmanagement.net}"
+export BANNARI_RESERVED_SUBDOMAINS="${BANNARI_RESERVED_SUBDOMAINS:-web,www,api,pressanaorg,bannari}"
 export FORCE_COMPOSE_RECREATE="${FORCE_COMPOSE_RECREATE:-0}"
 export SKIP_FRONTEND_IF_UNCHANGED="${SKIP_FRONTEND_IF_UNCHANGED:-1}"
 export COMPOSE_IGNORE_ORPHANS="${COMPOSE_IGNORE_ORPHANS:-1}"
-# Prevent clobbering ~/alm-main compose project (same folder name AssetLifecycleWebFrontend)
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-pressana-alm}"
+# Prevent clobbering other ALM compose projects (same folder name AssetLifecycleWebFrontend)
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-bannari-alm}"
 exec "$DEPLOY"
