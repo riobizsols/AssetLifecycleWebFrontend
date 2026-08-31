@@ -1,6 +1,6 @@
 services:
-  alm-frontend:
-    container_name: alm-pressana-frontend
+  bannari-frontend:
+    container_name: bannari-frontend
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,5 +10,5 @@ services:
         VITE_API_PORT: ${VITE_API_PORT:-}
         VITE_RESERVED_SUBDOMAINS: ${VITE_RESERVED_SUBDOMAINS:-web,www,api,pressanaorg}
     ports:
-      - "3003:80"
+      - "3004:80"
     restart: unless-stopped
