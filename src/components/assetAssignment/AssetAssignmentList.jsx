@@ -28,12 +28,20 @@ const AssetAssignmentList = ({
   assignmentsLoading = false,
   entitiesLoading = false,
   departmentsLoading = false,
+  // Branch filter props
+  branches = [],
+  selectedBranch = null,
+  onBranchSelect = () => {},
+  branchesLoading = false,
+  branchLocked = true,
+  entityLocked = false,
   // Department filter props
   showDepartmentFilter = false,
   departments = [],
   selectedDepartment = null,
   onDepartmentSelect = () => {},
   onDepartmentChange = () => {}, // Callback to fetch department's employees
+  departmentLocked = false,
 }) => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -148,7 +156,27 @@ const AssetAssignmentList = ({
             {showDepartmentFilter ? t('departments.selectDepartmentAndEmployee') : t('departments.departmentSelection')}
           </span>
         </div>
-        <div className="p-4 flex gap-4 items-end">
+        <div className="p-4 flex flex-wrap gap-4 items-end">
+          {/* Branch — prefilled & locked for non-admin; admin can change */}
+          <div className="w-64">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('common.branch') || t('departments.branch') || 'Branch'}
+            </label>
+            <SearchableDropdown
+              options={branches.map((branch) => ({
+                id: branch.branch_id,
+                text: branch.text || branch.branch_name || branch.branch_id,
+              }))}
+              value={selectedBranch || ""}
+              onChange={(value) => onBranchSelect(value)}
+              placeholder={t('departments.selectBranch') || t('users.selectBranch') || 'Select Branch'}
+              searchPlaceholder={t('common.search') || 'Search...'}
+              displayKey="text"
+              valueKey="id"
+              disabled={branchesLoading || branchLocked}
+            />
+          </div>
+
           {/* Department Filter Dropdown (Only for Employee view) */}
           {showDepartmentFilter && (
             <div className="w-64">
@@ -164,16 +192,16 @@ const AssetAssignmentList = ({
                   onDepartmentChange(value);
                 }}
                 placeholder={t('departments.selectDepartment')}
-                searchPlaceholder={t('departments.searchDepartment') || 'Search department...'}
+                searchPlaceholder={t('departments.searchDepartments') || 'Search department...'}
                 displayKey="text"
                 valueKey="id"
-                disabled={departmentsLoading}
+                disabled={departmentsLoading || departmentLocked || !selectedBranch}
               />
             </div>
           )}
           
-          {/* Entity Dropdown */}
-          {(!showDepartmentFilter || (showDepartmentFilter && selectedDepartment)) && (
+          {/* Entity Dropdown — department (dept mode) or employee (emp mode) */}
+          {(!showDepartmentFilter || selectedDepartment) && (
             <>
             <div className="w-64">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -187,10 +215,22 @@ const AssetAssignmentList = ({
                 value={selectedEntity || ""}
                 onChange={(value) => onEntitySelect(value)}
                 placeholder={entityType === 'department' ? t('departments.selectDepartment') : t('employees.selectEmployee')}
-                searchPlaceholder={entityType === 'department' ? t('departments.searchDepartment') : t('employees.searchEmployee')}
+                searchPlaceholder={
+                  entityType === 'department'
+                    ? (t('departments.searchDepartments') === 'departments.searchDepartments'
+                        ? 'Search department...'
+                        : t('departments.searchDepartments'))
+                    : (t('employees.searchEmployee') === 'employees.searchEmployee'
+                        ? 'Search employee...'
+                        : t('employees.searchEmployee'))
+                }
                 displayKey="text"
                 valueKey="id"
-                disabled={entitiesLoading}
+                disabled={
+                  entitiesLoading ||
+                  entityLocked ||
+                  (entityType === 'department' && !selectedBranch)
+                }
               />
             </div>
             {!isReadOnly && (
@@ -202,10 +242,11 @@ const AssetAssignmentList = ({
                     entityId: selectedEntity,
                     entityIntId: selectedEntityIntId,
                     entityType: entityType,
-                    departmentId: selectedDepartment
+                    departmentId: selectedDepartment,
+                    branchId: selectedBranch,
                   } 
                 })}
-                disabled={!selectedEntity || (showDepartmentFilter && !selectedDepartment)}
+                disabled={!selectedEntity || !selectedBranch || (showDepartmentFilter && !selectedDepartment)}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

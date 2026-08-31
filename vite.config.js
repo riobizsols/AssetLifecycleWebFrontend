@@ -9,15 +9,9 @@ export default defineConfig({
     // Avoid colliding with the SPA route /assets (reload would 403 on the build folder)
     assetsDir: 'static',
     sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          ui: ['lucide-react', 'recharts']
-        }
-      }
-    }
+    minify: 'esbuild',
+    cssMinify: 'esbuild',
+    reportCompressedSize: false,
   },
   server: {
     port: 5173,

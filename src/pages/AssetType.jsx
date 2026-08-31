@@ -326,7 +326,7 @@ const AssetType = () => {
         rowKey="asset_type_id"
         showAddButton={canEdit}
         showActions={true}
-        isReadOnly={false}
+        isReadOnly={isReadOnly}
       >
         {({ visibleColumns, showActions }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);

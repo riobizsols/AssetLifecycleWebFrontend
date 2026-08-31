@@ -37,6 +37,8 @@ import { generateUUID } from '../../utils/uuid';
 import { useAuditLog } from '../../hooks/useAuditLog';
 import { GROUP_ASSETS_APP_ID } from '../../constants/groupAssetsAuditEvents';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getActiveOrgId, getActiveBranchId } from '../../utils/acmContext';
+import { useAcmContextStore } from '../../store/useAcmContextStore';
 
 const EditGroupAsset = () => {
   const navigate = useNavigate();
@@ -270,8 +272,10 @@ const EditGroupAsset = () => {
       // Filter assets to ensure they match the selected asset type, org_id, and branch_id (client-side safety check)
       const filteredList = list.filter(asset => {
         const matchesAssetType = asset.asset_type_id === assetTypeId;
-        const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
-        const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+        const activeOrgId = getActiveOrgId(useAcmContextStore.getState().appliedOrgId || user?.org_id);
+        const activeBranchId = getActiveBranchId(useAcmContextStore.getState().appliedBranchId);
+        const matchesOrg = !activeOrgId || asset.org_id === activeOrgId;
+        const matchesBranch = !activeBranchId || asset.branch_id === activeBranchId;
         return matchesAssetType && matchesOrg && matchesBranch;
       });
       
@@ -279,8 +283,8 @@ const EditGroupAsset = () => {
       if (filteredList.length !== list.length) {
         console.warn(`Warning: Backend returned ${list.length} assets, but only ${filteredList.length} match filters`);
         const assetTypeMismatch = list.filter(asset => asset.asset_type_id !== assetTypeId);
-        const orgMismatch = list.filter(asset => user?.org_id && asset.org_id !== user.org_id);
-        const branchMismatch = list.filter(asset => user?.branch_id && asset.branch_id !== user.branch_id);
+        const orgMismatch = list.filter(asset => activeOrgId && asset.org_id !== activeOrgId);
+        const branchMismatch = list.filter(asset => activeBranchId && asset.branch_id !== activeBranchId);
         
         if (assetTypeMismatch.length > 0) {
           console.warn('Assets with mismatched asset_type_id:', assetTypeMismatch);
@@ -326,11 +330,13 @@ const EditGroupAsset = () => {
               ? response.data
               : [];
         
-        // Filter assets to ensure they match the selected asset type, org_id, and branch_id
+        // Filter assets to ensure they match the selected asset type + active ACM org/branch
         const filteredList = list.filter(asset => {
           const matchesAssetType = asset.asset_type_id === assetTypeId;
-          const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
-          const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+          const activeOrgId = getActiveOrgId(useAcmContextStore.getState().appliedOrgId || user?.org_id);
+          const activeBranchId = getActiveBranchId(useAcmContextStore.getState().appliedBranchId);
+          const matchesOrg = !activeOrgId || asset.org_id === activeOrgId;
+          const matchesBranch = !activeBranchId || asset.branch_id === activeBranchId;
           return matchesAssetType && matchesOrg && matchesBranch;
         });
         
@@ -924,8 +930,10 @@ const EditGroupAsset = () => {
                             const matchesAssetType = selectedAssetTypes.length === 0 || selectedAssetTypes.includes(asset.asset_type_id);
                             
                             // Filter by user's organization and branch
-                            const matchesOrg = !user?.org_id || asset.org_id === user.org_id;
-                            const matchesBranch = !user?.branch_id || asset.branch_id === user.branch_id;
+                            const activeOrgId = getActiveOrgId(useAcmContextStore.getState().appliedOrgId || user?.org_id);
+                            const activeBranchId = getActiveBranchId(useAcmContextStore.getState().appliedBranchId);
+                            const matchesOrg = !activeOrgId || asset.org_id === activeOrgId;
+                            const matchesBranch = !activeBranchId || asset.branch_id === activeBranchId;
                             
                             return matchesSearch && matchesAssetType && matchesOrg && matchesBranch;
                           })

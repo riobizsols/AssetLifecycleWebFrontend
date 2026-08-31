@@ -5,18 +5,23 @@ import {
   fetchWithRevalidate,
   invalidateCache,
   peekCache,
+  acmCacheSegment,
+  buildCacheKey,
 } from '../utils/apiCache';
+import { useAcmContextStore } from './useAcmContextStore';
 
 const TTL_MS = 3 * 60 * 1000;
-const LIST_KEY = 'departments:list';
+const listKey = () =>
+  buildCacheKey(['departments', 'list', acmCacheSegment(useAcmContextStore.getState())]);
 
-const cachedList = peekCache(LIST_KEY, TTL_MS);
+const cachedList = peekCache(listKey(), TTL_MS);
 
 export const useDepartmentsStore = create((set, get) => ({
   departments: cachedList || [],
   listLoading: !cachedList,
 
   fetchDepartments: async ({ revalidate = false, force = false, onFresh } = {}) => {
+    const LIST_KEY = listKey();
     const apply = (rows) => {
       set({ departments: rows, listLoading: false });
       onFresh?.(rows);

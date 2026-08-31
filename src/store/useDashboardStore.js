@@ -5,13 +5,16 @@ import {
   fetchWithCache,
   fetchWithRevalidate,
   peekCache,
+  acmCacheSegment,
 } from '../utils/apiCache';
+import { useAcmContextStore } from './useAcmContextStore';
 
 const DASHBOARD_TTL_MS = 3 * 60 * 1000;
+const acmSeg = () => acmCacheSegment(useAcmContextStore.getState());
 const KEYS = {
-  summary: 'dashboard:summary',
-  department: 'dashboard:department',
-  top5: 'dashboard:top5',
+  summary: () => buildCacheKey(['dashboard', 'summary', acmSeg()]),
+  department: () => buildCacheKey(['dashboard', 'department', acmSeg()]),
+  top5: () => buildCacheKey(['dashboard', 'top5', acmSeg()]),
 };
 
 const DEPT_COLORS = [
@@ -151,19 +154,20 @@ const emptyMetrics = {
   summary: null,
 };
 
-const cachedSummary = peekCache(KEYS.summary, DASHBOARD_TTL_MS);
+const cachedSummary = peekCache(KEYS.summary(), DASHBOARD_TTL_MS);
 
 export const useDashboardStore = create((set, get) => ({
   metrics: cachedSummary?.metrics || emptyMetrics,
-  departmentChart: mapDepartmentChart(peekCache(KEYS.department, DASHBOARD_TTL_MS)) || [],
-  top5AssetTypes: mapTop5Chart(peekCache(KEYS.top5, DASHBOARD_TTL_MS)) || [],
+  departmentChart: mapDepartmentChart(peekCache(KEYS.department(), DASHBOARD_TTL_MS)) || [],
+  top5AssetTypes: mapTop5Chart(peekCache(KEYS.top5(), DASHBOARD_TTL_MS)) || [],
   notifications: [],
   metricsLoading: !cachedSummary,
-  departmentLoading: !peekCache(KEYS.department, DASHBOARD_TTL_MS),
-  top5Loading: !peekCache(KEYS.top5, DASHBOARD_TTL_MS),
+  departmentLoading: !peekCache(KEYS.department(), DASHBOARD_TTL_MS),
+  top5Loading: !peekCache(KEYS.top5(), DASHBOARD_TTL_MS),
   notificationsLoading: true,
 
   fetchMetrics: async ({ revalidate = false, onFresh } = {}) => {
+    const summaryKey = KEYS.summary();
     const apply = (payload) => {
       set({ metrics: payload, metricsLoading: false });
       onFresh?.(payload);
@@ -182,16 +186,16 @@ export const useDashboardStore = create((set, get) => ({
     };
 
     if (revalidate) {
-      const cached = peekCache(KEYS.summary, DASHBOARD_TTL_MS);
+      const cached = peekCache(summaryKey, DASHBOARD_TTL_MS);
       if (cached) apply(cached);
-      const { data } = await fetchWithRevalidate(KEYS.summary, fetcher, {
+      const { data } = await fetchWithRevalidate(summaryKey, fetcher, {
         ttlMs: DASHBOARD_TTL_MS,
         onFresh: apply,
       });
       return data;
     }
 
-    const { data } = await fetchWithCache(KEYS.summary, fetcher, {
+    const { data } = await fetchWithCache(summaryKey, fetcher, {
       ttlMs: DASHBOARD_TTL_MS,
     });
     apply(data);
@@ -199,6 +203,7 @@ export const useDashboardStore = create((set, get) => ({
   },
 
   fetchDepartmentChart: async ({ revalidate = false, onFresh } = {}) => {
+    const deptKey = KEYS.department();
     const apply = (rows) => {
       const chart = mapDepartmentChart(rows);
       set({ departmentChart: chart, departmentLoading: false });
@@ -211,16 +216,16 @@ export const useDashboardStore = create((set, get) => ({
     };
 
     if (revalidate) {
-      const cached = peekCache(KEYS.department, DASHBOARD_TTL_MS);
+      const cached = peekCache(deptKey, DASHBOARD_TTL_MS);
       if (cached) apply(cached);
-      const { data } = await fetchWithRevalidate(KEYS.department, fetcher, {
+      const { data } = await fetchWithRevalidate(deptKey, fetcher, {
         ttlMs: DASHBOARD_TTL_MS,
         onFresh: (rows) => apply(rows),
       });
       return mapDepartmentChart(data);
     }
 
-    const { data } = await fetchWithCache(KEYS.department, fetcher, {
+    const { data } = await fetchWithCache(deptKey, fetcher, {
       ttlMs: DASHBOARD_TTL_MS,
     });
     apply(data);
@@ -228,6 +233,7 @@ export const useDashboardStore = create((set, get) => ({
   },
 
   fetchTop5AssetTypes: async ({ revalidate = false, onFresh } = {}) => {
+    const top5Key = KEYS.top5();
     const apply = (rows) => {
       const chart = mapTop5Chart(rows);
       set({ top5AssetTypes: chart, top5Loading: false });
@@ -240,16 +246,16 @@ export const useDashboardStore = create((set, get) => ({
     };
 
     if (revalidate) {
-      const cached = peekCache(KEYS.top5, DASHBOARD_TTL_MS);
+      const cached = peekCache(top5Key, DASHBOARD_TTL_MS);
       if (cached) apply(cached);
-      const { data } = await fetchWithRevalidate(KEYS.top5, fetcher, {
+      const { data } = await fetchWithRevalidate(top5Key, fetcher, {
         ttlMs: DASHBOARD_TTL_MS,
         onFresh: (rows) => apply(rows),
       });
       return mapTop5Chart(data);
     }
 
-    const { data } = await fetchWithCache(KEYS.top5, fetcher, {
+    const { data } = await fetchWithCache(top5Key, fetcher, {
       ttlMs: DASHBOARD_TTL_MS,
     });
     apply(data);

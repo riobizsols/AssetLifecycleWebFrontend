@@ -6,11 +6,17 @@ import {
   fetchWithRevalidate,
   invalidateCache,
   peekCache,
+  acmCacheSegment,
 } from '../utils/apiCache';
+import { useAcmContextStore } from './useAcmContextStore';
 
 const ASSETS_TTL_MS = 5 * 60 * 1000;
-const ASSET_TYPES_KEY = 'assets:types';
-const ASSETS_FULL_KEY = 'assets:all';
+
+const acmKey = () => acmCacheSegment(useAcmContextStore.getState());
+const assetTypesKey = () => buildCacheKey(['assets', 'types', acmKey()]);
+const assetsFullKey = () => buildCacheKey(['assets', 'all', acmKey()]);
+const assetsPageKey = (page, limit) =>
+  buildCacheKey(['assets', 'page', page, 'limit', limit, acmKey()]);
 
 export const formatAssetRowDates = (item) => {
   const formatDate = (dateString) => {
@@ -62,20 +68,21 @@ export const useAssetsStore = create((set, get) => ({
   invalidateAssetsCache: () => invalidateCache('assets:'),
 
   fetchAssetTypes: async ({ force = false, revalidate = false, onFresh } = {}) => {
+    const key = assetTypesKey();
     const fetcher = async () => {
       const res = await API.get('/asset-types');
       return Array.isArray(res.data) ? res.data : res.data?.rows || [];
     };
 
     if (revalidate && !force) {
-      const { data } = await fetchWithRevalidate(ASSET_TYPES_KEY, fetcher, {
+      const { data } = await fetchWithRevalidate(key, fetcher, {
         ttlMs: ASSETS_TTL_MS,
         onFresh,
       });
       return data;
     }
 
-    const { data } = await fetchWithCache(ASSET_TYPES_KEY, fetcher, {
+    const { data } = await fetchWithCache(key, fetcher, {
       ttlMs: ASSETS_TTL_MS,
       force,
     });
@@ -90,9 +97,7 @@ export const useAssetsStore = create((set, get) => ({
     revalidate = false,
     onFresh,
   } = {}) => {
-    const cacheKey = loadAll
-      ? ASSETS_FULL_KEY
-      : buildCacheKey(['assets', 'page', page, 'limit', limit]);
+    const cacheKey = loadAll ? assetsFullKey() : assetsPageKey(page, limit);
 
     const fetcher = async () => {
       const params = loadAll ? { all: true } : { page, limit };
@@ -117,20 +122,21 @@ export const useAssetsStore = create((set, get) => ({
   },
 
   fetchExistingAssets: async ({ force = false, revalidate = false, onFresh } = {}) => {
+    const key = assetsFullKey();
     const fetcher = async () => {
       const res = await API.get('/assets', { params: { all: true } });
       return Array.isArray(res.data) ? res.data : res.data?.rows || [];
     };
 
     if (revalidate && !force) {
-      const { data } = await fetchWithRevalidate(ASSETS_FULL_KEY, fetcher, {
+      const { data } = await fetchWithRevalidate(key, fetcher, {
         ttlMs: ASSETS_TTL_MS,
         onFresh,
       });
       return data;
     }
 
-    const { data } = await fetchWithCache(ASSETS_FULL_KEY, fetcher, {
+    const { data } = await fetchWithCache(key, fetcher, {
       ttlMs: ASSETS_TTL_MS,
       force,
     });
@@ -139,7 +145,7 @@ export const useAssetsStore = create((set, get) => ({
 
   fetchAssetById: async (assetId, { force = false } = {}) => {
     if (!assetId) return null;
-    const cacheKey = buildCacheKey(['assets', 'id', assetId]);
+    const cacheKey = buildCacheKey(['assets', 'id', assetId, acmKey()]);
 
     const { data } = await fetchWithCache(
       cacheKey,
@@ -161,14 +167,12 @@ export const useAssetsStore = create((set, get) => ({
   },
 
   getCachedAssetsList: (page, limit, loadAll) => {
-    const cacheKey = loadAll
-      ? ASSETS_FULL_KEY
-      : buildCacheKey(['assets', 'page', page, 'limit', limit]);
+    const cacheKey = loadAll ? assetsFullKey() : assetsPageKey(page, limit);
     return peekCache(cacheKey, ASSETS_TTL_MS);
   },
 
-  getCachedAssetTypes: () => peekCache(ASSET_TYPES_KEY, ASSETS_TTL_MS),
+  getCachedAssetTypes: () => peekCache(assetTypesKey(), ASSETS_TTL_MS),
 
   getCachedAssetById: (assetId) =>
-    peekCache(buildCacheKey(['assets', 'id', assetId]), ASSETS_TTL_MS),
+    peekCache(buildCacheKey(['assets', 'id', assetId, acmKey()]), ASSETS_TTL_MS),
 }));

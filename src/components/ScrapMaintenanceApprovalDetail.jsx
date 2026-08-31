@@ -237,7 +237,7 @@ const ScrapMaintenanceApprovalDetail = () => {
       if (r.status === "UR") status = "rejected";
 
       const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
-      const canThisUserApprove = isSystemAdmin || userRoleIds.includes(r.job_role_id);
+      const canThisUserApprove = !detail.viewOnly && (isSystemAdmin || userRoleIds.includes(r.job_role_id));
       const roleName = r.job_role_name || r.job_role_id || "Role";
       const actorName = r.actor_display_name || roleName;
 
@@ -274,6 +274,7 @@ const ScrapMaintenanceApprovalDetail = () => {
 
   const isCurrentActionUser = useMemo(() => {
     const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
+    if (detail?.viewOnly) return false;
     return isSystemAdmin || currentActionSteps.some((s) => (s.role?.id ? userRoleIds.includes(s.role.id) : false));
   }, [currentActionSteps, userRoleIds]);
 
@@ -294,6 +295,7 @@ const ScrapMaintenanceApprovalDetail = () => {
   }, [detail]);
 
   const handleApprove = async () => {
+    if (detail?.viewOnly) return;
     if (!approveNote.trim()) return;
     setIsSubmitting(true);
     let toastId = null;
@@ -669,6 +671,11 @@ const ScrapMaintenanceApprovalDetail = () => {
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4 mt-8">
+            {detail.viewOnly && (
+              <div className="text-amber-700 text-sm self-center">
+                View only — this approval belongs to another branch.
+              </div>
+            )}
             {isCurrentActionUser && detail.header.header_status !== "CO" && detail.header.header_status !== "CA" && (
               <>
                 <button
@@ -687,7 +694,7 @@ const ScrapMaintenanceApprovalDetail = () => {
               </>
             )}
 
-            {!isCurrentActionUser && (
+            {!isCurrentActionUser && !detail.viewOnly && (
               <div className="text-gray-500 text-sm italic">
                 {currentActionSteps.length > 0 ? "Waiting for approval from the current approver role(s)." : "No action required from you."}
               </div>

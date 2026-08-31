@@ -165,16 +165,40 @@ const CustomTable = ({
                   {actionLabel}
                 </button>
               )}
-              {onEdit && !onRowAction && (
+              {onEdit && !onRowAction && !isReadOnly && (
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit(row);
                   }} 
                   className="text-blue-600 hover:text-blue-800"
-                  title={isReadOnly ? "View" : "Edit"}
+                  title="Edit"
                 >
                   <Pencil size={16} />
+                </button>
+              )}
+              {onView && isReadOnly && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView(row);
+                  }}
+                  className="text-green-600 hover:text-green-800"
+                  title="View"
+                >
+                  <Eye size={16} />
+                </button>
+              )}
+              {onEdit && !onRowAction && isReadOnly && !onView && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(row);
+                  }}
+                  className="text-green-600 hover:text-green-800"
+                  title="View"
+                >
+                  <Eye size={16} />
                 </button>
               )}
               {renderActions && renderActions(row)}

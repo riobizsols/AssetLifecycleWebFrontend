@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuditLog from '../../hooks/useAuditLog';
 import { PRODSERV_APP_ID } from '../../constants/prodServAuditEvents';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useNavigation } from '../../hooks/useNavigation';
 
 // Debug log to confirm component loaded
 console.log('DeleteConfirmModal imported:', DeleteConfirmModal);
@@ -34,6 +35,9 @@ export default function ProdServ() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useLanguage();
+  const { hasEditAccess, getAccessLevel } = useNavigation();
+  const canEdit = hasEditAccess('PRODSERV');
+  const isReadOnly = getAccessLevel('PRODSERV') === 'D' || !canEdit;
   const [tab, setTab] = useState('product');
   const brandInputRef = useRef(null);
   const modelInputRef = useRef(null);
@@ -136,6 +140,7 @@ export default function ProdServ() {
 
   // Add product using /prodserv
   const handleProductAdd = async () => {
+    if (!canEdit) return;
     setProductSubmitAttempted(true);
     if (!productForm.assetType || !productForm.brand || !productForm.model) return;
 
@@ -229,6 +234,7 @@ export default function ProdServ() {
 
   // Add service using /prodserv
   const handleServiceAdd = async () => {
+    if (!canEdit) return;
     setServiceSubmitAttempted(true);
     if (!serviceForm.assetType || !serviceForm.description) return;
     try {
@@ -437,7 +443,7 @@ export default function ProdServ() {
             {tab === 'product' ? (
               <>
                 {/* Product Form */}
-                <div className="flex flex-wrap items-end gap-4 mb-6">
+                {canEdit && <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-medium mb-1">
                       {t('prodServ.assetType')} <span className="text-red-500">*</span>
@@ -521,7 +527,7 @@ export default function ProdServ() {
                   >
                     {t('prodServ.add')}
                   </button>
-                </div>
+                </div>}
                 {/* Product List */}
                 <div
                   className={`bg-white rounded shadow mb-8 transition-all duration-300 ${isProductTableMaximized ? 'fixed inset-0 z-50 p-6 m-6 overflow-auto' : ''}`}
@@ -614,7 +620,7 @@ export default function ProdServ() {
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (p.assetType || p.asset_type_id))?.text || 'N/A'}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.brand}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.model}</div>
-                              <div className="flex justify-center gap-2">
+                              {canEdit && (<div className="flex justify-center gap-2">
                                 <button 
                                   className="cursor-pointer p-1 hover:bg-gray-100 rounded-full" 
                                   title="Delete" 
@@ -626,9 +632,9 @@ export default function ProdServ() {
                                     console.log("Current itemToDelete:", itemToDelete);
                                   }}
                                 >
-                                  <Trash2 className="text-yellow-500" size={18} />
+                                  {canEdit && <Trash2 className="text-yellow-500" size={18} />}
                                 </button>
-                              </div>
+                              </div>)}
                             </div>
                           ))}
                       </div>
@@ -639,7 +645,7 @@ export default function ProdServ() {
             ) : (
               <>
                 {/* Service Form */}
-                <div className="flex flex-wrap items-end gap-4 mb-6">
+                {canEdit && <div className="flex flex-wrap items-end gap-4 mb-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-medium mb-1">
                       {t('prodServ.assetType')} <span className="text-red-500">*</span>
@@ -709,7 +715,7 @@ export default function ProdServ() {
                   >
                     {t('prodServ.add')}
                   </button>
-                </div>
+                </div>}
                 {/* Service List */}
                 <div
                   className={`bg-white rounded shadow mb-8 transition-all duration-300 ${isServiceTableMaximized ? 'fixed inset-0 z-50 p-6 m-6 overflow-auto' : ''}`}
@@ -800,7 +806,7 @@ export default function ProdServ() {
                             >
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (s.assetType || s.asset_type_id))?.text || 'N/A'}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{s.description}</div>
-                              <div className="flex justify-center gap-2">
+                              {canEdit && (<div className="flex justify-center gap-2">
                                 <button 
                                   className="cursor-pointer p-1 hover:bg-gray-100 rounded-full" 
                                   title="Delete" 
@@ -809,9 +815,9 @@ export default function ProdServ() {
                                     openDeleteModal(s, 'service');
                                   }}
                                 >
-                                  <Trash2 className="text-yellow-500" size={18} />
+                                  {canEdit && <Trash2 className="text-yellow-500" size={18} />}
                                 </button>
-                              </div>
+                              </div>)}
                             </div>
                           ))}
                       </div>

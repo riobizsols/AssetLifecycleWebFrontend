@@ -311,7 +311,10 @@ const MaintenanceApprovalDetail = () => {
             groupName: workflowData.groupName || null,
             groupAssetCount: workflowData.groupAssetCount || null,
             isGroupMaintenance: workflowData.isGroupMaintenance || false,
-            groupAssets: workflowData.groupAssets || [] // All assets in the group
+            groupAssets: workflowData.groupAssets || [],
+            viewOnly: Boolean(workflowData.viewOnly),
+            canAct: workflowData.canAct !== false,
+            branchAccess: workflowData.branchAccess || null,
           };
           
           console.log('✅ Transformed data:', {
@@ -375,13 +378,14 @@ const MaintenanceApprovalDetail = () => {
   
   // System Admin (JR001) can act on any pending step so the workflow is not stuck on one role.
   const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
-  const isCurrentActionUser = isSystemAdmin || currentActionSteps.some((step) => {
+  const isViewOnly = Boolean(approvalDetails?.viewOnly);
+  const isCurrentActionUser = !isViewOnly && (isSystemAdmin || currentActionSteps.some((step) => {
     // Backend sends role info in step.role.id (job_role_id)
     const stepRoleId = step.role?.id || step.user?.id;
     const hasRole = userRoleIds.includes(stepRoleId);
     console.log(`🔍 Checking action step: Required role=${stepRoleId}, User has role=${hasRole}`);
     return hasRole;
-  });
+  }));
   
   console.log('✅ User can approve:', isCurrentActionUser);
   console.log('📊 Current action steps:', currentActionSteps);
@@ -390,6 +394,7 @@ const MaintenanceApprovalDetail = () => {
 
   // Approve handler
   const handleApprove = async () => {
+    if (isViewOnly) return;
     if (!approveNote.trim()) {
       setApproveNoteError(true);
       showBackendTextToast({
@@ -1407,6 +1412,11 @@ const MaintenanceApprovalDetail = () => {
               >
                 Back
               </button>
+              {isViewOnly && (
+                <div className="text-amber-700 text-sm self-center">
+                  View only — this approval belongs to another branch.
+                </div>
+              )}
               {isCurrentActionUser && !isRejected && (
                 <>
                   <button
@@ -1448,7 +1458,7 @@ const MaintenanceApprovalDetail = () => {
                   </button>
                 </>
               )}
-              {!isCurrentActionUser && (
+              {!isCurrentActionUser && !isViewOnly && (
                 <div className="text-gray-500 text-sm italic">
                   {currentActionSteps.length > 0 
                     ? (() => {

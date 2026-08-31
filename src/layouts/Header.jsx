@@ -6,6 +6,8 @@ import { useAuditLog } from "../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../constants/authAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import RouteDataLoading from "../components/loading/RouteDataLoading";
+import AcmContextSelector from "../components/AcmContextSelector";
+import { useAcmContextStore } from "../store/useAcmContextStore";
 import {
   getAdminSettingsBreadcrumbLabel,
   shouldShowAdminSettingsBreadcrumb,
@@ -49,6 +51,10 @@ export default function Header() {
     "/assets/add": { title: t('assets.addAsset'), subtitle: "" },
     "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },
     "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },
+    "/master-data/branch-dept-mapping": {
+      title: t('branchDeptMapping.title', { defaultValue: 'Branch – Department Mapping' }),
+      subtitle: "",
+    },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
     "/master-data/spare-parts": { title: t('navigation.sparePartLot'), subtitle: "" },
@@ -228,6 +234,11 @@ export default function Header() {
       // Don't block logout UX on audit logging.
       await Promise.race([audit, new Promise((r) => setTimeout(r, 300))]);
     } finally {
+      try {
+        useAcmContextStore.getState().reset();
+      } catch (_) {
+        /* ignore */
+      }
       logout();
       navigate("/");
       setLoggingOut(false);
@@ -328,8 +339,11 @@ export default function Header() {
         </div>
       )}
       
-      {/* User Menu */}
-      <div className="relative shrink-0" ref={dropdownRef}>
+      <div className="flex items-center shrink-0 ml-auto">
+        <AcmContextSelector />
+
+        {/* User Menu */}
+        <div className="relative shrink-0" ref={dropdownRef}>
         {/* Avatar Button */}
         <button
           onClick={() => setOpen((prev) => !prev)}
@@ -375,6 +389,7 @@ export default function Header() {
             </button>
           </div>
         )}
+        </div>
       </div>
       </header>
     </>

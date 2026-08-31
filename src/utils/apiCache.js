@@ -55,6 +55,12 @@ export function clearCache() {
   memoryCache.clear();
 }
 
+/** Suffix for list cache keys so ACM org/branch/dept changes don't reuse stale data. */
+export function acmCacheSegment(acmState) {
+  if (!acmState) return 'acm:*:*:*';
+  return `acm:${acmState.appliedOrgId || '*'}:${acmState.appliedBranchId || '*'}:${acmState.appliedDeptId || '*'}`;
+}
+
 /** True when `segment` is a full path segment (avoids `/assets` matching `/asset-groups`). */
 function pathHasSegment(path = '', segment = '') {
   const parts = String(path)
@@ -79,6 +85,11 @@ function invalidationPrefixesForPath(path = '') {
     pathHasSegment(p, 'asset-group-docs')
   ) {
     add('asset-groups:', 'group-assets:', 'assets:');
+  }
+
+  // Dept ↔ asset-type mapping feeds department assignment asset-type dropdown
+  if (pathHasSegment(p, 'dept-assets')) {
+    add('dept-assets:', 'assignment:');
   }
 
   // Asset mutations can change group membership / counts on group screens.

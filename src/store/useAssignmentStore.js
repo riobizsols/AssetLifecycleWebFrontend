@@ -7,27 +7,33 @@ import {
   invalidateCache,
   peekCache,
   setCache,
+  acmCacheSegment,
 } from '../utils/apiCache';
 import { useAssetsStore } from './useAssetsStore';
+import { useAcmContextStore } from './useAcmContextStore';
 
 const ASSIGNMENT_TTL_MS = 5 * 60 * 1000;
 
+const acmKey = () => acmCacheSegment(useAcmContextStore.getState());
+
 const KEYS = {
-  departments: 'assignment:departments',
-  employees: (deptId) => buildCacheKey(['assignment', 'employees', deptId]),
-  deptAssignments: (deptId) => buildCacheKey(['assignment', 'dept', deptId]),
-  empAssignments: (empId) => buildCacheKey(['assignment', 'emp-active', empId]),
-  deptHistory: (deptId) => buildCacheKey(['assignment', 'dept-history', deptId]),
-  empHistory: (empIntId) => buildCacheKey(['assignment', 'emp-history', empIntId]),
-  assetTypesDept: (deptId) => buildCacheKey(['assignment', 'asset-types', 'dept', deptId]),
-  assetTypesUser: 'assignment:asset-types:user',
-  inactive: (context, typeId) => buildCacheKey(['assignment', 'inactive', context, typeId]),
+  departments: () => buildCacheKey(['assignment', 'departments', 'v2', acmKey()]),
+  employees: (deptId) => buildCacheKey(['assignment', 'employees', deptId, acmKey()]),
+  deptAssignments: (deptId) => buildCacheKey(['assignment', 'dept', deptId, acmKey()]),
+  empAssignments: (empId) => buildCacheKey(['assignment', 'emp-active', empId, acmKey()]),
+  deptHistory: (deptId) => buildCacheKey(['assignment', 'dept-history', deptId, acmKey()]),
+  empHistory: (empIntId) => buildCacheKey(['assignment', 'emp-history', empIntId, acmKey()]),
+  assetTypesDept: (deptId) => buildCacheKey(['assignment', 'asset-types', 'dept', deptId, acmKey()]),
+  assetTypesUser: () => buildCacheKey(['assignment', 'asset-types', 'user', acmKey()]),
+  inactive: (context, typeId, branchId = '') =>
+    buildCacheKey(['assignment', 'inactive', context, typeId, branchId || 'all', acmKey()]),
 };
 
 function formatDepartments(rows) {
   return (rows || []).map((dept) => ({
     id: dept.dept_id,
     name: dept.text,
+    branch_id: dept.branch_id || null,
   }));
 }
 
@@ -71,7 +77,7 @@ function parseInactiveList(res) {
   return [];
 }
 
-const cachedDepartments = peekCache(KEYS.departments, ASSIGNMENT_TTL_MS);
+const cachedDepartments = peekCache(KEYS.departments(), ASSIGNMENT_TTL_MS);
 
 export const useAssignmentStore = create((set, get) => ({
   departments: formatDepartments(cachedDepartments) || [],
@@ -82,7 +88,7 @@ export const useAssignmentStore = create((set, get) => ({
   employeesLoading: false,
   assignmentsLoading: false,
 
-  fetchDepartments: async ({ revalidate = false, onFresh } = {}) => {
+  fetchDepartments: async ({ revalidate = false, force = false, onFresh } = {}) => {
     const apply = (rows) => {
       const departments = formatDepartments(rows);
       set({ departments, departmentsLoading: false });
@@ -94,18 +100,24 @@ export const useAssignmentStore = create((set, get) => ({
       return res.data;
     };
 
+    if (force) {
+      invalidateCache(KEYS.departments());
+    }
+
     if (revalidate) {
-      const cached = peekCache(KEYS.departments, ASSIGNMENT_TTL_MS);
+      const listKey = KEYS.departments();
+      const cached = force ? null : peekCache(listKey, ASSIGNMENT_TTL_MS);
       if (cached) apply(cached);
-      const { data } = await fetchWithRevalidate(KEYS.departments, fetcher, {
+      const { data } = await fetchWithRevalidate(listKey, fetcher, {
         ttlMs: ASSIGNMENT_TTL_MS,
         onFresh: apply,
       });
       return formatDepartments(data);
     }
 
-    const { data } = await fetchWithCache(KEYS.departments, fetcher, {
+    const { data } = await fetchWithCache(KEYS.departments(), fetcher, {
       ttlMs: ASSIGNMENT_TTL_MS,
+      force,
     });
     apply(data);
     return formatDepartments(data);
@@ -167,8 +179,15 @@ export const useAssignmentStore = create((set, get) => ({
     };
 
     const fetcher = async () => {
-      const res = await API.get(`/asset-assignments/department/${deptId}/assignments`);
-      return res.data.assignedAssets || [];
+      try {
+        const res = await API.get(`/asset-assignments/department/${deptId}/assignments`);
+        return res.data.assignedAssets || [];
+      } catch (err) {
+        // 404 / org mismatch → empty list (not a toast-worthy failure)
+        const status = err?.response?.status;
+        if (status === 404 || status === 403) return [];
+        throw err;
+      }
     };
 
     set({ assignmentsLoading: true });
@@ -290,11 +309,11 @@ export const useAssignmentStore = create((set, get) => ({
     get().fetchAssignmentHistory({ type, deptId, employeeIntId, revalidate: true }).catch(() => {});
   },
 
-  fetchAssetTypesForAssignment: async (entityType, entityId, { revalidate = false } = {}) => {
+  fetchAssetTypesForAssignment: async (entityType, entityId, { revalidate = false, force = false } = {}) => {
     const cacheKey =
       entityType === 'department' && entityId
         ? KEYS.assetTypesDept(entityId)
-        : KEYS.assetTypesUser;
+        : KEYS.assetTypesUser();
 
     const fetcher = async () => {
       if (entityType === 'department' && entityId) {
@@ -313,44 +332,48 @@ export const useAssignmentStore = create((set, get) => ({
       return Array.isArray(res.data) ? res.data : [];
     };
 
-    if (revalidate) {
-      const { data } = await fetchWithRevalidate(cacheKey, fetcher, { ttlMs: ASSIGNMENT_TTL_MS });
-      return data;
-    }
-    const { data } = await fetchWithCache(cacheKey, fetcher, { ttlMs: ASSIGNMENT_TTL_MS });
-    return data;
-  },
-
-  fetchInactiveAssetsByType: async (context, assetTypeId, { revalidate = false, force = false } = {}) => {
-    if (!assetTypeId) return [];
-
-    const cacheKey = KEYS.inactive(context, assetTypeId);
-    const fetcher = async () => {
-      const res = await API.get(`/assets/type/${assetTypeId}/inactive`, { params: { context } });
-      return parseInactiveList(res);
-    };
-
-    if (revalidate && !force) {
-      const cached = peekCache(cacheKey, ASSIGNMENT_TTL_MS);
-      if (cached) {
-        fetchWithRevalidate(cacheKey, fetcher, { ttlMs: ASSIGNMENT_TTL_MS });
-        return cached;
-      }
-    }
-
+    // Force a fresh network read so new dept↔asset-type mappings show immediately
     const { data } = await fetchWithCache(cacheKey, fetcher, {
       ttlMs: ASSIGNMENT_TTL_MS,
-      force,
+      force: force || revalidate,
     });
     return data;
   },
 
-  fetchInactiveCountsForTypes: async (context, types = []) => {
+  fetchInactiveAssetsByType: async (
+    context,
+    assetTypeId,
+    { revalidate = false, force = false, branchId = null } = {},
+  ) => {
+    if (!assetTypeId) return [];
+
+    const cacheKey = KEYS.inactive(context, assetTypeId, branchId || '');
+    const fetcher = async () => {
+      const params = { context };
+      // Pass UI/ACM branch so count and list use the same scope
+      if (branchId) params.branch_id = branchId;
+      const res = await API.get(`/assets/type/${assetTypeId}/inactive`, { params });
+      return parseInactiveList(res);
+    };
+
+    const { data } = await fetchWithCache(cacheKey, fetcher, {
+      ttlMs: ASSIGNMENT_TTL_MS,
+      force: force || revalidate,
+    });
+
+    if (!branchId || !Array.isArray(data)) return data || [];
+    return data.filter((a) => !a.branch_id || a.branch_id === branchId);
+  },
+
+  fetchInactiveCountsForTypes: async (context, types = [], { branchId = null, force = true } = {}) => {
     if (!types.length) return {};
 
     const results = await Promise.all(
       types.map((type) =>
-        get().fetchInactiveAssetsByType(context, type.asset_type_id, { revalidate: true }),
+        get().fetchInactiveAssetsByType(context, type.asset_type_id, {
+          force,
+          branchId,
+        }),
       ),
     );
 

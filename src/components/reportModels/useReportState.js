@@ -9,6 +9,7 @@ import assetWorkflowHistoryService from "../../services/assetWorkflowHistoryServ
 import { slaReportService } from "../../services/slaReportService";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
+import { getActiveOrgId } from '../../utils/acmContext';
 import {
   fetchReportDataCached,
   fetchReportFilterOptionsCached,
@@ -948,7 +949,7 @@ export function useReportState(reportId, report) {
         if (quick.workOrderId) apiFilters.work_order_id = quick.workOrderId;
         apiFilters.limit = 1000;
         apiFilters.offset = 0;
-        apiFilters.orgId = useAuthStore.getState().user?.org_id;
+        apiFilters.orgId = getActiveOrgId(useAuthStore.getState().user?.org_id);
         if (advanced?.length) {
           apiFilters.advancedConditions = advanced;
         }

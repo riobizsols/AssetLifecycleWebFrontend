@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { clearCache } from "../utils/apiCache";
 import { useNavigationStore } from "./useNavigationStore";
 import { useAssetsStore } from "./useAssetsStore";
+import { useAcmContextStore } from "./useAcmContextStore";
 
 export const useAuthStore = create(
     persist(
@@ -15,6 +16,8 @@ export const useAuthStore = create(
             login: (data) => {
                 clearCache();
                 useNavigationStore.getState().resetNavigation();
+                // Always re-seed ACM from deterministic default after login
+                useAcmContextStore.getState().reset();
                 set({
                     isAuthenticated: true,
                     user: data,
@@ -33,6 +36,7 @@ export const useAuthStore = create(
             logout: () => {
                 clearCache();
                 useNavigationStore.getState().resetNavigation();
+                useAcmContextStore.getState().reset();
                 useAssetsStore.setState({
                     currentPage: 1,
                     filterValues: { columnFilters: [], fromDate: '', toDate: '' },

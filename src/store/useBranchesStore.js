@@ -5,10 +5,14 @@ import {
   fetchWithRevalidate,
   invalidateCache,
   peekCache,
+  acmCacheSegment,
+  buildCacheKey,
 } from '../utils/apiCache';
+import { useAcmContextStore } from './useAcmContextStore';
 
 const TTL_MS = 3 * 60 * 1000;
-const LIST_KEY = 'branches:list';
+const listKey = () =>
+  buildCacheKey(['branches', 'list', acmCacheSegment(useAcmContextStore.getState())]);
 
 export function formatBranchRows(raw) {
   return (raw || []).map((item) => ({
@@ -19,13 +23,14 @@ export function formatBranchRows(raw) {
   }));
 }
 
-const cachedList = peekCache(LIST_KEY, TTL_MS);
+const cachedList = peekCache(listKey(), TTL_MS);
 
 export const useBranchesStore = create((set, get) => ({
   branches: cachedList || [],
   listLoading: !cachedList,
 
   fetchBranches: async ({ revalidate = false, force = false, onFresh } = {}) => {
+    const LIST_KEY = listKey();
     const apply = (rows) => {
       set({ branches: rows, listLoading: false });
       onFresh?.(rows);

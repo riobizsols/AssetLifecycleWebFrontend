@@ -509,7 +509,7 @@ const Assets = () => {
         setSelectedRows={setSelectedRows}
         showAddButton={hasCreateAccess}
         showDeleteButton={hasDeleteAccess}
-        isReadOnly={false}
+        isReadOnly={accessLevel === "D"}
       >
         {({ visibleColumns, showActions }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);

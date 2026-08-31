@@ -14,6 +14,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAssetsStore } from '../../store/useAssetsStore';
 import { useNavigation } from '../../hooks/useNavigation';
 import useColumnAccess from '../../hooks/useColumnAccess';
+import { getActiveOrgId, getActiveBranchId } from '../../utils/acmContext';
 
 const parseAssetDocsList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -583,9 +584,10 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
     setIsSubmitting(true);
     try {
-      // Get user's branch ID automatically
-      const userBranchId = getUserBranchId(user?.user_id);
-      console.log('User branch ID for asset update:', userBranchId);
+      // Prefer ACM branch; fall back to existing asset branch for updates
+      const acmBranchId = getActiveBranchId();
+      const userBranchId = acmBranchId || getUserBranchId(user?.user_id) || assetData?.branch_id || null;
+      console.log('ACM/user branch ID for asset update:', userBranchId);
 
       // Prepare the asset data according to backend requirements
       // Only include fields that are visible (not NONE access)
@@ -747,8 +749,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           if (r.type && r.docTypeName?.trim()) {
             fd.append('doc_type_name', r.docTypeName);
           }
-          const authUser = useAuthStore.getState().user;
-          const orgId = authUser?.org_id || assetData?.org_id;
+          const orgId = getActiveOrgId(useAuthStore.getState().user?.org_id || assetData?.org_id);
           if (orgId) {
             fd.append('org_id', orgId);
           }

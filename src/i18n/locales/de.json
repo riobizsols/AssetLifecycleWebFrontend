@@ -939,6 +939,7 @@
     "title": "Mitarbeiter",
     "failedToFetchEmployees": "Fehler beim Laden der Mitarbeiter",
     "selectEmployee": "Mitarbeiter auswählen",
+    "searchEmployee": "Mitarbeiter suchen...",
     "noEmployeeSelected": "Kein Mitarbeiter ausgewählt",
     "employeeAssetsList": "Mitarbeiter-Anlagenliste",
     "employeeSelection": "Mitarbeiterauswahl",
@@ -1007,6 +1008,9 @@
     "selectDepartmentAndEmployee": "Abteilung und Mitarbeiter auswählen",
     "departmentSelection": "Abteilungsauswahl",
     "departmentNameRequired": "Abteilungsname ist erforderlich",
+    "branch": "Filiale",
+    "selectBranch": "Filiale auswählen",
+    "branchRequired": "Filiale ist erforderlich",
     "failedToCreateDepartment": "Fehler beim Erstellen der Abteilung",
     "failedToDeleteDepartment": "Fehler beim Löschen der Abteilung",
     "failedToUpdateDepartment": "Fehler beim Aktualisieren der Abteilung",
@@ -1075,6 +1079,7 @@
     "failedToFetchBranches": "Fehler beim Laden der Filialen",
     "branchId": "Filial-ID",
     "organizationId": "Organisations-ID",
+    "organizationName": "Organisation",
     "isActive": "Ist aktiv",
     "createdBy": "Erstellt von",
     "extId": "Externe ID",
@@ -2922,6 +2927,9 @@
     "archived": "Archiviert",
     "preview": "Vorschau",
     "department": "Abteilung",
+    "branch": "Filiale",
+    "organization": "Organisation",
+    "select": "Auswählen",
     "depreciationMethod": "Abschreibungsmethode",
     "pleaseSelectItemsToDelete": "Bitte wählen Sie Elemente zum Löschen aus",
     "showing": "Zeige",
@@ -2979,7 +2987,8 @@
     "prodServ": "Produkte / Dienstleistungen",
     "roleManagement": "Rollenverwaltung",
     "properties": "Eigenschaften",
-    "breakdownReasonCodes": "Störungsgrund-Codes"
+    "breakdownReasonCodes": "Störungsgrund-Codes",
+    "branchDeptMapping": "Filiale – Abteilung Zuordnung"
   },
   "adminSettingsBreadcrumb": {
     "createNavigation": "Navigation anlegen",
@@ -3708,5 +3717,18 @@
     "goBack": "Vorherige Seite",
     "quickLinks": "Verfügbare Bereiche",
     "contactAdmin": "Hilfe benötigt? Wenden Sie sich an Ihren Administrator."
+  },
+  "branchDeptMapping": {
+    "title": "Filiale – Abteilung Zuordnung",
+    "subtitle": "Abteilungen Filialen zuordnen (tblBR_DEPT). Eine Abteilung kann mehreren Filialen zugeordnet werden.",
+    "addMapping": "Zuordnung hinzufügen",
+    "noMappings": "Keine Zuordnungen gefunden",
+    "failedToLoad": "Zuordnungen konnten nicht geladen werden",
+    "branchAndDeptRequired": "Filiale und Abteilung sind erforderlich",
+    "saved": "Zuordnung gespeichert",
+    "failedToSave": "Zuordnung konnte nicht gespeichert werden",
+    "removed": "Zuordnung entfernt",
+    "failedToRemove": "Zuordnung konnte nicht entfernt werden",
+    "confirmDelete": "Zuordnung zwischen {{branch}} und {{dept}} entfernen?"
   }
 }

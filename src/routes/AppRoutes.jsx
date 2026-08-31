@@ -21,6 +21,7 @@ import AssignRoles from "../components/AssignRoles";
 import CreateUser from "../pages/masterData/CreateUser";
 import Departments from "../pages/masterData/Departments";
 import Branches from "../pages/masterData/Branches";
+import BranchDeptMapping from "../pages/masterData/BranchDeptMapping";
 import AddBranch from "../components/AddBranch";
 import DepartmentsAdmin from "../pages/masterData/DepartmentsAdmin";
 import DepartmentsAsset from "../pages/masterData/DepartmentsAsset";
@@ -1075,6 +1076,17 @@ export default function AppRoutes() {
         </Route>
 
         <Route
+          path="/master-data/branch-dept-mapping"
+          element={
+            <ProtectedRoute requiredAppId="BRANCHDEPTMAPPING">
+              <MainLayout>
+                <BranchDeptMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/master-data/spare-parts"
           element={
             <ProtectedRoute requiredAppId="SPAREPARTS">
@@ -1135,6 +1147,7 @@ export default function AppRoutes() {
           <Route path="categories/add" element={<AddSparePartCategory />} />
           <Route path="mappings/add" element={<AddSparePartAssetTypeMapping />} />
         </Route>
+
 
         <Route
           path="/scrap-sales"

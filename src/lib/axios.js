@@ -1,11 +1,12 @@
 import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
+import { useAcmContextStore } from "../store/useAcmContextStore";
 import { API_BASE_URL } from "../config/environment";
 import { invalidateOnMutation } from "../utils/apiCache";
 
 const API = axios.create({
     baseURL: API_BASE_URL,
-    withCredentials: true, // optional if you're using cookies
+    withCredentials: true,
 });
 
 console.log('🔍 [Axios] Base URL configured as:', API_BASE_URL);
@@ -45,11 +46,28 @@ API.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+
+    const acmCtx = useAcmContextStore.getState();
+    if (acmCtx.appliedOrgId) {
+        config.headers['X-ACM-Org-Id'] = acmCtx.appliedOrgId;
+    } else {
+        delete config.headers['X-ACM-Org-Id'];
+    }
+    if (acmCtx.appliedBranchId) {
+        config.headers['X-ACM-Branch-Id'] = acmCtx.appliedBranchId;
+    } else {
+        delete config.headers['X-ACM-Branch-Id'];
+    }
+    if (acmCtx.appliedDeptId) {
+        config.headers['X-ACM-Dept-Id'] = acmCtx.appliedDeptId;
+    } else {
+        delete config.headers['X-ACM-Dept-Id'];
+    }
+
     console.log('🔍 [Axios] Request URL:', config.baseURL + config.url);
     return config;
 });
 
-// Response interceptor to handle unauthorized responses
 API.interceptors.response.use(
     (response) => {
         invalidateOnMutation({
@@ -60,13 +78,17 @@ API.interceptors.response.use(
     },
     async (error) => {
         const originalRequest = error.config;
+        const requestUrl = String(originalRequest?.url || '');
+        const isAuthLoginAttempt =
+            requestUrl.includes('/auth/login') ||
+            requestUrl.includes('/auth/forgot-password') ||
+            requestUrl.includes('/auth/reset-password');
 
         if (!originalRequest || error.response?.status !== 401) {
             return Promise.reject(error);
         }
 
-        // Never disrupt public onboarding/auth pages (tenant setup, login, etc.)
-        if (isPublicAppPath() || shouldSkipAuthRedirect(originalRequest)) {
+        if (isPublicAppPath() || shouldSkipAuthRedirect(originalRequest) || isAuthLoginAttempt) {
             return Promise.reject(error);
         }
 
@@ -99,6 +121,11 @@ API.interceptors.response.use(
 
             console.log('🔒 [Axios] Authentication failed - logging out');
             authStore.logout();
+            try {
+                useAcmContextStore.getState().reset();
+            } catch (_) {
+                /* ignore */
+            }
             window.location.href = '/';
         }
 

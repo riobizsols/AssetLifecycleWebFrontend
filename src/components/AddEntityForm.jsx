@@ -13,6 +13,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { normalizeVendorFormPayload } from "../utils/vendorFormPayload";
 import { invalidateCache } from "../utils/apiCache";
 import { useVendorsStore } from "../store/useVendorsStore";
+import { getActiveOrgId } from '../utils/acmContext';
 
 const VENDOR_ADD_DRAFT_KEY = "vendorAddDraft";
 
@@ -70,7 +71,7 @@ function peekReturnTab() {
 const AddEntityForm = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const org_id = user?.org_id || "";
+  const org_id = getActiveOrgId(user?.org_id) || "";
   const { t } = useLanguage();
 
   // Hydrate from sessionStorage on first paint so leaving to create Brand/Model

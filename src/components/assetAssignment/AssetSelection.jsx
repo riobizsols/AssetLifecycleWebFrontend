@@ -11,6 +11,7 @@ import { EMP_ASSIGNMENT_APP_ID } from "../../constants/empAssignmentAuditEvents"
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useAssignmentStore } from "../../store/useAssignmentStore";
 import { useAssetsStore } from "../../store/useAssetsStore";
+import { useAcmContextStore } from "../../store/useAcmContextStore";
 import SearchableDropdown from "../ui/SearchableDropdown";
  
 
@@ -19,8 +20,17 @@ const AssetSelection = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { entityId, entityIntId, entityType, departmentId, selectedAssetType: selectedAssetTypeFromState, activeTab: activeTabFromState } =
+  const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
+  const { entityId, entityIntId, entityType, departmentId, branchId, selectedAssetType: selectedAssetTypeFromState, activeTab: activeTabFromState } =
     location.state || {};
+
+  // Prefer navigation branch, then ACM-selected branch
+  const effectiveBranchId = branchId || appliedBranchId || null;
+
+  const filterAssetsByBranch = (list) => {
+    if (!effectiveBranchId || !Array.isArray(list)) return list || [];
+    return list.filter((a) => !a.branch_id || a.branch_id === effectiveBranchId);
+  };
 
   const [assets, setAssets] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
@@ -187,7 +197,10 @@ const AssetSelection = () => {
       setCountsLoading(true);
       const counts = await useAssignmentStore
         .getState()
-        .fetchInactiveCountsForTypes(context, incoming);
+        .fetchInactiveCountsForTypes(context, incoming, {
+          branchId: effectiveBranchId,
+          force: true,
+        });
       setAssetTypeCounts(counts);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
@@ -203,9 +216,13 @@ const AssetSelection = () => {
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
       const assetsArr = await useAssignmentStore
         .getState()
-        .fetchInactiveAssetsByType(context, assetTypeId, { revalidate: true });
-      setInactiveAssets(assetsArr);
-      setInactiveAssetsRaw(assetsArr);
+        .fetchInactiveAssetsByType(context, assetTypeId, {
+          force: true,
+          branchId: effectiveBranchId,
+        });
+      const filtered = filterAssetsByBranch(assetsArr);
+      setInactiveAssets(filtered);
+      setInactiveAssetsRaw(filtered);
     } catch (err) {
       console.error("Failed to fetch inactive assets", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
@@ -226,8 +243,9 @@ const AssetSelection = () => {
         .getState()
         .fetchAllInactiveAssets(context, assetTypes);
 
-      setInactiveAssets(uniqueByAssetId);
-      setInactiveAssetsRaw(uniqueByAssetId);
+      const filtered = filterAssetsByBranch(uniqueByAssetId);
+      setInactiveAssets(filtered);
+      setInactiveAssetsRaw(filtered);
     } catch (err) {
       console.error("Failed to fetch all inactive assets", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
@@ -334,12 +352,13 @@ const AssetSelection = () => {
         const deptId = entityId || departmentId;
         navigate("/assign-department-assets", {
           replace: true,
-          state: { selectedDept: deptId },
+          state: { selectedDept: deptId, selectedBranch: effectiveBranchId || null },
         });
       } else if (entityType === "employee") {
         navigate("/assign-employee-assets", {
           replace: true,
           state: {
+            selectedBranch: effectiveBranchId || null,
             selectedDepartment: departmentId || null,
             selectedEmployee: entityId || null,
             selectedEmployeeIntId: entityIntIdLocal || entityIntId || null,
