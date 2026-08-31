@@ -2169,7 +2169,7 @@ const DatabaseSidebar = () => {
 
   if (loading) {
     return (
-      <aside className="w-64 h-screen bg-[#0E2F4B] text-white shadow overflow-y-auto">
+      <aside className="w-64 h-screen shrink-0 bg-[#0E2F4B] text-white shadow overflow-hidden">
         <div className="flex justify-center items-center h-full">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
@@ -2182,7 +2182,7 @@ const DatabaseSidebar = () => {
 
   if (error) {
     return (
-      <aside className="w-64 h-screen bg-[#0E2F4B] text-white shadow overflow-y-auto">
+      <aside className="w-64 h-screen shrink-0 bg-[#0E2F4B] text-white shadow overflow-hidden">
         <div className="flex justify-center items-center h-full">
           <div className="text-center text-red-300">
             <p>{t('common.error')}</p>
@@ -2197,10 +2197,10 @@ const DatabaseSidebar = () => {
     <aside
       className={`${
         collapsed ? "w-16" : "w-64"
-      } h-screen bg-[#0E2F4B] text-white shadow overflow-y-auto transition-all duration-300 relative`}
+      } h-screen shrink-0 bg-[#0E2F4B] text-white shadow flex flex-col overflow-hidden transition-all duration-300 relative`}
     >
       {/* Logo & Toggle Button */}
-      <div className="flex justify-center items-center mb-6 px-4">
+      <div className="flex justify-center items-center mb-6 px-4 shrink-0">
         {!collapsed && (
           <img src="/logo.png" alt="Logo" className="h-10 md:h-[60px] w-auto" />
         )}
@@ -2210,7 +2210,7 @@ const DatabaseSidebar = () => {
       </div>
 
       {/* Navigation Items */}
-      <ul className="px-2 pb-4 overflow-y-auto no-scrollbar">
+      <ul className="px-2 pb-4 flex-1 min-h-0 overflow-y-auto no-scrollbar">
         {isAdminSettingsMode && (
           <li className="mb-2">
             <NavLink

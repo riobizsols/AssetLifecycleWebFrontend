@@ -44,10 +44,9 @@ export default function SparePartApprovalDetail() {
     try {
       await API.post(`/spare-parts/issue-approvals/${id}/approve`);
       toast.success(t('sparePartApproval.approvedSuccessfully'));
-      setApproved(true);
-      setDetail((prev) => (prev ? { ...prev, is_approved: true, status: 'IS' } : prev));
       useSparePartApprovalStore.getState().invalidateApprovalCache();
       useSparePartListStore.getState().invalidateListCache();
+      navigate('/spare-part-approval');
     } catch (err) {
       const code = err.response?.data?.code;
       if (code === 'ALREADY_APPROVED') {

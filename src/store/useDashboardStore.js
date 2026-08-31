@@ -73,10 +73,12 @@ function transformNotifications(notifications) {
       alertType = 'Inspection';
     } else if (notification.workflowType === 'WARRANTY') {
       alertType = 'Warranty Expiry';
-    } else if (notification.workflowType === 'SPARE_CONFIRMED') {
-      alertType = 'Spare Part Confirmed';
+    } else if (notification.workflowType === 'SPARE_APPROVAL' || notification.workflowType === 'SPARE_REQUESTED') {
+      alertType = 'Spare Part Approval';
     } else if (notification.workflowType === 'SPARE_ISSUED') {
       alertType = 'Spare Part Issued';
+    } else if (notification.workflowType === 'SPARE_CONFIRMED') {
+      alertType = 'Spare Part Confirmed';
     } else if (notification.maintenanceType) {
       alertType = notification.maintenanceType;
     }
@@ -86,7 +88,12 @@ function transformNotifications(notifications) {
       alertText = `${notification.assetTypeName} Inspection`;
     } else if (alertType === 'Warranty Expiry') {
       alertText = `${notification.assetId} - ${notification.title || 'Warranty Expiry'}`;
-    } else if (alertType === 'Spare Part Issued' || alertType === 'Spare Part Confirmed') {
+    } else if (
+      alertType === 'Spare Part Approval' ||
+      alertType === 'Spare Part Requested' ||
+      alertType === 'Spare Part Issued' ||
+      alertType === 'Spare Part Confirmed'
+    ) {
       alertText = `${notification.assetTypeName || 'Asset'}`;
     } else if (String(notification.maintenanceType || '').toLowerCase().includes('subscription')) {
       alertText = `${notification.assetTypeName}`;
@@ -105,6 +112,8 @@ function transformNotifications(notifications) {
       actionBy: notification.userName || 'Unassigned',
       cutoffDate: formatNotificationDate(notification.cutoffDate),
       isUrgent:
+        notification.workflowType === 'SPARE_APPROVAL' ||
+        notification.workflowType === 'SPARE_REQUESTED' ||
         notification.workflowType === 'SPARE_ISSUED' ||
         notification.workflowType === 'SPARE_CONFIRMED'
           ? false

@@ -1,8 +1,71 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import API from '../../lib/axios';
 import { invalidateCache } from '../../utils/apiCache';
+import EnhancedDropdown from '../../components/ui/EnhancedDropdown';
+
+const CREATE_NEW = 'CREATE_NEW';
+const lotListPath = '/master-data/spare-parts';
+
+const CreateNameModal = ({
+  title,
+  label,
+  placeholder,
+  value,
+  onChange,
+  onCancel,
+  onCreate,
+  saving,
+}) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-lg border-b-4 border-[#FFC107]">
+        <h2 className="text-xl font-semibold">{title}</h2>
+      </div>
+      <div className="p-6">
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {label} <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onCreate();
+              }
+            }}
+          />
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            disabled={saving}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onCreate}
+            disabled={saving || !value.trim()}
+            className="px-6 py-2.5 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? 'Creating...' : 'Create'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const emptyForm = {
   vendor_id: '',
@@ -19,6 +82,7 @@ const emptyForm = {
 };
 
 const SpareParts = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
   const [vendors, setVendors] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -33,6 +97,12 @@ const SpareParts = () => {
   const [loadingPartNumber, setLoadingPartNumber] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [showBrandModal, setShowBrandModal] = useState(false);
+  const [showModelModal, setShowModelModal] = useState(false);
+  const [newBrandName, setNewBrandName] = useState('');
+  const [newModelName, setNewModelName] = useState('');
+  const [savingBrand, setSavingBrand] = useState(false);
+  const [savingModel, setSavingModel] = useState(false);
 
   const quantityInt = useMemo(() => {
     const n = Number(form.quantity);
@@ -287,8 +357,223 @@ const SpareParts = () => {
     });
   };
 
+  const handleBrandChange = (value) => {
+    if (value === CREATE_NEW) {
+      setShowBrandModal(true);
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      brand_id: value,
+      model_id: '',
+      part_number: '',
+    }));
+    setAutoIndividuals([]);
+  };
+
+  const handleModelChange = (value) => {
+    if (value === CREATE_NEW) {
+      if (!form.brand_id) {
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_SP_SELECT_BRAND_FIRST',
+          fallbackText: 'Select a brand first',
+          type: 'error',
+        });
+        return;
+      }
+      setShowModelModal(true);
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      model_id: value,
+      part_number: '',
+    }));
+    setAutoIndividuals([]);
+  };
+
+  const handleCreateBrand = async () => {
+    if (!newBrandName.trim()) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_BRAND_REQUIRED',
+        fallbackText: 'Please enter a brand name',
+        type: 'error',
+      });
+      return;
+    }
+    const normalized = newBrandName.trim().toLowerCase();
+    if (
+      brands.some(
+        (b) => String(b.brand_name || '').trim().toLowerCase() === normalized
+      )
+    ) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_BRAND_EXISTS',
+        fallbackText: 'A brand with this name already exists',
+        type: 'error',
+      });
+      return;
+    }
+
+    setSavingBrand(true);
+    try {
+      const res = await API.post('/spare-parts/brands', {
+        text: newBrandName.trim(),
+      });
+      const created = res.data?.data;
+      const brand_id = created?.spb_id;
+      const brand_name = created?.text || newBrandName.trim();
+      if (!brand_id) {
+        throw new Error('Brand was created but no id was returned');
+      }
+      setBrands((prev) => {
+        if (prev.some((b) => b.brand_id === brand_id)) return prev;
+        return [...prev, { brand_id, brand_name }].sort((a, b) =>
+          String(a.brand_name || '').localeCompare(String(b.brand_name || ''))
+        );
+      });
+      setForm((prev) => ({
+        ...prev,
+        brand_id,
+        model_id: '',
+        part_number: '',
+      }));
+      setNewBrandName('');
+      setShowBrandModal(false);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_BRAND_CREATED',
+        fallbackText: 'Brand created successfully',
+        type: 'success',
+      });
+    } catch (error) {
+      console.error('Error creating brand:', error);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_BRAND_CREATE_FAILED',
+        fallbackText:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Failed to create brand',
+        type: 'error',
+      });
+    } finally {
+      setSavingBrand(false);
+    }
+  };
+
+  const handleCreateModel = async () => {
+    if (!newModelName.trim()) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MODEL_REQUIRED',
+        fallbackText: 'Please enter a model name',
+        type: 'error',
+      });
+      return;
+    }
+    if (!form.brand_id) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_SELECT_BRAND_FIRST',
+        fallbackText: 'Select a brand first',
+        type: 'error',
+      });
+      return;
+    }
+    const normalized = newModelName.trim().toLowerCase();
+    if (
+      models.some(
+        (m) => String(m.model_name || '').trim().toLowerCase() === normalized
+      )
+    ) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MODEL_EXISTS',
+        fallbackText: 'A model with this name already exists for the selected brand',
+        type: 'error',
+      });
+      return;
+    }
+
+    setSavingModel(true);
+    try {
+      const res = await API.post('/spare-parts/models', {
+        text: newModelName.trim(),
+        spb_id: form.brand_id,
+      });
+      const created = res.data?.data;
+      const model_id = created?.spm_id;
+      const model_name = created?.text || newModelName.trim();
+      if (!model_id) {
+        throw new Error('Model was created but no id was returned');
+      }
+      setModels((prev) => {
+        if (prev.some((m) => m.model_id === model_id)) return prev;
+        return [...prev, { model_id, model_name }].sort((a, b) =>
+          String(a.model_name || '').localeCompare(String(b.model_name || ''))
+        );
+      });
+      setForm((prev) => ({
+        ...prev,
+        model_id,
+        part_number: '',
+      }));
+      setNewModelName('');
+      setShowModelModal(false);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MODEL_CREATED',
+        fallbackText: 'Model created successfully',
+        type: 'success',
+      });
+    } catch (error) {
+      console.error('Error creating model:', error);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SP_MODEL_CREATE_FAILED',
+        fallbackText:
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Failed to create model',
+        type: 'error',
+      });
+    } finally {
+      setSavingModel(false);
+    }
+  };
+
   const isFieldInvalid = (val) =>
     submitAttempted && (!val || !String(val).trim());
+
+  const brandOptions = [
+    ...brands.map((brand) => ({
+      value: brand.brand_id,
+      label: brand.brand_name,
+    })),
+    {
+      value: CREATE_NEW,
+      label: '+ Create New',
+      description: 'Create a new brand',
+      isCreateNew: true,
+    },
+  ];
+
+  const modelOptions = [
+    ...models.map((model) => ({
+      value: model.model_id,
+      label: model.model_name,
+    })),
+    {
+      value: CREATE_NEW,
+      label: '+ Create New',
+      description: 'Create a new model',
+      isCreateNew: true,
+    },
+  ];
 
   const getVendorLabel = (vendor) =>
     vendor.vendor_name || vendor.company_name || vendor.vendor_id;
@@ -505,12 +790,7 @@ const SpareParts = () => {
   };
 
   const handleClear = () => {
-    setForm(emptyForm);
-    setSerialNumbers([]);
-    setAutoIndividuals([]);
-    setBrands([]);
-    setModels([]);
-    setSubmitAttempted(false);
+    navigate(lotListPath);
   };
 
   const fieldClass = (invalid) =>
@@ -519,13 +799,44 @@ const SpareParts = () => {
     }`;
 
   return (
-    <div className="max-w-6xl mx-auto bg-white rounded-xl shadow overflow-hidden flex flex-col min-h-[calc(100vh-140px)]">
-      <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center">
+    <div className="max-w-6xl mx-auto bg-white rounded-xl shadow overflow-hidden flex flex-col max-h-[calc(100vh-140px)] min-h-[560px]">
+      {showBrandModal && (
+        <CreateNameModal
+          title="Create New Brand"
+          label="Brand"
+          placeholder="Enter brand name"
+          value={newBrandName}
+          onChange={setNewBrandName}
+          onCancel={() => {
+            setShowBrandModal(false);
+            setNewBrandName('');
+          }}
+          onCreate={handleCreateBrand}
+          saving={savingBrand}
+        />
+      )}
+      {showModelModal && (
+        <CreateNameModal
+          title="Create New Model"
+          label="Model"
+          placeholder="Enter model name"
+          value={newModelName}
+          onChange={setNewModelName}
+          onCancel={() => {
+            setShowModelModal(false);
+            setNewModelName('');
+          }}
+          onCreate={handleCreateModel}
+          saving={savingModel}
+        />
+      )}
+
+      <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center shrink-0">
         <h1 className="text-xl font-semibold">Spare Part Lot</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-6">
           <section>
             <h2 className="text-sm font-semibold text-[#0E2F4B] mb-3">
               Part Selection
@@ -579,48 +890,38 @@ const SpareParts = () => {
                 <label className="block text-sm mb-1 font-medium">
                   Brand <span className="text-red-500">*</span>
                 </label>
-                <select
-                  name="brand_id"
-                  value={form.brand_id}
-                  onChange={handleInputChange}
-                  className={fieldClass(isFieldInvalid(form.brand_id))}
-                  disabled={loadingBrands}
-                >
-                  <option value="">
-                    {loadingBrands ? 'Loading brands...' : 'Select brand'}
-                  </option>
-                  {brands.map((brand) => (
-                    <option key={brand.brand_id} value={brand.brand_id}>
-                      {brand.brand_name}
-                    </option>
-                  ))}
-                </select>
+                <div className={isFieldInvalid(form.brand_id) ? 'ring-1 ring-red-500 rounded-lg' : ''}>
+                  <EnhancedDropdown
+                    options={brandOptions}
+                    value={form.brand_id}
+                    onChange={handleBrandChange}
+                    placeholder={loadingBrands ? 'Loading brands...' : 'Select brand'}
+                    disabled={loadingBrands}
+                    required
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm mb-1 font-medium">
                   Model <span className="text-red-500">*</span>
                 </label>
-                <select
-                  name="model_id"
-                  value={form.model_id}
-                  onChange={handleInputChange}
-                  className={fieldClass(isFieldInvalid(form.model_id))}
-                  disabled={loadingModels || !form.brand_id}
-                >
-                  <option value="">
-                    {!form.brand_id
-                      ? 'Select brand first'
-                      : loadingModels
-                        ? 'Loading models...'
-                        : 'Select model'}
-                  </option>
-                  {models.map((model) => (
-                    <option key={model.model_id} value={model.model_id}>
-                      {model.model_name}
-                    </option>
-                  ))}
-                </select>
+                <div className={isFieldInvalid(form.model_id) ? 'ring-1 ring-red-500 rounded-lg' : ''}>
+                  <EnhancedDropdown
+                    options={modelOptions}
+                    value={form.model_id}
+                    onChange={handleModelChange}
+                    placeholder={
+                      !form.brand_id
+                        ? 'Select brand first'
+                        : loadingModels
+                          ? 'Loading models...'
+                          : 'Select model'
+                    }
+                    disabled={loadingModels || !form.brand_id}
+                    required
+                  />
+                </div>
               </div>
             </div>
           </section>
@@ -832,7 +1133,7 @@ const SpareParts = () => {
               className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 text-sm"
               disabled={loading}
             >
-              Clear
+              Cancel
             </button>
             <button
               type="submit"

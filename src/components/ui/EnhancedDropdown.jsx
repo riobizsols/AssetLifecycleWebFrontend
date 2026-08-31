@@ -8,7 +8,8 @@ const EnhancedDropdown = ({
   disabled = false,
   required = false,
   className = "",
-  optionClassName = ""
+  optionClassName = "",
+  compact = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -77,11 +78,13 @@ const EnhancedDropdown = ({
     <div ref={dropdownRef} className={`relative ${className}`}>
       <div
         className={`
-          w-full bg-white border-2 border-gray-200 rounded-lg px-4 py-3 
-          text-gray-700 transition-all duration-200 appearance-none cursor-pointer
-          hover:border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100
+          w-full bg-white text-gray-700 transition-all duration-200 appearance-none cursor-pointer
+          ${compact
+            ? 'border border-gray-300 px-3 py-2 text-sm'
+            : 'border-2 border-gray-200 rounded-lg px-4 py-3 hover:border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
+          }
           ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}
-          ${isOpen ? 'border-blue-500 ring-2 ring-blue-100' : ''}
+          ${!compact && isOpen ? 'border-blue-500 ring-2 ring-blue-100' : ''}
         `}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}

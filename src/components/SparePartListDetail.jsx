@@ -19,7 +19,6 @@ export default function SparePartListDetail() {
   const [loadingChecklist, setLoadingChecklist] = useState(true);
   const [loadingData, setLoadingData] = useState(!cachedDetail);
   const [showChecklist, setShowChecklist] = useState(false);
-  const [requestFormKey, setRequestFormKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,13 +70,8 @@ export default function SparePartListDetail() {
   }, [maintenanceData?.asset_type_id]);
 
   const handleRequestSubmitted = () => {
-    setRequestFormKey((k) => k + 1);
-    useSparePartListStore
-      .getState()
-      .fetchDetail(id, { revalidate: true, force: true })
-      .then(setMaintenanceData)
-      .catch(() => {});
     useSparePartListStore.getState().invalidateListCache();
+    navigate('/spare-part-list');
   };
 
   if (loadingData && !maintenanceData) {
@@ -157,11 +151,10 @@ export default function SparePartListDetail() {
           {/* Spare Part Request — same card; quantity fields match approval layout */}
           <div className="border-t border-gray-200 pt-6">
             <SparePartRequestScreen
-              key={requestFormKey}
               embedded
               amsId={id}
               assetTypeId={maintenanceData?.asset_type_id}
-              onCancel={() => setRequestFormKey((k) => k + 1)}
+              onCancel={() => navigate('/spare-part-list')}
               onSubmitted={handleRequestSubmitted}
             />
           </div>

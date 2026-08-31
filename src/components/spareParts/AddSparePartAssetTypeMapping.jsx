@@ -150,20 +150,15 @@ const AddSparePartAssetTypeMapping = () => {
     });
   };
 
-  const isInvalid = (val) => submitAttempted && (!val || !String(val).trim());
+  // Only mark fields invalid if they are required for this screen
+  const isInvalid = (val, required = true) =>
+    submitAttempted && required && (!val || !String(val).trim());
 
   const handleSave = async (e) => {
     e.preventDefault();
     setSubmitAttempted(true);
 
-    const required = [
-      [form.spc_id, 'Category is required'],
-      [form.category_brand_id, 'Category brand is required'],
-      [form.category_model_id, 'Category model is required'],
-      [form.asset_type_id, 'Asset type is required'],
-      [form.asset_brand, 'Asset type brand is required'],
-      [form.asset_model, 'Asset type model is required'],
-    ];
+    const required = [[form.spc_id, 'Category is required'], [form.asset_type_id, 'Asset type is required']];
     const missing = required.find(([val]) => !val || !String(val).trim());
     if (missing) {
       showBackendTextToast({
@@ -227,7 +222,7 @@ const AddSparePartAssetTypeMapping = () => {
                 name="spc_id"
                 value={form.spc_id}
                 onChange={handleChange}
-                className={fieldClass(isInvalid(form.spc_id))}
+                className={fieldClass(isInvalid(form.spc_id, true))}
               >
                 <option value="">Select category</option>
                 {categories.map((cat) => (
@@ -239,13 +234,13 @@ const AddSparePartAssetTypeMapping = () => {
             </div>
             <div>
               <label className="block text-sm mb-1 font-medium">
-                Brand <span className="text-red-500">*</span>
+                Brand
               </label>
               <select
                 name="category_brand_id"
                 value={form.category_brand_id}
                 onChange={handleChange}
-                className={fieldClass(isInvalid(form.category_brand_id))}
+                className={fieldClass(isInvalid(form.category_brand_id, false))}
                 disabled={!form.spc_id}
               >
                 <option value="">
@@ -260,13 +255,13 @@ const AddSparePartAssetTypeMapping = () => {
             </div>
             <div>
               <label className="block text-sm mb-1 font-medium">
-                Model <span className="text-red-500">*</span>
+                Model
               </label>
               <select
                 name="category_model_id"
                 value={form.category_model_id}
                 onChange={handleChange}
-                className={fieldClass(isInvalid(form.category_model_id))}
+                className={fieldClass(isInvalid(form.category_model_id, false))}
                 disabled={!form.category_brand_id}
               >
                 <option value="">
@@ -295,7 +290,7 @@ const AddSparePartAssetTypeMapping = () => {
                 name="asset_type_id"
                 value={form.asset_type_id}
                 onChange={handleChange}
-                className={fieldClass(isInvalid(form.asset_type_id))}
+                className={fieldClass(isInvalid(form.asset_type_id, true))}
               >
                 <option value="">Select asset type</option>
                 {assetTypes.map((at) => (
@@ -307,13 +302,13 @@ const AddSparePartAssetTypeMapping = () => {
             </div>
             <div>
               <label className="block text-sm mb-1 font-medium">
-                Brand <span className="text-red-500">*</span>
+                Brand
               </label>
               <select
                 name="asset_brand"
                 value={form.asset_brand}
                 onChange={handleChange}
-                className={fieldClass(isInvalid(form.asset_brand))}
+                className={fieldClass(isInvalid(form.asset_brand, false))}
                 disabled={!form.asset_type_id}
               >
                 <option value="">
@@ -328,13 +323,13 @@ const AddSparePartAssetTypeMapping = () => {
             </div>
             <div>
               <label className="block text-sm mb-1 font-medium">
-                Model <span className="text-red-500">*</span>
+                Model
               </label>
               <select
                 name="asset_model"
                 value={form.asset_model}
                 onChange={handleChange}
-                className={fieldClass(isInvalid(form.asset_model))}
+                className={fieldClass(isInvalid(form.asset_model, false))}
                 disabled={!form.asset_brand}
               >
                 <option value="">
