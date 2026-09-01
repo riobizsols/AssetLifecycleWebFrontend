@@ -39,7 +39,25 @@ export const INSPECTION_CHILD_ORDER = [
 export const HIDDEN_SIDEBAR_APP_IDS = new Set([
   'INSPECTIONFREQUENCY',
   'ASSETTYPECHECKLISTMAPPING',
+  'SPAREPARTS',
+  'SPAREPARTLIST',
+  'SPAREPARTAPPROVAL',
+  'SPAREPARTISSUE',
+  'SPAREPARTSCONFIG',
+  'SPAREPARTMASTER',
 ]);
+
+/** Sidebar group labels hidden when app_id is null (e.g. Spare Parts group). */
+export const HIDDEN_SIDEBAR_LABELS = new Set([
+  'SPARE PARTS',
+]);
+
+const isHiddenSidebarItem = (item) => {
+  const appId = normalizeNavAppId(item?.app_id);
+  if (appId && HIDDEN_SIDEBAR_APP_IDS.has(appId)) return true;
+  const label = String(item?.label || '').trim().toUpperCase();
+  return HIDDEN_SIDEBAR_LABELS.has(label);
+};
 
 /** Remove hidden apps from the navigation tree (recursive). */
 export const hideSidebarNavItems = (items) => {
@@ -48,6 +66,7 @@ export const hideSidebarNavItems = (items) => {
   const walk = (nodes) =>
     nodes
       .map((item) => {
+        if (isHiddenSidebarItem(item)) return null;
         if (item.children?.length) {
           const children = walk(item.children);
           if (!children.length) return null;
@@ -55,10 +74,7 @@ export const hideSidebarNavItems = (items) => {
         }
         return item;
       })
-      .filter((item) => {
-        if (!item) return false;
-        return !HIDDEN_SIDEBAR_APP_IDS.has(normalizeNavAppId(item.app_id));
-      });
+      .filter(Boolean);
 
   return walk(items);
 };
