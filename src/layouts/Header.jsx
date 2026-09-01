@@ -346,17 +346,21 @@ export default function Header() {
 
         {/* Dropdown */}
         {open && (
-          <div className="absolute right-0 mt-2 w-64 bg-white rounded shadow-lg z-50 text-sm border border-gray-100">
-            <div className="flex items-center gap-3 p-4 border-b">
-              <div className="h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold bg-cyan-600">
+          <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white rounded shadow-lg z-50 text-sm border border-gray-100">
+            <div className="flex items-start gap-3 p-4 border-b">
+              <div className="h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-white font-semibold bg-cyan-600">
                 {initials}
               </div>
-              <div>
-                <p className="font-semibold text-[#0E2F4B]">{fullName}</p>
-                <p className="text-xs text-gray-500 capitalize">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-[#0E2F4B] break-words leading-snug">
+                  {fullName}
+                </p>
+                <p className="text-xs text-gray-500 capitalize break-words mt-0.5 leading-snug">
                   {jobRole.replace(/_/g, " ")}
                 </p>
-                <p className="text-xs text-gray-400">{email}</p>
+                <p className="text-xs text-gray-400 break-all mt-0.5 leading-snug">
+                  {email}
+                </p>
                 {userRoles.length > 1 && (
                   <p className="text-xs text-blue-600 mt-1">
                     {userRoles.length} roles assigned

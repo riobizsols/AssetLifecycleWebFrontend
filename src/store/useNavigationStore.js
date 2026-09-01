@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import API from '../lib/axios';
 import { buildCacheKey, invalidateCache, peekCache, setCache } from '../utils/apiCache';
-import { ensureDefaultDashboardNav, ensureUsersInMasterData, sortAdminSettingsNavOrder, sortInspectionNavOrder, sortMasterDataNavOrder, sortScrapNavOrder } from '../utils/navigationDefaults';
+import { ensureDefaultDashboardNav, ensureUsersInMasterData, hideSidebarNavItems, sortAdminSettingsNavOrder, sortInspectionNavOrder, sortMasterDataNavOrder, sortScrapNavOrder } from '../utils/navigationDefaults';
 
-const NAV_CACHE_PREFIX = 'app:navigation:v16';
+const NAV_CACHE_PREFIX = 'app:navigation:v17';
 const NAV_TTL_MS = 10 * 60 * 1000;
 
 const navCacheKey = (userId) => buildCacheKey([NAV_CACHE_PREFIX, userId]);
@@ -16,11 +16,13 @@ const detectPlatform = () => {
 };
 
 const normalizeNavigation = (navigation) =>
-  sortInspectionNavOrder(
-    sortAdminSettingsNavOrder(
-      sortScrapNavOrder(
-        sortMasterDataNavOrder(
-          ensureUsersInMasterData(ensureDefaultDashboardNav(navigation)),
+  hideSidebarNavItems(
+    sortInspectionNavOrder(
+      sortAdminSettingsNavOrder(
+        sortScrapNavOrder(
+          sortMasterDataNavOrder(
+            ensureUsersInMasterData(ensureDefaultDashboardNav(navigation)),
+          ),
         ),
       ),
     ),

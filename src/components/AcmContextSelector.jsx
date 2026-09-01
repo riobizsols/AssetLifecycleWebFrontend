@@ -142,11 +142,29 @@ export default function AcmContextSelector() {
   const deptLabel = departments.find((d) => d.dept_id === draftDeptId)?.text || draftDeptId;
 
   const triggerLabel = useMemo(() => {
-    if (draftDeptId) return deptLabel;
-    if (draftBranchId) return branchLabel;
-    if (draftOrgId) return orgLabel;
+    const orgId = open ? draftOrgId : appliedOrgId || draftOrgId;
+    const branchId = open ? draftBranchId : appliedBranchId || draftBranchId;
+    const deptId = open ? draftDeptId : appliedDeptId || draftDeptId;
+    const orgName = orgs.find((o) => o.org_id === orgId)?.text || orgId;
+    const branchName = branches.find((b) => b.branch_id === branchId)?.text || branchId;
+    const deptName = departments.find((d) => d.dept_id === deptId)?.text || deptId;
+    if (deptId) return deptName;
+    if (branchId) return branchName;
+    if (orgId) return orgName;
     return t('common.selectOption') || 'Select…';
-  }, [draftOrgId, draftBranchId, draftDeptId, orgLabel, branchLabel, deptLabel, t]);
+  }, [
+    open,
+    draftOrgId,
+    draftBranchId,
+    draftDeptId,
+    appliedOrgId,
+    appliedBranchId,
+    appliedDeptId,
+    orgs,
+    branches,
+    departments,
+    t,
+  ]);
 
   /** Access for applied (saved) scope — shown on closed trigger. */
   const appliedAccess = useMemo(() => {
@@ -177,10 +195,18 @@ export default function AcmContextSelector() {
     return '';
   }, [acmRows, appliedOrgId, appliedBranchId, appliedDeptId]);
 
+  const displayLevel = useMemo(() => {
+    if (open) return step;
+    if (appliedDeptId) return 'dept';
+    if (appliedBranchId) return 'branch';
+    if (appliedOrgId) return 'org';
+    return step;
+  }, [open, step, appliedDeptId, appliedBranchId, appliedOrgId]);
+
   const stepTitle =
-    step === 'org'
+    displayLevel === 'org'
       ? t('common.organization') || 'Organization'
-      : step === 'branch'
+      : displayLevel === 'branch'
         ? t('common.branch') || 'Branch'
         : t('common.department') || 'Department';
 

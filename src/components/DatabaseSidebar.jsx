@@ -41,6 +41,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import {
   ensureDefaultDashboardNav,
   ensureUsersInMasterData,
+  hideSidebarNavItems,
   sortMasterDataNavOrder,
   sortScrapNavOrder,
   sortAdminSettingsNavOrder,
@@ -136,9 +137,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
   Inspection: [
     "INSPECTIONAPPROVAL",
     "INSPECTIONVIEW",
-    "INSPECTIONFREQUENCY",
     "INSPECTIONCHECKLISTS",
-    "ASSETTYPECHECKLISTMAPPING",
   ],
   "Admin Settings": ["AUDITLOGS", "AUDITLOGCONFIG"],
   "Asset Assignment": ["DEPTASSIGNMENT", "EMPASSIGNMENT"],
@@ -156,8 +155,6 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "VENDORS",
     "MAINTENANCESCHEDULE",
     "INSPECTIONCHECKLISTS",
-    "INSPECTIONFREQUENCY",
-    "ASSETTYPECHECKLISTMAPPING",
   ],
   Reports: [
     "ASSETLIFECYCLEREPORT",
@@ -795,6 +792,7 @@ function finalizeSidebarNavigation(items) {
   tree = sortScrapNavOrder(tree);
   tree = sortAdminSettingsNavOrder(tree);
   tree = sortInspectionNavOrder(tree);
+  tree = hideSidebarNavItems(tree);
   tree = stripOrphanedTopLevelDuplicates(tree);
   tree = pruneEmptyGroups(tree);
   return dedupeTopLevelNavItems(sortSidebarNav(tree));

@@ -32,10 +32,36 @@ export const INSPECTION_CHILD_ORDER = [
   'INSPECTIONAPPROVAL',
   'INSPECTIONVIEW',
   'INSPECTION',
-  'INSPECTIONFREQUENCY',
   'INSPECTIONCHECKLISTS',
-  'ASSETTYPECHECKLISTMAPPING',
 ];
+
+/** Sidebar entries hidden from all roles (routes may still exist). */
+export const HIDDEN_SIDEBAR_APP_IDS = new Set([
+  'INSPECTIONFREQUENCY',
+  'ASSETTYPECHECKLISTMAPPING',
+]);
+
+/** Remove hidden apps from the navigation tree (recursive). */
+export const hideSidebarNavItems = (items) => {
+  if (!Array.isArray(items) || !items.length) return items;
+
+  const walk = (nodes) =>
+    nodes
+      .map((item) => {
+        if (item.children?.length) {
+          const children = walk(item.children);
+          if (!children.length) return null;
+          return { ...item, children };
+        }
+        return item;
+      })
+      .filter((item) => {
+        if (!item) return false;
+        return !HIDDEN_SIDEBAR_APP_IDS.has(normalizeNavAppId(item.app_id));
+      });
+
+  return walk(items);
+};
 
 const childOrderRank = (appId, order) => {
   const key = normalizeNavAppId(appId);
