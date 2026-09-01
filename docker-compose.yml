@@ -1,4 +1,4 @@
-# ALM main frontend — deploy with ./deploy-docker.sh from this repo.
+# Tenant wildcard frontend — deploy with ./deploy-docker.sh from this repo.
 # Build args come from .env.production (VITE_API_BASE_URL, etc.).
 
 services:
@@ -8,9 +8,10 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://rioassetmanagement.net/api}
-        VITE_FRONTEND_URL: ${VITE_FRONTEND_URL:-https://rioassetmanagement.net}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://web.rioassetmanagement.net/api}
+        VITE_FRONTEND_URL: ${VITE_FRONTEND_URL:-https://web.rioassetmanagement.net}
         VITE_API_PORT: ${VITE_API_PORT:-}
+        VITE_RESERVED_SUBDOMAINS: ${VITE_RESERVED_SUBDOMAINS:-web,www,api,pressanaorg}
     ports:
       - "3001:80"
     restart: unless-stopped
