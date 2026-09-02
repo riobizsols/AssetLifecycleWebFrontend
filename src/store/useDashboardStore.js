@@ -27,13 +27,21 @@ const TOP5_COLORS = [
 ];
 
 function mapDepartmentChart(rows) {
-  return (rows || [])
-    .map((dept, index) => ({
-      name: dept.name,
-      value: dept.value,
+  const byName = new Map();
+  for (const dept of rows || []) {
+    const name = String(dept.name || 'Unknown').trim();
+    const value = Number(dept.value) || 0;
+    if (!value) continue;
+    byName.set(name, (byName.get(name) || 0) + value);
+  }
+
+  return Array.from(byName.entries())
+    .map(([name, value], index) => ({
+      name,
+      value,
       color: DEPT_COLORS[index % DEPT_COLORS.length],
     }))
-    .filter((item) => item.value > 0);
+    .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
 }
 
 function mapTop5Chart(rows) {
