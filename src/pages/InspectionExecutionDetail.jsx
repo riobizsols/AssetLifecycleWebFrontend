@@ -13,6 +13,7 @@ import {
 import StatusBadge from "../components/StatusBadge";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useAppData } from "../contexts/AppDataContext";
+import { useInspectionViewStore } from "../store/useInspectionViewStore";
 import { translateMasterDataLabel } from "../utils/masterDataLabel";
 
 function formatQuantitativeRange(question, t) {
@@ -258,6 +259,7 @@ const InspectionExecutionDetail = () => {
 
       const res = await API.put(`/inspection/${id}`, payload);
       if (res.data?.success) {
+        useInspectionViewStore.getState().invalidateInspectionViewCache();
         showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
         navigate('/inspection-view');
         return;

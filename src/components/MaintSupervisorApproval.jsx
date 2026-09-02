@@ -14,15 +14,15 @@ import SearchableDropdown from "./ui/SearchableDropdown";
 import { generateUUID } from '../utils/uuid';
 import { useLanguage } from "../contexts/LanguageContext";
 import { useNavigation } from "../hooks/useNavigation";
+import { useAcmContextStore } from "../store/useAcmContextStore";
 
 export default function MaintSupervisorApproval() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const orgId =
-    useAuthStore((s) => s.user?.org_id) ||
-    localStorage.getItem("org_id") ||
-    undefined;
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
+  const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
+  const appliedDeptId = useAcmContextStore((s) => s.appliedDeptId);
   
   // Access control
   const { getAccessLevel } = useNavigation();
@@ -219,7 +219,7 @@ export default function MaintSupervisorApproval() {
       fetchDocumentTypes();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, orgId]);
+  }, [id, appliedOrgId, appliedBranchId, appliedDeptId]);
 
   useRevalidateOnFocus(() => {
     fetchMaintenanceData({ force: true });
@@ -313,7 +313,6 @@ export default function MaintSupervisorApproval() {
     if (!maintenanceData) setLoadingData(true);
     try {
       const data = await useMaintenanceSupervisorStore.getState().fetchScheduleDetail(id, {
-        orgId,
         revalidate: true,
         force,
       });
@@ -1241,7 +1240,6 @@ export default function MaintSupervisorApproval() {
       const res = await API.put(`/maintenance-schedules/${id}`, updateData, {
         params: {
           context: "SUPERVISORAPPROVAL",
-          ...(orgId ? { orgId } : {}),
         },
       });
       

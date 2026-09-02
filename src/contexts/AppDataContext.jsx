@@ -1,6 +1,7 @@
   import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import API from '../lib/axios';
 import { useAuthStore } from '../store/useAuthStore';
+import { useAcmContextStore } from '../store/useAcmContextStore';
 import i18n from '../i18n/config';
 import { refreshAssetTypeCaches } from '../utils/refreshAssetTypeCaches';
 
@@ -16,6 +17,9 @@ export const useAppData = () => {
 
 export const AppDataProvider = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
+  const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
+  const appliedDeptId = useAcmContextStore((s) => s.appliedDeptId);
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -222,6 +226,12 @@ export const AppDataProvider = ({ children }) => {
       setError(null);
     }
   }, [isAuthenticated]); // Only run when authentication status changes
+
+  // Refresh scoped dropdown data when ACM context changes
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetchAssetTypes();
+  }, [isAuthenticated, appliedOrgId, appliedBranchId, appliedDeptId, fetchAssetTypes]);
 
   const value = {
     // Data

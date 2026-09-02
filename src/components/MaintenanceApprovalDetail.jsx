@@ -12,6 +12,45 @@ import { toast } from "react-hot-toast";
 import { useMaintenanceApprovalStore } from "../store/useMaintenanceApprovalStore";
 import { SYSTEM_ADMIN_JOB_ROLE_ID } from "../utils/systemAdmin";
 
+function normalizeChangedOn(value) {
+  if (value == null || value === '') return null;
+  if (Array.isArray(value)) {
+    const items = value.filter((v) => v != null && v !== '');
+    if (!items.length) return null;
+    return items[items.length - 1];
+  }
+  return value;
+}
+
+function parseDbTimestamp(value) {
+  const normalizedValue = normalizeChangedOn(value);
+  if (!normalizedValue) return null;
+  if (normalizedValue instanceof Date) {
+    return Number.isNaN(normalizedValue.getTime()) ? null : normalizedValue;
+  }
+  const s = String(normalizedValue).trim();
+  if (!s) return null;
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(s)) {
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const normalized = s.includes('T') ? s : s.replace(' ', 'T');
+  const d = new Date(`${normalized}Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatStepDateTime(step) {
+  const raw = step.changed_on;
+  if (raw) {
+    const d = parseDbTimestamp(raw);
+    if (d) {
+      return `${d.toLocaleDateString()} • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+  }
+  if (step.date && step.time) return `${step.date} • ${step.time}`;
+  return '';
+}
+
 function bustMaintenanceApprovalListCache() {
   useMaintenanceApprovalStore.getState().invalidateMaintenanceApprovalCache();
 }
@@ -364,6 +403,7 @@ const MaintenanceApprovalDetail = () => {
   });
   
   const isRejected = approvalDetails?.headerStatus === 'UR' || steps.some((step) => step.status === "rejected");
+  const isWorkflowComplete = ['CO', 'CA', 'CF'].includes(approvalDetails?.headerStatus);
 
   // Find ALL steps with AP status (current action pending)
   const currentActionSteps = steps.filter((step) => {
@@ -375,16 +415,22 @@ const MaintenanceApprovalDetail = () => {
     return isCurrentAction;
   });
   
-  // System Admin (JR001) can act on any pending step so the workflow is not stuck on one role.
+  const hasPendingApproval = currentActionSteps.length > 0;
   const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
   const isViewOnly = Boolean(approvalDetails?.viewOnly);
-  const isCurrentActionUser = !isViewOnly && (isSystemAdmin || currentActionSteps.some((step) => {
-    // Backend sends role info in step.role.id (job_role_id)
-    const stepRoleId = step.role?.id || step.user?.id;
-    const hasRole = userRoleIds.includes(stepRoleId);
-    console.log(`🔍 Checking action step: Required role=${stepRoleId}, User has role=${hasRole}`);
-    return hasRole;
-  }));
+  const isCurrentActionUser =
+    !isViewOnly &&
+    !isWorkflowComplete &&
+    !isRejected &&
+    hasPendingApproval &&
+    approvalDetails?.canAct !== false &&
+    (isSystemAdmin ||
+      currentActionSteps.some((step) => {
+        const stepRoleId = step.role?.id || step.user?.id;
+        const hasRole = userRoleIds.includes(stepRoleId);
+        console.log(`🔍 Checking action step: Required role=${stepRoleId}, User has role=${hasRole}`);
+        return hasRole;
+      }));
   
   console.log('✅ User can approve:', isCurrentActionUser);
   console.log('📊 Current action steps:', currentActionSteps);
@@ -942,7 +988,7 @@ const MaintenanceApprovalDetail = () => {
                     {step.date && (step.status === 'completed' || step.status === 'approved' || step.status === 'rejected') && (
                       <div className="flex items-center text-xs text-gray-500 mt-1">
                         <Clock className="w-3.5 h-3.5 mr-1" style={{ color: '#FFC107' }} />
-                        <span>{step.date} • {step.time}</span>
+                        <span>{formatStepDateTime(step)}</span>
                       </div>
                     )}
                   </div>
@@ -1405,6 +1451,11 @@ const MaintenanceApprovalDetail = () => {
               {isViewOnly && (
                 <div className="text-amber-700 text-sm self-center">
                   View only — this approval belongs to another branch.
+                </div>
+              )}
+              {isWorkflowComplete && !isRejected && (
+                <div className="text-green-700 text-sm self-center font-medium">
+                  {t('maintenanceApproval.workflowCompleted') || 'This maintenance has been fully approved.'}
                 </div>
               )}
               {isCurrentActionUser && !isRejected && (

@@ -115,7 +115,6 @@ export const useMaintenanceSupervisorStore = create((set, get) => ({
       const res = await API.get(`/maintenance-schedules/${id}`, {
         params: {
           context: 'SUPERVISORAPPROVAL',
-          ...(orgId ? { orgId } : {}),
         },
       });
       if (!res.data?.success) {
