@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import API from '../../lib/axios';
 import { invalidateCache } from '../../utils/apiCache';
+import EnhancedDropdown from '../ui/EnhancedDropdown';
 
 const emptyForm = {
   spc_id: '',
@@ -36,10 +37,17 @@ const AddSparePartAssetTypeMapping = () => {
       try {
         const [catRes, atRes] = await Promise.all([
           API.get('/spare-parts/mapping-options/categories'),
-          API.get('/spare-parts/mapping-options/asset-types'),
+          API.get('/asset-types'),
         ]);
         setCategories(Array.isArray(catRes.data?.data) ? catRes.data.data : []);
-        setAssetTypes(Array.isArray(atRes.data?.data) ? atRes.data.data : []);
+        const types = Array.isArray(atRes.data)
+          ? atRes.data
+          : Array.isArray(atRes.data?.data)
+            ? atRes.data.data
+            : [];
+        setAssetTypes(
+          types.filter((at) => at.int_status === 1 || at.int_status === '1' || at.int_status === 'Active')
+        );
       } catch (error) {
         console.error('Error loading mapping options:', error);
         showBackendTextToast({
@@ -277,28 +285,32 @@ const AddSparePartAssetTypeMapping = () => {
           </div>
         </div>
 
-        <div>
+        <div className="overflow-visible">
           <h3 className="text-sm font-semibold text-[#0E2F4B] mb-3">
             Asset Type Mapping
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-visible">
+            <div className="overflow-visible">
               <label className="block text-sm mb-1 font-medium">
                 Asset Type <span className="text-red-500">*</span>
               </label>
-              <select
-                name="asset_type_id"
+              <EnhancedDropdown
+                native
+                required
+                className={isInvalid(form.asset_type_id, true) ? '[&>div]:border-red-500' : ''}
                 value={form.asset_type_id}
-                onChange={handleChange}
-                className={fieldClass(isInvalid(form.asset_type_id, true))}
-              >
-                <option value="">Select asset type</option>
-                {assetTypes.map((at) => (
-                  <option key={at.asset_type_id} value={at.asset_type_id}>
-                    {at.text}
-                  </option>
-                ))}
-              </select>
+                placeholder="Select asset type"
+                onChange={(value) =>
+                  handleChange({ target: { name: 'asset_type_id', value } })
+                }
+                options={[
+                  { value: '', label: 'Select asset type' },
+                  ...assetTypes.map((at) => ({
+                    value: at.asset_type_id,
+                    label: at.text,
+                  })),
+                ]}
+              />
             </div>
             <div>
               <label className="block text-sm mb-1 font-medium">
