@@ -18,10 +18,21 @@ function bustMaintenanceApprovalListCache() {
 
 function isInhouseMaintenance(approvalDetails) {
   if (!approvalDetails) return false;
-  if (approvalDetails.header_emp_int_id) return true;
+  if (approvalDetails.maint_type_id === 'MT005') return false;
   const maint = (approvalDetails.maintained_by || '').toString().toLowerCase().replace(/\s|-/g, '');
-  if (!maint) return false;
+  if (maint.includes('vendor')) return false;
+  if (maint.includes('inhouse') || maint === 'internal') return true;
+  if (!maint) return true;
   return !maint.includes('vendor');
+}
+
+function getEffectiveTechnicianId(approvalDetails, selectedTechnician, assignedTechnician) {
+  return (
+    selectedTechnician ||
+    approvalDetails?.header_emp_int_id ||
+    assignedTechnician?.emp_int_id ||
+    null
+  );
 }
 
 const getStepIcon = (status) => {
@@ -116,6 +127,7 @@ const MaintenanceApprovalDetail = () => {
   const [selectedTechnician, setSelectedTechnician] = useState(null);
   const [loadingTechnicians, setLoadingTechnicians] = useState(false);
   const [loadingAssignedTechnician, setLoadingAssignedTechnician] = useState(false);
+  const [technicianError, setTechnicianError] = useState(false);
   const [loadingApprovalDetails, setLoadingApprovalDetails] = useState(false);
   const [assetDetails, setAssetDetails] = useState(null);
   const [loadingAssetDetails, setLoadingAssetDetails] = useState(false);
@@ -398,7 +410,7 @@ const MaintenanceApprovalDetail = () => {
         const stepRoleId = step.role?.id || step.user?.id;
         return userRoleIds.includes(stepRoleId);
       }));
-  
+
   console.log('✅ User can approve:', isCurrentActionUser);
   console.log('📊 Current action steps:', currentActionSteps);
   console.log('📊 Workflow complete:', isWorkflowComplete, 'headerStatus:', approvalDetails?.headerStatus);
@@ -424,6 +436,28 @@ const MaintenanceApprovalDetail = () => {
       return;
     }
     setApproveNoteError(false);
+
+    const inhouse = isInhouseMaintenance(approvalDetails);
+    const technicianId = getEffectiveTechnicianId(
+      approvalDetails,
+      selectedTechnician,
+      assignedTechnician,
+    );
+    if (inhouse && !technicianId) {
+      setTechnicianError(true);
+      setShowApproveModal(false);
+      setActiveTab('technician');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_TECHNICIAN_ASSIGNMENT_IS_REQUIRED_FOR_INTERNAL_MAINT_2698B69A',
+        fallbackText:
+          t('maintenanceApproval.technicianRequired') ||
+          'Technician assignment is required for in-house maintenance before approval.',
+        type: 'error',
+      });
+      return;
+    }
+    setTechnicianError(false);
 
     setIsSubmitting(true);
     let loadingToastId = null;
@@ -461,6 +495,9 @@ const MaintenanceApprovalDetail = () => {
       if (!inhouse && vendorToSend) {
         payload.vendorId = vendorToSend;
       }
+      if (inhouse && technicianId) {
+        payload.technicianId = technicianId;
+      }
 
       const response = await API.post(`/approval-detail/${id}/approve`, payload);
       
@@ -483,6 +520,11 @@ const MaintenanceApprovalDetail = () => {
         } else if (msg.toLowerCase().includes('already been completed')) {
           toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approval already completed.');
           finishApproval();
+        } else if (msg.toLowerCase().includes('technician') && msg.toLowerCase().includes('required')) {
+          setTechnicianError(true);
+          setShowApproveModal(false);
+          setActiveTab('technician');
+          toast.error(msg);
         } else {
           toast.error(msg || t('maintenanceApproval.failedToApprove'));
         }
@@ -509,6 +551,14 @@ const MaintenanceApprovalDetail = () => {
       ) {
         toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approved successfully.');
         finishApproval();
+      } else if (
+        errorMessage.toLowerCase().includes('technician') &&
+        errorMessage.toLowerCase().includes('required')
+      ) {
+        setTechnicianError(true);
+        setShowApproveModal(false);
+        setActiveTab('technician');
+        toast.error(errorMessage);
       } else if (
         errorMessage.toLowerCase().includes('no workflow found') &&
         isWorkflowComplete
@@ -1225,25 +1275,43 @@ const MaintenanceApprovalDetail = () => {
                     <h3 className="text-lg font-medium mb-4">Technician Details</h3>
 
                     <div className="mb-4">
-                      <label className="block text-sm font-medium mb-1 text-gray-700">Select Technician</label>
+                      <label className="block text-sm font-medium mb-1 text-gray-700">
+                        {t('maintenanceApproval.selectTechnician', { defaultValue: 'Select Technician' })}
+                        <span className="text-red-500"> *</span>
+                      </label>
                       <select
                         value={selectedTechnician || (assignedTechnician?.emp_int_id || "")}
+                        required
                         onChange={async (e) => {
                           const newId = e.target.value || null;
                           setSelectedTechnician(newId);
+                          setTechnicianError(false);
                           if (newId) {
                             const found = technicians.find(t => String(t.emp_int_id) === String(newId));
                             if (found) setAssignedTechnician(found);
                             await saveTechnicianChange(newId);
+                          } else {
+                            setAssignedTechnician(null);
                           }
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                        className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] ${
+                          technicianError ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       >
-                        <option value="">Select Technician</option>
+                        <option value="">
+                          {t('maintenanceApproval.selectTechnicianPlaceholder', {
+                            defaultValue: '-- Select Technician --',
+                          })}
+                        </option>
                         {technicians.map(t => (
                           <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name} ({t.emp_int_id})</option>
                         ))}
                       </select>
+                      {technicianError && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {t('maintenanceApproval.technicianRequired')}
+                        </p>
+                      )}
                     </div>
 
                     {loadingAssignedTechnician ? (

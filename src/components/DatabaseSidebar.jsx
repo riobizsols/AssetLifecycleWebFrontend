@@ -1350,6 +1350,8 @@ const DatabaseSidebar = () => {
       'Department Asset type': t('navigation.departmentsAsset'),
       'Manage Departments Assets Type': t('navigation.departmentsAsset'),
       'Branches': t('navigation.branches'),
+      'Branch – Department Mapping': t('navigation.branchDeptMapping'),
+      'Branch - Department Mapping': t('navigation.branchDeptMapping'),
       'Vendors': t('navigation.vendors'),
       'Spare Parts': t('navigation.spareParts'),
       'Spare Part Lot': t('navigation.sparePartLot'),

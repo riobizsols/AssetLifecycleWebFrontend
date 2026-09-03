@@ -1,0 +1,5 @@
+"org_id","branch_id (Opt)","asset_type_id","text","assignment_type","int_status","inspection_required","group_required","is_child","parent_asset_type_id","maint_lead_type","depreciation_type","properties"
+"ORG001","BR001","AT901","Bulk Test Laptops","user","1","false","false","false","","internal","SL","Brand;Color"
+"ORG001","","AT902","Bulk Test Desktops","user","1","false","false","false","","internal","SL","Brand;Color"
+"ORG001","BR002","AT903","Bulk Test Gaming Laptops","user","1","false","false","true","AT901","internal","SL","Brand;Color"
+"ORG001","","AT904","Bulk Test Office Chairs","department","1","false","false","false","","","ND","Material;Color"

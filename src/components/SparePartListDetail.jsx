@@ -81,9 +81,9 @@ export default function SparePartListDetail() {
     navigate('/spare-part-list');
   };
 
-  const maintenanceProvider =
-    maintenanceData?.maintenance_provider || maintenanceData?.maintained_by;
-  const canRequestSpareParts = isInhouseMaintenance(maintenanceProvider);
+  const canRequestSpareParts = isInhouseMaintenance(
+    maintenanceData?.maintenance_provider || maintenanceData?.maintained_by
+  );
 
   if (loadingData && !maintenanceData) {
     return (
@@ -136,12 +136,6 @@ export default function SparePartListDetail() {
               <div className="text-xs text-gray-500">{t('sparePartList.vendor')}</div>
               <div className="font-semibold text-gray-800">
                 {maintenanceData?.vendor_name || '-'}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-gray-500">Maintenance Provider</div>
-              <div className="font-semibold text-gray-800">
-                {maintenanceProvider || '-'}
               </div>
             </div>
           </div>

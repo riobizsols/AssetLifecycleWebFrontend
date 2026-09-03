@@ -946,11 +946,6 @@ const AddAssetForm = ({ userRole }) => {
       hasErrors = true;
     }
     
-    if (!form.purchaseBy || form.purchaseBy.trim() === '') {
-      errors.purchaseBy = true;
-      hasErrors = true;
-    }
-    
     if (!form.expiryDate || form.expiryDate.trim() === '') {
       errors.expiryDate = true;
       hasErrors = true;
@@ -1716,7 +1711,7 @@ const AddAssetForm = ({ userRole }) => {
               </div>
               <div className="grid grid-cols-4 gap-6 mb-4">
                 <div>
-                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseBy')} <span className="text-red-500">*</span></label>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseBy')}</label>
                   <div className="relative w-full">
                     <button
                       type="button"
