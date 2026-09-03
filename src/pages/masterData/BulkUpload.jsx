@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Download, Upload, CheckCircle, AlertCircle, FileText, Users, Package, ChevronDown, XCircle, AlertTriangle, Info } from 'lucide-react';
 import API from '../../lib/axios';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuthStore } from '../../store/useAuthStore';
+import { toast } from 'react-hot-toast';
 
 // Helper functions for localStorage
 const saveToStorage = (key, data) => {
@@ -168,6 +170,7 @@ const ErrorDisplay = ({ errors, onClear }) => {
 
 const Roles = () => {
   const { t } = useLanguage();
+  const { user, branch_id: authBranchId } = useAuthStore();
   const [activeTab, setActiveTab] = useState(loadFromStorage('activeTab', 'assets'));
   const [uploadStatus, setUploadStatus] = useState(loadFromStorage('uploadStatus', {}));
   const [trialResults, setTrialResults] = useState(loadFromStorage('trialResults', {}));
@@ -295,17 +298,76 @@ const Roles = () => {
           alert(t('bulkUpload.pleaseSelectAssetTypeFirst'));
           return;
         }
-        csvContent = generateAssetsCSV(selectedAssetType.asset_type_id, assetTypeProperties);
+        csvContent = generateAssetsCSV({
+          assetTypeId: selectedAssetType.asset_type_id,
+          properties: assetTypeProperties,
+          orgId: user?.org_id || referenceData.organizations?.[0]?.org_id || 'ORG001',
+        });
         filename = `assets_sample_${selectedAssetType.asset_type_id}.csv`;
         break;
-      case 'assetTypes':
-        csvContent = generateAssetTypesCSV();
+      case 'assetTypes': {
+        // Ensure properties + branches/orgs are loaded so the sample passes validation
+        let props = availableProperties;
+        if (!props.length) {
+          await fetchAvailableProperties();
+          props = availableProperties;
+        }
+        // Re-fetch props directly for accuracy after await
+        try {
+          const response = await API.get('/properties');
+          if (response.data?.success && Array.isArray(response.data.data)) {
+            props = response.data.data.map((prop) => ({
+              id: prop.prop_id,
+              text: prop.property,
+              value: prop.prop_id,
+            }));
+            setAvailableProperties(props);
+          }
+        } catch (e) {
+          console.warn('Could not refresh properties for sample CSV', e);
+        }
+
+        let refs = referenceData;
+        if (!refs.branches?.length || !refs.organizations?.length) {
+          refs = await fetchReferenceData();
+        }
+
+        if (!props.length) {
+          toast.error(
+            'No properties found. Create at least one property under Master Data → Properties, then download the sample again.',
+          );
+          return;
+        }
+
+        csvContent = generateAssetTypesCSV({
+          orgId: user?.org_id || refs.organizations?.[0]?.org_id || 'ORG001',
+          branches: refs.branches || [],
+          authBranchId,
+          properties: props,
+        });
         filename = 'asset_types_sample.csv';
         break;
-      case 'employees':
-        csvContent = generateEmployeesCSV();
+      }
+      case 'employees': {
+        let refs = referenceData;
+        if (!refs.branches?.length || !refs.departments?.length || !refs.organizations?.length) {
+          refs = await fetchReferenceData();
+        }
+        const orgId = user?.org_id || refs.organizations?.[0]?.org_id || 'ORG001';
+        const depts = refs.departments || [];
+        const branches = refs.branches || [];
+        const dept1 = depts[0];
+        const dept2 = depts[1] || depts[0];
+        csvContent = generateEmployeesCSV({
+          orgId,
+          branchId1: dept1?.branch_id || authBranchId || branches[0]?.branch_id || 'BR001',
+          branchId2: dept2?.branch_id || branches[1]?.branch_id || branches[0]?.branch_id || 'BR002',
+          deptId1: dept1?.dept_id || 'DPT201',
+          deptId2: dept2?.dept_id || 'DPT301',
+        });
         filename = 'employees_sample.csv';
         break;
+      }
       default:
         return;
     }
@@ -313,10 +375,15 @@ const Roles = () => {
     downloadCSV(csvContent, filename);
   };
 
-  const generateAssetsCSV = (assetTypeId = null, properties = []) => {
+  const generateAssetsCSV = ({
+    assetTypeId = null,
+    properties = [],
+    orgId = 'ORG001',
+  } = {}) => {
     const baseHeaders = [
-      'asset_id', 'asset_type_id', 'description', 'purchase_vendor_id', 'purchased_cost', 'purchased_on',
-      'purchased_by', 'warranty_period', 'expiry_date', 'service_vendor_id',
+      'org_id', 'branch_id (opt)', 'asset_id', 'asset_type_id', 'description',
+      'purchase_vendor_id', 'purchased_cost', 'purchased_on', 'purchased_by (opt)',
+      'warranty_period', 'expiry_date', 'service_vendor_id',
       'salvage_value', 'useful_life_years'
     ];
     
@@ -324,20 +391,20 @@ const Roles = () => {
     const propertyHeaders = properties.map(prop => `prop_${prop.property}`);
     const headers = [...baseHeaders, ...propertyHeaders];
     
-    // Generate sample data
+    // Generate sample data — org_id filled, branch_id blank, purchased_by optional sample
     const sampleData = [
       [
-        'AST001', assetTypeId || 'AT001', 'Sample Asset Description', 'V001', '1500.00', '2024-01-15',
-        'USR001', '2 years', '2026-01-15', 'V001',
+        orgId, '', 'AST001', assetTypeId || 'AT001', 'Sample Asset Description',
+        'V001', '1500.00', '2024-01-15', 'USR001',
+        '2 years', '2026-01-15', 'V001',
         '300.00', '5',
-        // Add sample property values
         ...properties.map(() => 'Sample Value')
       ],
       [
-        'AST002', assetTypeId || 'AT002', 'Another Sample Asset', 'V002', '1200.00', '2024-01-20',
-        'USR002', '3 years', '2027-01-20', 'V002',
+        orgId, '', 'AST002', assetTypeId || 'AT002', 'Another Sample Asset',
+        'V002', '1200.00', '2024-01-20', 'USR002',
+        '3 years', '2027-01-20', 'V002',
         '240.00', '4',
-        // Add sample property values
         ...properties.map(() => 'Sample Value')
       ]
     ];
@@ -347,29 +414,50 @@ const Roles = () => {
     ).join('\n');
   };
 
-  const generateAssetTypesCSV = () => {
+  const generateAssetTypesCSV = ({
+    orgId = 'ORG001',
+    branches = [],
+    authBranchId = '',
+    properties = [],
+  } = {}) => {
+    // org_id is required; branch_id (Opt) is optional — sample mixes blank + filled
     const headers = [
-      'asset_type_id', 'text', 'assignment_type', 'int_status', 'inspection_required', 'group_required',
-      'is_child', 'parent_asset_type_id', 'maint_lead_type',
-      'depreciation_type', 'properties'
+      'org_id', 'branch_id (Opt)', 'asset_type_id', 'text', 'assignment_type', 'int_status',
+      'inspection_required', 'group_required', 'is_child', 'parent_asset_type_id',
+      'maint_lead_type', 'depreciation_type', 'properties'
     ];
+
+    const branchIds = (branches || [])
+      .map((b) => b.branch_id)
+      .filter(Boolean);
+    if (authBranchId && !branchIds.includes(authBranchId)) {
+      branchIds.unshift(authBranchId);
+    }
+    const branchA = branchIds[0] || '';
+    const branchB = branchIds[1] || branchA;
+
+    // Use real property names from Master Data so validation passes
+    const propNames = (properties || []).map((p) => p.text).filter(Boolean);
+    const propsLaptop = propNames.slice(0, Math.min(3, propNames.length)).join(';') || propNames[0] || '';
+    const propsDesktop = propNames.slice(0, Math.min(2, propNames.length)).join(';') || propNames[0] || '';
+    const propsChair = propNames[0] || '';
     
     const sampleData = [
       [
-        'AT001', 'Laptops', 'user', '1', 'false', 'false', 'false', '', 'internal', 'SL',
-        'Screen Size;RAM;Storage;Processor'
+        orgId, branchA, 'AT901', 'Bulk Test Laptops', 'user', '1', 'false', 'false', 'false', '', 'internal', 'SL',
+        propsLaptop
       ],
       [
-        'AT002', 'Desktops', 'user', '1', 'false', 'false', 'false', '', 'internal', 'SL',
-        'RAM;Storage;Processor;Graphics Card'
+        orgId, '', 'AT902', 'Bulk Test Desktops', 'user', '1', 'false', 'false', 'false', '', 'internal', 'SL',
+        propsDesktop
       ],
       [
-        'AT003', 'Gaming Laptops', 'user', '1', 'false', 'false', 'true', 'AT001', 'internal', 'SL',
-        'Screen Size;RAM;Storage;Processor;Graphics Card'
+        orgId, branchB, 'AT903', 'Bulk Test Gaming Laptops', 'user', '1', 'false', 'false', 'true', 'AT901', 'internal', 'SL',
+        propsLaptop
       ],
       [
-        'AT004', 'Office Chairs', 'user', '1', 'false', 'false', 'false', '', '', 'ND',
-        'Material;Weight Capacity;Adjustable Height'
+        orgId, '', 'AT904', 'Bulk Test Office Chairs', 'department', '1', 'false', 'false', 'false', '', '', 'ND',
+        propsChair
       ]
     ];
     
@@ -378,25 +466,74 @@ const Roles = () => {
     ).join('\n');
   };
 
-  const generateEmployeesCSV = () => {
+  /** Normalize asset CSV headers (e.g. "Org_id", "branch_id (opt)", "purchased_by (opt)"). */
+  const normalizeAssetHeader = (header) => {
+    const key = String(header || '').trim().toLowerCase().replace(/\s+/g, '_');
+    if (key === 'org_id' || key === 'orgid') return 'org_id';
+    if (
+      key === 'branch_id' ||
+      key === 'branchid' ||
+      key.startsWith('branch_id') ||
+      key.includes('branch_id')
+    ) {
+      return 'branch_id';
+    }
+    if (key === 'purchased_by' || key.startsWith('purchased_by')) return 'purchased_by';
+    return String(header || '').trim();
+  };
+
+  /** Normalize asset-type CSV headers (e.g. "Org_id", "branch_id (Opt)") to canonical keys. */
+  const normalizeAssetTypeHeader = (header) => {
+    const key = String(header || '').trim().toLowerCase().replace(/\s+/g, '_');
+    if (key === 'org_id' || key === 'orgid') return 'org_id';
+    if (
+      key === 'branch_id' ||
+      key === 'branchid' ||
+      key.startsWith('branch_id') ||
+      key.includes('branch_id')
+    ) {
+      return 'branch_id';
+    }
+    return String(header || '').trim();
+  };
+
+  /** Normalize employee CSV headers (e.g. "Org_id *", "Branch_id *") to canonical keys. */
+  const normalizeEmployeeHeader = (header) => {
+    const key = String(header || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\*/g, '')
+      .replace(/\s+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+    if (key === 'org_id' || key === 'orgid') return 'org_id';
+    if (key === 'branch_id' || key === 'branchid' || key.startsWith('branch_id')) return 'branch_id';
+    if (key === 'dept_id' || key === 'deptid' || key === 'department_id') return 'dept_id';
+    return String(header || '').trim();
+  };
+
+  const generateEmployeesCSV = ({
+    orgId = 'ORG001',
+    branchId1 = 'BR001',
+    branchId2 = 'BR002',
+    deptId1 = 'DPT201',
+    deptId2 = 'DPT301',
+  } = {}) => {
+    // org_id, branch_id, dept_id are all mandatory
     const headers = [
-      'employee_id', 'name', 'first_name', 'last_name', 'middle_name', 'full_name', 'email_id', 
-      'dept_id', 'phone_number', 'employee_type', 'joining_date', 'language_code'
-      // Note: emp_int_id will be auto-generated
-      // releiving_date will be null by default
-      // int_status will be 1 by default
-      // created_by, created_on, changed_by, changed_on are auto-populated
-      // joining_date accepts DD-MM-YYYY or YYYY-MM-DD format
+      'org_id', 'branch_id', 'dept_id', 'employee_id', 'name', 'first_name', 'last_name',
+      'middle_name', 'full_name', 'email_id', 'phone_number', 'employee_type',
+      'joining_date', 'language_code'
     ];
     
     const sampleData = [
       [
-        'EMP001', 'John Doe', 'John', 'Doe', '', 'John Doe', 'john.doe@company.com', 
-        'DPT201', '9876543210', 'P', '01-01-2024', 'en'
+        orgId, branchId1, deptId1, 'EMP901', 'John Doe', 'John', 'Doe', '', 'John Doe',
+        'bulk.john.doe@company.com', '9876543210', 'P', '01-01-2024', 'en'
       ],
       [
-        'EMP002', 'Jane Smith', 'Jane', 'Smith', '', 'Jane Smith', 'jane.smith@company.com', 
-        'DPT301', '9876543211', 'C', '15-01-2024', 'en'
+        orgId, branchId2, deptId2, 'EMP902', 'Jane Smith', 'Jane', 'Smith', '', 'Jane Smith',
+        'bulk.jane.smith@company.com', '9876543211', 'C', '15-01-2024', 'en'
       ]
     ];
     
@@ -522,7 +659,7 @@ const Roles = () => {
         usersRes,
         vendorProdServicesRes
       ] = await Promise.allSettled([
-        Promise.race([API.get('/organizations'), timeoutPromise]),
+        Promise.race([API.get('/orgs'), timeoutPromise]),
         Promise.race([API.get('/admin/departments'), timeoutPromise]),
         Promise.race([API.get('/branches'), timeoutPromise]),
         Promise.race([API.get('/get-vendors'), timeoutPromise]),
@@ -628,14 +765,15 @@ const Roles = () => {
     console.log('Reference data:', referenceData);
     
     const errors = [];
+    const normalizedHeaders = headers.map(normalizeAssetHeader);
     const requiredFields = [
       'asset_type_id', 'description', 'purchase_vendor_id', 'purchased_cost', 'purchased_on',
-      'purchased_by', 'warranty_period', 'expiry_date', 'service_vendor_id',
+      'warranty_period', 'expiry_date', 'service_vendor_id',
       'salvage_value', 'useful_life_years'
     ];
 
     // Validate headers - check for required fields and allow property fields
-    const missingHeaders = requiredFields.filter(field => !headers.includes(field));
+    const missingHeaders = requiredFields.filter(field => !normalizedHeaders.includes(field));
     if (missingHeaders.length > 0) {
       errors.push(`Missing required columns: ${missingHeaders.join(', ')}`);
     }
@@ -657,7 +795,7 @@ const Roles = () => {
 
       // Validate required fields
       requiredFields.forEach(field => {
-        const fieldIndex = headers.indexOf(field);
+        const fieldIndex = normalizedHeaders.indexOf(field);
         if (fieldIndex !== -1) {
           const value = data[fieldIndex];
           if (!value || value === '' || value.toLowerCase() === 'null') {
@@ -676,7 +814,7 @@ const Roles = () => {
       }
 
       // Description validation
-      const descriptionIndex = headers.indexOf('description');
+      const descriptionIndex = normalizedHeaders.indexOf('description');
       if (descriptionIndex !== -1 && data[descriptionIndex]) {
         const description = data[descriptionIndex];
         if (description.length < 3) {
@@ -684,7 +822,7 @@ const Roles = () => {
         }
       }
 
-      const vendorIdIndex = headers.indexOf('purchase_vendor_id');
+      const vendorIdIndex = normalizedHeaders.indexOf('purchase_vendor_id');
       if (vendorIdIndex !== -1 && data[vendorIdIndex]) {
         const vendorId = data[vendorIdIndex];
         if (!/^V\d{3}$/.test(vendorId)) {
@@ -692,7 +830,7 @@ const Roles = () => {
         }
       }
 
-      const serviceVendorIdIndex = headers.indexOf('service_vendor_id');
+      const serviceVendorIdIndex = normalizedHeaders.indexOf('service_vendor_id');
       if (serviceVendorIdIndex !== -1 && data[serviceVendorIdIndex]) {
         const serviceVendorId = data[serviceVendorIdIndex];
         if (!/^V\d{3}$/.test(serviceVendorId)) {
@@ -701,7 +839,7 @@ const Roles = () => {
       }
 
 
-      const purchasedCostIndex = headers.indexOf('purchased_cost');
+      const purchasedCostIndex = normalizedHeaders.indexOf('purchased_cost');
       if (purchasedCostIndex !== -1 && data[purchasedCostIndex]) {
         const cost = parseFloat(data[purchasedCostIndex]);
         if (isNaN(cost) || cost < 0) {
@@ -709,7 +847,7 @@ const Roles = () => {
         }
       }
 
-      const purchasedOnIndex = headers.indexOf('purchased_on');
+      const purchasedOnIndex = normalizedHeaders.indexOf('purchased_on');
       if (purchasedOnIndex !== -1 && data[purchasedOnIndex]) {
         const date = new Date(data[purchasedOnIndex]);
         if (isNaN(date.getTime())) {
@@ -718,7 +856,7 @@ const Roles = () => {
       }
 
       // Salvage value validation
-      const salvageValueIndex = headers.indexOf('salvage_value');
+      const salvageValueIndex = normalizedHeaders.indexOf('salvage_value');
       if (salvageValueIndex !== -1 && data[salvageValueIndex]) {
         const salvageValue = parseFloat(data[salvageValueIndex]);
         if (isNaN(salvageValue) || salvageValue < 0) {
@@ -727,7 +865,7 @@ const Roles = () => {
       }
 
       // Useful life years validation
-      const usefulLifeYearsIndex = headers.indexOf('useful_life_years');
+      const usefulLifeYearsIndex = normalizedHeaders.indexOf('useful_life_years');
       if (usefulLifeYearsIndex !== -1 && data[usefulLifeYearsIndex]) {
         const usefulLifeYears = parseInt(data[usefulLifeYearsIndex]);
         if (isNaN(usefulLifeYears) || usefulLifeYears < 1 || usefulLifeYears > 50) {
@@ -753,7 +891,7 @@ const Roles = () => {
     });
 
     // Add referential integrity validation errors
-    const referentialErrors = validateReferentialIntegrity('assets', headers, dataRows, referenceData);
+    const referentialErrors = validateReferentialIntegrity('assets', normalizedHeaders, dataRows, referenceData);
     errors.push(...referentialErrors);
 
     console.log('🔍 Validation completed. Errors found:', errors.length);
@@ -769,15 +907,19 @@ const Roles = () => {
 
   const validateAssetTypesCSV = async (headers, dataRows, referenceData) => {
     const errors = [];
+    const normalizedHeaders = headers.map(normalizeAssetTypeHeader);
     const requiredFields = [
-      'asset_type_id', 'text', 'assignment_type', 'int_status', 'inspection_required', 'group_required',
-      'is_child', 'depreciation_type', 'properties'
+      'org_id', 'asset_type_id', 'text', 'assignment_type', 'int_status', 'inspection_required',
+      'group_required', 'is_child', 'depreciation_type'
     ];
 
-    // Validate headers
-    const missingHeaders = requiredFields.filter(field => !headers.includes(field));
+    // Validate headers (org_id required; branch_id (Opt) and properties optional)
+    const missingHeaders = requiredFields.filter(field => !normalizedHeaders.includes(field));
     if (missingHeaders.length > 0) {
       errors.push(`Missing required columns: ${missingHeaders.join(', ')}`);
+    }
+    if (!normalizedHeaders.includes('properties')) {
+      errors.push('Missing required columns: properties');
     }
 
     // Validate each data row
@@ -791,7 +933,7 @@ const Roles = () => {
 
       // Validate required fields
       requiredFields.forEach(field => {
-        const fieldIndex = headers.indexOf(field);
+        const fieldIndex = normalizedHeaders.indexOf(field);
         if (fieldIndex !== -1) {
           const value = data[fieldIndex];
           if (!value || value === '' || value.toLowerCase() === 'null') {
@@ -801,7 +943,7 @@ const Roles = () => {
       });
 
       // Validate specific field formats
-      const textIndex = headers.indexOf('text');
+      const textIndex = normalizedHeaders.indexOf('text');
       if (textIndex !== -1 && data[textIndex]) {
         const text = data[textIndex];
         if (text.length < 2) {
@@ -810,7 +952,7 @@ const Roles = () => {
       }
 
       // Validate asset_type_id format
-      const assetTypeIdIndex = headers.indexOf('asset_type_id');
+      const assetTypeIdIndex = normalizedHeaders.indexOf('asset_type_id');
       if (assetTypeIdIndex !== -1 && data[assetTypeIdIndex]) {
         const assetTypeId = data[assetTypeIdIndex].trim();
         console.log(`🔍 Validating asset_type_id: "${assetTypeId}" (length: ${assetTypeId.length})`);
@@ -820,7 +962,7 @@ const Roles = () => {
         }
       }
 
-      const intStatusIndex = headers.indexOf('int_status');
+      const intStatusIndex = normalizedHeaders.indexOf('int_status');
       if (intStatusIndex !== -1 && data[intStatusIndex]) {
         const intStatus = data[intStatusIndex];
         if (!['0', '1'].includes(intStatus)) {
@@ -828,7 +970,7 @@ const Roles = () => {
         }
       }
 
-      const assignmentTypeIndex = headers.indexOf('assignment_type');
+      const assignmentTypeIndex = normalizedHeaders.indexOf('assignment_type');
       if (assignmentTypeIndex !== -1 && data[assignmentTypeIndex]) {
         const assignmentType = data[assignmentTypeIndex];
         const validTypes = ['user', 'department', 'group'];
@@ -837,7 +979,7 @@ const Roles = () => {
         }
       }
 
-      const inspectionRequiredIndex = headers.indexOf('inspection_required');
+      const inspectionRequiredIndex = normalizedHeaders.indexOf('inspection_required');
       if (inspectionRequiredIndex !== -1 && data[inspectionRequiredIndex]) {
         const inspectionRequired = data[inspectionRequiredIndex];
         if (!['true', 'false'].includes(inspectionRequired.toLowerCase())) {
@@ -845,7 +987,7 @@ const Roles = () => {
         }
       }
 
-      const groupRequiredIndex = headers.indexOf('group_required');
+      const groupRequiredIndex = normalizedHeaders.indexOf('group_required');
       if (groupRequiredIndex !== -1 && data[groupRequiredIndex]) {
         const groupRequired = data[groupRequiredIndex];
         if (!['true', 'false'].includes(groupRequired.toLowerCase())) {
@@ -853,7 +995,7 @@ const Roles = () => {
         }
       }
 
-      const isChildIndex = headers.indexOf('is_child');
+      const isChildIndex = normalizedHeaders.indexOf('is_child');
       if (isChildIndex !== -1 && data[isChildIndex]) {
         const isChild = data[isChildIndex];
         if (!['true', 'false'].includes(isChild.toLowerCase())) {
@@ -861,7 +1003,7 @@ const Roles = () => {
         }
       }
 
-      const depreciationTypeIndex = headers.indexOf('depreciation_type');
+      const depreciationTypeIndex = normalizedHeaders.indexOf('depreciation_type');
       if (depreciationTypeIndex !== -1 && data[depreciationTypeIndex]) {
         const depreciationType = data[depreciationTypeIndex];
         const validTypes = ['SL', 'DDB', 'SYD', 'ND'];
@@ -871,7 +1013,7 @@ const Roles = () => {
       }
 
       // Validate parent_asset_type_id if is_child is true
-      const parentAssetTypeIdIndex = headers.indexOf('parent_asset_type_id');
+      const parentAssetTypeIdIndex = normalizedHeaders.indexOf('parent_asset_type_id');
       if (isChildIndex !== -1 && parentAssetTypeIdIndex !== -1) {
         const isChild = data[isChildIndex];
         const parentAssetTypeId = data[parentAssetTypeIdIndex];
@@ -880,8 +1022,17 @@ const Roles = () => {
           if (!parentAssetTypeId || parentAssetTypeId.trim() === '') {
             rowErrors.push(`Row ${rowNumber}: parent_asset_type_id is required when is_child is true`);
           } else {
-            // Validate parent asset type exists (either by ID or text)
-            const parentExists = referenceData.assetTypes.some(at => 
+            // Parent may already exist in DB, or appear earlier in this same CSV
+            const parentInCsv = dataRows.some(({ data: otherRow }) => {
+              const otherId = otherRow[assetTypeIdIndex];
+              const otherTextIdx = normalizedHeaders.indexOf('text');
+              const otherText = otherTextIdx !== -1 ? otherRow[otherTextIdx] : '';
+              return (
+                otherId === parentAssetTypeId ||
+                (otherText && otherText.toLowerCase() === parentAssetTypeId.toLowerCase())
+              );
+            });
+            const parentExists = parentInCsv || referenceData.assetTypes.some(at => 
               at.asset_type_id === parentAssetTypeId || 
               at.text.toLowerCase() === parentAssetTypeId.toLowerCase()
             );
@@ -892,26 +1043,18 @@ const Roles = () => {
         }
       }
 
-      // Validate properties column
-      const propertiesIndex = headers.indexOf('properties');
+      // Validate properties column (optional values; names must exist when provided)
+      const propertiesIndex = normalizedHeaders.indexOf('properties');
       if (propertiesIndex !== -1) {
         const propertiesValue = data[propertiesIndex];
-        if (!propertiesValue || propertiesValue.trim() === '') {
-          rowErrors.push(`Row ${rowNumber}: properties is required`);
-        } else {
-          // Properties should be semicolon-separated
+        if (propertiesValue && propertiesValue.trim() !== '') {
           const propertyNames = propertiesValue.split(';').map(p => p.trim()).filter(p => p);
-          if (propertyNames.length === 0) {
-            rowErrors.push(`Row ${rowNumber}: properties cannot be empty`);
-          } else {
-            // Validate that all property names exist in available properties
-            propertyNames.forEach(propName => {
-              const propertyExists = availableProperties.some(prop => prop.text.toLowerCase() === propName.toLowerCase());
-              if (!propertyExists) {
-                rowErrors.push(`Row ${rowNumber}: Property '${propName}' does not exist in available properties`);
-              }
-            });
-          }
+          propertyNames.forEach(propName => {
+            const propertyExists = availableProperties.some(prop => prop.text.toLowerCase() === propName.toLowerCase());
+            if (!propertyExists) {
+              rowErrors.push(`Row ${rowNumber}: Property '${propName}' does not exist in available properties`);
+            }
+          });
         }
       }
 
@@ -921,7 +1064,7 @@ const Roles = () => {
     });
 
     // Add referential integrity validation errors
-    const referentialErrors = validateReferentialIntegrity('assetTypes', headers, dataRows, referenceData);
+    const referentialErrors = validateReferentialIntegrity('assetTypes', normalizedHeaders, dataRows, referenceData);
     errors.push(...referentialErrors);
 
     return {
@@ -934,10 +1077,14 @@ const Roles = () => {
 
   const validateEmployeesCSV = async (headers, dataRows, referenceData) => {
     const errors = [];
-    const requiredFields = ['name', 'email_id', 'dept_id', 'first_name', 'last_name', 'full_name', 'phone_number', 'employee_type', 'joining_date', 'language_code'];
+    const normalizedHeaders = headers.map(normalizeEmployeeHeader);
+    const requiredFields = [
+      'org_id', 'branch_id', 'dept_id', 'name', 'email_id', 'first_name', 'last_name',
+      'full_name', 'phone_number', 'employee_type', 'joining_date', 'language_code'
+    ];
 
-    // Validate headers
-    const missingHeaders = requiredFields.filter(field => !headers.includes(field));
+    // Validate headers (org_id, branch_id, dept_id all mandatory)
+    const missingHeaders = requiredFields.filter(field => !normalizedHeaders.includes(field));
     if (missingHeaders.length > 0) {
       errors.push(`Missing required columns: ${missingHeaders.join(', ')}`);
     }
@@ -953,7 +1100,7 @@ const Roles = () => {
 
       // Validate required fields
       requiredFields.forEach(field => {
-        const fieldIndex = headers.indexOf(field);
+        const fieldIndex = normalizedHeaders.indexOf(field);
         if (fieldIndex !== -1) {
           const value = data[fieldIndex];
           if (!value || value === '' || value.toLowerCase() === 'null') {
@@ -963,7 +1110,7 @@ const Roles = () => {
       });
 
       // Validate email format
-      const emailIndex = headers.indexOf('email_id');
+      const emailIndex = normalizedHeaders.indexOf('email_id');
       if (emailIndex !== -1 && data[emailIndex]) {
         const email = data[emailIndex];
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -973,7 +1120,7 @@ const Roles = () => {
       }
 
       // Validate phone number format (if provided)
-      const phoneIndex = headers.indexOf('phone_number');
+      const phoneIndex = normalizedHeaders.indexOf('phone_number');
       if (phoneIndex !== -1 && data[phoneIndex]) {
         const phone = data[phoneIndex];
         const phoneRegex = /^[\d\s\-\+\(\)]+$/;
@@ -983,7 +1130,7 @@ const Roles = () => {
       }
 
       // Validate int_status (if provided)
-      const statusIndex = headers.indexOf('int_status');
+      const statusIndex = normalizedHeaders.indexOf('int_status');
       if (statusIndex !== -1 && data[statusIndex]) {
         const status = data[statusIndex];
         if (!['0', '1', 'true', 'false'].includes(status.toLowerCase())) {
@@ -992,7 +1139,7 @@ const Roles = () => {
       }
 
       // Validate date formats (if provided)
-      const joiningDateIndex = headers.indexOf('joining_date');
+      const joiningDateIndex = normalizedHeaders.indexOf('joining_date');
       if (joiningDateIndex !== -1 && data[joiningDateIndex]) {
         const joiningDate = data[joiningDateIndex];
         // Accept both DD-MM-YYYY and YYYY-MM-DD formats
@@ -1003,7 +1150,7 @@ const Roles = () => {
         }
       }
 
-      const releivingDateIndex = headers.indexOf('releiving_date');
+      const releivingDateIndex = normalizedHeaders.indexOf('releiving_date');
       if (releivingDateIndex !== -1 && data[releivingDateIndex]) {
         const releivingDate = data[releivingDateIndex];
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -1018,7 +1165,7 @@ const Roles = () => {
     });
 
     // Add referential integrity validation errors
-    const referentialErrors = validateReferentialIntegrity('employees', headers, dataRows, referenceData);
+    const referentialErrors = validateReferentialIntegrity('employees', normalizedHeaders, dataRows, referenceData);
     errors.push(...referentialErrors);
 
     return {
@@ -1073,24 +1220,23 @@ const Roles = () => {
         
         headers.forEach((header, index) => {
           const value = row[index] || '';
+          const normalizedHeader = normalizeAssetHeader(header);
           
           // Debug: Log each header being processed
-          if (header === 'int_status') {
+          if (normalizedHeader === 'int_status') {
             console.log('🔍 Found int_status header:', { header, value, index });
           }
           
-          // Check if this is a property field (not a standard asset field)
-          if (isPropertyField(header)) {
-            // This is a property field, add to properties object
-            // We need to map the property name to property ID
+          // Property columns use prop_* prefix. Optional headers like
+          // "branch_id (opt)" must be treated as standard fields, not properties.
+          if (isPropertyField(normalizedHeader)) {
             const propId = getPropertyIdByNameWithMappings(header, mappings);
             if (propId && value.trim() !== '') {
               properties[propId] = value.trim();
             }
           } else {
-            // This is a standard asset field
-            obj[header] = value;
-            if (header === 'int_status') {
+            obj[normalizedHeader] = typeof value === 'string' ? value.trim() : value;
+            if (normalizedHeader === 'int_status') {
               console.log('🔍 Adding int_status to standard fields:', { header, value });
             }
           }
@@ -1104,8 +1250,9 @@ const Roles = () => {
         // For asset types, handle properties column specially
         headers.forEach((header, index) => {
           const value = row[index] || '';
+          const normalizedHeader = normalizeAssetTypeHeader(header);
           
-          if (header === 'properties') {
+          if (normalizedHeader === 'properties') {
             // Always process properties column, even if empty
             if (value && value.trim() !== '') {
               // Convert semicolon-separated property names to property IDs
@@ -1120,24 +1267,30 @@ const Roles = () => {
               // Empty properties array if no properties specified
               obj.properties = [];
             }
-          } else if (header === 'parent_asset_type_id') {
+          } else if (normalizedHeader === 'parent_asset_type_id') {
             // Convert parent asset type text to ID if needed
-            obj[header] = convertParentAssetTypeToId(value, referenceData.assetTypes || []);
-          } else if (header === 'is_child' || header === 'inspection_required' || header === 'group_required') {
+            obj[normalizedHeader] = convertParentAssetTypeToId(value, referenceData.assetTypes || []);
+          } else if (normalizedHeader === 'is_child' || normalizedHeader === 'inspection_required' || normalizedHeader === 'group_required') {
             // Convert boolean string values to actual booleans
-            obj[header] = value.toLowerCase() === 'true';
+            obj[normalizedHeader] = value.toLowerCase() === 'true';
+          } else if (normalizedHeader === 'org_id') {
+            obj.org_id = value.trim();
+          } else if (normalizedHeader === 'branch_id') {
+            // Optional; blank is allowed
+            obj.branch_id = value.trim();
           } else {
-            obj[header] = value;
+            obj[normalizedHeader] = value;
           }
         });
         
         // Debug logging for asset types
         console.log('🔍 Asset Type row data:', { headers, row, obj });
       } else {
-        // For employees, treat all fields as standard fields
+        // For employees, normalize headers (Org_id *, Branch_id *, etc.)
         headers.forEach((header, index) => {
           const value = row[index] || '';
-          obj[header] = value;
+          const normalizedHeader = type === 'employees' ? normalizeEmployeeHeader(header) : header;
+          obj[normalizedHeader] = typeof value === 'string' ? value.trim() : value;
         });
         
         // Debug logging for employees
@@ -1163,8 +1316,10 @@ const Roles = () => {
       'grant_code', 'insurance_policy_no', 'gl_account_code', 'cost_center_code',
       'depreciation_rate', 'vendor_brand', 'vendor_model', 'int_status'
     ];
-    
-    return !standardFields.includes(fieldName);
+    const normalized = normalizeAssetHeader(fieldName);
+    if (standardFields.includes(normalized)) return false;
+    const raw = String(fieldName || '').trim();
+    return raw.startsWith('prop_') || normalized.startsWith('prop_');
   };
 
   // State for property mappings
@@ -1255,9 +1410,9 @@ const Roles = () => {
       ? propertyName.substring(5) 
       : propertyName;
     
-    const mappedId = mappings[cleanPropertyName] || propertyName;
+    const mappedId = mappings[cleanPropertyName];
     console.log('🔍 Property mapping:', propertyName, '->', cleanPropertyName, '->', mappedId);
-    return mappedId;
+    return mappedId || null;
   };
 
   // Check for duplicates within CSV file
@@ -1478,7 +1633,29 @@ const Roles = () => {
             }
           }
 
-          // Note: branch_id is auto-populated from user's branch, not user input
+          const orgIdIndexAssets = headers.indexOf('org_id');
+          const orgIdAssets = orgIdIndexAssets !== -1 ? data[orgIdIndexAssets] : '';
+          if (orgIdAssets) {
+            const orgs = referenceData.organizations || [];
+            const orgExists = orgs.some((org) => org.org_id === orgIdAssets);
+            if (!orgExists) {
+              rowErrors.push(`org_id '${orgIdAssets}' does not exist in organizations table`);
+            }
+          }
+
+          const branchIdIndexAssets = headers.indexOf('branch_id');
+          if (branchIdIndexAssets !== -1 && data[branchIdIndexAssets]) {
+            const branchId = data[branchIdIndexAssets];
+            const branches = referenceData.branches || [];
+            const branch = branches.find(
+              (b) => b.branch_id === branchId || b.text === branchId
+            );
+            if (!branch) {
+              rowErrors.push(`branch_id '${branchId}' does not exist in branches table`);
+            } else if (orgIdAssets && branch.org_id && branch.org_id !== orgIdAssets) {
+              rowErrors.push(`branch_id '${branchId}' does not belong to org_id '${orgIdAssets}'`);
+            }
+          }
 
           const purchaseVendorIdIndex = headers.indexOf('purchase_vendor_id');
           if (purchaseVendorIdIndex !== -1 && data[purchaseVendorIdIndex]) {
@@ -1565,18 +1742,45 @@ const Roles = () => {
           }
           
           const orgIdIndexAT = headers.indexOf('org_id');
-          if (orgIdIndexAT !== -1 && data[orgIdIndexAT]) {
-            const orgId = data[orgIdIndexAT];
-            const orgExists = referenceData.organizations.some(org => org.org_id === orgId);
+          const orgIdAT = orgIdIndexAT !== -1 ? data[orgIdIndexAT] : '';
+          if (!orgIdAT) {
+            rowErrors.push(`org_id is required and must exist in organizations`);
+          } else {
+            const orgs = referenceData.organizations || [];
+            const orgExists = orgs.some(org => org.org_id === orgIdAT);
             if (!orgExists) {
-              rowErrors.push(`org_id '${orgId}' does not exist in organizations table`);
+              rowErrors.push(`org_id '${orgIdAT}' does not exist in organizations table`);
+            }
+          }
+
+          const branchIdIndexAT = headers.indexOf('branch_id');
+          if (branchIdIndexAT !== -1 && data[branchIdIndexAT]) {
+            const branchId = data[branchIdIndexAT];
+            const branches = referenceData.branches || [];
+            const branch = branches.find(
+              (b) => b.branch_id === branchId || b.text === branchId
+            );
+            if (!branch) {
+              rowErrors.push(`branch_id '${branchId}' does not exist in branches table`);
+            } else if (orgIdAT && branch.org_id && branch.org_id !== orgIdAT) {
+              rowErrors.push(`branch_id '${branchId}' does not belong to org_id '${orgIdAT}'`);
             }
           }
 
           const parentAssetTypeIdIndex = headers.indexOf('parent_asset_type_id');
           if (parentAssetTypeIdIndex !== -1 && data[parentAssetTypeIdIndex] && data[parentAssetTypeIdIndex] !== '') {
             const parentAssetTypeId = data[parentAssetTypeIdIndex];
-            const parentAssetTypeExists = referenceData.assetTypes.some(at => 
+            const assetTypeIdIndexAT = headers.indexOf('asset_type_id');
+            const textIndexAT = headers.indexOf('text');
+            const parentInCsv = dataRows.some(({ data: otherRow }) => {
+              const otherId = assetTypeIdIndexAT !== -1 ? otherRow[assetTypeIdIndexAT] : '';
+              const otherText = textIndexAT !== -1 ? otherRow[textIndexAT] : '';
+              return (
+                otherId === parentAssetTypeId ||
+                (otherText && String(otherText).toLowerCase() === parentAssetTypeId.toLowerCase())
+              );
+            });
+            const parentAssetTypeExists = parentInCsv || referenceData.assetTypes.some(at => 
               at.asset_type_id === parentAssetTypeId || 
               at.text.toLowerCase() === parentAssetTypeId.toLowerCase()
             );
@@ -1606,6 +1810,34 @@ const Roles = () => {
 
         case 'employees':
           // Validate Employees referential integrity
+          const orgIdIndexEmp = headers.indexOf('org_id');
+          const orgIdEmp = orgIdIndexEmp !== -1 ? data[orgIdIndexEmp] : '';
+          if (!orgIdEmp) {
+            rowErrors.push(`org_id is required and must exist in organizations`);
+          } else {
+            const orgs = referenceData.organizations || [];
+            const orgExists = orgs.some((org) => org.org_id === orgIdEmp);
+            if (!orgExists) {
+              rowErrors.push(`org_id '${orgIdEmp}' does not exist in organizations table`);
+            }
+          }
+
+          const branchIdIndexEmp = headers.indexOf('branch_id');
+          const branchIdEmp = branchIdIndexEmp !== -1 ? data[branchIdIndexEmp] : '';
+          if (!branchIdEmp) {
+            rowErrors.push(`branch_id is required and must exist in branches`);
+          } else {
+            const branches = referenceData.branches || [];
+            const branch = branches.find(
+              (b) => b.branch_id === branchIdEmp || b.text === branchIdEmp,
+            );
+            if (!branch) {
+              rowErrors.push(`branch_id '${branchIdEmp}' does not exist in branches table`);
+            } else if (orgIdEmp && branch.org_id && branch.org_id !== orgIdEmp) {
+              rowErrors.push(`branch_id '${branchIdEmp}' does not belong to org_id '${orgIdEmp}'`);
+            }
+          }
+
           const deptIdIndex = headers.indexOf('dept_id');
           if (deptIdIndex !== -1 && data[deptIdIndex]) {
             const deptId = data[deptIdIndex];

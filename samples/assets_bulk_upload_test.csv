@@ -1,0 +1,5 @@
+org_id,branch_id (opt),asset_id,asset_type_id,description,purchase_vendor_id,purchased_cost,purchased_on,purchased_by (opt),warranty_period,expiry_date,service_vendor_id,salvage_value,useful_life_years,prop_Brand,prop_Ram Size
+ORG001,BR001,AST951,AT001,Bulk test laptop with branch,V001,1500.00,2024-01-15,LT001,2 years,2026-01-15,V001,300.00,5,Dell,16GB
+ORG001,,AST952,AT001,Bulk test laptop no branch,V007,1200.00,2024-01-20,,3 years,2027-01-20,V003,240.00,4,HP,8GB
+ORG001,BR002,AST953,AT001,Bulk test laptop branch BR002,V001,1800.00,2024-02-01,LT002,2 years,2026-02-01,V007,360.00,5,Lenovo,32GB
+,,AST954,AT001,Bulk test laptop optional org and branch,V003,900.00,2024-03-10,,1 year,2025-03-10,V001,180.00,3,Acer,8GB
