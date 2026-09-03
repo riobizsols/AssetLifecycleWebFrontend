@@ -10,6 +10,7 @@ const EnhancedDropdown = ({
   className = "",
   optionClassName = "",
   compact = false,
+  native = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -76,48 +77,77 @@ const EnhancedDropdown = ({
   };
 
   const selectedOption = options.find((option) => option.value === value && !option.isCreateNew);
+  const displayLabel = selectedOption ? selectedOption.label : placeholder;
 
-  const renderOption = (option, index) => (
-    <div
-      key={option.value}
-      className={`
-        px-4 py-3 cursor-pointer transition-all duration-150
-        ${index === highlightedIndex ? 'bg-blue-50 text-blue-900' : 'hover:bg-gray-50'}
-        ${option.value === value && !option.isCreateNew ? 'bg-blue-100 text-blue-900 font-medium' : 'text-gray-700'}
-        ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        ${option.isCreateNew ? 'font-semibold text-[#0E2F4B]' : ''}
-        ${optionClassName}
-      `}
-      onClick={() => !option.disabled && handleSelect(option)}
-      onMouseEnter={() => setHighlightedIndex(index)}
-      role="option"
-      aria-selected={option.value === value}
-    >
-      <div className="flex items-center justify-between">
-        <span className={`text-sm ${option.isCreateNew ? 'text-[#0E2F4B]' : ''}`}>{option.label}</span>
-        {option.value === value && !option.isCreateNew && (
-          <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
+  const renderOption = (option, index) => {
+    const isHighlighted = index === highlightedIndex;
+    const isSelected = option.value === value && !option.isCreateNew;
+
+    if (native) {
+      return (
+        <div
+          key={`${option.value}-${index}`}
+          className={`
+            px-2 py-[1px] cursor-pointer text-sm leading-normal
+            ${isHighlighted || isSelected ? 'bg-[#0078D7] text-white' : 'text-black bg-white'}
+            ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}
+            ${optionClassName}
+          `}
+          onClick={() => !option.disabled && handleSelect(option)}
+          onMouseEnter={() => setHighlightedIndex(index)}
+          role="option"
+          aria-selected={isSelected}
+        >
+          {option.label}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        key={option.value}
+        className={`
+          px-4 py-3 cursor-pointer transition-all duration-150
+          ${index === highlightedIndex ? 'bg-blue-50 text-blue-900' : 'hover:bg-gray-50'}
+          ${option.value === value && !option.isCreateNew ? 'bg-blue-100 text-blue-900 font-medium' : 'text-gray-700'}
+          ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}
+          ${option.isCreateNew ? 'font-semibold text-[#0E2F4B]' : ''}
+          ${optionClassName}
+        `}
+        onClick={() => !option.disabled && handleSelect(option)}
+        onMouseEnter={() => setHighlightedIndex(index)}
+        role="option"
+        aria-selected={option.value === value}
+      >
+        <div className="flex items-center justify-between">
+          <span className={`text-sm ${option.isCreateNew ? 'text-[#0E2F4B]' : ''}`}>{option.label}</span>
+          {option.value === value && !option.isCreateNew && (
+            <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          )}
+        </div>
+        {option.description && (
+          <div className="text-xs text-gray-500 mt-1">{option.description}</div>
         )}
       </div>
-      {option.description && (
-        <div className="text-xs text-gray-500 mt-1">{option.description}</div>
-      )}
-    </div>
-  );
+    );
+  };
 
   return (
     <div ref={dropdownRef} className={`relative ${className}`}>
       <div
         className={`
-          w-full bg-white text-gray-700 appearance-none cursor-pointer box-border
-          ${compact
-            ? 'h-[38px] border border-gray-300 rounded px-3 text-sm flex items-center'
-            : 'border-2 border-gray-200 rounded-lg px-4 py-3 hover:border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200'
+          w-full bg-white appearance-none cursor-pointer box-border
+          ${native
+            ? 'px-3 py-2 border text-sm text-black'
+            : compact
+              ? 'h-[38px] border border-gray-300 rounded px-3 text-sm flex items-center text-gray-700'
+              : 'border-2 border-gray-200 rounded-lg px-4 py-3 hover:border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-700'
           }
+          ${native && !String(className).includes('border-red') ? 'border-gray-300' : ''}
           ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}
-          ${!compact && isOpen ? 'border-blue-500 ring-2 ring-blue-100' : ''}
+          ${!compact && !native && isOpen ? 'border-blue-500 ring-2 ring-blue-100' : ''}
         `}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
@@ -129,23 +159,19 @@ const EnhancedDropdown = ({
       >
         <div className="flex items-center w-full min-w-0">
           <span
-            className={`${selectedOption ? 'text-gray-900' : 'text-gray-500'} truncate flex-1 pr-2 text-left`}
-            title={selectedOption ? selectedOption.label : placeholder}
+            className={`${native ? 'text-black' : selectedOption ? 'text-gray-900' : 'text-gray-500'} truncate flex-1 pr-2 text-left text-sm`}
+            title={displayLabel}
           >
-            {selectedOption ? selectedOption.label : placeholder}
+            {displayLabel}
           </span>
-          {compact ? (
+          {native || compact ? (
             <svg
-              className="w-4 h-4 text-gray-500 flex-shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              className="w-3 h-3 text-black flex-shrink-0"
+              viewBox="0 0 20 20"
+              fill="currentColor"
               aria-hidden="true"
             >
-              <path d="M6 9l6 6 6-6" />
+              <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
             </svg>
           ) : (
             <svg
@@ -166,8 +192,14 @@ const EnhancedDropdown = ({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-xl overflow-hidden">
-          <div className="max-h-52 overflow-y-auto">
+        <div
+          className={
+            native
+              ? 'absolute z-50 top-full left-0 w-full mt-0.5 bg-white border border-gray-400 shadow'
+              : 'absolute z-50 top-full left-0 w-full mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-xl overflow-hidden'
+          }
+        >
+          <div className={native ? 'max-h-60 overflow-y-auto py-0.5' : 'max-h-52 overflow-y-auto'}>
             {listOptions.map((option) => renderOption(option, options.indexOf(option)))}
           </div>
           {createOptions.length > 0 && (

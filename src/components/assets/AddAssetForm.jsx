@@ -944,11 +944,6 @@ const AddAssetForm = ({ userRole }) => {
       hasErrors = true;
     }
     
-    if (!form.purchaseBy || form.purchaseBy.trim() === '') {
-      errors.purchaseBy = true;
-      hasErrors = true;
-    }
-    
     if (!form.expiryDate || form.expiryDate.trim() === '') {
       errors.expiryDate = true;
       hasErrors = true;
@@ -1050,7 +1045,7 @@ const AddAssetForm = ({ userRole }) => {
         text: assetTypeText, // Asset type name like "Laptop", "Router", etc.
         serial_number: form.serialNumberMode === 'none' ? null : (form.serialNumber?.trim() || null),
         description: form.description?.trim() || null,
-        branch_id: getUserBranchId(user?.user_id), // Auto-populate user's branch
+        branch_id: getUserBranchId(user?.user_id) || null,
         purchase_vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
         service_vendor_id: form.serviceSupply || null, // Set from Service Vendor dropdown
         prod_serv_id: fetchedProdServId || null, // Use fetched prod_serv_id from brand/model selection
@@ -1062,7 +1057,7 @@ const AddAssetForm = ({ userRole }) => {
         current_status: 'Active', // Default status
         warranty_period: form.warrantyPeriod || null,
         parent_asset_id: form.parentAsset || null, // Add parentAsset field
-        org_id: user.org_id, // From user's auth store
+        org_id: user?.org_id || null,
         properties: form.properties || {},
         // Depreciation fields with user-entered values and calculated defaults
         salvage_value: parseFloat(form.salvageValue) || 0, // User enters this
@@ -1709,7 +1704,7 @@ const AddAssetForm = ({ userRole }) => {
               </div>
               <div className="grid grid-cols-4 gap-6 mb-4">
                 <div>
-                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseBy')} <span className="text-red-500">*</span></label>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseBy')}</label>
                   <div className="relative w-full">
                     <button
                       type="button"
