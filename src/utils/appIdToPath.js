@@ -48,6 +48,7 @@ export const APP_ID_TO_PATH = {
   ASSETTYPES: '/master-data/asset-types',
   DEPARTMENTS: '/master-data/departments',
   BRANCHES: '/master-data/branches',
+  BRANCHDEPTMAPPING: '/master-data/branch-dept-mapping',
   ROLES: '/master-data/uploads',
   USERS: '/master-data/user-roles',
   USERROLES: '/master-data/job-roles',

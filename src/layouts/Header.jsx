@@ -49,6 +49,10 @@ export default function Header() {
     "/assets/add": { title: t('assets.addAsset'), subtitle: "" },
     "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },
     "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },
+    "/master-data/branch-dept-mapping": {
+      title: t('branchDeptMapping.title', { defaultValue: 'Branch – Department Mapping' }),
+      subtitle: "",
+    },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
     "/master-data/spare-parts": { title: t('navigation.sparePartLot'), subtitle: "" },

@@ -5,6 +5,7 @@
     "assetTypes": "Asset Types",
     "departments": "Departments",
     "branches": "Branches",
+    "branchDeptMapping": "Branch – Department Mapping",
     "vendors": "Vendors",
     "spareParts": "Spare Parts",
     "sparePartLot": "Spare Part Lot",
@@ -1076,6 +1077,19 @@
     "failedToRemoveAssetMapping": "Failed to remove asset mapping",
     "pleaseSelectBothDepartmentAndAssetType": "Please select both department and asset type"
   },
+  "branchDeptMapping": {
+    "title": "Branch – Department Mapping",
+    "subtitle": "Map departments to branches. A department can belong to multiple branches.",
+    "addMapping": "Add Branch – Department Mapping",
+    "noMappings": "No branch-department mappings found",
+    "failedToLoad": "Failed to load branch-department mappings",
+    "branchAndDeptRequired": "Branch and department are required",
+    "saved": "Mapping saved successfully",
+    "failedToSave": "Failed to save mapping",
+    "confirmDelete": "Remove mapping between {{branch}} and {{dept}}?",
+    "removed": "Mapping removed",
+    "failedToRemove": "Failed to remove mapping"
+  },
   "branches": {
     "title": "Branches",
     "addBranch": "Add Branch",
@@ -1921,6 +1935,9 @@
     "scheduledDate": "Scheduled Date",
     "vendor": "Vendor",
     "technicianDetails": "Technician Details",
+    "selectTechnician": "Select Technician",
+    "selectTechnicianPlaceholder": "-- Select Technician --",
+    "technicianRequired": "Technician assignment is required for in-house maintenance before approval.",
     "department": "Department",
     "employee": "Employee",
     "maintenanceType": "Maintenance Type",
