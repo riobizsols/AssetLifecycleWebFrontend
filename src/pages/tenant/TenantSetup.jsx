@@ -19,7 +19,6 @@ import {
   ArrowRight,
   ArrowLeft,
   MapPin,
-  Hash,
 } from "lucide-react";
 
 const BRAND = "#0E2F4B";
@@ -312,7 +311,6 @@ export default function TenantSetup() {
   const [domainDbAvailable, setDomainDbAvailable] = useState(null);
   const [proposedDatabaseName, setProposedDatabaseName] = useState("");
   const [form, setForm] = useState({
-    orgId: "",
     orgName: "",
     subdomain: "",
     orgCity: "",
@@ -345,7 +343,7 @@ export default function TenantSetup() {
     navigate("/", {
       state: {
         message: "Tenant is ready. Please login with your credentials.",
-        orgId: tenantData?.orgId || form.orgId.toUpperCase(),
+        orgId: tenantData?.orgId || tenantData?.groupedOrgId,
         email: tenantData?.adminCredentials?.email || adminUser.email,
       },
     });
@@ -394,9 +392,7 @@ export default function TenantSetup() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     let newValue = value;
-    if (name === "orgId") {
-      newValue = value.toUpperCase();
-    } else if (name === "subdomain") {
+    if (name === "subdomain") {
       newValue = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
       setDomainDbAvailable(null);
       setProposedDatabaseName("");
@@ -445,16 +441,7 @@ export default function TenantSetup() {
 
   const handleNext = () => {
     if (currentStep === 0) {
-      if (!form.orgId || form.orgId.length < 3) {
-        showBackendTextToast({
-          toast,
-          tmdId: "TMD_ORGANIZATION_ID_IS_REQUIRED_MINIMUM_3_CHARACTERS_29CA119B",
-          fallbackText: "Organization ID is required (minimum 3 characters)",
-          type: "error",
-        });
-        return;
-      }
-      if (!form.orgName) {
+      if (!form.orgName?.trim()) {
         showBackendTextToast({
           toast,
           tmdId: "TMD_ORGANIZATION_NAME_IS_REQUIRED_1149F0F3",
@@ -510,8 +497,7 @@ export default function TenantSetup() {
 
     try {
       const payload = {
-        orgId: form.orgId.toUpperCase(),
-        orgName: form.orgName,
+        orgName: form.orgName.trim(),
         subdomain: form.subdomain.toLowerCase(),
         orgCity: form.orgCity.trim(),
         adminUser: {
@@ -525,7 +511,7 @@ export default function TenantSetup() {
       const response = await API.post("/tenant-setup/create", payload, { timeout: 900000 });
       const tenantData = response.data?.data;
 
-      if (response.data?.success && tenantData?.orgId) {
+      if (response.data?.success && (tenantData?.orgId || tenantData?.groupedOrgId)) {
         completeTenantSetup(tenantData, { alreadyExists: !!tenantData.alreadyExists });
         return;
       }
@@ -535,12 +521,12 @@ export default function TenantSetup() {
       const message =
         error.response?.data?.message || error.message || "Failed to create tenant. Please try again.";
       const looksLikeExistingTenant =
-        /already exists|already taken/i.test(message) && form.orgId && form.subdomain;
+        /already exists|already taken/i.test(message) && form.subdomain;
 
       if (looksLikeExistingTenant) {
         completeTenantSetup(
           {
-            orgId: form.orgId.toUpperCase(),
+            orgId: null,
             orgName: form.orgName,
             orgCity: form.orgCity,
             subdomain: form.subdomain.toLowerCase(),
@@ -673,26 +659,6 @@ export default function TenantSetup() {
                     icon={Building2}
                   >
                     <div className="space-y-5">
-                      <FormField
-                        label="Organization ID"
-                        required
-                        hint="Short unique code (e.g. SKASC). Used internally across assets, users, and branches."
-                      >
-                        <div className="relative">
-                          <Hash className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <input
-                            type="text"
-                            name="orgId"
-                            value={form.orgId}
-                            onChange={handleChange}
-                            required
-                            placeholder="SKASC"
-                            maxLength={10}
-                            className={`${inputClass} pl-10 uppercase font-semibold tracking-wide`}
-                          />
-                        </div>
-                      </FormField>
-
                       <FormField label="Organization name" required>
                         <input
                           type="text"
@@ -816,8 +782,7 @@ export default function TenantSetup() {
                       onClick={handleNext}
                       disabled={
                         !domainDbAvailable ||
-                        !form.orgName ||
-                        !form.orgId ||
+                        !form.orgName.trim() ||
                         !form.orgCity.trim()
                       }
                     >
@@ -967,7 +932,6 @@ export default function TenantSetup() {
 
                   <div className="grid min-w-0 gap-5 lg:grid-cols-2">
                     <FormSection title="Organization" icon={Building2}>
-                      <ReviewRow label="Organization ID" value={form.orgId} mono />
                       <ReviewRow label="Name" value={form.orgName} />
                       <ReviewRow label="Subdomain" value={form.subdomain} mono />
                       <ReviewRow
@@ -1051,8 +1015,14 @@ export default function TenantSetup() {
                           <p className="font-semibold">Provisioning in progress</p>
                           <p className="mt-1 text-amber-800/90">
                             Database creation can take several minutes. Keep this tab open. If it
-                            times out, try tenant login with org ID{" "}
-                            <strong>{form.orgId.toUpperCase()}</strong>.
+                            times out, try signing in at your subdomain URL
+                            {previewUrl ? (
+                              <>
+                                {" "}
+                                (<strong className="break-all">{previewUrl}</strong>
+                              </>
+                            ) : null}
+                            .
                           </p>
                         </div>
                       </div>
