@@ -293,7 +293,10 @@ const MaintenanceApprovalDetail = () => {
             userId: workflowData.workflowDetails?.[0]?.user_id,
             userEmail: workflowData.workflowDetails?.[0]?.email,
             status: workflowData.workflowDetails?.[0]?.detail_status,
-            headerStatus: workflowData.headerStatus,
+            headerStatus:
+              workflowData.headerStatus ||
+              workflowData.workflowDetails?.[0]?.header_status ||
+              null,
             sequence: workflowData.workflowDetails?.[0]?.sequence,
             daysUntilDue: workflowData.daysUntilDue,
             daysUntilCutoff: workflowData.daysUntilCutoff,
@@ -368,29 +371,45 @@ const MaintenanceApprovalDetail = () => {
 
   // Find ALL steps with AP status (current action pending)
   const currentActionSteps = steps.filter((step) => {
-    // Look for steps that should be current action users
-    // They should have 'current' status and 'Action pending by' or similar description
-    const isCurrentAction = step.title !== 'System' && 
+    const isCurrentAction = step.title !== 'System' &&
            step.title !== 'Approval Initiated' &&
            step.status === 'current';
     return isCurrentAction;
   });
-  
-  // System Admin (JR001) can act on any pending step so the workflow is not stuck on one role.
+
+  const hasPendingApproval = currentActionSteps.length > 0;
+  const isWorkflowComplete =
+    approvalDetails?.headerStatus === 'CO' ||
+    approvalDetails?.headerStatus === 'CA' ||
+    (!hasPendingApproval &&
+      steps.some((s) => s.status === 'approved') &&
+      !steps.some((s) => s.status === 'current'));
+
+  // System Admin (JR001) can act on pending steps only — not when workflow is already complete.
   const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
   const isViewOnly = Boolean(approvalDetails?.viewOnly);
-  const isCurrentActionUser = !isViewOnly && (isSystemAdmin || currentActionSteps.some((step) => {
-    // Backend sends role info in step.role.id (job_role_id)
-    const stepRoleId = step.role?.id || step.user?.id;
-    const hasRole = userRoleIds.includes(stepRoleId);
-    console.log(`🔍 Checking action step: Required role=${stepRoleId}, User has role=${hasRole}`);
-    return hasRole;
-  }));
+  const isCurrentActionUser =
+    !isViewOnly &&
+    !isWorkflowComplete &&
+    !isRejected &&
+    hasPendingApproval &&
+    (isSystemAdmin ||
+      currentActionSteps.some((step) => {
+        const stepRoleId = step.role?.id || step.user?.id;
+        return userRoleIds.includes(stepRoleId);
+      }));
   
   console.log('✅ User can approve:', isCurrentActionUser);
   console.log('📊 Current action steps:', currentActionSteps);
-  
-  
+  console.log('📊 Workflow complete:', isWorkflowComplete, 'headerStatus:', approvalDetails?.headerStatus);
+
+  const finishApproval = () => {
+    setShowApproveModal(false);
+    setApproveNote("");
+    setVendorStatusError("");
+    bustMaintenanceApprovalListCache();
+    navigate('/maintenance-approval');
+  };
 
   // Approve handler
   const handleApprove = async () => {
@@ -433,12 +452,17 @@ const MaintenanceApprovalDetail = () => {
         originalDueDate: approvalDetails?.dueDate
       });
       
-      const response = await API.post(`/approval-detail/${id}/approve`, {
+      const inhouse = isInhouseMaintenance(approvalDetails);
+      const payload = {
         empIntId: currentUserEmpId,
         note: approveNote,
-        vendorId: vendorToSend,
-        maintenanceDate: dateToSend
-      });
+        maintenanceDate: dateToSend,
+      };
+      if (!inhouse && vendorToSend) {
+        payload.vendorId = vendorToSend;
+      }
+
+      const response = await API.post(`/approval-detail/${id}/approve`, payload);
       
       // Dismiss loading toast
       if (loadingToastId) {
@@ -446,18 +470,9 @@ const MaintenanceApprovalDetail = () => {
       }
       
       if (response.data.success) {
-        console.log("Maintenance approved successfully");
+        console.log("Maintenance approved successfully", response.data);
         toast.success(t('maintenanceApproval.approvedSuccessfully') || "Maintenance approved successfully");
-        setShowApproveModal(false);
-        setApproveNote("");
-        setVendorStatusError("");
-        bustMaintenanceApprovalListCache();
-        
-        // Refresh approval details to show updated vendor and date
-        // Wait a bit for the database to be updated
-        setTimeout(() => {
-          fetchApprovalDetails(true);
-        }, 500);
+        finishApproval();
       } else {
         const msg = response.data.message || '';
         if (msg.includes("Inactive") || msg.includes("CR Approved")) {
@@ -467,10 +482,7 @@ const MaintenanceApprovalDetail = () => {
           setActiveTab('vendor');
         } else if (msg.toLowerCase().includes('already been completed')) {
           toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approval already completed.');
-          setShowApproveModal(false);
-          setApproveNote('');
-          bustMaintenanceApprovalListCache();
-          fetchApprovalDetails(true);
+          finishApproval();
         } else {
           toast.error(msg || t('maintenanceApproval.failedToApprove'));
         }
@@ -496,9 +508,12 @@ const MaintenanceApprovalDetail = () => {
         (errorMessage.includes('vendor_id') && errorMessage.includes('tblAssetMaintSch'))
       ) {
         toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approved successfully.');
-        setShowApproveModal(false);
-        setApproveNote('');
-        fetchApprovalDetails(true);
+        finishApproval();
+      } else if (
+        errorMessage.toLowerCase().includes('no workflow found') &&
+        isWorkflowComplete
+      ) {
+        finishApproval();
       } else {
         toast.error(errorMessage);
         fetchApprovalDetails(true);

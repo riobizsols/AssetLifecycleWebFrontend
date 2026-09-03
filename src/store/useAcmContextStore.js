@@ -2,10 +2,27 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { clearCache } from '../utils/apiCache';
 
+/** @typedef {'org' | 'branch' | 'dept'} AcmScopeLevel */
+
+function resolveScopeLevel(scopeLevel, { branchId, deptId } = {}) {
+  if (scopeLevel === 'dept' && deptId) return 'dept';
+  if ((scopeLevel === 'branch' || scopeLevel === 'dept') && branchId) return 'branch';
+  return 'org';
+}
+
+function scopeFieldsForLevel(level, { orgId, branchId, deptId }) {
+  return {
+    appliedOrgId: orgId || '',
+    appliedBranchId: level === 'branch' || level === 'dept' ? (branchId || '') : '',
+    appliedDeptId: level === 'dept' ? (deptId || '') : '',
+    appliedScopeLevel: level,
+  };
+}
+
 /**
  * Header ACM working context (org → branch → dept).
  * draft* = UI selection; applied* = sent as X-ACM-* headers after Save / default seed.
- * Applied values are the single source of truth for active org/branch/dept.
+ * appliedScopeLevel controls which headers are sent (branch save must not send dept).
  */
 export const useAcmContextStore = create(
   persist(
@@ -16,7 +33,8 @@ export const useAcmContextStore = create(
       appliedOrgId: '',
       appliedBranchId: '',
       appliedDeptId: '',
-      /** True once login default (or user Save) has committed applied* for this session */
+      /** @type {AcmScopeLevel} */
+      appliedScopeLevel: 'org',
       hasAppliedContext: false,
 
       setDraftOrgId: (orgId) =>
@@ -34,15 +52,35 @@ export const useAcmContextStore = create(
 
       setDraftDeptId: (deptId) => set({ draftDeptId: deptId || '' }),
 
-      /** Commit draft → applied filters and refresh data caches */
-      applySelection: () => {
-        const { draftOrgId, draftBranchId, draftDeptId } = get();
+      syncDraftFromApplied: () => {
+        const { appliedOrgId, appliedBranchId, appliedDeptId, appliedScopeLevel } = get();
+        const level = appliedScopeLevel || 'org';
         set({
-          appliedOrgId: draftOrgId || '',
-          appliedBranchId: draftBranchId || '',
-          appliedDeptId: draftDeptId || '',
+          draftOrgId: appliedOrgId || '',
+          draftBranchId: level === 'branch' || level === 'dept' ? (appliedBranchId || '') : '',
+          draftDeptId: level === 'dept' ? (appliedDeptId || '') : '',
+        });
+      },
+
+      /** @param {AcmScopeLevel} scopeLevel */
+      applySelection: (scopeLevel = 'org') => {
+        const { draftOrgId, draftBranchId, draftDeptId } = get();
+        const level = resolveScopeLevel(scopeLevel, {
+          branchId: draftBranchId,
+          deptId: draftDeptId,
+        });
+
+        set({
+          ...scopeFieldsForLevel(level, {
+            orgId: draftOrgId,
+            branchId: draftBranchId,
+            deptId: draftDeptId,
+          }),
+          draftBranchId: level === 'branch' || level === 'dept' ? (draftBranchId || '') : '',
+          draftDeptId: level === 'dept' ? (draftDeptId || '') : '',
           hasAppliedContext: Boolean(draftOrgId),
         });
+
         try {
           clearCache();
         } catch (_) {
@@ -53,24 +91,25 @@ export const useAcmContextStore = create(
         }
       },
 
-      /**
-       * Seed draft + applied from deterministic default (login / first ACM row).
-       * Does not force a full page reload — callers decide.
-       */
-      seedAndApply: ({ orgId, branchId, deptId } = {}, { emitEvent = true } = {}) => {
+      seedAndApply: ({ orgId, branchId, deptId } = {}, { emitEvent = true, scopeLevel } = {}) => {
         const o = orgId || '';
         const b = branchId || '';
         const d = deptId || '';
         if (!o) return false;
+
+        const level = resolveScopeLevel(scopeLevel || (d ? 'dept' : b ? 'branch' : 'org'), {
+          branchId: b,
+          deptId: d,
+        });
+
         set({
           draftOrgId: o,
-          draftBranchId: b,
-          draftDeptId: d,
-          appliedOrgId: o,
-          appliedBranchId: b,
-          appliedDeptId: d,
+          draftBranchId: level === 'branch' || level === 'dept' ? b : '',
+          draftDeptId: level === 'dept' ? d : '',
+          ...scopeFieldsForLevel(level, { orgId: o, branchId: b, deptId: d }),
           hasAppliedContext: true,
         });
+
         try {
           clearCache();
         } catch (_) {
@@ -90,12 +129,12 @@ export const useAcmContextStore = create(
           appliedOrgId: '',
           appliedBranchId: '',
           appliedDeptId: '',
+          appliedScopeLevel: 'org',
           hasAppliedContext: false,
         }),
     }),
     {
       name: 'acm-context-storage',
-      // Persist only applied context so refresh keeps selection; login/logout reset via auth store
       partialize: (state) => ({
         draftOrgId: state.draftOrgId,
         draftBranchId: state.draftBranchId,
@@ -103,8 +142,35 @@ export const useAcmContextStore = create(
         appliedOrgId: state.appliedOrgId,
         appliedBranchId: state.appliedBranchId,
         appliedDeptId: state.appliedDeptId,
+        appliedScopeLevel: state.appliedScopeLevel,
         hasAppliedContext: state.hasAppliedContext,
       }),
+      merge: (persisted, current) => {
+        const merged = { ...current, ...(persisted || {}) };
+        if (!merged.appliedScopeLevel) {
+          merged.appliedScopeLevel = merged.appliedDeptId
+            ? 'dept'
+            : merged.appliedBranchId
+              ? 'branch'
+              : 'org';
+        }
+        return merged;
+      },
     }
   )
 );
+
+export function getAppliedAcmHeaders(state) {
+  const level = state.appliedScopeLevel
+    || (state.appliedDeptId ? 'dept' : state.appliedBranchId ? 'branch' : 'org');
+
+  const headers = {};
+  if (state.appliedOrgId) headers['X-ACM-Org-Id'] = state.appliedOrgId;
+  if ((level === 'branch' || level === 'dept') && state.appliedBranchId) {
+    headers['X-ACM-Branch-Id'] = state.appliedBranchId;
+  }
+  if (level === 'dept' && state.appliedDeptId) {
+    headers['X-ACM-Dept-Id'] = state.appliedDeptId;
+  }
+  return headers;
+}

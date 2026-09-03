@@ -8,6 +8,7 @@ import { useLanguage } from '../contexts/LanguageContext';
  * Single cascading ACM dropdown:
  * Organization → Branch → Department
  * Back arrow returns to the previous level.
+ * Save depth (org / branch / dept) controls which X-ACM-* headers are sent.
  */
 export default function AcmContextSelector() {
   const { t } = useLanguage();
@@ -17,9 +18,11 @@ export default function AcmContextSelector() {
   const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
   const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
   const appliedDeptId = useAcmContextStore((s) => s.appliedDeptId);
+  const appliedScopeLevel = useAcmContextStore((s) => s.appliedScopeLevel);
   const setDraftOrgId = useAcmContextStore((s) => s.setDraftOrgId);
   const setDraftBranchId = useAcmContextStore((s) => s.setDraftBranchId);
   const setDraftDeptId = useAcmContextStore((s) => s.setDraftDeptId);
+  const syncDraftFromApplied = useAcmContextStore((s) => s.syncDraftFromApplied);
   const applySelection = useAcmContextStore((s) => s.applySelection);
 
   const [orgs, setOrgs] = useState([]);
@@ -37,8 +40,10 @@ export default function AcmContextSelector() {
     setLoading(true);
     try {
       const params = {};
-      if (draftOrgId) params.org_id = draftOrgId;
-      if (draftBranchId) params.branch_id = draftBranchId;
+      const orgForLoad = draftOrgId || appliedOrgId;
+      const branchForLoad = draftBranchId || appliedBranchId;
+      if (orgForLoad) params.org_id = orgForLoad;
+      if (branchForLoad) params.branch_id = branchForLoad;
       const res = await API.get('/acm/options', { params });
       setOrgs(Array.isArray(res.data?.orgs) ? res.data.orgs : []);
       setBranches(Array.isArray(res.data?.branches) ? res.data.branches : []);
@@ -53,7 +58,7 @@ export default function AcmContextSelector() {
     } finally {
       setLoading(false);
     }
-  }, [draftOrgId, draftBranchId]);
+  }, [draftOrgId, draftBranchId, appliedOrgId, appliedBranchId]);
 
   useEffect(() => {
     loadOptions();
@@ -85,13 +90,12 @@ export default function AcmContextSelector() {
     };
   }, [appliedOrgId]);
 
-  // Keep step aligned with how deep the draft is when opening
-  useEffect(() => {
-    if (!open) return;
-    if (draftBranchId) setStep('dept');
-    else if (draftOrgId) setStep('branch');
-    else setStep('org');
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const openPicker = () => {
+    syncDraftFromApplied();
+    const level = useAcmContextStore.getState().appliedScopeLevel || 'org';
+    setStep(level === 'dept' ? 'dept' : level === 'branch' ? 'branch' : 'org');
+    setOpen(true);
+  };
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -104,11 +108,25 @@ export default function AcmContextSelector() {
   }, []);
 
   const dirty = useMemo(
-    () =>
-      draftOrgId !== appliedOrgId ||
-      draftBranchId !== appliedBranchId ||
-      draftDeptId !== appliedDeptId,
-    [draftOrgId, draftBranchId, draftDeptId, appliedOrgId, appliedBranchId, appliedDeptId]
+    () => {
+      const draftLevel = draftDeptId ? 'dept' : draftBranchId ? 'branch' : draftOrgId ? 'org' : '';
+      const appliedLevel = appliedScopeLevel || (appliedDeptId ? 'dept' : appliedBranchId ? 'branch' : appliedOrgId ? 'org' : '');
+      return (
+        draftOrgId !== appliedOrgId ||
+        draftBranchId !== appliedBranchId ||
+        draftDeptId !== appliedDeptId ||
+        draftLevel !== appliedLevel
+      );
+    },
+    [
+      draftOrgId,
+      draftBranchId,
+      draftDeptId,
+      appliedOrgId,
+      appliedBranchId,
+      appliedDeptId,
+      appliedScopeLevel,
+    ]
   );
 
   /** Access level for current draft selection (shown on selected row). */
@@ -137,30 +155,60 @@ export default function AcmContextSelector() {
     return '';
   }, [acmRows, draftOrgId, draftBranchId, draftDeptId]);
 
-  const orgLabel = orgs.find((o) => o.org_id === draftOrgId)?.text || draftOrgId;
-  const branchLabel = branches.find((b) => b.branch_id === draftBranchId)?.text || draftBranchId;
-  const deptLabel = departments.find((d) => d.dept_id === draftDeptId)?.text || draftDeptId;
+  const labelFor = (list, id, key, fallback = '') =>
+    list.find((item) => item[key] === id)?.text || id || fallback;
 
-  const triggerLabel = useMemo(() => {
-    if (draftDeptId) return deptLabel;
-    if (draftBranchId) return branchLabel;
-    if (draftOrgId) return orgLabel;
+  const draftOrgLabel = labelFor(orgs, draftOrgId, 'org_id');
+  const draftBranchLabel = labelFor(branches, draftBranchId, 'branch_id');
+  const draftDeptLabel = labelFor(departments, draftDeptId, 'dept_id');
+
+  const appliedOrgLabel = labelFor(orgs, appliedOrgId, 'org_id');
+  const appliedBranchLabel = labelFor(branches, appliedBranchId, 'branch_id');
+  const appliedDeptLabel = labelFor(departments, appliedDeptId, 'dept_id');
+
+  const draftTriggerLabel = useMemo(() => {
+    if (draftDeptId) return draftDeptLabel;
+    if (draftBranchId) return draftBranchLabel;
+    if (draftOrgId) return draftOrgLabel;
     return t('common.selectOption') || 'Select…';
-  }, [draftOrgId, draftBranchId, draftDeptId, orgLabel, branchLabel, deptLabel, t]);
+  }, [draftOrgId, draftBranchId, draftDeptId, draftOrgLabel, draftBranchLabel, draftDeptLabel, t]);
+
+  const appliedTriggerLabel = useMemo(() => {
+    const level = appliedScopeLevel || 'org';
+    if (level === 'dept' && appliedDeptId) return appliedDeptLabel;
+    if ((level === 'branch' || level === 'dept') && appliedBranchId) return appliedBranchLabel;
+    if (appliedOrgId) return appliedOrgLabel;
+    return t('common.selectOption') || 'Select…';
+  }, [
+    appliedScopeLevel,
+    appliedOrgId,
+    appliedBranchId,
+    appliedDeptId,
+    appliedOrgLabel,
+    appliedBranchLabel,
+    appliedDeptLabel,
+    t,
+  ]);
 
   /** Access for applied (saved) scope — shown on closed trigger. */
   const appliedAccess = useMemo(() => {
     if (!appliedOrgId || !acmRows.length) return '';
     const isWild = (v) => !v || String(v).trim() === '*';
+    const level = appliedScopeLevel || 'org';
     const matching = acmRows.filter((row) => {
       if (!(isWild(row.org_id) || String(row.org_id) === appliedOrgId)) return false;
       if (
+        (level === 'branch' || level === 'dept') &&
         appliedBranchId &&
         !(isWild(row.branch_id) || String(row.branch_id) === appliedBranchId)
       ) {
         return false;
       }
-      if (appliedDeptId && !(isWild(row.dept_id) || String(row.dept_id) === appliedDeptId)) {
+      if (
+        level === 'dept' &&
+        appliedDeptId &&
+        !(isWild(row.dept_id) || String(row.dept_id) === appliedDeptId)
+      ) {
         return false;
       }
       return true;
@@ -175,7 +223,14 @@ export default function AcmContextSelector() {
       return 'Read';
     }
     return '';
-  }, [acmRows, appliedOrgId, appliedBranchId, appliedDeptId]);
+  }, [acmRows, appliedOrgId, appliedBranchId, appliedDeptId, appliedScopeLevel]);
+
+  const closedStepTitle = useMemo(() => {
+    const level = appliedScopeLevel || 'org';
+    if (level === 'dept') return t('common.department') || 'Department';
+    if (level === 'branch') return t('common.branch') || 'Branch';
+    return t('common.organization') || 'Organization';
+  }, [appliedScopeLevel, t]);
 
   const stepTitle =
     step === 'org'
@@ -210,9 +265,15 @@ export default function AcmContextSelector() {
     setDraftDeptId(deptId);
   };
 
+  const resolveSaveScopeLevel = () => {
+    if (step === 'dept' && draftDeptId) return 'dept';
+    if ((step === 'dept' || step === 'branch') && draftBranchId) return 'branch';
+    return 'org';
+  };
+
   const handleSelect = () => {
     if (!draftOrgId) return;
-    applySelection();
+    applySelection(resolveSaveScopeLevel());
     setOpen(false);
     setTimeout(() => {
       window.location.reload();
@@ -242,8 +303,17 @@ export default function AcmContextSelector() {
           }));
 
   const triggerAccess = open ? selectionAccess : appliedAccess || selectionAccess;
+  const triggerLabel = open ? draftTriggerLabel : appliedTriggerLabel;
+  const headerStepTitle = open ? stepTitle : closedStepTitle;
 
-  if (!orgs.length && !loading && !draftOrgId) {
+  const saveScopeHint =
+    resolveSaveScopeLevel() === 'dept'
+      ? 'Filter by organization, branch and department'
+      : resolveSaveScopeLevel() === 'branch'
+        ? 'Filter by organization and branch'
+        : 'Filter by organization (all branches)';
+
+  if (!orgs.length && !loading && !draftOrgId && !appliedOrgId) {
     return null;
   }
 
@@ -252,12 +322,12 @@ export default function AcmContextSelector() {
       <div className="relative w-[220px]">
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => (open ? setOpen(false) : openPicker())}
           className="w-full flex items-center justify-between gap-2 border border-gray-300 rounded px-2.5 py-1.5 text-xs bg-white text-[#0E2F4B] hover:bg-gray-50"
         >
           <span className="truncate text-left min-w-0 flex-1">
             <span className="text-[10px] text-gray-500 block leading-none mb-0.5">
-              {stepTitle}
+              {headerStepTitle}
             </span>
             <span className="font-medium">{triggerLabel}</span>
           </span>
@@ -296,10 +366,10 @@ export default function AcmContextSelector() {
                 <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                   {stepTitle}
                 </p>
-                {(step === 'branch' || step === 'dept') && orgLabel && (
+                {(step === 'branch' || step === 'dept') && draftOrgLabel && (
                   <p className="text-[10px] text-[#0E2F4B] truncate">
-                    {orgLabel}
-                    {step === 'dept' && branchLabel ? ` › ${branchLabel}` : ''}
+                    {draftOrgLabel}
+                    {step === 'dept' && draftBranchLabel ? ` › ${draftBranchLabel}` : ''}
                   </p>
                 )}
               </div>
@@ -347,13 +417,7 @@ export default function AcmContextSelector() {
                 className={`w-full h-[32px] rounded text-xs font-semibold text-white ${
                   dirty ? 'bg-[#0E2F4B] hover:bg-[#163a5c]' : 'bg-gray-400'
                 } disabled:opacity-50`}
-                title={
-                  draftDeptId
-                    ? 'Filter by organization, branch and department'
-                    : draftBranchId
-                      ? 'Filter by organization and branch'
-                      : 'Filter by organization'
-                }
+                title={saveScopeHint}
               >
                 {t('common.save') || 'Save'}
               </button>

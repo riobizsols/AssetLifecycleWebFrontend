@@ -654,9 +654,24 @@ const ContentBox = ({
                       </option>
                     ));
 
-                    // Get unique values for the value dropdown based on selected column
+                    // Prefer explicit filter options (full dataset); fall back to current page rows
+                    const filterDef = filters.find((f) => f.name === cf.column);
+                    const explicitOptions = Array.isArray(filterDef?.options) && filterDef.options.length > 0
+                      ? filterDef.options
+                          .map((opt) => {
+                            if (opt == null) return null;
+                            if (typeof opt === 'object') {
+                              const val = opt.value ?? opt.label;
+                              return val != null && String(val).trim() !== '' ? String(val) : null;
+                            }
+                            const s = String(opt);
+                            return s.trim() ? s : null;
+                          })
+                          .filter(Boolean)
+                      : null;
+
                     const valueOptions = cf.column
-                      ? [
+                      ? explicitOptions ?? [
                           ...new Set(
                             data.map((item) => {
                               const value = item[cf.column];

@@ -15,8 +15,14 @@ const ASSETS_TTL_MS = 5 * 60 * 1000;
 const acmKey = () => acmCacheSegment(useAcmContextStore.getState());
 const assetTypesKey = () => buildCacheKey(['assets', 'types', acmKey()]);
 const assetsFullKey = () => buildCacheKey(['assets', 'all', acmKey()]);
-const assetsPageKey = (page, limit) =>
-  buildCacheKey(['assets', 'page', page, 'limit', limit, acmKey()]);
+const assetsFilterSegment = (filters = {}) => {
+  const entries = Object.entries(filters || {})
+    .filter(([, v]) => v != null && v !== '')
+    .sort(([a], [b]) => a.localeCompare(b));
+  return entries.length ? JSON.stringify(entries) : '';
+};
+const assetsPageKey = (page, limit, filters = {}) =>
+  buildCacheKey(['assets', 'page', page, 'limit', limit, assetsFilterSegment(filters), acmKey()]);
 
 export const formatAssetRowDates = (item) => {
   const formatDate = (dateString) => {
@@ -93,14 +99,19 @@ export const useAssetsStore = create((set, get) => ({
     page = 1,
     limit = 50,
     loadAll = false,
+    serverFilters = {},
     force = false,
     revalidate = false,
     onFresh,
   } = {}) => {
-    const cacheKey = loadAll ? assetsFullKey() : assetsPageKey(page, limit);
+    const cacheKey = loadAll
+      ? assetsFullKey()
+      : assetsPageKey(page, limit, serverFilters);
 
     const fetcher = async () => {
-      const params = loadAll ? { all: true } : { page, limit };
+      const params = loadAll
+        ? { all: true, ...serverFilters }
+        : { page, limit, ...serverFilters };
       const res = await API.get('/assets', { params });
       return parseAssetsResponse(res.data);
     };
@@ -166,8 +177,10 @@ export const useAssetsStore = create((set, get) => ({
     return data;
   },
 
-  getCachedAssetsList: (page, limit, loadAll) => {
-    const cacheKey = loadAll ? assetsFullKey() : assetsPageKey(page, limit);
+  getCachedAssetsList: (page, limit, loadAll, serverFilters = {}) => {
+    const cacheKey = loadAll
+      ? assetsFullKey()
+      : assetsPageKey(page, limit, serverFilters);
     return peekCache(cacheKey, ASSETS_TTL_MS);
   },
 
