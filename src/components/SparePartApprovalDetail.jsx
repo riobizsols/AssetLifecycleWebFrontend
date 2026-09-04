@@ -49,6 +49,10 @@ export default function SparePartApprovalDetail() {
   const [models, setModels] = useState([]);
   const [spbId, setSpbId] = useState('');
   const [spmId, setSpmId] = useState('');
+  const [pendingBrandId, setPendingBrandId] = useState('');
+  const [pendingBrandName, setPendingBrandName] = useState('');
+  const [pendingModelId, setPendingModelId] = useState('');
+  const [pendingModelName, setPendingModelName] = useState('');
   const [requiredQty, setRequiredQty] = useState('');
   const [availableQty, setAvailableQty] = useState('');
   const [availableQtyLoading, setAvailableQtyLoading] = useState(false);
@@ -63,13 +67,23 @@ export default function SparePartApprovalDetail() {
       });
       setDetail(data);
       setApproved(Boolean(data?.is_approved));
-      setAssetName('');
-      setAssetType('');
-      setCategory('');
+      setAssetName(data?.asset_name || data?.serial_number || '');
+      setAssetType(data?.asset_type_name || '');
+      setCategory(data?.category_name || '');
+      setPendingBrandId(data?.spb_id || data?.brand_id || '');
+      setPendingBrandName(data?.brand_name || '');
+      setPendingModelId(data?.spm_id || data?.model_id || '');
+      setPendingModelName(data?.model_name || '');
       setSpbId('');
       setSpmId('');
-      setRequiredQty('');
-      setAvailableQty('');
+      const qty = data?.quantity_issued;
+      setRequiredQty(
+        qty != null && qty !== '' && Number.isFinite(Number(qty))
+          ? String(qty)
+          : ''
+      );
+      const avail = Number(data?.available_qty);
+      setAvailableQty(Number.isFinite(avail) ? String(avail) : '');
     } catch (err) {
       toast.error(err.message || t('sparePartApproval.failedToFetchDetail'));
     } finally {
@@ -112,13 +126,14 @@ export default function SparePartApprovalDetail() {
   }, []);
 
   const spcId = useMemo(() => {
+    if (detail?.spc_id) return detail.spc_id;
     const typed = category.trim().toLowerCase();
     if (!typed) return '';
     const match = categories.find(
       (row) => String(row.text || '').trim().toLowerCase() === typed
     );
     return match?.spc_id || '';
-  }, [category, categories]);
+  }, [category, categories, detail?.spc_id]);
 
   useEffect(() => {
     if (!spcId) {
@@ -136,14 +151,27 @@ export default function SparePartApprovalDetail() {
           params: { spc_id: spcId },
         });
         if (cancelled) return;
-        setBrands(
-          asList(res.data)
-            .map(mapBrand)
-            .filter((row) => row.spb_id && row.text)
-        );
-        setSpbId('');
-        setSpmId('');
-        setModels([]);
+        const nextBrands = asList(res.data)
+          .map(mapBrand)
+          .filter((row) => row.spb_id && row.text);
+        setBrands(nextBrands);
+
+        const byId = pendingBrandId
+          ? nextBrands.find((b) => String(b.spb_id) === String(pendingBrandId))
+          : null;
+        const byName = pendingBrandName
+          ? nextBrands.find(
+              (b) =>
+                String(b.text || '').trim().toLowerCase() ===
+                String(pendingBrandName).trim().toLowerCase()
+            )
+          : null;
+        const matched = byId || byName || (nextBrands.length === 1 ? nextBrands[0] : null);
+        setSpbId(matched?.spb_id || '');
+        if (!matched) {
+          setSpmId('');
+          setModels([]);
+        }
       } catch (err) {
         if (!cancelled) {
           setBrands([]);
@@ -156,7 +184,7 @@ export default function SparePartApprovalDetail() {
     return () => {
       cancelled = true;
     };
-  }, [spcId, t]);
+  }, [spcId, pendingBrandId, pendingBrandName, t]);
 
   useEffect(() => {
     if (!spcId || !spbId) {
@@ -171,12 +199,23 @@ export default function SparePartApprovalDetail() {
           params: { spc_id: spcId, spb_id: spbId },
         });
         if (cancelled) return;
-        setModels(
-          asList(res.data)
-            .map(mapModel)
-            .filter((row) => row.spm_id && row.text)
-        );
-        setSpmId('');
+        const nextModels = asList(res.data)
+          .map(mapModel)
+          .filter((row) => row.spm_id && row.text);
+        setModels(nextModels);
+
+        const byId = pendingModelId
+          ? nextModels.find((m) => String(m.spm_id) === String(pendingModelId))
+          : null;
+        const byName = pendingModelName
+          ? nextModels.find(
+              (m) =>
+                String(m.text || '').trim().toLowerCase() ===
+                String(pendingModelName).trim().toLowerCase()
+            )
+          : null;
+        const matched = byId || byName || (nextModels.length === 1 ? nextModels[0] : null);
+        setSpmId(matched?.spm_id || '');
       } catch (err) {
         if (!cancelled) {
           setModels([]);
@@ -189,12 +228,13 @@ export default function SparePartApprovalDetail() {
     return () => {
       cancelled = true;
     };
-  }, [spcId, spbId, t]);
+  }, [spcId, spbId, pendingModelId, pendingModelName, t]);
 
   useEffect(() => {
-    const hasAsset = Boolean(assetName.trim());
-    if (!hasAsset || !spcId) {
-      setAvailableQty('');
+    if (!spcId) {
+      if (!detail?.available_qty && detail?.available_qty !== 0) {
+        setAvailableQty('');
+      }
       setAvailableQtyLoading(false);
       return;
     }
@@ -215,9 +255,13 @@ export default function SparePartApprovalDetail() {
     return () => {
       cancelled = true;
     };
-  }, [assetName, spcId]);
+  }, [spcId, detail?.available_qty]);
 
   const handleBrandChange = (value) => {
+    setPendingBrandId(value);
+    setPendingBrandName('');
+    setPendingModelId('');
+    setPendingModelName('');
     setSpbId(value);
     setSpmId('');
     setModels([]);
@@ -336,10 +380,9 @@ export default function SparePartApprovalDetail() {
           <input
             type="text"
             value={assetName}
-            onChange={(e) => setAssetName(e.target.value)}
+            readOnly
             placeholder={t('sparePartApproval.selectAssetName')}
-            disabled={isLocked}
-            className={inputClass}
+            className={readOnlyClass}
           />
         </div>
 
@@ -350,10 +393,9 @@ export default function SparePartApprovalDetail() {
           <input
             type="text"
             value={assetType}
-            onChange={(e) => setAssetType(e.target.value)}
+            readOnly
             placeholder={t('sparePartApproval.selectAssetType')}
-            disabled={isLocked}
-            className={inputClass}
+            className={readOnlyClass}
           />
         </div>
 
@@ -364,10 +406,9 @@ export default function SparePartApprovalDetail() {
           <input
             type="text"
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            readOnly
             placeholder={t('sparePartApproval.selectCategory')}
-            disabled={isLocked}
-            className={inputClass}
+            className={readOnlyClass}
           />
         </div>
 
@@ -396,7 +437,11 @@ export default function SparePartApprovalDetail() {
           </label>
           <select
             value={spmId}
-            onChange={(e) => setSpmId(e.target.value)}
+            onChange={(e) => {
+              setPendingModelId(e.target.value);
+              setPendingModelName('');
+              setSpmId(e.target.value);
+            }}
             disabled={isLocked || modelsLoading || !spbId}
             className={dropdownClass}
           >

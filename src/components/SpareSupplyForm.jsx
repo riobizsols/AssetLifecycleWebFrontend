@@ -26,6 +26,7 @@ const SpareSupplyForm = ({
   onTabSaved,
   loadExisting = false,
   isReadOnly = false,
+  showInlineSave = true,
 }) => {
   const { t } = useLanguage();
   const [categories, setCategories] = useState([]);
@@ -519,7 +520,7 @@ const SpareSupplyForm = ({
       ) : (
         tableCard
       )}
-      {loadExisting && !isReadOnly && (
+      {loadExisting && !isReadOnly && showInlineSave && (
         <div className="flex justify-end mt-4">
           <button
             type="button"

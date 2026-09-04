@@ -14,6 +14,7 @@ import { useSparePartApprovalStore } from '../../store/useSparePartApprovalStore
 export default function SparePartRequestScreen({
   amsId,
   assetTypeId,
+  checklistSpareCategories = [],
   onCancel,
   onSubmitted,
   embedded = false,
@@ -26,20 +27,62 @@ export default function SparePartRequestScreen({
   const [availableQty, setAvailableQty] = useState({});
 
   useEffect(() => {
-    if (!assetTypeId) {
-      setCategories([]);
-      return;
-    }
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const res = await API.get(
-          `/spare-parts/category-mappings/by-asset-type/${assetTypeId}`
-        );
+        let rows = [];
+
+        // Always resolve checklist-required categories from the AMS when available
+        if (amsId) {
+          try {
+            const res = await API.get(
+              `/spare-parts/maintenance-list/${amsId}/required-categories`
+            );
+            rows = (res.data?.data || [])
+              .filter((row) => row?.spc_id)
+              .map((row) => ({
+                spc_id: row.spc_id,
+                category_name: row.category_name || row.text || row.spc_id,
+                uom: row.uom,
+                checklist_item: row.checklist_item,
+              }));
+          } catch (err) {
+            console.warn('Failed to load checklist spare categories:', err);
+          }
+        }
+
+        // Fallback: prop from detail, then all asset-type mappings
+        if (!rows.length && Array.isArray(checklistSpareCategories) && checklistSpareCategories.length) {
+          rows = checklistSpareCategories
+            .filter((row) => row?.spc_id)
+            .map((row) => ({
+              spc_id: row.spc_id,
+              category_name: row.category_name || row.text || row.spc_id,
+              uom: row.uom,
+              checklist_item: row.checklist_item,
+            }));
+        }
+
+        if (!rows.length && assetTypeId) {
+          const res = await API.get(
+            `/spare-parts/category-mappings/by-asset-type/${assetTypeId}`
+          );
+          rows = res.data?.data || [];
+        }
+
         if (cancelled) return;
-        setCategories(res.data?.data || []);
-        setSelected({});
+
+        const byId = new Map();
+        rows.forEach((row) => {
+          if (row?.spc_id && !byId.has(row.spc_id)) byId.set(row.spc_id, row);
+        });
+        const unique = [...byId.values()];
+        setCategories(unique);
+        // Auto-check every loaded category with default quantity 1
+        setSelected(
+          Object.fromEntries(unique.map((row) => [row.spc_id, '1']))
+        );
         setAvailableQty({});
       } catch (err) {
         if (!cancelled) {
@@ -54,7 +97,7 @@ export default function SparePartRequestScreen({
     return () => {
       cancelled = true;
     };
-  }, [assetTypeId, t]);
+  }, [amsId, assetTypeId, t]);
 
   const toggleCategory = (spc_id) => {
     setSelected((prev) => {
@@ -62,7 +105,7 @@ export default function SparePartRequestScreen({
       if (next[spc_id] !== undefined) {
         delete next[spc_id];
       } else {
-        next[spc_id] = '';
+        next[spc_id] = '1';
       }
       return next;
     });
@@ -158,6 +201,11 @@ export default function SparePartRequestScreen({
                     <div className="font-medium text-gray-800">
                       {cat.category_name}
                     </div>
+                    {cat.checklist_item && (
+                      <div className="text-xs text-gray-500">
+                        {cat.checklist_item}
+                      </div>
+                    )}
                     {(cat.brand || cat.model) && (
                       <div className="text-xs text-gray-500">
                         {[cat.brand, cat.model].filter(Boolean).join(' / ')}

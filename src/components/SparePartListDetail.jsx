@@ -34,7 +34,7 @@ export default function SparePartListDetail() {
       try {
         const detail = await useSparePartListStore.getState().fetchDetail(id, {
           revalidate: true,
-          force: !cachedDetail,
+          force: true,
         });
         if (!cancelled) setMaintenanceData(detail);
       } catch (err) {
@@ -81,14 +81,15 @@ export default function SparePartListDetail() {
     navigate('/spare-part-list');
   };
 
+const isTruthyFlag = (value) =>
+  value === true || value === 'true' || value === 1 || value === '1';
+
   const canRequestSpareParts =
     isInhouseMaintenance(
       maintenanceData?.maintenance_provider || maintenanceData?.maintained_by
     ) &&
-    (maintenanceData?.require_spare_parts === true ||
-      maintenanceData?.require_spare_parts === 'true' ||
-      maintenanceData?.require_spare_parts === 1 ||
-      maintenanceData?.require_spare_parts === '1');
+    (isTruthyFlag(maintenanceData?.require_spare_parts) ||
+      isTruthyFlag(maintenanceData?.required_spare_parts));
 
   if (loadingData && !maintenanceData) {
     return (
@@ -171,6 +172,9 @@ export default function SparePartListDetail() {
                 embedded
                 amsId={id}
                 assetTypeId={maintenanceData?.asset_type_id}
+                checklistSpareCategories={
+                  maintenanceData?.checklist_spare_categories || []
+                }
                 onCancel={() => navigate('/spare-part-list')}
                 onSubmitted={handleRequestSubmitted}
               />

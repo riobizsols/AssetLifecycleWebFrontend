@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import API from '../../lib/axios';
@@ -97,7 +97,6 @@ const SpareParts = () => {
   const navigate = useNavigate();
   const { spld_id: editLotId } = useParams();
   const isEdit = Boolean(editLotId);
-  const preserveLoadedPartNumberRef = useRef(false);
   const [form, setForm] = useState(emptyForm);
   const [vendors, setVendors] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -109,7 +108,6 @@ const SpareParts = () => {
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingBrands, setLoadingBrands] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
-  const [loadingPartNumber, setLoadingPartNumber] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showBrandModal, setShowBrandModal] = useState(false);
@@ -124,9 +122,6 @@ const SpareParts = () => {
     const n = Number(form.quantity);
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
   }, [form.quantity]);
-
-  const selectionComplete =
-    form.vendor_id && form.spc_id && form.brand_id && form.model_id;
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -169,7 +164,6 @@ const SpareParts = () => {
         const res = await API.get(`/spare-parts/lots/${editLotId}`);
         const lot = res.data?.data;
         if (!lot || cancelled) return;
-        preserveLoadedPartNumberRef.current = true;
         setForm({
           vendor_id: lot.vendor_id || '',
           spc_id: lot.spc_id || '',
@@ -322,73 +316,6 @@ const SpareParts = () => {
   }, [form.spc_id, form.brand_id]);
 
   useEffect(() => {
-    if (!selectionComplete) {
-      if (isEdit) return;
-      setForm((prev) => (prev.part_number ? { ...prev, part_number: '' } : prev));
-      return;
-    }
-
-    if (preserveLoadedPartNumberRef.current) {
-      return;
-    }
-
-    const fetchPartNumber = async () => {
-      setLoadingPartNumber(true);
-      try {
-        const res = await API.get('/spare-parts/lot-options/part-number', {
-          params: {
-            vendor_id: form.vendor_id,
-            spc_id: form.spc_id,
-            brand_id: form.brand_id,
-            model_id: form.model_id,
-          },
-        });
-        const partNumber = res.data?.data?.part_number || '';
-        setForm((prev) => ({ ...prev, part_number: partNumber }));
-      } catch (error) {
-        console.error('Error fetching part number:', error);
-        setForm((prev) => ({ ...prev, part_number: '' }));
-        if (error.response?.status === 404) {
-          showBackendTextToast({
-            toast,
-            tmdId: 'TMD_SPARE_PART_NUMBER_NOT_FOUND',
-            fallbackText:
-              error.response?.data?.error ||
-              'No part number found for the selected vendor, category, brand, and model',
-            type: 'error',
-          });
-        } else if (error.response?.status === 409) {
-          showBackendTextToast({
-            toast,
-            tmdId: 'TMD_SPARE_PART_NUMBER_AMBIGUOUS',
-            fallbackText:
-              error.response?.data?.error ||
-              'Multiple part numbers match this selection',
-            type: 'error',
-          });
-        } else {
-          showBackendTextToast({
-            toast,
-            tmdId: 'TMD_FAILED_TO_FETCH_SPARE_PART_NUMBER',
-            fallbackText: 'Failed to fetch part number',
-            type: 'error',
-          });
-        }
-      } finally {
-        setLoadingPartNumber(false);
-      }
-    };
-
-    fetchPartNumber();
-  }, [
-    form.vendor_id,
-    form.spc_id,
-    form.brand_id,
-    form.model_id,
-    selectionComplete,
-  ]);
-
-  useEffect(() => {
     if (loadingCategories || !form.spc_id) return;
     setCategories((prev) => {
       if (prev.some((row) => String(row.spc_id) === String(form.spc_id))) {
@@ -461,23 +388,14 @@ const SpareParts = () => {
       };
 
       if (name === 'vendor_id') {
-        preserveLoadedPartNumberRef.current = false;
         next.spc_id = '';
         next.brand_id = '';
         next.model_id = '';
-        next.part_number = '';
       } else if (name === 'spc_id') {
-        preserveLoadedPartNumberRef.current = false;
         next.brand_id = '';
         next.model_id = '';
-        next.part_number = '';
       } else if (name === 'brand_id') {
-        preserveLoadedPartNumberRef.current = false;
         next.model_id = '';
-        next.part_number = '';
-      } else if (name === 'model_id') {
-        preserveLoadedPartNumberRef.current = false;
-        next.part_number = '';
       }
 
       return next;
@@ -501,12 +419,10 @@ const SpareParts = () => {
       setShowBrandModal(true);
       return;
     }
-    preserveLoadedPartNumberRef.current = false;
     setForm((prev) => ({
       ...prev,
       brand_id: value,
       model_id: '',
-      part_number: '',
     }));
     setAutoIndividuals([]);
   };
@@ -525,11 +441,9 @@ const SpareParts = () => {
       setShowModelModal(true);
       return;
     }
-    preserveLoadedPartNumberRef.current = false;
     setForm((prev) => ({
       ...prev,
       model_id: value,
-      part_number: '',
     }));
     setAutoIndividuals([]);
   };
@@ -576,12 +490,10 @@ const SpareParts = () => {
           String(a.brand_name || '').localeCompare(String(b.brand_name || ''))
         );
       });
-      preserveLoadedPartNumberRef.current = false;
       setForm((prev) => ({
         ...prev,
         brand_id,
         model_id: '',
-        part_number: '',
       }));
       setNewBrandName('');
       setShowBrandModal(false);
@@ -659,11 +571,9 @@ const SpareParts = () => {
           String(a.model_name || '').localeCompare(String(b.model_name || ''))
         );
       });
-      preserveLoadedPartNumberRef.current = false;
       setForm((prev) => ({
         ...prev,
         model_id,
-        part_number: '',
       }));
       setNewModelName('');
       setShowModelModal(false);
@@ -754,6 +664,15 @@ const SpareParts = () => {
         toast,
         tmdId: 'TMD_SPARE_PART_MODEL_REQUIRED',
         fallbackText: 'Model is required',
+        type: 'error',
+      });
+      return false;
+    }
+    if (!form.part_number.trim()) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_SPARE_PART_NUMBER_REQUIRED',
+        fallbackText: 'Part number is required',
         type: 'error',
       });
       return false;
@@ -860,7 +779,7 @@ const SpareParts = () => {
         spc_id: form.spc_id,
         brand_id: form.brand_id,
         model_id: form.model_id,
-        part_number: form.part_number.trim() || null,
+        part_number: form.part_number.trim(),
         quantity: Number(form.quantity),
         unit_price: Number(form.unit_price),
         invoice_no: form.invoice_no.trim(),
@@ -1113,23 +1032,15 @@ const SpareParts = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="lg:col-span-2">
                 <label className="block text-sm mb-1 font-medium">
-                  Part Number
+                  Part Number <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="part_number"
-                  value={
-                    loadingPartNumber && selectionComplete
-                      ? 'Loading...'
-                      : form.part_number
-                  }
-                  readOnly
-                  className="w-full px-3 py-2 border rounded text-sm bg-gray-50 border-gray-300"
-                  placeholder={
-                    selectionComplete
-                      ? 'Part number will appear here'
-                      : 'Auto-filled after vendor, category, brand, and model'
-                  }
+                  value={form.part_number}
+                  onChange={handleInputChange}
+                  className={fieldClass(isFieldInvalid(form.part_number))}
+                  placeholder="Enter part number"
                 />
               </div>
 

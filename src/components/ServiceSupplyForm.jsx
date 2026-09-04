@@ -15,6 +15,7 @@ const ServiceSupplyForm = ({
   vendorSaved = false,
   onSaveTrigger,
   onTabSaved,
+  showInlineSave = true,
   onPersistVendorDraft,
   loadExisting = false,
   isReadOnly = false,
@@ -520,7 +521,7 @@ const ServiceSupplyForm = ({
       ) : (
         tableCard
       )}
-      {loadExisting && !isReadOnly && (
+      {loadExisting && !isReadOnly && showInlineSave && (
         <div className="flex justify-end mt-4">
           <button
             type="button"

@@ -73,6 +73,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [showArchived, setShowArchived] = useState(true);
   const [activeTab, setActiveTab] = useState('Vendor Details');
+  const [savingTab, setSavingTab] = useState('');
   const [supplyFlags, setSupplyFlags] = useState({
     product_supply: false,
     service_supply: false,
@@ -187,15 +188,14 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             }
           }
 
-          if (!flags.product_supply || !flags.service_supply) {
+          // Only show Product Details when product_supply is checked (or linked products exist).
+          // Do not infer Service Details from leftover service links — respect service_supply flag.
+          if (!flags.product_supply) {
             try {
               const vpsRes = await API.get(`/vendor-prod-services/vendor/${vendor.vendor_id}`);
               const rows = Array.isArray(vpsRes.data) ? vpsRes.data : [];
               if (rows.some((row) => String(row.ps_type || '').toLowerCase() === 'product')) {
                 flags.product_supply = true;
-              }
-              if (rows.some((row) => String(row.ps_type || '').toLowerCase() === 'service')) {
-                flags.service_supply = true;
               }
             } catch (vpsErr) {
               console.warn('Failed to fetch vendor product/service links', vpsErr);
@@ -1054,6 +1054,9 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
               vendorSaved
               loadExisting
               isReadOnly={isReadOnly}
+              onSaveTrigger={savingTab}
+              onTabSaved={() => setSavingTab('')}
+              showInlineSave={false}
             />
           </div>
         )}
@@ -1066,6 +1069,9 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
               vendorSaved
               loadExisting
               isReadOnly={isReadOnly}
+              onSaveTrigger={savingTab}
+              onTabSaved={() => setSavingTab('')}
+              showInlineSave={false}
             />
           </div>
         )}
@@ -1348,7 +1354,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         )}
         </div>
 
-        {/* Footer — Cancel / Update at bottom of modal */}
+        {/* Footer — Cancel / Save|Update at bottom of modal */}
         <div className="shrink-0 border-t border-gray-200 bg-white px-6 py-4">
           <div className="flex justify-end gap-3">
             <button
@@ -1365,6 +1371,19 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                 className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
               >
                 {t('common.update')}
+              </button>
+            )}
+            {!isReadOnly && (activeTab === 'Spare Supply' || activeTab === 'Service Details') && (
+              <button
+                type="button"
+                onClick={() => {
+                  // Reset then set so repeated Save clicks still fire the child useEffect
+                  setSavingTab('');
+                  setTimeout(() => setSavingTab(activeTab), 0);
+                }}
+                className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
+              >
+                {t('common.save', { defaultValue: 'Save' })}
               </button>
             )}
           </div>
