@@ -137,7 +137,7 @@ const AssetSelection = () => {
     }
 
     fetchAssetTypes();
-  }, [entityId, entityType, entityIntId]);
+  }, [entityId, entityType, entityIntId, departmentId]);
 
   // Fetch employee internal ID if missing
   const fetchEmployeeIntId = async (employeeId) => {
@@ -190,7 +190,10 @@ const AssetSelection = () => {
     try {
       const incoming = await useAssignmentStore
         .getState()
-        .fetchAssetTypesForAssignment(entityType, entityId, { revalidate: true });
+        .fetchAssetTypesForAssignment(entityType, entityId, {
+          revalidate: true,
+          departmentId: entityType === 'employee' ? departmentId : null,
+        });
 
       setAssetTypes(incoming);
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';

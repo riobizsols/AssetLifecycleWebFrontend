@@ -24,7 +24,8 @@ const KEYS = {
   deptHistory: (deptId) => buildCacheKey(['assignment', 'dept-history', deptId, acmKey()]),
   empHistory: (empIntId) => buildCacheKey(['assignment', 'emp-history', empIntId, acmKey()]),
   assetTypesDept: (deptId) => buildCacheKey(['assignment', 'asset-types', 'dept', deptId, acmKey()]),
-  assetTypesUser: () => buildCacheKey(['assignment', 'asset-types', 'user', acmKey()]),
+  assetTypesUser: (departmentId = '') =>
+    buildCacheKey(['assignment', 'asset-types', 'user', departmentId || 'all', acmKey()]),
   inactive: (context, typeId, branchId = '') =>
     buildCacheKey(['assignment', 'inactive', context, typeId, branchId || 'all', acmKey()]),
 };
@@ -309,11 +310,15 @@ export const useAssignmentStore = create((set, get) => ({
     get().fetchAssignmentHistory({ type, deptId, employeeIntId, revalidate: true }).catch(() => {});
   },
 
-  fetchAssetTypesForAssignment: async (entityType, entityId, { revalidate = false, force = false } = {}) => {
+  fetchAssetTypesForAssignment: async (
+    entityType,
+    entityId,
+    { revalidate = false, force = false, departmentId = null } = {},
+  ) => {
     const cacheKey =
       entityType === 'department' && entityId
         ? KEYS.assetTypesDept(entityId)
-        : KEYS.assetTypesUser();
+        : KEYS.assetTypesUser(departmentId || '');
 
     const fetcher = async () => {
       if (entityType === 'department' && entityId) {
@@ -325,7 +330,17 @@ export const useAssignmentStore = create((set, get) => ({
         }));
       }
       if (entityType === 'employee') {
-        const res = await API.get('/dept-assets/asset-types?assignment_type=user');
+        // Always scope to the selected department — otherwise ACM branch returns
+        // every department's user types at that branch (all with misleading counts).
+        if (departmentId) {
+          const res = await API.get('/dept-assets/asset-types', {
+            params: { assignment_type: 'user', dept_id: departmentId },
+          });
+          return Array.isArray(res.data) ? res.data : [];
+        }
+        const res = await API.get('/dept-assets/asset-types', {
+          params: { assignment_type: 'user' },
+        });
         return Array.isArray(res.data) ? res.data : [];
       }
       const res = await API.get('/dept-assets/asset-types');
