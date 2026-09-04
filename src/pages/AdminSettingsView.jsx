@@ -27,6 +27,9 @@ import {
   Clock,
   Activity,
   MessageSquareText,
+  ClipboardList,
+  CalendarClock,
+  ListChecks,
 } from "lucide-react";
 
 const AdminSettingsView = () => {
@@ -168,6 +171,39 @@ const AdminSettingsView = () => {
       borderColor: "border-emerald-200",
     },
     {
+      app_id: "INSPECTIONFREQUENCY",
+      label: "Inspection Frequency",
+      description: "Configure how often asset types require inspection",
+      icon: CalendarClock,
+      route: "/adminsettings/configuration/inspection-frequency",
+      color: "from-sky-500 to-sky-600",
+      bgColor: "bg-sky-50",
+      iconColor: "text-sky-700",
+      borderColor: "border-sky-200",
+    },
+    {
+      app_id: "INSPECTIONCHECKLISTS",
+      label: "Inspection Checklist",
+      description: "Manage inspection checklist questions and response types",
+      icon: ClipboardList,
+      route: "/adminsettings/configuration/inspection-checklists",
+      color: "from-violet-500 to-violet-600",
+      bgColor: "bg-violet-50",
+      iconColor: "text-violet-700",
+      borderColor: "border-violet-200",
+    },
+    {
+      app_id: "ASSETTYPECHECKLISTMAPPING",
+      label: "Asset Type - Inspection Checklist Mapping",
+      description: "Map inspection checklists to asset types and assets",
+      icon: ListChecks,
+      route: "/adminsettings/configuration/asset-type-checklist-mapping",
+      color: "from-fuchsia-500 to-fuchsia-600",
+      bgColor: "bg-fuchsia-50",
+      iconColor: "text-fuchsia-700",
+      borderColor: "border-fuchsia-200",
+    },
+    {
       app_id: "JOBMONITOR",
       label: "Job Monitor",
       description:
@@ -202,7 +238,11 @@ const AdminSettingsView = () => {
       ? hasAccess("ONETIMECRON") || hasAccess("ADMINSETTINGS")
       : appId === "JOBMONITOR"
         ? hasAccess("JOBMONITOR") || hasAccess("ADMINSETTINGS")
-        : hasAccess(appId);
+        : appId === "INSPECTIONFREQUENCY" ||
+            appId === "INSPECTIONCHECKLISTS" ||
+            appId === "ASSETTYPECHECKLISTMAPPING"
+          ? hasAccess(appId) || hasAccess("ADMINSETTINGS")
+          : hasAccess(appId);
 
   // Use navigation items if available, otherwise use defaults (filtered by access)
   let itemsToShow =
@@ -235,6 +275,21 @@ const AdminSettingsView = () => {
     if (monitorCard) itemsToShow = [...itemsToShow, monitorCard];
   }
 
+  const ensureAdminInspectionCards = [
+    "INSPECTIONFREQUENCY",
+    "INSPECTIONCHECKLISTS",
+    "ASSETTYPECHECKLISTMAPPING",
+  ];
+  for (const appId of ensureAdminInspectionCards) {
+    if (
+      (hasAccess("ADMINSETTINGS") || hasAccess(appId)) &&
+      !itemsToShow.some((i) => i.app_id === appId)
+    ) {
+      const card = defaultItems.find((d) => d.app_id === appId);
+      if (card) itemsToShow = [...itemsToShow, card];
+    }
+  }
+
   // Map app IDs to routes and icons
   const getItemRoute = (appId) => {
     const routeMap = {
@@ -248,6 +303,10 @@ const AdminSettingsView = () => {
       BREAKDOWNREASONCODES:
         "/adminsettings/configuration/breakdown-reason-codes",
       CERTIFICATIONS: "/adminsettings/configuration/certifications",
+      INSPECTIONFREQUENCY: "/adminsettings/configuration/inspection-frequency",
+      INSPECTIONCHECKLISTS: "/adminsettings/configuration/inspection-checklists",
+      ASSETTYPECHECKLISTMAPPING:
+        "/adminsettings/configuration/asset-type-checklist-mapping",
       ONETIMECRON: "/adminsettings/configuration/one-time-cron",
       JOBMONITOR: "/adminsettings/configuration/job-monitor",
     };
@@ -264,6 +323,9 @@ const AdminSettingsView = () => {
       PROPERTIES: Tag,
       BREAKDOWNREASONCODES: AlertTriangle,
       CERTIFICATIONS: FileCheck,
+      INSPECTIONFREQUENCY: CalendarClock,
+      INSPECTIONCHECKLISTS: ClipboardList,
+      ASSETTYPECHECKLISTMAPPING: ListChecks,
       ONETIMECRON: Clock,
       JOBMONITOR: Activity,
     };
@@ -327,6 +389,27 @@ const AdminSettingsView = () => {
         icon: "text-emerald-600",
         border: "border-emerald-200",
         hover: "hover:from-emerald-600 hover:to-emerald-700",
+      },
+      INSPECTIONFREQUENCY: {
+        gradient: "from-sky-500 to-sky-600",
+        bg: "bg-sky-50",
+        icon: "text-sky-700",
+        border: "border-sky-200",
+        hover: "hover:from-sky-600 hover:to-sky-700",
+      },
+      INSPECTIONCHECKLISTS: {
+        gradient: "from-violet-500 to-violet-600",
+        bg: "bg-violet-50",
+        icon: "text-violet-700",
+        border: "border-violet-200",
+        hover: "hover:from-violet-600 hover:to-violet-700",
+      },
+      ASSETTYPECHECKLISTMAPPING: {
+        gradient: "from-fuchsia-500 to-fuchsia-600",
+        bg: "bg-fuchsia-50",
+        icon: "text-fuchsia-700",
+        border: "border-fuchsia-200",
+        hover: "hover:from-fuchsia-600 hover:to-fuchsia-700",
       },
       ONETIMECRON: {
         gradient: "from-slate-500 to-slate-600",
