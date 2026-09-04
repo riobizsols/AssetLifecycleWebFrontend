@@ -1158,6 +1158,7 @@
     "pleaseEnterValidContactPersonEmail": "Bitte geben Sie eine gültige Kontaktperson-E-Mail ein",
     "contactNumberShouldBe10Digits": "Kontaktnummer sollte 10 Ziffern haben",
     "pincodeShouldBe6Digits": "Postleitzahl sollte 6 Ziffern haben",
+    "contractEndBeforeStart": "Das Vertragsende darf nicht vor dem Vertragsbeginn liegen. Bitte korrigieren Sie die Daten vor dem Speichern.",
     "addAtLeastOneFile": "Mindestens eine Datei hinzufügen",
     "selectDocumentTypeAndFile": "Dokumenttyp auswählen und Datei für alle Zeilen wählen",
     "enterCustomNameForDocuments": "Benutzerdefinierten Namen für {{type}}-Dokumente eingeben",

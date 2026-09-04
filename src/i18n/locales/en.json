@@ -1176,6 +1176,7 @@
     "pleaseEnterValidContactPersonEmail": "Please enter a valid contact person email",
     "contactNumberShouldBe10Digits": "Contact number should be 10 digits",
     "pincodeShouldBe6Digits": "Pincode should be 6 digits",
+    "contractEndBeforeStart": "Contract end date cannot be earlier than contract start date. Please correct the dates before saving.",
     "addAtLeastOneFile": "Add at least one file",
     "selectDocumentTypeAndFile": "Select document type and choose a file for all rows",
     "enterCustomNameForDocuments": "Enter custom name for {{type}} documents",
