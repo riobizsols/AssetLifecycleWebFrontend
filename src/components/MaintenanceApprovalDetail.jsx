@@ -778,27 +778,51 @@ const MaintenanceApprovalDetail = () => {
     fetchWorkflowHistory();
   }, [approvalDetails?.wfamshId]);
 
-  // Fetch active service vendors for dropdown
+  // Fetch active vendors for the service-vendor dropdown
   useEffect(() => {
     const fetchActiveServiceVendors = async () => {
       try {
         const response = await API.get('/get-vendors');
         if (response.data && Array.isArray(response.data)) {
-          // Filter only active service vendors (int_status = 1 AND service_supply = true)
+          const currentVendorId =
+            selectedVendorId ||
+            approvalDetails?.vendorId ||
+            approvalDetails?.vendorDetails?.vendor_id ||
+            null;
+
+          // Maintenance approval needs active vendors even when service_supply was never flagged
           const activeServiceVendors = response.data
-            .filter(vendor => {
-              // Active vendors (int_status = 1)
-              const isActive = vendor.int_status === 1;
-              // Service vendors (service_supply = true, or if field doesn't exist, include all active vendors as fallback)
-              const isServiceVendor = vendor.service_supply === true || vendor.service_supply === 'true' || vendor.service_supply === 1;
-              // If service_supply field doesn't exist, show all active vendors (fallback)
-              const hasServiceSupplyField = 'service_supply' in vendor;
-              return isActive && (hasServiceSupplyField ? isServiceVendor : true);
+            .filter((vendor) => {
+              const isActive =
+                vendor.int_status === 1 ||
+                vendor.int_status === '1' ||
+                vendor.int_status === true;
+              return isActive;
             })
-            .map(vendor => ({
+            .map((vendor) => ({
               value: vendor.vendor_id,
-              label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
+              label:
+                vendor.vendor_name ||
+                vendor.company_name ||
+                `Vendor ${vendor.vendor_id}`,
             }));
+
+          // Ensure the workflow's current vendor appears even if missing from the list API
+          if (
+            currentVendorId &&
+            !activeServiceVendors.some((v) => v.value === currentVendorId)
+          ) {
+            const details =
+              displayedVendorDetails || approvalDetails?.vendorDetails || {};
+            activeServiceVendors.unshift({
+              value: currentVendorId,
+              label:
+                details.vendor_name ||
+                details.company_name ||
+                `Vendor ${currentVendorId}`,
+            });
+          }
+
           setActiveVendors(activeServiceVendors);
         }
       } catch (error) {
@@ -807,7 +831,7 @@ const MaintenanceApprovalDetail = () => {
     };
 
     fetchActiveServiceVendors();
-  }, []);
+  }, [selectedVendorId, approvalDetails, displayedVendorDetails]);
 
   // Save vendor change independently
   const saveVendorChange = async (newVendorId) => {

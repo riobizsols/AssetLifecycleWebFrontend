@@ -333,6 +333,7 @@ const Certifications = () => {
     try {
       const rows = await useCertificationsStore.getState().fetchMaintFrequencies(assetTypeId, {
         revalidate: true,
+        force: true,
       });
       const ids = Array.from(
         new Set(rows.map((row) => row.maint_type_id).filter(Boolean).map(String))
@@ -429,9 +430,14 @@ const Certifications = () => {
       return;
     }
 
-    const filtered = maintTypes.filter((type) =>
-      assetTypeMaintTypeIds.includes(String(type.maint_type_id))
-    );
+    // Build options from frequency maint_type_ids; label from master list when available
+    const filtered = assetTypeMaintTypeIds.map((id) => {
+      const master = maintTypes.find((type) => String(type.maint_type_id) === String(id));
+      return {
+        maint_type_id: id,
+        text: master?.text || String(id),
+      };
+    });
     setFilteredMaintTypes(filtered);
   }, [maintTypes, assetTypeMaintTypeIds, selectedAssetType]);
 
