@@ -41,6 +41,13 @@ done
 
 export BACKEND_ONLY=0
 export FRONTEND_ONLY=1
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-tenant-alm}"
-export COMPOSE_IGNORE_ORPHANS="${COMPOSE_IGNORE_ORPHANS:-1}"
+# Force tenant identity — do not inherit Bannari/pressana/main exports from the shell.
+export BACKEND_CONTAINER_NAME=alm-tenant-backend
+export FRONTEND_CONTAINER_NAME=alm-tenant-web
+export BACKEND_HOST_PORT=5001
+export FRONTEND_HOST_PORT=3001
+export MINIO_BUCKET_VALUE=alm-tenant
+export COMPOSE_PROJECT_NAME=tenant-alm
+export COMPOSE_IGNORE_ORPHANS=1
+unset BANNARI_DB_NAME BANNARI_PUBLIC_URL BANNARI_APP_PORT BANNARI_REDIS_URL BANNARI_RESERVED_SUBDOMAINS 2>/dev/null || true
 exec "$DEPLOY"
