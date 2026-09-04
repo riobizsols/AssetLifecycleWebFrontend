@@ -133,6 +133,12 @@ const CreateGroupAsset = () => {
           counts[type.asset_type_id] = list.length;
         });
         setAssetTypeCounts(counts);
+        // Prefer types that still have assets available to group
+        setAssetTypes((prev) => {
+          const withStock = prev.filter((type) => (counts[type.asset_type_id] || 0) > 0);
+          if (!withStock.length || withStock.length === prev.length) return prev;
+          return withStock;
+        });
       } catch (error) {
         console.error('Error fetching group asset type counts:', error);
         setAssetTypeCounts({});
