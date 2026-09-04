@@ -11,7 +11,7 @@ import {
 const MAINTENANCE_SUPERVISOR_TTL_MS = 3 * 60 * 1000;
 
 const KEYS = {
-  list: 'maintenance-supervisor:list',
+  list: 'maintenance-supervisor:list-all',
   detail: (id) => buildCacheKey(['maintenance-supervisor', 'detail', id]),
   docTypes: 'maintenance-supervisor:doc-types',
 };
@@ -77,15 +77,7 @@ export const useMaintenanceSupervisorStore = create((set, get) => ({
       const res = await API.get('/maintenance-schedules/all', {
         params: { context: 'SUPERVISORAPPROVAL' },
       });
-      const rows = Array.isArray(res.data) ? res.data : res.data?.data || [];
-      return rows.filter((row) => {
-        if (row.require_maintenance == null) return true;
-        return (
-          row.require_maintenance === true ||
-          row.require_maintenance === 'true' ||
-          row.require_maintenance === 1
-        );
-      });
+      return Array.isArray(res.data) ? res.data : res.data?.data || [];
     };
 
     if (revalidate) {

@@ -17,6 +17,10 @@ const CreateAssetTypeChecklistMapping = () => {
   const editAssetId = queryParams.get("assetId");
   const isEditing = !!editAtId;
 
+  const mappingListPath = location.pathname.startsWith("/adminsettings")
+    ? "/adminsettings/configuration/asset-type-checklist-mapping"
+    : "/master-data/asset-type-checklist-mapping";
+
   // Form state
   const [modalLoading, setModalLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -303,7 +307,7 @@ const CreateAssetTypeChecklistMapping = () => {
         overrideData: validRows
       });
       showBackendTextToast({ toast, tmdId: 'TMD_MAPPING_SAVED_SUCCESSFULLY_08452B52', fallbackText: 'Mapping saved successfully', type: 'success' });
-      navigate("/master-data/asset-type-checklist-mapping");
+      navigate(mappingListPath);
     } catch (error) {
       console.error("Error saving mapping:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_MAPPING_3344ECED', fallbackText: 'Failed to save mapping', type: 'error' });
@@ -563,7 +567,7 @@ const CreateAssetTypeChecklistMapping = () => {
           {/* Footer Actions */}
           <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-end gap-3 font-semibold uppercase tracking-wider">
               <button
-                onClick={() => navigate("/master-data/asset-type-checklist-mapping")}
+                onClick={() => navigate(mappingListPath)}
                 className="px-6 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-md transition-all shadow-sm text-sm"
               >
                 Cancel

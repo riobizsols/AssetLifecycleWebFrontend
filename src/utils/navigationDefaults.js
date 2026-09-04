@@ -26,17 +26,20 @@ export const SCRAP_CHILD_ORDER = [
   'SCRAPSALES',
 ];
 
-/** Preferred Admin Settings submenu order (audit items). */
-export const ADMIN_SETTINGS_CHILD_ORDER = ['AUDITLOGS', 'AUDITLOGCONFIG'];
+/** Preferred Admin Settings submenu order (audit + inspection config). */
+export const ADMIN_SETTINGS_CHILD_ORDER = [
+  'AUDITLOGS',
+  'AUDITLOGCONFIG',
+  'INSPECTIONFREQUENCY',
+  'INSPECTIONCHECKLISTS',
+  'ASSETTYPECHECKLISTMAPPING',
+];
 
-/** Preferred Inspection submenu order. */
+/** Preferred Inspection submenu order (operational screens only). */
 export const INSPECTION_CHILD_ORDER = [
   'INSPECTIONAPPROVAL',
   'INSPECTIONVIEW',
   'INSPECTION',
-  'INSPECTIONFREQUENCY',
-  'INSPECTIONCHECKLISTS',
-  'ASSETTYPECHECKLISTMAPPING',
 ];
 
 const childOrderRank = (appId, order) => {
