@@ -140,7 +140,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
   Inspection: [
     "INSPECTIONAPPROVAL",
     "INSPECTIONVIEW",
-    "INSPECTIONCHECKLISTS",
+    "INSPECTION",
   ],
   "Admin Settings": ["AUDITLOGS", "AUDITLOGCONFIG"],
   "Asset Assignment": ["DEPTASSIGNMENT", "EMPASSIGNMENT"],
@@ -159,7 +159,6 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "SPAREPARTSCONFIG",
     "SPAREPARTMASTER",
     "MAINTENANCESCHEDULE",
-    "INSPECTIONCHECKLISTS",
   ],
   Reports: [
     "ASSETLIFECYCLEREPORT",
@@ -1157,6 +1156,13 @@ const ADMIN_SETTINGS_GROUP_MODULES = [
   { app_id: "PROPERTIES", label: "Properties", seq: 60 },
   { app_id: "BREAKDOWNREASONCODES", label: "Breakdown Reason Codes", seq: 70 },
   { app_id: "CERTIFICATIONS", label: "Certifications", seq: 80 },
+  { app_id: "INSPECTIONFREQUENCY", label: "Inspection Frequency", seq: 85 },
+  { app_id: "INSPECTIONCHECKLISTS", label: "Inspection Checklist", seq: 86 },
+  {
+    app_id: "ASSETTYPECHECKLISTMAPPING",
+    label: "Asset Type - Inspection Checklist Mapping",
+    seq: 87,
+  },
   { app_id: "JOBMONITOR", label: "Job Monitor", seq: 90 },
 ];
 
@@ -1187,6 +1193,16 @@ function canAccessAdminSidebarItem(appId, accessMap, getAccessLevelFn) {
   if (key === "CERTIFICATIONS") {
     return (
       hasViewAccess(resolve("CERTIFICATIONS")) ||
+      hasViewAccess(resolve("ADMINSETTINGS"))
+    );
+  }
+  if (
+    key === "INSPECTIONFREQUENCY" ||
+    key === "INSPECTIONCHECKLISTS" ||
+    key === "ASSETTYPECHECKLISTMAPPING"
+  ) {
+    return (
+      hasViewAccess(resolve(key)) ||
       hasViewAccess(resolve("ADMINSETTINGS"))
     );
   }
@@ -1455,9 +1471,9 @@ const DatabaseSidebar = () => {
     SPAREPARTS: "/master-data/spare-parts",
     SPAREPARTSCONFIG: "/master-data/spare-parts-configuration",
     SPAREPARTMASTER: "/master-data/spare-part",
-    INSPECTIONCHECKLISTS: "/master-data/inspection-checklists",
-    INSPECTIONFREQUENCY: "/master-data/inspection-frequency",
-    ASSETTYPECHECKLISTMAPPING: "/master-data/asset-type-checklist-mapping",
+    INSPECTIONCHECKLISTS: "/adminsettings/configuration/inspection-checklists",
+    INSPECTIONFREQUENCY: "/adminsettings/configuration/inspection-frequency",
+    ASSETTYPECHECKLISTMAPPING: "/adminsettings/configuration/asset-type-checklist-mapping",
     DEPTASSIGNMENT: "/assign-department-assets",
     EMPASSIGNMENT: "/assign-employee-assets",
     WORKORDERMANAGEMENT: "/workorder-management", // Separate route for maintenance  //done
@@ -1739,6 +1755,17 @@ const DatabaseSidebar = () => {
         fallbackLevel
       );
     }
+    if (
+      key === "INSPECTIONFREQUENCY" ||
+      key === "INSPECTIONCHECKLISTS" ||
+      key === "ASSETTYPECHECKLISTMAPPING"
+    ) {
+      return (
+        getAccessLevel(key) ||
+        getAccessLevel("ADMINSETTINGS") ||
+        fallbackLevel
+      );
+    }
     return fallbackLevel;
   };
 
@@ -1798,6 +1825,10 @@ const DatabaseSidebar = () => {
         PROPERTIES: "/adminsettings/configuration/properties",
         BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes",
         CERTIFICATIONS: "/adminsettings/configuration/certifications",
+        INSPECTIONFREQUENCY: "/adminsettings/configuration/inspection-frequency",
+        INSPECTIONCHECKLISTS: "/adminsettings/configuration/inspection-checklists",
+        ASSETTYPECHECKLISTMAPPING:
+          "/adminsettings/configuration/asset-type-checklist-mapping",
         ONETIMECRON: "/adminsettings/configuration/one-time-cron",
         JOBMONITOR: "/adminsettings/configuration/job-monitor",
       };
@@ -1851,6 +1882,24 @@ const DatabaseSidebar = () => {
         "/employee-report-breakdown",
         "/breakdown-selection2",
         "/breakdown-details2",
+      ];
+    }
+    if (key === "INSPECTIONFREQUENCY") {
+      return [
+        "/adminsettings/configuration/inspection-frequency",
+        "/master-data/inspection-frequency",
+      ];
+    }
+    if (key === "INSPECTIONCHECKLISTS") {
+      return [
+        "/adminsettings/configuration/inspection-checklists",
+        "/master-data/inspection-checklists",
+      ];
+    }
+    if (key === "ASSETTYPECHECKLISTMAPPING") {
+      return [
+        "/adminsettings/configuration/asset-type-checklist-mapping",
+        "/master-data/asset-type-checklist-mapping",
       ];
     }
     return null;

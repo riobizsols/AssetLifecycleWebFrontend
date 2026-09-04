@@ -1,6 +1,6 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { 
   Plus, Edit2, Trash2, Save, X, Search, 
   Trash, ListFilter, Info, ChevronDown
@@ -16,7 +16,11 @@ import { invalidateCache } from "../../utils/apiCache";
 
 const InspectionFrequency = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
+  const frequencyBasePath = location.pathname.startsWith("/adminsettings")
+    ? "/adminsettings/configuration/inspection-frequency"
+    : "/master-data/inspection-frequency";
 
   const frequencies = useInspectionFrequencyStore((s) => s.frequencies);
   const mappings = useInspectionFrequencyStore((s) => s.mappings);
@@ -95,7 +99,7 @@ const InspectionFrequency = () => {
 
   const openAddModal = () => {
     // Navigate to the full-page create form
-    navigate('/master-data/inspection-frequency/create');
+    navigate(`${frequencyBasePath}/create`);
   };
 
   const openEditModal = (freqData) => {

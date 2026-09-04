@@ -4,17 +4,31 @@ import { useParams, useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
+import { useInspectionSyncStore } from "../store/useInspectionSyncStore";
 import { 
-  ArrowLeft, 
   Save, 
   Edit3,
   X
 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
+import InspectionSyncBanner from "../components/InspectionSyncBanner";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useAppData } from "../contexts/AppDataContext";
 import { useInspectionViewStore } from "../store/useInspectionViewStore";
 import { translateMasterDataLabel } from "../utils/masterDataLabel";
+import {
+  getChecklist,
+  getPendingRecords,
+  getRecords,
+  getSchedule,
+  upsertChecklist,
+  upsertLocalRecord,
+  upsertRecordsFromServer,
+  upsertSchedule,
+  patchScheduleLocal,
+} from "../offline/inspectionCache";
+import { prefetchInspectionDetail } from "../offline/prefetch";
+import { enqueueSaveAndSync } from "../offline/outbox";
 
 function formatQuantitativeRange(question, t) {
   const min =
@@ -49,77 +63,173 @@ const InspectionExecutionDetail = () => {
   const [formData, setFormData] = useState({
     notes: ""
   });
-  const { user } = useAuthStore();
+  const [offlineAuthBlocked, setOfflineAuthBlocked] = useState(false);
+  const { user, token } = useAuthStore();
 
-  useEffect(() => {
-    fetchDetail();
-  }, [id]);
-
-  useEffect(() => {
-    if (data?.asset_type_id) {
-      fetchChecklist(data.asset_type_id);
-      fetchChecklistRecords();
-    }
-  }, [data]);
-
-  const fetchDetail = async () => {
-    try {
-      const res = await API.get(`/inspection/${id}`);
-      if (res.data.success) {
-        setData(res.data.data);
-        setStatus(res.data.data.status || 'IN');
-        setFormData({
-          notes: res.data.data.notes || "",
-          inspector_name: res.data.data.inspector_name || '',
-          inspector_email: res.data.data.inspector_email || '',
-          inspector_phone: res.data.data.inspector_phone || res.data.data.inspector_phno || ''
-        });
-        // Initialize trigger maintenance checkbox from API value
-        setTriggerMaintenance(Boolean(res.data.data.trigger_maintenance));
-      }
-    } catch (error) {
-      console.error("Error fetching inspection:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_INSPECTION_DETAILS_75F3A40E', fallbackText: t('inspectionExecution.failedToLoadDetails'), type: 'error' });
-    } finally {
-      setLoading(false);
-    }
+  const applyDetail = (row, { fromCache = false } = {}) => {
+    if (!row) return;
+    setData(row);
+    setStatus(row.status || 'IN');
+    setFormData({
+      notes: row.notes || "",
+      inspector_name: row.inspector_name || '',
+      inspector_email: row.inspector_email || '',
+      inspector_phone: row.inspector_phone || row.inspector_phno || ''
+    });
+    setTriggerMaintenance(Boolean(row.trigger_maintenance));
+    useInspectionSyncStore.getState().setFromCache(fromCache);
   };
 
-  const fetchChecklist = async (assetType) => {
-    setChecklistLoading(true);
-    try {
-      const res = await API.get(`/inspection/checklist/${assetType}`);
-      if (res.data.success) {
-        // Deduplicate checklist by insp_check_id to avoid duplicate keys
-        const rows = res.data.data || [];
-        const seen = new Set();
-        const unique = [];
-        for (const r of rows) {
-          if (!seen.has(r.insp_check_id)) {
-            seen.add(r.insp_check_id);
-            unique.push(r);
+  const applyRecords = (rows) => {
+    const mapped = (rows || []).map((r) => ({
+      attirec_id: r.attirec_id ?? null,
+      aatisch_id: id,
+      insp_check_id: r.insp_check_id,
+      recorded_value: r.recorded_value ?? '',
+      created_on: r.created_on,
+      created_by: r.created_by,
+      pending: Boolean(r.pending),
+    }));
+    setChecklistRecords(mapped);
+    setPendingRecords(
+      mapped
+        .filter((r) => r.pending)
+        .map((r) => ({
+          insp_check_id: r.insp_check_id,
+          recorded_value: r.recorded_value,
+        }))
+    );
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setOfflineAuthBlocked(false);
+      const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+      if (!online && !token) {
+        setOfflineAuthBlocked(true);
+        setData(null);
+        setLoading(false);
+        useInspectionSyncStore.getState().setOffline();
+        return;
+      }
+
+      if (!online) {
+        useInspectionSyncStore.getState().setOffline();
+        const cached = await getSchedule(id);
+        if (cancelled) return;
+        if (cached) {
+          applyDetail(cached, { fromCache: true });
+          const assetType = cached.asset_type_id;
+          if (assetType != null) {
+            const cl = await getChecklist(assetType);
+            if (!cancelled && cl?.questions) {
+              setChecklist(cl.questions);
+            }
           }
+          const recs = await getRecords(id);
+          if (!cancelled) applyRecords(recs);
+        } else {
+          setData(null);
         }
-        setChecklist(unique);
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error("Error fetching checklist:", error);
-      // Don't show error toast as this might be expected for some asset types
-    } finally {
-      setChecklistLoading(false);
-    }
-  };
 
-  const fetchChecklistRecords = async () => {
-    try {
-      const res = await API.get(`/inspection/${id}/records`);
-      if (res.data.success) {
-        setChecklistRecords(res.data.data);
+      try {
+        const res = await API.get(`/inspection/${id}`);
+        if (cancelled) return;
+        if (res.data.success) {
+          applyDetail(res.data.data, { fromCache: false });
+          await upsertSchedule(res.data.data);
+          // Prefetch checklist + records into IndexedDB (and hydrate UI)
+          prefetchInspectionDetail(id).catch(() => {});
+        }
+      } catch (error) {
+        console.error("Error fetching inspection:", error);
+        const cached = await getSchedule(id);
+        if (cancelled) return;
+        if (cached) {
+          applyDetail(cached, { fromCache: true });
+        } else {
+          showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_INSPECTION_DETAILS_75F3A40E', fallbackText: t('inspectionExecution.failedToLoadDetails'), type: 'error' });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching checklist records:", error);
-    }
-  };
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, token, t]);
+
+  useEffect(() => {
+    if (!data?.asset_type_id) return;
+    let cancelled = false;
+
+    const loadChecklistAndRecords = async () => {
+      const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      const assetType = data.asset_type_id;
+
+      setChecklistLoading(true);
+      try {
+        if (online) {
+          try {
+            const res = await API.get(`/inspection/checklist/${assetType}`);
+            if (res.data.success) {
+              const rows = res.data.data || [];
+              const seen = new Set();
+              const unique = [];
+              for (const r of rows) {
+                if (!seen.has(r.insp_check_id)) {
+                  seen.add(r.insp_check_id);
+                  unique.push(r);
+                }
+              }
+              if (!cancelled) setChecklist(unique);
+              await upsertChecklist(assetType, unique);
+            }
+          } catch (error) {
+            console.error("Error fetching checklist:", error);
+            const cl = await getChecklist(assetType);
+            if (!cancelled && cl?.questions) setChecklist(cl.questions);
+          }
+
+          try {
+            const res = await API.get(`/inspection/${id}/records`);
+            if (res.data.success) {
+              await upsertRecordsFromServer(id, res.data.data || []);
+            }
+          } catch (error) {
+            console.error("Error fetching checklist records:", error);
+          }
+        } else {
+          const cl = await getChecklist(assetType);
+          if (!cancelled && cl?.questions) setChecklist(cl.questions);
+        }
+
+        const recs = await getRecords(id);
+        if (!cancelled) applyRecords(recs);
+        // Also merge any pending-only list
+        const pending = await getPendingRecords(id);
+        if (!cancelled && pending.length) {
+          setPendingRecords(pending);
+        }
+      } finally {
+        if (!cancelled) setChecklistLoading(false);
+      }
+    };
+
+    loadChecklistAndRecords();
+    return () => {
+      cancelled = true;
+    };
+  }, [data?.asset_type_id, id]);
 
   const handleQuestionClick = (question) => {
     setSelectedQuestion(question);
@@ -191,7 +301,8 @@ const InspectionExecutionDetail = () => {
       insp_check_id: selectedQuestion.insp_check_id,
       recorded_value: recordedValue,
       created_on: new Date().toISOString(),
-      created_by: user?.user_id || 'SYSTEM'
+      created_by: user?.user_id || 'SYSTEM',
+      pending: true,
     };
 
     // upsert into checklistRecords
@@ -200,10 +311,23 @@ const InspectionExecutionDetail = () => {
       return [...without, newRecord];
     });
 
-    setPendingRecords(prev => {
-      const without = prev.filter(r => r.insp_check_id !== selectedQuestion.insp_check_id);
+    const nextPending = (() => {
+      const without = pendingRecords.filter(r => String(r.insp_check_id) !== String(selectedQuestion.insp_check_id));
       return [...without, { insp_check_id: selectedQuestion.insp_check_id, recorded_value: recordedValue }];
-    });
+    })();
+    setPendingRecords(nextPending);
+
+    // Persist to IndexedDB on every change
+    try {
+      await upsertLocalRecord(id, {
+        insp_check_id: selectedQuestion.insp_check_id,
+        recorded_value: recordedValue,
+        attirec_id: existing?.attirec_id || null,
+        created_by: user?.user_id || 'SYSTEM',
+      });
+    } catch (err) {
+      console.error('[inspection-offline] failed to persist answer', err);
+    }
 
     showBackendTextToast({ toast, tmdId: 'TMD_VALUE_SAVED_LOCALLY_CLICK_SAVE_TO_PERSIST_ALL_VALUES_02259CFB', fallbackText: t('inspectionExecution.valueSavedLocally'), type: 'success' });
     setShowModal(false);
@@ -221,30 +345,38 @@ const InspectionExecutionDetail = () => {
       return;
     }
 
+    if (!token) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Sign in required to save. Offline login is not available.',
+        type: 'error',
+      });
+      return;
+    }
+
     setSaving(true);
     try {
-      if (Array.isArray(pendingRecords) && pendingRecords.length > 0) {
-        const recPayload = {
+      const pending = pendingRecords.length
+        ? pendingRecords
+        : await getPendingRecords(id);
+
+      let recordsPayload = null;
+      if (Array.isArray(pending) && pending.length > 0) {
+        recordsPayload = {
           ais_id: id,
-          records: pendingRecords,
+          records: pending,
           notes: formData.notes,
           trigger_maintenance: triggerMaintenance,
         };
 
         if (data?.vendor_id) {
-          recPayload.inspector_name = formData.inspector_name;
-          recPayload.inspector_email = formData.inspector_email;
-          recPayload.inspector_phone = formData.inspector_phone;
+          recordsPayload.inspector_name = formData.inspector_name;
+          recordsPayload.inspector_email = formData.inspector_email;
+          recordsPayload.inspector_phone = formData.inspector_phone;
         }
-
-        const recRes = await API.post('/inspection/records', recPayload);
-        if (!recRes.data?.success) {
-          throw new Error(recRes.data?.message || t('inspectionExecution.failedToUpdate'));
-        }
-        setPendingRecords([]);
       }
 
-      const payload = {
+      const completePayload = {
         status,
         notes: formData.notes,
         trigger_maintenance: triggerMaintenance,
@@ -252,20 +384,60 @@ const InspectionExecutionDetail = () => {
       };
 
       if (data?.vendor_id) {
-        payload.inspector_name = formData.inspector_name;
-        payload.inspector_email = formData.inspector_email;
-        payload.inspector_phno = formData.inspector_phone;
+        completePayload.inspector_name = formData.inspector_name;
+        completePayload.inspector_email = formData.inspector_email;
+        completePayload.inspector_phno = formData.inspector_phone;
       }
 
-      const res = await API.put(`/inspection/${id}`, payload);
-      if (res.data?.success) {
-        useInspectionViewStore.getState().invalidateInspectionViewCache();
-        showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
+      // Optimistically patch local schedule
+      await patchScheduleLocal(id, {
+        status,
+        notes: formData.notes,
+        trigger_maintenance: triggerMaintenance,
+        act_insp_end_date: completePayload.act_insp_end_date,
+      });
+
+      const result = await enqueueSaveAndSync({
+        ais_id: id,
+        recordsPayload,
+        completePayload,
+        hasPendingRecords: Boolean(recordsPayload),
+      });
+
+      if (result?.queued) {
+        setPendingRecords([]);
+        showBackendTextToast({
+          toast,
+          fallbackText: 'Saved offline. Changes will sync when you are back online.',
+          type: 'success',
+        });
         navigate('/inspection-view');
         return;
       }
 
-      throw new Error(res.data?.message || t('inspectionExecution.failedToUpdate'));
+      if (result?.ok === false && result?.reason === 'no_token') {
+        throw new Error('Sign in required to sync. Offline login is not available.');
+      }
+
+      if (result?.ok === false && result?.reason === 'auth') {
+        throw new Error(result.error || 'Authentication failed during sync');
+      }
+
+      // Partial failure still queued — inform user
+      if (result?.ok === false && result?.reason === 'failed') {
+        setPendingRecords([]);
+        showBackendTextToast({
+          toast,
+          fallbackText: result.error || 'Some changes could not sync. They remain queued.',
+          type: 'error',
+        });
+        navigate('/inspection-view');
+        return;
+      }
+
+      setPendingRecords([]);
+      showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
+      navigate('/inspection-view');
     } catch (error) {
       console.error("Error updating inspection:", error);
       const message = error.response?.data?.message || error.message || t('inspectionExecution.failedToUpdate');
@@ -288,11 +460,24 @@ const InspectionExecutionDetail = () => {
   };
 
   if (loading) return <div className="min-h-screen bg-white flex items-center justify-center">{t('common.loading')}</div>;
+
+  if (offlineAuthBlocked) {
+    return (
+      <div className="min-h-screen bg-white p-4">
+        <InspectionSyncBanner />
+        <div className="flex items-center justify-center text-red-600 text-center max-w-md mx-auto mt-16">
+          You are offline and not signed in. Connect to the network and log in to open this inspection. Offline login is not available.
+        </div>
+      </div>
+    );
+  }
+
   if (!data) return <div className="min-h-screen bg-white flex items-center justify-center text-red-500">{t('inspectionExecution.notFound')}</div>;
 
   return (
     <div className="min-h-screen bg-white">
       <div className="p-3 max-w-6xl mx-auto">
+      <InspectionSyncBanner />
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[560px]">
       <div className="flex-1 overflow-y-auto p-6">
 
