@@ -45,7 +45,19 @@ export const useSparePartListStore = create((set, get) => ({
 
     const fetcher = async () => {
       const res = await API.get('/spare-parts/maintenance-list');
-      return res.data?.data || [];
+      const rows = res.data?.data || [];
+      return rows.filter((row) => {
+        if (row.require_maintenance == null && row.require_spare_parts == null) return true;
+        const maintenanceOn =
+          row.require_maintenance === true ||
+          row.require_maintenance === 'true' ||
+          row.require_maintenance === 1;
+        const spareOn =
+          row.require_spare_parts === true ||
+          row.require_spare_parts === 'true' ||
+          row.require_spare_parts === 1;
+        return maintenanceOn && spareOn;
+      });
     };
 
     if (revalidate) {

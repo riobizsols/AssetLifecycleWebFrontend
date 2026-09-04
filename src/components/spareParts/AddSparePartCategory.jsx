@@ -1,6 +1,6 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import API from '../../lib/axios';
 import { invalidateCache } from '../../utils/apiCache';
@@ -77,6 +77,8 @@ const CreateNameModal = ({
 
 const AddSparePartCategory = () => {
   const navigate = useNavigate();
+  const { spcId } = useParams();
+  const isEdit = Boolean(spcId);
   const [form, setForm] = useState(emptyForm);
   const [uomOptions, setUomOptions] = useState([]);
   const [brands, setBrands] = useState([]);
@@ -187,6 +189,50 @@ const AddSparePartCategory = () => {
     loadUom();
     fetchBrands();
   }, []);
+
+  useEffect(() => {
+    if (!isEdit || !spcId) return undefined;
+    let cancelled = false;
+    const loadCategory = async () => {
+      try {
+        const res = await API.get(`/spare-parts/categories/${encodeURIComponent(spcId)}`);
+        const row = res.data?.data;
+        if (cancelled) return;
+        if (!row) {
+          showBackendTextToast({
+            toast,
+            fallbackText: 'Spare part category not found',
+            type: 'error',
+          });
+          navigate('/master-data/spare-parts-configuration');
+          return;
+        }
+        setForm({
+          text: row.text || '',
+          spb_id: row.spb_id || '',
+          spm_id: row.spm_id || '',
+          uom: row.uom || '',
+          minimum_stock: row.minimum_stock != null ? String(row.minimum_stock) : '',
+          re_order_level: row.re_order_level != null ? String(row.re_order_level) : '',
+        });
+        if (row.spb_id) await fetchModels(row.spb_id);
+      } catch (error) {
+        console.error('Error loading spare part category:', error);
+        if (!cancelled) {
+          showBackendTextToast({
+            toast,
+            fallbackText: error.response?.data?.error || 'Failed to load spare part category',
+            type: 'error',
+          });
+          navigate('/master-data/spare-parts-configuration');
+        }
+      }
+    };
+    loadCategory();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, spcId, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -417,19 +463,26 @@ const AddSparePartCategory = () => {
 
     try {
       setLoading(true);
-      await API.post('/spare-parts/categories', {
+      const payload = {
         text: form.text.trim(),
         spb_id: form.spb_id,
         spm_id: form.spm_id,
         uom: form.uom.trim(),
         minimum_stock: form.minimum_stock === '' ? null : Number(form.minimum_stock),
         re_order_level: form.re_order_level === '' ? null : Number(form.re_order_level),
-      });
+      };
+      if (isEdit) {
+        await API.put(`/spare-parts/categories/${encodeURIComponent(spcId)}`, payload);
+      } else {
+        await API.post('/spare-parts/categories', payload);
+      }
       invalidateCache('spare-parts:');
       showBackendTextToast({
         toast,
-        tmdId: 'TMD_SP_CATEGORY_CREATED',
-        fallbackText: 'Spare part category created successfully',
+        tmdId: isEdit ? 'TMD_SP_CATEGORY_UPDATED' : 'TMD_SP_CATEGORY_CREATED',
+        fallbackText: isEdit
+          ? 'Spare part category updated successfully'
+          : 'Spare part category created successfully',
         type: 'success',
       });
       navigate('/master-data/spare-parts-configuration');
@@ -509,7 +562,7 @@ const AddSparePartCategory = () => {
       )}
 
       <div className="text-center text-lg font-semibold bg-[#0E2F4B] text-white py-3 border-b-4 border-[#FFC107] rounded-t">
-        Add Spare Part Category
+        {isEdit ? 'Edit Spare Part Category' : 'Add Spare Part Category'}
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6" autoComplete="off">
@@ -648,7 +701,7 @@ const AddSparePartCategory = () => {
             className="bg-[#002F5F] text-white px-4 py-2 rounded text-sm"
             disabled={loading}
           >
-            {loading ? 'Saving...' : 'Save'}
+            {loading ? 'Saving...' : isEdit ? 'Update' : 'Save'}
           </button>
         </div>
       </form>

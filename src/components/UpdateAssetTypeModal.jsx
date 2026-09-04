@@ -24,6 +24,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const { t } = useLanguage();
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
+  const [requireMaintenance, setRequireMaintenance] = useState(false);
+  const [requireSpareParts, setRequireSpareParts] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [parentChild, setParentChild] = useState("parent");
   const [parentAssetTypes, setParentAssetTypes] = useState([]);
@@ -53,6 +55,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       setAssignmentType(assetData.assignment_type || "user");
       setGroupRequired(!!assetData.group_required); // Convert to boolean
       setRequireInspection(!!assetData.inspection_required); // Convert to boolean
+      setRequireMaintenance(!!assetData.require_maintenance);
+      setRequireSpareParts(!!assetData.require_maintenance && !!assetData.require_spare_parts);
       setIsActive(assetData.int_status === 1 || assetData.int_status === "1" || assetData.int_status === true);
       setParentChild(assetData.is_child ? "child" : "parent");
       setSelectedParentType(assetData.parent_asset_type_id || "");
@@ -441,6 +445,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
+        require_maintenance: requireMaintenance,
+        require_spare_parts: requireMaintenance ? requireSpareParts : false,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
         maint_lead_type: null
@@ -756,7 +762,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
           </div>
 
           {/* Second Row: Checkboxes */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -771,6 +777,21 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
+                checked={requireMaintenance}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setRequireMaintenance(checked);
+                  if (!checked) setRequireSpareParts(false);
+                }}
+                disabled={isReadOnly}
+                className="form-checkbox text-blue-500 rounded"
+              />
+              <span>{t('assetTypes.requireMaintenance')}</span>
+            </label>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
                 checked={requireInspection}
                 onChange={(e) => setRequireInspection(e.target.checked)}
                 disabled={isReadOnly}
@@ -779,6 +800,18 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
               <span>{t('assetTypes.requireInspection')}</span>
             </label>
 
+            {requireMaintenance && (
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={requireSpareParts}
+                  onChange={(e) => setRequireSpareParts(e.target.checked)}
+                  disabled={isReadOnly}
+                  className="form-checkbox text-blue-500 rounded"
+                />
+                <span>{t('assetTypes.requireSpareParts')}</span>
+              </label>
+            )}
           </div>
 
           {/* Document Management Section - Always Visible */}

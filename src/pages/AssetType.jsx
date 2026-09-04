@@ -59,6 +59,7 @@ const AssetType = () => {
     { label: t('assetTypes.assignmentType'), name: "assignment_type", visible: true },
     { label: t('assetTypes.inspectionRequired'), name: "inspection_required", visible: true },
     { label: t('assetTypes.groupRequired'), name: "group_required", visible: true },
+    { label: t('assetTypes.requireSpareParts'), name: "require_spare_parts", visible: true },
     { label: t('assetTypes.type'), name: "type", visible: true },
     { label: t('assetTypes.parentAssetType'), name: "parent_asset_type", visible: true },
     { label: t('assetTypes.createdBy'), name: "created_by", visible: true },
@@ -300,7 +301,7 @@ const AssetType = () => {
     options: col.name === 'int_status' ? [
       { label: t('assetTypes.active'), value: 'Active' },
       { label: t('assetTypes.inactive'), value: 'Inactive' }
-    ] : col.name === 'maintenance_schedule' || col.name === 'inspection_required' || col.name === 'group_required' ? [
+    ] : col.name === 'maintenance_schedule' || col.name === 'inspection_required' || col.name === 'group_required' || col.name === 'require_spare_parts' ? [
       { label: t('assetTypes.yes'), value: 'Yes' },
       { label: t('assetTypes.no'), value: 'No' }
     ] : col.name === 'assignment_type' ? [
