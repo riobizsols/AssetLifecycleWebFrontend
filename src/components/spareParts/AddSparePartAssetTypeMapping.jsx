@@ -1,53 +1,59 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { ChevronDown, Check, Search, Save } from 'lucide-react';
 import API from '../../lib/axios';
 import { invalidateCache } from '../../utils/apiCache';
-import EnhancedDropdown from '../ui/EnhancedDropdown';
-
-const emptyForm = {
-  spc_id: '',
-  category_brand_id: '',
-  category_model_id: '',
-  asset_type_id: '',
-  asset_brand: '',
-  asset_model: '',
-};
 
 const mappingListPath = '/master-data/spare-parts-configuration?tab=mapping';
 
-const fieldClass = (invalid) =>
-  `w-full px-3 py-2 border text-sm bg-white ${invalid ? 'border-red-500' : 'border-gray-300'}`;
-
 const AddSparePartAssetTypeMapping = () => {
   const navigate = useNavigate();
-  const [form, setForm] = useState(emptyForm);
-  const [categories, setCategories] = useState([]);
-  const [categoryBrands, setCategoryBrands] = useState([]);
-  const [categoryModels, setCategoryModels] = useState([]);
+  const { assetTypeId: routeAssetTypeId } = useParams();
+  const [searchParams] = useSearchParams();
+  const editAssetTypeId =
+    routeAssetTypeId || searchParams.get('asset_type_id') || '';
+  const isEditMode = Boolean(editAssetTypeId);
+  const dropdownRef = useRef(null);
+
   const [assetTypes, setAssetTypes] = useState([]);
-  const [assetBrands, setAssetBrands] = useState([]);
-  const [assetModels, setAssetModels] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
+  const [selectedAssetType, setSelectedAssetType] = useState('');
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownSearchTerm, setDropdownSearchTerm] = useState('');
+  const [selectedSearchTerm, setSelectedSearchTerm] = useState('');
+  const [loadingAssetTypes, setLoadingAssetTypes] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
-    const loadInitial = async () => {
+    const loadOptions = async () => {
+      setLoadingAssetTypes(true);
       try {
-        const [catRes, atRes] = await Promise.all([
-          API.get('/spare-parts/mapping-options/categories'),
+        const [atRes, catRes] = await Promise.all([
           API.get('/asset-types'),
+          API.get('/spare-parts/categories?orgWide=true'),
         ]);
-        setCategories(Array.isArray(catRes.data?.data) ? catRes.data.data : []);
         const types = Array.isArray(atRes.data)
           ? atRes.data
           : Array.isArray(atRes.data?.data)
             ? atRes.data.data
             : [];
         setAssetTypes(
-          types.filter((at) => at.int_status === 1 || at.int_status === '1' || at.int_status === 'Active')
+          types.filter((at) => {
+            const status = at.int_status;
+            return status === 1 || status === '1' || status === true || status === 'Active' || status == null;
+          })
         );
+        const categories = Array.isArray(catRes.data?.data) ? catRes.data.data : [];
+        setAllCategories(categories);
+        if (editAssetTypeId) {
+          setSelectedAssetType(editAssetTypeId);
+          await loadCategoriesForAssetType(editAssetTypeId, categories);
+        }
       } catch (error) {
         console.error('Error loading mapping options:', error);
         showBackendTextToast({
@@ -55,137 +61,130 @@ const AddSparePartAssetTypeMapping = () => {
           fallbackText: 'Failed to load mapping options',
           type: 'error',
         });
+      } finally {
+        setLoadingAssetTypes(false);
       }
     };
-    loadInitial();
+    loadOptions();
+  }, [editAssetTypeId]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const loadCategoryBrands = async () => {
-      if (!form.spc_id) {
-        setCategoryBrands([]);
-        return;
+  const loadCategoriesForAssetType = async (assetTypeId, categoriesList = allCategories) => {
+    if (!assetTypeId) {
+      setAvailableCategories([]);
+      setSelectedCategories([]);
+      return;
+    }
+    setLoadingCategories(true);
+    try {
+      let categories = categoriesList;
+      if (!categories.length) {
+        const catRes = await API.get('/spare-parts/categories?orgWide=true');
+        categories = Array.isArray(catRes.data?.data) ? catRes.data.data : [];
+        setAllCategories(categories);
       }
-      try {
-        const res = await API.get('/spare-parts/lot-options/brands', {
-          params: { spc_id: form.spc_id },
-        });
-        setCategoryBrands(Array.isArray(res.data?.data) ? res.data.data : []);
-      } catch (error) {
-        console.error('Error fetching category brands:', error);
-        setCategoryBrands([]);
-      }
-    };
-    loadCategoryBrands();
-  }, [form.spc_id]);
-
-  useEffect(() => {
-    const loadCategoryModels = async () => {
-      if (!form.spc_id || !form.category_brand_id) {
-        setCategoryModels([]);
-        return;
-      }
-      try {
-        const res = await API.get('/spare-parts/lot-options/models', {
-          params: { spc_id: form.spc_id, brand_id: form.category_brand_id },
-        });
-        setCategoryModels(Array.isArray(res.data?.data) ? res.data.data : []);
-      } catch (error) {
-        console.error('Error fetching category models:', error);
-        setCategoryModels([]);
-      }
-    };
-    loadCategoryModels();
-  }, [form.spc_id, form.category_brand_id]);
-
-  useEffect(() => {
-    const loadAssetBrands = async () => {
-      if (!form.asset_type_id) {
-        setAssetBrands([]);
-        return;
-      }
-      try {
-        const res = await API.get('/spare-parts/mapping-options/asset-brands', {
-          params: { asset_type_id: form.asset_type_id },
-        });
-        setAssetBrands(Array.isArray(res.data?.data) ? res.data.data : []);
-      } catch (error) {
-        console.error('Error fetching asset brands:', error);
-        setAssetBrands([]);
-      }
-    };
-    loadAssetBrands();
-  }, [form.asset_type_id]);
-
-  useEffect(() => {
-    const loadAssetModels = async () => {
-      if (!form.asset_type_id || !form.asset_brand) {
-        setAssetModels([]);
-        return;
-      }
-      try {
-        const res = await API.get('/spare-parts/mapping-options/asset-models', {
-          params: {
-            asset_type_id: form.asset_type_id,
-            brand: form.asset_brand,
-          },
-        });
-        setAssetModels(Array.isArray(res.data?.data) ? res.data.data : []);
-      } catch (error) {
-        console.error('Error fetching asset models:', error);
-        setAssetModels([]);
-      }
-    };
-    loadAssetModels();
-  }, [form.asset_type_id, form.asset_brand]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => {
-      const next = { ...prev, [name]: value };
-      if (name === 'spc_id') {
-        next.category_brand_id = '';
-        next.category_model_id = '';
-      } else if (name === 'category_brand_id') {
-        next.category_model_id = '';
-      } else if (name === 'asset_type_id') {
-        next.asset_brand = '';
-        next.asset_model = '';
-      } else if (name === 'asset_brand') {
-        next.asset_model = '';
-      }
-      return next;
-    });
+      const res = await API.get(`/spare-parts/category-mappings/by-asset-type/${assetTypeId}`);
+      const mapped = Array.isArray(res.data?.data) ? res.data.data : [];
+      const mappedIds = new Set(mapped.map((row) => row.spc_id));
+      setSelectedCategories(categories.filter((cat) => mappedIds.has(cat.spc_id)));
+      setAvailableCategories(categories.filter((cat) => !mappedIds.has(cat.spc_id)));
+    } catch (error) {
+      console.error('Error loading mapped categories:', error);
+      setSelectedCategories([]);
+      setAvailableCategories(categoriesList);
+    } finally {
+      setLoadingCategories(false);
+    }
   };
 
-  // Only mark fields invalid if they are required for this screen
-  const isInvalid = (val, required = true) =>
-    submitAttempted && required && (!val || !String(val).trim());
+  const handleAssetTypeSelect = (assetType) => {
+    const assetTypeId = assetType.asset_type_id;
+    setAvailableCategories([]);
+    setSelectedCategories([]);
+    setSelectedAssetType(assetTypeId);
+    setIsDropdownOpen(false);
+    setDropdownSearchTerm('');
+    setSelectedSearchTerm('');
+    loadCategoriesForAssetType(assetTypeId, allCategories);
+  };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setSubmitAttempted(true);
+  const handleSelectCategory = (category) => {
+    if (!category) return;
+    setSelectedCategories((prev) =>
+      prev.some((item) => item.spc_id === category.spc_id) ? prev : [...prev, category]
+    );
+    setAvailableCategories((prev) => prev.filter((item) => item.spc_id !== category.spc_id));
+  };
 
-    const required = [[form.spc_id, 'Category is required'], [form.asset_type_id, 'Asset type is required']];
-    const missing = required.find(([val]) => !val || !String(val).trim());
-    if (missing) {
+  const handleDeselectCategory = (category) => {
+    if (!category) return;
+    setAvailableCategories((prev) =>
+      prev.some((item) => item.spc_id === category.spc_id) ? prev : [...prev, category]
+    );
+    setSelectedCategories((prev) => prev.filter((item) => item.spc_id !== category.spc_id));
+  };
+
+  const handleSelectAll = () => {
+    setSelectedCategories((prev) => [...prev, ...availableCategories]);
+    setAvailableCategories([]);
+  };
+
+  const handleDeselectAll = () => {
+    setAvailableCategories((prev) => [...prev, ...filteredSelectedCategories]);
+    setSelectedCategories((prev) =>
+      prev.filter((item) => !filteredSelectedCategories.some((sel) => sel.spc_id === item.spc_id))
+    );
+  };
+
+  const filteredAssetTypes = assetTypes.filter(
+    (type) =>
+      type.text?.toLowerCase().includes(dropdownSearchTerm.toLowerCase()) ||
+      type.asset_type_id?.toLowerCase().includes(dropdownSearchTerm.toLowerCase())
+  );
+
+  const filteredSelectedCategories = selectedCategories.filter(
+    (cat) =>
+      cat.text?.toLowerCase().includes(selectedSearchTerm.toLowerCase()) ||
+      cat.spc_id?.toLowerCase().includes(selectedSearchTerm.toLowerCase())
+  );
+
+  const selectedAssetTypeRecord = assetTypes.find((type) => type.asset_type_id === selectedAssetType);
+  const dropdownDisplayText = selectedAssetTypeRecord
+    ? selectedAssetTypeRecord.text
+    : 'Select asset type';
+
+  const handleSave = async () => {
+    if (!selectedAssetType) {
       showBackendTextToast({
         toast,
-        fallbackText: missing[1],
+        fallbackText: 'Please select an asset type',
+        type: 'error',
+      });
+      return;
+    }
+    if (!selectedCategories.length) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Please select at least one category',
         type: 'error',
       });
       return;
     }
 
+    setSaving(true);
     try {
-      setSaving(true);
-      await API.post('/spare-parts/category-mappings', {
-        spc_id: form.spc_id,
-        category_brand_id: form.category_brand_id,
-        category_model_id: form.category_model_id,
-        asset_type_id: form.asset_type_id,
-        asset_brand: form.asset_brand,
-        asset_model: form.asset_model,
+      await API.post('/spare-parts/category-mappings/bulk', {
+        asset_type_id: selectedAssetType,
+        spc_ids: selectedCategories.map((cat) => cat.spc_id),
       });
       invalidateCache('spare-parts:');
       showBackendTextToast({
@@ -196,7 +195,7 @@ const AddSparePartAssetTypeMapping = () => {
       });
       navigate(mappingListPath);
     } catch (error) {
-      console.error('Error saving mapping:', error);
+      console.error('Error saving mappings:', error);
       showBackendTextToast({
         toast,
         tmdId: 'TMD_SP_MAP_SAVE_FAILED',
@@ -212,169 +211,241 @@ const AddSparePartAssetTypeMapping = () => {
   };
 
   return (
-    <div className="max-w-[1000px] mx-auto mt-8 bg-white shadow rounded">
-      <div className="text-center text-lg font-semibold bg-[#0E2F4B] text-white py-3 border-b-4 border-[#FFC107] rounded-t">
-        Asset Type Mapping
+    <div className="h-screen flex flex-col bg-gray-50">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col min-h-0">
+          <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 mb-4 sm:mb-6 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <label className="text-sm font-medium text-gray-700 min-w-[80px] sm:min-w-[100px]">
+                Asset Type
+              </label>
+              <div className="relative flex-1" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isEditMode) setIsDropdownOpen((open) => !open);
+                  }}
+                  disabled={isEditMode}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-left flex items-center justify-between ${
+                    isEditMode ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'
+                  }`}
+                >
+                  <span className={selectedAssetType ? 'text-gray-900' : 'text-gray-500'}>
+                    {dropdownDisplayText}
+                  </span>
+                  <ChevronDown size={16} className="text-gray-400" />
+                </button>
+                {isDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
+                    <div className="p-2 border-b border-gray-200">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                        <input
+                          type="text"
+                          placeholder="Select asset type"
+                          value={dropdownSearchTerm}
+                          onChange={(e) => setDropdownSearchTerm(e.target.value)}
+                          className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {loadingAssetTypes ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">Loading asset types...</div>
+                      ) : filteredAssetTypes.length > 0 ? (
+                        filteredAssetTypes.map((type) => (
+                          <button
+                            key={type.asset_type_id}
+                            type="button"
+                            onClick={() => handleAssetTypeSelect(type)}
+                            className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center justify-between"
+                          >
+                            <span className="text-sm text-gray-900 truncate">
+                              {type.text}
+                            </span>
+                            {selectedAssetType === type.asset_type_id && (
+                              <Check size={16} className="text-blue-600" />
+                            )}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-gray-500">No asset types found</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6">
+            <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 lg:flex-[2] h-[500px]">
+              <div className="p-4 border-b flex-shrink-0">
+                <h2 className="text-lg font-semibold text-gray-900">Category</h2>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="h-full overflow-auto">
+                  {loadingCategories ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="text-gray-500">Loading categories...</div>
+                    </div>
+                  ) : !selectedAssetType ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="text-gray-500">Please select an asset type to view categories</div>
+                    </div>
+                  ) : availableCategories.length === 0 ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="text-gray-500">No categories available</div>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {availableCategories.map((category, index) => (
+                          <tr
+                            key={category.spc_id}
+                            className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                            onClick={() => handleSelectCategory(category)}
+                          >
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">
+                              {category.text}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden lg:flex flex-col justify-center items-center gap-2 flex-shrink-0 px-2">
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleSelectCategory(availableCategories[0])}
+                  disabled={availableCategories.length === 0}
+                  className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Add one category"
+                >
+                  <span className="text-lg font-bold">→</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  disabled={availableCategories.length === 0}
+                  className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Add all categories"
+                >
+                  <span className="text-lg font-bold">{'>>'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeselectCategory(filteredSelectedCategories[0])}
+                  disabled={filteredSelectedCategories.length === 0}
+                  className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Remove one category"
+                >
+                  <span className="text-lg font-bold">←</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeselectAll}
+                  disabled={filteredSelectedCategories.length === 0}
+                  className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Remove all categories"
+                >
+                  <span className="text-lg font-bold">{'<<'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="lg:hidden flex justify-center gap-4 py-2 bg-gray-50 rounded-lg">
+              <button
+                type="button"
+                onClick={handleSelectAll}
+                disabled={availableCategories.length === 0}
+                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-300 rounded"
+              >
+                Add all
+              </button>
+              <button
+                type="button"
+                onClick={handleDeselectAll}
+                disabled={filteredSelectedCategories.length === 0}
+                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-300 rounded"
+              >
+                Remove all
+              </button>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border flex flex-col flex-1 lg:flex-[2] h-[500px]">
+              <div className="p-4 border-b flex-shrink-0">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Selected Category</h2>
+                <div className="relative mb-0">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search selected categories..."
+                    value={selectedSearchTerm}
+                    onChange={(e) => setSelectedSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="h-full overflow-auto">
+                  <table className="w-full">
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredSelectedCategories.map((category, index) => (
+                        <tr
+                          key={category.spc_id}
+                          className={`hover:bg-gray-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                          onClick={() => handleDeselectCategory(category)}
+                        >
+                          <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-900">
+                            {category.text}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-sm border p-4 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">
+              <p className="text-sm text-gray-600">
+                Total categories selected: {selectedCategories.length}
+              </p>
+              <div className="flex gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(mappingListPath)}
+                  className="px-3 sm:px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm sm:text-base"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || !selectedAssetType || selectedCategories.length === 0}
+                  className="px-4 sm:px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <form onSubmit={handleSave} className="p-6 space-y-8">
-        <div>
-          <h3 className="text-sm font-semibold text-[#0E2F4B] mb-3">
-            Category Mapping
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm mb-1 font-medium">
-                Category <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="spc_id"
-                value={form.spc_id}
-                onChange={handleChange}
-                className={fieldClass(isInvalid(form.spc_id, true))}
-              >
-                <option value="">Select category</option>
-                {categories.map((cat) => (
-                  <option key={cat.spc_id} value={cat.spc_id}>
-                    {cat.text}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1 font-medium">
-                Brand
-              </label>
-              <select
-                name="category_brand_id"
-                value={form.category_brand_id}
-                onChange={handleChange}
-                className={fieldClass(isInvalid(form.category_brand_id, false))}
-                disabled={!form.spc_id}
-              >
-                <option value="">
-                  {form.spc_id ? 'Select brand' : 'Select category first'}
-                </option>
-                {categoryBrands.map((brand) => (
-                  <option key={brand.brand_id} value={brand.brand_id}>
-                    {brand.brand_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1 font-medium">
-                Model
-              </label>
-              <select
-                name="category_model_id"
-                value={form.category_model_id}
-                onChange={handleChange}
-                className={fieldClass(isInvalid(form.category_model_id, false))}
-                disabled={!form.category_brand_id}
-              >
-                <option value="">
-                  {form.category_brand_id ? 'Select model' : 'Select brand first'}
-                </option>
-                {categoryModels.map((model) => (
-                  <option key={model.model_id} value={model.model_id}>
-                    {model.model_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="overflow-visible">
-          <h3 className="text-sm font-semibold text-[#0E2F4B] mb-3">
-            Asset Type Mapping
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-visible">
-            <div className="overflow-visible">
-              <label className="block text-sm mb-1 font-medium">
-                Asset Type <span className="text-red-500">*</span>
-              </label>
-              <EnhancedDropdown
-                native
-                required
-                className={isInvalid(form.asset_type_id, true) ? '[&>div]:border-red-500' : ''}
-                value={form.asset_type_id}
-                placeholder="Select asset type"
-                onChange={(value) =>
-                  handleChange({ target: { name: 'asset_type_id', value } })
-                }
-                options={[
-                  { value: '', label: 'Select asset type' },
-                  ...assetTypes.map((at) => ({
-                    value: at.asset_type_id,
-                    label: at.text,
-                  })),
-                ]}
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1 font-medium">
-                Brand
-              </label>
-              <select
-                name="asset_brand"
-                value={form.asset_brand}
-                onChange={handleChange}
-                className={fieldClass(isInvalid(form.asset_brand, false))}
-                disabled={!form.asset_type_id}
-              >
-                <option value="">
-                  {form.asset_type_id ? 'Select brand' : 'Select asset type first'}
-                </option>
-                {assetBrands.map((brand) => (
-                  <option key={brand.brand} value={brand.brand}>
-                    {brand.brand}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1 font-medium">
-                Model
-              </label>
-              <select
-                name="asset_model"
-                value={form.asset_model}
-                onChange={handleChange}
-                className={fieldClass(isInvalid(form.asset_model, false))}
-                disabled={!form.asset_brand}
-              >
-                <option value="">
-                  {form.asset_brand ? 'Select model' : 'Select brand first'}
-                </option>
-                {assetModels.map((model) => (
-                  <option key={model.model} value={model.model}>
-                    {model.model}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => navigate(mappingListPath)}
-            className="bg-gray-300 px-4 py-2 rounded text-sm"
-            disabled={saving}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="bg-[#002F5F] text-white px-4 py-2 rounded text-sm"
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      </form>
     </div>
   );
 };

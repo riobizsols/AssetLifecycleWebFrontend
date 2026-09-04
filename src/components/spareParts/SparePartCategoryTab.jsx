@@ -114,6 +114,13 @@ const SparePartCategoryTab = () => {
     });
   };
 
+  const handleEdit = (row) => {
+    if (!row?.spc_id) return;
+    navigate(
+      `/master-data/spare-parts-configuration/categories/edit/${encodeURIComponent(row.spc_id)}`
+    );
+  };
+
   const handleDownload = () => {
     if (!selectedRows.length) {
       showBackendTextToast({
@@ -170,14 +177,14 @@ const SparePartCategoryTab = () => {
         setSelectedRows={setSelectedRows}
         showAddButton={canEdit}
         showDeleteButton={false}
-        showActions={false}
+        showActions={canEdit}
         showFilterButton={false}
       >
-        {({ visibleColumns }) => {
+        {({ visibleColumns, showActions }) => {
           const filtered = filterData(data, filterValues, visibleColumns);
           const sorted = sortData(filtered);
           const visibleCols = visibleColumns.filter((col) => col.visible);
-          const colSpan = visibleCols.length;
+          const colSpan = visibleCols.length + (showActions ? 1 : 0);
 
           if (isLoading) {
             return (
@@ -210,7 +217,8 @@ const SparePartCategoryTab = () => {
               rowKey="spc_id"
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
-              showActions={false}
+              onEdit={canEdit ? handleEdit : undefined}
+              showActions={Boolean(showActions)}
             />
           );
         }}

@@ -1131,6 +1131,7 @@ export default function AppRoutes() {
         >
           <Route index element={<SparePartMasterList />} />
           <Route path="add" element={<SparePartMaster />} />
+          <Route path="edit/:partNumber" element={<SparePartMaster />} />
         </Route>
 
         <Route
@@ -1145,7 +1146,9 @@ export default function AppRoutes() {
         >
           <Route index element={<SparePartsConfiguration />} />
           <Route path="categories/add" element={<AddSparePartCategory />} />
+          <Route path="categories/edit/:spcId" element={<AddSparePartCategory />} />
           <Route path="mappings/add" element={<AddSparePartAssetTypeMapping />} />
+          <Route path="mappings/edit/:assetTypeId" element={<AddSparePartAssetTypeMapping />} />
         </Route>
 
 

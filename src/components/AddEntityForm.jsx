@@ -456,6 +456,15 @@ const AddEntityForm = () => {
       }
     }
 
+    // Contract end cannot be before contract start
+    if (
+      form.contract_start_date &&
+      form.contract_end_date &&
+      form.contract_end_date < form.contract_start_date
+    ) {
+      errors.push(t('vendors.contractEndBeforeStart'));
+    }
+
     return errors;
   };
 
@@ -815,6 +824,7 @@ const AddEntityForm = () => {
                   name="contract_start_date"
                   value={form.contract_start_date}
                   onChange={handleInputChange}
+                  max={form.contract_end_date || undefined}
                   className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
@@ -827,6 +837,7 @@ const AddEntityForm = () => {
                   name="contract_end_date"
                   value={form.contract_end_date}
                   onChange={handleInputChange}
+                  min={form.contract_start_date || undefined}
                   className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>

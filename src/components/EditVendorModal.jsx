@@ -459,6 +459,21 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
       return;
     }
 
+    // Contract end cannot be before contract start
+    if (
+      formData.contract_start_date &&
+      formData.contract_end_date &&
+      formData.contract_end_date < formData.contract_start_date
+    ) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_VENDORS_CONTRACTENDBEFORESTART_A1B2C3D4',
+        fallbackText: t('vendors.contractEndBeforeStart'),
+        type: 'error',
+      });
+      return;
+    }
+
     // Map selected SLAs to vendor_slas array
     const vendor_slas = selectedSLAs
       .filter(sla => sla.value && sla.value.trim()) // Only include SLAs with values
@@ -909,6 +924,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                 name="contract_start_date"
                 value={formData.contract_start_date}
                 onChange={handleChange}
+                max={formData.contract_end_date || undefined}
                 disabled={isReadOnly}
                 className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
@@ -922,6 +938,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                 name="contract_end_date"
                 value={formData.contract_end_date}
                 onChange={handleChange}
+                min={formData.contract_start_date || undefined}
                 disabled={isReadOnly}
                 className={`w-full px-3 py-2 border rounded text-sm ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
               />
