@@ -324,10 +324,12 @@ export const useAssignmentStore = create((set, get) => ({
       if (entityType === 'department' && entityId) {
         const res = await API.get(`/dept-assets/department/${entityId}/asset-types`);
         const incoming = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        return incoming.map((item) => ({
-          ...item,
-          text: item.asset_type_name || item.text,
-        }));
+        return incoming
+          .filter((item) => item.assignment_type === 'department')
+          .map((item) => ({
+            ...item,
+            text: item.asset_type_name || item.text,
+          }));
       }
       if (entityType === 'employee') {
         // Always scope to the selected department — otherwise ACM branch returns

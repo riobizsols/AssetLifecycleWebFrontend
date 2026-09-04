@@ -195,7 +195,6 @@ const AssetSelection = () => {
           departmentId: entityType === 'employee' ? departmentId : null,
         });
 
-      setAssetTypes(incoming);
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
       setCountsLoading(true);
       const counts = await useAssignmentStore
@@ -204,6 +203,12 @@ const AssetSelection = () => {
           branchId: effectiveBranchId,
           force: true,
         });
+
+      // Only show types that have available (unassigned) assets for this branch
+      const withStock = (incoming || []).filter(
+        (type) => (counts[type.asset_type_id] || 0) > 0,
+      );
+      setAssetTypes(withStock);
       setAssetTypeCounts(counts);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
