@@ -16,6 +16,8 @@ const ServiceSupplyForm = ({
   onSaveTrigger,
   onTabSaved,
   onPersistVendorDraft,
+  loadExisting = false,
+  isReadOnly = false,
 }) => {
   // Debug logs
   console.log('ServiceSupplyForm render:', { vendorId, orgId });
@@ -67,6 +69,7 @@ const ServiceSupplyForm = ({
   useEffect(() => {
     fetchAssetTypes();
     fetchAllServiceDescriptions();
+    if (loadExisting) return;
     const stored = sessionStorage.getItem('services');
     if (stored) setServices(JSON.parse(stored));
 
@@ -86,7 +89,35 @@ const ServiceSupplyForm = ({
     } catch {
       sessionStorage.removeItem('vendorServiceDraft');
     }
-  }, [refreshServiceDescriptions]);
+  }, [refreshServiceDescriptions, loadExisting]);
+
+  useEffect(() => {
+    if (!loadExisting || !vendorId) return undefined;
+    let cancelled = false;
+    const loadServices = async () => {
+      try {
+        const res = await API.get(`/vendor-prod-services/vendor/${vendorId}`);
+        const rows = Array.isArray(res.data) ? res.data : [];
+        if (cancelled) return;
+        setServices(
+          rows
+            .filter((row) => String(row.ps_type || '').toLowerCase() === 'service')
+            .map((row) => ({
+              asset_type_id: row.asset_type_id,
+              description: row.description,
+              asset_type_text: row.asset_type_text || row.asset_type_id,
+            }))
+        );
+      } catch (error) {
+        console.error('Error loading vendor services:', error);
+        if (!cancelled) setServices([]);
+      }
+    };
+    loadServices();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadExisting, vendorId]);
 
   // Listen for save trigger from parent
   useEffect(() => {
@@ -179,7 +210,9 @@ const ServiceSupplyForm = ({
         asset_type_text: assetTypeText // Store text for display
       }];
       setServices(newServices);
-      sessionStorage.setItem('services', JSON.stringify(newServices));
+      if (!loadExisting) {
+        sessionStorage.setItem('services', JSON.stringify(newServices));
+      }
       setForm({ assetType: '', description: '' });
       setSubmitAttempted(false); // Reset validation state after successful add
       showBackendTextToast({ toast, tmdId: 'TMD_SERVICE_ADDED_TO_LIST_33DACDB8', fallbackText: 'Service added to list', type: 'success' });
@@ -198,7 +231,9 @@ const ServiceSupplyForm = ({
   const handleDelete = (idx) => {
     const newServices = services.filter((_, i) => i !== idx);
     setServices(newServices);
-    sessionStorage.setItem('services', JSON.stringify(newServices));
+    if (!loadExisting) {
+      sessionStorage.setItem('services', JSON.stringify(newServices));
+    }
   };
 
   // Helper for invalid field
@@ -228,7 +263,7 @@ const ServiceSupplyForm = ({
             <tr className="bg-[#0E2F4B] text-white">
               <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.assetType')}</th>
               <th className="px-6 py-3 text-left text-sm font-medium">{t('vendors.description')}</th>
-              <th className="px-6 py-3 text-center text-sm font-medium w-20"></th>
+              {!isReadOnly && <th className="px-6 py-3 text-center text-sm font-medium w-20"></th>}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -236,15 +271,17 @@ const ServiceSupplyForm = ({
               <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                 <td className="px-6 py-2 text-sm text-gray-900">{p.asset_type_text || "N/A"}</td>
                 <td className="px-6 py-2 text-sm text-gray-900">{p.description}</td>
-                <td className="px-6 py-2 text-center">
-                  <button 
-                    onClick={() => handleDelete(idx)} 
-                    className="text-yellow-500 hover:text-red-600 transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </td>
+                {!isReadOnly && (
+                  <td className="px-6 py-2 text-center">
+                    <button
+                      onClick={() => handleDelete(idx)}
+                      className="text-yellow-500 hover:text-red-600 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -285,15 +322,19 @@ const ServiceSupplyForm = ({
         return;
       }
 
-      // Get services from storage
-      let servicesFromStorage;
-      try {
-        servicesFromStorage = JSON.parse(sessionStorage.getItem('services') || '[]');
-        if (!Array.isArray(servicesFromStorage)) {
-          throw new Error('Invalid services data');
-        }
-      } catch (parseErr) {
-        console.error('Error parsing services from sessionStorage:', parseErr);
+      let servicesFromStorage = loadExisting
+        ? services
+        : (() => {
+            try {
+              const parsed = JSON.parse(sessionStorage.getItem('services') || '[]');
+              return Array.isArray(parsed) ? parsed : [];
+            } catch (parseErr) {
+              console.error('Error parsing services from sessionStorage:', parseErr);
+              return null;
+            }
+          })();
+
+      if (servicesFromStorage === null) {
         showBackendTextToast({
           toast,
           tmdId: 'TMD_I18N_VENDORS_ERRORREADINGSERVICESDATA_5B342F15',
@@ -392,8 +433,10 @@ const ServiceSupplyForm = ({
           showBackendTextToast({ toast, tmdId: 'TMD_ALL_SERVICES_LINKED_SUCCESSFULLY_307E4035', fallbackText: 'All services linked successfully', type: 'success' });
         }
         // Clear form and storage
-        setServices([]);
-        sessionStorage.removeItem('services');
+        if (!loadExisting) {
+          setServices([]);
+          sessionStorage.removeItem('services');
+        }
         // Mark tab as saved
         if (onTabSaved) onTabSaved('Service Details');
       } else if (totalProcessed > 0) {
@@ -419,7 +462,7 @@ const ServiceSupplyForm = ({
 
   return (
     <div className="pb-6">
-      {/* Add Service Row (always visible) */}
+      {!isReadOnly && (
       <div className="flex items-end gap-4 mb-8">
         <div>
           <label className="block text-sm text-gray-700 mb-2">
@@ -464,6 +507,7 @@ const ServiceSupplyForm = ({
           {t('vendors.add')}
         </button>
       </div>
+      )}
       {/* Service List Table with maximize/minimize */}
       {maximized ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
@@ -475,6 +519,18 @@ const ServiceSupplyForm = ({
         </div>
       ) : (
         tableCard
+      )}
+      {loadExisting && !isReadOnly && (
+        <div className="flex justify-end mt-4">
+          <button
+            type="button"
+            onClick={handleDone}
+            className="bg-[#0E2F4B] text-white px-6 py-2 rounded hover:bg-[#1e40af] transition-colors text-sm"
+            disabled={isSaving}
+          >
+            {isSaving ? t('common.saving') : t('common.save')}
+          </button>
+        </div>
       )}
     </div>
   );

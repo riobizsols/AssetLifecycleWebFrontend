@@ -1292,6 +1292,10 @@ API_BASE_URL=http://localhost:5000/api
                   value={adminUser.email}
                   onChange={(e) => setAdminUser((prev) => ({ ...prev, email: e.target.value }))}
                 />
+                <p className="mt-1 text-xs text-slate-500">
+                  Used for login. This email will also be used to handle and manage the Organization
+                  (including organization account deletion).
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">Phone</label>

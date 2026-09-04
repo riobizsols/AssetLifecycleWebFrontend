@@ -143,11 +143,25 @@ export default function ProdServ() {
     if (!canEdit) return;
     setProductSubmitAttempted(true);
     if (!productForm.assetType || !productForm.brand || !productForm.model) return;
+
+    const brandName = productForm.brand.trim().toLowerCase();
+    const modelName = productForm.model.trim().toLowerCase();
+    const duplicate = products.some(
+      (p) =>
+        String(p.asset_type_id || '') === String(productForm.assetType) &&
+        String(p.brand || '').trim().toLowerCase() === brandName &&
+        String(p.model || '').trim().toLowerCase() === modelName
+    );
+    if (duplicate) {
+      toast.error('This brand and model already exist for the selected asset type');
+      return;
+    }
+
     try {
       const response = await API.post('/prodserv', {
         assetType: productForm.assetType,
-        brand: productForm.brand,
-        model: productForm.model,
+        brand: productForm.brand.trim(),
+        model: productForm.model.trim(),
         description: null,
         ps_type: 'product'
       });
@@ -206,8 +220,15 @@ export default function ProdServ() {
           console.error('Error parsing saved form data:', error);
         }
       }
-    } catch {
-      // Optionally handle error
+    } catch (error) {
+      showBackendTextToast({
+        toast,
+        fallbackText:
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          'Failed to add product',
+        type: 'error',
+      });
     }
   };
 
@@ -274,10 +295,29 @@ export default function ProdServ() {
   const checkVendorAssociations = async (itemId) => {
     try {
       const response = await API.get(`/vendor-prod-services/check/${itemId}`);
-      return response.data;
+      const data = response.data || {};
+      return {
+        hasAssociations: Boolean(data.hasAssociations),
+        vendors: Array.isArray(data.vendors) ? data.vendors : [],
+        count: data.count || 0,
+      };
     } catch (_err) {
       console.error('Error checking vendor associations:', _err);
-      return { hasAssociations: true, vendors: [] };
+      // Fail open only if check API is unavailable — do not block deletes incorrectly
+      try {
+        const fallback = await API.get(`/vendor-prod-services/prod-serv/${itemId}`);
+        const rows = Array.isArray(fallback.data) ? fallback.data : [];
+        return {
+          hasAssociations: rows.length > 0,
+          vendors: rows.map((r) => ({
+            vendor_id: r.vendor_id,
+            vendor_name: r.vendor_name || r.vendor_id,
+          })),
+          count: rows.length,
+        };
+      } catch {
+        return { hasAssociations: false, vendors: [] };
+      }
     }
   };
 

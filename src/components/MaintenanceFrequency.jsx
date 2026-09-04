@@ -57,8 +57,10 @@ const MaintenanceFrequency = () => {
   const [selectedFreqId, setSelectedFreqId] = useState('');
   const [selectedFrequencyData, setSelectedFrequencyData] = useState(null);
   const [checklistItems, setChecklistItems] = useState([]);
+  const [mappedCategories, setMappedCategories] = useState([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [loadingChecklist, setLoadingChecklist] = useState(false);
+  const [savingChecklist, setSavingChecklist] = useState(false);
 
   // Helper function to get UOM text from UOM_id or UOM text
   const getUomText = (uomValue) => {
@@ -318,12 +320,11 @@ const MaintenanceFrequency = () => {
     };
   }, [filterMenuOpen]);
 
-  // Apply filters when filterValues change
+  // Apply filters when store data or filter values change
   useEffect(() => {
-    if (allFrequencies.length > 0) {
-      applyFilters(allFrequencies);
-    }
-  }, [filterValues]);
+    applyFilters(allFrequencies || []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allFrequencies, filterValues]);
 
   // Fetch checklist items
   const fetchChecklistItems = async (freqId) => {
@@ -335,7 +336,13 @@ const MaintenanceFrequency = () => {
     try {
       const res = await API.get(`/maintenance-frequencies/${freqId}/checklist`);
       if (res.data && res.data.success) {
-        setChecklistItems(res.data.data || []);
+        setChecklistItems(
+          (res.data.data || []).map((item) => ({
+            ...item,
+            spare_part_required: Boolean(item.spare_part_required),
+            spc_id: item.spc_id || '',
+          }))
+        );
       }
     } catch (error) {
       console.error('Error fetching checklist items:', error);
@@ -397,6 +404,30 @@ const MaintenanceFrequency = () => {
     setSelectedFrequencyData(freqData);
     fetchChecklistItems(selectedFreqId);
   }, [selectedFreqId, allFrequencies]);
+
+  useEffect(() => {
+    const assetTypeId = selectedFrequencyData?.asset_type_id;
+    if (!assetTypeId) {
+      setMappedCategories([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await API.get(`/spare-parts/category-mappings/by-asset-type/${assetTypeId}`);
+        if (cancelled) return;
+        setMappedCategories(Array.isArray(res.data?.data) ? res.data.data : []);
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Error fetching mapped categories:', error);
+          setMappedCategories([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFrequencyData?.asset_type_id]);
 
 
   // Start editing
@@ -495,6 +526,84 @@ const MaintenanceFrequency = () => {
     } catch (error) {
       console.error('Error deleting maintenance frequency:', error);
       toast.error(error.response?.data?.message || 'Failed to delete maintenance frequency');
+    }
+  };
+
+  const handleSparePartRequiredChange = (itemId, checked) => {
+    setChecklistItems((prev) =>
+      prev.map((item) =>
+        item.at_main_checklist_id === itemId
+          ? { ...item, spare_part_required: checked, spc_id: checked ? item.spc_id : '' }
+          : item
+      )
+    );
+  };
+
+  const handleChecklistCategoryChange = (itemId, spcId) => {
+    setChecklistItems((prev) =>
+      prev.map((item) =>
+        item.at_main_checklist_id === itemId ? { ...item, spc_id: spcId } : item
+      )
+    );
+  };
+
+  const handleSaveChecklist = async () => {
+    if (!selectedFreqId) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_PLEASE_SELECT_A_FREQUENCY_FROM_THE_DROPDOWN_43AB2F3B',
+        fallbackText: 'Please select a frequency from the dropdown',
+        type: 'error',
+      });
+      return;
+    }
+    if (!checklistItems.length) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Add at least one checklist item before saving',
+        type: 'error',
+      });
+      return;
+    }
+    const missingCategory = checklistItems.find(
+      (item) => item.spare_part_required && !item.spc_id
+    );
+    if (missingCategory) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Select a category for each checklist item that requires a spare part',
+        type: 'error',
+      });
+      return;
+    }
+
+    setSavingChecklist(true);
+    try {
+      const res = await API.put(`/maintenance-frequencies/${selectedFreqId}/checklist`, {
+        items: checklistItems.map((item) => ({
+          at_main_checklist_id: item.at_main_checklist_id,
+          spare_part_required: Boolean(item.spare_part_required),
+          spc_id: item.spare_part_required ? item.spc_id : null,
+        })),
+      });
+      if (res.data?.success) {
+        showBackendTextToast({
+          toast,
+          fallbackText: 'Checklist items saved successfully',
+          type: 'success',
+        });
+        fetchChecklistItems(selectedFreqId);
+      }
+    } catch (error) {
+      console.error('Error saving checklist items:', error);
+      showBackendTextToast({
+        toast,
+        fallbackText:
+          error.response?.data?.message || error.response?.data?.error || 'Failed to save checklist items',
+        type: 'error',
+      });
+    } finally {
+      setSavingChecklist(false);
     }
   };
 
@@ -1224,11 +1333,14 @@ const MaintenanceFrequency = () => {
                         <p className="text-sm text-gray-400 mt-2">Add checklist items using the form above</p>
                       </div>
                     ) : (
+                      <>
                       <div className="overflow-x-auto">
                         <table className="min-w-full border border-gray-200">
                           <thead className="sticky top-0 z-10 bg-[#0E2F4B] border-b-4 border-[#FFC107]">
                             <tr className="text-white text-sm font-medium">
                               <th className="px-4 py-3 text-left">Checklist Item</th>
+                              <th className="px-4 py-3 text-center">Spare Part Require</th>
+                              <th className="px-4 py-3 text-left">Category</th>
                               <th className="px-4 py-3 text-center">Actions</th>
                             </tr>
                           </thead>
@@ -1244,6 +1356,43 @@ const MaintenanceFrequency = () => {
                                   {item.text}
                                 </td>
                                 <td className="px-4 py-3 text-center border">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(item.spare_part_required)}
+                                    onChange={(e) =>
+                                      handleSparePartRequiredChange(
+                                        item.at_main_checklist_id,
+                                        e.target.checked
+                                      )
+                                    }
+                                    className="form-checkbox text-blue-500 rounded"
+                                    title="Spare Part Require"
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-sm border">
+                                  {item.spare_part_required ? (
+                                    <select
+                                      value={item.spc_id || ''}
+                                      onChange={(e) =>
+                                        handleChecklistCategoryChange(
+                                          item.at_main_checklist_id,
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full min-w-[180px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent bg-white text-sm"
+                                    >
+                                      <option value="">Select category</option>
+                                      {mappedCategories.map((category) => (
+                                        <option key={category.spc_id} value={category.spc_id}>
+                                          {category.category_name || category.text}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-center border">
                                   <button
                                     onClick={() => handleDeleteChecklistItem(item.at_main_checklist_id, item.text)}
                                     className="text-red-600 hover:text-red-800 transition-colors"
@@ -1257,6 +1406,18 @@ const MaintenanceFrequency = () => {
                           </tbody>
                         </table>
                       </div>
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleSaveChecklist}
+                          disabled={savingChecklist}
+                          className="px-6 py-2.5 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          <Save size={16} />
+                          {savingChecklist ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+                      </>
                     )}
                   </div>
                 </>

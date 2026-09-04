@@ -77,7 +77,15 @@ export const useMaintenanceSupervisorStore = create((set, get) => ({
       const res = await API.get('/maintenance-schedules/all', {
         params: { context: 'SUPERVISORAPPROVAL' },
       });
-      return Array.isArray(res.data) ? res.data : res.data?.data || [];
+      const rows = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      return rows.filter((row) => {
+        if (row.require_maintenance == null) return true;
+        return (
+          row.require_maintenance === true ||
+          row.require_maintenance === 'true' ||
+          row.require_maintenance === 1
+        );
+      });
     };
 
     if (revalidate) {

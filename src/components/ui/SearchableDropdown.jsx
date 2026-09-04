@@ -127,7 +127,7 @@ const SearchableDropdown = ({
       {isOpen && !disabled && createPortal(
         <div 
           ref={dropdownRef}
-          className="fixed z-[9999] bg-white border rounded-md shadow-lg"
+          className="fixed z-[10050] bg-white border rounded-md shadow-lg"
           style={{
             top: dropdownPosition.top,
             left: dropdownPosition.left,

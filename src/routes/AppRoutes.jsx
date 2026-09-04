@@ -1,14 +1,18 @@
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import Login from "../pages/auth/Login";
+import SsoComplete from "../pages/auth/SsoComplete";
 import Dashboard from "../pages/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import MainLayout from "../layouts/MainLayout";
 import ForgotPassword from "../pages/auth/ForgetPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
+import DeleteAccount from "../pages/auth/DeleteAccount";
 import ChangePassword from "../pages/auth/ChangePassword";
 import RequestPasswordChange from "../pages/auth/RequestPasswordChange";
 import SetupWizard from "../pages/setup/SetupWizard";
 import TenantSetup from "../pages/tenant/TenantSetup";
+import RequestAccess from "../pages/auth/RequestAccess";
+import OpsAccessRequests from "../pages/ops/OpsAccessRequests";
 import Assets from "../pages/Assets";
 import UserRoles from "../pages/masterData/UserRoles";
 import JobRoles from "../pages/masterData/JobRoles";
@@ -25,6 +29,13 @@ import Organization from "../pages/masterData/Organization";
 import Vendors from "../pages/masterData/Vendors";
 import AddEntityForm from "../components/AddEntityForm";
 import ProdServ from "../pages/masterData/ProdServ";
+import SpareParts from "../pages/masterData/SpareParts";
+import SparePartMaster from "../pages/masterData/SparePartMaster";
+import SparePartMasterList from "../pages/masterData/SparePartMasterList";
+import SparePartLotList from "../pages/masterData/SparePartLotList";
+import SparePartsConfiguration from "../pages/masterData/SparePartsConfiguration";
+import AddSparePartCategory from "../components/spareParts/AddSparePartCategory";
+import AddSparePartAssetTypeMapping from "../components/spareParts/AddSparePartAssetTypeMapping";
 import Properties from "../pages/masterData/Properties";
 import BreakdownReasonCodes from "../pages/masterData/BreakdownReasonCodes";
 import AddAssetForm from "../components/assets/AddAssetForm";
@@ -44,6 +55,11 @@ import InspectionApprovalDetail from "../components/InspectionApprovalDetail";
 import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
 import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
+import SparePartList from "../pages/SparePartList";
+import SparePartIssue from "../pages/SparePartIssue";
+import SparePartApproval from "../pages/SparePartApproval";
+import SparePartListDetail from "../components/SparePartListDetail";
+import SparePartApprovalDetail from "../components/SparePartApprovalDetail";
 import CreateManualMaintenance from "../pages/CreateManualMaintenance";
 import CronJobManagement from "../pages/CronJobManagement";
 import MaintSupervisorApproval from "../components/MaintSupervisorApproval";
@@ -126,10 +142,14 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/auth/sso/complete" element={<SsoComplete />} />
         <Route path="/setup" element={<SetupWizard />} />
         <Route path="/tenant-setup" element={<TenantSetup />} />
+        <Route path="/request-access" element={<RequestAccess />} />
+        <Route path="/ops/access-requests" element={<OpsAccessRequests />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/delete-account" element={<DeleteAccount />} />
         <Route path="/internal/db-switcher" element={<DatabaseConnectionSwitcher />} />
         <Route
           path="/request-password-change"
@@ -340,6 +360,57 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>
                 <MaintSupervisorApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/spare-part-list"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTLIST">
+              <MainLayout>
+                <SparePartList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/spare-part-list-detail/:id"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTLIST">
+              <MainLayout>
+                <SparePartListDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/spare-part-issue"
+          element={
+            <ProtectedRoute requiredAnyOfAppIds={["SPAREPARTISSUE", "SPAREPARTLIST"]}>
+              <MainLayout>
+                <SparePartIssue />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/spare-part-approval"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTAPPROVAL">
+              <MainLayout>
+                <SparePartApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/spare-part-approval-detail/:id"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTAPPROVAL">
+              <MainLayout>
+                <SparePartApprovalDetail />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -1016,6 +1087,72 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/master-data/spare-parts"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTS">
+              <MainLayout>
+                <SparePartLotList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/spare-parts/add"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTS">
+              <MainLayout>
+                <SpareParts />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/spare-parts/edit/:spld_id"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTS">
+              <MainLayout>
+                <SpareParts />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/spare-part"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTMASTER">
+              <MainLayout>
+                <Outlet />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SparePartMasterList />} />
+          <Route path="add" element={<SparePartMaster />} />
+          <Route path="edit/:partNumber" element={<SparePartMaster />} />
+        </Route>
+
+        <Route
+          path="/master-data/spare-parts-configuration"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTSCONFIG">
+              <MainLayout>
+                <Outlet />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<SparePartsConfiguration />} />
+          <Route path="categories/add" element={<AddSparePartCategory />} />
+          <Route path="categories/edit/:spcId" element={<AddSparePartCategory />} />
+          <Route path="mappings/add" element={<AddSparePartAssetTypeMapping />} />
+          <Route path="mappings/edit/:assetTypeId" element={<AddSparePartAssetTypeMapping />} />
+        </Route>
+
+
+        <Route
           path="/scrap-sales"
           element={
             <ProtectedRoute requiredAppId="SCRAPSALES">
@@ -1268,6 +1405,18 @@ export default function AppRoutes() {
               <MainLayout>
                 <Certifications />
               </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/certifications"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={["CERTIFICATIONS", "ADMINSETTINGS"]}
+            >
+              <AdminSettingsLayout>
+                <Certifications />
+              </AdminSettingsLayout>
             </ProtectedRoute>
           }
         />

@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import ChildItemsDropdown from "../components/ChildItemsDropdown";
@@ -18,7 +18,8 @@ import { useNavigation } from "../hooks/useNavigation";
 import useColumnAccess from "../hooks/useColumnAccess";
 import { useAssetsStore } from "../store/useAssetsStore";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
-import { applyListFilterChange } from "../utils/listFilterState";
+import { applyListFilterChange, hasActiveListFilters } from "../utils/listFilterState";
+import { buildAssetsListFilters } from "../utils/assetsListFilters";
 import { prefetchAddAssetFormData } from "../services/addAssetFormData";
 
 const Assets = () => {
@@ -50,14 +51,26 @@ const Assets = () => {
   const getCachedAssetTypes = useAssetsStore((s) => s.getCachedAssetTypes);
   const invalidateAssetsCache = useAssetsStore((s) => s.invalidateAssetsCache);
 
-  const hasActiveFilters = useCallback((filters) => (
-    (filters.columnFilters && filters.columnFilters.length > 0) ||
-    Boolean(filters.fromDate) ||
-    Boolean(filters.toDate)
-  ), []);
+  const [assetTypes, setAssetTypes] = useState(() => getCachedAssetTypes() || []);
 
-  const loadAll = hasActiveFilters(filterValues);
-  const cachedList = getCachedAssetsList(currentPage, PAGE_SIZE, loadAll);
+  const { serverParams, clientFilters } = useMemo(
+    () => buildAssetsListFilters(filterValues, assetTypes),
+    [filterValues, assetTypes],
+  );
+
+  const clientFilterValues = useMemo(
+    () => ({ ...filterValues, columnFilters: clientFilters }),
+    [filterValues, clientFilters],
+  );
+
+  const hasClientOnlyFilters = useMemo(
+    () => hasActiveListFilters(clientFilterValues)
+      || Boolean(filterValues.fromDate || filterValues.toDate),
+    [clientFilterValues, filterValues.fromDate, filterValues.toDate],
+  );
+
+  const loadAll = hasClientOnlyFilters;
+  const cachedList = getCachedAssetsList(currentPage, PAGE_SIZE, loadAll, serverParams);
 
   const [data, setData] = useState(() => cachedList?.rows || []);
   const [isLoading, setIsLoading] = useState(!cachedList);
@@ -67,7 +80,6 @@ const Assets = () => {
     return cachedList?.rows?.length || 0;
   });
   const [isFullListMode, setIsFullListMode] = useState(loadAll);
-  const [assetTypes, setAssetTypes] = useState(() => getCachedAssetTypes() || []);
   // Delete modal state removed - delete happens immediately
 
   const [selectedRows, setSelectedRows] = useState([]);
@@ -133,8 +145,8 @@ const Assets = () => {
     }
   }, []);
 
-  const loadAssets = useCallback(async (page, fullList, { force = false, revalidate = !force } = {}) => {
-    const cached = !force ? getCachedAssetsList(page, PAGE_SIZE, fullList) : null;
+  const loadAssets = useCallback(async (page, fullList, apiFilters, { force = false, revalidate = !force } = {}) => {
+    const cached = !force ? getCachedAssetsList(page, PAGE_SIZE, fullList, apiFilters) : null;
 
     if (cached && revalidate && !force) {
       applyListResult(cached, fullList);
@@ -144,6 +156,7 @@ const Assets = () => {
           page,
           limit: PAGE_SIZE,
           loadAll: fullList,
+          serverFilters: apiFilters,
           revalidate: true,
           onFresh: (result) => applyListResult(result, fullList),
         });
@@ -165,6 +178,7 @@ const Assets = () => {
         page,
         limit: PAGE_SIZE,
         loadAll: fullList,
+        serverFilters: apiFilters,
         force,
       });
       applyListResult(result, fullList);
@@ -183,16 +197,16 @@ const Assets = () => {
 
   const refreshAssets = useCallback(() => {
     invalidateAssetsCache();
-    return loadAssets(currentPage, loadAll, { force: true });
-  }, [currentPage, invalidateAssetsCache, loadAll, loadAssets]);
+    return loadAssets(currentPage, loadAll, serverParams, { force: true });
+  }, [currentPage, invalidateAssetsCache, loadAll, loadAssets, serverParams]);
 
   useEffect(() => {
     if (loadAll && currentPage !== 1) {
       setCurrentPage(1);
       return;
     }
-    loadAssets(currentPage, loadAll);
-  }, [currentPage, filterValues, loadAll, loadAssets, setCurrentPage]);
+    loadAssets(currentPage, loadAll, serverParams);
+  }, [currentPage, filterValues, loadAll, loadAssets, serverParams, setCurrentPage]);
 
   useEffect(() => {
     fetchAssetTypes({
@@ -206,7 +220,7 @@ const Assets = () => {
   }, []);
 
   useRevalidateOnFocus(() => {
-    loadAssets(currentPage, loadAll, { revalidate: true });
+    loadAssets(currentPage, loadAll, serverParams, { revalidate: true });
     fetchAssetTypes({ revalidate: true, onFresh: setAssetTypes }).catch(() => {});
   });
 
@@ -236,6 +250,7 @@ const Assets = () => {
   const handleFilterChange = async (columnName, value) => {
     const nextFilters = applyListFilterChange(filterValues, columnName, value);
     setFilterValues(nextFilters);
+    setCurrentPage(1);
   };
 
   const handleSort = async (column) => {
@@ -461,15 +476,37 @@ const Assets = () => {
     });
   };
 
+  const assetTypeNameOptions = useMemo(
+    () => (assetTypes || [])
+      .map((at) => at.text)
+      .filter(Boolean)
+      .sort((a, b) => String(a).localeCompare(String(b))),
+    [assetTypes],
+  );
+
+  const assetTypeIdOptions = useMemo(
+    () => (assetTypes || [])
+      .map((at) => at.asset_type_id)
+      .filter(Boolean)
+      .sort((a, b) => String(a).localeCompare(String(b))),
+    [assetTypes],
+  );
+
   const filters = columns.map((col) => ({
     label: col.label,
     name: col.name,
-    visible: col.visible, // Preserve the visible property from column access
-    options: col.name === 'current_status' ? [
-      { label: t('assets.active'), value: "Active" },
-      { label: t('assets.inactive'), value: "Inactive" },
-      { label: t('assets.disposed'), value: "Disposed" }
-    ] : [],
+    visible: col.visible,
+    options: col.name === 'current_status'
+      ? [
+          { label: t('assets.active'), value: "Active" },
+          { label: t('assets.inactive'), value: "Inactive" },
+          { label: t('assets.disposed'), value: "Disposed" },
+        ]
+      : col.name === 'text'
+        ? assetTypeNameOptions
+        : col.name === 'asset_type_id'
+          ? assetTypeIdOptions
+          : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
 
@@ -512,7 +549,7 @@ const Assets = () => {
         isReadOnly={accessLevel === "D"}
       >
         {({ visibleColumns, showActions }) => {
-          const filteredData = filterData(data, filterValues, visibleColumns);
+          const filteredData = filterData(data, clientFilterValues, visibleColumns);
           const sortedData = sortData(filteredData);
 
           if (isLoading) {

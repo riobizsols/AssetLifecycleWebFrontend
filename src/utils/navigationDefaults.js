@@ -7,6 +7,7 @@ const normalizeNavAppId = (id) =>
 export const MASTER_DATA_CHILD_ORDER = [
   'ASSETTYPES',
   'BRANCHES',
+  'BRANCHDEPTMAPPING',
   'DEPARTMENTS',
   'DEPARTMENTSADMIN',
   'DEPARTMENTSASSET',
@@ -15,6 +16,7 @@ export const MASTER_DATA_CHILD_ORDER = [
   'USERROLES',
   'PRODSERV',
   'VENDORS',
+  'SPAREPARTSCONFIG',
 ];
 
 /** Preferred Scrap submenu order. */

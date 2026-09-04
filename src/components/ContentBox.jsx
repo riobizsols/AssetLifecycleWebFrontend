@@ -173,10 +173,46 @@ const ContentBox = ({
   const dropdownRef = useRef({});
   const columnsButtonRef = useRef(null);
 
+  // New screens pass (column, direction). Older screens only toggle on each call.
+  const applyColumnSort = (column, direction) => {
+    if (!onSort || column === "actions") return;
+    if (onSort.length >= 2) {
+      onSort(column, direction);
+      return;
+    }
+    const current = sortConfig?.sorts?.find((s) => s.column === column)?.direction;
+    const toggle = () => onSort(column);
+    if (direction === "clear") {
+      if (current === "asc") {
+        toggle();
+        toggle();
+      } else if (current === "desc") {
+        toggle();
+      }
+      return;
+    }
+    if (direction === "asc") {
+      if (!current) toggle();
+      else if (current === "desc") {
+        toggle();
+        toggle();
+      }
+      return;
+    }
+    if (direction === "desc") {
+      if (!current) {
+        toggle();
+        toggle();
+      } else if (current === "asc") {
+        toggle();
+      }
+    }
+  };
+
   // Handle refresh with animation
   const handleRefresh = async () => {
     if (isRefreshing || !onRefresh) return;
-    
+
     setIsRefreshing(true);
     try {
       await onRefresh();
@@ -618,9 +654,24 @@ const ContentBox = ({
                       </option>
                     ));
 
-                    // Get unique values for the value dropdown based on selected column
+                    // Prefer explicit filter options (full dataset); fall back to current page rows
+                    const filterDef = filters.find((f) => f.name === cf.column);
+                    const explicitOptions = Array.isArray(filterDef?.options) && filterDef.options.length > 0
+                      ? filterDef.options
+                          .map((opt) => {
+                            if (opt == null) return null;
+                            if (typeof opt === 'object') {
+                              const val = opt.value ?? opt.label;
+                              return val != null && String(val).trim() !== '' ? String(val) : null;
+                            }
+                            const s = String(opt);
+                            return s.trim() ? s : null;
+                          })
+                          .filter(Boolean)
+                      : null;
+
                     const valueOptions = cf.column
-                      ? [
+                      ? explicitOptions ?? [
                           ...new Set(
                             data.map((item) => {
                               const value = item[cf.column];
@@ -925,7 +976,7 @@ const ContentBox = ({
                         onClick={() => {
                           if (onHeaderClick) {
                             onHeaderClick(filter);
-                          } else {
+                          } else if (onSort && filter.name !== "actions") {
                             onSort(filter.name);
                           }
                         }}
@@ -986,10 +1037,7 @@ const ContentBox = ({
                         <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
-                            onSort(filter.name);
-                            if (!sortInfo || sortInfo.direction === "desc") {
-                              onSort(filter.name); // Set to ascending
-                            }
+                            applyColumnSort(filter.name, "asc");
                             setOpenDropdown(null);
                           }}
                         >
@@ -998,10 +1046,7 @@ const ContentBox = ({
                         <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
-                            onSort(filter.name);
-                            if (!sortInfo || sortInfo.direction === "asc") {
-                              onSort(filter.name); // Set to descending
-                            }
+                            applyColumnSort(filter.name, "desc");
                             setOpenDropdown(null);
                           }}
                         >
@@ -1012,8 +1057,7 @@ const ContentBox = ({
                           <div
                             className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold border-t"
                             onClick={() => {
-                              onSort(filter.name);
-                              onSort(filter.name); // Remove sort
+                              applyColumnSort(filter.name, "clear");
                               setOpenDropdown(null);
                             }}
                           >

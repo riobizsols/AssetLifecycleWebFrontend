@@ -11,11 +11,20 @@ import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
 import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
 import { useAssetsStore } from '../../store/useAssetsStore';
 import { useNavigation } from '../../hooks/useNavigation';
 import useColumnAccess from '../../hooks/useColumnAccess';
 import { getActiveOrgId, getActiveBranchId } from '../../utils/acmContext';
+
+const parseAssetDocsList = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.rows)) return payload.rows;
+  return [];
+};
+
+const isArchivedDoc = (doc) =>
+  doc?.is_archived === true || doc?.is_archived === 'true' || doc?.is_archived === 't';
 
 const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   // Initialize audit logging
@@ -121,7 +130,6 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [showQSNPrintModal, setShowQSNPrintModal] = useState(false);
   const [qsnPrintReason, setQsnPrintReason] = useState("");
   const [isQSNPrintLoading, setIsQSNPrintLoading] = useState(false);
-  const [existingAssets, setExistingAssets] = useState([]);
 
   const isWarrantyPeriodInPast = (() => {
     if (!form.warrantyPeriod) return false;
@@ -247,22 +255,6 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     fetchDocumentTypes();
   }, []);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const fetchExistingAssets = async () => {
-      try {
-        const rows = await useAssetsStore.getState().fetchExistingAssets();
-        setExistingAssets(rows);
-      } catch (err) {
-        console.error('Error fetching assets for name validation:', err);
-        setExistingAssets([]);
-      }
-    };
-
-    fetchExistingAssets();
-  }, [isOpen]);
-
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -292,42 +284,32 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   }, [isOpen, onClose]);
 
   // Fetch attached documents for this asset
+  const applyDocsList = (payload) => {
+    const arr = parseAssetDocsList(payload);
+    setDocs(arr.filter((doc) => !isArchivedDoc(doc)));
+    setArchivedDocs(arr.filter((doc) => isArchivedDoc(doc)));
+  };
+
   useEffect(() => {
     const fetchDocs = async () => {
-      if (!assetData?.asset_id) return;
+      if (!isOpen || !assetData?.asset_id) return;
       setDocsLoading(true);
       try {
-        const res = await API.get(`/assets/${assetData.asset_id}/docs`, {
-          // Add validateStatus to prevent Axios from treating 404 as an error
-          validateStatus: function (status) {
-            return status === 200 || status === 404; // Accept both 200 and 404
-          }
-        });
-        
-        // If 404, set empty array
-        if (res.status === 404) {
-          setDocs([]);
-          return;
-        }
-        
-        // Otherwise process the response
-        const arr = Array.isArray(res.data) ? res.data : [];
-        // Separate active and archived documents
-        const activeDocs = arr.filter(doc => !doc.is_archived || doc.is_archived === false);
-        const archivedDocs = arr.filter(doc => doc.is_archived === true || doc.is_archived === 'true');
-        setDocs(activeDocs);
-        setArchivedDocs(archivedDocs);
+        const res = await API.get(`/assets/${assetData.asset_id}/docs`);
+        applyDocsList(res.data);
       } catch (err) {
-        // Only show error for non-404 errors (network issues, etc.)
         console.error('Document fetch error:', err);
-        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENTS_DUE_TO_NETWORK_ERROR_3B79E1C3', fallbackText: 'Failed to load documents due to network error', type: 'error' });
+        if (err.response?.status !== 404) {
+          showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_LOAD_DOCUMENTS_DUE_TO_NETWORK_ERROR_3B79E1C3', fallbackText: 'Failed to load documents due to network error', type: 'error' });
+        }
         setDocs([]);
+        setArchivedDocs([]);
       } finally {
         setDocsLoading(false);
       }
     };
     fetchDocs();
-  }, [assetData?.asset_id]);
+  }, [isOpen, assetData?.asset_id]);
 
   const handleDocumentAction = async (doc, action) => {
     const actionKey = `${doc.a_d_id || doc.id}-${action}`;
@@ -389,11 +371,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
         });
         // Refresh the documents list and separate active/archived
         const refreshRes = await API.get(`/assets/${assetData.asset_id}/docs`);
-        const arr = Array.isArray(refreshRes.data) ? refreshRes.data : [];
-        const activeDocs = arr.filter(doc => !doc.is_archived || doc.is_archived === false);
-        const archivedDocs = arr.filter(doc => doc.is_archived === true || doc.is_archived === 'true');
-        setDocs(activeDocs);
-        setArchivedDocs(archivedDocs);
+        applyDocsList(refreshRes.data);
       } else {
         console.error('Archive response error:', res.data);
         throw new Error(res.data?.message || 'Failed to update archive status');
@@ -604,28 +582,6 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       return;
     }
 
-    const assetNameTrimmed = form.description?.trim();
-    if (
-      !isWarrantyActionMode &&
-      isColumnVisible('description') &&
-      assetNameTrimmed
-    ) {
-      const conflictingName = findConflictingAssetName(
-        assetNameTrimmed,
-        existingAssets,
-        assetData?.asset_id
-      );
-      if (conflictingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
-          fallbackText: t('assets.similarAssetNameExists', { name: conflictingName }),
-          type: 'error',
-        });
-        return;
-      }
-    }
-
     setIsSubmitting(true);
     try {
       // Prefer ACM branch; fall back to existing asset branch for updates
@@ -738,18 +694,6 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     } catch (err) {
       console.error('Error updating asset:', err);
       const responseData = err.response?.data;
-      if (responseData?.existingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
-          fallbackText: t('assets.similarAssetNameExists', {
-            name: responseData.existingName,
-          }),
-          type: 'error',
-        });
-        return;
-      }
-
       const errorMessage =
         responseData?.message ||
         responseData?.error ||
@@ -805,17 +749,11 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           if (r.type && r.docTypeName?.trim()) {
             fd.append('doc_type_name', r.docTypeName);
           }
-          
-          // Get org_id from active ACM context
-          const orgId = getActiveOrgId(useAuthStore.getState().user?.org_id);
+          const orgId = getActiveOrgId(useAuthStore.getState().user?.org_id || assetData?.org_id);
           if (orgId) {
             fd.append('org_id', orgId);
           }
-          
-          // Use the correct API endpoint for asset documents
-          await API.post(`/assets/${assetData.asset_id}/docs/upload`, fd, { 
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
+          await API.post(`/assets/${assetData.asset_id}/docs/upload`, fd);
           successCount++;
           
           // Log document upload
@@ -842,10 +780,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           });
         }
         setUploadRows([]); // Clear all attachments after upload
-        // Refresh the documents list using the correct endpoint
         const res = await API.get(`/assets/${assetData.asset_id}/docs`);
-        const arr = Array.isArray(res.data) ? res.data : [];
-        setDocs(arr);
+        applyDocsList(res.data);
       } else {
         showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_UPLOAD_ANY_FILES_7C811EA6', fallbackText: 'Failed to upload any files', type: 'error' });
       }
