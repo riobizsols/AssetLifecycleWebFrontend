@@ -28,13 +28,14 @@ const SparePartApproval = () => {
   });
   const [sortConfig, setSortConfig] = useState({ sorts: [] });
 
-  const data = useMemo(() => formatSparePartApprovalRows(approvals), [approvals]);
+  const data = useMemo(() => formatSparePartApprovalRows(approvals, t), [approvals, t]);
 
   const [columns] = useState([
     { label: t('sparePartApproval.assetType'), name: 'asset_type_name', visible: true },
     { label: t('sparePartApproval.serialNumber'), name: 'serial_number', visible: true },
     { label: t('sparePartApproval.maintenanceType'), name: 'maintenance_type_name', visible: true },
     { label: t('sparePartApproval.vendor'), name: 'vendor_name', visible: true },
+    { label: t('sparePartApproval.status'), name: 'status_label', visible: true },
   ]);
 
   useEffect(() => {
@@ -88,12 +89,34 @@ const SparePartApproval = () => {
   const filters = columns.map((col) => ({
     label: col.label,
     name: col.name,
-    options: [],
+    options:
+      col.name === 'status_label'
+        ? [
+            { label: t('sparePartApproval.pendingApproval'), value: t('sparePartApproval.pendingApproval') },
+            { label: t('sparePartApproval.reserved'), value: t('sparePartApproval.reserved') },
+            { label: t('sparePartApproval.issued'), value: t('sparePartApproval.issued') },
+          ]
+        : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
 
   const handleRowClick = (row) => {
     navigate(`/spare-part-approval-detail/${row.si_id}`);
+  };
+
+  const renderStatus = (row) => {
+    const status = row.status;
+    const label = row.status_label || '-';
+    if (status === 'IS') {
+      return <span className="text-green-600 font-semibold">{label}</span>;
+    }
+    if (status === 'IE') {
+      return <span className="text-sky-600 font-semibold">{label}</span>;
+    }
+    if (status === 'RQ') {
+      return <span className="text-yellow-600 font-semibold">{label}</span>;
+    }
+    return <span className="text-gray-600">{label}</span>;
   };
 
   return (
@@ -145,7 +168,9 @@ const SparePartApproval = () => {
               rowClassName={(row) =>
                 row.is_disabled ? 'opacity-50 cursor-default' : ''
               }
-              renderCell={(col, row) => row[col.name]}
+              renderCell={(col, row) =>
+                col.name === 'status_label' ? renderStatus(row) : row[col.name]
+              }
               onRowClick={(row) => {
                 if (!row.is_disabled) handleRowClick(row);
                 else handleRowClick(row);

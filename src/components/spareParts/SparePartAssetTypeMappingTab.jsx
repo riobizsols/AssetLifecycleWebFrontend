@@ -28,11 +28,7 @@ const SparePartAssetTypeMappingTab = () => {
 
   const columns = [
     { label: 'Category', name: 'category_name', visible: true },
-    { label: 'Category Brand', name: 'category_brand', visible: true },
-    { label: 'Category Model', name: 'category_model', visible: true },
     { label: 'Asset Type', name: 'asset_type_name', visible: true },
-    { label: 'Asset Brand', name: 'asset_brand', visible: true },
-    { label: 'Asset Model', name: 'asset_model', visible: true },
     { label: 'Status', name: 'int_status', visible: true },
   ];
 
@@ -75,6 +71,13 @@ const SparePartAssetTypeMappingTab = () => {
   };
 
   const sortData = (rows) => sortTableRows(rows, sortConfig.sorts);
+
+  const handleEdit = (row) => {
+    if (!row?.asset_type_id) return;
+    navigate(
+      `/master-data/spare-parts-configuration/mappings/edit/${encodeURIComponent(row.asset_type_id)}`
+    );
+  };
 
   const handleDownload = () => {
     if (!selectedRows.length) {
@@ -133,14 +136,14 @@ const SparePartAssetTypeMappingTab = () => {
         setSelectedRows={setSelectedRows}
         showAddButton={canEdit}
         showDeleteButton={false}
-        showActions={false}
+        showActions={canEdit}
         showFilterButton={false}
       >
-        {({ visibleColumns }) => {
+        {({ visibleColumns, showActions }) => {
           const filtered = filterData(data, filterValues, visibleColumns);
           const sorted = sortData(filtered);
           const visibleCols = visibleColumns.filter((col) => col.visible);
-          const colSpan = visibleCols.length;
+          const colSpan = visibleCols.length + (showActions ? 1 : 0);
 
           if (isLoading) {
             return (
@@ -173,7 +176,8 @@ const SparePartAssetTypeMappingTab = () => {
               rowKey="spcatm_id"
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
-              showActions={false}
+              onEdit={canEdit ? handleEdit : undefined}
+              showActions={Boolean(showActions)}
             />
           );
         }}

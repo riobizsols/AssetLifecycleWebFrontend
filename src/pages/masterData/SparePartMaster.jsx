@@ -1,6 +1,6 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import API from '../../lib/axios';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -155,6 +155,8 @@ const emptyForm = {
 const SparePartMaster = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { partNumber: routePartNumber } = useParams();
+  const isEdit = Boolean(routePartNumber);
   const listPath = '/master-data/spare-part';
   const [form, setForm] = useState(emptyForm);
   const [categories, setCategories] = useState([]);
@@ -238,6 +240,58 @@ const SparePartMaster = () => {
   }, []);
 
   useEffect(() => {
+    if (!isEdit || !routePartNumber || loadingProperties) return undefined;
+    let cancelled = false;
+    const loadMaster = async () => {
+      try {
+        const res = await API.get(
+          `/spare-parts/master/${encodeURIComponent(routePartNumber)}`
+        );
+        const row = res.data?.data;
+        if (cancelled) return;
+        if (!row) {
+          showBackendTextToast({
+            toast,
+            fallbackText: 'Spare part not found',
+            type: 'error',
+          });
+          navigate(listPath);
+          return;
+        }
+        setForm({
+          spc_id: row.spc_id || '',
+          brand_id: row.brand_id || '',
+          brand_name: row.brand_name || '',
+          model_id: row.model_id || '',
+          model_name: row.model_name || '',
+          part_number: row.part_number || '',
+        });
+        const props = Array.isArray(row.properties) ? row.properties : [];
+        setSelectedProperties(props.map((item) => item.prop_id).filter(Boolean));
+        const nextValues = {};
+        props.forEach((item) => {
+          if (item.prop_id) nextValues[item.prop_id] = item.aplv_ids || [];
+        });
+        setSelectedListValues(nextValues);
+      } catch (error) {
+        console.error('Error loading spare part:', error);
+        if (!cancelled) {
+          showBackendTextToast({
+            toast,
+            fallbackText: error.response?.data?.error || 'Failed to load spare part',
+            type: 'error',
+          });
+          navigate(listPath);
+        }
+      }
+    };
+    loadMaster();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, routePartNumber, loadingProperties, navigate]);
+
+  useEffect(() => {
     if (!form.spc_id) {
       setBrands([]);
       setLoadingBrands(false);
@@ -258,7 +312,15 @@ const SparePartMaster = () => {
           }))
           .filter((row) => row.brand_id);
         if (cancelled) return;
-        setBrands(rows);
+        const nextRows = [...rows];
+        if (
+          form.brand_id &&
+          form.brand_name &&
+          !nextRows.some((row) => row.brand_id === form.brand_id)
+        ) {
+          nextRows.push({ brand_id: form.brand_id, brand_name: form.brand_name });
+        }
+        setBrands(nextRows);
       } catch (error) {
         console.error('Error fetching brands:', error);
         if (!cancelled) {
@@ -300,7 +362,15 @@ const SparePartMaster = () => {
           }))
           .filter((row) => row.model_id);
         if (cancelled) return;
-        setModels(rows);
+        const nextRows = [...rows];
+        if (
+          form.model_id &&
+          form.model_name &&
+          !nextRows.some((row) => row.model_id === form.model_id)
+        ) {
+          nextRows.push({ model_id: form.model_id, model_name: form.model_name });
+        }
+        setModels(nextRows);
       } catch (error) {
         console.error('Error fetching models:', error);
         if (!cancelled) {
@@ -629,11 +699,20 @@ const SparePartMaster = () => {
         })),
       };
 
-      await API.post('/spare-parts/master', payload);
+      if (isEdit) {
+        await API.put(
+          `/spare-parts/master/${encodeURIComponent(routePartNumber)}`,
+          payload
+        );
+      } else {
+        await API.post('/spare-parts/master', payload);
+      }
       invalidateCache('spare-parts:');
       showBackendTextToast({
         toast,
-        fallbackText: 'Spare part saved successfully',
+        fallbackText: isEdit
+          ? 'Spare part updated successfully'
+          : 'Spare part saved successfully',
         type: 'success',
       });
       navigate(listPath);
@@ -721,7 +800,7 @@ const SparePartMaster = () => {
         />
       )}
       <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-xl border-b-4 border-[#FFC107] text-center shrink-0">
-        <h1 className="text-xl font-semibold">Spare Part</h1>
+        <h1 className="text-xl font-semibold">{isEdit ? 'Edit Spare Part' : 'Spare Part'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">

@@ -15,10 +15,18 @@ const KEYS = {
   detail: (id) => buildCacheKey(['spare-part-approval', 'detail', id]),
 };
 
-export function formatSparePartApprovalRows(rows) {
+export function formatSparePartApprovalRows(rows, t) {
+  const statusLabel = (code) => {
+    if (code === 'RQ') return t?.('sparePartApproval.pendingApproval') || 'Pending Approval';
+    if (code === 'IS') return t?.('sparePartApproval.reserved') || 'Reserved';
+    if (code === 'IE') return t?.('sparePartApproval.issued') || 'Issued';
+    return code || '-';
+  };
+
   return (rows || []).map((item) => ({
     ...item,
     is_disabled: item.is_approved || item.status === 'IS' || item.status === 'IE',
+    status_label: statusLabel(item.status),
   }));
 }
 

@@ -81,9 +81,14 @@ export default function SparePartListDetail() {
     navigate('/spare-part-list');
   };
 
-  const canRequestSpareParts = isInhouseMaintenance(
-    maintenanceData?.maintenance_provider || maintenanceData?.maintained_by
-  );
+  const canRequestSpareParts =
+    isInhouseMaintenance(
+      maintenanceData?.maintenance_provider || maintenanceData?.maintained_by
+    ) &&
+    (maintenanceData?.require_spare_parts === true ||
+      maintenanceData?.require_spare_parts === 'true' ||
+      maintenanceData?.require_spare_parts === 1 ||
+      maintenanceData?.require_spare_parts === '1');
 
   if (loadingData && !maintenanceData) {
     return (

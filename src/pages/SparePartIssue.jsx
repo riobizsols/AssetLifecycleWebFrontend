@@ -15,6 +15,15 @@ import {
 } from '../store/useSparePartListStore';
 import { applyListFilterChange } from '../utils/listFilterState';
 
+const ISSUED_RETENTION_MS = 10 * 24 * 60 * 60 * 1000;
+
+const isIssuedWithinRetention = (issuedOn) => {
+  if (!issuedOn) return false;
+  const issuedAt = new Date(issuedOn).getTime();
+  if (!Number.isFinite(issuedAt)) return false;
+  return Date.now() - issuedAt <= ISSUED_RETENTION_MS;
+};
+
 const SparePartIssue = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -31,7 +40,12 @@ const SparePartIssue = () => {
   const [issuingIds, setIssuingIds] = useState({});
 
   const data = useMemo(
-    () => formatSparePartListRows(items, t).filter((row) => row.status === 'IS'),
+    () =>
+      formatSparePartListRows(items, t).filter((row) => {
+        if (row.status === 'IS') return true;
+        if (row.status === 'IE') return isIssuedWithinRetention(row.spare_issued_on);
+        return false;
+      }),
     [items, t],
   );
 
@@ -98,7 +112,10 @@ const SparePartIssue = () => {
     name: col.name,
     options:
       col.name === 'status'
-        ? [{ label: t('sparePartList.issued'), value: 'IS' }]
+        ? [
+            { label: t('sparePartList.issued'), value: 'IS' },
+            { label: t('sparePartList.confirmedIssued'), value: 'IE' },
+          ]
         : [],
     onChange: (value) => handleFilterChange(col.name, value),
   }));
@@ -109,7 +126,7 @@ const SparePartIssue = () => {
   };
 
   const handleIssue = async (row) => {
-    if (!row?.ams_id || issuingIds[row.ams_id]) return;
+    if (!row?.ams_id || row.status !== 'IS' || issuingIds[row.ams_id]) return;
     setIssuingIds((prev) => ({ ...prev, [row.ams_id]: true }));
     try {
       await API.post(`/spare-parts/maintenance-list/${row.ams_id}/issue`);
@@ -127,9 +144,18 @@ const SparePartIssue = () => {
     }
   };
 
-  const renderStatus = () => (
-    <span className="text-green-600 font-semibold">{t('sparePartList.issued')}</span>
-  );
+  const renderStatus = (status) => {
+    if (status === 'IE') {
+      return (
+        <span className="text-sky-600 font-semibold">
+          {t('sparePartList.confirmedIssued')}
+        </span>
+      );
+    }
+    return (
+      <span className="text-green-600 font-semibold">{t('sparePartList.issued')}</span>
+    );
+  };
 
   return (
     <div className="p-4">
@@ -178,8 +204,11 @@ const SparePartIssue = () => {
               rowKey="ams_id"
               showActions={false}
               renderCell={(col, row) => {
-                if (col.name === 'status') return renderStatus();
+                if (col.name === 'status') return renderStatus(row.status);
                 if (col.name === 'action') {
+                  if (row.status !== 'IS') {
+                    return <span className="text-gray-400">-</span>;
+                  }
                   return (
                     <button
                       type="button"
