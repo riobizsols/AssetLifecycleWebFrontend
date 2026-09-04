@@ -137,6 +137,18 @@ export default function Header() {
       title: t('navigation.certifications'),
       subtitle: "",
     },
+    "/adminsettings/configuration/inspection-frequency": {
+      title: t('masterDataTitles.inspectionFrequency'),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/inspection-checklists": {
+      title: t('masterDataTitles.inspectionChecklists'),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/asset-type-checklist-mapping": {
+      title: t('navigation.assetTypeChecklistMapping'),
+      subtitle: "",
+    },
     "/vendor-renewal-approval": { title: t('vendorRenewalApproval.title'), subtitle: "" },
     "/master-data/roles": {
       title: t('masterDataTitles.roleManagement'),

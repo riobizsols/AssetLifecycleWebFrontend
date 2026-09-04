@@ -1351,7 +1351,9 @@ export default function AppRoutes() {
         <Route
           path="/master-data/inspection-checklists"
           element={
-            <ProtectedRoute requiredAppId="INSPECTIONCHECKLISTS">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["INSPECTIONCHECKLISTS", "ADMINSETTINGS"]}
+            >
               <MainLayout>
                 <InspectionChecklists />
               </MainLayout>
@@ -1361,7 +1363,12 @@ export default function AppRoutes() {
         <Route
           path="/master-data/asset-type-checklist-mapping"
           element={
-            <ProtectedRoute requiredAppId="ASSETTYPECHECKLISTMAPPING">
+            <ProtectedRoute
+              requiredAnyOfAppIds={[
+                "ASSETTYPECHECKLISTMAPPING",
+                "ADMINSETTINGS",
+              ]}
+            >
               <MainLayout>
                 <AssetTypeChecklistMapping />
               </MainLayout>
@@ -1371,7 +1378,12 @@ export default function AppRoutes() {
         <Route
           path="/master-data/asset-type-checklist-mapping/create"
           element={
-            <ProtectedRoute requiredAppId="ASSETTYPECHECKLISTMAPPING">
+            <ProtectedRoute
+              requiredAnyOfAppIds={[
+                "ASSETTYPECHECKLISTMAPPING",
+                "ADMINSETTINGS",
+              ]}
+            >
               <MainLayout>
                 <CreateAssetTypeChecklistMapping />
               </MainLayout>
@@ -1381,7 +1393,9 @@ export default function AppRoutes() {
         <Route
           path="/master-data/inspection-frequency"
           element={
-            <ProtectedRoute requiredAppId="INSPECTIONFREQUENCY">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["INSPECTIONFREQUENCY", "ADMINSETTINGS"]}
+            >
               <MainLayout>
                 <InspectionFrequency />
               </MainLayout>
@@ -1391,10 +1405,78 @@ export default function AppRoutes() {
         <Route
           path="/master-data/inspection-frequency/create"
           element={
-            <ProtectedRoute requiredAppId="INSPECTIONFREQUENCY">
+            <ProtectedRoute
+              requiredAnyOfAppIds={["INSPECTIONFREQUENCY", "ADMINSETTINGS"]}
+            >
               <MainLayout>
                 <CreateInspectionFrequency />
               </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/inspection-checklists"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={["INSPECTIONCHECKLISTS", "ADMINSETTINGS"]}
+            >
+              <AdminSettingsLayout>
+                <InspectionChecklists />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/asset-type-checklist-mapping"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={[
+                "ASSETTYPECHECKLISTMAPPING",
+                "ADMINSETTINGS",
+              ]}
+            >
+              <AdminSettingsLayout>
+                <AssetTypeChecklistMapping />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/asset-type-checklist-mapping/create"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={[
+                "ASSETTYPECHECKLISTMAPPING",
+                "ADMINSETTINGS",
+              ]}
+            >
+              <AdminSettingsLayout>
+                <CreateAssetTypeChecklistMapping />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/inspection-frequency"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={["INSPECTIONFREQUENCY", "ADMINSETTINGS"]}
+            >
+              <AdminSettingsLayout>
+                <InspectionFrequency />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/inspection-frequency/create"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={["INSPECTIONFREQUENCY", "ADMINSETTINGS"]}
+            >
+              <AdminSettingsLayout>
+                <CreateInspectionFrequency />
+              </AdminSettingsLayout>
             </ProtectedRoute>
           }
         />

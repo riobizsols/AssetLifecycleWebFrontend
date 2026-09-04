@@ -1,6 +1,6 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
@@ -9,6 +9,10 @@ import { useInspectionFrequencyStore } from '../store/useInspectionFrequencyStor
 
 const CreateInspectionFrequency = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const frequencyListPath = location.pathname.startsWith('/adminsettings')
+    ? '/adminsettings/configuration/inspection-frequency'
+    : '/master-data/inspection-frequency';
   
   const [assetTypeChecklistMappings, setAssetTypeChecklistMappings] = useState([]);
   const [uomOptions, setUomOptions] = useState([]);
@@ -151,7 +155,7 @@ const CreateInspectionFrequency = () => {
       
       showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_FREQUENCY_CREATED_SUCCESSFULLY_6D268C2F', fallbackText: 'Inspection frequency created successfully', type: 'success' });
       useInspectionFrequencyStore.getState().invalidateInspectionFrequencyCache();
-      navigate('/master-data/inspection-frequency');
+      navigate(frequencyListPath);
     } catch (error) {
       console.error('Error creating inspection frequency:', error);
       toast.error(error.response?.data?.message || 'Failed to create inspection frequency');
@@ -248,7 +252,7 @@ const CreateInspectionFrequency = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate('/master-data/inspection-frequency')}
+              onClick={() => navigate(frequencyListPath)}
               className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
             >
               <X size={20} />
@@ -454,7 +458,7 @@ const CreateInspectionFrequency = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/master-data/inspection-frequency')}
+                  onClick={() => navigate(frequencyListPath)}
                   className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                 >
                   Cancel
@@ -493,7 +497,7 @@ const CreateInspectionFrequency = () => {
                 <div className="flex gap-3 justify-end">
                   <button
                     type="button"
-                    onClick={() => navigate('/master-data/inspection-frequency')}
+                    onClick={() => navigate(frequencyListPath)}
                     className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
                   >
                     Cancel

@@ -10,6 +10,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "react-hot-toast";
 import { useMaintenanceApprovalStore } from "../store/useMaintenanceApprovalStore";
+import { useMaintenanceSupervisorStore } from "../store/useMaintenanceSupervisorStore";
 import { SYSTEM_ADMIN_JOB_ROLE_ID } from "../utils/systemAdmin";
 
 function normalizeChangedOn(value) {
@@ -53,6 +54,7 @@ function formatStepDateTime(step) {
 
 function bustMaintenanceApprovalListCache() {
   useMaintenanceApprovalStore.getState().invalidateMaintenanceApprovalCache();
+  useMaintenanceSupervisorStore.getState().invalidateMaintenanceCache();
 }
 
 function isInhouseMaintenance(approvalDetails) {
