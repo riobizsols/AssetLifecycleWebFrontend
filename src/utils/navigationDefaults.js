@@ -41,18 +41,10 @@ export const INSPECTION_CHILD_ORDER = [
 export const HIDDEN_SIDEBAR_APP_IDS = new Set([
   'INSPECTIONFREQUENCY',
   'ASSETTYPECHECKLISTMAPPING',
-  'SPAREPARTS',
-  'SPAREPARTLIST',
-  'SPAREPARTAPPROVAL',
-  'SPAREPARTISSUE',
-  'SPAREPARTSCONFIG',
-  'SPAREPARTMASTER',
 ]);
 
-/** Sidebar group labels hidden when app_id is null (e.g. Spare Parts group). */
-export const HIDDEN_SIDEBAR_LABELS = new Set([
-  'SPARE PARTS',
-]);
+/** Sidebar group labels hidden when app_id is null. */
+export const HIDDEN_SIDEBAR_LABELS = new Set([]);
 
 const isHiddenSidebarItem = (item) => {
   const appId = normalizeNavAppId(item?.app_id);
