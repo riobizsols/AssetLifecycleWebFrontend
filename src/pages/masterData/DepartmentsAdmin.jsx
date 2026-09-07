@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import API from "../../lib/axios";
 import { Maximize, Minimize, Trash2, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -7,8 +7,11 @@ import { toast } from "react-hot-toast";
 import useAuditLog from "../../hooks/useAuditLog";
 import { DEPARTMENTS_ADMIN_APP_ID } from "../../constants/departmentsAdminAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAcmContextStore } from "../../store/useAcmContextStore";
 
 const DepartmentsAdmin = () => {
+  const appliedDeptId = useAcmContextStore((s) => s.appliedDeptId);
+  const deptLocked = Boolean(appliedDeptId);
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState(null);
   const [adminList, setAdminList] = useState([]);
@@ -154,6 +157,49 @@ const DepartmentsAdmin = () => {
     fetchUsersToAdd(); // Fetch all users on component mount
   }, []);
 
+  // When ACM header is narrowed to a department, only that option is relevant
+  const selectableDepartments = useMemo(() => {
+    if (!appliedDeptId) return departments;
+    const locked = String(appliedDeptId);
+    const match = departments.filter((d) => String(d.dept_id) === locked);
+    if (match.length > 0) return match;
+    // Keep locked dept selectable even if list fetch missed it
+    return [{ dept_id: appliedDeptId, text: appliedDeptId }];
+  }, [departments, appliedDeptId]);
+
+  // Auto-select ACM department (or the only available option)
+  useEffect(() => {
+    if (!selectableDepartments.length) {
+      if (selectedDept) setSelectedDept(null);
+      return;
+    }
+
+    if (appliedDeptId) {
+      const match = selectableDepartments.find(
+        (d) => String(d.dept_id) === String(appliedDeptId)
+      );
+      if (match && String(selectedDept) !== String(match.dept_id)) {
+        setSelectedDept(match.dept_id);
+      }
+      return;
+    }
+
+    if (selectableDepartments.length === 1) {
+      const onlyId = selectableDepartments[0].dept_id;
+      if (String(selectedDept) !== String(onlyId)) {
+        setSelectedDept(onlyId);
+      }
+      return;
+    }
+
+    if (
+      selectedDept &&
+      !selectableDepartments.some((d) => String(d.dept_id) === String(selectedDept))
+    ) {
+      setSelectedDept(null);
+    }
+  }, [selectableDepartments, appliedDeptId, selectedDept]);
+
   // Helper for invalid field
   const isFieldInvalid = (val) => submitAttempted && !val;
 
@@ -190,14 +236,18 @@ const DepartmentsAdmin = () => {
             </label>
             <div className="relative w-full">
               <button
-                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedDept) ? 'border-red-500' : 'border-gray-300'}`}
+                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedDept) ? 'border-red-500' : 'border-gray-300'} ${deptLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                 onClick={() => {
+                  if (deptLocked) return;
                   dropdownDeptRef.current.classList.toggle("hidden");
                 }}
                 type="button"
+                disabled={deptLocked}
               >
                 {selectedDept
-                  ? departments.find((d) => d.dept_id === selectedDept)?.text || t('departments.selectDepartment')
+                  ? selectableDepartments.find((d) => d.dept_id === selectedDept)?.text
+                    || departments.find((d) => d.dept_id === selectedDept)?.text
+                    || t('departments.selectDepartment')
                   : t('departments.selectDepartment')}
                 <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
               </button>
@@ -219,10 +269,10 @@ const DepartmentsAdmin = () => {
                   />
                 </div>
                 {/* Filtered Departments */}
-                {departments
+                {selectableDepartments
                   .filter(d => 
-                    d.text.toLowerCase().includes(searchDept.toLowerCase()) ||
-                    d.dept_id.toLowerCase().includes(searchDept.toLowerCase())
+                    (d.text || '').toLowerCase().includes(searchDept.toLowerCase()) ||
+                    (d.dept_id || '').toLowerCase().includes(searchDept.toLowerCase())
                   )
                   .map((dept) => (
                     <div

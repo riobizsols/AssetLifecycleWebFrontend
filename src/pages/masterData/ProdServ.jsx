@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Trash2, Eye, ChevronDown, Maximize, Minimize } from 'lucide-react';
 import API from '../../lib/axios';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal';
@@ -76,16 +76,66 @@ export default function ProdServ() {
   const [_isDeleting, _setIsDeleting] = useState(false);
 
   useEffect(() => {
+    // Create-form dropdowns stay ACM/dept scoped (mapped types for current context).
+    // List name resolution uses asset_type_text from /prodserv (see resolveAssetTypeName).
     const fetchAssetTypes = async () => {
       try {
         const res = await API.get('/dept-assets/asset-types');
-        setAssetTypes(res.data);
+        setAssetTypes(Array.isArray(res.data) ? res.data : []);
       } catch {
         setAssetTypes([]);
       }
     };
     fetchAssetTypes();
   }, []);
+
+  const resolveAssetTypeName = useCallback((rowOrId) => {
+    if (rowOrId && typeof rowOrId === 'object') {
+      const fromRow =
+        rowOrId.asset_type_text ||
+        rowOrId.asset_type_name ||
+        rowOrId.assetTypeName ||
+        rowOrId.assetTypeText;
+      if (fromRow) return fromRow;
+      const id = rowOrId.asset_type_id || rowOrId.assetType;
+      return assetTypes.find((at) => String(at.asset_type_id) === String(id))?.text || 'N/A';
+    }
+    if (!rowOrId) return 'N/A';
+    return assetTypes.find((at) => String(at.asset_type_id) === String(rowOrId))?.text || 'N/A';
+  }, [assetTypes]);
+
+  // Filter options: mapped types + any types present on list rows (so N/A types remain filterable)
+  const productFilterAssetTypes = useMemo(() => {
+    const map = new Map();
+    for (const at of assetTypes) {
+      if (at?.asset_type_id) map.set(String(at.asset_type_id), at.text || at.asset_type_id);
+    }
+    for (const p of products) {
+      const id = p.asset_type_id || p.assetType;
+      if (!id) continue;
+      const key = String(id);
+      if (map.has(key)) continue;
+      const name = p.asset_type_text || p.asset_type_name;
+      if (name) map.set(key, name);
+    }
+    return [...map.entries()].map(([asset_type_id, text]) => ({ asset_type_id, text }));
+  }, [assetTypes, products]);
+
+  const serviceFilterAssetTypes = useMemo(() => {
+    const map = new Map();
+    for (const at of assetTypes) {
+      if (at?.asset_type_id) map.set(String(at.asset_type_id), at.text || at.asset_type_id);
+    }
+    for (const s of services) {
+      const id = s.asset_type_id || s.assetType;
+      if (!id) continue;
+      const key = String(id);
+      if (map.has(key)) continue;
+      const name = s.asset_type_text || s.asset_type_name;
+      if (name) map.set(key, name);
+    }
+    return [...map.entries()].map(([asset_type_id, text]) => ({ asset_type_id, text }));
+  }, [assetTypes, services]);
 
   useEffect(() => {
     const assetType = searchParams.get('assetType');
@@ -280,7 +330,9 @@ export default function ProdServ() {
       await recordActionByNameWithFetch('Delete', {
         prodServId: itemId,
         assetTypeId: itemToDelete.assetType || itemToDelete.asset_type_id,
-        assetTypeName: assetTypes.find(at => at.asset_type_id === (itemToDelete.assetType || itemToDelete.asset_type_id))?.text,
+        assetTypeName: resolveAssetTypeName(itemToDelete) !== 'N/A'
+          ? resolveAssetTypeName(itemToDelete)
+          : undefined,
         brand: itemToDelete.brand,
         model: itemToDelete.model,
         description: itemToDelete.description,
@@ -482,7 +534,7 @@ export default function ProdServ() {
                           onClick={() => setShowDropdownProductFilter((prev) => !prev)}
                         >
                           {productFilter
-                            ? assetTypes.find((at) => at.asset_type_id === productFilter)?.text || t('prodServ.allAssetTypes')
+                            ? productFilterAssetTypes.find((at) => at.asset_type_id === productFilter)?.text || t('prodServ.allAssetTypes')
                             : t('prodServ.allAssetTypes')}
                           <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
                         </button>
@@ -512,8 +564,8 @@ export default function ProdServ() {
                             >
                               {t('prodServ.allAssetTypes')}
                             </div>
-                            {assetTypes
-                              .filter(at => at.text.toLowerCase().includes(searchAssetTypeProductFilter.toLowerCase()))
+                            {productFilterAssetTypes
+                              .filter(at => (at.text || '').toLowerCase().includes(searchAssetTypeProductFilter.toLowerCase()))
                               .map((at) => (
                                 <div
                                   key={at.asset_type_id}
@@ -546,7 +598,7 @@ export default function ProdServ() {
                               key={i}
                               className={`grid grid-cols-4 px-4 py-2 items-center border-b ${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} text-gray-800`}
                             >
-                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (p.assetType || p.asset_type_id))?.text || 'N/A'}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{resolveAssetTypeName(p)}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.brand}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.model}</div>
                               <div className="flex justify-center gap-2">
@@ -670,7 +722,7 @@ export default function ProdServ() {
                           onClick={() => setShowDropdownServiceFilter((prev) => !prev)}
                         >
                           {serviceFilter
-                            ? assetTypes.find((at) => at.asset_type_id === serviceFilter)?.text || t('prodServ.allAssetTypes')
+                            ? serviceFilterAssetTypes.find((at) => at.asset_type_id === serviceFilter)?.text || t('prodServ.allAssetTypes')
                             : t('prodServ.allAssetTypes')}
                           <ChevronDown className="ml-2 w-4 h-4 text-gray-500" />
                         </button>
@@ -700,8 +752,8 @@ export default function ProdServ() {
                             >
                               {t('prodServ.allAssetTypes')}
                             </div>
-                            {assetTypes
-                              .filter(at => at.text.toLowerCase().includes(searchAssetTypeServiceFilter.toLowerCase()))
+                            {serviceFilterAssetTypes
+                              .filter(at => (at.text || '').toLowerCase().includes(searchAssetTypeServiceFilter.toLowerCase()))
                               .map((at) => (
                                 <div
                                   key={at.asset_type_id}
@@ -733,7 +785,7 @@ export default function ProdServ() {
                               key={i}
                               className={`grid grid-cols-3 px-4 py-2 items-center border-b ${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} text-gray-800`}
                             >
-                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (s.assetType || s.asset_type_id))?.text || 'N/A'}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{resolveAssetTypeName(s)}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{s.description}</div>
                               <div className="flex justify-center gap-2">
                                 <button 
