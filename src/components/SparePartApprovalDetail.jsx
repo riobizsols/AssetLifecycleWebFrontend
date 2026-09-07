@@ -63,13 +63,21 @@ export default function SparePartApprovalDetail() {
       });
       setDetail(data);
       setApproved(Boolean(data?.is_approved));
-      setAssetName('');
-      setAssetType('');
-      setCategory('');
-      setSpbId('');
-      setSpmId('');
-      setRequiredQty('');
-      setAvailableQty('');
+      setAssetName(data?.asset_name || data?.asset_description || '');
+      setAssetType(data?.asset_type_name || '');
+      setCategory(data?.category_name || '');
+      setSpbId(data?.spb_id || data?.brand_id || '');
+      setSpmId(data?.spm_id || data?.model_id || '');
+      setRequiredQty(
+        data?.quantity_issued != null && data?.quantity_issued !== ''
+          ? String(data.quantity_issued)
+          : ''
+      );
+      setAvailableQty(
+        data?.available_qty != null && data?.available_qty !== ''
+          ? String(data.available_qty)
+          : ''
+      );
     } catch (err) {
       toast.error(err.message || t('sparePartApproval.failedToFetchDetail'));
     } finally {
@@ -112,19 +120,18 @@ export default function SparePartApprovalDetail() {
   }, []);
 
   const spcId = useMemo(() => {
+    if (detail?.spc_id) return detail.spc_id;
     const typed = category.trim().toLowerCase();
     if (!typed) return '';
     const match = categories.find(
       (row) => String(row.text || '').trim().toLowerCase() === typed
     );
     return match?.spc_id || '';
-  }, [category, categories]);
+  }, [category, categories, detail?.spc_id]);
 
   useEffect(() => {
     if (!spcId) {
       setBrands([]);
-      setSpbId('');
-      setSpmId('');
       setModels([]);
       return;
     }
@@ -136,14 +143,27 @@ export default function SparePartApprovalDetail() {
           params: { spc_id: spcId },
         });
         if (cancelled) return;
-        setBrands(
-          asList(res.data)
-            .map(mapBrand)
-            .filter((row) => row.spb_id && row.text)
-        );
-        setSpbId('');
-        setSpmId('');
-        setModels([]);
+        const mappedBrands = asList(res.data)
+          .map(mapBrand)
+          .filter((row) => row.spb_id && row.text);
+        setBrands(mappedBrands);
+        setSpbId((prev) => {
+          if (prev && mappedBrands.some((b) => String(b.spb_id) === String(prev))) {
+            return prev;
+          }
+          const pendingId = detail?.spb_id || detail?.brand_id || '';
+          if (pendingId && mappedBrands.some((b) => String(b.spb_id) === String(pendingId))) {
+            return pendingId;
+          }
+          const pendingName = String(detail?.brand_name || '').trim().toLowerCase();
+          if (pendingName) {
+            const byName = mappedBrands.find(
+              (b) => String(b.text || '').trim().toLowerCase() === pendingName
+            );
+            if (byName) return byName.spb_id;
+          }
+          return prev || '';
+        });
       } catch (err) {
         if (!cancelled) {
           setBrands([]);
@@ -156,7 +176,7 @@ export default function SparePartApprovalDetail() {
     return () => {
       cancelled = true;
     };
-  }, [spcId, t]);
+  }, [spcId, t, detail?.spb_id, detail?.brand_id, detail?.brand_name]);
 
   useEffect(() => {
     if (!spcId || !spbId) {
@@ -171,12 +191,27 @@ export default function SparePartApprovalDetail() {
           params: { spc_id: spcId, spb_id: spbId },
         });
         if (cancelled) return;
-        setModels(
-          asList(res.data)
-            .map(mapModel)
-            .filter((row) => row.spm_id && row.text)
-        );
-        setSpmId('');
+        const mappedModels = asList(res.data)
+          .map(mapModel)
+          .filter((row) => row.spm_id && row.text);
+        setModels(mappedModels);
+        setSpmId((prev) => {
+          if (prev && mappedModels.some((m) => String(m.spm_id) === String(prev))) {
+            return prev;
+          }
+          const pendingId = detail?.spm_id || detail?.model_id || '';
+          if (pendingId && mappedModels.some((m) => String(m.spm_id) === String(pendingId))) {
+            return pendingId;
+          }
+          const pendingName = String(detail?.model_name || '').trim().toLowerCase();
+          if (pendingName) {
+            const byName = mappedModels.find(
+              (m) => String(m.text || '').trim().toLowerCase() === pendingName
+            );
+            if (byName) return byName.spm_id;
+          }
+          return prev || '';
+        });
       } catch (err) {
         if (!cancelled) {
           setModels([]);
@@ -189,13 +224,16 @@ export default function SparePartApprovalDetail() {
     return () => {
       cancelled = true;
     };
-  }, [spcId, spbId, t]);
+  }, [spcId, spbId, t, detail?.spm_id, detail?.model_id, detail?.model_name]);
 
   useEffect(() => {
     const hasAsset = Boolean(assetName.trim());
     if (!hasAsset || !spcId) {
-      setAvailableQty('');
-      setAvailableQtyLoading(false);
+      // Keep API-provided available qty until category resolves; only clear when asset emptied.
+      if (!hasAsset) {
+        setAvailableQty('');
+        setAvailableQtyLoading(false);
+      }
       return;
     }
     let cancelled = false;

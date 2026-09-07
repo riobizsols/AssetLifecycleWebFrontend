@@ -7,9 +7,8 @@ import { useSparePartApprovalStore } from '../../store/useSparePartApprovalStore
 
 /**
  * Spare Part Request — categories from tblSPCatATMap by asset type;
+ * checklist-required categories for amsId are auto-selected at qty 1.
  * Request persists selected rows to tblSpareIssue.
- * When a category is selected, Required Quantity uses the same
- * stacked field layout as Spare Part Approval detail (same card, no extra asset details).
  */
 export default function SparePartRequestScreen({
   amsId,
@@ -28,18 +27,37 @@ export default function SparePartRequestScreen({
   useEffect(() => {
     if (!assetTypeId) {
       setCategories([]);
+      setSelected({});
       return;
     }
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const res = await API.get(
-          `/spare-parts/category-mappings/by-asset-type/${assetTypeId}`
-        );
+        const [catRes, requiredRes] = await Promise.all([
+          API.get(`/spare-parts/category-mappings/by-asset-type/${assetTypeId}`),
+          amsId
+            ? API.get(`/spare-parts/maintenance-list/${amsId}/required-categories`).catch(
+                () => ({ data: { data: [] } })
+              )
+            : Promise.resolve({ data: { data: [] } }),
+        ]);
         if (cancelled) return;
-        setCategories(res.data?.data || []);
-        setSelected({});
+
+        const cats = catRes.data?.data || [];
+        setCategories(cats);
+
+        const requiredRows = requiredRes.data?.data || [];
+        const requiredIds = new Set(
+          requiredRows.map((row) => row.spc_id).filter(Boolean)
+        );
+        const initialSelected = {};
+        requiredIds.forEach((spc_id) => {
+          if (cats.some((cat) => cat.spc_id === spc_id)) {
+            initialSelected[spc_id] = '1';
+          }
+        });
+        setSelected(initialSelected);
         setAvailableQty({});
       } catch (err) {
         if (!cancelled) {
@@ -54,7 +72,7 @@ export default function SparePartRequestScreen({
     return () => {
       cancelled = true;
     };
-  }, [assetTypeId, t]);
+  }, [assetTypeId, amsId, t]);
 
   const toggleCategory = (spc_id) => {
     setSelected((prev) => {
@@ -62,7 +80,7 @@ export default function SparePartRequestScreen({
       if (next[spc_id] !== undefined) {
         delete next[spc_id];
       } else {
-        next[spc_id] = '';
+        next[spc_id] = '1';
       }
       return next;
     });

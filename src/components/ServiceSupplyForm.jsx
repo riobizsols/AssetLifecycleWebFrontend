@@ -18,6 +18,7 @@ const ServiceSupplyForm = ({
   onPersistVendorDraft,
   loadExisting = false,
   isReadOnly = false,
+  hideInlineSave = false,
 }) => {
   // Debug logs
   console.log('ServiceSupplyForm render:', { vendorId, orgId });
@@ -520,7 +521,7 @@ const ServiceSupplyForm = ({
       ) : (
         tableCard
       )}
-      {loadExisting && !isReadOnly && (
+      {loadExisting && !isReadOnly && !hideInlineSave && (
         <div className="flex justify-end mt-4">
           <button
             type="button"

@@ -78,6 +78,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
     service_supply: false,
     spare_supply: false,
   });
+  const [savingTab, setSavingTab] = useState('');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -174,48 +175,12 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             spare_supply: isTruthySupply(vendorData.spare_supply),
           };
 
-          if (!flags.spare_supply) {
-            try {
-              const mapRes = await API.get('/spare-parts/vendor-mappings', {
-                params: { vendor_id: vendor.vendor_id },
-              });
-              if (Array.isArray(mapRes.data?.data) && mapRes.data.data.length > 0) {
-                flags.spare_supply = true;
-              }
-            } catch (mapErr) {
-              console.warn('Failed to fetch spare supply mappings', mapErr);
-            }
-          }
-
-          if (!flags.product_supply || !flags.service_supply) {
-            try {
-              const vpsRes = await API.get(`/vendor-prod-services/vendor/${vendor.vendor_id}`);
-              const rows = Array.isArray(vpsRes.data) ? vpsRes.data : [];
-              if (rows.some((row) => String(row.ps_type || '').toLowerCase() === 'product')) {
-                flags.product_supply = true;
-              }
-              if (rows.some((row) => String(row.ps_type || '').toLowerCase() === 'service')) {
-                flags.service_supply = true;
-              }
-            } catch (vpsErr) {
-              console.warn('Failed to fetch vendor product/service links', vpsErr);
-            }
-          }
-
+          // Trust vendor supply flags only — do not infer Service/Product/Spare
+          // tabs from leftover vendor-prod-services or spare mapping rows.
           setSupplyFlags(flags);
         }
       } catch (err) {
         console.warn('Failed to fetch vendor details', err);
-        try {
-          const mapRes = await API.get('/spare-parts/vendor-mappings', {
-            params: { vendor_id: vendor.vendor_id },
-          });
-          if (Array.isArray(mapRes.data?.data) && mapRes.data.data.length > 0) {
-            setSupplyFlags((prev) => ({ ...prev, spare_supply: true }));
-          }
-        } catch (mapErr) {
-          console.warn('Failed to fetch spare supply mappings', mapErr);
-        }
       }
       
       // Fetch vendor documents
@@ -1054,6 +1019,9 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
               vendorSaved
               loadExisting
               isReadOnly={isReadOnly}
+              hideInlineSave
+              onSaveTrigger={savingTab}
+              onTabSaved={() => setSavingTab('')}
             />
           </div>
         )}
@@ -1066,6 +1034,9 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
               vendorSaved
               loadExisting
               isReadOnly={isReadOnly}
+              hideInlineSave
+              onSaveTrigger={savingTab}
+              onTabSaved={() => setSavingTab('')}
             />
           </div>
         )}
@@ -1348,7 +1319,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         )}
         </div>
 
-        {/* Footer — Cancel / Update at bottom of modal */}
+        {/* Footer — Cancel / Update / Save at bottom of modal */}
         <div className="shrink-0 border-t border-gray-200 bg-white px-6 py-4">
           <div className="flex justify-end gap-3">
             <button
@@ -1365,6 +1336,30 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                 className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
               >
                 {t('common.update')}
+              </button>
+            )}
+            {!isReadOnly && activeTab === 'Service Details' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSavingTab('');
+                  setTimeout(() => setSavingTab('Service Details'), 0);
+                }}
+                className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
+              >
+                {t('common.save')}
+              </button>
+            )}
+            {!isReadOnly && activeTab === 'Spare Supply' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSavingTab('');
+                  setTimeout(() => setSavingTab('Spare Supply'), 0);
+                }}
+                className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
+              >
+                {t('common.save')}
               </button>
             )}
           </div>
