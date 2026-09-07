@@ -1323,6 +1323,8 @@
     "actions": "Actions",
     "productDeletedSuccessfully": "Product deleted successfully",
     "serviceDeletedSuccessfully": "Service deleted successfully",
+    "productAddedSuccessfully": "Product added successfully",
+    "serviceAddedSuccessfully": "Service added successfully",
     "cannotDeleteDependenciesFound": "Cannot Delete - Dependencies Found",
     "cannotDeleteBeingUsed": "This {{type}} cannot be deleted because it is being used by:",
     "options": "Options",

@@ -251,8 +251,11 @@ const InspectionExecutionDetail = () => {
     };
   };
 
+  const isQuantitativeResponse = (responseType) =>
+    String(responseType || '').toUpperCase() === 'QUANTITATIVE';
+
   const validateValue = (question, value) => {
-    if (question.response_type === 'QN') {
+    if (isQuantitativeResponse(question.response_type)) {
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return false;
 
@@ -269,7 +272,7 @@ const InspectionExecutionDetail = () => {
   };
 
   const isValueOutOfRange = (question, value) => {
-    if (question.response_type === 'QN' && value !== '' && value != null) {
+    if (isQuantitativeResponse(question.response_type) && value !== '' && value != null) {
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return false;
       return !validateValue(question, value);
@@ -560,14 +563,14 @@ const InspectionExecutionDetail = () => {
                       </h3>
                       <div className="flex items-center gap-4 text-sm text-gray-600">
                         <span className="bg-gray-100 px-2 py-1 rounded">
-                          {question.response_type === 'QN' ? t('inspectionExecution.quantitative') : t('inspectionExecution.qualitative')}
+                          {isQuantitativeResponse(question.response_type) ? t('inspectionExecution.quantitative') : t('inspectionExecution.qualitative')}
                         </span>
-                        {question.response_type === 'QN' && (
+                        {isQuantitativeResponse(question.response_type) && (
                           <span>
                             {t('inspectionExecution.range')}: {formatQuantitativeRange(question, t)}
                           </span>
                         )}
-                        {question.response_type === 'QL' && question.expected_value && (
+                        {!isQuantitativeResponse(question.response_type) && question.expected_value && (
                           <span>{t('inspectionExecution.expected')}: {question.expected_value}</span>
                         )}
                         {recordedValue && (
@@ -726,7 +729,7 @@ const InspectionExecutionDetail = () => {
             <div className="mb-4">
               <p className="text-gray-700 mb-3">{translateMasterDataLabel(selectedQuestion.inspection_text, t)}</p>
               
-              {selectedQuestion.response_type === 'QN' && (
+              {isQuantitativeResponse(selectedQuestion.response_type) && (
                 <div className="bg-gray-50 p-3 rounded mb-3">
                   <p className="text-sm text-gray-600">
                     <strong>{t('inspectionExecution.range')}:</strong> {formatQuantitativeRange(selectedQuestion, t)}
@@ -734,7 +737,7 @@ const InspectionExecutionDetail = () => {
                 </div>
               )}
               
-              {selectedQuestion.response_type === 'QL' && selectedQuestion.expected_value && (
+              {!isQuantitativeResponse(selectedQuestion.response_type) && selectedQuestion.expected_value && (
                 <div className="bg-gray-50 p-3 rounded mb-3">
                   <p className="text-sm text-gray-600">
                     <strong>{t('inspectionExecution.expectedValue')}:</strong> {selectedQuestion.expected_value}
@@ -746,7 +749,7 @@ const InspectionExecutionDetail = () => {
                 {t('inspectionExecution.recordedValue')}
               </label>
               <input
-                type={selectedQuestion.response_type === 'QN' ? 'number' : 'text'}
+                type={isQuantitativeResponse(selectedQuestion.response_type) ? 'number' : 'text'}
                 value={recordedValue}
                 onChange={(e) => setRecordedValue(e.target.value)}
                 className={`w-full p-3 border rounded-lg focus:ring-2 outline-none transition ${
@@ -754,7 +757,7 @@ const InspectionExecutionDetail = () => {
                     ? 'border-red-500 focus:ring-red-500 focus:border-red-500 text-red-600'
                     : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
                 }`}
-                placeholder={selectedQuestion.response_type === 'QN' ? t('inspectionExecution.enterNumericValue') : t('inspectionExecution.enterTextValue')}
+                placeholder={isQuantitativeResponse(selectedQuestion.response_type) ? t('inspectionExecution.enterNumericValue') : t('inspectionExecution.enterTextValue')}
               />
               
               {modalOutOfRange && (
