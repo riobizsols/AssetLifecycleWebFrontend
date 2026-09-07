@@ -79,16 +79,30 @@ export default function ProdServ() {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [_isDeleting, _setIsDeleting] = useState(false);
 
+  const resolveAssetTypeLabel = (row) =>
+    row?.asset_type_name ||
+    row?.asset_type_text ||
+    assetTypes.find(
+      (at) =>
+        String(at.asset_type_id) ===
+        String(row?.assetType || row?.asset_type_id)
+    )?.text ||
+    row?.asset_type_id ||
+    'N/A';
+
   useEffect(() => {
     const fetchAssetTypes = async () => {
       try {
         const res = await API.get('/dept-assets/asset-types');
-        setAssetTypes(res.data);
+        setAssetTypes(Array.isArray(res.data) ? res.data : res.data?.data || []);
       } catch {
         setAssetTypes([]);
       }
     };
     fetchAssetTypes();
+    const onAcmChanged = () => fetchAssetTypes();
+    window.addEventListener('acm-context-changed', onAcmChanged);
+    return () => window.removeEventListener('acm-context-changed', onAcmChanged);
   }, []);
 
   useEffect(() => {
@@ -134,6 +148,9 @@ export default function ProdServ() {
       }
     };
     fetchProdServ();
+    const onAcmChanged = () => fetchProdServ();
+    window.addEventListener('acm-context-changed', onAcmChanged);
+    return () => window.removeEventListener('acm-context-changed', onAcmChanged);
   }, []);
 
   // Remove brands/models state and related useEffects
@@ -617,7 +634,7 @@ export default function ProdServ() {
                               key={i}
                               className={`grid grid-cols-4 px-4 py-2 items-center border-b ${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} text-gray-800`}
                             >
-                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (p.assetType || p.asset_type_id))?.text || 'N/A'}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{resolveAssetTypeLabel(p)}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.brand}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{p.model}</div>
                               {canEdit && (<div className="flex justify-center gap-2">
@@ -804,7 +821,7 @@ export default function ProdServ() {
                               key={i}
                               className={`grid grid-cols-3 px-4 py-2 items-center border-b ${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} text-gray-800`}
                             >
-                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{assetTypes.find(at => at.asset_type_id === (s.assetType || s.asset_type_id))?.text || 'N/A'}</div>
+                              <div className="whitespace-normal break-words max-w-xs px-2 py-1">{resolveAssetTypeLabel(s)}</div>
                               <div className="whitespace-normal break-words max-w-xs px-2 py-1">{s.description}</div>
                               {canEdit && (<div className="flex justify-center gap-2">
                                 <button 
