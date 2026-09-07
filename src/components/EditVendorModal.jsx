@@ -79,6 +79,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
     service_supply: false,
     spare_supply: false,
   });
+  const [savingTab, setSavingTab] = useState('');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -206,16 +207,6 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         }
       } catch (err) {
         console.warn('Failed to fetch vendor details', err);
-        try {
-          const mapRes = await API.get('/spare-parts/vendor-mappings', {
-            params: { vendor_id: vendor.vendor_id },
-          });
-          if (Array.isArray(mapRes.data?.data) && mapRes.data.data.length > 0) {
-            setSupplyFlags((prev) => ({ ...prev, spare_supply: true }));
-          }
-        } catch (mapErr) {
-          console.warn('Failed to fetch spare supply mappings', mapErr);
-        }
       }
       
       // Fetch vendor documents

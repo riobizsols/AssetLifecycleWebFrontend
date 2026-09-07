@@ -237,6 +237,13 @@ export default function ProdServ() {
       const res = await API.get('/prodserv');
       const all = Array.isArray(res.data) ? res.data : [];
       setProducts(all.filter(p => p.ps_type === 'product'));
+
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_PRODSERV_PRODUCTADDEDSUCCESSFULLY_8F3A1C2D',
+        fallbackText: t('prodServ.productAddedSuccessfully'),
+        type: 'success',
+      });
       
       const returnTo = searchParams.get('returnTo');
       if (returnTo === 'vendor-add') {
@@ -310,6 +317,13 @@ export default function ProdServ() {
       const res = await API.get('/prodserv');
       const all = Array.isArray(res.data) ? res.data : [];
       setServices(all.filter(p => p.ps_type === 'service'));
+
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_PRODSERV_SERVICEADDEDSUCCESSFULLY_9E4B2D3E',
+        fallbackText: t('prodServ.serviceAddedSuccessfully'),
+        type: 'success',
+      });
 
       const returnTo = searchParams.get('returnTo');
       if (returnTo === 'vendor-add') {

@@ -67,7 +67,7 @@ export default function SparePartApprovalDetail() {
       });
       setDetail(data);
       setApproved(Boolean(data?.is_approved));
-      setAssetName(data?.asset_name || data?.serial_number || '');
+      setAssetName(data?.asset_name || data?.asset_description || data?.serial_number || '');
       setAssetType(data?.asset_type_name || '');
       setCategory(data?.category_name || '');
       setPendingBrandId(data?.spb_id || data?.brand_id || '');
@@ -138,8 +138,6 @@ export default function SparePartApprovalDetail() {
   useEffect(() => {
     if (!spcId) {
       setBrands([]);
-      setSpbId('');
-      setSpmId('');
       setModels([]);
       return;
     }
@@ -231,7 +229,14 @@ export default function SparePartApprovalDetail() {
   }, [spcId, spbId, pendingModelId, pendingModelName, t]);
 
   useEffect(() => {
+    const hasAsset = Boolean(assetName.trim());
+    if (!hasAsset) {
+      setAvailableQty('');
+      setAvailableQtyLoading(false);
+      return;
+    }
     if (!spcId) {
+      // Keep API-provided available qty until category resolves; don't clear if detail already has it
       if (!detail?.available_qty && detail?.available_qty !== 0) {
         setAvailableQty('');
       }
@@ -255,7 +260,7 @@ export default function SparePartApprovalDetail() {
     return () => {
       cancelled = true;
     };
-  }, [spcId, detail?.available_qty]);
+  }, [spcId, detail?.available_qty, assetName]);
 
   const handleBrandChange = (value) => {
     setPendingBrandId(value);

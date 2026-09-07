@@ -668,7 +668,7 @@ const SpareParts = () => {
       });
       return false;
     }
-    if (!form.part_number.trim()) {
+    if (!String(form.part_number || '').trim()) {
       showBackendTextToast({
         toast,
         tmdId: 'TMD_SPARE_PART_NUMBER_REQUIRED',
@@ -1039,6 +1039,7 @@ const SpareParts = () => {
                   name="part_number"
                   value={form.part_number}
                   onChange={handleInputChange}
+                  required
                   className={fieldClass(isFieldInvalid(form.part_number))}
                   placeholder="Enter part number"
                 />

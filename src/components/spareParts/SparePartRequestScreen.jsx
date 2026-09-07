@@ -7,9 +7,8 @@ import { useSparePartApprovalStore } from '../../store/useSparePartApprovalStore
 
 /**
  * Spare Part Request — categories from tblSPCatATMap by asset type;
+ * checklist-required categories for amsId are auto-selected at qty 1.
  * Request persists selected rows to tblSpareIssue.
- * When a category is selected, Required Quantity uses the same
- * stacked field layout as Spare Part Approval detail (same card, no extra asset details).
  */
 export default function SparePartRequestScreen({
   amsId,
@@ -31,7 +30,7 @@ export default function SparePartRequestScreen({
     (async () => {
       setLoading(true);
       try {
-        let rows = [];
+        let requiredRows = [];
 
         // Always resolve checklist-required categories from the AMS when available
         if (amsId) {
@@ -39,7 +38,7 @@ export default function SparePartRequestScreen({
             const res = await API.get(
               `/spare-parts/maintenance-list/${amsId}/required-categories`
             );
-            rows = (res.data?.data || [])
+            requiredRows = (res.data?.data || [])
               .filter((row) => row?.spc_id)
               .map((row) => ({
                 spc_id: row.spc_id,
@@ -52,9 +51,9 @@ export default function SparePartRequestScreen({
           }
         }
 
-        // Fallback: prop from detail, then all asset-type mappings
-        if (!rows.length && Array.isArray(checklistSpareCategories) && checklistSpareCategories.length) {
-          rows = checklistSpareCategories
+        // Fallback: prop from detail
+        if (!requiredRows.length && Array.isArray(checklistSpareCategories) && checklistSpareCategories.length) {
+          requiredRows = checklistSpareCategories
             .filter((row) => row?.spc_id)
             .map((row) => ({
               spc_id: row.spc_id,
@@ -64,25 +63,48 @@ export default function SparePartRequestScreen({
             }));
         }
 
-        if (!rows.length && assetTypeId) {
-          const res = await API.get(
-            `/spare-parts/category-mappings/by-asset-type/${assetTypeId}`
-          );
-          rows = res.data?.data || [];
+        // Full category list from asset-type mappings when available
+        let assetTypeCats = [];
+        if (assetTypeId) {
+          try {
+            const res = await API.get(
+              `/spare-parts/category-mappings/by-asset-type/${assetTypeId}`
+            );
+            assetTypeCats = res.data?.data || [];
+          } catch (err) {
+            console.warn('Failed to load asset-type spare categories:', err);
+          }
         }
 
         if (cancelled) return;
 
-        const byId = new Map();
-        rows.forEach((row) => {
-          if (row?.spc_id && !byId.has(row.spc_id)) byId.set(row.spc_id, row);
-        });
-        const unique = [...byId.values()];
-        setCategories(unique);
-        // Auto-check every loaded category with default quantity 1
-        setSelected(
-          Object.fromEntries(unique.map((row) => [row.spc_id, '1']))
-        );
+        const requiredIds = new Set(requiredRows.map((row) => row.spc_id).filter(Boolean));
+
+        if (assetTypeCats.length) {
+          const byId = new Map();
+          assetTypeCats.forEach((row) => {
+            if (row?.spc_id && !byId.has(row.spc_id)) byId.set(row.spc_id, row);
+          });
+          const unique = [...byId.values()];
+          setCategories(unique);
+          // Auto-select required categories that appear in the full list
+          const initialSelected = {};
+          requiredIds.forEach((spc_id) => {
+            if (unique.some((cat) => cat.spc_id === spc_id)) {
+              initialSelected[spc_id] = '1';
+            }
+          });
+          setSelected(initialSelected);
+        } else {
+          // No asset-type cats: show required rows and auto-select all
+          const byId = new Map();
+          requiredRows.forEach((row) => {
+            if (row?.spc_id && !byId.has(row.spc_id)) byId.set(row.spc_id, row);
+          });
+          const unique = [...byId.values()];
+          setCategories(unique);
+          setSelected(Object.fromEntries(unique.map((row) => [row.spc_id, '1'])));
+        }
         setAvailableQty({});
       } catch (err) {
         if (!cancelled) {
@@ -97,7 +119,7 @@ export default function SparePartRequestScreen({
     return () => {
       cancelled = true;
     };
-  }, [amsId, assetTypeId, t]);
+  }, [amsId, assetTypeId, checklistSpareCategories, t]);
 
   const toggleCategory = (spc_id) => {
     setSelected((prev) => {

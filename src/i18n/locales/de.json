@@ -1287,6 +1287,8 @@
     "actions": "Aktionen",
     "productDeletedSuccessfully": "Produkt erfolgreich gelöscht",
     "serviceDeletedSuccessfully": "Service erfolgreich gelöscht",
+    "productAddedSuccessfully": "Produkt erfolgreich hinzugefügt",
+    "serviceAddedSuccessfully": "Service erfolgreich hinzugefügt",
     "cannotDeleteDependenciesFound": "Löschen nicht möglich - Abhängigkeiten gefunden",
     "cannotDeleteBeingUsed": "Dieses {{type}} kann nicht gelöscht werden, da es verwendet wird von:",
     "options": "Optionen",
