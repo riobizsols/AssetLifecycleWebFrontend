@@ -7,8 +7,10 @@ import { toast } from "react-hot-toast";
 import useAuditLog from "../../hooks/useAuditLog";
 import { DEPARTMENTS_ADMIN_APP_ID } from "../../constants/departmentsAdminAuditEvents";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAcmContextStore } from "../../store/useAcmContextStore";
 
 const DepartmentsAdmin = () => {
+  const appliedDeptId = useAcmContextStore((s) => s.appliedDeptId);
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState(null);
   const [adminList, setAdminList] = useState([]);
@@ -190,6 +192,41 @@ const DepartmentsAdmin = () => {
     fetchUsersToAdd(); // Fetch all users on component mount
   }, []);
 
+  // When ACM view is narrowed to a department, auto-select that department
+  useEffect(() => {
+    if (!departments.length) return;
+
+    if (appliedDeptId) {
+      const match = departments.find(
+        (d) => String(d.dept_id) === String(appliedDeptId)
+      );
+      if (match && String(selectedDept) !== String(match.dept_id)) {
+        setSelectedDept(match.dept_id);
+        setSelectedUsers([]);
+      }
+      return;
+    }
+
+    if (
+      selectedDept &&
+      !departments.some((d) => String(d.dept_id) === String(selectedDept))
+    ) {
+      setSelectedDept(null);
+      setSelectedUsers([]);
+    }
+  }, [departments, appliedDeptId, selectedDept]);
+
+  useEffect(() => {
+    const onAcmChanged = () => {
+      fetchDepartments();
+      fetchAllAdmins();
+    };
+    window.addEventListener("acm-context-changed", onAcmChanged);
+    return () => window.removeEventListener("acm-context-changed", onAcmChanged);
+  }, []);
+
+  const departmentLocked = Boolean(appliedDeptId);
+
   // Helper for invalid field
   const isFieldInvalid = (val) => submitAttempted && (!val || (Array.isArray(val) && val.length === 0));
 
@@ -240,11 +277,22 @@ const DepartmentsAdmin = () => {
             </label>
             <div className="relative w-full">
               <button
-                className={`border text-black px-3 py-2 text-sm w-full bg-white focus:outline-none flex justify-between items-center ${isFieldInvalid(selectedDept) ? 'border-red-500' : 'border-gray-300'}`}
+                className={`border text-black px-3 py-2 text-sm w-full focus:outline-none flex justify-between items-center ${
+                  departmentLocked ? "bg-gray-100 cursor-not-allowed" : "bg-white"
+                } ${isFieldInvalid(selectedDept) ? "border-red-500" : "border-gray-300"}`}
                 onClick={() => {
+                  if (departmentLocked) return;
                   dropdownDeptRef.current.classList.toggle("hidden");
                 }}
                 type="button"
+                disabled={departmentLocked}
+                title={
+                  departmentLocked
+                    ? t("departments.lockedToAcmDepartment", {
+                        defaultValue: "Locked to header department selection",
+                      })
+                    : undefined
+                }
               >
                 {selectedDept
                   ? departments.find((d) => d.dept_id === selectedDept)?.text || t('departments.selectDepartment')
