@@ -363,6 +363,70 @@ export default function TenantSetup() {
     }
   };
 
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  /**
+   * After gateway 504 / client timeout the server may still finish create.
+   * Poll until the subdomain is registered, then call create again (idempotent).
+   */
+  const recoverAfterGatewayTimeout = async (payload) => {
+    const subdomain = payload.subdomain;
+    const maxAttempts = 40; // ~2 minutes at 3s
+    const intervalMs = 3000;
+
+    toast(
+      "Server is still finishing setup (gateway timed out). Waiting for your domain…",
+      { duration: 6000 },
+    );
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const check = await API.post(
+          "/tenant-setup/check-subdomain",
+          { subdomain },
+          { timeout: 30000 },
+        );
+        const taken =
+          check.data?.available === false ||
+          check.data?.subdomainTaken === true;
+
+        if (taken) {
+          const retry = await API.post("/tenant-setup/create", payload, {
+            timeout: 120000,
+          });
+          const tenantData = retry.data?.data;
+          if (retry.data?.success && (tenantData?.orgId || tenantData?.groupedOrgId || tenantData?.alreadyExists)) {
+            return { tenantData, alreadyExists: true };
+          }
+        }
+      } catch (pollErr) {
+        const msg = pollErr.response?.data?.message || pollErr.message || "";
+        if (/already exists|already taken/i.test(msg)) {
+          return {
+            tenantData: {
+              orgId: null,
+              orgName: payload.orgName,
+              orgCity: payload.orgCity,
+              subdomain,
+              subdomainUrl: resolveTenantSubdomainUrl(null, subdomain),
+              database: `${subdomain}_db`,
+              alreadyExists: true,
+              adminCredentials: {
+                email: payload.adminUser.email,
+                password: payload.adminUser.password,
+              },
+            },
+            alreadyExists: true,
+          };
+        }
+      }
+
+      await sleep(intervalMs);
+    }
+
+    return null;
+  };
+
   const showToast = {
     success: (message) => (rawToast.success || toast.success)(message),
     error: (message) => (rawToast.error || toast.error)(message),
@@ -495,19 +559,19 @@ export default function TenantSetup() {
 
     setLoading(true);
 
-    try {
-      const payload = {
-        orgName: form.orgName.trim(),
-        subdomain: form.subdomain.toLowerCase(),
-        orgCity: form.orgCity.trim(),
-        adminUser: {
-          fullName: adminUser.fullName,
-          email: adminUser.email,
-          password: adminUser.password,
-          phone: fullPhone,
-        },
-      };
+    const payload = {
+      orgName: form.orgName.trim(),
+      subdomain: form.subdomain.toLowerCase(),
+      orgCity: form.orgCity.trim(),
+      adminUser: {
+        fullName: adminUser.fullName,
+        email: adminUser.email,
+        password: adminUser.password,
+        phone: fullPhone,
+      },
+    };
 
+    try {
       const response = await API.post("/tenant-setup/create", payload, { timeout: 900000 });
       const tenantData = response.data?.data;
 
@@ -518,10 +582,17 @@ export default function TenantSetup() {
 
       toast.error(response.data?.message || "Tenant creation did not complete. Please try again.");
     } catch (error) {
+      const status = error.response?.status;
       const message =
         error.response?.data?.message || error.message || "Failed to create tenant. Please try again.";
       const looksLikeExistingTenant =
         /already exists|already taken/i.test(message) && form.subdomain;
+      const looksLikeGatewayTimeout =
+        status === 504 ||
+        status === 502 ||
+        status === 524 ||
+        error.code === "ECONNABORTED" ||
+        /gateway timeout|timeout|network error/i.test(message);
 
       if (looksLikeExistingTenant) {
         completeTenantSetup(
@@ -543,13 +614,25 @@ export default function TenantSetup() {
         return;
       }
 
-      if (error.code === "ECONNABORTED") {
+      if (looksLikeGatewayTimeout) {
+        try {
+          const recovered = await recoverAfterGatewayTimeout(payload);
+          if (recovered?.tenantData) {
+            completeTenantSetup(recovered.tenantData, {
+              alreadyExists: !!recovered.alreadyExists,
+            });
+            return;
+          }
+        } catch (recoverErr) {
+          console.warn("[TenantSetup] Timeout recovery failed:", recoverErr);
+        }
         showToast.error(
-          "Request timed out. The tenant may still have been created — try tenant login.",
+          "Setup is taking longer than the gateway allows. Wait a minute, then try Sign in — the tenant may already exist.",
         );
-      } else {
-        showToast.error(message);
+        return;
       }
+
+      showToast.error(message);
     } finally {
       setLoading(false);
     }
