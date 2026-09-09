@@ -1,5 +1,6 @@
 import { useInspectionSyncStore } from '../store/useInspectionSyncStore';
 import { drainOutbox, refreshPendingCount } from './outbox';
+import { ensureInspectionDbOpen } from './db';
 
 let started = false;
 
@@ -16,7 +17,9 @@ function onOffline() {
 
 function onVisibility() {
   if (document.visibilityState !== 'visible') return;
-  refreshPendingCount().catch(() => {});
+  refreshPendingCount().catch((err) => {
+    console.error('[inspection-offline] pending count refresh failed', err);
+  });
   if (navigator.onLine) {
     drainOutbox().catch((err) => {
       console.error('[inspection-offline] drain on visibility failed', err);
@@ -33,12 +36,21 @@ export function startInspectionSyncService() {
   window.addEventListener('offline', onOffline);
   document.addEventListener('visibilitychange', onVisibility);
 
-  refreshPendingCount().catch(() => {});
+  ensureInspectionDbOpen()
+    .then(() => {
+      console.log('[inspection-offline] IndexedDB ready: inspection_offline_v1');
+      return refreshPendingCount();
+    })
+    .catch((err) => {
+      console.error('[inspection-offline] IndexedDB open failed', err);
+    });
 
   if (!navigator.onLine) {
     useInspectionSyncStore.getState().setOffline();
   } else {
-    drainOutbox().catch(() => {});
+    drainOutbox().catch((err) => {
+      console.error('[inspection-offline] drain on start failed', err);
+    });
   }
 }
 

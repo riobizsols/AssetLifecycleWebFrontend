@@ -621,8 +621,13 @@ const AddAssetForm = ({ userRole }) => {
         console.log('❌ No matching prod_serv_id found for brand:', brand, 'model:', model);
       }
     } catch (err) {
-      console.error('❌ Error fetching prod_serv_id:', err);
       setFetchedProdServId(null);
+      // Soft miss (legacy 404) is expected when brand/model has no prod_serv row yet
+      if (err?.response?.status === 404) {
+        console.log('❌ No matching prod_serv_id found for brand:', brand, 'model:', model);
+        return;
+      }
+      console.error('❌ Error fetching prod_serv_id:', err);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_PRODUCT_SERVICE_ID_2E99961F', fallbackText: 'Failed to fetch product service ID', type: 'error' });
     }
   };
