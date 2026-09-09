@@ -10,9 +10,13 @@ import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
 import { useBreakdownReasonCodesStore } from '../../store/useBreakdownReasonCodesStore';
 import { invalidateCache } from '../../utils/apiCache';
 import { applyListFilterChange } from '../../utils/listFilterState';
+import { useNavigation } from '../../hooks/useNavigation';
 
 const BreakdownReasonCodes = () => {
   const { t } = useLanguage();
+  const { hasEditAccess, getAccessLevel } = useNavigation();
+  const canEdit = hasEditAccess('BREAKDOWNREASONCODES');
+  const isReadOnly = getAccessLevel('BREAKDOWNREASONCODES') === 'D' || !canEdit;
   const reasonCodes = useBreakdownReasonCodesStore((s) => s.reasonCodes);
   const assetTypes = useBreakdownReasonCodesStore((s) => s.assetTypes);
   const listLoading = useBreakdownReasonCodesStore((s) => s.listLoading);
@@ -317,15 +321,15 @@ const BreakdownReasonCodes = () => {
       <ContentBox
         filters={filters}
         onFilterChange={handleFilterChange}
-        onAdd={() => setShowCreateModal(true)}
-        onDeleteSelected={handleDeleteSelected}
+        onAdd={canEdit ? () => setShowCreateModal(true) : undefined}
+        onDeleteSelected={canEdit ? handleDeleteSelected : undefined}
         onDownload={handleDownload}
         data={reasonCodes}
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
-        showAddButton={true}
-        showDeleteButton={true}
-        isReadOnly={false}
+        showAddButton={canEdit}
+        showDeleteButton={canEdit}
+        isReadOnly={isReadOnly}
       >
         {({ visibleColumns, showActions }) => {
           const filteredData = filterData(reasonCodes, filterValues, visibleColumns);
@@ -450,7 +454,7 @@ const BreakdownReasonCodes = () => {
                   )}
                 </td>
               ))}
-              {showActions && (
+              {showActions && canEdit && (
                 <td className="border px-4 py-2 flex gap-2 justify-center">
                   {editingReasonCode === reasonCode.atbrrc_id ? null : (
                     <button

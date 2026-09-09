@@ -6,8 +6,8 @@ const config = {
     ENVIRONMENT: 'development'
   },
   production: {
-    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://your-domain.com:5001/api',
-    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'https://your-domain.com',
+    API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://bannari.rioassetmanagement.net/api',
+    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'https://bannari.rioassetmanagement.net',
     ENVIRONMENT: 'production'
   }
 };
@@ -15,8 +15,8 @@ const config = {
 // Get current environment
 const currentEnv = import.meta.env.MODE || 'development';
 
-// Reserved subdomains are main-app hosts (web/www/api), not tenant orgs.
-const RESERVED_SUBDOMAINS = (import.meta.env.VITE_RESERVED_SUBDOMAINS || 'web,www,api')
+// Reserved subdomains are platform hosts (not tenant orgs).
+const RESERVED_SUBDOMAINS = (import.meta.env.VITE_RESERVED_SUBDOMAINS || 'web,www,api,pressanaorg,bannari')
   .split(',')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);

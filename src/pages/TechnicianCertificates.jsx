@@ -81,8 +81,12 @@ const TechnicianCertificates = () => {
 
   const certificateOptions = useMemo(() => {
     return certificates.map((cert) => ({
-      value: cert.tech_cert_id,
-      label: `${cert.cert_name || ""}${cert.cert_number ? ` (${cert.cert_number})` : ""}`.trim()
+      value: cert.tech_cert_id || cert.tc_id,
+      label: `${cert.cert_name || cert.certificate_name || ""}${
+        cert.cert_number || cert.certificate_no
+          ? ` (${cert.cert_number || cert.certificate_no})`
+          : ""
+      }`.trim()
     }));
   }, [certificates]);
 
@@ -299,7 +303,7 @@ const TechnicianCertificates = () => {
       await fetchUploadedCertificates({ force: true });
     } catch (error) {
       console.error("Failed to upload certificate:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOUPLOADCERTIFICATE_23A7B061', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToUploadCertificate"), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOUPLOADCERTIFICATE_23A7B061', fallbackText: error.response?.data?.message || error.response?.data?.error || t("technicianCertificates.failedToUploadCertificate"), type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

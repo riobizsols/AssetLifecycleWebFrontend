@@ -15,6 +15,7 @@ import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useAssetTypeStore } from "../store/useAssetTypeStore";
+import { useAcmContextStore } from "../store/useAcmContextStore";
 import { refreshAssetTypeCaches } from "../utils/refreshAssetTypeCaches";
 import { applyListFilterChange } from "../utils/listFilterState";
 
@@ -23,6 +24,9 @@ const AssetType = () => {
   const assetTypes = useAssetTypeStore((s) => s.assetTypes);
   const listLoading = useAssetTypeStore((s) => s.listLoading);
   const fetchAssetTypesStore = useAssetTypeStore((s) => s.fetchAssetTypes);
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
+  const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
+  const appliedDeptId = useAcmContextStore((s) => s.appliedDeptId);
   const data = assetTypes;
   const isLoading = listLoading && data.length === 0;
   const [filterValues, setFilterValues] = useState({
@@ -59,6 +63,7 @@ const AssetType = () => {
     { label: t('assetTypes.assignmentType'), name: "assignment_type", visible: true },
     { label: t('assetTypes.inspectionRequired'), name: "inspection_required", visible: true },
     { label: t('assetTypes.groupRequired'), name: "group_required", visible: true },
+    { label: t('assetTypes.requireSpareParts'), name: "require_spare_parts", visible: true },
     { label: t('assetTypes.type'), name: "type", visible: true },
     { label: t('assetTypes.parentAssetType'), name: "parent_asset_type", visible: true },
     { label: t('assetTypes.createdBy'), name: "created_by", visible: true },
@@ -79,9 +84,9 @@ const AssetType = () => {
   };
 
   useEffect(() => {
-    fetchAssetTypes();
+    fetchAssetTypes({ force: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [appliedOrgId, appliedBranchId, appliedDeptId]);
 
   useRevalidateOnFocus(() => {
     fetchAssetTypesStore({ revalidate: true });
@@ -300,7 +305,7 @@ const AssetType = () => {
     options: col.name === 'int_status' ? [
       { label: t('assetTypes.active'), value: 'Active' },
       { label: t('assetTypes.inactive'), value: 'Inactive' }
-    ] : col.name === 'maintenance_schedule' || col.name === 'inspection_required' || col.name === 'group_required' ? [
+    ] : col.name === 'maintenance_schedule' || col.name === 'inspection_required' || col.name === 'group_required' || col.name === 'require_spare_parts' ? [
       { label: t('assetTypes.yes'), value: 'Yes' },
       { label: t('assetTypes.no'), value: 'No' }
     ] : col.name === 'assignment_type' ? [
@@ -326,7 +331,7 @@ const AssetType = () => {
         rowKey="asset_type_id"
         showAddButton={canEdit}
         showActions={true}
-        isReadOnly={false}
+        isReadOnly={isReadOnly}
       >
         {({ visibleColumns, showActions }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);

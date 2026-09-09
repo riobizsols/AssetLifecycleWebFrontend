@@ -1,6 +1,6 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
@@ -9,10 +9,13 @@ import { useInspectionFrequencyStore } from '../store/useInspectionFrequencyStor
 
 const CreateInspectionFrequency = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const frequencyListPath = location.pathname.startsWith('/adminsettings')
+    ? '/adminsettings/configuration/inspection-frequency'
+    : '/master-data/inspection-frequency';
   
   const [assetTypeChecklistMappings, setAssetTypeChecklistMappings] = useState([]);
   const [uomOptions, setUomOptions] = useState([]);
-  const [techLoading, setTechLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Tab and scan state
@@ -28,8 +31,6 @@ const CreateInspectionFrequency = () => {
   const [uom, setUom] = useState('');
   const [text, setText] = useState('');
   const [maintainedBy, setMaintainedBy] = useState('In-House');
-  const [technicians, setTechnicians] = useState([]);
-  const [selectedTechnician, setSelectedTechnician] = useState('');
 
   // Fetch asset type checklist mappings
   const fetchChecklistMappings = async () => {
@@ -77,71 +78,7 @@ const CreateInspectionFrequency = () => {
   useEffect(() => {
     fetchChecklistMappings();
     fetchUOM();
-    // technicians will be loaded for a selected mapping (certified list)
   }, []);
-
-  const fetchTechnicians = async () => {
-    try {
-      setTechLoading(true);
-      const res = await API.get('/employees');
-      const data = res.data?.data || res.data || [];
-      // expect objects with emp_int_id and name fields
-      setTechnicians(data.map(e => ({ emp_int_id: e.emp_int_id || e.employee_id || e.user_id, name: e.name || e.full_name || e.employee_id })));
-    } catch (err) {
-      console.error('Failed to fetch technicians:', err);
-      setTechnicians([]);
-    } finally {
-      setTechLoading(false);
-    }
-  };
-
-  // Fetch certified technicians for the selected asset mapping (use inspection-approval endpoint)
-  const fetchCertifiedTechniciansForMapping = async (mapping) => {
-    try {
-      if (!mapping) return;
-      console.log('fetchCertifiedTechniciansForMapping: mapping selected ->', mapping);
-      // get detailed mapping to obtain aatic_id
-      const mappingDetails = await API.get(
-        `/asset-type-checklist-mapping/${mapping.at_id}${mapping.asset_id ? '?assetId=' + mapping.asset_id : ''}`
-      );
-      const detailedItems = mappingDetails.data?.data || [];
-      console.log('mapping details returned count:', detailedItems.length);
-      if (detailedItems.length === 0) {
-        setTechnicians([]);
-        return;
-      }
-      // use asset_type_id when fetching certified technicians (inspectionApproval expects asset type)
-      const asset_type_id = detailedItems[0].asset_type_id || detailedItems[0].aatic_asset_type_id || detailedItems[0].asset_type || detailedItems[0].at_id;
-      console.log('resolved asset_type_id for certified techs:', asset_type_id);
-      if (!asset_type_id) {
-        setTechnicians([]);
-        return;
-      }
-      setTechLoading(true);
-      const resp = await API.get(`/inspection-approval/technicians/${asset_type_id}`);
-      const techs = resp.data?.data || [];
-      console.log('certified technicians fetched count:', techs.length, resp.data?.message || '');
-      setTechnicians(techs.map(t => ({ emp_int_id: t.emp_int_id || t.employee_id, name: t.name || t.full_name || t.employee_id })));
-      setTechLoading(false);
-    } catch (err) {
-      console.error('Failed to fetch certified technicians for mapping:', err);
-      setTechnicians([]);
-      setTechLoading(false);
-    }
-  };
-
-  // When selected mapping or maintainedBy changes, load certified technicians for In-House
-  useEffect(() => {
-    if (maintainedBy === 'In-House' && selectedMapping) {
-      const mapping = assetTypeChecklistMappings.find(m => m.rowId === selectedMapping);
-      if (mapping) fetchCertifiedTechniciansForMapping(mapping);
-    } else {
-      // clear technicians when vendor or no mapping
-      setTechnicians([]);
-      setSelectedTechnician('');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMapping, maintainedBy]);
 
   // Scanner setup
   useEffect(() => {
@@ -211,15 +148,14 @@ const CreateInspectionFrequency = () => {
         uom: isRecurring ? uom : null,
         text: text || (isRecurring ? '' : ''),
         maintained_by: maintainedBy,
-        is_recurring: isRecurring,
-        emp_int_id: maintainedBy === 'In-House' ? (selectedTechnician || null) : null
+        is_recurring: isRecurring
       };
 
       await API.post('/inspection-frequencies', payload);
       
       showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_FREQUENCY_CREATED_SUCCESSFULLY_6D268C2F', fallbackText: 'Inspection frequency created successfully', type: 'success' });
       useInspectionFrequencyStore.getState().invalidateInspectionFrequencyCache();
-      navigate('/master-data/inspection-frequency');
+      navigate(frequencyListPath);
     } catch (error) {
       console.error('Error creating inspection frequency:', error);
       toast.error(error.response?.data?.message || 'Failed to create inspection frequency');
@@ -316,7 +252,7 @@ const CreateInspectionFrequency = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate('/master-data/inspection-frequency')}
+              onClick={() => navigate(frequencyListPath)}
               className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
             >
               <X size={20} />
@@ -508,24 +444,6 @@ const CreateInspectionFrequency = () => {
                     </label>
                   </div>
                 </div>
-                {/* Technician selection for In-House */}
-                {maintainedBy === 'In-House' && (
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Technician (Assign)</label>
-                    <select
-                      value={selectedTechnician}
-                      onChange={(e) => setSelectedTechnician(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
-                      disabled={techLoading}
-                    >
-                      <option value="">{techLoading ? '-- Loading technicians --' : '-- Select Technician (optional) --'}</option>
-                      {technicians.map(t => (
-                        <option key={t.emp_int_id} value={t.emp_int_id}>{t.name} ({t.emp_int_id})</option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-xs text-gray-500">Select a default technician for in-house inspections (optional).</p>
-                  </div>
-                )}
               </div>
 
               {/* Buttons */}
@@ -540,7 +458,7 @@ const CreateInspectionFrequency = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/master-data/inspection-frequency')}
+                  onClick={() => navigate(frequencyListPath)}
                   className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                 >
                   Cancel
@@ -579,7 +497,7 @@ const CreateInspectionFrequency = () => {
                 <div className="flex gap-3 justify-end">
                   <button
                     type="button"
-                    onClick={() => navigate('/master-data/inspection-frequency')}
+                    onClick={() => navigate(frequencyListPath)}
                     className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
                   >
                     Cancel

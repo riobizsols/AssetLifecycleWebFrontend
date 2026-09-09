@@ -165,14 +165,26 @@ const Dashboard = () => {
             </Card>
           )}
 
-          <Card onClick={() => navigate("/notifications")}>
+          <Card className="cursor-pointer" onClick={() => navigate("/notifications")}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-semibold">
                 {t('dashboard.notifications')}
               </CardTitle>
-              <Bell className="w-5 h-5 text-gray-600" />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="text-xs font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate("/notifications");
+                  }}
+                >
+                  {t('dashboard.viewAll') || 'View all'}
+                </button>
+                <Bell className="w-5 h-5 text-gray-600" />
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent onClick={(e) => e.stopPropagation()}>
               <NotificationsPanel />
             </CardContent>
           </Card>

@@ -14,12 +14,14 @@ import { translateMasterDataLabel } from "../utils/masterDataLabel";
 import { applyListFilterChange } from "../utils/listFilterState";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useInspectionViewStore } from "../store/useInspectionViewStore";
+import InspectionSyncBanner from "../components/InspectionSyncBanner";
 
 const InspectionView = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const schedules = useInspectionViewStore((s) => s.schedules);
   const listLoading = useInspectionViewStore((s) => s.listLoading);
+  const offlineAuthBlocked = useInspectionViewStore((s) => s.offlineAuthBlocked);
   const fetchSchedules = useInspectionViewStore((s) => s.fetchSchedules);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
@@ -254,6 +256,12 @@ const InspectionView = () => {
 
   return (
     <div className="p-4">
+      <InspectionSyncBanner />
+      {offlineAuthBlocked && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          You are offline and not signed in. Connect and log in to load inspections. Offline login is not available.
+        </div>
+      )}
       <ContentBox
         filters={filters}
         dateFilterField="raw_act_insp_st_date"
@@ -266,7 +274,17 @@ const InspectionView = () => {
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
         showAddButton={true}
-        onAdd={() => navigate('/inspection-view/create')}
+        onAdd={() => {
+          if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            showBackendTextToast({
+              toast,
+              fallbackText: 'Create inspection requires an online connection.',
+              type: 'error',
+            });
+            return;
+          }
+          navigate('/inspection-view/create');
+        }}
         showActions={false} // Hide Actions column header for this page
       >
         {({ visibleColumns, showActions }) => {

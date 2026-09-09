@@ -6,6 +6,8 @@ import { useAuthStore } from "../../store/useAuthStore";
 import API from "../../lib/axios";
 import EnhancedDropdown from "../ui/EnhancedDropdown";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { getActiveOrgId } from '../../utils/acmContext';
+import { useAcmContextStore } from '../../store/useAcmContextStore';
 
 
 
@@ -13,6 +15,7 @@ const BreakdownDetails = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const { user } = useAuthStore();
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
   const { t } = useLanguage();
   const selectedAsset = state?.asset;
   const existingBreakdown = state?.breakdown;
@@ -112,7 +115,7 @@ const BreakdownDetails = () => {
       const res = await API.get("/reportbreakdown/reason-codes", {
         params: {
           asset_type_id: assetTypeId || undefined,
-          org_id: user?.org_id,
+          org_id: getActiveOrgId(user?.org_id),
         },
       });
       const arr = Array.isArray(res.data?.data)
@@ -129,7 +132,7 @@ const BreakdownDetails = () => {
 
   useEffect(() => {
     fetchReasonCodes();
-  }, [assetTypeId, user?.org_id]);
+  }, [assetTypeId, appliedOrgId, user?.org_id]);
 
   useEffect(() => {
     const fetchUpcomingMaintenance = async () => {
@@ -230,7 +233,7 @@ const BreakdownDetails = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ASSETTYPEIDREQUIRED_307F5313', fallbackText: t('breakdownDetails.assetTypeIdRequired'), type: 'error' });
       return;
     }
-    if (!user?.org_id) {
+    if (!getActiveOrgId(user?.org_id)) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_BREAKDOWNDETAILS_ORGANIZATIONIDREQUIRED_10178242', fallbackText: t('breakdownDetails.organizationIdRequired'), type: 'error' });
       return;
     }
@@ -345,7 +348,7 @@ const BreakdownDetails = () => {
         user_id: user?.user_id, 
         emp_int_id: user?.emp_int_id, 
         dept_id: user?.dept_id,
-        org_id: user?.org_id 
+        org_id: getActiveOrgId(user?.org_id) 
       });
       
       // Add timeout to the API call

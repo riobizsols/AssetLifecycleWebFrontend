@@ -55,8 +55,8 @@ const InspectionChecklists = () => {
   const isQuantitative = (id) => {
     if (!id) return false;
     const type = responseTypes.find(t => t.irtd_id === id);
-    // Checking both ID and Name for "QN"
-    return type?.name?.toUpperCase().includes("QN") || id.toUpperCase().includes("QN");
+    const label = String(type?.name || id).toUpperCase();
+    return label === 'QUANTITATIVE';
   };
 
   const fetchChecklists = async ({ force = false } = {}) => {

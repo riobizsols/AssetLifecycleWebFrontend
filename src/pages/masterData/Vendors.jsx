@@ -17,6 +17,7 @@ import { useVendorsStore } from "../../store/useVendorsStore";
 import { invalidateCache } from "../../utils/apiCache";
 import { normalizeVendorFormPayload } from "../../utils/vendorFormPayload";
 import { applyListFilterChange } from "../../utils/listFilterState";
+import { sortTableRows, updateSortConfig } from "../../utils/tableSort";
 
 const Vendors = () => {
   const navigate = useNavigate();
@@ -78,7 +79,7 @@ const Vendors = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        await fetchVendorsStore({ revalidate: true });
+        await fetchVendorsStore({ revalidate: true, force: true });
       } catch (error) {
         console.error("Error fetching vendors:", error);
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_VENDORS_FAILEDTOFETCHVENDORS_00D2C278', fallbackText: t('vendors.failedToFetchVendors'), type: 'error' });
@@ -92,61 +93,11 @@ const Vendors = () => {
     fetchVendorsStore({ revalidate: true });
   });
 
-  const handleSort = (column) => {
-    setSortConfig(prevConfig => {
-      const { sorts } = prevConfig;
-      const existingSort = sorts.find(s => s.column === column);
-      
-      if (!existingSort) {
-        // First click - add ascending sort
-        return {
-          sorts: [...sorts, { column, direction: 'asc', order: sorts.length + 1 }]
-        };
-      } else if (existingSort.direction === 'asc') {
-        // Second click - change to descending
-        return {
-          sorts: sorts.map(s => 
-            s.column === column 
-              ? { ...s, direction: 'desc' }
-              : s
-          )
-        };
-      } else {
-        // Third click - remove sort
-        return {
-          sorts: sorts.filter(s => s.column !== column).map((s, idx) => ({
-            ...s,
-            order: idx + 1
-          }))
-        };
-      }
-    });
+  const handleSort = (column, direction) => {
+    setSortConfig((prevConfig) => updateSortConfig(prevConfig, column, direction));
   };
 
-  const sortData = (data) => {
-    if (!sortConfig.sorts.length) return data;
-
-    return [...data].sort((a, b) => {
-      for (const { column, direction } of sortConfig.sorts) {
-        const aValue = a[column];
-        const bValue = b[column];
-
-        if (aValue == null) return 1;
-        if (bValue == null) return -1;
-
-        if (!isNaN(aValue) && !isNaN(bValue)) {
-          const diff = direction === 'asc' ? aValue - bValue : bValue - aValue;
-          if (diff !== 0) return diff;
-        } else {
-          const diff = direction === 'asc' 
-            ? String(aValue).localeCompare(String(bValue))
-            : String(bValue).localeCompare(String(aValue));
-          if (diff !== 0) return diff;
-        }
-      }
-      return 0;
-    });
-  };
+  const sortData = (data) => sortTableRows(data, sortConfig.sorts);
 
   const handleFilterChange = (columnName, value) => {
     setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
@@ -289,6 +240,14 @@ const Vendors = () => {
           await recordActionByNameWithFetch('Create', {
             action: 'Add Vendor Form Opened'
           });
+          // Fresh add — don't restore an abandoned in-progress wizard draft
+          sessionStorage.removeItem('vendorAddDraft');
+          sessionStorage.removeItem('vendorProductDraft');
+          sessionStorage.removeItem('vendorServiceDraft');
+          sessionStorage.removeItem('vendorProductReturnTab');
+          sessionStorage.removeItem('vendorServiceReturnTab');
+          sessionStorage.removeItem('products');
+          sessionStorage.removeItem('services');
           navigate("/master-data/add-vendor");
         } : null}
         onDeleteSelected={canEdit ? handleDelete : null}
@@ -299,7 +258,7 @@ const Vendors = () => {
         rowKey="vendor_id"
         showAddButton={canEdit}
         showActions={true}
-        isReadOnly={false}
+        isReadOnly={isReadOnly}
       >
         {({ visibleColumns }) => {
           const filteredData = filterData(data, filterValues, visibleColumns);

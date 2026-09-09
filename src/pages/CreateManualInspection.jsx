@@ -10,11 +10,15 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useAppData } from '../contexts/AppDataContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translateMasterDataLabel } from '../utils/masterDataLabel';
+import { getActiveOrgId } from '../utils/acmContext';
+import { useAcmContextStore } from '../store/useAcmContextStore';
+import { useInspectionApprovalStore } from '../store/useInspectionApprovalStore';
 
 const CreateManualInspection = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { user } = useAuthStore();
+  const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
   const { assetTypes } = useAppData();
   const [activeTab, setActiveTab] = useState('select');
   const [selectedAssetType, setSelectedAssetType] = useState('');
@@ -68,7 +72,7 @@ const CreateManualInspection = () => {
 
   useEffect(() => {
     fetchAssetTypeCounts();
-  }, [assetTypes, user?.org_id]);
+  }, [assetTypes, appliedOrgId]);
 
   const initializeScanner = async () => {
     try {
@@ -119,7 +123,7 @@ const CreateManualInspection = () => {
       const res = await API.get('/assets', {
         params: {
           asset_type_id: selectedAssetType,
-          org_id: user?.org_id,
+          org_id: getActiveOrgId(user?.org_id),
         },
       });
       const assetsList = Array.isArray(res.data) ? res.data : res.data?.data || [];
@@ -146,7 +150,7 @@ const CreateManualInspection = () => {
           API.get('/assets', {
             params: {
               asset_type_id: at.asset_type_id,
-              org_id: user?.org_id,
+              org_id: getActiveOrgId(user?.org_id),
             },
           })
         )
@@ -184,7 +188,12 @@ const CreateManualInspection = () => {
       });
       if (res.data?.success) {
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_INSPECTIONVIEW_INSPECTIONCREATEDSUCCESSFULLY_05A4A5E6', fallbackText: t('inspectionView.inspectionCreatedSuccessfully'), type: 'success' });
-        navigate('/inspection-view');
+        if (res.data?.data?.type === 'workflow') {
+          useInspectionApprovalStore.getState().invalidateInspectionApprovalCache();
+          navigate('/inspection-approval');
+        } else {
+          navigate('/inspection-view');
+        }
       } else {
         const errorConfig = getCreateInspectionErrorConfig(res.data?.message);
         showBackendTextToast({ toast, tmdId: errorConfig.tmdId, fallbackText: errorConfig.fallbackText, type: 'error' });

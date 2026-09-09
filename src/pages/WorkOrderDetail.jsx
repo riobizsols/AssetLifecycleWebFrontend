@@ -413,23 +413,23 @@ const WorkOrderDetail = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.serialNumber')}</label>
-                  <p className="text-gray-900">{assetDetails?.serial_number || t('workorderManagement.notAvailable')}</p>
+                  <p className="text-gray-900">{workOrder.asset?.serial_number || assetDetails?.serial_number || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.assetType')}</label>
-                  <p className="text-gray-900">{assetDetails?.asset_type_name || t('workorderManagement.notAvailable')}</p>
+                  <p className="text-gray-900">{workOrder.asset_type?.asset_type_name || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.location')}</label>
-                  <p className="text-gray-900">{assetDetails?.location || t('workorderManagement.notAvailable')}</p>
+                  <p className="text-gray-900">{workOrder.asset?.location || assetDetails?.location || t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceDate')}</label>
-                  <p className="text-gray-900">{workOrder.created_at ? new Date(workOrder.created_at).toLocaleDateString() : t('workorderManagement.notAvailable')}</p>
+                  <p className="text-gray-900">{workOrder.act_maint_st_date ? new Date(workOrder.act_maint_st_date).toLocaleDateString() : t('workorderManagement.notAvailable')}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.currentCondition')}</label>
-                  <p className="text-gray-900">{assetDetails?.condition || t('workorderManagement.notAvailable')}</p>
+                  <p className="text-gray-900">{workOrder.asset?.condition || assetDetails?.condition || t('workorderManagement.notAvailable')}</p>
                 </div>
               </div>
             </div>
@@ -438,7 +438,9 @@ const WorkOrderDetail = () => {
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-4">{t('workorderManagement.additionalIssues')}</h3>
               <div className="border p-3 rounded">
-                <p className="text-gray-600 text-sm">Document any additional issues found during maintenance that require rectification...</p>
+                <p className="text-gray-900 text-sm whitespace-pre-line">
+                  {workOrder.notes || t('workorderManagement.notAvailable')}
+                </p>
               </div>
             </div>
 
@@ -449,15 +451,15 @@ const WorkOrderDetail = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.finalApproverName')}</label>
-                    <p className="text-gray-900">_____________________</p>
+                    <p className="text-gray-900">{workOrder.final_approver_name || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceSupervisor')}</label>
-                    <p className="text-gray-900">_____________________</p>
+                    <p className="text-gray-900">{workOrder.technician_name || t('workorderManagement.notAvailable')}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.approvalDate')}</label>
-                    <p className="text-gray-900">_____________________</p>
+                    <p className="text-gray-900">{workOrder.approval_date ? new Date(workOrder.approval_date).toLocaleDateString('en-GB').replaceAll('/', '-') : t('workorderManagement.notAvailable')}</p>
                   </div>
                 </div>
               </div>
@@ -470,27 +472,27 @@ const WorkOrderDetail = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.vendorName')}</label>
-                <p className="text-gray-900">{assetDetails?.vendor_name || t('workorderManagement.notAssigned')}</p>
+                <p className="text-gray-900">{workOrder.vendor?.vendor_name || t('workorderManagement.notAssigned')}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contract</label>
-                <p className="text-gray-900">{workOrder.atbrrc_id || t('workorderManagement.notAvailable')}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">SLA</label>
-                <p className="text-gray-900">4h response, NBD restore</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Information</label>
-                <p className="text-gray-900">{assetDetails?.vendor_contact || t('workorderManagement.notAvailable')}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.contactPerson')}</label>
+                <p className="text-gray-900">{workOrder.vendor?.contact_person || t('workorderManagement.notAvailable')}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.email')}</label>
-                <p className="text-gray-900">{assetDetails?.vendor_email || t('workorderManagement.notAvailable')}</p>
+                <p className="text-gray-900">{workOrder.vendor?.email || t('workorderManagement.notAvailable')}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                <p className="text-gray-900">{assetDetails?.vendor_address || t('workorderManagement.notAvailable')}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.phone')}</label>
+                <p className="text-gray-900">{workOrder.vendor?.phone || t('workorderManagement.notAvailable')}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.maintenanceType')}</label>
+                <p className="text-gray-900">{workOrder.maintenance_type_name || t('workorderManagement.notAvailable')}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('workorderManagement.status')}</label>
+                <p className="text-gray-900">{workOrder.status || t('workorderManagement.notAvailable')}</p>
               </div>
             </div>
           </section>
@@ -505,7 +507,7 @@ const WorkOrderDetail = () => {
                     <div className="w-4 h-4 border border-gray-400 rounded mt-1"></div>
                     <div className="flex-1">
                       <div className="text-sm text-gray-900">
-                        {item.task_description || item.description || `Task ${index + 1}`}
+                        {item.text || item.task_description || item.description || `Task ${index + 1}`}
                       </div>
                       {item.is_mandatory && (
                         <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded mt-2 inline-block">{t('workorderManagement.required')}</span>
@@ -563,14 +565,14 @@ const WorkOrderDetail = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm mt-3">
                       <div>
-                        <span className="text-gray-500">{t('workorderManagement.vendorLabel')}</span> {record.vendor_name || t('workorderManagement.notAvailable')}
+                        <span className="text-gray-500">{t('workorderManagement.vendorLabel')}</span> {record.vendor_name || workOrder.vendor?.vendor_name || t('workorderManagement.notAvailable')}
                       </div>
                       <div>
                         <span className="text-gray-500">{t('workorderManagement.maintenanceIDLabel')}</span> {record.ams_id || t('workorderManagement.notAvailable')}
                       </div>
-                      {record.act_maint_end_date && (
+                      {(record.act_main_end_date || record.act_maint_end_date) && (
                         <div>
-                          <span className="text-gray-500">{t('workorderManagement.completed')}:</span> {new Date(record.act_maint_end_date).toLocaleDateString()}
+                          <span className="text-gray-500">{t('workorderManagement.completed')}:</span> {new Date(record.act_main_end_date || record.act_maint_end_date).toLocaleDateString()}
                         </div>
                       )}
                     </div>

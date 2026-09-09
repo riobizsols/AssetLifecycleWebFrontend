@@ -138,13 +138,14 @@ const ChangePassword = () => {
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showCurrent ? "text" : "password"}
                   name="currentPassword"
                   placeholder="Enter Current Password"
-                  className={`${passwordInputClass}${showCurrent ? " app-password-input--visible" : ""}`}
+                  className={passwordInputClass}
                   value={form.currentPassword}
                   onChange={handleChange}
                   required
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
@@ -164,13 +165,14 @@ const ChangePassword = () => {
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showNew ? "text" : "password"}
                   name="newPassword"
                   placeholder="Enter New Password"
-                  className={`${passwordInputClass}${showNew ? " app-password-input--visible" : ""}`}
+                  className={passwordInputClass}
                   value={form.newPassword}
                   onChange={handleChange}
                   required
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
@@ -190,13 +192,14 @@ const ChangePassword = () => {
               </label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showConfirm ? "text" : "password"}
                   name="confirmPassword"
                   placeholder="Re-enter New Password"
-                  className={`${passwordInputClass}${showConfirm ? " app-password-input--visible" : ""}`}
+                  className={passwordInputClass}
                   value={form.confirmPassword}
                   onChange={handleChange}
                   required
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"

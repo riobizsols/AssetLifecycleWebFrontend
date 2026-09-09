@@ -33,6 +33,7 @@ const CustomTable = ({
   addButtonTitle = "Add",
   isReadOnly = false,
   renderActions,
+  rowClassName,
 }) => {
   const visible = visibleColumns.filter((col) => col.visible && !isIdColumnName(col.name));
 
@@ -94,10 +95,12 @@ const CustomTable = ({
     <>
       {data.map((row, rowIndex) => {
         const isRowSelected = selectedRows && selectedRows.includes(row[rowKey]);
+        const extraRowClass =
+          typeof rowClassName === 'function' ? rowClassName(row) : rowClassName || '';
         return (
         <tr
           key={row[rowKey] || rowIndex}
-          className={`border-t${onRowClick ? ' cursor-pointer hover:bg-gray-100' : ''}${isRowSelected ? ' bg-blue-50' : ''}`}
+          className={`border-t${onRowClick ? ' cursor-pointer hover:bg-gray-100' : ''}${isRowSelected ? ' bg-blue-50' : ''} ${extraRowClass}`.trim()}
           onClick={onRowClick ? () => onRowClick(row) : undefined}
         >
           {visible.map((col, colIndex) => (
@@ -162,16 +165,40 @@ const CustomTable = ({
                   {actionLabel}
                 </button>
               )}
-              {onEdit && !onRowAction && (
+              {onEdit && !onRowAction && !isReadOnly && (
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit(row);
                   }} 
                   className="text-blue-600 hover:text-blue-800"
-                  title={isReadOnly ? "View" : "Edit"}
+                  title="Edit"
                 >
                   <Pencil size={16} />
+                </button>
+              )}
+              {onView && isReadOnly && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView(row);
+                  }}
+                  className="text-green-600 hover:text-green-800"
+                  title="View"
+                >
+                  <Eye size={16} />
+                </button>
+              )}
+              {onEdit && !onRowAction && isReadOnly && !onView && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(row);
+                  }}
+                  className="text-green-600 hover:text-green-800"
+                  title="View"
+                >
+                  <Eye size={16} />
                 </button>
               )}
               {renderActions && renderActions(row)}

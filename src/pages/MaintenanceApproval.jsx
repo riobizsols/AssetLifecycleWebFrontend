@@ -57,7 +57,7 @@ const MaintenanceApprovalDetail = () => {
   ]);
 
   useEffect(() => {
-    fetchApprovals({ revalidate: true }).catch((err) => {
+    fetchApprovals({ revalidate: true, force: true }).catch((err) => {
       console.error("Failed to fetch maintenance approvals", err);
       showBackendTextToast({
         toast,
@@ -74,7 +74,7 @@ const MaintenanceApprovalDetail = () => {
 
   const refreshList = () => {
     invalidateMaintenanceApprovalCache();
-    return fetchApprovals({ revalidate: true });
+    return fetchApprovals({ revalidate: true, force: true });
   };
 
   const handleFilterChange = (columnName, value) => {

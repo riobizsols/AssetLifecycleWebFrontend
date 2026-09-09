@@ -14,6 +14,8 @@ const statusColors = {
   CA: "text-red-600 font-semibold",
   UR: "text-red-600 font-semibold",
   RJ: "text-red-600 font-semibold",
+  IS: "text-green-600 font-semibold",
+  RQ: "text-yellow-600 font-semibold",
   RE: "text-orange-600 font-semibold",
   Reopened: "text-orange-600 font-semibold",
   // Asset statuses

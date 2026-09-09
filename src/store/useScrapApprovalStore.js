@@ -108,6 +108,9 @@ export const useScrapApprovalStore = create((set, get) => ({
         header: res.data.header,
         assets: res.data.assets || [],
         workflowSteps: res.data.workflowSteps || [],
+        viewOnly: Boolean(res.data.viewOnly),
+        canAct: res.data.canAct !== false,
+        branchAccess: res.data.branchAccess || null,
       };
     };
 

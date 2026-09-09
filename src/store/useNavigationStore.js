@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import API from '../lib/axios';
 import { buildCacheKey, invalidateCache, peekCache, setCache } from '../utils/apiCache';
-import { ensureDefaultDashboardNav, ensureUsersInMasterData, sortAdminSettingsNavOrder, sortInspectionNavOrder, sortMasterDataNavOrder, sortScrapNavOrder } from '../utils/navigationDefaults';
+import { ensureDefaultDashboardNav, ensureUsersInMasterData, hideSidebarNavItems, sortAdminSettingsNavOrder, sortInspectionNavOrder, sortMasterDataNavOrder, sortScrapNavOrder } from '../utils/navigationDefaults';
 
-const NAV_CACHE_PREFIX = 'app:navigation:v16';
+const NAV_CACHE_PREFIX = 'app:navigation:v18';
 const NAV_TTL_MS = 10 * 60 * 1000;
 
 const navCacheKey = (userId) => buildCacheKey([NAV_CACHE_PREFIX, userId]);
@@ -16,11 +16,13 @@ const detectPlatform = () => {
 };
 
 const normalizeNavigation = (navigation) =>
-  sortInspectionNavOrder(
-    sortAdminSettingsNavOrder(
-      sortScrapNavOrder(
-        sortMasterDataNavOrder(
-          ensureUsersInMasterData(ensureDefaultDashboardNav(navigation)),
+  hideSidebarNavItems(
+    sortInspectionNavOrder(
+      sortAdminSettingsNavOrder(
+        sortScrapNavOrder(
+          sortMasterDataNavOrder(
+            ensureUsersInMasterData(ensureDefaultDashboardNav(navigation)),
+          ),
         ),
       ),
     ),
@@ -32,13 +34,17 @@ export const useNavigationStore = create((set, get) => ({
   error: null,
   fetchedForUserId: null,
 
-  fetchNavigation: async (userId, { force = false } = {}) => {
+  fetchNavigation: async (userId, { force = false, background = false } = {}) => {
     if (!userId) {
       set({ navigation: [], loading: false, error: null, fetchedForUserId: null });
       return;
     }
 
     const cacheKey = navCacheKey(userId);
+    const hasLoadedNav =
+      get().fetchedForUserId === userId && Array.isArray(get().navigation);
+    const isBackgroundRefresh = background && hasLoadedNav;
+
     if (!force) {
       const cached = peekCache(cacheKey, NAV_TTL_MS);
       if (cached) {
@@ -48,12 +54,14 @@ export const useNavigationStore = create((set, get) => ({
       }
     }
 
-    set({
-      loading: true,
-      error: null,
-      navigation: get().fetchedForUserId === userId ? get().navigation : [],
-      fetchedForUserId: null,
-    });
+    if (!isBackgroundRefresh) {
+      set({
+        loading: true,
+        error: null,
+        navigation: get().fetchedForUserId === userId ? get().navigation : [],
+        fetchedForUserId: null,
+      });
+    }
 
     try {
       const platform = detectPlatform();

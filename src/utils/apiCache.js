@@ -55,19 +55,105 @@ export function clearCache() {
   memoryCache.clear();
 }
 
+/** Suffix for list cache keys so ACM org/branch/dept changes don't reuse stale data. */
+export function acmCacheSegment(acmState) {
+  if (!acmState) return 'acm:*:*:*';
+  return `acm:${acmState.appliedOrgId || '*'}:${acmState.appliedBranchId || '*'}:${acmState.appliedDeptId || '*'}`;
+}
+
+/** True when `segment` is a full path segment (avoids `/assets` matching `/asset-groups`). */
+function pathHasSegment(path = '', segment = '') {
+  const parts = String(path)
+    .toLowerCase()
+    .split('/')
+    .filter(Boolean)
+    .filter((p) => p !== 'api');
+  return parts.includes(String(segment).toLowerCase());
+}
+
+/** Map API paths to cache key prefixes — avoid clearing the entire app cache on every mutation. */
+function invalidationPrefixesForPath(path = '') {
+  const p = String(path).toLowerCase();
+  const prefixes = new Set();
+
+  const add = (...keys) => keys.forEach((k) => prefixes.add(k));
+
+  // Group asset mutations must also refresh assets lists (membership changes).
+  if (
+    pathHasSegment(p, 'asset-groups') ||
+    pathHasSegment(p, 'group-assets') ||
+    pathHasSegment(p, 'asset-group-docs')
+  ) {
+    add('asset-groups:', 'group-assets:', 'assets:');
+  }
+
+  // Dept ↔ asset-type mapping feeds department assignment asset-type dropdown
+  if (pathHasSegment(p, 'dept-assets')) {
+    add('dept-assets:', 'assignment:');
+  }
+
+  // Asset mutations can change group membership / counts on group screens.
+  if (pathHasSegment(p, 'assets') && !pathHasSegment(p, 'asset-groups') && !pathHasSegment(p, 'asset-types')) {
+    add('assets:', 'asset-groups:', 'group-assets:');
+  }
+
+  // Maintenance frequency / details mutations must refresh the config screen bundle.
+  if (
+    pathHasSegment(p, 'maintenance-frequencies') ||
+    pathHasSegment(p, 'maintenance-details') ||
+    pathHasSegment(p, 'maint-types')
+  ) {
+    add('maintenance-config:', 'maintenance');
+  }
+
+  const rules = [
+    { segment: 'branches', prefix: 'branches:' },
+    { segment: 'departments', prefix: 'departments:' },
+    { segment: 'vendors', prefix: 'vendors:' },
+    { segment: 'users', prefix: 'users:' },
+    { segment: 'asset-types', prefix: 'asset-types:' },
+    { segment: 'properties', prefix: 'properties:' },
+    { match: '/job-role-navigation', prefix: 'app:navigation:' },
+    { match: '/navigation/', prefix: 'app:navigation:' },
+    { segment: 'job-roles', prefix: 'job-roles:' },
+    { segment: 'user-job-roles', prefix: 'user-roles:' },
+    { segment: 'text-messages', prefix: 'text-messages:' },
+    { segment: 'certifications', prefix: 'certifications:' },
+    { segment: 'assignment', prefix: 'assignment:' },
+    { segment: 'dashboard', prefix: 'dashboard:' },
+    { segment: 'scrap', prefix: 'scrap' },
+    { segment: 'maintenance', prefix: 'maintenance' },
+    { segment: 'inspection', prefix: 'inspection' },
+  ];
+
+  for (const rule of rules) {
+    if (rule.segment && pathHasSegment(p, rule.segment)) prefixes.add(rule.prefix);
+    else if (rule.match && p.includes(rule.match)) prefixes.add(rule.prefix);
+  }
+
+  if (prefixes.size === 0) {
+    const parts = p.split('/').filter(Boolean).filter((seg) => seg !== 'api');
+    const segment = parts[0];
+    if (segment) prefixes.add(`${segment}:`);
+  }
+
+  return [...prefixes];
+}
+
 /**
- * Global cache invalidation for successful mutation requests.
- * This prevents stale data when a screen forgets local invalidateCache calls.
+ * Invalidate caches related to a successful mutation request.
+ * Scoped invalidation keeps in-progress screens (e.g. job-role nav builder) from losing local state.
  */
 export function invalidateOnMutation({ method, url } = {}) {
   const verb = String(method || '').toLowerCase();
   if (!['post', 'put', 'patch', 'delete'].includes(verb)) return;
 
   const path = normalizePath(url);
-  // Skip token-refresh calls to avoid unnecessary cache churn.
   if (path.includes('/auth/refresh')) return;
 
-  clearCache();
+  for (const prefix of invalidationPrefixesForPath(path)) {
+    invalidateCache(prefix);
+  }
 }
 
 export async function fetchWithCache(key, fetcher, { ttlMs = DEFAULT_TTL_MS, force = false } = {}) {

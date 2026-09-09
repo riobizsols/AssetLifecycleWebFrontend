@@ -5,13 +5,16 @@ import {
   fetchWithCache,
   fetchWithRevalidate,
   peekCache,
+  acmCacheSegment,
 } from '../utils/apiCache';
+import { useAcmContextStore } from './useAcmContextStore';
 
 const DASHBOARD_TTL_MS = 3 * 60 * 1000;
+const acmSeg = () => acmCacheSegment(useAcmContextStore.getState());
 const KEYS = {
-  summary: 'dashboard:summary',
-  department: 'dashboard:department',
-  top5: 'dashboard:top5',
+  summary: () => buildCacheKey(['dashboard', 'summary', acmSeg()]),
+  department: () => buildCacheKey(['dashboard', 'department', acmSeg()]),
+  top5: () => buildCacheKey(['dashboard', 'top5', acmSeg()]),
 };
 
 const DEPT_COLORS = [
@@ -24,13 +27,21 @@ const TOP5_COLORS = [
 ];
 
 function mapDepartmentChart(rows) {
-  return (rows || [])
-    .map((dept, index) => ({
-      name: dept.name,
-      value: dept.value,
+  const byName = new Map();
+  for (const dept of rows || []) {
+    const name = String(dept.name || 'Unknown').trim();
+    const value = Number(dept.value) || 0;
+    if (!value) continue;
+    byName.set(name, (byName.get(name) || 0) + value);
+  }
+
+  return Array.from(byName.entries())
+    .map(([name, value], index) => ({
+      name,
+      value,
       color: DEPT_COLORS[index % DEPT_COLORS.length],
     }))
-    .filter((item) => item.value > 0);
+    .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
 }
 
 function mapTop5Chart(rows) {
@@ -73,6 +84,12 @@ function transformNotifications(notifications) {
       alertType = 'Inspection';
     } else if (notification.workflowType === 'WARRANTY') {
       alertType = 'Warranty Expiry';
+    } else if (notification.workflowType === 'SPARE_APPROVAL' || notification.workflowType === 'SPARE_REQUESTED') {
+      alertType = 'Spare Part Approval';
+    } else if (notification.workflowType === 'SPARE_ISSUED') {
+      alertType = 'Spare Part Issued';
+    } else if (notification.workflowType === 'SPARE_CONFIRMED') {
+      alertType = 'Spare Part Confirmed';
     } else if (notification.maintenanceType) {
       alertType = notification.maintenanceType;
     }
@@ -82,6 +99,13 @@ function transformNotifications(notifications) {
       alertText = `${notification.assetTypeName} Inspection`;
     } else if (alertType === 'Warranty Expiry') {
       alertText = `${notification.assetId} - ${notification.title || 'Warranty Expiry'}`;
+    } else if (
+      alertType === 'Spare Part Approval' ||
+      alertType === 'Spare Part Requested' ||
+      alertType === 'Spare Part Issued' ||
+      alertType === 'Spare Part Confirmed'
+    ) {
+      alertText = `${notification.assetTypeName || 'Asset'}`;
     } else if (String(notification.maintenanceType || '').toLowerCase().includes('subscription')) {
       alertText = `${notification.assetTypeName}`;
     } else if (alertType === 'Vendor Contract Renewal') {
@@ -98,7 +122,13 @@ function transformNotifications(notifications) {
       dueOn: formatNotificationDate(notification.dueDate),
       actionBy: notification.userName || 'Unassigned',
       cutoffDate: formatNotificationDate(notification.cutoffDate),
-      isUrgent: notification.daysUntilCutoff <= 2,
+      isUrgent:
+        notification.workflowType === 'SPARE_APPROVAL' ||
+        notification.workflowType === 'SPARE_REQUESTED' ||
+        notification.workflowType === 'SPARE_ISSUED' ||
+        notification.workflowType === 'SPARE_CONFIRMED'
+          ? false
+          : notification.daysUntilCutoff <= 2,
       wfamshId: notification.wfamshId,
       route: notification.route,
       workflowType: notification.workflowType,
@@ -111,6 +141,10 @@ function transformNotifications(notifications) {
       groupName: notification.groupName,
       groupAssetCount: notification.groupAssetCount,
       assetTypeName: notification.assetTypeName,
+      categoryName: notification.categoryName,
+      maintenanceId: notification.maintenanceId,
+      quantityIssued: notification.quantityIssued,
+      statusLabel: notification.statusLabel,
       notifyId: notification.notifyId,
       notificationStatus: notification.notificationStatus,
       canChangeVendor: !!notification.canChangeVendor,
@@ -128,19 +162,20 @@ const emptyMetrics = {
   summary: null,
 };
 
-const cachedSummary = peekCache(KEYS.summary, DASHBOARD_TTL_MS);
+const cachedSummary = peekCache(KEYS.summary(), DASHBOARD_TTL_MS);
 
 export const useDashboardStore = create((set, get) => ({
   metrics: cachedSummary?.metrics || emptyMetrics,
-  departmentChart: mapDepartmentChart(peekCache(KEYS.department, DASHBOARD_TTL_MS)) || [],
-  top5AssetTypes: mapTop5Chart(peekCache(KEYS.top5, DASHBOARD_TTL_MS)) || [],
+  departmentChart: mapDepartmentChart(peekCache(KEYS.department(), DASHBOARD_TTL_MS)) || [],
+  top5AssetTypes: mapTop5Chart(peekCache(KEYS.top5(), DASHBOARD_TTL_MS)) || [],
   notifications: [],
   metricsLoading: !cachedSummary,
-  departmentLoading: !peekCache(KEYS.department, DASHBOARD_TTL_MS),
-  top5Loading: !peekCache(KEYS.top5, DASHBOARD_TTL_MS),
+  departmentLoading: !peekCache(KEYS.department(), DASHBOARD_TTL_MS),
+  top5Loading: !peekCache(KEYS.top5(), DASHBOARD_TTL_MS),
   notificationsLoading: true,
 
   fetchMetrics: async ({ revalidate = false, onFresh } = {}) => {
+    const summaryKey = KEYS.summary();
     const apply = (payload) => {
       set({ metrics: payload, metricsLoading: false });
       onFresh?.(payload);
@@ -159,16 +194,16 @@ export const useDashboardStore = create((set, get) => ({
     };
 
     if (revalidate) {
-      const cached = peekCache(KEYS.summary, DASHBOARD_TTL_MS);
+      const cached = peekCache(summaryKey, DASHBOARD_TTL_MS);
       if (cached) apply(cached);
-      const { data } = await fetchWithRevalidate(KEYS.summary, fetcher, {
+      const { data } = await fetchWithRevalidate(summaryKey, fetcher, {
         ttlMs: DASHBOARD_TTL_MS,
         onFresh: apply,
       });
       return data;
     }
 
-    const { data } = await fetchWithCache(KEYS.summary, fetcher, {
+    const { data } = await fetchWithCache(summaryKey, fetcher, {
       ttlMs: DASHBOARD_TTL_MS,
     });
     apply(data);
@@ -176,6 +211,7 @@ export const useDashboardStore = create((set, get) => ({
   },
 
   fetchDepartmentChart: async ({ revalidate = false, onFresh } = {}) => {
+    const deptKey = KEYS.department();
     const apply = (rows) => {
       const chart = mapDepartmentChart(rows);
       set({ departmentChart: chart, departmentLoading: false });
@@ -188,16 +224,16 @@ export const useDashboardStore = create((set, get) => ({
     };
 
     if (revalidate) {
-      const cached = peekCache(KEYS.department, DASHBOARD_TTL_MS);
+      const cached = peekCache(deptKey, DASHBOARD_TTL_MS);
       if (cached) apply(cached);
-      const { data } = await fetchWithRevalidate(KEYS.department, fetcher, {
+      const { data } = await fetchWithRevalidate(deptKey, fetcher, {
         ttlMs: DASHBOARD_TTL_MS,
         onFresh: (rows) => apply(rows),
       });
       return mapDepartmentChart(data);
     }
 
-    const { data } = await fetchWithCache(KEYS.department, fetcher, {
+    const { data } = await fetchWithCache(deptKey, fetcher, {
       ttlMs: DASHBOARD_TTL_MS,
     });
     apply(data);
@@ -205,6 +241,7 @@ export const useDashboardStore = create((set, get) => ({
   },
 
   fetchTop5AssetTypes: async ({ revalidate = false, onFresh } = {}) => {
+    const top5Key = KEYS.top5();
     const apply = (rows) => {
       const chart = mapTop5Chart(rows);
       set({ top5AssetTypes: chart, top5Loading: false });
@@ -217,16 +254,16 @@ export const useDashboardStore = create((set, get) => ({
     };
 
     if (revalidate) {
-      const cached = peekCache(KEYS.top5, DASHBOARD_TTL_MS);
+      const cached = peekCache(top5Key, DASHBOARD_TTL_MS);
       if (cached) apply(cached);
-      const { data } = await fetchWithRevalidate(KEYS.top5, fetcher, {
+      const { data } = await fetchWithRevalidate(top5Key, fetcher, {
         ttlMs: DASHBOARD_TTL_MS,
         onFresh: (rows) => apply(rows),
       });
       return mapTop5Chart(data);
     }
 
-    const { data } = await fetchWithCache(KEYS.top5, fetcher, {
+    const { data } = await fetchWithCache(top5Key, fetcher, {
       ttlMs: DASHBOARD_TTL_MS,
     });
     apply(data);

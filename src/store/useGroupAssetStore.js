@@ -8,7 +8,7 @@ import {
 } from '../utils/apiCache';
 
 const TTL_MS = 3 * 60 * 1000;
-const LIST_KEY = 'asset-groups:list';
+const LIST_KEY = 'asset-groups:list-v2';
 
 export function formatGroupAssetRows(raw) {
   return (raw || []).map((group) => ({
@@ -97,6 +97,14 @@ export const useGroupAssetStore = create((set, get) => ({
 
   invalidateGroupAssetCache: () => {
     invalidateCache('asset-groups:');
+    invalidateCache('group-assets:');
+    invalidateCache('assets:');
     set({ groupAssets: [] });
+  },
+
+  /** Clear related caches and force-fetch so list screens never paint stale rows. */
+  refreshAfterMutation: async () => {
+    get().invalidateGroupAssetCache();
+    return get().fetchGroupAssets({ force: true });
   },
 }));

@@ -43,6 +43,10 @@ export function getAdminSettingsBreadcrumbLabel(pathname, t) {
       "/adminsettings/configuration/breakdown-reason-codes",
       () => t("masterDataTitles.breakdownReasonCodes"),
     ],
+    [
+      "/adminsettings/configuration/certifications",
+      () => t("navigation.certifications"),
+    ],
     ["/adminsettings/configuration", () => t("columnAccessConfig.breadcrumbConfigurationHub")],
     ["/master-data/job-roles", () => t("columnAccessConfig.breadcrumbJobRoles")],
     ["/admin-settings-view", () => t("navigation.adminSettings")],

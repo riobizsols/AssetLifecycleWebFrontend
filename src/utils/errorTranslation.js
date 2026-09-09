@@ -170,6 +170,22 @@ const shouldKeepSpecificErrorFallback = (resolvedMessage, fallbackMessage) => {
   return false;
 };
 
+/** Soft API fallback derived from tmd_id when the row is missing. */
+const softTextFromTmdId = (tmdId) => {
+  const softText = String(tmdId || "")
+    .replace(/^TMD_/i, "")
+    .replace(/_[0-9A-F]{8}$/i, "")
+    .replace(/_/g, " ")
+    .trim();
+  if (!softText) return "";
+  return softText.charAt(0).toUpperCase() + softText.slice(1).toLowerCase();
+};
+
+const isSoftTmdSlugMessage = (message, tmdId) => {
+  if (!message || !tmdId) return false;
+  return String(message).trim().toLowerCase() === softTextFromTmdId(tmdId).trim().toLowerCase();
+};
+
 /**
  * Show multilingual toast text by tmd_id.
  * type can be: success | error | loading | default
@@ -201,10 +217,13 @@ export const showBackendTextToast = ({
   let toastId = null;
   let fallbackShown = false;
   let fallbackTimer = null;
+  // Unique per call so async replace updates this toast only (never spawns a second one).
+  const stableToastId = `tmd-${String(tmdId || "msg").slice(0, 40)}-${Date.now()}`;
 
   // Show localized fallback immediately so non-English users never see English first.
   if (hasFallbackMessage) {
-    toastId = showByType(fallbackMessage, toastOptions);
+    toastId = showByType(fallbackMessage, { ...toastOptions, id: stableToastId });
+    if (!toastId) toastId = stableToastId;
     fallbackShown = true;
   }
 
@@ -218,6 +237,11 @@ export const showBackendTextToast = ({
           ? translateErrorMessage(rawResolvedMessage)
           : rawResolvedMessage;
       if (!resolvedMessage) return;
+
+      // Never replace a good fallback with soft slug text from a missing TMD row.
+      if (isSoftTmdSlugMessage(rawMessage, tmdId) || isSoftTmdSlugMessage(resolvedMessage, tmdId)) {
+        return;
+      }
 
       const shouldKeepLocalizedFallback =
         !isEnglish &&
@@ -241,10 +265,11 @@ export const showBackendTextToast = ({
 
       if (fallbackShown) {
         if (resolvedMessage !== fallbackMessage) {
-          showByType(resolvedMessage, { ...toastOptions, id: toastId });
+          showByType(resolvedMessage, { ...toastOptions, id: toastId || stableToastId });
         }
       } else {
-        toastId = showByType(resolvedMessage, toastOptions);
+        toastId = showByType(resolvedMessage, { ...toastOptions, id: stableToastId });
+        if (!toastId) toastId = stableToastId;
         fallbackShown = true;
       }
     })
@@ -252,10 +277,11 @@ export const showBackendTextToast = ({
       if (fallbackTimer) clearTimeout(fallbackTimer);
       // Keep fallback toast; no-op on lookup failures.
       if (!fallbackShown && hasFallbackMessage) {
-        toastId = showByType(fallbackMessage, toastOptions);
+        toastId = showByType(fallbackMessage, { ...toastOptions, id: stableToastId });
+        if (!toastId) toastId = stableToastId;
         fallbackShown = true;
       }
     });
 
-  return toastId;
+  return toastId || stableToastId;
 };

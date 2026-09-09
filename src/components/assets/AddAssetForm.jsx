@@ -14,7 +14,6 @@ import { ASSETS_APP_ID } from '../../constants/assetsAuditEvents';
 import { generateUUID } from '../../utils/uuid';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { findConflictingAssetName } from '../../utils/assetTypeNameValidation';
 import { useAssetsStore } from '../../store/useAssetsStore';
 import {
   getCachedAddFormData,
@@ -23,6 +22,8 @@ import {
   loadVendorsByType,
 } from '../../services/addAssetFormData';
 import { invalidateCache } from '../../utils/apiCache';
+import { getActiveOrgId, getActiveBranchId } from '../../utils/acmContext';
+import { useAcmContextStore } from '../../store/useAcmContextStore';
 
 const initialForm = {
   assetType: '',
@@ -108,9 +109,6 @@ const AddAssetForm = ({ userRole }) => {
     vendorRequired: false
   });
   const [isVendorMaintainedType, setIsVendorMaintainedType] = useState(false);
-  const [existingAssets, setExistingAssets] = useState(
-    () => getCachedAddFormData().existingAssets || [],
-  );
 
   const applyProdServData = (data) => {
     if (!Array.isArray(data) || data.length === 0) return;
@@ -139,13 +137,6 @@ const AddAssetForm = ({ userRole }) => {
 
   // Initialize audit logging
   const { recordActionByNameWithFetch } = useAuditLog(ASSETS_APP_ID);
-
-  useEffect(() => {
-    useAssetsStore.getState().fetchExistingAssets({
-      revalidate: true,
-      onFresh: setExistingAssets,
-    }).then(setExistingAssets).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (!users?.length) return;
@@ -858,7 +849,7 @@ const AddAssetForm = ({ userRole }) => {
       // Use the preview endpoint to get the next serial number (no DB increment)
       const response = await API.get(`/serial-numbers/next/${form.assetType}`, {
         params: {
-          orgId: useAuthStore.getState().user.org_id
+          orgId: getActiveOrgId(useAuthStore.getState().user?.org_id)
         }
       });
 
@@ -955,11 +946,6 @@ const AddAssetForm = ({ userRole }) => {
       hasErrors = true;
     }
     
-    if (!form.purchaseBy || form.purchaseBy.trim() === '') {
-      errors.purchaseBy = true;
-      hasErrors = true;
-    }
-    
     if (!form.expiryDate || form.expiryDate.trim() === '') {
       errors.expiryDate = true;
       hasErrors = true;
@@ -1004,24 +990,6 @@ const AddAssetForm = ({ userRole }) => {
     
     // Set validation errors
     setValidationErrors(errors);
-    
-    const assetNameTrimmed = form.description?.trim();
-    if (assetNameTrimmed) {
-      const conflictingName = findConflictingAssetName(
-        assetNameTrimmed,
-        existingAssets
-      );
-      if (conflictingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
-          fallbackText: t('assets.similarAssetNameExists', { name: conflictingName }),
-          type: 'error',
-        });
-        setCollapsedSections((prev) => ({ ...prev, asset: false }));
-        return;
-      }
-    }
 
     if (hasErrors) {
       if (errors.dateMismatch) {
@@ -1065,8 +1033,13 @@ const AddAssetForm = ({ userRole }) => {
     setIsSubmitting(true);
     console.log('📤 Submitting asset data...');
     try {
-      // Get user info from auth store
+      // Get user info from auth store — org/branch from active ACM selection
       const user = useAuthStore.getState().user;
+      const acmOrgId = getActiveOrgId(user?.org_id);
+      const acmBranchId =
+        getActiveBranchId() ||
+        useAcmContextStore.getState().appliedBranchId ||
+        null;
 
       // Get asset type text for the 'text' field
       const selectedAssetType = assetTypes.find(at => at.asset_type_id === form.assetType);
@@ -1079,7 +1052,7 @@ const AddAssetForm = ({ userRole }) => {
         text: assetTypeText, // Asset type name like "Laptop", "Router", etc.
         serial_number: form.serialNumberMode === 'none' ? null : (form.serialNumber?.trim() || null),
         description: form.description?.trim() || null,
-        branch_id: getUserBranchId(user?.user_id), // Auto-populate user's branch
+        branch_id: acmBranchId, // Active ACM branch (null = org-wide; backend resolves default)
         purchase_vendor_id: form.purchaseSupply || null, // Use Purchase Vendor dropdown value
         service_vendor_id: form.serviceSupply || null, // Set from Service Vendor dropdown
         prod_serv_id: fetchedProdServId || null, // Use fetched prod_serv_id from brand/model selection
@@ -1091,7 +1064,7 @@ const AddAssetForm = ({ userRole }) => {
         current_status: 'Active', // Default status
         warranty_period: form.warrantyPeriod || null,
         parent_asset_id: form.parentAsset || null, // Add parentAsset field
-        org_id: user.org_id, // From user's auth store
+        org_id: acmOrgId, // Active ACM organization
         properties: form.properties || {},
         // Depreciation fields with user-entered values and calculated defaults
         salvage_value: parseFloat(form.salvageValue) || 0, // User enters this
@@ -1205,16 +1178,14 @@ const AddAssetForm = ({ userRole }) => {
                   fd.append('doc_type_name', a.docTypeName);
                 }
                 
-                // Get org_id from auth store
-                const user = useAuthStore.getState().user;
-                if (user?.org_id) {
-                  fd.append('org_id', user.org_id);
+                // Get org_id from active ACM context
+                const orgId = getActiveOrgId(useAuthStore.getState().user?.org_id);
+                if (orgId) {
+                  fd.append('org_id', orgId);
                 }
                 
                 // Upload to the asset documents API
-                await API.post(`/assets/${createdAssetId}/docs/upload`, fd, {
-                  headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                await API.post(`/assets/${createdAssetId}/docs/upload`, fd);
                 successCount++;
               } catch (uploadErr) {
                 console.error(`❌ Failed to upload ${a.file.name}:`, uploadErr);
@@ -1261,19 +1232,6 @@ const AddAssetForm = ({ userRole }) => {
     } catch (err) {
       console.error('❌ Error creating asset:', err);
       const responseData = err.response?.data;
-      if (responseData?.existingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_SIMILAR_ASSET_NAME_EXISTS',
-          fallbackText: t('assets.similarAssetNameExists', {
-            name: responseData.existingName,
-          }),
-          type: 'error',
-        });
-        setCollapsedSections((prev) => ({ ...prev, asset: false }));
-        return;
-      }
-
       const backendError = (responseData?.message || responseData?.error || '').toString();
       const hasPurchaseVendorSelection = Boolean(form.purchaseSupply);
       const looksLikeGenericInternalError = backendError.toLowerCase().includes('internal server error');
@@ -1690,6 +1648,33 @@ const AddAssetForm = ({ userRole }) => {
             <>
               <div className="grid grid-cols-4 gap-6 mb-4">
                 <div>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseDate')} <span className="text-red-500">*</span></label>
+                  <input 
+                    name="purchaseDate" 
+                    type="date" 
+                    onChange={handleChange} 
+                    value={form.purchaseDate} 
+                    className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseDate ? 'border-red-500' : 'border-gray-300'}`} 
+                  />
+                  {validationErrors.purchaseDate && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {validationErrors.dateMismatch 
+                        ? (t('assets.purchaseDateCannotBeSameAsExpiryDate') || 'Purchase date cannot be the same as expiry date')
+                        : (t('assets.purchaseDateIsRequired') || 'Purchase date is required')}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
+                  <input 
+                    name="warrantyPeriod" 
+                    type="date" 
+                    onChange={handleChange} 
+                    value={form.warrantyPeriod} 
+                    className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
+                  />
+                </div>
+                <div>
                   <label className="block text-sm mb-1 font-medium">{t('assets.expiryDate')} <span className="text-red-500">*</span></label>
                   <input 
                     name="expiryDate" 
@@ -1705,33 +1690,6 @@ const AddAssetForm = ({ userRole }) => {
                         : validationErrors.expiryDateBeforePurchase
                         ? (t('assets.expiryDateCannotBeBeforePurchaseDate') || 'Expiry date cannot be before purchase date')
                         : (t('assets.expiryDateIsRequired') || 'Expiry date is required')}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
-                  <input 
-                    name="warrantyPeriod" 
-                    type="date" 
-                    onChange={handleChange} 
-                    value={form.warrantyPeriod} 
-                    className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseDate')} <span className="text-red-500">*</span></label>
-                  <input 
-                    name="purchaseDate" 
-                    type="date" 
-                    onChange={handleChange} 
-                    value={form.purchaseDate} 
-                    className={`w-full px-3 py-2 border rounded bg-white text-sm h-9 ${validationErrors.purchaseDate ? 'border-red-500' : 'border-gray-300'}`} 
-                  />
-                  {validationErrors.purchaseDate && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {validationErrors.dateMismatch 
-                        ? (t('assets.purchaseDateCannotBeSameAsExpiryDate') || 'Purchase date cannot be the same as expiry date')
-                        : (t('assets.purchaseDateIsRequired') || 'Purchase date is required')}
                     </p>
                   )}
                 </div>
@@ -1753,7 +1711,7 @@ const AddAssetForm = ({ userRole }) => {
               </div>
               <div className="grid grid-cols-4 gap-6 mb-4">
                 <div>
-                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseBy')} <span className="text-red-500">*</span></label>
+                  <label className="block text-sm mb-1 font-medium">{t('assets.purchaseBy')}</label>
                   <div className="relative w-full">
                     <button
                       type="button"

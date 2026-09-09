@@ -17,6 +17,10 @@ const CreateAssetTypeChecklistMapping = () => {
   const editAssetId = queryParams.get("assetId");
   const isEditing = !!editAtId;
 
+  const mappingListPath = location.pathname.startsWith("/adminsettings")
+    ? "/adminsettings/configuration/asset-type-checklist-mapping"
+    : "/master-data/asset-type-checklist-mapping";
+
   // Form state
   const [modalLoading, setModalLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -99,7 +103,7 @@ const CreateAssetTypeChecklistMapping = () => {
           max_range: item.max_range || item.Max_range || "",
           expected_value: item.expected_value || item.Expected_Value || "",
           trigger_maintenance: item.trigger_maintenance === true || item.trigger_maintenance === 'true',
-          response_type: item.response_type || (item.irtd_id?.includes('QN') ? 'QN' : 'QL'),
+          response_type: item.response_type || 'Qualitative',
       }));
       setMappingRows(detailedRows);
     } catch (error) {
@@ -269,7 +273,7 @@ const CreateAssetTypeChecklistMapping = () => {
         newRows[index] = {
             ...newRows[index],
             insp_check_id: questionId,
-            response_type: defaults.response_type || (defaults.irtd_id?.includes('QN') ? 'QN' : 'QL'),
+            response_type: defaults.response_type || 'Qualitative',
             min_range: defaults.min_range || "",
             max_range: defaults.max_range || "",
             expected_value: defaults.expected_value || "",
@@ -303,7 +307,7 @@ const CreateAssetTypeChecklistMapping = () => {
         overrideData: validRows
       });
       showBackendTextToast({ toast, tmdId: 'TMD_MAPPING_SAVED_SUCCESSFULLY_08452B52', fallbackText: 'Mapping saved successfully', type: 'success' });
-      navigate("/master-data/asset-type-checklist-mapping");
+      navigate(mappingListPath);
     } catch (error) {
       console.error("Error saving mapping:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_SAVE_MAPPING_3344ECED', fallbackText: 'Failed to save mapping', type: 'error' });
@@ -507,7 +511,7 @@ const CreateAssetTypeChecklistMapping = () => {
                                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-white disabled:bg-gray-100 disabled:text-gray-400 focus:border-[#003b6f] outline-none transition-all"
                                     value={row.min_range || ""}
                                     onChange={(e) => handleRowChange(index, "min_range", e.target.value)}
-                                    disabled={row.response_type === 'QL'}
+                                    disabled={row.response_type !== 'Quantitative'}
                                     placeholder="---"
                                   />
                                 </td>
@@ -518,7 +522,7 @@ const CreateAssetTypeChecklistMapping = () => {
                                     className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-white disabled:bg-gray-100 disabled:text-gray-400 focus:border-[#003b6f] outline-none transition-all"
                                     value={row.max_range || ""}
                                     onChange={(e) => handleRowChange(index, "max_range", e.target.value)}
-                                    disabled={row.response_type === 'QL'}
+                                    disabled={row.response_type !== 'Quantitative'}
                                     placeholder="---"
                                   />
                                 </td>
@@ -563,7 +567,7 @@ const CreateAssetTypeChecklistMapping = () => {
           {/* Footer Actions */}
           <div className="px-6 py-4 bg-gray-50 border-t flex items-center justify-end gap-3 font-semibold uppercase tracking-wider">
               <button
-                onClick={() => navigate("/master-data/asset-type-checklist-mapping")}
+                onClick={() => navigate(mappingListPath)}
                 className="px-6 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded-md transition-all shadow-sm text-sm"
               >
                 Cancel

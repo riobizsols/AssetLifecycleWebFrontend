@@ -1,6 +1,7 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import API from "../lib/axios";
 import { toast } from "react-hot-toast";
 import SearchableDropdown from "./ui/SearchableDropdown";
@@ -8,11 +9,11 @@ import { generateUUID } from '../utils/uuid';
 import useAuditLog from "../hooks/useAuditLog";
 import { ASSET_TYPES_APP_ID } from "../constants/assetTypesAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
-import { findConflictingAssetTypeName } from "../utils/assetTypeNameValidation";
 import { refreshAssetTypeCaches } from "../utils/refreshAssetTypeCaches";
 import { X } from "lucide-react";
 
 const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }) => {
+  const navigate = useNavigate();
   const [assetType, setAssetType] = useState("");
   const [assignmentType, setAssignmentType] = useState("user");
 
@@ -23,6 +24,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const { t } = useLanguage();
   const [groupRequired, setGroupRequired] = useState(false);
   const [requireInspection, setRequireInspection] = useState(false);
+  const [requireMaintenance, setRequireMaintenance] = useState(false);
+  const [requireSpareParts, setRequireSpareParts] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [parentChild, setParentChild] = useState("parent");
   const [parentAssetTypes, setParentAssetTypes] = useState([]);
@@ -44,7 +47,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   const [selectedProperties, setSelectedProperties] = useState([]);
   const [existingProperties, setExistingProperties] = useState([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(false);
-  const [existingAssetTypes, setExistingAssetTypes] = useState([]);
 
   useEffect(() => {
     if (assetData) {
@@ -53,6 +55,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       setAssignmentType(assetData.assignment_type || "user");
       setGroupRequired(!!assetData.group_required); // Convert to boolean
       setRequireInspection(!!assetData.inspection_required); // Convert to boolean
+      setRequireMaintenance(!!assetData.require_maintenance);
+      setRequireSpareParts(!!assetData.require_maintenance && !!assetData.require_spare_parts);
       setIsActive(assetData.int_status === 1 || assetData.int_status === "1" || assetData.int_status === true);
       setParentChild(assetData.is_child ? "child" : "parent");
       setSelectedParentType(assetData.parent_asset_type_id || "");
@@ -83,18 +87,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
   useEffect(() => {
     fetchDocumentTypes();
     fetchProperties();
-    fetchExistingAssetTypes();
   }, []);
-
-  const fetchExistingAssetTypes = async () => {
-    try {
-      const res = await API.get("/asset-types");
-      setExistingAssetTypes(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      console.error("Error fetching asset types for validation:", err);
-      setExistingAssetTypes([]);
-    }
-  };
 
   // Fetch checklist and properties when asset type is loaded
   useEffect(() => {
@@ -432,21 +425,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       return;
     }
 
-    const conflictingName = findConflictingAssetTypeName(
-      assetType.trim(),
-      existingAssetTypes,
-      assetData?.asset_type_id
-    );
-    if (conflictingName) {
-      showBackendTextToast({
-        toast,
-        tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
-        fallbackText: t('assetTypes.similarAssetTypeNameExists', { name: conflictingName }),
-        type: 'error',
-      });
-      return;
-    }
-
     // Validate parent selection for child asset types
     if (parentChild === "child" && !selectedParentType) {
       showBackendTextToast({
@@ -467,6 +445,8 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         int_status: isActive ? 1 : 0,
         group_required: groupRequired,
         inspection_required: requireInspection,
+        require_maintenance: requireMaintenance,
+        require_spare_parts: requireMaintenance ? requireSpareParts : false,
         is_child: parentChild === "child",
         parent_asset_type_id: parentChild === "child" ? selectedParentType : null,
         maint_lead_type: null
@@ -507,18 +487,6 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
       onClose(true);
     } catch (error) {
       const responseData = error.response?.data;
-      if (responseData?.existingName) {
-        showBackendTextToast({
-          toast,
-          tmdId: 'TMD_ASSET_TYPE_SIMILAR_NAME_EXISTS',
-          fallbackText: t('assetTypes.similarAssetTypeNameExists', {
-            name: responseData.existingName,
-          }),
-          type: 'error',
-        });
-        return;
-      }
-
       const errorMessage =
         responseData?.message ||
         responseData?.error ||
@@ -732,6 +700,11 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
                       }}
                       placeholder={t('assetTypes.selectPropertyToAdd')}
                       searchPlaceholder={t('assetTypes.searchProperties')}
+                      createNewText={t('assetTypes.createNewProperty', { defaultValue: 'Create New Property' })}
+                      onCreateNew={() => {
+                        onClose(false);
+                        navigate('/adminsettings/configuration/properties', { state: { openCreate: true } });
+                      }}
                       displayKey="text"
                       valueKey="id"
                       className="w-full"
@@ -789,7 +762,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
           </div>
 
           {/* Second Row: Checkboxes */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -804,6 +777,21 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
+                checked={requireMaintenance}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setRequireMaintenance(checked);
+                  if (!checked) setRequireSpareParts(false);
+                }}
+                disabled={isReadOnly}
+                className="form-checkbox text-blue-500 rounded"
+              />
+              <span>{t('assetTypes.requireMaintenance')}</span>
+            </label>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
                 checked={requireInspection}
                 onChange={(e) => setRequireInspection(e.target.checked)}
                 disabled={isReadOnly}
@@ -812,6 +800,18 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
               <span>{t('assetTypes.requireInspection')}</span>
             </label>
 
+            {requireMaintenance && (
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={requireSpareParts}
+                  onChange={(e) => setRequireSpareParts(e.target.checked)}
+                  disabled={isReadOnly}
+                  className="form-checkbox text-blue-500 rounded"
+                />
+                <span>{t('assetTypes.requireSpareParts')}</span>
+              </label>
+            )}
           </div>
 
           {/* Document Management Section - Always Visible */}
@@ -1250,6 +1250,7 @@ const UpdateAssetTypeModal = ({ isOpen, onClose, assetData, isReadOnly = false }
         </div>,
         document.body
       )}
+
     </div>
   );
 };

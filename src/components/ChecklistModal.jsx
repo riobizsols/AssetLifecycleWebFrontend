@@ -2,7 +2,12 @@ import React from "react";
 import { CheckCircle, X } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 
-export default function ChecklistModal({ assetType, open, onClose, checklist = [] }) {
+export default function ChecklistModal({
+  assetType,
+  open,
+  onClose,
+  checklist = [],
+}) {
   const { t } = useLanguage();
   if (!open) return null;
 
@@ -97,7 +102,7 @@ export default function ChecklistModal({ assetType, open, onClose, checklist = [
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer — Close only */}
         <div className="px-6 py-4 border-t flex justify-end flex-shrink-0">
           <button
             onClick={onClose}

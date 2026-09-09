@@ -5,10 +5,14 @@ import {
   fetchWithRevalidate,
   invalidateCache,
   peekCache,
+  acmCacheSegment,
+  buildCacheKey,
 } from '../utils/apiCache';
+import { useAcmContextStore } from './useAcmContextStore';
 
 const TTL_MS = 3 * 60 * 1000;
-const LIST_KEY = 'vendors:list';
+const listKey = () =>
+  buildCacheKey(['vendors', 'list', acmCacheSegment(useAcmContextStore.getState())]);
 
 export function formatVendorRows(raw) {
   return (raw || []).map((item) => {
@@ -26,13 +30,14 @@ export function formatVendorRows(raw) {
   });
 }
 
-const cachedList = peekCache(LIST_KEY, TTL_MS);
+const cachedList = peekCache(listKey(), TTL_MS);
 
 export const useVendorsStore = create((set, get) => ({
   vendors: cachedList || [],
   listLoading: !cachedList,
 
   fetchVendors: async ({ revalidate = false, force = false, onFresh } = {}) => {
+    const LIST_KEY = listKey();
     const apply = (rows) => {
       set({ vendors: rows, listLoading: false });
       onFresh?.(rows);

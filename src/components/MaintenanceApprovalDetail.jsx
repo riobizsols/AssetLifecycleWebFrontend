@@ -9,56 +9,72 @@ import API from "../lib/axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { useLanguage } from "../contexts/LanguageContext";
 import { toast } from "react-hot-toast";
+import { useMaintenanceApprovalStore } from "../store/useMaintenanceApprovalStore";
+import { useMaintenanceSupervisorStore } from "../store/useMaintenanceSupervisorStore";
+import { SYSTEM_ADMIN_JOB_ROLE_ID } from "../utils/systemAdmin";
+
+function normalizeChangedOn(value) {
+  if (value == null || value === '') return null;
+  if (Array.isArray(value)) {
+    const items = value.filter((v) => v != null && v !== '');
+    if (!items.length) return null;
+    return items[items.length - 1];
+  }
+  return value;
+}
+
+function parseDbTimestamp(value) {
+  const normalizedValue = normalizeChangedOn(value);
+  if (!normalizedValue) return null;
+  if (normalizedValue instanceof Date) {
+    return Number.isNaN(normalizedValue.getTime()) ? null : normalizedValue;
+  }
+  const s = String(normalizedValue).trim();
+  if (!s) return null;
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(s)) {
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const normalized = s.includes('T') ? s : s.replace(' ', 'T');
+  const d = new Date(`${normalized}Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatStepDateTime(step) {
+  const raw = step.changed_on;
+  if (raw) {
+    const d = parseDbTimestamp(raw);
+    if (d) {
+      return `${d.toLocaleDateString()} • ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+  }
+  if (step.date && step.time) return `${step.date} • ${step.time}`;
+  return '';
+}
+
+function bustMaintenanceApprovalListCache() {
+  useMaintenanceApprovalStore.getState().invalidateMaintenanceApprovalCache();
+  useMaintenanceSupervisorStore.getState().invalidateMaintenanceCache();
+}
 
 function isInhouseMaintenance(approvalDetails) {
   if (!approvalDetails) return false;
-  if (approvalDetails.header_emp_int_id) return true;
+  if (approvalDetails.maint_type_id === 'MT005') return false;
   const maint = (approvalDetails.maintained_by || '').toString().toLowerCase().replace(/\s|-/g, '');
-  if (!maint) return false;
+  if (maint.includes('vendor')) return false;
+  if (maint.includes('inhouse') || maint === 'internal') return true;
+  if (!maint) return true;
   return !maint.includes('vendor');
 }
 
-const mockApiResponse = {
-  steps: [
-    {
-      id: 1,
-      title: "{t('maintenanceApproval.approvalInitiated')}", // Will be translated in UI
-      status: "completed",
-      description: "Initiated by Billy Morganey",
-      date: "18/02/2025",
-      time: "10:15",
-      user: { id: "u1", name: "Billy Morganey" },
-    },
-    {
-      id: 2,
-      title: "Process",
-      status: "current",
-      description: "{t('maintenanceApproval.approved')} by Sarah Morgan",
-      date: "",
-      time: "",
-      user: { id: "u2", name: "Sarah Morgan" },
-    },
-    {
-      id: 3,
-      title: "Inprogress",
-      status: "pending",
-      description: "Awaiting Approval from You",
-      date: "",
-      time: "",
-      user: { id: "u3", name: "You" },
-    },
-    {
-      id: 4,
-      title: "Inprogress",
-      status: "pending",
-      description: "Awaiting Approval from Stefan",
-      date: "",
-      time: "",
-      user: { id: "u4", name: "Stefan" },
-    },
-  ],
-  currentUserId: "u2"
-};
+function getEffectiveTechnicianId(approvalDetails, selectedTechnician, assignedTechnician) {
+  return (
+    selectedTechnician ||
+    approvalDetails?.header_emp_int_id ||
+    assignedTechnician?.emp_int_id ||
+    null
+  );
+}
 
 const getStepIcon = (status) => {
   switch (status) {
@@ -108,32 +124,6 @@ const ReadOnlyInput = ({ label, value, type = "text", className = "" }) => (
   </div>
 );
 
-const vendorDetails = {
-  vendorName: "VendorX",
-  vendorId: "V001",
-  contact: "9876543210",
-  email: "vendorx@email.com",
-  address: "123, Main Street, City",
-};
-
-const assetTabDetails = {
-  assetType: "Hardware",
-  assetId: "1234553",
-  serialNumber: "SN-987654",
-  model: "Model X",
-  brand: "Brand Y",
-  purchaseDate: "01/01/2024",
-};
-
-const historyDetails = {
-  lastMaintenance: "10/01/2024",
-  lastMaintainedBy: "Sarah Morgan",
-  status: "Completed",
-  notes: "Routine check completed.",
-};
-
-
-
 const getActionColor = (type) => {
   switch (type) {
     case "approved":
@@ -161,7 +151,6 @@ const MaintenanceApprovalDetail = () => {
   // Get context from URL or state (MAINTENANCEAPPROVAL)
   const context = searchParams.get('context') || location.state?.context || 'MAINTENANCEAPPROVAL';
   
-  const [maintenance, setMaintenance] = useState(null);
   const [steps, setSteps] = useState([]);
   const [currentUserEmpId, setCurrentUserEmpId] = useState(""); // Will be set from auth
   const [activeTab, setActiveTab] = useState("approval");
@@ -169,6 +158,7 @@ const MaintenanceApprovalDetail = () => {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
   const [approveNote, setApproveNote] = useState("");
+  const [approveNoteError, setApproveNoteError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [approvalDetails, setApprovalDetails] = useState(null);
@@ -178,6 +168,7 @@ const MaintenanceApprovalDetail = () => {
   const [selectedTechnician, setSelectedTechnician] = useState(null);
   const [loadingTechnicians, setLoadingTechnicians] = useState(false);
   const [loadingAssignedTechnician, setLoadingAssignedTechnician] = useState(false);
+  const [technicianError, setTechnicianError] = useState(false);
   const [loadingApprovalDetails, setLoadingApprovalDetails] = useState(false);
   const [assetDetails, setAssetDetails] = useState(null);
   const [loadingAssetDetails, setLoadingAssetDetails] = useState(false);
@@ -355,7 +346,10 @@ const MaintenanceApprovalDetail = () => {
             userId: workflowData.workflowDetails?.[0]?.user_id,
             userEmail: workflowData.workflowDetails?.[0]?.email,
             status: workflowData.workflowDetails?.[0]?.detail_status,
-            headerStatus: workflowData.headerStatus,
+            headerStatus:
+              workflowData.headerStatus ||
+              workflowData.workflowDetails?.[0]?.header_status ||
+              null,
             sequence: workflowData.workflowDetails?.[0]?.sequence,
             daysUntilDue: workflowData.daysUntilDue,
             daysUntilCutoff: workflowData.daysUntilCutoff,
@@ -373,7 +367,10 @@ const MaintenanceApprovalDetail = () => {
             groupName: workflowData.groupName || null,
             groupAssetCount: workflowData.groupAssetCount || null,
             isGroupMaintenance: workflowData.isGroupMaintenance || false,
-            groupAssets: workflowData.groupAssets || [] // All assets in the group
+            groupAssets: workflowData.groupAssets || [],
+            viewOnly: Boolean(workflowData.viewOnly),
+            canAct: workflowData.canAct !== false,
+            branchAccess: workflowData.branchAccess || null,
           };
           
           console.log('✅ Transformed data:', {
@@ -386,24 +383,19 @@ const MaintenanceApprovalDetail = () => {
           setSteps(workflowData.workflowSteps || []);
         } else {
           console.error("Failed to fetch maintenance workflow:", response.data.message);
+          setApprovalDetails(null);
+          setSteps([]);
+          toast.error(response.data.message || t('maintenanceApproval.loadFailed') || 'Failed to load maintenance workflow');
         }
       } catch (error) {
         console.error("Error fetching maintenance workflow:", error);
-        // Fallback to a safe minimal state if API fails - do NOT set assetId to the workflow id
-        setApprovalDetails({
-          alertType: "Maintenance Alert",
-          alertDueOn: "20/02/2025",
-          actionBy: "John Doe",
-          cutoffDate: "19/02/2025",
-          proposal: "Replace part X",
-          vendor: "VendorX",
-          assetType: "Hardware",
-          assetId: null, // avoid calling /api/assets/{wfamshId}
-          notes: null,
-          checklist: [] // Empty array - real checklist should come from API
-        });
-        // Fallback to mock steps (limited)
-        setSteps(mockApiResponse.steps);
+        setApprovalDetails(null);
+        setSteps([]);
+        toast.error(
+          error.response?.data?.message ||
+            t('maintenanceApproval.loadFailed') ||
+            'Failed to load maintenance workflow'
+        );
       } finally {
         setLoadingApprovalDetails(false);
       }
@@ -411,14 +403,6 @@ const MaintenanceApprovalDetail = () => {
 
   useEffect(() => {
     fetchApprovalDetails();
-  }, [id]);
-
-  useEffect(() => {
-    // Simulate API call to fetch maintenance by id
-    setTimeout(() => {
-      setMaintenance({ ...mockApiResponse, id });
-    }, 300);
-    // TODO: Replace above with real API call using id
   }, [id]);
 
   console.log('🔍 Current user roles:', userRoleIds);
@@ -437,35 +421,82 @@ const MaintenanceApprovalDetail = () => {
   });
   
   const isRejected = approvalDetails?.headerStatus === 'UR' || steps.some((step) => step.status === "rejected");
+  const isWorkflowComplete = ['CO', 'CA', 'CF'].includes(approvalDetails?.headerStatus);
 
   // Find ALL steps with AP status (current action pending)
   const currentActionSteps = steps.filter((step) => {
-    // Look for steps that should be current action users
-    // They should have 'current' status and 'Action pending by' or similar description
-    const isCurrentAction = step.title !== 'System' && 
+    const isCurrentAction = step.title !== 'System' &&
            step.title !== 'Approval Initiated' &&
            step.status === 'current';
     return isCurrentAction;
   });
-  
-  // ROLE-BASED: Only users with the required role for the current step can approve (no bypass for System Admin)
-  const isCurrentActionUser = currentActionSteps.some((step) => {
-    // Backend sends role info in step.role.id (job_role_id)
-    const stepRoleId = step.role?.id || step.user?.id;
-    const hasRole = userRoleIds.includes(stepRoleId);
-    console.log(`🔍 Checking action step: Required role=${stepRoleId}, User has role=${hasRole}`);
-    return hasRole;
-  });
-  
+
+  const hasPendingApproval = currentActionSteps.length > 0;
+  // System Admin (JR001) can act on pending steps only — not when workflow is already complete.
+  const isSystemAdmin = userRoleIds.includes(SYSTEM_ADMIN_JOB_ROLE_ID);
+  const isViewOnly = Boolean(approvalDetails?.viewOnly);
+  const isCurrentActionUser =
+    !isViewOnly &&
+    !isWorkflowComplete &&
+    !isRejected &&
+    hasPendingApproval &&
+    approvalDetails?.canAct !== false &&
+    (isSystemAdmin ||
+      currentActionSteps.some((step) => {
+        const stepRoleId = step.role?.id || step.user?.id;
+        const hasRole = userRoleIds.includes(stepRoleId);
+        console.log(`🔍 Checking action step: Required role=${stepRoleId}, User has role=${hasRole}`);
+        return hasRole;
+      }));
+
   console.log('✅ User can approve:', isCurrentActionUser);
   console.log('📊 Current action steps:', currentActionSteps);
-  
-  
+  console.log('📊 Workflow complete:', isWorkflowComplete, 'headerStatus:', approvalDetails?.headerStatus);
+
+  const finishApproval = () => {
+    setShowApproveModal(false);
+    setApproveNote("");
+    setVendorStatusError("");
+    bustMaintenanceApprovalListCache();
+    navigate('/maintenance-approval');
+  };
 
   // Approve handler
   const handleApprove = async () => {
-    if (!approveNote.trim()) return;
-    
+    if (isViewOnly) return;
+    if (!approveNote.trim()) {
+      setApproveNoteError(true);
+      showBackendTextToast({
+        toast,
+        fallbackText: t('maintenanceApproval.noteRequiredToApprove') || 'Approval note is required',
+        type: 'error',
+      });
+      return;
+    }
+    setApproveNoteError(false);
+
+    const inhouse = isInhouseMaintenance(approvalDetails);
+    const technicianId = getEffectiveTechnicianId(
+      approvalDetails,
+      selectedTechnician,
+      assignedTechnician,
+    );
+    if (inhouse && !technicianId) {
+      setTechnicianError(true);
+      setShowApproveModal(false);
+      setActiveTab('technician');
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_TECHNICIAN_ASSIGNMENT_IS_REQUIRED_FOR_INTERNAL_MAINT_2698B69A',
+        fallbackText:
+          t('maintenanceApproval.technicianRequired') ||
+          'Technician assignment is required for in-house maintenance before approval.',
+        type: 'error',
+      });
+      return;
+    }
+    setTechnicianError(false);
+
     setIsSubmitting(true);
     let loadingToastId = null;
     
@@ -493,12 +524,20 @@ const MaintenanceApprovalDetail = () => {
         originalDueDate: approvalDetails?.dueDate
       });
       
-      const response = await API.post(`/approval-detail/${id}/approve`, {
+      const inhouse = isInhouseMaintenance(approvalDetails);
+      const payload = {
         empIntId: currentUserEmpId,
         note: approveNote,
-        vendorId: vendorToSend,
-        maintenanceDate: dateToSend
-      });
+        maintenanceDate: dateToSend,
+      };
+      if (!inhouse && vendorToSend) {
+        payload.vendorId = vendorToSend;
+      }
+      if (inhouse && technicianId) {
+        payload.technicianId = technicianId;
+      }
+
+      const response = await API.post(`/approval-detail/${id}/approve`, payload);
       
       // Dismiss loading toast
       if (loadingToastId) {
@@ -506,17 +545,9 @@ const MaintenanceApprovalDetail = () => {
       }
       
       if (response.data.success) {
-        console.log("Maintenance approved successfully");
+        console.log("Maintenance approved successfully", response.data);
         toast.success(t('maintenanceApproval.approvedSuccessfully') || "Maintenance approved successfully");
-        setShowApproveModal(false);
-        setApproveNote("");
-        setVendorStatusError("");
-        
-        // Refresh approval details to show updated vendor and date
-        // Wait a bit for the database to be updated
-        setTimeout(() => {
-          fetchApprovalDetails(true);
-        }, 500);
+        finishApproval();
       } else {
         const msg = response.data.message || '';
         if (msg.includes("Inactive") || msg.includes("CR Approved")) {
@@ -526,9 +557,12 @@ const MaintenanceApprovalDetail = () => {
           setActiveTab('vendor');
         } else if (msg.toLowerCase().includes('already been completed')) {
           toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approval already completed.');
+          finishApproval();
+        } else if (msg.toLowerCase().includes('technician') && msg.toLowerCase().includes('required')) {
+          setTechnicianError(true);
           setShowApproveModal(false);
-          setApproveNote('');
-          fetchApprovalDetails(true);
+          setActiveTab('technician');
+          toast.error(msg);
         } else {
           toast.error(msg || t('maintenanceApproval.failedToApprove'));
         }
@@ -554,9 +588,20 @@ const MaintenanceApprovalDetail = () => {
         (errorMessage.includes('vendor_id') && errorMessage.includes('tblAssetMaintSch'))
       ) {
         toast.success(t('maintenanceApproval.approvedSuccessfully') || 'Maintenance approved successfully.');
+        finishApproval();
+      } else if (
+        errorMessage.toLowerCase().includes('technician') &&
+        errorMessage.toLowerCase().includes('required')
+      ) {
+        setTechnicianError(true);
         setShowApproveModal(false);
-        setApproveNote('');
-        fetchApprovalDetails(true);
+        setActiveTab('technician');
+        toast.error(errorMessage);
+      } else if (
+        errorMessage.toLowerCase().includes('no workflow found') &&
+        isWorkflowComplete
+      ) {
+        finishApproval();
       } else {
         toast.error(errorMessage);
         fetchApprovalDetails(true);
@@ -581,6 +626,7 @@ const MaintenanceApprovalDetail = () => {
         console.log("Maintenance rejected successfully");
         setShowRejectModal(false);
         setRejectNote("");
+        bustMaintenanceApprovalListCache();
         navigate('/maintenance-approval');
       } else {
         alert(t('maintenanceApproval.failedToReject'));
@@ -734,27 +780,51 @@ const MaintenanceApprovalDetail = () => {
     fetchWorkflowHistory();
   }, [approvalDetails?.wfamshId]);
 
-  // Fetch active service vendors for dropdown
+  // Fetch active vendors for the service-vendor dropdown
   useEffect(() => {
     const fetchActiveServiceVendors = async () => {
       try {
         const response = await API.get('/get-vendors');
         if (response.data && Array.isArray(response.data)) {
-          // Filter only active service vendors (int_status = 1 AND service_supply = true)
+          const currentVendorId =
+            selectedVendorId ||
+            approvalDetails?.vendorId ||
+            approvalDetails?.vendorDetails?.vendor_id ||
+            null;
+
+          // Maintenance approval needs active vendors even when service_supply was never flagged
           const activeServiceVendors = response.data
-            .filter(vendor => {
-              // Active vendors (int_status = 1)
-              const isActive = vendor.int_status === 1;
-              // Service vendors (service_supply = true, or if field doesn't exist, include all active vendors as fallback)
-              const isServiceVendor = vendor.service_supply === true || vendor.service_supply === 'true' || vendor.service_supply === 1;
-              // If service_supply field doesn't exist, show all active vendors (fallback)
-              const hasServiceSupplyField = 'service_supply' in vendor;
-              return isActive && (hasServiceSupplyField ? isServiceVendor : true);
+            .filter((vendor) => {
+              const isActive =
+                vendor.int_status === 1 ||
+                vendor.int_status === '1' ||
+                vendor.int_status === true;
+              return isActive;
             })
-            .map(vendor => ({
+            .map((vendor) => ({
               value: vendor.vendor_id,
-              label: vendor.vendor_name || vendor.company_name || `Vendor ${vendor.vendor_id}`
+              label:
+                vendor.vendor_name ||
+                vendor.company_name ||
+                `Vendor ${vendor.vendor_id}`,
             }));
+
+          // Ensure the workflow's current vendor appears even if missing from the list API
+          if (
+            currentVendorId &&
+            !activeServiceVendors.some((v) => v.value === currentVendorId)
+          ) {
+            const details =
+              displayedVendorDetails || approvalDetails?.vendorDetails || {};
+            activeServiceVendors.unshift({
+              value: currentVendorId,
+              label:
+                details.vendor_name ||
+                details.company_name ||
+                `Vendor ${currentVendorId}`,
+            });
+          }
+
           setActiveVendors(activeServiceVendors);
         }
       } catch (error) {
@@ -763,7 +833,7 @@ const MaintenanceApprovalDetail = () => {
     };
 
     fetchActiveServiceVendors();
-  }, []);
+  }, [selectedVendorId, approvalDetails, displayedVendorDetails]);
 
   // Save vendor change independently
   const saveVendorChange = async (newVendorId) => {
@@ -1009,7 +1079,7 @@ const MaintenanceApprovalDetail = () => {
                     {step.date && (step.status === 'completed' || step.status === 'approved' || step.status === 'rejected') && (
                       <div className="flex items-center text-xs text-gray-500 mt-1">
                         <Clock className="w-3.5 h-3.5 mr-1" style={{ color: '#FFC107' }} />
-                        <span>{step.date} • {step.time}</span>
+                        <span>{formatStepDateTime(step)}</span>
                       </div>
                     )}
                   </div>
@@ -1267,25 +1337,43 @@ const MaintenanceApprovalDetail = () => {
                     <h3 className="text-lg font-medium mb-4">Technician Details</h3>
 
                     <div className="mb-4">
-                      <label className="block text-sm font-medium mb-1 text-gray-700">Select Technician</label>
+                      <label className="block text-sm font-medium mb-1 text-gray-700">
+                        {t('maintenanceApproval.selectTechnician', { defaultValue: 'Select Technician' })}
+                        <span className="text-red-500"> *</span>
+                      </label>
                       <select
                         value={selectedTechnician || (assignedTechnician?.emp_int_id || "")}
+                        required
                         onChange={async (e) => {
                           const newId = e.target.value || null;
                           setSelectedTechnician(newId);
+                          setTechnicianError(false);
                           if (newId) {
                             const found = technicians.find(t => String(t.emp_int_id) === String(newId));
                             if (found) setAssignedTechnician(found);
                             await saveTechnicianChange(newId);
+                          } else {
+                            setAssignedTechnician(null);
                           }
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none"
+                        className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] ${
+                          technicianError ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       >
-                        <option value="">Select Technician</option>
+                        <option value="">
+                          {t('maintenanceApproval.selectTechnicianPlaceholder', {
+                            defaultValue: '-- Select Technician --',
+                          })}
+                        </option>
                         {technicians.map(t => (
                           <option key={t.emp_int_id} value={t.emp_int_id}>{t.full_name} ({t.emp_int_id})</option>
                         ))}
                       </select>
+                      {technicianError && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {t('maintenanceApproval.technicianRequired')}
+                        </p>
+                      )}
                     </div>
 
                     {loadingAssignedTechnician ? (
@@ -1436,7 +1524,6 @@ const MaintenanceApprovalDetail = () => {
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.action')}</th>
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.user')}</th>
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.jobRole')}</th>
-                            <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.department')}</th>
                             <th className="text-left px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-50">{t('maintenanceApproval.notes')}</th>
                           </tr>
                         </thead>
@@ -1447,7 +1534,6 @@ const MaintenanceApprovalDetail = () => {
                               <td className={`px-6 py-3 text-sm whitespace-nowrap font-medium ${row.actionColor || 'text-gray-600'}`}>{row.action}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.user}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.jobRole || "-"}</td>
-                              <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.department || "-"}</td>
                               <td className="px-6 py-3 text-sm text-gray-900 whitespace-nowrap">{row.notes || "-"}</td>
                             </tr>
                           ))}
@@ -1471,6 +1557,16 @@ const MaintenanceApprovalDetail = () => {
               >
                 Back
               </button>
+              {isViewOnly && (
+                <div className="text-amber-700 text-sm self-center">
+                  View only — this approval belongs to another branch.
+                </div>
+              )}
+              {isWorkflowComplete && !isRejected && (
+                <div className="text-green-700 text-sm self-center font-medium">
+                  {t('maintenanceApproval.workflowCompleted') || 'This maintenance has been fully approved.'}
+                </div>
+              )}
               {isCurrentActionUser && !isRejected && (
                 <>
                   <button
@@ -1512,7 +1608,7 @@ const MaintenanceApprovalDetail = () => {
                   </button>
                 </>
               )}
-              {!isCurrentActionUser && (
+              {!isCurrentActionUser && !isViewOnly && (
                 <div className="text-gray-500 text-sm italic">
                   {currentActionSteps.length > 0 
                     ? (() => {
@@ -1590,26 +1686,33 @@ const MaintenanceApprovalDetail = () => {
                     </label>
                     <textarea
                       value={approveNote}
-                      onChange={(e) => setApproveNote(e.target.value)}
+                      onChange={(e) => {
+                        setApproveNote(e.target.value);
+                        if (e.target.value.trim()) setApproveNoteError(false);
+                      }}
                       className={`w-full h-32 px-3 py-2 border rounded focus:outline-none ${
-                        !approveNote.trim() && isSubmitting ? 'border-red-500' : 'border-gray-300'
+                        approveNoteError ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder={t('maintenanceApproval.pleaseProvideApprovalNote')}
                     />
-                    {!approveNote.trim() && isSubmitting && (
+                    {approveNoteError && (
                       <div className="text-red-500 text-xs mt-1">{t('maintenanceApproval.noteRequiredToApprove')}</div>
                     )}
                     <div className="flex justify-end gap-3 mt-6">
                       <button
-                        onClick={() => setShowApproveModal(false)}
+                        onClick={() => {
+                          setShowApproveModal(false);
+                          setApproveNoteError(false);
+                        }}
                         className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
                       >
 {t('common.cancel')}
                       </button>
                       <button
+                        type="button"
                         onClick={handleApprove}
-                        className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors"
-                        disabled={!approveNote.trim() || isSubmitting}
+                        className="px-4 py-2 bg-[#0E2F4B] text-white rounded hover:bg-[#0a2339] transition-colors disabled:opacity-50"
+                        disabled={isSubmitting}
                       >
                         Approve
                       </button>

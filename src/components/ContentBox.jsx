@@ -86,6 +86,7 @@ const ColumnsSubmenu = ({ visibleColumns, toggleColumn, isIdColumnName, triggerB
   const menuContent = (
     <div
       ref={elRef}
+      data-contentbox-columns-submenu=""
       className="fixed bg-white shadow-lg border border-gray-300 z-[60] overflow-y-auto overscroll-contain"
       style={{
         top: 0,
@@ -145,12 +146,17 @@ const ContentBox = ({
   showFilterButton = true, // Add this line
   onAdd, // Add onAdd prop
   customHeaderActions, // Custom header actions
+  leadingActions, // Actions shown before the filter button
   isReadOnly = false, // Add isReadOnly prop
   onHeaderClick, // Add onHeaderClick prop
   dateFilterField = '', // Which column date range applies to (optional)
 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+
+  // tblJobRoleNav Display (D): never expose create/delete chrome
+  const effectiveShowAddButton = Boolean(showAddButton) && !isReadOnly;
+  const effectiveShowDeleteButton = Boolean(showDeleteButton) && !isReadOnly;
 
   const [openDropdown, setOpenDropdown] = useState(null);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
@@ -167,10 +173,46 @@ const ContentBox = ({
   const dropdownRef = useRef({});
   const columnsButtonRef = useRef(null);
 
+  // New screens pass (column, direction). Older screens only toggle on each call.
+  const applyColumnSort = (column, direction) => {
+    if (!onSort || column === "actions") return;
+    if (onSort.length >= 2) {
+      onSort(column, direction);
+      return;
+    }
+    const current = sortConfig?.sorts?.find((s) => s.column === column)?.direction;
+    const toggle = () => onSort(column);
+    if (direction === "clear") {
+      if (current === "asc") {
+        toggle();
+        toggle();
+      } else if (current === "desc") {
+        toggle();
+      }
+      return;
+    }
+    if (direction === "asc") {
+      if (!current) toggle();
+      else if (current === "desc") {
+        toggle();
+        toggle();
+      }
+      return;
+    }
+    if (direction === "desc") {
+      if (!current) {
+        toggle();
+        toggle();
+      } else if (current === "asc") {
+        toggle();
+      }
+    }
+  };
+
   // Handle refresh with animation
   const handleRefresh = async () => {
     if (isRefreshing || !onRefresh) return;
-    
+
     setIsRefreshing(true);
     try {
       await onRefresh();
@@ -226,20 +268,23 @@ const ContentBox = ({
     }
   }, [filters]);
 
-  // Close add filter submenu when column dropdown closes
+  // Close add filter / columns submenu when column dropdown closes
   useEffect(() => {
     if (openDropdown === null) {
       setShowAddFilterSubmenu(null);
+      setShowColumnsDropdown(false);
     }
   }, [openDropdown]);
 
-  // Handle click outside to close searchable dropdowns
+  // Handle click outside to close filter menus and dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
+      const target = event.target;
+
       Object.keys(searchableDropdownOpen).forEach(index => {
         if (searchableDropdownOpen[index] && 
             dropdownRef.current[index] && 
-            !dropdownRef.current[index].contains(event.target)) {
+            !dropdownRef.current[index].contains(target)) {
           setSearchableDropdownOpen(prev => ({
             ...prev,
             [index]: false
@@ -254,11 +299,51 @@ const ContentBox = ({
       // Close add filter submenu if clicking outside
       if (showAddFilterSubmenu !== null) {
         const addFilterButton = document.querySelector(`[data-add-filter-index="${showAddFilterSubmenu}"]`);
-        if (addFilterButton && !addFilterButton.contains(event.target)) {
+        if (addFilterButton && !addFilterButton.contains(target)) {
           const submenu = document.querySelector(`[data-add-filter-submenu="${showAddFilterSubmenu}"]`);
-          if (submenu && !submenu.contains(event.target)) {
+          if (submenu && !submenu.contains(target)) {
             setShowAddFilterSubmenu(null);
           }
+        }
+      }
+
+      // Close column header sort/filter dropdown when clicking elsewhere
+      if (openDropdown !== null) {
+        const columnHeader = document.querySelector(
+          `[data-contentbox-column-dropdown="${openDropdown}"]`
+        );
+        const columnsSubmenu = document.querySelector(
+          "[data-contentbox-columns-submenu]"
+        );
+        const addFilterSubmenu = document.querySelector(
+          `[data-add-filter-submenu="${openDropdown}"]`
+        );
+        const clickedInside =
+          (columnHeader && columnHeader.contains(target)) ||
+          (columnsSubmenu && columnsSubmenu.contains(target)) ||
+          (addFilterSubmenu && addFilterSubmenu.contains(target));
+
+        if (!clickedInside) {
+          setOpenDropdown(null);
+          setShowColumnsDropdown(false);
+          setShowAddFilterSubmenu(null);
+        }
+      }
+
+      // Close filter icon menu when clicking elsewhere
+      if (filterMenuOpen) {
+        const filterButton = document.querySelector(
+          "[data-contentbox-filter-button]"
+        );
+        const filterMenu = document.querySelector(
+          "[data-contentbox-filter-menu]"
+        );
+        const clickedInside =
+          (filterButton && filterButton.contains(target)) ||
+          (filterMenu && filterMenu.contains(target));
+
+        if (!clickedInside) {
+          setFilterMenuOpen(false);
         }
       }
     };
@@ -267,7 +352,7 @@ const ContentBox = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [searchableDropdownOpen, showAddFilterSubmenu]);
+  }, [searchableDropdownOpen, showAddFilterSubmenu, openDropdown, filterMenuOpen]);
 
   const handleColumnChange = (index, column) => {
     const updated = [...columnFilters];
@@ -533,8 +618,11 @@ const ContentBox = ({
       <div className="flex flex-wrap items-start justify-between gap-2 p-2 bg-gray-100 border-b">
         <div className="flex flex-wrap items-center gap-2">
 
+          {leadingActions}
+
           {showFilterButton && (
             <button
+              data-contentbox-filter-button=""
               className="flex items-center justify-center text-[#FFC107] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-[#0E2F4B]"
               onClick={() => setFilterMenuOpen(!filterMenuOpen)}
             >
@@ -566,9 +654,24 @@ const ContentBox = ({
                       </option>
                     ));
 
-                    // Get unique values for the value dropdown based on selected column
+                    // Prefer explicit filter options (full dataset); fall back to current page rows
+                    const filterDef = filters.find((f) => f.name === cf.column);
+                    const explicitOptions = Array.isArray(filterDef?.options) && filterDef.options.length > 0
+                      ? filterDef.options
+                          .map((opt) => {
+                            if (opt == null) return null;
+                            if (typeof opt === 'object') {
+                              const val = opt.value ?? opt.label;
+                              return val != null && String(val).trim() !== '' ? String(val) : null;
+                            }
+                            const s = String(opt);
+                            return s.trim() ? s : null;
+                          })
+                          .filter(Boolean)
+                      : null;
+
                     const valueOptions = cf.column
-                      ? [
+                      ? explicitOptions ?? [
                           ...new Set(
                             data.map((item) => {
                               const value = item[cf.column];
@@ -761,7 +864,7 @@ const ContentBox = ({
           ))}
 
           {filterMenuOpen && nextAvailableFilters.length > 0 && (
-            <div className="relative">
+            <div className="relative" data-contentbox-filter-menu="">
               <div className="absolute z-50 mt-1 bg-white border text-sm w-60 p-2 shadow-lg left-0">
                 <div className="font-medium border-b pb-1 mb-1">{t('common.addFilter')}</div>
                 {nextAvailableFilters.map((type) => (
@@ -783,7 +886,7 @@ const ContentBox = ({
         </div>
 
         <div className="flex gap-2 justify-end">
-          {showAddButton && (
+          {effectiveShowAddButton && (
             <button
               type="button"
               onClick={(e) => {
@@ -807,7 +910,7 @@ const ContentBox = ({
             </div>
           )}
 
-          {showActions && showDeleteButton && (
+          {showActions && effectiveShowDeleteButton && (
             <button
               onClick={() => {
                 if (selectedRows.length === 0) {
@@ -863,6 +966,9 @@ const ContentBox = ({
                   <th
                     key={index}
                     className="px-4 py-3 relative text-left group"
+                    {...(openDropdown === index
+                      ? { "data-contentbox-column-dropdown": index }
+                      : {})}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span
@@ -870,7 +976,7 @@ const ContentBox = ({
                         onClick={() => {
                           if (onHeaderClick) {
                             onHeaderClick(filter);
-                          } else {
+                          } else if (onSort && filter.name !== "actions") {
                             onSort(filter.name);
                           }
                         }}
@@ -931,10 +1037,7 @@ const ContentBox = ({
                         <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
-                            onSort(filter.name);
-                            if (!sortInfo || sortInfo.direction === "desc") {
-                              onSort(filter.name); // Set to ascending
-                            }
+                            applyColumnSort(filter.name, "asc");
                             setOpenDropdown(null);
                           }}
                         >
@@ -943,10 +1046,7 @@ const ContentBox = ({
                         <div
                           className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold"
                           onClick={() => {
-                            onSort(filter.name);
-                            if (!sortInfo || sortInfo.direction === "asc") {
-                              onSort(filter.name); // Set to descending
-                            }
+                            applyColumnSort(filter.name, "desc");
                             setOpenDropdown(null);
                           }}
                         >
@@ -957,8 +1057,7 @@ const ContentBox = ({
                           <div
                             className="px-3 py-2 hover:bg-gray-100 cursor-pointer font-semibold border-t"
                             onClick={() => {
-                              onSort(filter.name);
-                              onSort(filter.name); // Remove sort
+                              applyColumnSort(filter.name, "clear");
                               setOpenDropdown(null);
                             }}
                           >

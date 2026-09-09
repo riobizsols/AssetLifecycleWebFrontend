@@ -7,9 +7,17 @@ import { Plus, Edit2, Trash2, X, Save, ChevronDown, ChevronUp, Filter, Search } 
 import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
 import { usePropertiesStore } from '../../store/usePropertiesStore';
 import { invalidateCache } from '../../utils/apiCache';
+import { useLocation, useNavigate } from 'react-router-dom';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal';
+import { useNavigation } from '../../hooks/useNavigation';
 
 const Properties = () => {
   const { t } = useLanguage();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { hasEditAccess, getAccessLevel } = useNavigation();
+  const canEdit = hasEditAccess('PROPERTIES');
+  const isReadOnly = getAccessLevel('PROPERTIES') === 'D' || !canEdit;
   const properties = usePropertiesStore((s) => s.properties);
   const listLoading = usePropertiesStore((s) => s.listLoading);
   const fetchPropertiesStore = usePropertiesStore((s) => s.fetchProperties);
@@ -29,6 +37,11 @@ const Properties = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const filterMenuRef = useRef(null);
+
+  // Delete confirmation modal (reusable DeleteConfirmModal)
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'listValue'|'property', id, label, propertyName? }
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Close filter menu when clicking outside
   useEffect(() => {
@@ -60,6 +73,14 @@ const Properties = () => {
     fetchProperties();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Opened from a "Create New Property" action on another screen
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      setShowCreateForm(true);
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   useRevalidateOnFocus(() => {
     fetchPropertiesStore({ revalidate: true });
@@ -97,6 +118,7 @@ const Properties = () => {
 
   // Handle create property
   const handleCreateProperty = async (e) => {
+    if (!canEdit) return;
     e.preventDefault();
     
     if (!propertyName.trim()) {
@@ -186,21 +208,14 @@ const Properties = () => {
     }
   };
 
-  // Handle delete property
-  const handleDeleteProperty = async (propId, propertyName) => {
-    if (!window.confirm(`Are you sure you want to delete the property "${propertyName}"? This will also delete all associated list values.`)) {
-      return;
-    }
-
-    try {
-      await API.delete(`/properties/${propId}`);
-      showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_DELETED_SUCCESSFULLY_1BF88C67', fallbackText: 'Property deleted successfully', type: 'success' });
-      invalidateCache('properties:');
-      fetchProperties({ force: true });
-    } catch (error) {
-      console.error('Error deleting property:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_PROPERTY_57B769A4', fallbackText: 'Failed to delete property', type: 'error' });
-    }
+  const handleDeleteProperty = (propId, propertyName) => {
+    if (!canEdit) return;
+    setDeleteTarget({
+      type: 'property',
+      id: propId,
+      label: propertyName,
+    });
+    setShowDeleteModal(true);
   };
 
   // Handle add list value to existing property
@@ -224,20 +239,46 @@ const Properties = () => {
     }
   };
 
-  // Handle delete list value
-  const handleDeleteListValue = async (aplvId, value) => {
-    if (!window.confirm(`Are you sure you want to delete the value "${value}"?`)) {
-      return;
-    }
+  // Handle delete list value — open confirm dialog
+  const handleDeleteListValue = (aplvId, value) => {
+    setDeleteTarget({
+      type: 'listValue',
+      id: aplvId,
+      label: value,
+    });
+    setShowDeleteModal(true);
+  };
 
+  const handleDeleteCancel = () => {
+    if (isDeleting) return;
+    setShowDeleteModal(false);
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget?.id || isDeleting) return;
+    setIsDeleting(true);
     try {
-      await API.delete(`/properties/list-values/${aplvId}`);
-      showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_DELETED_SUCCESSFULLY_118BD63F', fallbackText: 'List value deleted successfully', type: 'success' });
+      if (deleteTarget.type === 'listValue') {
+        await API.delete(`/properties/list-values/${deleteTarget.id}`);
+        showBackendTextToast({ toast, tmdId: 'TMD_LIST_VALUE_DELETED_SUCCESSFULLY_118BD63F', fallbackText: 'List value deleted successfully', type: 'success' });
+      } else if (deleteTarget.type === 'property') {
+        await API.delete(`/properties/${deleteTarget.id}`);
+        showBackendTextToast({ toast, tmdId: 'TMD_PROPERTY_DELETED_SUCCESSFULLY_1BF88C67', fallbackText: 'Property deleted successfully', type: 'success' });
+      }
       invalidateCache('properties:');
       fetchProperties({ force: true });
+      setShowDeleteModal(false);
+      setDeleteTarget(null);
     } catch (error) {
-      console.error('Error deleting list value:', error);
-      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_LIST_VALUE_6971E732', fallbackText: 'Failed to delete list value', type: 'error' });
+      console.error('Error deleting:', error);
+      if (deleteTarget.type === 'listValue') {
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_LIST_VALUE_6971E732', fallbackText: 'Failed to delete list value', type: 'error' });
+      } else {
+        showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_DELETE_PROPERTY_57B769A4', fallbackText: 'Failed to delete property', type: 'error' });
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -333,6 +374,7 @@ const Properties = () => {
               </div>
             )}
           </div>
+          {canEdit && (
           <button
             onClick={() => setShowCreateForm(true)}
             className="w-10 h-10 bg-[#0E2F4B] text-white rounded flex items-center justify-center hover:bg-[#143d65] transition-colors shadow-sm"
@@ -340,6 +382,7 @@ const Properties = () => {
           >
             <Plus size={20} />
           </button>
+          )}
         </div>
 
         {/* Create Property Modal */}
@@ -564,6 +607,8 @@ const Properties = () => {
                             </span>
                           </div>
                           <div className="col-span-4 flex justify-end gap-3">
+                            {canEdit && (
+                              <>
                             <button
                               onClick={() => handleStartEdit(property)}
                               className="text-blue-600 hover:text-blue-700"
@@ -578,6 +623,8 @@ const Properties = () => {
                             >
                               <Trash2 size={18} />
                             </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       )}
@@ -598,6 +645,7 @@ const Properties = () => {
                                     className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded border border-gray-200 hover:border-gray-300 transition-colors"
                                   >
                                     <span className="text-sm text-gray-900">{value.value}</span>
+                                    {canEdit && (
                                     <button
                                       onClick={() => handleDeleteListValue(value.aplv_id, value.value)}
                                       className="text-red-500 hover:text-red-700 ml-2"
@@ -605,6 +653,7 @@ const Properties = () => {
                                     >
                                       <Trash2 size={14} />
                                     </button>
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -615,12 +664,14 @@ const Properties = () => {
                             )}
                             
                             {/* Add New Value Form */}
+                            {canEdit && (
                             <div className="pt-3 border-t border-gray-200">
                               <AddListValueForm
                                 propId={property.prop_id}
                                 onAdd={handleAddListValue}
                               />
                             </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -632,6 +683,19 @@ const Properties = () => {
           )}
         </div>
       </div>
+
+      <DeleteConfirmModal
+        show={showDeleteModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        message={
+          deleteTarget?.type === 'listValue'
+            ? `Are you sure you want to delete the value "${deleteTarget.label}"?`
+            : deleteTarget?.type === 'property'
+              ? `Are you sure you want to delete the property "${deleteTarget.label}"? This will also delete all associated list values.`
+              : null
+        }
+      />
     </div>
   );
 };

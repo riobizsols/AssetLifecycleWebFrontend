@@ -11,7 +11,7 @@ import {
 const MAINTENANCE_SUPERVISOR_TTL_MS = 3 * 60 * 1000;
 
 const KEYS = {
-  list: 'maintenance-supervisor:list',
+  list: 'maintenance-supervisor:list-all',
   detail: (id) => buildCacheKey(['maintenance-supervisor', 'detail', id]),
   docTypes: 'maintenance-supervisor:doc-types',
 };
@@ -115,7 +115,6 @@ export const useMaintenanceSupervisorStore = create((set, get) => ({
       const res = await API.get(`/maintenance-schedules/${id}`, {
         params: {
           context: 'SUPERVISORAPPROVAL',
-          ...(orgId ? { orgId } : {}),
         },
       });
       if (!res.data?.success) {

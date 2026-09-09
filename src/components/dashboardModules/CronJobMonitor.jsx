@@ -7,6 +7,9 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getCronDetailPath } from "../../utils/cronNavigation";
 
+const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
 const CronJobMonitor = ({ deferMs = 0 }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -21,17 +24,64 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
   const [error, setError] = useState(null);
 
   // Fetch cron job status
-  const fetchCronStatus = async () => {
-    try {
+  const fetchCronStatus = async ({ silent = false } = {}) => {
+    if (!silent) {
       setIsLoading(true);
       setError(null);
-      const response = await API.get("/cron/status");
-      setCronStatus(response.data);
-    } catch (err) {
-      console.error("Error fetching cron status:", err);
-      setError("Failed to fetch cron job status");
-    } finally {
-      setIsLoading(false);
+    }
+
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const response = await API.get("/cron/status", { timeout: 10000 });
+        setCronStatus(response.data);
+        if (!silent) setError(null);
+        return response.data;
+      } catch (err) {
+        lastError = err;
+        const status = err.response?.status;
+        const canRetry = !status || RETRYABLE_STATUS_CODES.has(status);
+        if (!canRetry || attempt === 2) break;
+        await wait(500 * (attempt + 1));
+      }
+    }
+
+    console.error("Error fetching cron status:", lastError);
+    if (!silent) {
+      setError(
+        lastError?.response?.status === 504
+          ? "Cron status is temporarily unavailable. Please try again."
+          : "Failed to fetch cron job status",
+      );
+    }
+    return null;
+  };
+
+  const pollMaintenanceRun = async (runId) => {
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await wait(2000);
+      const data = await fetchCronStatus({ silent: true });
+      const run = data?.status?.maintenanceGeneration?.currentRun;
+
+      if (!run || run.runId !== runId) return;
+
+      if (run.status === "completed") {
+        setLastTriggerResult({
+          success: true,
+          message: "Maintenance generation completed successfully",
+          result: run.result,
+        });
+        return;
+      }
+
+      if (run.status === "failed") {
+        setLastTriggerResult({
+          success: false,
+          message: run.error || "Maintenance generation failed",
+          result: null,
+        });
+        return;
+      }
     }
   };
 
@@ -42,11 +92,17 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
       setError(null);
       const response = await API.post("/cron/trigger-maintenance");
       setLastTriggerResult(response.data);
-      
-      // Refresh status after successful trigger
-      setTimeout(() => {
-        fetchCronStatus();
-      }, 1000);
+
+      const runId = response.data?.result?.runId;
+      if (runId) {
+        await fetchCronStatus({ silent: true });
+        void pollMaintenanceRun(runId);
+      } else {
+        // Compatibility with an older backend that completes the request inline.
+        setTimeout(() => {
+          fetchCronStatus();
+        }, 1000);
+      }
     } catch (err) {
       // Detailed error logging
       console.error("❌ Error triggering maintenance generation:", err);
@@ -156,6 +212,9 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
     });
   };
 
+  const currentRun = cronStatus?.status?.maintenanceGeneration?.currentRun;
+  const maintenanceRunning = ["queued", "running"].includes(currentRun?.status);
+
   return (
     <Card
       className={`h-full transition-shadow ${cronDetailPath ? 'cursor-pointer hover:shadow-lg' : ''}`}
@@ -202,7 +261,9 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
                  </div>
                  <div className="flex justify-between">
                    <span className="text-blue-700">{t('dashboard.status')}:</span>
-                   <span className="text-green-600 font-medium">{t('dashboard.active')}</span>
+                   <span className={`font-medium ${maintenanceRunning ? 'text-amber-600' : 'text-green-600'}`}>
+                     {maintenanceRunning ? `Running (${currentRun.status})` : t('dashboard.active')}
+                   </span>
                  </div>
                </div>
                <div className="mt-2 text-xs text-blue-600 flex items-center gap-1">
@@ -220,10 +281,10 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
                    e.stopPropagation();
                    triggerMaintenanceGeneration();
                  }}
-                 disabled={isTriggering}
+                 disabled={isTriggering || maintenanceRunning}
                  className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 transition-colors"
                >
-                 {isTriggering ? (
+                 {isTriggering || maintenanceRunning ? (
                    <>
                      <Loader2 className="w-4 h-4 animate-spin" />
                      {t('common.loading')}

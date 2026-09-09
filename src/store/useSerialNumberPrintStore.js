@@ -67,7 +67,7 @@ export const useSerialNumberPrintStore = create((set, get) => ({
   queueLoading: false,
   printersLoading: !cachedPrinters,
 
-  fetchPrintQueue: async (status = 'New', { revalidate = false, onFresh } = {}) => {
+  fetchPrintQueue: async (status = 'New', { revalidate = false, force = false, onFresh } = {}) => {
     const key = queueKey(status);
     const apply = (rows) => {
       set((state) => ({
@@ -83,7 +83,7 @@ export const useSerialNumberPrintStore = create((set, get) => ({
       return (response.data.data || []).map(transformPrintQueueItem);
     };
 
-    if (revalidate) {
+    if (revalidate && !force) {
       const cached = peekCache(key, SERIAL_PRINT_TTL_MS);
       if (cached) {
         apply(cached);
@@ -100,14 +100,15 @@ export const useSerialNumberPrintStore = create((set, get) => ({
     set({ queueLoading: true });
     const { data } = await fetchWithCache(key, fetcher, {
       ttlMs: SERIAL_PRINT_TTL_MS,
+      force: force || revalidate,
     });
     apply(data);
     return data;
   },
 
-  fetchPrinters: async ({ revalidate = false } = {}) => {
+  fetchPrinters: async ({ revalidate = false, force = false } = {}) => {
     const apply = (rows) => {
-      set({ printers: rows, printersLoading: false });
+      set({ printers: Array.isArray(rows) ? rows : [], printersLoading: false });
     };
 
     const fetcher = async () => {
@@ -115,20 +116,25 @@ export const useSerialNumberPrintStore = create((set, get) => ({
       return mapPrinterAssets(res.data?.data || []);
     };
 
-    if (revalidate) {
+    if (revalidate && !force) {
       const cached = peekCache(PRINTERS_KEY, SERIAL_PRINT_TTL_MS);
       if (cached?.length) {
         apply(cached);
+      } else if (!get().printers?.length) {
+        set({ printersLoading: true });
       }
       const { data } = await fetchWithRevalidate(PRINTERS_KEY, fetcher, {
         ttlMs: SERIAL_PRINT_TTL_MS,
         onFresh: apply,
       });
+      apply(data);
       return data;
     }
 
+    set({ printersLoading: true });
     const { data } = await fetchWithCache(PRINTERS_KEY, fetcher, {
       ttlMs: SERIAL_PRINT_TTL_MS,
+      force: force || revalidate,
     });
     apply(data);
     return data;
@@ -140,7 +146,8 @@ export const useSerialNumberPrintStore = create((set, get) => ({
   },
 
   invalidateSerialPrintCache: () => {
-    invalidateCache('serial-print:');
-    set({ queueByStatus: {}, printers: [] });
+    // Keep printers in memory so the print screen does not flash "No printers available".
+    invalidateCache('serial-print:queue');
+    set({ queueByStatus: {} });
   },
 }));

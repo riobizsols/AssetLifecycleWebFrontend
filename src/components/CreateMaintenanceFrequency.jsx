@@ -4,15 +4,19 @@ import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
 import { toast } from 'react-hot-toast';
 import { Save, X } from 'lucide-react';
+import { useMaintenanceConfigStore } from '../store/useMaintenanceConfigStore';
 
 const MAINT_CONFIG_PATH = '/adminsettings/configuration/maintenance-config';
 
 const CreateMaintenanceFrequency = () => {
   const navigate = useNavigate();
+  const invalidateMaintenanceConfigCache = useMaintenanceConfigStore(
+    (s) => s.invalidateMaintenanceConfigCache
+  );
 
   const goToMaintenanceFrequencyList = () => {
     navigate(MAINT_CONFIG_PATH, {
-      state: { maintenanceConfigTab: 'maintenanceFrequency' },
+      state: { maintenanceConfigTab: 'maintenanceFrequency', refreshFrequencies: true },
     });
   };
   
@@ -191,6 +195,7 @@ const CreateMaintenanceFrequency = () => {
       const res = await API.post('/maintenance-frequencies', requestData);
 
       if (res.data && res.data.success) {
+        invalidateMaintenanceConfigCache();
         showBackendTextToast({ toast, tmdId: 'TMD_MAINTENANCE_FREQUENCY_CREATED_SUCCESSFULLY_67439110', fallbackText: 'Maintenance frequency created successfully', type: 'success' });
         // Stay in maintenance config flow and return to list tab
         goToMaintenanceFrequencyList();

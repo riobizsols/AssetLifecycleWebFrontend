@@ -13,6 +13,7 @@ import { useRevalidateOnFocus } from '../../hooks/useRevalidateOnFocus';
 import { useScrapAssetsStore } from '../../store/useScrapAssetsStore';
 import { filterData, withRawDateFields } from '../../utils/filterData';
 import { applyListFilterChange } from '../../utils/listFilterState';
+import { getActiveOrgId } from '../../utils/acmContext';
 
 const CategoryAssets = () => {
   const navigate = useNavigate();
@@ -218,7 +219,7 @@ const CategoryAssets = () => {
         scrapped_by: user.emp_int_id.toString(), // Use emp_int_id from user
         location: selectedAsset.location || null,
         notes: notes || null,
-        org_id: user?.org_id || 1 // Default org_id if not available
+        org_id: getActiveOrgId(user?.org_id) || user?.org_id
       };
 
       console.log('📤 Sending scrap data to API:', scrapData);

@@ -4,7 +4,7 @@ import {
   Plus, Edit2, Trash2, X, Search 
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import API from "../../lib/axios";
 import ContentBox from "../../components/ContentBox";
 import CustomTable from "../../components/CustomTable";
@@ -12,7 +12,11 @@ import { useLanguage } from "../../contexts/LanguageContext";
 
 const AssetTypeChecklistMapping = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
+  const mappingBasePath = location.pathname.startsWith("/adminsettings")
+    ? "/adminsettings/configuration/asset-type-checklist-mapping"
+    : "/master-data/asset-type-checklist-mapping";
 
   const columns = useMemo(() => [
     { label: t("assetTypeChecklistMapping.assetType"), name: "asset_type_name", visible: true },
@@ -82,11 +86,11 @@ const AssetTypeChecklistMapping = () => {
   };
 
   const openAddPage = () => {
-    navigate("/master-data/asset-type-checklist-mapping/create");
+    navigate(`${mappingBasePath}/create`);
   };
 
   const openEditPage = (mapping) => {
-    navigate(`/master-data/asset-type-checklist-mapping/create?atId=${mapping.at_id}${mapping.asset_id ? "&assetId=" + mapping.asset_id : ""}`);
+    navigate(`${mappingBasePath}/create?atId=${mapping.at_id}${mapping.asset_id ? "&assetId=" + mapping.asset_id : ""}`);
   };
 
   return (

@@ -6,6 +6,7 @@ import { useNavigate, useParams, useLocation, useSearchParams } from 'react-rout
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useAssetsStore } from '../../store/useAssetsStore';
+import { getActiveOrgId, getActiveDeptId } from '../../utils/acmContext';
 
 const AssetsDetail = () => {
   const navigate = useNavigate();
@@ -21,9 +22,9 @@ const AssetsDetail = () => {
   // Get context from URL query params (DEPTASSIGNMENT or EMPASSIGNMENT)
   const contextFromUrl = searchParams.get('context') || context;
   
-  // Resolve org_id and dept_id with fallbacks
-  const resolvedOrgId = org_id || user?.org_id;
-  const resolvedDeptId = dept_id || entityId; // For department assignments, entityId is the dept_id
+  // Resolve org_id and dept_id from ACM context (not user profile home IDs)
+  const resolvedOrgId = org_id || getActiveOrgId(user?.org_id);
+  const resolvedDeptId = dept_id || entityId || getActiveDeptId(); // For department assignments, entityId is the dept_id
 
   // Helper to generate a unique assignment ID
   const generateUniqueId = () => `AA${Date.now()}`;

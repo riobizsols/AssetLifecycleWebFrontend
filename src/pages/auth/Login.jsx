@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useNavigationStore } from "../../store/useNavigationStore";
+import { useAcmContextStore } from "../../store/useAcmContextStore";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../../constants/authAuditEvents";
@@ -21,13 +22,26 @@ export default function Login() {
   const location = useLocation();
   const { isAuthenticated, login, requiresPasswordChange } = useAuthStore();
   const { t } = useLanguage();
-  
+
+  const zohoSsoEnabled =
+    String(import.meta.env.VITE_ZOHO_SSO_ENABLED || "").toLowerCase() === "true";
+  const zohoLoginUrl =
+    import.meta.env.VITE_ZOHO_LOGIN_URL ||
+    `${window.location.origin}/api/auth/zoho/login`;
+
   // Check if we're coming from admin settings route
   const isAdminSettingsLogin = location.state?.fromAdminSettings || 
                                 sessionStorage.getItem('redirectToAdminSettings') === 'true';
   
   // Audit logging for login
   const { recordActionByNameWithFetch } = useAuditLog(AUTH_APP_IDS.LOGIN);
+
+  useEffect(() => {
+    const ssoError = new URLSearchParams(location.search).get("sso_error");
+    if (ssoError) {
+      setError(ssoError);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     // Only redirect to dashboard if authenticated AND password change is not required
@@ -66,13 +80,31 @@ export default function Login() {
       // Load permissions before routing to protected admin screens
       await useNavigationStore.getState().fetchNavigation(user?.user_id, { force: true });
 
+      // Seed deterministic default ACM (first ACM row / stable wildcards) before app data loads
+      try {
+        const acmRes = await API.get('/acm/me');
+        const def = acmRes.data?.defaultSelection;
+        if (def?.orgId) {
+          useAcmContextStore.getState().seedAndApply(
+            {
+              orgId: def.orgId,
+              branchId: def.branchId,
+              deptId: def.deptId,
+            },
+            { emitEvent: false }
+          );
+        }
+      } catch (acmErr) {
+        console.error('Failed to seed default ACM after login', acmErr);
+      }
+
       // Log audit event for successful login
       await recordActionByNameWithFetch('Logging In', { 
         action: 'User Logged In Successfully',
         userId: user?.user_id,
         userEmail: user?.email,
         userRole: user?.job_role_id,
-        org_id: user?.org_id
+        org_id: useAcmContextStore.getState().appliedOrgId || user?.org_id
       });
 
       // Navigate immediately based on password change requirement
@@ -184,6 +216,29 @@ export default function Login() {
               {loading ? t('common.loading') : t('auth.login')}
             </button>
           </form>
+
+          {zohoSsoEnabled && (
+            <div className="mt-6 space-y-3">
+              <div className="relative flex items-center">
+                <div className="flex-grow border-t border-gray-200" />
+                <span className="px-3 text-xs text-gray-500 uppercase">or</span>
+                <div className="flex-grow border-t border-gray-200" />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = zohoLoginUrl;
+                }}
+                className="w-full border border-[#0E2F4B] text-[#0E2F4B] py-2 rounded-md hover:bg-gray-50 transition"
+              >
+                Sign in with Zoho
+              </button>
+              <p className="text-xs text-center text-gray-500">
+                New to RIO EAM? Open the app from Zoho first — if you have no organization yet,
+                you can request access after Zoho verifies your email.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

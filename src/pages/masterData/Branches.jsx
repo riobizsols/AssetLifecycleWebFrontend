@@ -58,6 +58,7 @@ const Branches = () => {
   const columns = [
     { label: t('branches.branchId'), name: "branch_id", visible: true },
     { label: t('branches.organizationId'), name: "org_id", visible: true },
+    { label: t('branches.organizationName'), name: "org_name", visible: true },
     { label: t('branches.isActive'), name: "int_status", visible: true },
     { label: t('branches.branchName'), name: "text", visible: true },
     { label: t('branches.city'), name: "city", visible: true, formatter: cityFormatter },
@@ -72,7 +73,7 @@ const Branches = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        await fetchBranchesStore({ revalidate: true });
+        await fetchBranchesStore({ revalidate: true, force: true });
       } catch (error) {
         console.error("Error fetching branches:", error);
         showBackendTextToast({ toast, tmdId: 'TMD_I18N_BRANCHES_FAILEDTOFETCHBRANCHES_65E26530', fallbackText: t('branches.failedToFetchBranches'), type: 'error' });

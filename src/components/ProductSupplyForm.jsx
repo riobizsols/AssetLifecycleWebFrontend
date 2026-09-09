@@ -103,6 +103,7 @@ const ProductSupplyForm = ({
 
   const goToProdServ = (focus) => {
     if (!form.assetType) return;
+    // Force-save parent vendor fields BEFORE unmounting the wizard
     onPersistVendorDraft?.("Product Details");
     sessionStorage.setItem(
       'vendorProductDraft',

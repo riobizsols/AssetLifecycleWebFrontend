@@ -6,6 +6,8 @@ import { useAuditLog } from "../hooks/useAuditLog";
 import { AUTH_APP_IDS } from "../constants/authAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import RouteDataLoading from "../components/loading/RouteDataLoading";
+import AcmContextSelector from "../components/AcmContextSelector";
+import { useAcmContextStore } from "../store/useAcmContextStore";
 import {
   getAdminSettingsBreadcrumbLabel,
   shouldShowAdminSettingsBreadcrumb,
@@ -27,6 +29,9 @@ export default function Header() {
   const pathTitleMap = {
     "/maintenance-list": { title: t('maintenance.maintenanceList'), subtitle: "" },
     "/maintenance-list/create": { title: t('maintenanceSupervisor.createManualMaintenance'), subtitle: "" },
+    "/spare-part-list": { title: t('sparePartList.title'), subtitle: "" },
+    "/spare-part-issue": { title: t('sparePartIssue.title'), subtitle: "" },
+    "/spare-part-approval": { title: t('sparePartApproval.title'), subtitle: "" },
     "/inspection-view": { title: t('inspectionView.title'), subtitle: "" },
     "/inspection-view/create": { title: t('inspectionView.createManualInspection'), subtitle: "" },
     "/assets": { title: t('navigation.assets'), subtitle: "" },
@@ -40,13 +45,29 @@ export default function Header() {
     "/report-breakdown": { title: t('navigation.reportBreakdown'), subtitle: "" },
     "/employee-report-breakdown": { title: t('navigation.employeeReportBreakdown'), subtitle: "" },
     "/dashboard": { title: t('navigation.dashboard'), subtitle: "" },
+    "/notifications": { title: t('allNotifications.title'), subtitle: "" },
     "/technician-certificates": { title: t('technicianCertificates.title'), subtitle: "" },
     "/tech-cert-approvals": { title: t('technicianCertificates.approvalsTitle'), subtitle: "" },
     "/assets/add": { title: t('assets.addAsset'), subtitle: "" },
     "/master-data/asset-types/add": { title: t('assetTypes.addAssetType'), subtitle: "" },
     "/master-data/branches/add": { title: t('branches.addBranch'), subtitle: "" },
+    "/master-data/branch-dept-mapping": {
+      title: t('branchDeptMapping.title', { defaultValue: 'Branch – Department Mapping' }),
+      subtitle: "",
+    },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
+    "/master-data/spare-parts": { title: t('navigation.sparePartLot'), subtitle: "" },
+    "/master-data/spare-parts/add": { title: t('navigation.sparePartLot'), subtitle: "" },
+    "/master-data/spare-parts/edit": { title: t('navigation.sparePartLot'), subtitle: "" },
+    "/master-data/spare-parts-configuration": { title: t('navigation.sparePartsConfiguration'), subtitle: "" },
+    "/master-data/spare-parts-configuration/categories/add": { title: "Add Spare Part Category", subtitle: "" },
+    "/master-data/spare-parts-configuration/categories/edit": { title: "Edit Spare Part Category", subtitle: "" },
+    "/master-data/spare-parts-configuration/mappings/add": { title: "Asset Type Mapping", subtitle: "Map categories to an asset type" },
+    "/master-data/spare-parts-configuration/mappings/edit": { title: "Edit Asset Type Mapping", subtitle: "Update categories for an asset type" },
+    "/master-data/spare-part": { title: t('navigation.sparePartMaster'), subtitle: "" },
+    "/master-data/spare-part/add": { title: t('navigation.sparePartMaster'), subtitle: "" },
+    "/master-data/spare-part/edit": { title: t('navigation.sparePartMaster'), subtitle: "" },
     "/master-data/inspection-checklists": { title: t('masterDataTitles.inspectionChecklists'), subtitle: "" },
     "/master-data/inspection-frequency": { title: t('masterDataTitles.inspectionFrequency'), subtitle: "" },
     "/master-data/departments-asset": { title: t('departments.departmentAssetMappings'), subtitle: "" },
@@ -112,6 +133,22 @@ export default function Header() {
       subtitle: t('auditLogs.configSubtitle'),
     },
     "/certifications": { title: t('navigation.certifications'), subtitle: "" },
+    "/adminsettings/configuration/certifications": {
+      title: t('navigation.certifications'),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/inspection-frequency": {
+      title: t('masterDataTitles.inspectionFrequency'),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/inspection-checklists": {
+      title: t('masterDataTitles.inspectionChecklists'),
+      subtitle: "",
+    },
+    "/adminsettings/configuration/asset-type-checklist-mapping": {
+      title: t('navigation.assetTypeChecklistMapping'),
+      subtitle: "",
+    },
     "/vendor-renewal-approval": { title: t('vendorRenewalApproval.title'), subtitle: "" },
     "/master-data/roles": {
       title: t('masterDataTitles.roleManagement'),
@@ -212,6 +249,11 @@ export default function Header() {
       // Don't block logout UX on audit logging.
       await Promise.race([audit, new Promise((r) => setTimeout(r, 300))]);
     } finally {
+      try {
+        useAcmContextStore.getState().reset();
+      } catch (_) {
+        /* ignore */
+      }
       logout();
       navigate("/");
       setLoggingOut(false);
@@ -312,8 +354,11 @@ export default function Header() {
         </div>
       )}
       
-      {/* User Menu */}
-      <div className="relative shrink-0" ref={dropdownRef}>
+      <div className="flex items-center shrink-0 ml-auto">
+        <AcmContextSelector />
+
+        {/* User Menu */}
+        <div className="relative shrink-0" ref={dropdownRef}>
         {/* Avatar Button */}
         <button
           onClick={() => setOpen((prev) => !prev)}
@@ -332,17 +377,21 @@ export default function Header() {
 
         {/* Dropdown */}
         {open && (
-          <div className="absolute right-0 mt-2 w-64 bg-white rounded shadow-lg z-50 text-sm border border-gray-100">
-            <div className="flex items-center gap-3 p-4 border-b">
-              <div className="h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold bg-cyan-600">
+          <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white rounded shadow-lg z-50 text-sm border border-gray-100">
+            <div className="flex items-start gap-3 p-4 border-b">
+              <div className="h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-white font-semibold bg-cyan-600">
                 {initials}
               </div>
-              <div>
-                <p className="font-semibold text-[#0E2F4B]">{fullName}</p>
-                <p className="text-xs text-gray-500 capitalize">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-[#0E2F4B] break-words leading-snug">
+                  {fullName}
+                </p>
+                <p className="text-xs text-gray-500 capitalize break-words mt-0.5 leading-snug">
                   {jobRole.replace(/_/g, " ")}
                 </p>
-                <p className="text-xs text-gray-400">{email}</p>
+                <p className="text-xs text-gray-400 break-all mt-0.5 leading-snug">
+                  {email}
+                </p>
                 {userRoles.length > 1 && (
                   <p className="text-xs text-blue-600 mt-1">
                     {userRoles.length} roles assigned
@@ -359,6 +408,7 @@ export default function Header() {
             </button>
           </div>
         )}
+        </div>
       </div>
       </header>
     </>

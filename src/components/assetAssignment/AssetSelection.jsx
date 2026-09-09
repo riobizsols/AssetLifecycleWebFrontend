@@ -1,7 +1,7 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Maximize, Minimize, QrCode, X } from "lucide-react";
+import { Maximize, Minimize, QrCode, X, ArrowLeft } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import API from "../../lib/axios";
 import { toast } from "react-hot-toast";
@@ -11,6 +11,7 @@ import { EMP_ASSIGNMENT_APP_ID } from "../../constants/empAssignmentAuditEvents"
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useAssignmentStore } from "../../store/useAssignmentStore";
 import { useAssetsStore } from "../../store/useAssetsStore";
+import { useAcmContextStore } from "../../store/useAcmContextStore";
 import SearchableDropdown from "../ui/SearchableDropdown";
  
 
@@ -19,8 +20,17 @@ const AssetSelection = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { entityId, entityIntId, entityType, departmentId, selectedAssetType: selectedAssetTypeFromState, activeTab: activeTabFromState } =
+  const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
+  const { entityId, entityIntId, entityType, departmentId, branchId, selectedAssetType: selectedAssetTypeFromState, activeTab: activeTabFromState } =
     location.state || {};
+
+  // Prefer navigation branch, then ACM-selected branch
+  const effectiveBranchId = branchId || appliedBranchId || null;
+
+  const filterAssetsByBranch = (list) => {
+    if (!effectiveBranchId || !Array.isArray(list)) return list || [];
+    return list.filter((a) => !a.branch_id || a.branch_id === effectiveBranchId);
+  };
 
   const [assets, setAssets] = useState([]);
   const [assetTypes, setAssetTypes] = useState([]);
@@ -127,7 +137,7 @@ const AssetSelection = () => {
     }
 
     fetchAssetTypes();
-  }, [entityId, entityType, entityIntId]);
+  }, [entityId, entityType, entityIntId, departmentId]);
 
   // Fetch employee internal ID if missing
   const fetchEmployeeIntId = async (employeeId) => {
@@ -180,14 +190,25 @@ const AssetSelection = () => {
     try {
       const incoming = await useAssignmentStore
         .getState()
-        .fetchAssetTypesForAssignment(entityType, entityId, { revalidate: true });
+        .fetchAssetTypesForAssignment(entityType, entityId, {
+          revalidate: true,
+          departmentId: entityType === 'employee' ? departmentId : null,
+        });
 
-      setAssetTypes(incoming);
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
       setCountsLoading(true);
       const counts = await useAssignmentStore
         .getState()
-        .fetchInactiveCountsForTypes(context, incoming);
+        .fetchInactiveCountsForTypes(context, incoming, {
+          branchId: effectiveBranchId,
+          force: true,
+        });
+
+      // Only show types that have available (unassigned) assets for this branch
+      const withStock = (incoming || []).filter(
+        (type) => (counts[type.asset_type_id] || 0) > 0,
+      );
+      setAssetTypes(withStock);
       setAssetTypeCounts(counts);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
@@ -203,9 +224,13 @@ const AssetSelection = () => {
       const context = entityType === 'employee' ? 'EMPASSIGNMENT' : 'DEPTASSIGNMENT';
       const assetsArr = await useAssignmentStore
         .getState()
-        .fetchInactiveAssetsByType(context, assetTypeId, { revalidate: true });
-      setInactiveAssets(assetsArr);
-      setInactiveAssetsRaw(assetsArr);
+        .fetchInactiveAssetsByType(context, assetTypeId, {
+          force: true,
+          branchId: effectiveBranchId,
+        });
+      const filtered = filterAssetsByBranch(assetsArr);
+      setInactiveAssets(filtered);
+      setInactiveAssetsRaw(filtered);
     } catch (err) {
       console.error("Failed to fetch inactive assets", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
@@ -226,8 +251,9 @@ const AssetSelection = () => {
         .getState()
         .fetchAllInactiveAssets(context, assetTypes);
 
-      setInactiveAssets(uniqueByAssetId);
-      setInactiveAssetsRaw(uniqueByAssetId);
+      const filtered = filterAssetsByBranch(uniqueByAssetId);
+      setInactiveAssets(filtered);
+      setInactiveAssetsRaw(filtered);
     } catch (err) {
       console.error("Failed to fetch all inactive assets", err);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_FAILEDTOFETCHINACTIVEASSETS_7BFBC69F', fallbackText: t('assets.failedToFetchInactiveAssets'), type: 'error' });
@@ -330,7 +356,25 @@ const AssetSelection = () => {
       useAssetsStore.getState().invalidateAssetsCache();
 
       // Redirect after successful assignment
-      navigate(-1);
+      if (entityType === "department") {
+        const deptId = entityId || departmentId;
+        navigate("/assign-department-assets", {
+          replace: true,
+          state: { selectedDept: deptId, selectedBranch: effectiveBranchId || null },
+        });
+      } else if (entityType === "employee") {
+        navigate("/assign-employee-assets", {
+          replace: true,
+          state: {
+            selectedBranch: effectiveBranchId || null,
+            selectedDepartment: departmentId || null,
+            selectedEmployee: entityId || null,
+            selectedEmployeeIntId: entityIntIdLocal || entityIntId || null,
+          },
+        });
+      } else {
+        navigate(-1);
+      }
   
     } catch (err) {
       console.error("Failed to assign asset", err);
@@ -461,8 +505,16 @@ const AssetSelection = () => {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="bg-white rounded shadow mb-4">
-        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm">
-          {t('assets.assetSelection')}
+        <div className="bg-[#EDF3F7] px-4 py-2 rounded-t text-[#0E2F4B] font-semibold text-sm flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center justify-center rounded p-0.5 text-[#0E2F4B] hover:bg-white/60"
+            aria-label={t('common.back')}
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <span>{t('assets.assetSelection')}</span>
         </div>
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex">

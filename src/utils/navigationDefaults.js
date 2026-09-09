@@ -7,6 +7,7 @@ const normalizeNavAppId = (id) =>
 export const MASTER_DATA_CHILD_ORDER = [
   'ASSETTYPES',
   'BRANCHES',
+  'BRANCHDEPTMAPPING',
   'DEPARTMENTS',
   'DEPARTMENTSADMIN',
   'DEPARTMENTSASSET',
@@ -15,6 +16,7 @@ export const MASTER_DATA_CHILD_ORDER = [
   'USERROLES',
   'PRODSERV',
   'VENDORS',
+  'SPAREPARTSCONFIG',
 ];
 
 /** Preferred Scrap submenu order. */
@@ -24,18 +26,58 @@ export const SCRAP_CHILD_ORDER = [
   'SCRAPSALES',
 ];
 
-/** Preferred Admin Settings submenu order (audit items). */
-export const ADMIN_SETTINGS_CHILD_ORDER = ['AUDITLOGS', 'AUDITLOGCONFIG'];
-
-/** Preferred Inspection submenu order. */
-export const INSPECTION_CHILD_ORDER = [
-  'INSPECTIONAPPROVAL',
-  'INSPECTIONVIEW',
-  'INSPECTION',
+/** Preferred Admin Settings submenu order (audit + inspection config). */
+export const ADMIN_SETTINGS_CHILD_ORDER = [
+  'AUDITLOGS',
+  'AUDITLOGCONFIG',
   'INSPECTIONFREQUENCY',
   'INSPECTIONCHECKLISTS',
   'ASSETTYPECHECKLISTMAPPING',
 ];
+
+/** Preferred Inspection submenu order (operational screens only). */
+export const INSPECTION_CHILD_ORDER = [
+  'INSPECTIONAPPROVAL',
+  'INSPECTIONVIEW',
+  'INSPECTION',
+];
+
+/** Sidebar entries hidden from all roles (routes may still exist). */
+export const HIDDEN_SIDEBAR_APP_IDS = new Set([
+  'INSPECTIONFREQUENCY',
+  'INSPECTIONCHECKLISTS',
+  'ASSETTYPECHECKLISTMAPPING',
+]);
+
+/** Sidebar group labels hidden when app_id is null. */
+export const HIDDEN_SIDEBAR_LABELS = new Set([]);
+
+const isHiddenSidebarItem = (item) => {
+  const appId = normalizeNavAppId(item?.app_id);
+  if (appId && HIDDEN_SIDEBAR_APP_IDS.has(appId)) return true;
+  const label = String(item?.label || '').trim().toUpperCase();
+  return HIDDEN_SIDEBAR_LABELS.has(label);
+};
+
+/** Remove hidden apps from the navigation tree (recursive). */
+export const hideSidebarNavItems = (items) => {
+  if (!Array.isArray(items) || !items.length) return items;
+
+  const walk = (nodes) =>
+    nodes
+      .map((item) => {
+        if (isHiddenSidebarItem(item)) return null;
+        if (item.children?.length) {
+          const children = walk(item.children);
+          if (!children.length) return null;
+          return { ...item, children };
+        }
+        return item;
+      })
+      .filter(Boolean);
+
+  return walk(items);
+};
 
 const childOrderRank = (appId, order) => {
   const key = normalizeNavAppId(appId);

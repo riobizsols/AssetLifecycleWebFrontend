@@ -3,6 +3,7 @@ dist
 npm-debug.log
 .env
 .env.*
+.env-pull-backup.*
 !.env.example
 .git
 .gitignore

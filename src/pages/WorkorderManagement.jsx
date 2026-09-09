@@ -1,6 +1,7 @@
 import { showBackendTextToast } from '../utils/errorTranslation';
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import ContentBox from "../components/ContentBox";
 import CustomTable from "../components/CustomTable";
 import { filterData } from "../utils/filterData";
@@ -136,6 +137,16 @@ const WorkorderManagement = () => {
         setSelectedRows={setSelectedRows}
         showActions={false}
         showAddButton={false}
+        leadingActions={
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center text-[#0E2F4B] border border-gray-300 rounded px-2 py-1 hover:bg-gray-100 bg-white"
+            aria-label={t('common.back')}
+          >
+            <ArrowLeft size={18} />
+          </button>
+        }
       >
         {({ visibleColumns }) => {
           const filtered = filterData(data, filterValues, visibleColumns);

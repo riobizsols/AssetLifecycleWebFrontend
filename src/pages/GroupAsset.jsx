@@ -12,14 +12,18 @@ import { GROUP_ASSETS_APP_ID } from "../constants/groupAssetsAuditEvents";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useGroupAssetStore } from "../store/useGroupAssetStore";
-import { invalidateCache } from "../utils/apiCache";
 import { filterData } from "../utils/filterData";
 import { applyListFilterChange, hasActiveListFilters, EMPTY_LIST_FILTERS } from "../utils/listFilterState";
+import { sortTableRows, updateSortConfig } from "../utils/tableSort";
+import { useNavigation } from "../hooks/useNavigation";
 
 const GroupAsset = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { t } = useLanguage();
+  const { hasEditAccess, getAccessLevel } = useNavigation();
+  const canEdit = hasEditAccess('GROUPASSET');
+  const isReadOnly = getAccessLevel('GROUPASSET') === 'D' || !canEdit;
   const groupAssets = useGroupAssetStore((s) => s.groupAssets);
   const listLoading = useGroupAssetStore((s) => s.listLoading);
   const fetchGroupAssetsStore = useGroupAssetStore((s) => s.fetchGroupAssets);
@@ -149,8 +153,7 @@ const GroupAsset = () => {
 
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_ASSETGROUPDELETEDSUCCESSFULLY_32EB5DF7', fallbackText: t("groupAssets.assetGroupDeletedSuccessfully"), type: 'success' });
       removeGroups([row.group_id]);
-      invalidateCache('asset-groups:');
-      fetchAssetGroups({ force: true });
+      await useGroupAssetStore.getState().refreshAfterMutation();
     } catch (error) {
       console.error("Error deleting asset group:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETEASSETGROUP_59E22566', fallbackText: t("groupAssets.failedToDeleteAssetGroup"), type: 'error' });
@@ -190,8 +193,7 @@ const GroupAsset = () => {
       // Clear selection and refresh data
       setSelectedRows([]);
       removeGroups(selectedRows);
-      invalidateCache('asset-groups:');
-      fetchAssetGroups({ force: true });
+      await useGroupAssetStore.getState().refreshAfterMutation();
     } catch (error) {
       console.error("Error deleting selected asset groups:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_GROUPASSETS_FAILEDTODELETESOMEASSETGROUPS_781931A5', fallbackText: t("groupAssets.failedToDeleteSomeAssetGroups"), type: 'error' });
@@ -204,28 +206,13 @@ const GroupAsset = () => {
     fromDate: "",
     toDate: "",
   });
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [sortConfig, setSortConfig] = useState({ sorts: [] });
 
-  const handleSort = (column) => {
-    setSortConfig((prev) => ({
-      key: column,
-      direction:
-        prev.key === column && prev.direction === "asc" ? "desc" : "asc",
-    }));
+  const handleSort = (column, direction) => {
+    setSortConfig((prev) => updateSortConfig(prev, column, direction));
   };
 
-  const sortData = (data) => {
-    if (!sortConfig.key) return data;
-
-    return [...data].sort((a, b) => {
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
-
-      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
-      return 0;
-    });
-  };
+  const sortData = (data) => sortTableRows(data, sortConfig.sorts);
 
   const handleFilterChange = (columnName, value) => {
     setFilterValues((prev) => applyListFilterChange(prev, columnName, value));
@@ -262,12 +249,15 @@ const GroupAsset = () => {
           onFilterChange={handleFilterChange}
           onSort={handleSort}
           sortConfig={sortConfig}
-          onAdd={handleAddGroupAsset}
-          onDeleteSelected={handleDeleteSelected}
+          onAdd={canEdit ? handleAddGroupAsset : undefined}
+          onDeleteSelected={canEdit ? handleDeleteSelected : undefined}
           data={groupAssets}
           selectedRows={selectedRows}
           setSelectedRows={setSelectedRows}
           rowKey="group_id"
+          showAddButton={canEdit}
+          showDeleteButton={canEdit}
+          isReadOnly={isReadOnly}
           subtitle={t("groupAssets.assetGroupsFound", {
             count: groupAssets.length,
           })}
@@ -310,12 +300,14 @@ const GroupAsset = () => {
                       <p className="text-xl font-semibold text-gray-800 mb-2">
                         {t("groupAssets.noAssetGroupsFound")}
                       </p>
-                      <button
-                        onClick={handleAddGroupAsset}
-                        className="mt-2 text-blue-600 hover:text-blue-800 underline text-sm"
-                      >
-                        {t("groupAssets.createYourFirstAssetGroup")}
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={handleAddGroupAsset}
+                          className="mt-2 text-blue-600 hover:text-blue-800 underline text-sm"
+                        >
+                          {t("groupAssets.createYourFirstAssetGroup")}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -330,9 +322,11 @@ const GroupAsset = () => {
                 selectedRows={selectedRows}
                 setSelectedRows={setSelectedRows}
                 onView={handleView}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
+                onEdit={canEdit ? handleEdit : undefined}
+                onDelete={canEdit ? handleDelete : undefined}
                 rowKey="group_id"
+                isReadOnly={isReadOnly}
+                showCheckbox={canEdit}
               />
             );
           }}
