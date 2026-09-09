@@ -126,6 +126,14 @@ function invalidationPrefixesForPath(path = '') {
     { segment: 'inspection', prefix: 'inspection' },
   ];
 
+  // Technician certificate upload/approval lists use dedicated store keys.
+  if (
+    pathHasSegment(p, 'employee-tech-certificates') ||
+    pathHasSegment(p, 'tech-certificates')
+  ) {
+    add('technician-certs:', 'tech-cert-approvals:', 'certifications:');
+  }
+
   for (const rule of rules) {
     if (rule.segment && pathHasSegment(p, rule.segment)) prefixes.add(rule.prefix);
     else if (rule.match && p.includes(rule.match)) prefixes.add(rule.prefix);

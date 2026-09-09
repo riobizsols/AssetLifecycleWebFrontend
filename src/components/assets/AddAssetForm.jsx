@@ -1566,6 +1566,7 @@ const AddAssetForm = ({ userRole }) => {
                     <div className="relative flex-1 min-w-0">
                       <input
                         name="serialNumber"
+                        maxLength={50}
                         placeholder={
                           form.serialNumberMode === 'existing'
                             ? (t('assets.serialNumberUseExistingPlaceholder') || 'Scan or type serial number')
