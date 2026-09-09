@@ -263,32 +263,59 @@ const Roles = () => {
     { id: 'employees', label: t('bulkUpload.tabEmployees'), icon: Users, color: 'bg-purple-500' }
   ];
 
-  // Fetch available properties for asset types
+  // Fetch available properties for asset types.
+  // scope=acm_grants loads properties for every ACM-granted org (not only the header-selected org),
+  // so multi-org bulk CSVs (e.g. KMCH + NGP) validate/map property names correctly.
   const fetchAvailableProperties = async () => {
     try {
       setLoadingProperties(true);
-      const response = await API.get('/properties');
+      const response = await API.get('/properties', { params: { scope: 'acm_grants' } });
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
         const properties = response.data.data.map(prop => ({
           id: prop.prop_id,
           text: prop.property,
-          value: prop.prop_id
+          value: prop.prop_id,
+          org_id: prop.org_id || null,
         }));
         setAvailableProperties(properties);
-      } else {
-        setAvailableProperties([]);
+        return properties;
       }
+      setAvailableProperties([]);
+      return [];
     } catch (error) {
       console.error('Error fetching properties:', error);
       setAvailableProperties([]);
+      return [];
     } finally {
       setLoadingProperties(false);
     }
   };
 
-  // Load properties on component mount
+  const findPropertyForOrg = (propName, orgId, properties = availableProperties) => {
+    const name = String(propName || '').trim().toLowerCase();
+    if (!name) return null;
+    const org = String(orgId || '').trim();
+    const list = Array.isArray(properties) ? properties : [];
+
+    if (org) {
+      const inOrg = list.find(
+        (prop) =>
+          String(prop.org_id || '') === org &&
+          String(prop.text || '').trim().toLowerCase() === name
+      );
+      if (inOrg) return inOrg;
+    }
+
+    // Fallback when property rows have no org_id (legacy API) or org blank
+    return list.find((prop) => String(prop.text || '').trim().toLowerCase() === name) || null;
+  };
+
+  // Load properties on mount + whenever ACM org context changes
   useEffect(() => {
     fetchAvailableProperties();
+    const onAcmChanged = () => fetchAvailableProperties();
+    window.addEventListener('acm-context-changed', onAcmChanged);
+    return () => window.removeEventListener('acm-context-changed', onAcmChanged);
   }, []);
 
   // Function to convert parent asset type text to ID
@@ -332,14 +359,15 @@ const Roles = () => {
           await fetchAvailableProperties();
           props = availableProperties;
         }
-        // Re-fetch props directly for accuracy after await
+        // Re-fetch props directly for accuracy after await (all ACM-granted orgs)
         try {
-          const response = await API.get('/properties');
+          const response = await API.get('/properties', { params: { scope: 'acm_grants' } });
           if (response.data?.success && Array.isArray(response.data.data)) {
             props = response.data.data.map((prop) => ({
               id: prop.prop_id,
               text: prop.property,
               value: prop.prop_id,
+              org_id: prop.org_id || null,
             }));
             setAvailableProperties(props);
           }
@@ -602,6 +630,10 @@ const Roles = () => {
       setValidationProgress(30);
       // Fetch reference data for referential integrity validation
       const referenceData = await fetchReferenceData(type);
+      // Multi-org asset-type CSVs need properties from all ACM-granted orgs
+      if (type === 'assetTypes') {
+        await fetchAvailableProperties();
+      }
       setValidationProgress(50);
 
       // Check for duplicates within the CSV file
@@ -1063,16 +1095,22 @@ const Roles = () => {
         }
       }
 
-      // Validate properties column (optional values; names must exist when provided)
+      // Validate properties column (optional values; names must exist for that row's org)
       const propertiesIndex = normalizedHeaders.indexOf('properties');
+      const orgIdIndexForProps = normalizedHeaders.indexOf('org_id');
       if (propertiesIndex !== -1) {
         const propertiesValue = data[propertiesIndex];
         if (propertiesValue && propertiesValue.trim() !== '') {
+          const rowOrgId = orgIdIndexForProps !== -1 ? String(data[orgIdIndexForProps] || '').trim() : '';
           const propertyNames = propertiesValue.split(';').map(p => p.trim()).filter(p => p);
           propertyNames.forEach(propName => {
-            const propertyExists = availableProperties.some(prop => prop.text.toLowerCase() === propName.toLowerCase());
+            const propertyExists = Boolean(findPropertyForOrg(propName, rowOrgId));
             if (!propertyExists) {
-              rowErrors.push(`Row ${rowNumber}: Property '${propName}' does not exist in available properties`);
+              rowErrors.push(
+                rowOrgId
+                  ? `Row ${rowNumber}: Property '${propName}' does not exist in available properties for org '${rowOrgId}'`
+                  : `Row ${rowNumber}: Property '${propName}' does not exist in available properties`
+              );
             }
           });
         }
@@ -1268,6 +1306,15 @@ const Roles = () => {
         }
       } else if (type === 'assetTypes') {
         // For asset types, handle properties column specially
+        // Resolve org_id first so property name→id mapping is org-scoped regardless of column order
+        const orgHeaderIdx = headers.findIndex(
+          (h) => String(h || '').trim().toLowerCase().replace(/\s+/g, '_') === 'org_id'
+            || String(h || '').trim().toLowerCase() === 'orgid'
+        );
+        const rowOrgIdEarly =
+          orgHeaderIdx >= 0 ? String(row[orgHeaderIdx] || '').trim() : '';
+        if (rowOrgIdEarly) obj.org_id = rowOrgIdEarly;
+
         headers.forEach((header, index) => {
           const value = row[index] || '';
           const normalizedHeader = normalizeAssetTypeHeader(header);
@@ -1275,13 +1322,13 @@ const Roles = () => {
           if (normalizedHeader === 'properties') {
             // Always process properties column, even if empty
             if (value && value.trim() !== '') {
-              // Convert semicolon-separated property names to property IDs
+              // Convert semicolon-separated property names to property IDs for this row's org
+              const rowOrgId = String(obj.org_id || rowOrgIdEarly || '').trim();
               const propertyNames = value.split(';').map(p => p.trim()).filter(p => p);
-              const propertyIds = propertyNames.map(propName => {
-                const prop = availableProperties.find(p => p.text.toLowerCase() === propName.toLowerCase());
-                return prop ? prop.id : null;
-              }).filter(id => id !== null);
-              
+              const propertyIds = propertyNames
+                .map((propName) => findPropertyForOrg(propName, rowOrgId)?.id || null)
+                .filter((id) => id !== null);
+
               obj.properties = propertyIds;
             } else {
               // Empty properties array if no properties specified
