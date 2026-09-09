@@ -125,14 +125,26 @@ const InspectionExecutionDetail = () => {
           const assetType = cached.asset_type_id;
           if (assetType != null) {
             const cl = await getChecklist(assetType);
-            if (!cancelled && cl?.questions) {
+            if (!cancelled && cl?.questions?.length) {
               setChecklist(cl.questions);
+            } else if (!cancelled) {
+              setChecklist([]);
+              console.warn(
+                '[inspection-offline] no cached checklist for asset_type_id',
+                assetType
+              );
             }
+          } else if (!cancelled) {
+            setChecklist([]);
+            console.warn(
+              '[inspection-offline] cached schedule missing asset_type_id; open this row once while online to cache checklist'
+            );
           }
           const recs = await getRecords(id);
           if (!cancelled) applyRecords(recs);
         } else {
           setData(null);
+          setChecklist([]);
         }
         setLoading(false);
         return;
@@ -144,8 +156,8 @@ const InspectionExecutionDetail = () => {
         if (res.data.success) {
           applyDetail(res.data.data, { fromCache: false });
           await upsertSchedule(res.data.data);
-          // Prefetch checklist + records into IndexedDB (and hydrate UI)
-          prefetchInspectionDetail(id).catch(() => {});
+          // Await so checklist/records are in IndexedDB before user can go offline
+          await prefetchInspectionDetail(id);
         }
       } catch (error) {
         console.error("Error fetching inspection:", error);
@@ -209,14 +221,18 @@ const InspectionExecutionDetail = () => {
           }
         } else {
           const cl = await getChecklist(assetType);
-          if (!cancelled && cl?.questions) setChecklist(cl.questions);
+          if (!cancelled && cl?.questions?.length) {
+            setChecklist(cl.questions);
+          } else if (!cancelled) {
+            setChecklist([]);
+          }
         }
 
         const recs = await getRecords(id);
         if (!cancelled) applyRecords(recs);
-        // Also merge any pending-only list
+        // Keep pendingAnswers in sync with IndexedDB (survives leave/return while offline)
         const pending = await getPendingRecords(id);
-        if (!cancelled && pending.length) {
+        if (!cancelled) {
           setPendingRecords(pending);
         }
       } finally {
@@ -407,7 +423,9 @@ const InspectionExecutionDetail = () => {
       });
 
       if (result?.queued) {
-        setPendingRecords([]);
+        // Keep pendingRecords aligned with IndexedDB so leave/return still shows answers
+        const stillPending = await getPendingRecords(id);
+        setPendingRecords(stillPending);
         showBackendTextToast({
           toast,
           fallbackText: 'Saved offline. Changes will sync when you are back online.',

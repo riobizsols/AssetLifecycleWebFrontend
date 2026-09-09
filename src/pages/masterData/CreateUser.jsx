@@ -80,12 +80,12 @@ const CreateUser = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_PHONE_NUMBER_IS_REQUIRED_08E22B90', fallbackText: u('phoneRequired'), type: 'error' });
       return;
     }
-    if (!form.dept_id) {
-      showBackendTextToast({ toast, tmdId: 'TMD_DEPARTMENT_IS_REQUIRED_1C5EA1D9', fallbackText: u('departmentRequired'), type: 'error' });
-      return;
-    }
     if (!form.branch_id) {
       showBackendTextToast({ toast, tmdId: 'TMD_BRANCH_IS_REQUIRED_21EC5877', fallbackText: u('branchRequired'), type: 'error' });
+      return;
+    }
+    if (!form.dept_id) {
+      showBackendTextToast({ toast, tmdId: 'TMD_DEPARTMENT_IS_REQUIRED_1C5EA1D9', fallbackText: u('departmentRequired'), type: 'error' });
       return;
     }
     if (!form.employee_type) {
@@ -255,27 +255,6 @@ const CreateUser = () => {
 
           <div>
             <label className="block text-sm mb-1 font-medium">
-              {u("department")} <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="dept_id"
-              value={form.dept_id}
-              onChange={handleInputChange}
-              className={`w-full px-3 py-2 border text-sm bg-white ${
-                isFieldInvalid(form.dept_id) ? 'border-red-500' : 'border-gray-300'
-              }`}
-            >
-              <option value="">{u("selectDepartment")}</option>
-              {departments.map((dept) => (
-                <option key={dept.dept_id} value={dept.dept_id}>
-                  {dept.text}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1 font-medium">
               {u("branch")} <span className="text-red-500">*</span>
             </label>
             <select
@@ -290,6 +269,27 @@ const CreateUser = () => {
               {branches.map((branch) => (
                 <option key={branch.branch_id} value={branch.branch_id}>
                   {branch.text || branch.branch_name || branch.branch_id}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1 font-medium">
+              {u("department")} <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="dept_id"
+              value={form.dept_id}
+              onChange={handleInputChange}
+              className={`w-full px-3 py-2 border text-sm bg-white ${
+                isFieldInvalid(form.dept_id) ? 'border-red-500' : 'border-gray-300'
+              }`}
+            >
+              <option value="">{u("selectDepartment")}</option>
+              {departments.map((dept) => (
+                <option key={dept.dept_id} value={dept.dept_id}>
+                  {dept.text}
                 </option>
               ))}
             </select>

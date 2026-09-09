@@ -18,4 +18,11 @@ db.version(1).stores({
     '++id, &idempotency_key, ais_id, type, status, created_at',
 });
 
+/** Ensure DB is opened so DevTools shows `inspection_offline_v1` even before first write. */
+export async function ensureInspectionDbOpen() {
+  if (db.isOpen()) return db;
+  await db.open();
+  return db;
+}
+
 export default db;
