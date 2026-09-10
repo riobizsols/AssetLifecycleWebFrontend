@@ -79,7 +79,6 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
     service_supply: false,
     spare_supply: false,
   });
-  const [savingTab, setSavingTab] = useState('');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
