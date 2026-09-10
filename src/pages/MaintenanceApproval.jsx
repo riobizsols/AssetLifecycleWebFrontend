@@ -68,6 +68,15 @@ const MaintenanceApprovalDetail = () => {
     });
   }, [fetchApprovals, t]);
 
+  useEffect(() => {
+    const onAcmChanged = () => {
+      invalidateMaintenanceApprovalCache();
+      fetchApprovals({ revalidate: true, force: true }).catch(() => {});
+    };
+    window.addEventListener('acm-context-changed', onAcmChanged);
+    return () => window.removeEventListener('acm-context-changed', onAcmChanged);
+  }, [fetchApprovals, invalidateMaintenanceApprovalCache]);
+
   useRevalidateOnFocus(() => {
     fetchApprovals({ revalidate: true }).catch(() => {});
   });

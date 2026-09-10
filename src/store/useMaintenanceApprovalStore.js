@@ -6,9 +6,17 @@ import {
   invalidateCache,
   peekCache,
 } from '../utils/apiCache';
+import { useAcmContextStore } from './useAcmContextStore';
 
 const MAINTENANCE_APPROVAL_TTL_MS = 3 * 60 * 1000;
-const LIST_KEY = 'maintenance-approval:list';
+
+function listCacheKey() {
+  const s = useAcmContextStore.getState();
+  const level = s.appliedScopeLevel || 'org';
+  const branch = level === 'branch' || level === 'dept' ? s.appliedBranchId || '' : '';
+  const dept = level === 'dept' ? s.appliedDeptId || '' : '';
+  return `maintenance-approval:list:${s.appliedOrgId || ''}:${level}:${branch}:${dept}`;
+}
 
 export function formatMaintenanceApprovalRows(items, t) {
   const formatDate = (dateString) => {
@@ -49,13 +57,14 @@ export function formatMaintenanceApprovalRows(items, t) {
   });
 }
 
-const cachedList = peekCache(LIST_KEY, MAINTENANCE_APPROVAL_TTL_MS);
+const cachedList = peekCache(listCacheKey(), MAINTENANCE_APPROVAL_TTL_MS);
 
 export const useMaintenanceApprovalStore = create((set, get) => ({
   approvals: cachedList || [],
   listLoading: !cachedList,
 
   fetchApprovals: async ({ revalidate = false, force = false, onFresh } = {}) => {
+    const LIST_KEY = listCacheKey();
     const apply = (rows) => {
       set({ approvals: rows, listLoading: false });
       onFresh?.(rows);
@@ -108,6 +117,6 @@ export const useMaintenanceApprovalStore = create((set, get) => ({
 
   invalidateMaintenanceApprovalCache: () => {
     invalidateCache('maintenance-approval:');
-    set({ approvals: [] });
+    set({ approvals: [], listLoading: true });
   },
 }));
