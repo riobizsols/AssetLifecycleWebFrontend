@@ -15,28 +15,36 @@ const isInhouseMaintenance = (value) => {
   return Boolean(normalized) && !normalized.includes('vendor');
 };
 
+const isTruthyFlag = (value) =>
+  value === true || value === 'true' || value === 1 || value === '1';
+
 export default function SparePartListDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  const cachedDetail = useSparePartListStore.getState().getCachedDetail(id);
-  const [maintenanceData, setMaintenanceData] = useState(cachedDetail);
+  const initialCached = useSparePartListStore.getState().getCachedDetail(id);
+  const [maintenanceData, setMaintenanceData] = useState(initialCached);
   const [checklist, setChecklist] = useState([]);
   const [loadingChecklist, setLoadingChecklist] = useState(true);
-  const [loadingData, setLoadingData] = useState(!cachedDetail);
+  const [loadingData, setLoadingData] = useState(!initialCached);
   const [showChecklist, setShowChecklist] = useState(false);
 
   useEffect(() => {
+    if (!id) return undefined;
+
     let cancelled = false;
+    const hasCached = Boolean(useSparePartListStore.getState().getCachedDetail(id));
+
     (async () => {
-      setLoadingData(true);
+      // Only block the UI when we have nothing to show; avoid flicker on soft revalidate.
+      if (!hasCached) setLoadingData(true);
       try {
         const detail = await useSparePartListStore.getState().fetchDetail(id, {
           revalidate: true,
-          force: true,
+          force: !hasCached,
         });
-        if (!cancelled) setMaintenanceData(detail);
+        if (!cancelled && detail) setMaintenanceData(detail);
       } catch (err) {
         if (!cancelled) {
           toast.error(err.message || t('sparePartList.failedToFetchDetail'));
@@ -45,10 +53,13 @@ export default function SparePartListDetail() {
         if (!cancelled) setLoadingData(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [id, cachedDetail, t]);
+    // Intentionally only `id`: reading cachedDetail into deps caused an infinite
+    // refetch loop (force fetch → new object in store → re-render → effect again).
+  }, [id, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,9 +91,6 @@ export default function SparePartListDetail() {
     useSparePartListStore.getState().invalidateListCache();
     navigate('/spare-part-list');
   };
-
-const isTruthyFlag = (value) =>
-  value === true || value === 'true' || value === 1 || value === '1';
 
   const canRequestSpareParts =
     isInhouseMaintenance(
@@ -172,9 +180,6 @@ const isTruthyFlag = (value) =>
                 embedded
                 amsId={id}
                 assetTypeId={maintenanceData?.asset_type_id}
-                checklistSpareCategories={
-                  maintenanceData?.checklist_spare_categories || []
-                }
                 onCancel={() => navigate('/spare-part-list')}
                 onSubmitted={handleRequestSubmitted}
               />
