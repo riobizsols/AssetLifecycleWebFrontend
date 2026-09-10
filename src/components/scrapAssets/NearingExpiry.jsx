@@ -1,5 +1,6 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import API from '../../lib/axios';
@@ -335,57 +336,92 @@ const NearingExpiry = () => {
       </ContentBox>
 
       {/* Scrap Asset Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">{t('createScrapAsset.createScrapAsset')}</h3>
+      {showModal && selectedAsset && createPortal(
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4"
+          onClick={handleCloseModal}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-md rounded-lg bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="scrap-nearing-modal-title"
+          >
+            <div className="flex items-center justify-between rounded-t-lg bg-[#0E2F4B] px-5 py-3 text-white">
+              <h3 id="scrap-nearing-modal-title" className="text-lg font-semibold">
+                {t('createScrapAsset.createScrap')}
+              </h3>
               <button
+                type="button"
                 onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-white/80 hover:text-white"
+                aria-label={t('createScrapAsset.cancel')}
               >
                 <X size={20} />
               </button>
             </div>
             
-            <div className="p-6">
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">{t('createScrapAsset.asset')}: <span className="font-medium text-gray-900">{selectedAsset?.text}</span></p>
-                <p className="text-sm text-gray-600">{t('createScrapAsset.serial')}: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
-                <p className="text-sm text-gray-600">{t('createScrapAsset.assetType')}: <span className="font-medium text-gray-900">{selectedAsset?.asset_type_id}</span></p>
+            <div className="p-5">
+              <div className="mb-4 space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+                <p className="text-sm text-gray-600">
+                  {t('createScrapAsset.asset')}:{' '}
+                  <span className="font-medium text-gray-900">
+                    {selectedAsset.asset_name || selectedAsset.text || '—'}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  {t('createScrapAsset.serial')}:{' '}
+                  <span className="font-medium text-gray-900">
+                    {selectedAsset.serial_number || '—'}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  {t('createScrapAsset.assetType')}:{' '}
+                  <span className="font-medium text-gray-900">
+                    {selectedAsset.asset_type_name ||
+                      selectedAsset.category ||
+                      selectedAsset.asset_type_id ||
+                      '—'}
+                  </span>
+                </p>
               </div>
               
-              <div className="mb-6">
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="mb-5">
+                <label htmlFor="scrap-nearing-notes" className="mb-2 block text-sm font-medium text-gray-700">
                   {t('createScrapAsset.notesOptional')}
                 </label>
                 <textarea
-                  id="notes"
+                  id="scrap-nearing-notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder={t('createScrapAsset.enterAdditionalNotesAboutScrapAsset')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  rows="3"
+                  className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 focus:border-[#0E2F4B] focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/50"
+                  rows={3}
                 />
               </div>
               
               <div className="flex justify-end gap-3">
                 <button
+                  type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                  className="rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
                 >
                   {t('createScrapAsset.cancel')}
                 </button>
                 <button
+                  type="button"
                   onClick={handleSubmitScrap}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                  className="rounded-md bg-[#0E2F4B] px-4 py-2 text-sm font-medium text-white hover:bg-[#143d65]"
                 >
                   {t('createScrapAsset.submit')}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

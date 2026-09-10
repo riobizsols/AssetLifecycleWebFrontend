@@ -1,5 +1,6 @@
 import { showBackendTextToast, translateErrorMessage } from '../../utils/errorTranslation';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useScrapApprovalStore } from '../../store/useScrapApprovalStore';
@@ -668,14 +669,16 @@ const CreateScrapAsset = () => {
       ) : null}
 
       {/* Scanner Modal */}
-      {showScanner && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">{t('createScrapAsset.scanBarcode')}</h3>
+      {showScanner && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between rounded-t-lg bg-[#0E2F4B] px-4 py-3 text-white">
+              <h3 className="text-lg font-medium">{t('createScrapAsset.scanBarcode')}</h3>
               <button
+                type="button"
                 onClick={stopScanner}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-white/80 hover:text-white"
+                aria-label={t('createScrapAsset.cancel')}
               >
                 <X size={20} />
               </button>
@@ -683,7 +686,6 @@ const CreateScrapAsset = () => {
             
             <div className="relative">
               <div id="qr-reader" className="aspect-[4/3] bg-black">
-                {/* The scanner will automatically inject the video element here */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-64 h-64 border-2 border-white rounded-lg"></div>
                 </div>
@@ -692,74 +694,111 @@ const CreateScrapAsset = () => {
 
             <div className="p-4 text-center">
               <p className="text-sm text-gray-600">
-{t('createScrapAsset.positionBarcodeWithinScanningArea')}
+                {t('createScrapAsset.positionBarcodeWithinScanningArea')}
               </p>
             </div>
 
-            <div className="p-4 border-t flex justify-end">
+            <div className="flex justify-end border-t p-4">
               <button
+                type="button"
                 onClick={stopScanner}
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-300"
+                className="rounded bg-gray-200 px-4 py-2 text-sm text-gray-800 hover:bg-gray-300"
               >
                 {t('createScrapAsset.cancel')}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Scrap Asset Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">{t('createScrapAsset.createScrapAsset')}</h3>
+      {showModal && selectedAsset && createPortal(
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4"
+          onClick={handleCloseModal}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-md rounded-lg bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="scrap-asset-modal-title"
+          >
+            <div className="flex items-center justify-between rounded-t-lg bg-[#0E2F4B] px-5 py-3 text-white">
+              <h3 id="scrap-asset-modal-title" className="text-lg font-semibold">
+                {t('createScrapAsset.createScrap')}
+              </h3>
               <button
+                type="button"
                 onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-white/80 hover:text-white"
+                aria-label={t('createScrapAsset.cancel')}
               >
                 <X size={20} />
               </button>
             </div>
             
-            <div className="p-6">
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">{t('createScrapAsset.asset')}: <span className="font-medium text-gray-900">{selectedAsset?.asset_name}</span></p>
-                <p className="text-sm text-gray-600">{t('createScrapAsset.serial')}: <span className="font-medium text-gray-900">{selectedAsset?.serial_number}</span></p>
-                <p className="text-sm text-gray-600">{t('createScrapAsset.category')}: <span className="font-medium text-gray-900">{selectedAsset?.category}</span></p>
+            <div className="p-5">
+              <div className="mb-4 space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+                <p className="text-sm text-gray-600">
+                  {t('createScrapAsset.asset')}:{' '}
+                  <span className="font-medium text-gray-900">
+                    {selectedAsset.asset_name || selectedAsset.text || '—'}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  {t('createScrapAsset.serial')}:{' '}
+                  <span className="font-medium text-gray-900">
+                    {selectedAsset.serial_number || '—'}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  {t('createScrapAsset.assetType')}:{' '}
+                  <span className="font-medium text-gray-900">
+                    {selectedAsset.asset_type_name ||
+                      selectedAsset.category ||
+                      selectedAsset.asset_type_id ||
+                      '—'}
+                  </span>
+                </p>
               </div>
               
-              <div className="mb-6">
-                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-{t('createScrapAsset.notesOptional')}
+              <div className="mb-5">
+                <label htmlFor="scrap-asset-notes" className="mb-2 block text-sm font-medium text-gray-700">
+                  {t('createScrapAsset.notesOptional')}
                 </label>
                 <textarea
-                  id="notes"
+                  id="scrap-asset-notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder={t('createScrapAsset.enterAdditionalNotesAboutScrapAsset')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  rows="3"
+                  className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 focus:border-[#0E2F4B] focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/50"
+                  rows={3}
                 />
               </div>
               
               <div className="flex justify-end gap-3">
                 <button
+                  type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                  className="rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
                 >
-{t('createScrapAsset.cancel')}
+                  {t('createScrapAsset.cancel')}
                 </button>
                 <button
+                  type="button"
                   onClick={handleSubmitScrap}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                  className="rounded-md bg-[#0E2F4B] px-4 py-2 text-sm font-medium text-white hover:bg-[#143d65]"
                 >
-{t('createScrapAsset.submit')}
+                  {t('createScrapAsset.submit')}
                 </button>
-                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
