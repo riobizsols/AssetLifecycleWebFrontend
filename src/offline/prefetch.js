@@ -5,6 +5,11 @@ import {
   upsertSchedule,
   upsertSchedules,
 } from './inspectionCache';
+import {
+  upsertMaintDocTypes,
+  upsertMaintSchedule,
+  upsertMaintSchedules,
+} from './maintenanceCache';
 
 /** Prefetch open inspection list into IndexedDB (online only). */
 export async function prefetchInspectionList(rows) {
@@ -13,6 +18,49 @@ export async function prefetchInspectionList(rows) {
     await upsertSchedules(rows);
   } catch (err) {
     console.error('[inspection-offline] list prefetch failed', err);
+  }
+}
+
+/** Prefetch maintenance supervisor list into IndexedDB (online only). */
+export async function prefetchMaintenanceList(rows) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  try {
+    await upsertMaintSchedules(rows);
+  } catch (err) {
+    console.error('[maintenance-offline] list prefetch failed', err);
+  }
+}
+
+/**
+ * Prefetch one maintenance schedule detail while online.
+ * @param {string|number} amsId
+ */
+export async function prefetchMaintenanceDetail(amsId) {
+  if ((typeof navigator !== 'undefined' && !navigator.onLine) || amsId == null) {
+    return null;
+  }
+
+  try {
+    const detailRes = await API.get(`/maintenance-schedules/${amsId}`, {
+      params: { context: 'SUPERVISORAPPROVAL' },
+    });
+    if (!detailRes.data?.success) return null;
+    const detail = detailRes.data.data;
+    await upsertMaintSchedule(detail);
+    return detail;
+  } catch (err) {
+    console.error('[maintenance-offline] detail prefetch failed', err);
+    return null;
+  }
+}
+
+/** Prefetch maintenance document types for offline read. */
+export async function prefetchMaintenanceDocTypes(rows) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  try {
+    await upsertMaintDocTypes(rows);
+  } catch (err) {
+    console.error('[maintenance-offline] doc-types prefetch failed', err);
   }
 }
 

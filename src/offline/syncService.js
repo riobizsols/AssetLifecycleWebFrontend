@@ -38,11 +38,11 @@ export function startInspectionSyncService() {
 
   ensureInspectionDbOpen()
     .then(() => {
-      console.log('[inspection-offline] IndexedDB ready: inspection_offline_v1');
+      console.log('[offline] IndexedDB ready: inspection_offline_v1 (inspection + maintenance)');
       return refreshPendingCount();
     })
     .catch((err) => {
-      console.error('[inspection-offline] IndexedDB open failed', err);
+      console.error('[offline] IndexedDB open failed', err);
     });
 
   if (!navigator.onLine) {

@@ -15,6 +15,9 @@ import { generateUUID } from '../utils/uuid';
 import { useLanguage } from "../contexts/LanguageContext";
 import { useNavigation } from "../hooks/useNavigation";
 import { useAcmContextStore } from "../store/useAcmContextStore";
+import MaintenanceSyncBanner from "./MaintenanceSyncBanner";
+import { getMaintSchedule } from "../offline/maintenanceCache";
+import { useInspectionSyncStore } from "../store/useInspectionSyncStore";
 
 const PHONE_MAX_DIGITS = 10;
 
@@ -230,6 +233,7 @@ export default function MaintSupervisorApproval() {
   }, [id, appliedOrgId, appliedBranchId, appliedDeptId]);
 
   useRevalidateOnFocus(() => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     fetchMaintenanceData({ force: true });
   });
 
@@ -320,6 +324,30 @@ export default function MaintSupervisorApproval() {
     if (!id) return;
     if (!maintenanceData) setLoadingData(true);
     try {
+      const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!online) {
+        const token = useAuthStore.getState().token;
+        if (!token) {
+          useInspectionSyncStore.getState().setOffline();
+          throw new Error('Sign in required. Offline login is not available.');
+        }
+        const idb = await getMaintSchedule(id);
+        const cached =
+          idb ||
+          useMaintenanceSupervisorStore.getState().getCachedDetail(id);
+        if (!cached) {
+          useInspectionSyncStore.getState().setOffline();
+          throw new Error(
+            'This maintenance record is not cached offline. Open it once while online.'
+          );
+        }
+        setMaintenanceData(cached);
+        setFormData(buildFormFromDetail(cached));
+        useInspectionSyncStore.getState().setFromCache(true);
+        useInspectionSyncStore.getState().setOffline();
+        return;
+      }
+
       const data = await useMaintenanceSupervisorStore.getState().fetchScheduleDetail(id, {
         revalidate: true,
         force,
@@ -331,7 +359,8 @@ export default function MaintSupervisorApproval() {
       showBackendTextToast({
         toast,
         tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHMAINTENANCED_556133F6',
-        fallbackText: t('maintenanceSupervisor.failedToFetchMaintenanceData'),
+        fallbackText:
+          err?.message || t('maintenanceSupervisor.failedToFetchMaintenanceData'),
         type: 'error',
       });
       if (!maintenanceData) setMaintenanceData(null);
@@ -1009,6 +1038,14 @@ export default function MaintSupervisorApproval() {
   };
 
   const handleInvoiceUpload = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Uploading documents requires an online connection.',
+        type: 'error',
+      });
+      return;
+    }
     if (invoiceUploads.length === 0) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ADDATLEASTONEINVOICEFILE_134AB607', fallbackText: t('maintenanceSupervisor.addAtLeastOneInvoiceFile'), type: 'error' });
       return;
@@ -1076,6 +1113,14 @@ export default function MaintSupervisorApproval() {
   };
 
   const handleBeforeAfterUpload = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Uploading documents requires an online connection.',
+        type: 'error',
+      });
+      return;
+    }
     if (beforeAfterUploads.length === 0) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ADDATLEASTONEIMAGEFILE_4158D34B', fallbackText: t('maintenanceSupervisor.addAtLeastOneImageFile'), type: 'error' });
       return;
@@ -1145,6 +1190,15 @@ export default function MaintSupervisorApproval() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitAttempted(true);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Saving maintenance requires an online connection. Your view is read-only while offline.',
+        type: 'error',
+      });
+      return;
+    }
     
     // Comprehensive validation
     const errors = {};
@@ -1306,6 +1360,7 @@ export default function MaintSupervisorApproval() {
 
   return (
     <div className="max-w-7xl mx-auto min-h-[600px] overflow-y-auto p-8 bg-white md:rounded shadow-lg mt-155">
+      <MaintenanceSyncBanner />
       {/* Header with Back Button */}
       <div className="flex items-center gap-4 mb-6">
         <button

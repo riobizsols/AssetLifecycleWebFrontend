@@ -7,6 +7,19 @@ import {
   invalidateCache,
   peekCache,
 } from '../utils/apiCache';
+import {
+  getAllMaintSchedules,
+  getMaintDocTypes,
+  getMaintSchedule,
+  upsertMaintDocTypes,
+  upsertMaintSchedule,
+} from '../offline/maintenanceCache';
+import {
+  prefetchMaintenanceDocTypes,
+  prefetchMaintenanceList,
+} from '../offline/prefetch';
+import { useInspectionSyncStore } from './useInspectionSyncStore';
+import { useAuthStore } from './useAuthStore';
 
 const MAINTENANCE_SUPERVISOR_TTL_MS = 3 * 60 * 1000;
 
@@ -59,19 +72,65 @@ export function formatMaintenanceScheduleRows(rows, t) {
   }));
 }
 
+async function loadListFromIndexedDb() {
+  try {
+    const rows = await getAllMaintSchedules();
+    return Array.isArray(rows) ? rows : [];
+  } catch (err) {
+    console.error('[maintenance-offline] IndexedDB list read failed', err);
+    return [];
+  }
+}
+
 const cachedList = peekCache(KEYS.list, MAINTENANCE_SUPERVISOR_TTL_MS);
 
 export const useMaintenanceSupervisorStore = create((set, get) => ({
   schedules: cachedList || [],
   listLoading: !cachedList,
+  fromCache: false,
+  offlineAuthBlocked: false,
   detailsById: {},
   docTypes: peekCache(KEYS.docTypes, MAINTENANCE_SUPERVISOR_TTL_MS),
 
   fetchSchedules: async ({ revalidate = false, onFresh } = {}) => {
-    const apply = (rows) => {
-      set({ schedules: rows, listLoading: false });
+    const apply = (rows, { fromCache = false } = {}) => {
+      set({
+        schedules: rows,
+        listLoading: false,
+        fromCache,
+        offlineAuthBlocked: false,
+      });
+      useInspectionSyncStore.getState().setFromCache(fromCache);
       onFresh?.(rows);
     };
+
+    const token = useAuthStore.getState().token;
+    const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+    if (!online && !token) {
+      const cached = await loadListFromIndexedDb();
+      set({
+        schedules: cached,
+        listLoading: false,
+        fromCache: cached.length > 0,
+        offlineAuthBlocked: true,
+      });
+      useInspectionSyncStore.getState().setFromCache(cached.length > 0);
+      useInspectionSyncStore.getState().setOffline();
+      return cached;
+    }
+
+    if (!online) {
+      const cached = await loadListFromIndexedDb();
+      if (cached.length) {
+        apply(cached, { fromCache: true });
+      } else {
+        set({ schedules: [], listLoading: false, fromCache: true });
+        useInspectionSyncStore.getState().setFromCache(true);
+      }
+      useInspectionSyncStore.getState().setOffline();
+      return cached;
+    }
 
     const fetcher = async () => {
       const res = await API.get('/maintenance-schedules/all', {
@@ -80,28 +139,50 @@ export const useMaintenanceSupervisorStore = create((set, get) => ({
       return Array.isArray(res.data) ? res.data : res.data?.data || [];
     };
 
-    if (revalidate) {
-      const cached = peekCache(KEYS.list, MAINTENANCE_SUPERVISOR_TTL_MS);
-      if (cached?.length) {
-        apply(cached);
-      } else if (get().schedules.length > 0) {
-        set({ listLoading: false });
-      }
-      const { data } = await fetchWithRevalidate(KEYS.list, fetcher, {
-        ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
-        onFresh: apply,
-      });
-      return data;
-    }
+    try {
+      if (revalidate) {
+        const mem = peekCache(KEYS.list, MAINTENANCE_SUPERVISOR_TTL_MS);
+        if (mem?.length) {
+          apply(mem, { fromCache: false });
+        } else if (get().schedules.length > 0) {
+          set({ listLoading: false });
+        } else {
+          const idb = await loadListFromIndexedDb();
+          if (idb.length) {
+            apply(idb, { fromCache: true });
+          }
+        }
 
-    const { data } = await fetchWithCache(KEYS.list, fetcher, {
-      ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
-    });
-    apply(data);
-    return data;
+        const { data } = await fetchWithRevalidate(KEYS.list, fetcher, {
+          ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
+          onFresh: (rows) => {
+            apply(rows, { fromCache: false });
+            prefetchMaintenanceList(rows);
+          },
+        });
+        await prefetchMaintenanceList(data);
+        return data;
+      }
+
+      const { data } = await fetchWithCache(KEYS.list, fetcher, {
+        ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
+      });
+      apply(data, { fromCache: false });
+      await prefetchMaintenanceList(data);
+      return data;
+    } catch (err) {
+      console.error('[maintenance-list] fetch failed, falling back to cache', err);
+      const cached = await loadListFromIndexedDb();
+      if (cached.length) {
+        apply(cached, { fromCache: true });
+        return cached;
+      }
+      set({ listLoading: false });
+      throw err;
+    }
   },
 
-  fetchScheduleDetail: async (id, { orgId, revalidate = false, force = false } = {}) => {
+  fetchScheduleDetail: async (id, { revalidate = false, force = false } = {}) => {
     if (!id) return null;
 
     const cacheKey = KEYS.detail(id);
@@ -110,6 +191,35 @@ export const useMaintenanceSupervisorStore = create((set, get) => ({
         detailsById: { ...state.detailsById, [id]: detail },
       }));
     };
+
+    const token = useAuthStore.getState().token;
+    const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+    if (!online) {
+      if (!token) {
+        useInspectionSyncStore.getState().setOffline();
+        throw new Error('Sign in required. Offline login is not available.');
+      }
+      const idb = await getMaintSchedule(id);
+      const mem =
+        peekCache(cacheKey, MAINTENANCE_SUPERVISOR_TTL_MS) ||
+        get().detailsById[id] ||
+        null;
+      // Prefer a previously opened full detail; fall back to list-row cache for browse.
+      const detail =
+        (idb?._offline_detail ? idb : null) ||
+        mem ||
+        idb ||
+        null;
+      if (!detail) {
+        useInspectionSyncStore.getState().setOffline();
+        throw new Error('Maintenance detail not cached for offline use. Open it once while online.');
+      }
+      apply(detail);
+      useInspectionSyncStore.getState().setFromCache(true);
+      useInspectionSyncStore.getState().setOffline();
+      return detail;
+    }
 
     const fetcher = async () => {
       const res = await API.get(`/maintenance-schedules/${id}`, {
@@ -123,28 +233,57 @@ export const useMaintenanceSupervisorStore = create((set, get) => ({
       return res.data.data;
     };
 
-    if (revalidate && !force) {
-      const cached = peekCache(cacheKey, MAINTENANCE_SUPERVISOR_TTL_MS);
-      if (cached) {
-        apply(cached);
-        fetchWithRevalidate(cacheKey, fetcher, {
-          ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
-          onFresh: apply,
-        }).catch(() => {});
-        return cached;
+    try {
+      if (revalidate && !force) {
+        const cached = peekCache(cacheKey, MAINTENANCE_SUPERVISOR_TTL_MS);
+        if (cached) {
+          apply(cached);
+          fetchWithRevalidate(cacheKey, fetcher, {
+            ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
+            onFresh: (detail) => {
+              apply(detail);
+              upsertMaintSchedule(detail).catch(() => {});
+            },
+          }).catch(() => {});
+          return cached;
+        }
       }
-    }
 
-    const { data } = await fetchWithCache(cacheKey, fetcher, {
-      ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
-      force: force || revalidate,
-    });
-    apply(data);
-    return data;
+      const { data } = await fetchWithCache(cacheKey, fetcher, {
+        ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
+        force: force || revalidate,
+      });
+      apply(data);
+      await upsertMaintSchedule(data);
+      return data;
+    } catch (err) {
+      console.error('[maintenance-detail] fetch failed, falling back to cache', err);
+      const idb = await getMaintSchedule(id);
+      const mem =
+        peekCache(cacheKey, MAINTENANCE_SUPERVISOR_TTL_MS) ||
+        get().detailsById[id] ||
+        null;
+      const detail = idb || mem;
+      if (detail) {
+        apply(detail);
+        useInspectionSyncStore.getState().setFromCache(true);
+        return detail;
+      }
+      throw err;
+    }
   },
 
   fetchMaintenanceDocTypes: async ({ revalidate = false } = {}) => {
+    const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
     const cached = peekCache(KEYS.docTypes, MAINTENANCE_SUPERVISOR_TTL_MS);
+
+    if (!online) {
+      const idb = await getMaintDocTypes();
+      const rows = (idb && idb.length ? idb : cached) || [];
+      set({ docTypes: rows });
+      return rows;
+    }
+
     if (cached && !revalidate) {
       set({ docTypes: cached });
       return cached;
@@ -158,20 +297,37 @@ export const useMaintenanceSupervisorStore = create((set, get) => ({
       return rows;
     };
 
-    if (revalidate && cached) {
-      set({ docTypes: cached });
-      fetchWithRevalidate(KEYS.docTypes, fetcher, {
-        ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
-        onFresh: (data) => set({ docTypes: data }),
-      }).catch(() => {});
-      return cached;
-    }
+    try {
+      if (revalidate && cached) {
+        set({ docTypes: cached });
+        fetchWithRevalidate(KEYS.docTypes, fetcher, {
+          ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
+          onFresh: (data) => {
+            set({ docTypes: data });
+            prefetchMaintenanceDocTypes(data);
+          },
+        }).catch(() => {});
+        return cached;
+      }
 
-    const { data } = await fetchWithCache(KEYS.docTypes, fetcher, {
-      ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
-    });
-    set({ docTypes: data });
-    return data;
+      const { data } = await fetchWithCache(KEYS.docTypes, fetcher, {
+        ttlMs: MAINTENANCE_SUPERVISOR_TTL_MS,
+      });
+      set({ docTypes: data });
+      await upsertMaintDocTypes(data);
+      return data;
+    } catch (err) {
+      const idb = await getMaintDocTypes();
+      if (idb.length) {
+        set({ docTypes: idb });
+        return idb;
+      }
+      if (cached) {
+        set({ docTypes: cached });
+        return cached;
+      }
+      throw err;
+    }
   },
 
   getCachedDetail: (id) =>
