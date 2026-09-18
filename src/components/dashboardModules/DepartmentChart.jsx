@@ -37,30 +37,34 @@ const DepartmentChart = () => {
   }
 
   return (
-    <div className="h-64 flex items-stretch gap-0">
-      <div className="flex-1 min-w-0 flex flex-col justify-center gap-4 pr-4 sm:pr-6">
-        {chartData.map((entry) => (
-          <div key={entry.name} className="flex items-start gap-2.5">
-            <span
-              className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: entry.color }}
-              aria-hidden
-            />
-            <div className="flex-1 min-w-0 flex items-start justify-between gap-3">
-              <span className="text-sm text-gray-500 leading-snug break-words">
+    <div className="flex flex-col sm:flex-row items-stretch gap-4 min-h-[18rem]">
+      {/* Legend: scrolls when many departments — avoids overlap */}
+      <div className="sm:w-[48%] min-w-0 order-2 sm:order-1 flex flex-col">
+        <div className="max-h-64 sm:max-h-72 overflow-y-auto pr-1 space-y-2">
+          {chartData.map((entry) => (
+            <div key={entry.name} className="flex items-center gap-2.5 min-h-[1.5rem]">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: entry.color }}
+                aria-hidden
+              />
+              <span
+                className="flex-1 min-w-0 text-xs sm:text-sm text-gray-600 leading-tight truncate"
+                title={entry.name}
+              >
                 {entry.name}
               </span>
-              <span className="text-sm font-semibold text-gray-800 tabular-nums shrink-0">
+              <span className="text-xs sm:text-sm font-semibold text-gray-800 tabular-nums shrink-0">
                 {entry.percent}%
               </span>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      <div className="w-px self-stretch bg-gray-200 shrink-0" aria-hidden />
+      <div className="hidden sm:block w-px self-stretch bg-gray-200 shrink-0 order-none" aria-hidden />
 
-      <div className="flex-1 min-w-0 flex items-center justify-center pl-2 sm:pl-4">
+      <div className="sm:w-[48%] min-w-0 order-1 sm:order-2 h-52 sm:h-64 flex items-center justify-center">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -81,7 +85,7 @@ const DepartmentChart = () => {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value, name) => [`${value}`, name]}
+              formatter={(value, name) => [`${value} assets`, name]}
               contentStyle={{
                 borderRadius: 8,
                 border: "1px solid #e5e7eb",

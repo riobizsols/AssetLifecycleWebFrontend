@@ -16,6 +16,7 @@ export const REPORTS_APP_IDS = {
   SLA_REPORT: 'SLAREPORT',
   QA_AUDIT_REPORT: 'QAAUDITREPORT',
   AUDIT_REPORT: 'AUDITREPORT',
+  CONSOLIDATED_ASSET_REPORT: 'CONSOLIDATEDASSETREPORT',
 };
 
 /**
@@ -80,6 +81,7 @@ export const getAppIdForReport = (reportType) => {
     'usage-based-asset': REPORTS_APP_IDS.USAGE_BASED_ASSET_REPORT,
     'sla-report': REPORTS_APP_IDS.SLA_REPORT,
     'audit-reports': REPORTS_APP_IDS.AUDIT_REPORT,
+    'consolidated-asset-register': REPORTS_APP_IDS.CONSOLIDATED_ASSET_REPORT,
   };
   
   return reportTypeMap[reportType] || null;

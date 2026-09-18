@@ -171,6 +171,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "REOPENEDBREAKDOWNS",
     "SLAREPORT",
     "AUDITREPORT",
+    "CONSOLIDATEDASSETREPORT",
   ],
 };
 
@@ -1508,6 +1509,7 @@ const DatabaseSidebar = () => {
     SLAREPORT: "/reports/sla-report",  //done
     QAAUDITREPORT: "/reports/qa-audit-report",  //done
     AUDITREPORT: "/reports/audit-reports",
+    CONSOLIDATEDASSETREPORT: "/reports/consolidated-asset-register",
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
     MASTERDATA: "/master-data/vendors",  //done
     ORGANIZATIONS: "/master-data/organizations",  //done
@@ -1679,6 +1681,7 @@ const DatabaseSidebar = () => {
       SLAREPORT: FileText,
       QAAUDITREPORT: FileText,
       AUDITREPORT: FileText,
+      CONSOLIDATEDASSETREPORT: FileText,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
       ORGANIZATIONS: Building,

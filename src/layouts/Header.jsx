@@ -180,6 +180,11 @@ export default function Header() {
       subtitle:
         "Generate asset audit reports based on audit standards, audit period, and asset type.",
     },
+    "/reports/consolidated-asset-register": {
+      title: "Asset Register",
+      subtitle:
+        "Institution-wide asset count, values, distribution and category mix.",
+    },
     "/reports/reopened-breakdowns": {
       title: t("reports.reopenedBreakdowns.title"),
       subtitle: "",
