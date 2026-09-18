@@ -5,6 +5,10 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'react-hot-toast';
 
+/** EAM ID convention: PREFIX + at least 3 digits (e.g. ASS001, AMS001, BNA000001). */
+const EAM_ID_REGEX = /^[A-Za-z][A-Za-z0-9_]*[0-9]{3,}$/;
+const isValidEamId = (value) => EAM_ID_REGEX.test(String(value || '').trim());
+
 // Helper functions for localStorage
 const saveToStorage = (key, data) => {
   try {
@@ -442,14 +446,14 @@ const Roles = () => {
     // Generate sample data — org_id filled, branch_id blank, purchased_by optional sample
     const sampleData = [
       [
-        orgId, '', 'AST001', assetTypeId || 'AT001', 'Sample Asset Description',
+        orgId, '', 'ASS001', assetTypeId || 'AT001', 'Sample Asset Description',
         'V001', '1500.00', '2024-01-15', 'USR001',
         '2 years', '2026-01-15', 'V001',
         '300.00', '5',
         ...properties.map(() => 'Sample Value')
       ],
       [
-        orgId, '', 'AST002', assetTypeId || 'AT002', 'Another Sample Asset',
+        orgId, '', 'ASS002', assetTypeId || 'AT002', 'Another Sample Asset',
         'V002', '1200.00', '2024-01-20', 'USR002',
         '3 years', '2027-01-20', 'V002',
         '240.00', '4',
@@ -856,12 +860,20 @@ const Roles = () => {
         }
       });
 
-      // Validate specific field formats
-      const assetTypeIdIndex = headers.indexOf('asset_type_id');
+      // Validate specific field formats (PREFIX001 style; allows tenant serials like BNA000001)
+      const assetIdIndex = normalizedHeaders.indexOf('asset_id');
+      if (assetIdIndex !== -1 && data[assetIdIndex]) {
+        const assetId = data[assetIdIndex];
+        if (!isValidEamId(assetId)) {
+          rowErrors.push(`Row ${rowNumber}: asset_id must look like ASS001 (letters + at least 3 digits)`);
+        }
+      }
+
+      const assetTypeIdIndex = normalizedHeaders.indexOf('asset_type_id');
       if (assetTypeIdIndex !== -1 && data[assetTypeIdIndex]) {
         const assetTypeId = data[assetTypeIdIndex];
-        if (!/^AT\d{3}$/.test(assetTypeId)) {
-          rowErrors.push(`Row ${rowNumber}: asset_type_id must be in format AT001, AT002, etc.`);
+        if (!isValidEamId(assetTypeId)) {
+          rowErrors.push(`Row ${rowNumber}: asset_type_id must look like AT001 (letters + at least 3 digits)`);
         }
       }
 
@@ -1008,9 +1020,9 @@ const Roles = () => {
       if (assetTypeIdIndex !== -1 && data[assetTypeIdIndex]) {
         const assetTypeId = data[assetTypeIdIndex].trim();
         console.log(`🔍 Validating asset_type_id: "${assetTypeId}" (length: ${assetTypeId.length})`);
-        console.log(`🔍 Regex test result: ${/^AT\d+$/.test(assetTypeId)}`);
-        if (!/^AT\d+$/.test(assetTypeId)) {
-          rowErrors.push(`Row ${rowNumber}: asset_type_id must be in format AT001, AT002, AT048, etc. (got: "${assetTypeId}")`);
+        console.log(`🔍 Regex test result: ${isValidEamId(assetTypeId)}`);
+        if (!isValidEamId(assetTypeId)) {
+          rowErrors.push(`Row ${rowNumber}: asset_type_id must look like AT001 (letters + at least 3 digits) (got: "${assetTypeId}")`);
         }
       }
 

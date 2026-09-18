@@ -116,9 +116,11 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         pincode: vendor.pincode || '',
         contract_start_date: formatDateForInput(vendor.contract_start_date),
         contract_end_date: formatDateForInput(vendor.contract_end_date),
-        int_status: vendor.int_status === 'Active' ? 1 : 
-                    vendor.int_status === 'CRApproved' ? 3 :
-                    vendor.int_status === 'Blocked' ? 4 : 0
+        // Convention: 0=Inactive, 1=Active, 3=CRApproved, 4=Blocked
+        int_status: vendor.int_status === 'Active' || vendor.int_status === 1 || vendor.int_status === '1' ? 1 :
+                    vendor.int_status === 'CRApproved' || vendor.int_status === 3 || vendor.int_status === '3' ? 3 :
+                    vendor.int_status === 'Blocked' || vendor.int_status === 4 || vendor.int_status === '4' ? 4 :
+                    (typeof vendor.int_status === 'number' ? vendor.int_status : 0)
       };
       
       setFormData({ ...baseFormData });
