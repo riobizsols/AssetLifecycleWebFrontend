@@ -34,6 +34,7 @@ const CreateMaintenanceFrequency = () => {
   const [maintainedBy, setMaintainedBy] = useState('Self');
   const [selectedMaintenanceType, setSelectedMaintenanceType] = useState('');
   const [maintLeadType, setMaintLeadType] = useState('');
+  const [downtime, setDowntime] = useState('');
 
   // All active asset types (first frequency row is created here; cron reads tblATMaintFreq)
   const fetchAssetTypes = async () => {
@@ -173,6 +174,11 @@ const CreateMaintenanceFrequency = () => {
       return;
     }
 
+    if (downtime.trim() !== '' && (isNaN(downtime) || parseFloat(downtime) < 0)) {
+      showBackendTextToast({ toast, fallbackText: 'Please enter a valid downtime in hours (0 or greater)', type: 'error' });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const requestData = {
@@ -180,7 +186,8 @@ const CreateMaintenanceFrequency = () => {
         is_recurring: isRecurring,
         maintained_by: maintainedBy,
         maint_type_id: selectedMaintenanceType,
-        maint_lead_type: maintLeadType.trim() || null
+        maint_lead_type: maintLeadType.trim() || null,
+        downtime: downtime.trim() !== '' ? parseFloat(downtime) : null
       };
 
       // On-demand: server persists NOT NULL sentinels (no user input for these fields)
@@ -330,6 +337,26 @@ const CreateMaintenanceFrequency = () => {
                   />
                 </div>
 
+                {!isRecurring && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Downtime (hours)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={downtime}
+                      onChange={(e) => setDowntime(e.target.value)}
+                      placeholder="Enter expected downtime in hours"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Optional. Leave empty if maintenance causes no downtime.
+                    </p>
+                  </div>
+                )}
+
                 {isRecurring && (
                   <>
                     <div>
@@ -380,6 +407,24 @@ const CreateMaintenanceFrequency = () => {
                       />
                       <p className="mt-1 text-xs text-gray-500">
                         Leave empty to auto-generate from frequency and UOM
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Downtime (hours)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={downtime}
+                        onChange={(e) => setDowntime(e.target.value)}
+                        placeholder="Enter expected downtime in hours"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Optional. Leave empty if maintenance causes no downtime.
                       </p>
                     </div>
                   </>

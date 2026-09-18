@@ -12,10 +12,13 @@ const DepartmentChart = () => {
   const data = useDashboardStore((s) => s.departmentChart);
   const loading = useDashboardStore((s) => s.departmentLoading);
 
-  const total = useMemo(
-    () => data.reduce((sum, item) => sum + (item.value || 0), 0),
-    [data],
-  );
+  const chartData = useMemo(() => {
+    const total = (data || []).reduce((sum, item) => sum + Number(item.value || 0), 0);
+    return (data || []).map((item) => ({
+      ...item,
+      percent: total > 0 ? Math.round((Number(item.value || 0) / total) * 100) : 0,
+    }));
+  }, [data]);
 
   if (loading && data.length === 0) {
     return (
@@ -34,63 +37,56 @@ const DepartmentChart = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:gap-0 min-h-[18rem]">
-      {/* Legend */}
-      <div className="sm:w-[52%] min-w-0 sm:pr-5 sm:border-r border-gray-200 pb-4 sm:pb-0 border-b sm:border-b-0">
-        <ul className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-          {data.map((item, index) => {
-            const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
-            return (
-              <li
-                key={`${item.name}-${index}`}
-                className="flex items-start gap-2.5 text-sm leading-snug"
-              >
-                <span
-                  className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                  aria-hidden
-                />
-                <span
-                  className="min-w-0 flex-1 break-words text-gray-700"
-                  title={item.name}
-                >
-                  {item.name}
-                </span>
-                <span className="shrink-0 font-semibold text-gray-900 tabular-nums">
-                  {pct}%
-                </span>
-              </li>
-            );
-          })}
-        </ul>
+    <div className="h-64 flex items-stretch gap-0">
+      <div className="flex-1 min-w-0 flex flex-col justify-center gap-4 pr-4 sm:pr-6">
+        {chartData.map((entry) => (
+          <div key={entry.name} className="flex items-start gap-2.5">
+            <span
+              className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: entry.color }}
+              aria-hidden
+            />
+            <div className="flex-1 min-w-0 flex items-start justify-between gap-3">
+              <span className="text-sm text-gray-500 leading-snug break-words">
+                {entry.name}
+              </span>
+              <span className="text-sm font-semibold text-gray-800 tabular-nums shrink-0">
+                {entry.percent}%
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Pie chart */}
-      <div className="flex flex-1 items-center justify-center sm:pl-5 min-h-[12rem]">
-        <ResponsiveContainer width="100%" height={220}>
+      <div className="w-px self-stretch bg-gray-200 shrink-0" aria-hidden />
+
+      <div className="flex-1 min-w-0 flex items-center justify-center pl-2 sm:pl-4">
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={data}
+              data={chartData}
               cx="50%"
               cy="50%"
-              startAngle={90}
-              endAngle={-270}
-              innerRadius={0}
-              outerRadius={88}
-              paddingAngle={0}
+              labelLine={false}
+              label={false}
+              outerRadius="78%"
+              fill="#8884d8"
               dataKey="value"
-              stroke="#fff"
-              strokeWidth={1}
+              stroke="#ffffff"
+              strokeWidth={2}
+              isAnimationActive={false}
             >
-              {data.map((entry, index) => (
+              {chartData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
             <Tooltip
-              formatter={(value, _name, props) => [
-                `${value} (${total > 0 ? Math.round((value / total) * 100) : 0}%)`,
-                props?.payload?.name || "Assets",
-              ]}
+              formatter={(value, name) => [`${value}`, name]}
+              contentStyle={{
+                borderRadius: 8,
+                border: "1px solid #e5e7eb",
+                fontSize: 12,
+              }}
             />
           </PieChart>
         </ResponsiveContainer>

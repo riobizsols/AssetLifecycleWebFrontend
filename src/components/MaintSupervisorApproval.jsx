@@ -189,6 +189,7 @@ export default function MaintSupervisorApproval() {
         technician_phno: "",
         cost: "",
         hours_spent: "",
+        actual_downtime: "",
         maint_notes: "",
       };
     }
@@ -204,6 +205,7 @@ export default function MaintSupervisorApproval() {
       technician_phno: sanitizePhoneDigits(detail.technician_phno || ""),
       cost: detail.cost || "",
       hours_spent: detail.hours_spent || "",
+      actual_downtime: detail.actual_downtime != null && detail.actual_downtime !== "" ? String(detail.actual_downtime) : "",
       maint_notes: detail.maint_notes || "",
     };
   };
@@ -1271,6 +1273,16 @@ export default function MaintSupervisorApproval() {
       }
     }
 
+    const actualDowntimeValue = String(formData.actual_downtime ?? '').trim();
+    if (actualDowntimeValue !== '' && (isNaN(actualDowntimeValue) || parseFloat(actualDowntimeValue) < 0)) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Please enter a valid actual downtime in hours (0 or greater)',
+        type: 'error',
+      });
+      hasErrors = true;
+    }
+
     // Time Tracking Validation
     const hoursSpent = parseFloat(formData.hours_spent || 0);
     const hoursRequired = parseFloat(maintenanceData?.hours_required || 0);
@@ -1296,7 +1308,8 @@ export default function MaintSupervisorApproval() {
       const updateData = {
         ...formData,
         cost: formData.cost ? parseFloat(formData.cost) : null,
-        hours_spent: formData.hours_spent ? parseFloat(formData.hours_spent) : null
+        hours_spent: formData.hours_spent ? parseFloat(formData.hours_spent) : null,
+        actual_downtime: actualDowntimeValue !== '' ? parseFloat(actualDowntimeValue) : null
       };
       
       // For subscription renewal, status represents payment status:
@@ -2280,10 +2293,10 @@ export default function MaintSupervisorApproval() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               {/* Technician fields - hide for subscription renewal */}
               {!isSubscriptionRenewal && (
-                <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.name')} <span className="text-red-500">*</span></label>
                     <input
@@ -2322,26 +2335,26 @@ export default function MaintSupervisorApproval() {
                       </p>
                     )}
                   </div>
-                </>
+                </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')} <span className="text-red-500">*</span></label>
-                <input
-                  type="number"
-                  name="cost"
-                  value={formData.cost}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.cost ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('maintenanceSupervisor.enterCost')}
-                  min="0"
-                  step="0.01"
-                />
-                {validationErrors.cost && (
-                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.costIsRequired')}</p>
-                )}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')} <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    name="cost"
+                    value={formData.cost}
+                    onChange={handleInputChange}
+                    disabled={isReadOnly}
+                    className={`w-full px-3 py-2 border ${validationErrors.cost ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                    placeholder={t('maintenanceSupervisor.enterCost')}
+                    min="0"
+                    step="0.01"
+                  />
+                  {validationErrors.cost && (
+                    <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.costIsRequired')}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')} <span className="text-red-500">*</span></label>
@@ -2358,47 +2371,62 @@ export default function MaintSupervisorApproval() {
                     <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.poNumberIsRequired')}</p>
                   )}
                 </div>
+                {!isSubscriptionRenewal && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')} <span className="text-red-500">*</span></label>
+                    <input
+                      type="email"
+                      name="technician_email"
+                      value={formData.technician_email}
+                      onChange={handleInputChange}
+                      disabled={isReadOnly}
+                      className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                      placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
+                      required
+                    />
+                    {validationErrors.technician_email && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {formData.technician_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.technician_email)
+                          ? t('maintenanceSupervisor.invalidEmailFormat')
+                          : t('maintenanceSupervisor.emailIsRequired')
+                        }
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Email field - hide for subscription renewal */}
-              {!isSubscriptionRenewal && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')} <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')} <span className="text-red-500">*</span></label>
                   <input
-                    type="email"
-                    name="technician_email"
-                    value={formData.technician_email}
+                    type="text"
+                    name="invoice"
+                    value={formData.invoice}
                     onChange={handleInputChange}
                     disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                    placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
-                    required
+                    className={`w-full px-3 py-2 border ${validationErrors.invoice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                    placeholder={t('maintenanceSupervisor.enterInvoiceNumber')}
                   />
-                  {validationErrors.technician_email && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formData.technician_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.technician_email) 
-                        ? t('maintenanceSupervisor.invalidEmailFormat')
-                        : t('maintenanceSupervisor.emailIsRequired')
-                      }
-                    </p>
+                  {validationErrors.invoice && (
+                    <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.invoiceIsRequired')}</p>
                   )}
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')} <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  name="invoice"
-                  value={formData.invoice}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.invoice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('maintenanceSupervisor.enterInvoiceNumber')}
-                />
-                {validationErrors.invoice && (
-                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.invoiceIsRequired')}</p>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.actualDowntime')}</label>
+                  <input
+                    type="number"
+                    name="actual_downtime"
+                    value={formData.actual_downtime}
+                    onChange={handleInputChange}
+                    disabled={isReadOnly}
+                    min="0"
+                    step="0.01"
+                    placeholder={t('maintenanceSupervisor.enterActualDowntime')}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">{t('maintenanceSupervisor.actualDowntimeOptionalHint')}</p>
+                </div>
               </div>
             </div>
 

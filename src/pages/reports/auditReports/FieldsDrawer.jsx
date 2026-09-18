@@ -44,7 +44,7 @@ export default function FieldsDrawer({
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
       <button
         type="button"
-        className={`absolute inset-0 bg-slate-900/30 transition-opacity duration-280 ease-out ${
+        className={`absolute inset-0 bg-slate-900/30 transition-opacity ease-out ${
           visible ? 'opacity-100' : 'opacity-0'
         }`}
         style={{ transitionDuration: `${ANIM_MS}ms` }}
