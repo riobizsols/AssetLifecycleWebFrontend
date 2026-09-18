@@ -100,22 +100,24 @@ export default function SparePartRequestScreen({
       return;
     }
 
+    // Soft client-side stock hint only. Never treat qty-check network errors as
+    // "0 available" — that falsely fails requests; backend is the source of truth.
     for (const item of items) {
       let available = availableQty[item.spc_id];
       if (available === undefined) {
         try {
           const res = await API.get(`/spare-parts/available-quantity/${item.spc_id}`);
           available = Number(res.data?.data?.available_qty);
-          if (!Number.isFinite(available) || available < 0) available = 0;
-          setAvailableQty((prev) => ({ ...prev, [item.spc_id]: available }));
+          if (!Number.isFinite(available) || available < 0) available = null;
+          else setAvailableQty((prev) => ({ ...prev, [item.spc_id]: available }));
         } catch {
-          available = 0;
+          available = null;
         }
       } else {
         available = Number(available);
-        if (!Number.isFinite(available) || available < 0) available = 0;
+        if (!Number.isFinite(available) || available < 0) available = null;
       }
-      if (available < item.quantity) {
+      if (available !== null && available < item.quantity) {
         toast.error(
           `Insufficient stock. Available: ${available}, Requested: ${item.quantity}`
         );

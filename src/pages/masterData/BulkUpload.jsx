@@ -5,6 +5,10 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuthStore } from '../../store/useAuthStore';
 import { toast } from 'react-hot-toast';
 
+/** EAM ID convention: PREFIX + at least 3 digits (e.g. ASS001, AMS001, BNA000001). */
+const EAM_ID_REGEX = /^[A-Za-z][A-Za-z0-9_]*[0-9]{3,}$/;
+const isValidEamId = (value) => EAM_ID_REGEX.test(String(value || '').trim());
+
 // Helper functions for localStorage
 const saveToStorage = (key, data) => {
   try {
@@ -34,6 +38,26 @@ const clearStorage = () => {
   } catch (error) {
     console.warn('Failed to clear localStorage:', error);
   }
+};
+
+const CommitErrorDetails = ({ details = [] }) => {
+  if (!details.length) return null;
+
+  return (
+    <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      <p className="font-semibold">Commit errors:</p>
+      <div className="mt-1 max-h-40 space-y-1 overflow-y-auto">
+        {details.slice(0, 10).map((detail, index) => (
+          <p key={`${detail.row || detail.asset_id || detail.employee_id || index}-${index}`}>
+            Row {detail.row || index + 1}: {detail.error}
+          </p>
+        ))}
+      </div>
+      {details.length > 10 && (
+        <p className="mt-1 text-xs">Showing the first 10 errors.</p>
+      )}
+    </div>
+  );
 };
 
 // Custom Asset Type Dropdown Component (no portal, stays in place)
@@ -243,32 +267,59 @@ const Roles = () => {
     { id: 'employees', label: t('bulkUpload.tabEmployees'), icon: Users, color: 'bg-purple-500' }
   ];
 
-  // Fetch available properties for asset types
+  // Fetch available properties for asset types.
+  // scope=acm_grants loads properties for every ACM-granted org (not only the header-selected org),
+  // so multi-org bulk CSVs (e.g. KMCH + NGP) validate/map property names correctly.
   const fetchAvailableProperties = async () => {
     try {
       setLoadingProperties(true);
-      const response = await API.get('/properties');
+      const response = await API.get('/properties', { params: { scope: 'acm_grants' } });
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
         const properties = response.data.data.map(prop => ({
           id: prop.prop_id,
           text: prop.property,
-          value: prop.prop_id
+          value: prop.prop_id,
+          org_id: prop.org_id || null,
         }));
         setAvailableProperties(properties);
-      } else {
-        setAvailableProperties([]);
+        return properties;
       }
+      setAvailableProperties([]);
+      return [];
     } catch (error) {
       console.error('Error fetching properties:', error);
       setAvailableProperties([]);
+      return [];
     } finally {
       setLoadingProperties(false);
     }
   };
 
-  // Load properties on component mount
+  const findPropertyForOrg = (propName, orgId, properties = availableProperties) => {
+    const name = String(propName || '').trim().toLowerCase();
+    if (!name) return null;
+    const org = String(orgId || '').trim();
+    const list = Array.isArray(properties) ? properties : [];
+
+    if (org) {
+      const inOrg = list.find(
+        (prop) =>
+          String(prop.org_id || '') === org &&
+          String(prop.text || '').trim().toLowerCase() === name
+      );
+      if (inOrg) return inOrg;
+    }
+
+    // Fallback when property rows have no org_id (legacy API) or org blank
+    return list.find((prop) => String(prop.text || '').trim().toLowerCase() === name) || null;
+  };
+
+  // Load properties on mount + whenever ACM org context changes
   useEffect(() => {
     fetchAvailableProperties();
+    const onAcmChanged = () => fetchAvailableProperties();
+    window.addEventListener('acm-context-changed', onAcmChanged);
+    return () => window.removeEventListener('acm-context-changed', onAcmChanged);
   }, []);
 
   // Function to convert parent asset type text to ID
@@ -312,14 +363,15 @@ const Roles = () => {
           await fetchAvailableProperties();
           props = availableProperties;
         }
-        // Re-fetch props directly for accuracy after await
+        // Re-fetch props directly for accuracy after await (all ACM-granted orgs)
         try {
-          const response = await API.get('/properties');
+          const response = await API.get('/properties', { params: { scope: 'acm_grants' } });
           if (response.data?.success && Array.isArray(response.data.data)) {
             props = response.data.data.map((prop) => ({
               id: prop.prop_id,
               text: prop.property,
               value: prop.prop_id,
+              org_id: prop.org_id || null,
             }));
             setAvailableProperties(props);
           }
@@ -394,14 +446,14 @@ const Roles = () => {
     // Generate sample data — org_id filled, branch_id blank, purchased_by optional sample
     const sampleData = [
       [
-        orgId, '', 'AST001', assetTypeId || 'AT001', 'Sample Asset Description',
+        orgId, '', 'ASS001', assetTypeId || 'AT001', 'Sample Asset Description',
         'V001', '1500.00', '2024-01-15', 'USR001',
         '2 years', '2026-01-15', 'V001',
         '300.00', '5',
         ...properties.map(() => 'Sample Value')
       ],
       [
-        orgId, '', 'AST002', assetTypeId || 'AT002', 'Another Sample Asset',
+        orgId, '', 'ASS002', assetTypeId || 'AT002', 'Another Sample Asset',
         'V002', '1200.00', '2024-01-20', 'USR002',
         '3 years', '2027-01-20', 'V002',
         '240.00', '4',
@@ -582,6 +634,10 @@ const Roles = () => {
       setValidationProgress(30);
       // Fetch reference data for referential integrity validation
       const referenceData = await fetchReferenceData(type);
+      // Multi-org asset-type CSVs need properties from all ACM-granted orgs
+      if (type === 'assetTypes') {
+        await fetchAvailableProperties();
+      }
       setValidationProgress(50);
 
       // Check for duplicates within the CSV file
@@ -804,12 +860,20 @@ const Roles = () => {
         }
       });
 
-      // Validate specific field formats
-      const assetTypeIdIndex = headers.indexOf('asset_type_id');
+      // Validate specific field formats (PREFIX001 style; allows tenant serials like BNA000001)
+      const assetIdIndex = normalizedHeaders.indexOf('asset_id');
+      if (assetIdIndex !== -1 && data[assetIdIndex]) {
+        const assetId = data[assetIdIndex];
+        if (!isValidEamId(assetId)) {
+          rowErrors.push(`Row ${rowNumber}: asset_id must look like ASS001 (letters + at least 3 digits)`);
+        }
+      }
+
+      const assetTypeIdIndex = normalizedHeaders.indexOf('asset_type_id');
       if (assetTypeIdIndex !== -1 && data[assetTypeIdIndex]) {
         const assetTypeId = data[assetTypeIdIndex];
-        if (!/^AT\d{3}$/.test(assetTypeId)) {
-          rowErrors.push(`Row ${rowNumber}: asset_type_id must be in format AT001, AT002, etc.`);
+        if (!isValidEamId(assetTypeId)) {
+          rowErrors.push(`Row ${rowNumber}: asset_type_id must look like AT001 (letters + at least 3 digits)`);
         }
       }
 
@@ -956,9 +1020,9 @@ const Roles = () => {
       if (assetTypeIdIndex !== -1 && data[assetTypeIdIndex]) {
         const assetTypeId = data[assetTypeIdIndex].trim();
         console.log(`🔍 Validating asset_type_id: "${assetTypeId}" (length: ${assetTypeId.length})`);
-        console.log(`🔍 Regex test result: ${/^AT\d+$/.test(assetTypeId)}`);
-        if (!/^AT\d+$/.test(assetTypeId)) {
-          rowErrors.push(`Row ${rowNumber}: asset_type_id must be in format AT001, AT002, AT048, etc. (got: "${assetTypeId}")`);
+        console.log(`🔍 Regex test result: ${isValidEamId(assetTypeId)}`);
+        if (!isValidEamId(assetTypeId)) {
+          rowErrors.push(`Row ${rowNumber}: asset_type_id must look like AT001 (letters + at least 3 digits) (got: "${assetTypeId}")`);
         }
       }
 
@@ -1043,16 +1107,22 @@ const Roles = () => {
         }
       }
 
-      // Validate properties column (optional values; names must exist when provided)
+      // Validate properties column (optional values; names must exist for that row's org)
       const propertiesIndex = normalizedHeaders.indexOf('properties');
+      const orgIdIndexForProps = normalizedHeaders.indexOf('org_id');
       if (propertiesIndex !== -1) {
         const propertiesValue = data[propertiesIndex];
         if (propertiesValue && propertiesValue.trim() !== '') {
+          const rowOrgId = orgIdIndexForProps !== -1 ? String(data[orgIdIndexForProps] || '').trim() : '';
           const propertyNames = propertiesValue.split(';').map(p => p.trim()).filter(p => p);
           propertyNames.forEach(propName => {
-            const propertyExists = availableProperties.some(prop => prop.text.toLowerCase() === propName.toLowerCase());
+            const propertyExists = Boolean(findPropertyForOrg(propName, rowOrgId));
             if (!propertyExists) {
-              rowErrors.push(`Row ${rowNumber}: Property '${propName}' does not exist in available properties`);
+              rowErrors.push(
+                rowOrgId
+                  ? `Row ${rowNumber}: Property '${propName}' does not exist in available properties for org '${rowOrgId}'`
+                  : `Row ${rowNumber}: Property '${propName}' does not exist in available properties`
+              );
             }
           });
         }
@@ -1248,6 +1318,15 @@ const Roles = () => {
         }
       } else if (type === 'assetTypes') {
         // For asset types, handle properties column specially
+        // Resolve org_id first so property name→id mapping is org-scoped regardless of column order
+        const orgHeaderIdx = headers.findIndex(
+          (h) => String(h || '').trim().toLowerCase().replace(/\s+/g, '_') === 'org_id'
+            || String(h || '').trim().toLowerCase() === 'orgid'
+        );
+        const rowOrgIdEarly =
+          orgHeaderIdx >= 0 ? String(row[orgHeaderIdx] || '').trim() : '';
+        if (rowOrgIdEarly) obj.org_id = rowOrgIdEarly;
+
         headers.forEach((header, index) => {
           const value = row[index] || '';
           const normalizedHeader = normalizeAssetTypeHeader(header);
@@ -1255,13 +1334,13 @@ const Roles = () => {
           if (normalizedHeader === 'properties') {
             // Always process properties column, even if empty
             if (value && value.trim() !== '') {
-              // Convert semicolon-separated property names to property IDs
+              // Convert semicolon-separated property names to property IDs for this row's org
+              const rowOrgId = String(obj.org_id || rowOrgIdEarly || '').trim();
               const propertyNames = value.split(';').map(p => p.trim()).filter(p => p);
-              const propertyIds = propertyNames.map(propName => {
-                const prop = availableProperties.find(p => p.text.toLowerCase() === propName.toLowerCase());
-                return prop ? prop.id : null;
-              }).filter(id => id !== null);
-              
+              const propertyIds = propertyNames
+                .map((propName) => findPropertyForOrg(propName, rowOrgId)?.id || null)
+                .filter((id) => id !== null);
+
               obj.properties = propertyIds;
             } else {
               // Empty properties array if no properties specified
@@ -2367,28 +2446,29 @@ const Roles = () => {
                 inserted: results.inserted,
                 updated: results.updated,
                 errors: results.errors,
-                totalProcessed: results.totalProcessed
+                totalProcessed: results.totalProcessed,
+                errorDetails: results.errorDetails || [],
               }
             }
           }));
       
-          // Reset trial results after commit
-          setTrialResults(prev => ({
-            ...prev,
-            [type]: null
-          }));
-          
-          // Reset upload status
-          setUploadStatus(prev => ({
-            ...prev,
-            [type]: null
-          }));
+          // Keep the upload available for correction/retry when rows fail.
+          if (results.errors === 0) {
+            setTrialResults(prev => ({
+              ...prev,
+              [type]: null
+            }));
+            
+            setUploadStatus(prev => ({
+              ...prev,
+              [type]: null
+            }));
 
-          // Clear localStorage for this type
-          const newUploadStatus = { ...uploadStatus, [type]: null };
-          const newTrialResults = { ...trialResults, [type]: null };
-          saveToStorage('uploadStatus', newUploadStatus);
-          saveToStorage('trialResults', newTrialResults);
+            const newUploadStatus = { ...uploadStatus, [type]: null };
+            const newTrialResults = { ...trialResults, [type]: null };
+            saveToStorage('uploadStatus', newUploadStatus);
+            saveToStorage('trialResults', newTrialResults);
+          }
         } else {
           setCommitResults(prev => ({
             ...prev,
@@ -2798,7 +2878,9 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  {t('bulkUpload.commitSuccessful')}
+                  {commitResults.results.errors > 0
+                    ? 'Commit Completed with Errors'
+                    : t('bulkUpload.commitSuccessful')}
                 </h5>
                 <div className="text-green-700 text-sm space-y-1">
                   <div>• {t('bulkUpload.insertedRecords', { count: commitResults.results.inserted })}</div>
@@ -2806,6 +2888,7 @@ const AssetsTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit, up
                   <div>• {t('bulkUpload.errorsRecords', { count: commitResults.results.errors })}</div>
                   <div>• {t('bulkUpload.totalProcessedRecords', { count: commitResults.results.totalProcessed })}</div>
                 </div>
+                <CommitErrorDetails details={commitResults.results.errorDetails} />
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
@@ -3040,7 +3123,9 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  {t('bulkUpload.commitSuccessful')}
+                  {commitResults.results.errors > 0
+                    ? 'Commit Completed with Errors'
+                    : t('bulkUpload.commitSuccessful')}
                 </h5>
                 <div className="text-green-700 text-sm space-y-1">
                   <div>• {t('bulkUpload.insertedRecords', { count: commitResults.results.inserted })}</div>
@@ -3048,6 +3133,7 @@ const AssetTypesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit
                   <div>• {t('bulkUpload.errorsRecords', { count: commitResults.results.errors })}</div>
                   <div>• {t('bulkUpload.totalProcessedRecords', { count: commitResults.results.totalProcessed })}</div>
                 </div>
+                <CommitErrorDetails details={commitResults.results.errorDetails} />
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-green-600 hover:text-green-800 text-sm underline"
@@ -3270,7 +3356,9 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h5 className="text-green-800 font-semibold mb-2 flex items-center gap-2">
                   <CheckCircle className="w-4 h-4" />
-                  {t('bulkUpload.commitSuccessful')}
+                  {commitResults.results.errors > 0
+                    ? 'Commit Completed with Errors'
+                    : t('bulkUpload.commitSuccessful')}
                 </h5>
                 <div className="text-green-700 text-sm space-y-1">
                   <div>• {t('bulkUpload.insertedRecords', { count: commitResults.results.inserted })}</div>
@@ -3278,6 +3366,7 @@ const EmployeesTab = ({ onDownloadSample, onFileUpload, onTrialUpload, onCommit,
                   <div>• {t('bulkUpload.errorsRecords', { count: commitResults.results.errors })}</div>
                   <div>• {t('bulkUpload.totalProcessedRecords', { count: commitResults.results.totalProcessed })}</div>
                 </div>
+                <CommitErrorDetails details={commitResults.results.errorDetails} />
                 <button
                   onClick={onClearCommitResults}
                   className="mt-2 text-green-600 hover:text-green-800 text-sm underline"

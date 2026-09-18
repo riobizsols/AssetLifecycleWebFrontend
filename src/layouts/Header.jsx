@@ -173,6 +173,11 @@ export default function Header() {
       title: t('navigation.qaAuditReport'),
       subtitle: "",
     },
+    "/reports/audit-reports": {
+      title: "Audit Reports",
+      subtitle:
+        "Generate asset audit reports based on audit standards, audit period, and asset type.",
+    },
     "/reports/reopened-breakdowns": {
       title: t("reports.reopenedBreakdowns.title"),
       subtitle: "",

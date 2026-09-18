@@ -42,6 +42,7 @@ export const APP_ID_TO_PATH = {
   USAGEBASEDASSETREPORT: '/reports/usage-based-asset',
   SLAREPORT: '/reports/sla-report',
   QAAUDITREPORT: '/reports/qa-audit-report',
+  AUDITREPORT: '/reports/audit-reports',
   ADMINSETTINGS: '/admin-settings-view',
   MASTERDATA: '/master-data/vendors',
   ORGANIZATIONS: '/master-data/organizations',

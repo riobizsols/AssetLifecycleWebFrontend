@@ -20,23 +20,27 @@ export default function SparePartListDetail() {
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  const cachedDetail = useSparePartListStore.getState().getCachedDetail(id);
-  const [maintenanceData, setMaintenanceData] = useState(cachedDetail);
+  const initialCached = useSparePartListStore.getState().getCachedDetail(id);
+  const [maintenanceData, setMaintenanceData] = useState(initialCached);
   const [checklist, setChecklist] = useState([]);
   const [loadingChecklist, setLoadingChecklist] = useState(true);
-  const [loadingData, setLoadingData] = useState(!cachedDetail);
+  const [loadingData, setLoadingData] = useState(!initialCached);
   const [showChecklist, setShowChecklist] = useState(false);
 
   useEffect(() => {
+    if (!id) return undefined;
+
     let cancelled = false;
+    const hasCached = Boolean(useSparePartListStore.getState().getCachedDetail(id));
+
     (async () => {
-      setLoadingData(true);
+      if (!hasCached) setLoadingData(true);
       try {
         const detail = await useSparePartListStore.getState().fetchDetail(id, {
           revalidate: true,
-          force: !cachedDetail,
+          force: !hasCached,
         });
-        if (!cancelled) setMaintenanceData(detail);
+        if (!cancelled && detail) setMaintenanceData(detail);
       } catch (err) {
         if (!cancelled) {
           toast.error(err.message || t('sparePartList.failedToFetchDetail'));
@@ -48,7 +52,8 @@ export default function SparePartListDetail() {
     return () => {
       cancelled = true;
     };
-  }, [id, cachedDetail, t]);
+    // Do not depend on cachedDetail object identity — that caused refetch loops.
+  }, [id, t]);
 
   useEffect(() => {
     let cancelled = false;

@@ -14,7 +14,8 @@ export const REPORTS_APP_IDS = {
   REOPENED_BREAKDOWNS: 'REOPENEDBREAKDOWNS',
   USAGE_BASED_ASSET_REPORT: 'USAGEBASEDASSETREPORT',
   SLA_REPORT: 'SLAREPORT',
-  QA_AUDIT_REPORT: 'QAAUDITREPORT'
+  QA_AUDIT_REPORT: 'QAAUDITREPORT',
+  AUDIT_REPORT: 'AUDITREPORT'
 };
 
 /**
@@ -77,7 +78,8 @@ export const getAppIdForReport = (reportType) => {
     'breakdown-history': REPORTS_APP_IDS.BREAKDOWN_HISTORY,
     'reopened-breakdowns': REPORTS_APP_IDS.REOPENED_BREAKDOWNS,
     'usage-based-asset': REPORTS_APP_IDS.USAGE_BASED_ASSET_REPORT,
-    'sla-report': REPORTS_APP_IDS.SLA_REPORT
+    'sla-report': REPORTS_APP_IDS.SLA_REPORT,
+    'audit-reports': REPORTS_APP_IDS.AUDIT_REPORT
   };
   
   return reportTypeMap[reportType] || null;

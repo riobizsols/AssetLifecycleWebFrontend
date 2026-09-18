@@ -407,13 +407,20 @@ const InspectionExecutionDetail = () => {
         completePayload.inspector_phno = formData.inspector_phone;
       }
 
-      // Optimistically patch local schedule
-      await patchScheduleLocal(id, {
-        status,
-        notes: formData.notes,
-        trigger_maintenance: triggerMaintenance,
-        act_insp_end_date: completePayload.act_insp_end_date,
-      });
+      const isOffline =
+        typeof navigator !== 'undefined' && !navigator.onLine;
+
+      // Only patch local status before sync when offline (list UX while queued).
+      // When online, sendItem updates local after the server accepts COMPLETE —
+      // patching CO first used to make drainOutbox skip the server update.
+      if (isOffline) {
+        await patchScheduleLocal(id, {
+          status,
+          notes: formData.notes,
+          trigger_maintenance: triggerMaintenance,
+          act_insp_end_date: completePayload.act_insp_end_date,
+        });
+      }
 
       const result = await enqueueSaveAndSync({
         ais_id: id,
@@ -423,6 +430,13 @@ const InspectionExecutionDetail = () => {
       });
 
       if (result?.queued) {
+        // Ensure local reflects completion if we queued without the offline branch above
+        await patchScheduleLocal(id, {
+          status,
+          notes: formData.notes,
+          trigger_maintenance: triggerMaintenance,
+          act_insp_end_date: completePayload.act_insp_end_date,
+        });
         // Keep pendingRecords aligned with IndexedDB so leave/return still shows answers
         const stillPending = await getPendingRecords(id);
         setPendingRecords(stillPending);

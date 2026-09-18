@@ -73,12 +73,12 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [showArchived, setShowArchived] = useState(true);
   const [activeTab, setActiveTab] = useState('Vendor Details');
+  const [savingTab, setSavingTab] = useState('');
   const [supplyFlags, setSupplyFlags] = useState({
     product_supply: false,
     service_supply: false,
     spare_supply: false,
   });
-  const [savingTab, setSavingTab] = useState('');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -116,9 +116,11 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         pincode: vendor.pincode || '',
         contract_start_date: formatDateForInput(vendor.contract_start_date),
         contract_end_date: formatDateForInput(vendor.contract_end_date),
-        int_status: vendor.int_status === 'Active' ? 1 : 
-                    vendor.int_status === 'CRApproved' ? 3 :
-                    vendor.int_status === 'Blocked' ? 4 : 0
+        // Convention: 0=Inactive, 1=Active, 3=CRApproved, 4=Blocked
+        int_status: vendor.int_status === 'Active' || vendor.int_status === 1 || vendor.int_status === '1' ? 1 :
+                    vendor.int_status === 'CRApproved' || vendor.int_status === 3 || vendor.int_status === '3' ? 3 :
+                    vendor.int_status === 'Blocked' || vendor.int_status === 4 || vendor.int_status === '4' ? 4 :
+                    (typeof vendor.int_status === 'number' ? vendor.int_status : 0)
       };
       
       setFormData({ ...baseFormData });
@@ -175,8 +177,33 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
             spare_supply: isTruthySupply(vendorData.spare_supply),
           };
 
-          // Trust vendor supply flags only — do not infer Service/Product/Spare
-          // tabs from leftover vendor-prod-services or spare mapping rows.
+          if (!flags.spare_supply) {
+            try {
+              const mapRes = await API.get('/spare-parts/vendor-mappings', {
+                params: { vendor_id: vendor.vendor_id },
+              });
+              if (Array.isArray(mapRes.data?.data) && mapRes.data.data.length > 0) {
+                flags.spare_supply = true;
+              }
+            } catch (mapErr) {
+              console.warn('Failed to fetch spare supply mappings', mapErr);
+            }
+          }
+
+          // Only show Product Details when product_supply is checked (or linked products exist).
+          // Do not infer Service Details from leftover service links — respect service_supply flag.
+          if (!flags.product_supply) {
+            try {
+              const vpsRes = await API.get(`/vendor-prod-services/vendor/${vendor.vendor_id}`);
+              const rows = Array.isArray(vpsRes.data) ? vpsRes.data : [];
+              if (rows.some((row) => String(row.ps_type || '').toLowerCase() === 'product')) {
+                flags.product_supply = true;
+              }
+            } catch (vpsErr) {
+              console.warn('Failed to fetch vendor product/service links', vpsErr);
+            }
+          }
+
           setSupplyFlags(flags);
         }
       } catch (err) {
@@ -1019,9 +1046,9 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
               vendorSaved
               loadExisting
               isReadOnly={isReadOnly}
-              hideInlineSave
               onSaveTrigger={savingTab}
               onTabSaved={() => setSavingTab('')}
+              showInlineSave={false}
             />
           </div>
         )}
@@ -1034,9 +1061,9 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
               vendorSaved
               loadExisting
               isReadOnly={isReadOnly}
-              hideInlineSave
               onSaveTrigger={savingTab}
               onTabSaved={() => setSavingTab('')}
+              showInlineSave={false}
             />
           </div>
         )}
@@ -1319,7 +1346,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         )}
         </div>
 
-        {/* Footer — Cancel / Update / Save at bottom of modal */}
+        {/* Footer — Cancel / Save|Update at bottom of modal */}
         <div className="shrink-0 border-t border-gray-200 bg-white px-6 py-4">
           <div className="flex justify-end gap-3">
             <button
@@ -1338,28 +1365,17 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
                 {t('common.update')}
               </button>
             )}
-            {!isReadOnly && activeTab === 'Service Details' && (
+            {!isReadOnly && (activeTab === 'Spare Supply' || activeTab === 'Service Details') && (
               <button
                 type="button"
                 onClick={() => {
+                  // Reset then set so repeated Save clicks still fire the child useEffect
                   setSavingTab('');
-                  setTimeout(() => setSavingTab('Service Details'), 0);
+                  setTimeout(() => setSavingTab(activeTab), 0);
                 }}
                 className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
               >
-                {t('common.save')}
-              </button>
-            )}
-            {!isReadOnly && activeTab === 'Spare Supply' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSavingTab('');
-                  setTimeout(() => setSavingTab('Spare Supply'), 0);
-                }}
-                className="bg-[#0E2F4B] hover:bg-[#1a4a76] text-white text-sm font-medium py-1.5 px-5 rounded"
-              >
-                {t('common.save')}
+                {t('common.save', { defaultValue: 'Save' })}
               </button>
             )}
           </div>

@@ -8,6 +8,7 @@ import { useNavigation } from "../../hooks/useNavigation";
 import { useAuthStore } from "../../store/useAuthStore";
 import SearchableDropdown from "../ui/SearchableDropdown";
 import { useAdminSettings } from "../../contexts/AdminSettingsContext";
+import { getActiveOrgId } from '../../utils/acmContext';
 import NavigationTreeBuilder, {
   DEFAULT_ACCESS_LEVEL,
   DEFAULT_MOB_DESK,
@@ -92,7 +93,7 @@ const CreateJobRoleNavigation = ({
     access_level: editingNav?.access_level || "D",
     is_group: editingNav?.is_group || false,
     mob_desk: editingNav?.mob_desk || "D",
-    org_id: editingNav?.org_id || user?.org_id || "",
+    org_id: editingNav?.org_id || getActiveOrgId(user?.org_id) || "",
     int_status:
       editingNav?.int_status !== undefined ? editingNav.int_status : 1,
   });
@@ -143,7 +144,7 @@ const CreateJobRoleNavigation = ({
             : embeddedNav.mob_desk === "Mobile"
               ? "M"
               : embeddedNav.mob_desk || "D",
-        org_id: embeddedNav.org_id || user?.org_id || "",
+        org_id: embeddedNav.org_id || getActiveOrgId(user?.org_id) || "",
         int_status:
           embeddedNav.int_status !== undefined ? embeddedNav.int_status : 1,
       });
@@ -172,7 +173,7 @@ const CreateJobRoleNavigation = ({
               : nav.mob_desk === "Mobile"
                 ? "M"
                 : nav.mob_desk || "D",
-          org_id: nav.org_id || user?.org_id || "",
+          org_id: nav.org_id || getActiveOrgId(user?.org_id) || "",
           int_status: nav.int_status !== undefined ? nav.int_status : 1,
         });
       }
@@ -384,7 +385,7 @@ const CreateJobRoleNavigation = ({
 
       await API.put(`/job-role-navigation/${navIdToUpdate}`, {
         ...formData,
-        int_status: formData.int_status ? 1 : 0,
+        int_status: (formData.int_status === 1 || formData.int_status === '1' || formData.int_status === true || formData.int_status === 'Active') ? 1 : 0,
       });
       showBackendTextToast({ toast, tmdId: 'TMD_NAVIGATION_UPDATED_SUCCESSFULLY_3E75DCA8', fallbackText: 'Navigation updated successfully', type: 'success' });
       finishEditSave();

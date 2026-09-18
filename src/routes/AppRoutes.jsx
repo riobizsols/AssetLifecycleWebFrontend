@@ -111,6 +111,7 @@ import BulkSerialNumberPrint from "../pages/reports/BulkSerialNumberPrint";
 import BulkUpload from "../pages/masterData/BulkUpload";
 import SLAReport from "../pages/reports/SLAReport";
 import QAAuditReport from "../pages/reports/QAAuditReport";
+import AuditReports from "../pages/reports/AuditReports";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
@@ -626,6 +627,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="QAAUDITREPORT">
               <MainLayout>
                 <QAAuditReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/audit-reports"
+          element={
+            <ProtectedRoute requiredAppId="AUDITREPORT">
+              <MainLayout>
+                <AuditReports />
               </MainLayout>
             </ProtectedRoute>
           }

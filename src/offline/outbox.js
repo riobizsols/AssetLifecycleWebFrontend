@@ -229,15 +229,9 @@ export async function drainOutbox({ retryFailed = false } = {}) {
     for (const aisId of aisIds) {
       const items = await itemsForAis(aisId, { includeFailed: retryFailed });
       for (const item of items) {
-        // Drop complete if schedule already terminal on server cache / local
-        if (item.type === OUTBOX_TYPES.COMPLETE) {
-          const local = await getSchedule(aisId);
-          if (local?.status === 'CO' || local?.status === 'CA') {
-            await markDone(item);
-            drained += 1;
-            continue;
-          }
-        }
+        // Do NOT skip COMPLETE based on local IndexedDB status.
+        // Offline/online save patches local to CO before drain; skipping here
+        // left the server stuck at IN while answers still synced.
 
         await db.outbox.update(item.id, { status: STATUS.SYNCING });
 

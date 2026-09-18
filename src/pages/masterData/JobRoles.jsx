@@ -12,6 +12,7 @@ import { useNavigation } from "../../hooks/useNavigation";
 import { useAuthStore } from "../../store/useAuthStore";
 import { useAdminSettings } from "../../contexts/AdminSettingsContext";
 import CreateJobRoleNavigation from "../../components/jobRoles/CreateJobRoleNavigation";
+import { getActiveOrgId } from '../../utils/acmContext';
 
 const JOB_FUNCTION_MAX_LENGTH = 100;
 
@@ -161,7 +162,7 @@ const JobRoles = () => {
       job_role_id: "",
       text: "",
       job_function: "",
-      org_id: user?.org_id || "",
+      org_id: getActiveOrgId(user?.org_id) || "",
       int_status: 1,
       notif_warranty: false,
       notif_scrap: false
@@ -176,7 +177,7 @@ const JobRoles = () => {
       job_role_id: role.job_role_id,
       text: role.text,
       job_function: role.job_function || "",
-      org_id: role.org_id || user?.org_id || "",
+      org_id: role.org_id || getActiveOrgId(user?.org_id) || "",
       int_status: role.int_status !== undefined ? role.int_status : 1,
       notif_warranty: !!role.notif_warranty,
       notif_scrap: !!role.notif_scrap
@@ -220,7 +221,7 @@ const JobRoles = () => {
         await API.put(`/job-roles/${roleFormData.job_role_id}`, {
           text: roleFormData.text,
           job_function: roleFormData.job_function,
-          int_status: roleFormData.int_status ? 1 : 0,
+          int_status: (roleFormData.int_status === 1 || roleFormData.int_status === '1' || roleFormData.int_status === true || roleFormData.int_status === 'Active') ? 1 : 0,
           notif_warranty: !!roleFormData.notif_warranty,
           notif_scrap: !!roleFormData.notif_scrap
         });
