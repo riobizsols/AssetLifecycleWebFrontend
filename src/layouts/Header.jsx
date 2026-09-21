@@ -194,6 +194,11 @@ export default function Header() {
       subtitle:
         "Vendor response, resolution SLA, breaches, repeat failures and service ratings.",
     },
+    "/reports/maintenance-status": {
+      title: t("navigation.maintenanceStatusReport"),
+      subtitle:
+        "Due, overdue, completed maintenance and expiry for facility asset types.",
+    },
     "/reports/reopened-breakdowns": {
       title: t("reports.reopenedBreakdowns.title"),
       subtitle: "",

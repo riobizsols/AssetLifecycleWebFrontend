@@ -175,6 +175,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "AUDITREPORT",
     "CONSOLIDATEDASSETREPORT",
     "SLAVENDORPERFORMANCE",
+    "MAINTENANCESTATUSREPORT",
   ],
 };
 
@@ -1514,6 +1515,7 @@ const DatabaseSidebar = () => {
     AUDITREPORT: "/reports/audit-reports",
     CONSOLIDATEDASSETREPORT: "/reports/consolidated-asset-register",
     SLAVENDORPERFORMANCE: "/reports/sla-vendor-performance",
+    MAINTENANCESTATUSREPORT: "/reports/maintenance-status",
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
     MASTERDATA: "/master-data/vendors",  //done
     ORGANIZATIONS: "/master-data/organizations",  //done
@@ -1688,6 +1690,7 @@ const DatabaseSidebar = () => {
       AUDITREPORT: FileText,
       CONSOLIDATEDASSETREPORT: FileText,
       SLAVENDORPERFORMANCE: FileText,
+      MAINTENANCESTATUSREPORT: Wrench,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
       ORGANIZATIONS: Building,

@@ -64,7 +64,8 @@
     "hrManagerApproval": "HR/Manager Approval",
     "qaAuditReport": "QA Audit Report",
     "approvalsGroup": "Approvals",
-    "certificatesGroup": "Certificates"
+    "certificatesGroup": "Certificates",
+    "maintenanceStatusReport": "Maintenance Status Report"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -2457,7 +2458,15 @@
     "phone": "Phone",
     "monitor": "Monitor",
     "chair": "Chair",
-    "desk": "Desk"
+    "desk": "Desk",
+    "electrical": "Electrical",
+    "plumbing": "Plumbing",
+    "hvac": "HVAC",
+    "civil": "Civil",
+    "lifts": "Lifts",
+    "generators": "Generators",
+    "fireSystems": "Fire Systems",
+    "campusInfrastructure": "Campus Infrastructure"
   },
   "inspectionExecution": {
     "assetInformation": "Asset Information",

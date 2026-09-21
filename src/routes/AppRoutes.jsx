@@ -119,6 +119,7 @@ import QAAuditReport from "../pages/reports/QAAuditReport";
 import AuditReports from "../pages/reports/AuditReports";
 import ConsolidatedAssetRegister from "../pages/reports/ConsolidatedAssetRegister";
 import SlaVendorPerformance from "../pages/reports/SlaVendorPerformance";
+import MaintenanceStatusReport from "../pages/reports/MaintenanceStatusReport";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
@@ -671,6 +672,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="SLAVENDORPERFORMANCE">
               <MainLayout>
                 <SlaVendorPerformance />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/maintenance-status"
+          element={
+            <ProtectedRoute requiredAppId="MAINTENANCESTATUSREPORT">
+              <MainLayout>
+                <MaintenanceStatusReport />
               </MainLayout>
             </ProtectedRoute>
           }

@@ -63,7 +63,8 @@
     "hrManagerApproval": "HR/Vorgesetzten-Genehmigung",
     "qaAuditReport": "QA-Prüfbericht",
     "approvalsGroup": "Genehmigungen",
-    "certificatesGroup": "Zertifikate"
+    "certificatesGroup": "Zertifikate",
+    "maintenanceStatusReport": "Wartungsstatusbericht"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -2254,7 +2255,15 @@
     "phone": "Telefon",
     "monitor": "Monitor",
     "chair": "Stuhl",
-    "desk": "Schreibtisch"
+    "desk": "Schreibtisch",
+    "electrical": "Elektrik",
+    "plumbing": "Sanitär",
+    "hvac": "HLK",
+    "civil": "Hochbau",
+    "lifts": "Aufzüge",
+    "generators": "Generatoren",
+    "fireSystems": "Brandschutzsysteme",
+    "campusInfrastructure": "Campus-Infrastruktur"
   },
   "inspectionExecution": {
     "assetInformation": "Anlageninformationen",
