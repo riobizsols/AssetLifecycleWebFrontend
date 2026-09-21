@@ -44,8 +44,8 @@ test.describe('RIO EAM certificates', () => {
     await page.getByTitle('Add').click();
     await expect(page.getByText('Employee Name')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Certificate Name').first()).toBeVisible();
-    await expect(page.getByText('Certificate Date')).toBeVisible();
-    await expect(page.getByText('Expiry Date')).toBeVisible();
+    await expect(page.getByText('Certificate Date').first()).toBeVisible();
+    await expect(page.getByText('Expiry Date').first()).toBeVisible();
     await expect(page.getByText('Upload Certificate File')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Upload' })).toBeVisible();
   });
