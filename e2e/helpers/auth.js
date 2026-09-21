@@ -2,6 +2,9 @@
 import { expect } from '@playwright/test';
 import { BASE } from './baseUrl.js';
 
+/** Login against remote DB often takes 30s+ (tenant resolve + nav sync). */
+const LOGIN_RESPONSE_TIMEOUT_MS = 120_000;
+
 export function getRioCredentials() {
   const email = process.env.RIO_EMAIL;
   const password = process.env.RIO_PASSWORD;
@@ -48,11 +51,21 @@ export async function loginToRioEam(page) {
     const loginResponsePromise = page.waitForResponse(
       (response) =>
         response.url().includes('/auth/login') &&
-        response.request().method() === 'POST'
+        response.request().method() === 'POST',
+      { timeout: LOGIN_RESPONSE_TIMEOUT_MS }
     );
 
     await page.getByRole('button', { name: 'Login' }).click();
-    loginResponse = await loginResponsePromise;
+
+    try {
+      loginResponse = await loginResponsePromise;
+    } catch (err) {
+      if (attempt === 3) throw err;
+      await page.waitForTimeout(2000);
+      await page.locator('#password').fill(password);
+      continue;
+    }
+
     if (loginResponse.ok()) break;
 
     const rateLimited = await page
@@ -72,7 +85,7 @@ export async function loginToRioEam(page) {
       const path = new URL(url).pathname;
       return /\/(dashboard|change-password|adminsettings)(\/|$)/.test(path);
     },
-    { timeout: 30000 }
+    { timeout: 60000 }
   );
 
   await expect(page.locator('#email')).toHaveCount(0, { timeout: 15000 });

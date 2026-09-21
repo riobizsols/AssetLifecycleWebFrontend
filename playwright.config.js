@@ -14,7 +14,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  timeout: 120_000,
+  timeout: 180_000,
   globalTimeout: 60 * 60 * 1000,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
@@ -22,8 +22,9 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    actionTimeout: 20_000,
-    navigationTimeout: 30_000,
+    // Login against remote Postgres can exceed 30s; keep actions generous in CI.
+    actionTimeout: 60_000,
+    navigationTimeout: 60_000,
   },
   projects: [
     {
