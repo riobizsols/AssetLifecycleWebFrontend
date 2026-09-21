@@ -125,6 +125,23 @@ export default function AuditReports() {
         asset_type_ids: selectedAssetTypes,
         sections: API_SECTIONS,
       });
+
+      // Attach AMC / CMC / warranty rows for assets in this audit (used by PDF + summary).
+      try {
+        const assetIds = new Set(
+          (data?.assets || data?.sections?.assetDetails || []).map((a) => a.asset_id).filter(Boolean),
+        );
+        const coverageData = await auditReportService.viewCoverageReport({
+          coverage_types: ['Warranty', 'AMC', 'CMC'],
+          statuses: ['Active', 'Expiring', 'Expired'],
+          expiring_days: 30,
+        });
+        const coverageRows = (coverageData?.rows || []).filter((r) => assetIds.has(r.asset_id));
+        data.sections = { ...(data.sections || {}), coverage: coverageRows };
+      } catch {
+        data.sections = { ...(data.sections || {}), coverage: [] };
+      }
+
       setReport(data);
       setPage(1);
       setAssetSearch('');
@@ -191,6 +208,7 @@ export default function AuditReports() {
       { label: 'Certifications', value: report.sections?.certifications?.length || 0 },
       { label: 'Invoices', value: report.sections?.invoices?.length || 0 },
       { label: 'Purchase orders', value: report.sections?.purchaseOrders?.length || 0 },
+      { label: 'AMC / CMC / Warranty', value: report.sections?.coverage?.length || 0 },
     ];
   }, [report, enrichedAssets.length]);
 

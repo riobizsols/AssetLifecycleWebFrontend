@@ -62,6 +62,19 @@ export const FIELD_GROUPS = [
       { key: 'poVendor', label: 'Purchase order vendor', defaultOn: false },
     ],
   },
+  {
+    id: 'coverage',
+    title: 'AMC / CMC / Warranty',
+    fields: [
+      { key: 'coverageType', label: 'Coverage type', defaultOn: true },
+      { key: 'coverageStatus', label: 'Status', defaultOn: true },
+      { key: 'coverageVendor', label: 'Vendor', defaultOn: true },
+      { key: 'coverageStart', label: 'Start', defaultOn: true },
+      { key: 'coverageEnd', label: 'End / renewal due', defaultOn: true },
+      { key: 'coverageDaysLeft', label: 'Days left', defaultOn: true },
+      { key: 'coverageLastRenewal', label: 'Last renewal', defaultOn: false },
+    ],
+  },
 ];
 
 export const ASSET_TABS = [
@@ -71,6 +84,8 @@ export const ASSET_TABS = [
   { id: 'certifications', label: 'Certifications' },
   { id: 'invoices', label: 'Invoices' },
   { id: 'purchaseOrders', label: 'Purchase orders' },
+  { id: 'amcCmcWarranty', label: 'AMC / CMC / Warranty Report' },
+  { id: 'vendorRenewal', label: 'Vendor Renewal' },
 ];
 
 export const PAGE_SIZE = 10;
