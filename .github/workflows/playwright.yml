@@ -100,6 +100,7 @@ jobs:
             echo "JWT_SECRET=${E2E_JWT_SECRET}"
             echo "CACHE_ENABLED=false"
             echo "DB_SSL=false"
+            echo "SKIP_LOGIN_NAV_SYNC=true"
           } > .env
 
       - name: Start backend

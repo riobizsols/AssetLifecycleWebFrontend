@@ -19,6 +19,7 @@ export const REPORTS_APP_IDS = {
   CONSOLIDATED_ASSET_REPORT: 'CONSOLIDATEDASSETREPORT',
   SLA_VENDOR_PERFORMANCE: 'SLAVENDORPERFORMANCE',
   MAINTENANCE_STATUS_REPORT: 'MAINTENANCESTATUSREPORT',
+  WORKFORCE_REPORT: 'WORKFORCEREPORT',
 };
 
 /**
@@ -86,6 +87,7 @@ export const getAppIdForReport = (reportType) => {
     'consolidated-asset-register': REPORTS_APP_IDS.CONSOLIDATED_ASSET_REPORT,
     'sla-vendor-performance': REPORTS_APP_IDS.SLA_VENDOR_PERFORMANCE,
     'maintenance-status': REPORTS_APP_IDS.MAINTENANCE_STATUS_REPORT,
+    workforce: REPORTS_APP_IDS.WORKFORCE_REPORT,
   };
   
   return reportTypeMap[reportType] || null;

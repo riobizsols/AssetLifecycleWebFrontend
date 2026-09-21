@@ -35,7 +35,11 @@ export const FIELD_GROUPS = [
     fields: [
       { key: 'brDate', label: 'Breakdown date', defaultOn: true },
       { key: 'brIssue', label: 'Issue', defaultOn: true },
-      { key: 'brReason', label: 'Reason', defaultOn: true },
+      { key: 'brReason', label: 'Cause (reason for failure)', defaultOn: true },
+      { key: 'brAffectedDept', label: 'Affected department', defaultOn: true },
+      { key: 'brExpectedDowntime', label: 'Expected downtime (h)', defaultOn: true },
+      { key: 'brActualDowntime', label: 'Actual downtime (h)', defaultOn: true },
+      { key: 'brRepeat', label: 'Repeat problem', defaultOn: true },
       { key: 'brStatus', label: 'Status', defaultOn: true },
       { key: 'brReportedBy', label: 'Reported by', defaultOn: false },
     ],

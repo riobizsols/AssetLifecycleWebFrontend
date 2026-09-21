@@ -37,6 +37,16 @@ export const auditReportService = {
     const res = await API.post('/audit-report/view', payload);
     return res.data?.data;
   },
+
+  getPmCompliance: async (payload) => {
+    const res = await API.post('/audit-report/pm-compliance', payload);
+    return res.data?.data;
+  },
+
+  getCalibrationDetail: async (payload) => {
+    const res = await API.post('/audit-report/calibration-detail', payload);
+    return res.data?.data;
+  },
 };
 
 export default auditReportService;

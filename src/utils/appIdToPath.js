@@ -46,6 +46,7 @@ export const APP_ID_TO_PATH = {
   CONSOLIDATEDASSETREPORT: '/reports/consolidated-asset-register',
   SLAVENDORPERFORMANCE: '/reports/sla-vendor-performance',
   MAINTENANCESTATUSREPORT: '/reports/maintenance-status',
+  WORKFORCEREPORT: '/reports/workforce',
   ADMINSETTINGS: '/admin-settings-view',
   MASTERDATA: '/master-data/vendors',
   ORGANIZATIONS: '/master-data/organizations',

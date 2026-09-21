@@ -120,6 +120,7 @@ import AuditReports from "../pages/reports/AuditReports";
 import ConsolidatedAssetRegister from "../pages/reports/ConsolidatedAssetRegister";
 import SlaVendorPerformance from "../pages/reports/SlaVendorPerformance";
 import MaintenanceStatusReport from "../pages/reports/MaintenanceStatusReport";
+import WorkforceReport from "../pages/reports/WorkforceReport";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
@@ -683,6 +684,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="MAINTENANCESTATUSREPORT">
               <MainLayout>
                 <MaintenanceStatusReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/workforce"
+          element={
+            <ProtectedRoute requiredAppId="WORKFORCEREPORT">
+              <MainLayout>
+                <WorkforceReport />
               </MainLayout>
             </ProtectedRoute>
           }

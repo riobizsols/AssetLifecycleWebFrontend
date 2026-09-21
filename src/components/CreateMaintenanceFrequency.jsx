@@ -194,7 +194,8 @@ const CreateMaintenanceFrequency = () => {
       if (isRecurring) {
         requestData.frequency = parseFloat(frequency);
         requestData.uom = uom;
-        requestData.text = text.trim() || `${frequency} ${uom}`;
+        const uomLabel = uomOptions.find((o) => String(o.id) === String(uom))?.text || uom;
+        requestData.text = text.trim() || `${frequency} ${uomLabel}`;
       }
 
       console.log('Submitting maintenance frequency with data:', requestData);

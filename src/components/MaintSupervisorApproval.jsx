@@ -374,15 +374,27 @@ export default function MaintSupervisorApproval() {
   const fetchChecklist = async () => {
     setLoadingChecklist(true);
     try {
-      // Get checklist for the specific asset type
-      if (maintenanceData?.asset_type_id) {
-        const apiUrl = `/checklist/asset-type/${maintenanceData.asset_type_id}`;
-        // Pass context so logs go to SUPERVISORAPPROVAL CSV
-        const res = await API.get(apiUrl, {
-          params: { context: 'SUPERVISORAPPROVAL' }
+      // Scope to this schedule's frequency — asset-type-only returns every freq's items.
+      if (maintenanceData?.asset_id && maintenanceData?.wfamsh_id) {
+        const res = await API.get(`/checklist/asset/${maintenanceData.asset_id}`, {
+          params: {
+            context: 'SUPERVISORAPPROVAL',
+            wfamshId: maintenanceData.wfamsh_id,
+          },
         });
-        
-        // The API returns { success: true, data: [...], count: 3 }
+        if (res.data && res.data.success && Array.isArray(res.data.data)) {
+          setChecklist(res.data.data);
+        } else {
+          setChecklist([]);
+        }
+      } else if (maintenanceData?.asset_type_id) {
+        const params = { context: 'SUPERVISORAPPROVAL' };
+        if (maintenanceData.at_main_freq_id) {
+          params.at_main_freq_id = maintenanceData.at_main_freq_id;
+        }
+        const res = await API.get(`/checklist/asset-type/${maintenanceData.asset_type_id}`, {
+          params,
+        });
         if (res.data && res.data.success && Array.isArray(res.data.data)) {
           setChecklist(res.data.data);
         } else {
@@ -900,28 +912,42 @@ export default function MaintSupervisorApproval() {
       }
       
       if (action === 'view') {
-        // Use maintenance document API if amd_id exists, otherwise use asset document API
-        const endpoint = doc.amd_id 
-          ? `/asset-maint-docs/${docId}/download?mode=view`
-          : `/asset-docs/${docId}/download-url?mode=view`;
-        const res = await API.get(endpoint);
-        console.log('View response:', res.data);
-        if (res.data && res.data.url) {
-          window.open(res.data.url, '_blank');
+        if (doc.amd_id) {
+          const fileRes = await API.get(`/asset-maint-docs/${docId}/file?mode=view`, {
+            responseType: 'blob',
+          });
+          if (fileRes.data?.type && String(fileRes.data.type).includes('json')) {
+            const text = await fileRes.data.text();
+            const parsed = JSON.parse(text);
+            throw new Error(parsed.message || parsed.error || 'Failed to open document');
+          }
+          window.open(URL.createObjectURL(fileRes.data), '_blank');
         } else {
-          throw new Error('No URL returned from API');
+          const res = await API.get(`/asset-docs/${docId}/download-url?mode=view`);
+          if (res.data && res.data.url) {
+            window.open(res.data.url, '_blank');
+          } else {
+            throw new Error('No URL returned from API');
+          }
         }
       } else if (action === 'download') {
-        // Use maintenance document API if amd_id exists, otherwise use asset document API
-        const endpoint = doc.amd_id 
-          ? `/asset-maint-docs/${docId}/download?mode=download`
-          : `/asset-docs/${docId}/download-url?mode=download`;
-        const res = await API.get(endpoint);
-        console.log('Download response:', res.data);
-        if (res.data && res.data.url) {
-          window.open(res.data.url, '_blank');
+        if (doc.amd_id) {
+          const fileRes = await API.get(`/asset-maint-docs/${docId}/file?mode=download`, {
+            responseType: 'blob',
+          });
+          if (fileRes.data?.type && String(fileRes.data.type).includes('json')) {
+            const text = await fileRes.data.text();
+            const parsed = JSON.parse(text);
+            throw new Error(parsed.message || parsed.error || 'Failed to download document');
+          }
+          window.open(URL.createObjectURL(fileRes.data), '_blank');
         } else {
-          throw new Error('No URL returned from API');
+          const res = await API.get(`/asset-docs/${docId}/download-url?mode=download`);
+          if (res.data && res.data.url) {
+            window.open(res.data.url, '_blank');
+          } else {
+            throw new Error('No URL returned from API');
+          }
         }
       } else if (action === 'archive') {
         // Use maintenance document API if amd_id exists, otherwise use asset document API

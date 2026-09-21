@@ -199,6 +199,11 @@ export default function Header() {
       subtitle:
         "Due, overdue, completed maintenance and expiry for facility asset types.",
     },
+    "/reports/workforce": {
+      title: "Workforce",
+      subtitle:
+        "Engineer and technician assignments, closures, backlog, SLA performance, workload and productivity.",
+    },
     "/reports/reopened-breakdowns": {
       title: t("reports.reopenedBreakdowns.title"),
       subtitle: "",
