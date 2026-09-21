@@ -4,6 +4,8 @@ import { ExternalLink, Loader2 } from 'lucide-react';
 import API from '../../../lib/axios';
 import { ASSET_TABS } from './constants';
 import { formatDate, MiniTable, StatusPill } from './utils';
+import AssetCoverageTab from './AssetCoverageTab';
+import AssetVendorRenewalTab from './AssetVendorRenewalTab';
 
 function fileLabelFromPath(path) {
   if (!path) return 'View document';
@@ -235,6 +237,14 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
             ]}
             rows={asset.history.purchaseOrders}
           />
+        )}
+
+        {activeTab === 'amcCmcWarranty' && (
+          <AssetCoverageTab assetId={asset.asset_id} />
+        )}
+
+        {activeTab === 'vendorRenewal' && (
+          <AssetVendorRenewalTab assetId={asset.asset_id} />
         )}
       </div>
     </div>

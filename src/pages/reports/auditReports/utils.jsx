@@ -18,12 +18,12 @@ export function formatDate(value) {
 export function StatusPill({ value }) {
   const raw = String(value || '').toLowerCase();
   let tone = 'bg-slate-100 text-slate-700';
-  if (['active', 'valid', 'completed', 'co', 'ap'].some((x) => raw.includes(x))) {
+  if (['inactive', 'expired', 'scrap', 'cancel'].some((x) => raw.includes(x))) {
+    tone = 'bg-rose-50 text-rose-800';
+  } else if (['active', 'valid', 'completed', 'co', 'ap'].some((x) => raw.includes(x))) {
     tone = 'bg-emerald-50 text-emerald-800';
   } else if (['expir', 'attention', 'pending', 'ip', 'in'].some((x) => raw.includes(x))) {
     tone = 'bg-amber-50 text-amber-800';
-  } else if (['inactive', 'expired', 'scrap', 'cancel'].some((x) => raw.includes(x))) {
-    tone = 'bg-rose-50 text-rose-800';
   }
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tone}`}>
