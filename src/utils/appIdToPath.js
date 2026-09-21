@@ -44,6 +44,7 @@ export const APP_ID_TO_PATH = {
   QAAUDITREPORT: '/reports/qa-audit-report',
   AUDITREPORT: '/reports/audit-reports',
   CONSOLIDATEDASSETREPORT: '/reports/consolidated-asset-register',
+  MAINTENANCESTATUSREPORT: '/reports/maintenance-status',
   ADMINSETTINGS: '/admin-settings-view',
   MASTERDATA: '/master-data/vendors',
   ORGANIZATIONS: '/master-data/organizations',

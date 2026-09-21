@@ -172,6 +172,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "SLAREPORT",
     "AUDITREPORT",
     "CONSOLIDATEDASSETREPORT",
+    "MAINTENANCESTATUSREPORT",
   ],
 };
 
@@ -1510,6 +1511,7 @@ const DatabaseSidebar = () => {
     QAAUDITREPORT: "/reports/qa-audit-report",  //done
     AUDITREPORT: "/reports/audit-reports",
     CONSOLIDATEDASSETREPORT: "/reports/consolidated-asset-register",
+    MAINTENANCESTATUSREPORT: "/reports/maintenance-status",
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
     MASTERDATA: "/master-data/vendors",  //done
     ORGANIZATIONS: "/master-data/organizations",  //done
@@ -1682,6 +1684,7 @@ const DatabaseSidebar = () => {
       QAAUDITREPORT: FileText,
       AUDITREPORT: FileText,
       CONSOLIDATEDASSETREPORT: FileText,
+      MAINTENANCESTATUSREPORT: Wrench,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
       ORGANIZATIONS: Building,
