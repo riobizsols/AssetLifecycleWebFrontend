@@ -74,6 +74,7 @@ import {
   History,
   DollarSign,
   GitBranch,
+  Link2,
   AlertTriangle,
   Tag,
   Gauge,
@@ -148,6 +149,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "ASSETTYPES",
     "BRANCHES",
     "BRANCHDEPTMAPPING",
+    "AUDITATMAPPING",
     "DEPARTMENTS",
     "DEPARTMENTSADMIN",
     "DEPARTMENTSASSET",
@@ -172,6 +174,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "SLAREPORT",
     "AUDITREPORT",
     "CONSOLIDATEDASSETREPORT",
+    "SLAVENDORPERFORMANCE",
   ],
 };
 
@@ -1510,6 +1513,7 @@ const DatabaseSidebar = () => {
     QAAUDITREPORT: "/reports/qa-audit-report",  //done
     AUDITREPORT: "/reports/audit-reports",
     CONSOLIDATEDASSETREPORT: "/reports/consolidated-asset-register",
+    SLAVENDORPERFORMANCE: "/reports/sla-vendor-performance",
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
     MASTERDATA: "/master-data/vendors",  //done
     ORGANIZATIONS: "/master-data/organizations",  //done
@@ -1519,6 +1523,7 @@ const DatabaseSidebar = () => {
     DEPARTMENTSASSET: "/master-data/departments-asset",  //not required
     BRANCHES: "/master-data/branches", //done
     BRANCHDEPTMAPPING: "/master-data/branch-dept-mapping",
+    AUDITATMAPPING: "/master-data/audit-type-mapping",
     PRODSERV: "/master-data/prod-serv",  //no required
     ROLES: "/master-data/uploads",
     USERS: "/master-data/user-roles",
@@ -1682,6 +1687,7 @@ const DatabaseSidebar = () => {
       QAAUDITREPORT: FileText,
       AUDITREPORT: FileText,
       CONSOLIDATEDASSETREPORT: FileText,
+      SLAVENDORPERFORMANCE: FileText,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
       ORGANIZATIONS: Building,
@@ -1691,6 +1697,7 @@ const DatabaseSidebar = () => {
       DEPARTMENTSASSET: Package,
       BRANCHES: Home,
       BRANCHDEPTMAPPING: GitBranch,
+      AUDITATMAPPING: Link2,
       VENDORS: Truck,
       SPAREPARTS: Package,
       SPAREPARTSCONFIG: Package,

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Eye, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Eye, Loader2, Link2 } from 'lucide-react';
 import { DropdownMultiSelect } from '../../../components/reportModels/ReportComponents';
 import { CURRENT_YEAR } from './constants';
 
@@ -99,7 +100,14 @@ export default function ConfigurePanel({
               <label className="block text-sm font-medium text-slate-700">Asset types</label>
               <p className="text-xs text-slate-500 mt-0.5">
                 Only asset types mapped to this audit type are listed. History is pulled from those
-                assets for the selected period.
+                assets for the selected period.{' '}
+                <Link
+                  to="/master-data/audit-type-mapping"
+                  className="inline-flex items-center gap-1 font-medium text-[#143d65] hover:underline"
+                >
+                  <Link2 className="w-3 h-3" />
+                  Manage mappings
+                </Link>
               </p>
             </div>
             <div className="flex gap-2">

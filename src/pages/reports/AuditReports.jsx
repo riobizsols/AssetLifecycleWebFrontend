@@ -13,6 +13,7 @@ import { buildHistoryByAsset, enrichAssets } from './auditReports/utils';
 import { useAuditReportPdf, pdfNeedsDocUrlPrep } from './auditReports/useAuditReportPdf';
 import ConfigurePanel from './auditReports/ConfigurePanel';
 import SummaryStrip from './auditReports/SummaryStrip';
+import AuditCharts from './auditReports/AuditCharts';
 import AssetResultsTable from './auditReports/AssetResultsTable';
 import FieldsDrawer from './auditReports/FieldsDrawer';
 import ExportDialog from './auditReports/ExportDialog';
@@ -306,6 +307,7 @@ export default function AuditReports() {
             </div>
 
             <SummaryStrip summary={summary} />
+            <AuditCharts assets={enrichedAssets} report={report} />
             <AssetResultsTable
               report={report}
               filteredAssets={filteredAssets}

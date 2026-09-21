@@ -365,13 +365,13 @@ export function buildAuditReportCharts({ report, enrichedAssets }) {
     if (img) charts.push({ key: 'byStatus', image: img, aspect: 1600 / 780 });
   }
 
-  const byLocation = countBy(assets, (a) => a.branch_name || 'No location').slice(0, 10);
+  const byLocation = countBy(assets, (a) => a.branch_name || 'No branch').slice(0, 10);
   if (byLocation.length && assetCount > 0) {
     const img = renderChartImage({
       type: 'bar',
       labels: byLocation.map((d) => d.label),
       values: byLocation.map((d) => d.value),
-      title: 'Assets by location',
+      title: 'Assets by branch',
       subtitle: `${assetCount} assets`,
       horizontal: true,
       height: Math.max(560, 180 + byLocation.length * 56),

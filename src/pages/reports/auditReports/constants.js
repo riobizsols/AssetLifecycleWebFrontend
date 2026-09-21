@@ -7,8 +7,8 @@ export const FIELD_GROUPS = [
     fields: [
       { key: 'asset', label: 'Asset', defaultOn: true },
       { key: 'assetType', label: 'Asset type', defaultOn: true },
-      { key: 'location', label: 'Location', defaultOn: true },
-      { key: 'department', label: 'Department', defaultOn: false },
+      { key: 'location', label: 'Branch', defaultOn: true },
+      { key: 'department', label: 'Department', defaultOn: true },
       { key: 'serialNumber', label: 'Serial number', defaultOn: true },
       { key: 'purchaseDate', label: 'Purchase date', defaultOn: true },
       { key: 'purchaseCost', label: 'Purchase cost', defaultOn: false },

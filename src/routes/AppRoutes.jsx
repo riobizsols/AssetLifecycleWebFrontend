@@ -22,6 +22,7 @@ import CreateUser from "../pages/masterData/CreateUser";
 import Departments from "../pages/masterData/Departments";
 import Branches from "../pages/masterData/Branches";
 import BranchDeptMapping from "../pages/masterData/BranchDeptMapping";
+import AuditTypeAssetTypeMapping from "../pages/masterData/AuditTypeAssetTypeMapping";
 import AddBranch from "../components/AddBranch";
 import DepartmentsAdmin from "../pages/masterData/DepartmentsAdmin";
 import DepartmentsAsset from "../pages/masterData/DepartmentsAsset";
@@ -117,6 +118,7 @@ import SLAReport from "../pages/reports/SLAReport";
 import QAAuditReport from "../pages/reports/QAAuditReport";
 import AuditReports from "../pages/reports/AuditReports";
 import ConsolidatedAssetRegister from "../pages/reports/ConsolidatedAssetRegister";
+import SlaVendorPerformance from "../pages/reports/SlaVendorPerformance";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
@@ -664,6 +666,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/reports/sla-vendor-performance"
+          element={
+            <ProtectedRoute requiredAppId="SLAVENDORPERFORMANCE">
+              <MainLayout>
+                <SlaVendorPerformance />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/breakdown-selection"
           element={
             <ProtectedRoute requiredAppId="REPORTBREAKDOWN">
@@ -1105,6 +1118,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="BRANCHDEPTMAPPING">
               <MainLayout>
                 <BranchDeptMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/audit-type-mapping"
+          element={
+            <ProtectedRoute requiredAppId="AUDITATMAPPING">
+              <MainLayout>
+                <AuditTypeAssetTypeMapping />
               </MainLayout>
             </ProtectedRoute>
           }

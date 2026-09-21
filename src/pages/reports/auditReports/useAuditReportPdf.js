@@ -151,7 +151,7 @@ export function useAuditReportPdf({ report, enrichedAssets, fieldSelection }) {
     const assetCols = [];
     if (on.asset) assetCols.push({ key: 'asset_id', label: 'Asset' });
     if (on.assetType) assetCols.push({ key: 'asset_type_name', label: 'Asset type' });
-    if (on.location) assetCols.push({ key: 'branch_name', label: 'Location' });
+    if (on.location) assetCols.push({ key: 'branch_name', label: 'Branch' });
     if (on.department) assetCols.push({ key: 'department_name', label: 'Department' });
     if (on.serialNumber) assetCols.push({ key: 'serial_number', label: 'Serial number' });
     if (on.purchaseDate) {
