@@ -12,11 +12,7 @@ export const useInspectionSyncStore = create((set, get) => ({
   pendingCount: 0,
   fromCache: false,
 
-  setOnline: () => {
-    const { status } = get();
-    if (status === 'syncing') return;
-    set({ status: 'online', lastError: null });
-  },
+  setOnline: () => set({ status: 'online', lastError: null }),
 
   setOffline: () => set({ status: 'offline' }),
 

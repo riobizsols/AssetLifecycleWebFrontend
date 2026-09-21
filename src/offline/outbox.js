@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import API from '../lib/axios';
-import { db } from './db';
+import { db, ensureInspectionDbOpen } from './db';
 import {
   clearPendingFlags,
   getSchedule,
@@ -24,6 +24,7 @@ const STATUS = {
 let draining = false;
 
 export async function refreshPendingCount() {
+  await ensureInspectionDbOpen();
   const count = await db.outbox
     .where('status')
     .anyOf(STATUS.PENDING, STATUS.FAILED, STATUS.SYNCING)
@@ -32,11 +33,32 @@ export async function refreshPendingCount() {
   return count;
 }
 
+/** Drop older pending/failed items of the same type for this schedule (keep latest save). */
+async function replacePendingOfType(ais_id, type) {
+  const key = String(ais_id);
+  const existing = await db.outbox
+    .where('ais_id')
+    .equals(key)
+    .filter(
+      (r) =>
+        r.type === type &&
+        !r.permanent &&
+        (r.status === STATUS.PENDING ||
+          r.status === STATUS.FAILED ||
+          r.status === STATUS.SYNCING)
+    )
+    .toArray();
+  await Promise.all(existing.map((r) => db.outbox.delete(r.id)));
+}
+
 /**
- * Enqueue a mutation. Returns the outbox row id.
+ * Enqueue a mutation. Coalesces pending items of the same type per ais_id.
  * @param {{ type: string, ais_id: string|number, payload: object }} opts
  */
 export async function enqueue({ type, ais_id, payload }) {
+  await ensureInspectionDbOpen();
+  await replacePendingOfType(ais_id, type);
+
   const idempotency_key = uuidv4();
   const id = await db.outbox.add({
     idempotency_key,
@@ -55,8 +77,8 @@ export async function enqueue({ type, ais_id, payload }) {
 /** FIFO pending items for one ais_id (answers before complete by created_at). */
 async function itemsForAis(aisId, { includeFailed = false } = {}) {
   const allowed = includeFailed
-    ? [STATUS.PENDING, STATUS.FAILED]
-    : [STATUS.PENDING];
+    ? [STATUS.PENDING, STATUS.FAILED, STATUS.SYNCING]
+    : [STATUS.PENDING, STATUS.SYNCING];
   const rows = await db.outbox
     .where('ais_id')
     .equals(String(aisId))
@@ -67,8 +89,8 @@ async function itemsForAis(aisId, { includeFailed = false } = {}) {
 
 async function distinctPendingAisIds({ includeFailed = false } = {}) {
   const allowed = includeFailed
-    ? [STATUS.PENDING, STATUS.FAILED]
-    : [STATUS.PENDING];
+    ? [STATUS.PENDING, STATUS.FAILED, STATUS.SYNCING]
+    : [STATUS.PENDING, STATUS.SYNCING];
   const rows = await db.outbox
     .filter((r) => allowed.includes(r.status) && !r.permanent)
     .toArray();
@@ -156,6 +178,17 @@ async function markFailed(item, error, { permanent = false } = {}) {
   });
 }
 
+/** Recover items left in SYNCING after a crashed/interrupted drain. */
+async function resetStuckSyncing() {
+  await ensureInspectionDbOpen();
+  const stuck = await db.outbox.where('status').equals(STATUS.SYNCING).toArray();
+  await Promise.all(
+    stuck.map((r) =>
+      db.outbox.update(r.id, { status: STATUS.PENDING, error: null })
+    )
+  );
+}
+
 /**
  * Drain outbox when online. FIFO per ais_id.
  * Does not invent login offline — requires token.
@@ -176,6 +209,8 @@ export async function drainOutbox({ retryFailed = false } = {}) {
     return { ok: false, reason: 'no_token' };
   }
 
+  await resetStuckSyncing();
+
   const aisIds = await distinctPendingAisIds({ includeFailed: retryFailed });
   if (!aisIds.length) {
     await refreshPendingCount();
@@ -194,15 +229,9 @@ export async function drainOutbox({ retryFailed = false } = {}) {
     for (const aisId of aisIds) {
       const items = await itemsForAis(aisId, { includeFailed: retryFailed });
       for (const item of items) {
-        // Drop complete if schedule already terminal on server cache / local
-        if (item.type === OUTBOX_TYPES.COMPLETE) {
-          const local = await getSchedule(aisId);
-          if (local?.status === 'CO' || local?.status === 'CA') {
-            await markDone(item);
-            drained += 1;
-            continue;
-          }
-        }
+        // Do NOT skip COMPLETE based on local IndexedDB status.
+        // Offline/online save patches local to CO before drain; skipping here
+        // left the server stuck at IN while answers still synced.
 
         await db.outbox.update(item.id, { status: STATUS.SYNCING });
 

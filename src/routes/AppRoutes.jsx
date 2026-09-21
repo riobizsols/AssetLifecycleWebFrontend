@@ -115,6 +115,9 @@ import BulkSerialNumberPrint from "../pages/reports/BulkSerialNumberPrint";
 import BulkUpload from "../pages/masterData/BulkUpload";
 import SLAReport from "../pages/reports/SLAReport";
 import QAAuditReport from "../pages/reports/QAAuditReport";
+import AuditReports from "../pages/reports/AuditReports";
+import ConsolidatedAssetRegister from "../pages/reports/ConsolidatedAssetRegister";
+import WorkforceReport from "../pages/reports/WorkforceReport";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
@@ -634,6 +637,39 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="QAAUDITREPORT">
               <MainLayout>
                 <QAAuditReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/audit-reports"
+          element={
+            <ProtectedRoute requiredAppId="AUDITREPORT">
+              <MainLayout>
+                <AuditReports />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/consolidated-asset-register"
+          element={
+            <ProtectedRoute requiredAppId="CONSOLIDATEDASSETREPORT">
+              <MainLayout>
+                <ConsolidatedAssetRegister />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/workforce"
+          element={
+            <ProtectedRoute requiredAppId="WORKFORCEREPORT">
+              <MainLayout>
+                <WorkforceReport />
               </MainLayout>
             </ProtectedRoute>
           }

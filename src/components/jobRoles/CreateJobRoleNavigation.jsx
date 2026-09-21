@@ -385,7 +385,7 @@ const CreateJobRoleNavigation = ({
 
       await API.put(`/job-role-navigation/${navIdToUpdate}`, {
         ...formData,
-        int_status: formData.int_status ? 1 : 0,
+        int_status: (formData.int_status === 1 || formData.int_status === '1' || formData.int_status === true || formData.int_status === 'Active') ? 1 : 0,
       });
       showBackendTextToast({ toast, tmdId: 'TMD_NAVIGATION_UPDATED_SUCCESSFULLY_3E75DCA8', fallbackText: 'Navigation updated successfully', type: 'success' });
       finishEditSave();

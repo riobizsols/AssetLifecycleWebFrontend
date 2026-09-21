@@ -284,6 +284,7 @@ const SpareParts = () => {
       try {
         const params = { brand_id: form.brand_id };
         if (form.spc_id) params.spc_id = form.spc_id;
+        if (form.vendor_id) params.vendor_id = form.vendor_id;
         const res = await API.get('/spare-parts/lot-options/models', { params });
         const rows = Array.isArray(res.data?.data)
           ? res.data.data
@@ -313,7 +314,7 @@ const SpareParts = () => {
     };
 
     fetchModels();
-  }, [form.spc_id, form.brand_id]);
+  }, [form.spc_id, form.brand_id, form.vendor_id]);
 
   useEffect(() => {
     if (loadingCategories || !form.spc_id) return;

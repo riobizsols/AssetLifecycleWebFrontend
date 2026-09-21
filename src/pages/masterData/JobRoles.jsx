@@ -221,7 +221,7 @@ const JobRoles = () => {
         await API.put(`/job-roles/${roleFormData.job_role_id}`, {
           text: roleFormData.text,
           job_function: roleFormData.job_function,
-          int_status: roleFormData.int_status ? 1 : 0,
+          int_status: (roleFormData.int_status === 1 || roleFormData.int_status === '1' || roleFormData.int_status === true || roleFormData.int_status === 'Active') ? 1 : 0,
           notif_warranty: !!roleFormData.notif_warranty,
           notif_scrap: !!roleFormData.notif_scrap
         });

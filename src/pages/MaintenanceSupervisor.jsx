@@ -15,6 +15,7 @@ import {
   useMaintenanceSupervisorStore,
 } from "../store/useMaintenanceSupervisorStore";
 import { applyListFilterChange } from "../utils/listFilterState";
+import MaintenanceSyncBanner from "../components/MaintenanceSyncBanner";
 
 const MaintenanceSupervisor = () => {
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ const MaintenanceSupervisor = () => {
 
   const schedules = useMaintenanceSupervisorStore((s) => s.schedules);
   const listLoading = useMaintenanceSupervisorStore((s) => s.listLoading);
+  const offlineAuthBlocked = useMaintenanceSupervisorStore((s) => s.offlineAuthBlocked);
   const fetchSchedules = useMaintenanceSupervisorStore((s) => s.fetchSchedules);
 
   const data = useMemo(
@@ -72,7 +74,8 @@ const MaintenanceSupervisor = () => {
   }, [fetchSchedules]);
 
   useRevalidateOnFocus(() => {
-    fetchSchedules({ revalidate: true });
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    fetchSchedules({ revalidate: true }).catch(() => {});
   });
 
   const handleFilterChange = (columnName, value) => {
@@ -209,12 +212,19 @@ const MaintenanceSupervisor = () => {
   const handleRowClick = (row) => {
     useMaintenanceSupervisorStore
       .getState()
-      .fetchScheduleDetail(row.ams_id, { revalidate: true });
+      .fetchScheduleDetail(row.ams_id, { revalidate: true })
+      .catch(() => {});
     navigate(`/maintenance-list-detail/${row.ams_id}`);
   };
 
   return (
     <div className="p-4">
+      <MaintenanceSyncBanner />
+      {offlineAuthBlocked && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          You are offline and not signed in. Connect and log in to load maintenance. Offline login is not available.
+        </div>
+      )}
       <ContentBox
         filters={filters}
         dateFilterField="raw_act_maint_st_date"
@@ -227,7 +237,17 @@ const MaintenanceSupervisor = () => {
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
         showAddButton={true}
-        onAdd={() => navigate('/maintenance-list/create')}
+        onAdd={() => {
+          if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            showBackendTextToast({
+              toast,
+              fallbackText: 'Create maintenance requires an online connection.',
+              type: 'error',
+            });
+            return;
+          }
+          navigate('/maintenance-list/create');
+        }}
         showActions={false}
       >
         {({ visibleColumns, showActions }) => {

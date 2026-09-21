@@ -13,7 +13,6 @@ import { useSparePartApprovalStore } from '../../store/useSparePartApprovalStore
 export default function SparePartRequestScreen({
   amsId,
   assetTypeId,
-  checklistSpareCategories = [],
   onCancel,
   onSubmitted,
   embedded = false,
@@ -26,84 +25,77 @@ export default function SparePartRequestScreen({
   const [availableQty, setAvailableQty] = useState({});
 
   useEffect(() => {
+    if (!assetTypeId && !amsId) {
+      setCategories([]);
+      setSelected({});
+      return undefined;
+    }
+
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        let requiredRows = [];
-
-        // Always resolve checklist-required categories from the AMS when available
-        if (amsId) {
-          try {
-            const res = await API.get(
-              `/spare-parts/maintenance-list/${amsId}/required-categories`
-            );
-            requiredRows = (res.data?.data || [])
-              .filter((row) => row?.spc_id)
-              .map((row) => ({
-                spc_id: row.spc_id,
-                category_name: row.category_name || row.text || row.spc_id,
-                uom: row.uom,
-                checklist_item: row.checklist_item,
-              }));
-          } catch (err) {
-            console.warn('Failed to load checklist spare categories:', err);
-          }
-        }
-
-        // Fallback: prop from detail
-        if (!requiredRows.length && Array.isArray(checklistSpareCategories) && checklistSpareCategories.length) {
-          requiredRows = checklistSpareCategories
-            .filter((row) => row?.spc_id)
-            .map((row) => ({
-              spc_id: row.spc_id,
-              category_name: row.category_name || row.text || row.spc_id,
-              uom: row.uom,
-              checklist_item: row.checklist_item,
-            }));
-        }
-
-        // Full category list from asset-type mappings when available
-        let assetTypeCats = [];
-        if (assetTypeId) {
-          try {
-            const res = await API.get(
-              `/spare-parts/category-mappings/by-asset-type/${assetTypeId}`
-            );
-            assetTypeCats = res.data?.data || [];
-          } catch (err) {
-            console.warn('Failed to load asset-type spare categories:', err);
-          }
-        }
-
+        const [catRes, requiredRes] = await Promise.all([
+          assetTypeId
+            ? API.get(`/spare-parts/category-mappings/by-asset-type/${assetTypeId}`)
+            : Promise.resolve({ data: { data: [] } }),
+          amsId
+            ? API.get(`/spare-parts/maintenance-list/${amsId}/required-categories`).catch(
+                () => ({ data: { data: [] } })
+              )
+            : Promise.resolve({ data: { data: [] } }),
+        ]);
         if (cancelled) return;
 
+        const cats = catRes.data?.data || [];
+        const requiredRows = requiredRes.data?.data || [];
         const requiredIds = new Set(requiredRows.map((row) => row.spc_id).filter(Boolean));
 
-        if (assetTypeCats.length) {
-          const byId = new Map();
-          assetTypeCats.forEach((row) => {
-            if (row?.spc_id && !byId.has(row.spc_id)) byId.set(row.spc_id, row);
-          });
-          const unique = [...byId.values()];
-          setCategories(unique);
-          // Auto-select required categories that appear in the full list
+        if (cats.length) {
+          setCategories(cats);
           const initialSelected = {};
           requiredIds.forEach((spc_id) => {
-            if (unique.some((cat) => cat.spc_id === spc_id)) {
+            if (cats.some((cat) => cat.spc_id === spc_id)) {
               initialSelected[spc_id] = '1';
             }
           });
           setSelected(initialSelected);
+          Object.keys(initialSelected).forEach((spc_id) => {
+            API.get(`/spare-parts/available-quantity/${spc_id}`)
+              .then((res) => {
+                if (cancelled) return;
+                const available = Number(res.data?.data?.available_qty);
+                if (Number.isFinite(available) && available >= 0) {
+                  setAvailableQty((prev) => ({ ...prev, [spc_id]: available }));
+                }
+              })
+              .catch(() => {});
+          });
         } else {
-          // No asset-type cats: show required rows and auto-select all
+          // No asset-type mappings: fall back to checklist-required rows
           const byId = new Map();
           requiredRows.forEach((row) => {
             if (row?.spc_id && !byId.has(row.spc_id)) byId.set(row.spc_id, row);
           });
-          const unique = [...byId.values()];
+          const unique = [...byId.values()].map((row) => ({
+            spc_id: row.spc_id,
+            category_name: row.category_name || row.text || row.spc_id,
+            uom: row.uom,
+            checklist_item: row.checklist_item,
+          }));
           setCategories(unique);
           setSelected(Object.fromEntries(unique.map((row) => [row.spc_id, '1'])));
+          unique.forEach((row) => {
+            API.get(`/spare-parts/available-quantity/${row.spc_id}`)
+              .then((res) => {
+                if (cancelled) return;
+                const available = Number(res.data?.data?.available_qty);
+                if (Number.isFinite(available) && available >= 0) {
+                  setAvailableQty((prev) => ({ ...prev, [row.spc_id]: available }));
+                }
+              })
+              .catch(() => {});
+          });
         }
         setAvailableQty({});
       } catch (err) {
@@ -116,10 +108,24 @@ export default function SparePartRequestScreen({
         if (!cancelled) setLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [amsId, assetTypeId, checklistSpareCategories, t]);
+  }, [assetTypeId, amsId, t]);
+
+  const prefetchAvailableQty = async (spc_id) => {
+    if (!spc_id || availableQty[spc_id] !== undefined) return;
+    try {
+      const res = await API.get(`/spare-parts/available-quantity/${spc_id}`);
+      const available = Number(res.data?.data?.available_qty);
+      if (Number.isFinite(available) && available >= 0) {
+        setAvailableQty((prev) => ({ ...prev, [spc_id]: available }));
+      }
+    } catch {
+      // Soft hint only — request submit still relies on backend validation.
+    }
+  };
 
   const toggleCategory = (spc_id) => {
     setSelected((prev) => {
@@ -128,6 +134,7 @@ export default function SparePartRequestScreen({
         delete next[spc_id];
       } else {
         next[spc_id] = '1';
+        prefetchAvailableQty(spc_id);
       }
       return next;
     });
@@ -147,22 +154,24 @@ export default function SparePartRequestScreen({
       return;
     }
 
+    // Soft client-side stock hint only. Never treat qty-check network errors as
+    // "0 available" — that falsely fails requests; backend is the source of truth.
     for (const item of items) {
       let available = availableQty[item.spc_id];
       if (available === undefined) {
         try {
           const res = await API.get(`/spare-parts/available-quantity/${item.spc_id}`);
           available = Number(res.data?.data?.available_qty);
-          if (!Number.isFinite(available) || available < 0) available = 0;
-          setAvailableQty((prev) => ({ ...prev, [item.spc_id]: available }));
+          if (!Number.isFinite(available) || available < 0) available = null;
+          else setAvailableQty((prev) => ({ ...prev, [item.spc_id]: available }));
         } catch {
-          available = 0;
+          available = null;
         }
       } else {
         available = Number(available);
-        if (!Number.isFinite(available) || available < 0) available = 0;
+        if (!Number.isFinite(available) || available < 0) available = null;
       }
-      if (available < item.quantity) {
+      if (available !== null && available < item.quantity) {
         toast.error(
           `Insufficient stock. Available: ${available}, Requested: ${item.quantity}`
         );
@@ -255,6 +264,17 @@ export default function SparePartRequestScreen({
                         placeholder={t('sparePartApproval.requiredQuantity')}
                         className={editableInputClass}
                       />
+                      {availableQty[cat.spc_id] !== undefined && (
+                        <p
+                          className={`mt-1 text-xs ${
+                            Number(availableQty[cat.spc_id]) > 0
+                              ? 'text-gray-500'
+                              : 'text-amber-600'
+                          }`}
+                        >
+                          Available: {availableQty[cat.spc_id]}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}

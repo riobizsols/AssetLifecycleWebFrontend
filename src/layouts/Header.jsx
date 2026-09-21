@@ -175,6 +175,21 @@ export default function Header() {
       title: t('navigation.qaAuditReport'),
       subtitle: "",
     },
+    "/reports/audit-reports": {
+      title: "Audit Reports",
+      subtitle:
+        "Generate asset audit reports based on audit standards, audit period, and asset type.",
+    },
+    "/reports/consolidated-asset-register": {
+      title: "Asset Register",
+      subtitle:
+        "Institution-wide asset count, values, distribution and category mix.",
+    },
+    "/reports/workforce": {
+      title: "Workforce",
+      subtitle:
+        "Engineer and technician assignments, closures, backlog, SLA performance, workload and productivity.",
+    },
     "/reports/reopened-breakdowns": {
       title: t("reports.reopenedBreakdowns.title"),
       subtitle: "",

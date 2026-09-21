@@ -15,6 +15,9 @@ import { generateUUID } from '../utils/uuid';
 import { useLanguage } from "../contexts/LanguageContext";
 import { useNavigation } from "../hooks/useNavigation";
 import { useAcmContextStore } from "../store/useAcmContextStore";
+import MaintenanceSyncBanner from "./MaintenanceSyncBanner";
+import { getMaintSchedule } from "../offline/maintenanceCache";
+import { useInspectionSyncStore } from "../store/useInspectionSyncStore";
 
 const PHONE_MAX_DIGITS = 10;
 
@@ -186,6 +189,7 @@ export default function MaintSupervisorApproval() {
         technician_phno: "",
         cost: "",
         hours_spent: "",
+        actual_downtime: "",
         maint_notes: "",
       };
     }
@@ -201,6 +205,7 @@ export default function MaintSupervisorApproval() {
       technician_phno: sanitizePhoneDigits(detail.technician_phno || ""),
       cost: detail.cost || "",
       hours_spent: detail.hours_spent || "",
+      actual_downtime: detail.actual_downtime != null && detail.actual_downtime !== "" ? String(detail.actual_downtime) : "",
       maint_notes: detail.maint_notes || "",
     };
   };
@@ -230,6 +235,7 @@ export default function MaintSupervisorApproval() {
   }, [id, appliedOrgId, appliedBranchId, appliedDeptId]);
 
   useRevalidateOnFocus(() => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     fetchMaintenanceData({ force: true });
   });
 
@@ -320,6 +326,30 @@ export default function MaintSupervisorApproval() {
     if (!id) return;
     if (!maintenanceData) setLoadingData(true);
     try {
+      const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!online) {
+        const token = useAuthStore.getState().token;
+        if (!token) {
+          useInspectionSyncStore.getState().setOffline();
+          throw new Error('Sign in required. Offline login is not available.');
+        }
+        const idb = await getMaintSchedule(id);
+        const cached =
+          idb ||
+          useMaintenanceSupervisorStore.getState().getCachedDetail(id);
+        if (!cached) {
+          useInspectionSyncStore.getState().setOffline();
+          throw new Error(
+            'This maintenance record is not cached offline. Open it once while online.'
+          );
+        }
+        setMaintenanceData(cached);
+        setFormData(buildFormFromDetail(cached));
+        useInspectionSyncStore.getState().setFromCache(true);
+        useInspectionSyncStore.getState().setOffline();
+        return;
+      }
+
       const data = await useMaintenanceSupervisorStore.getState().fetchScheduleDetail(id, {
         revalidate: true,
         force,
@@ -331,7 +361,8 @@ export default function MaintSupervisorApproval() {
       showBackendTextToast({
         toast,
         tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_FAILEDTOFETCHMAINTENANCED_556133F6',
-        fallbackText: t('maintenanceSupervisor.failedToFetchMaintenanceData'),
+        fallbackText:
+          err?.message || t('maintenanceSupervisor.failedToFetchMaintenanceData'),
         type: 'error',
       });
       if (!maintenanceData) setMaintenanceData(null);
@@ -343,15 +374,27 @@ export default function MaintSupervisorApproval() {
   const fetchChecklist = async () => {
     setLoadingChecklist(true);
     try {
-      // Get checklist for the specific asset type
-      if (maintenanceData?.asset_type_id) {
-        const apiUrl = `/checklist/asset-type/${maintenanceData.asset_type_id}`;
-        // Pass context so logs go to SUPERVISORAPPROVAL CSV
-        const res = await API.get(apiUrl, {
-          params: { context: 'SUPERVISORAPPROVAL' }
+      // Scope to this schedule's frequency — asset-type-only returns every freq's items.
+      if (maintenanceData?.asset_id && maintenanceData?.wfamsh_id) {
+        const res = await API.get(`/checklist/asset/${maintenanceData.asset_id}`, {
+          params: {
+            context: 'SUPERVISORAPPROVAL',
+            wfamshId: maintenanceData.wfamsh_id,
+          },
         });
-        
-        // The API returns { success: true, data: [...], count: 3 }
+        if (res.data && res.data.success && Array.isArray(res.data.data)) {
+          setChecklist(res.data.data);
+        } else {
+          setChecklist([]);
+        }
+      } else if (maintenanceData?.asset_type_id) {
+        const params = { context: 'SUPERVISORAPPROVAL' };
+        if (maintenanceData.at_main_freq_id) {
+          params.at_main_freq_id = maintenanceData.at_main_freq_id;
+        }
+        const res = await API.get(`/checklist/asset-type/${maintenanceData.asset_type_id}`, {
+          params,
+        });
         if (res.data && res.data.success && Array.isArray(res.data.data)) {
           setChecklist(res.data.data);
         } else {
@@ -869,28 +912,42 @@ export default function MaintSupervisorApproval() {
       }
       
       if (action === 'view') {
-        // Use maintenance document API if amd_id exists, otherwise use asset document API
-        const endpoint = doc.amd_id 
-          ? `/asset-maint-docs/${docId}/download?mode=view`
-          : `/asset-docs/${docId}/download-url?mode=view`;
-        const res = await API.get(endpoint);
-        console.log('View response:', res.data);
-        if (res.data && res.data.url) {
-          window.open(res.data.url, '_blank');
+        if (doc.amd_id) {
+          const fileRes = await API.get(`/asset-maint-docs/${docId}/file?mode=view`, {
+            responseType: 'blob',
+          });
+          if (fileRes.data?.type && String(fileRes.data.type).includes('json')) {
+            const text = await fileRes.data.text();
+            const parsed = JSON.parse(text);
+            throw new Error(parsed.message || parsed.error || 'Failed to open document');
+          }
+          window.open(URL.createObjectURL(fileRes.data), '_blank');
         } else {
-          throw new Error('No URL returned from API');
+          const res = await API.get(`/asset-docs/${docId}/download-url?mode=view`);
+          if (res.data && res.data.url) {
+            window.open(res.data.url, '_blank');
+          } else {
+            throw new Error('No URL returned from API');
+          }
         }
       } else if (action === 'download') {
-        // Use maintenance document API if amd_id exists, otherwise use asset document API
-        const endpoint = doc.amd_id 
-          ? `/asset-maint-docs/${docId}/download?mode=download`
-          : `/asset-docs/${docId}/download-url?mode=download`;
-        const res = await API.get(endpoint);
-        console.log('Download response:', res.data);
-        if (res.data && res.data.url) {
-          window.open(res.data.url, '_blank');
+        if (doc.amd_id) {
+          const fileRes = await API.get(`/asset-maint-docs/${docId}/file?mode=download`, {
+            responseType: 'blob',
+          });
+          if (fileRes.data?.type && String(fileRes.data.type).includes('json')) {
+            const text = await fileRes.data.text();
+            const parsed = JSON.parse(text);
+            throw new Error(parsed.message || parsed.error || 'Failed to download document');
+          }
+          window.open(URL.createObjectURL(fileRes.data), '_blank');
         } else {
-          throw new Error('No URL returned from API');
+          const res = await API.get(`/asset-docs/${docId}/download-url?mode=download`);
+          if (res.data && res.data.url) {
+            window.open(res.data.url, '_blank');
+          } else {
+            throw new Error('No URL returned from API');
+          }
         }
       } else if (action === 'archive') {
         // Use maintenance document API if amd_id exists, otherwise use asset document API
@@ -1009,6 +1066,14 @@ export default function MaintSupervisorApproval() {
   };
 
   const handleInvoiceUpload = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Uploading documents requires an online connection.',
+        type: 'error',
+      });
+      return;
+    }
     if (invoiceUploads.length === 0) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ADDATLEASTONEINVOICEFILE_134AB607', fallbackText: t('maintenanceSupervisor.addAtLeastOneInvoiceFile'), type: 'error' });
       return;
@@ -1076,6 +1141,14 @@ export default function MaintSupervisorApproval() {
   };
 
   const handleBeforeAfterUpload = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Uploading documents requires an online connection.',
+        type: 'error',
+      });
+      return;
+    }
     if (beforeAfterUploads.length === 0) {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_MAINTENANCESUPERVISOR_ADDATLEASTONEIMAGEFILE_4158D34B', fallbackText: t('maintenanceSupervisor.addAtLeastOneImageFile'), type: 'error' });
       return;
@@ -1145,6 +1218,15 @@ export default function MaintSupervisorApproval() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitAttempted(true);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Saving maintenance requires an online connection. Your view is read-only while offline.',
+        type: 'error',
+      });
+      return;
+    }
     
     // Comprehensive validation
     const errors = {};
@@ -1217,6 +1299,16 @@ export default function MaintSupervisorApproval() {
       }
     }
 
+    const actualDowntimeValue = String(formData.actual_downtime ?? '').trim();
+    if (actualDowntimeValue !== '' && (isNaN(actualDowntimeValue) || parseFloat(actualDowntimeValue) < 0)) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Please enter a valid actual downtime in hours (0 or greater)',
+        type: 'error',
+      });
+      hasErrors = true;
+    }
+
     // Time Tracking Validation
     const hoursSpent = parseFloat(formData.hours_spent || 0);
     const hoursRequired = parseFloat(maintenanceData?.hours_required || 0);
@@ -1242,7 +1334,8 @@ export default function MaintSupervisorApproval() {
       const updateData = {
         ...formData,
         cost: formData.cost ? parseFloat(formData.cost) : null,
-        hours_spent: formData.hours_spent ? parseFloat(formData.hours_spent) : null
+        hours_spent: formData.hours_spent ? parseFloat(formData.hours_spent) : null,
+        actual_downtime: actualDowntimeValue !== '' ? parseFloat(actualDowntimeValue) : null
       };
       
       // For subscription renewal, status represents payment status:
@@ -1306,6 +1399,7 @@ export default function MaintSupervisorApproval() {
 
   return (
     <div className="max-w-7xl mx-auto min-h-[600px] overflow-y-auto p-8 bg-white md:rounded shadow-lg mt-155">
+      <MaintenanceSyncBanner />
       {/* Header with Back Button */}
       <div className="flex items-center gap-4 mb-6">
         <button
@@ -2225,10 +2319,10 @@ export default function MaintSupervisorApproval() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               {/* Technician fields - hide for subscription renewal */}
               {!isSubscriptionRenewal && (
-                <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.name')} <span className="text-red-500">*</span></label>
                     <input
@@ -2267,26 +2361,26 @@ export default function MaintSupervisorApproval() {
                       </p>
                     )}
                   </div>
-                </>
+                </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')} <span className="text-red-500">*</span></label>
-                <input
-                  type="number"
-                  name="cost"
-                  value={formData.cost}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.cost ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('maintenanceSupervisor.enterCost')}
-                  min="0"
-                  step="0.01"
-                />
-                {validationErrors.cost && (
-                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.costIsRequired')}</p>
-                )}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.costOfMaintenance')} <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    name="cost"
+                    value={formData.cost}
+                    onChange={handleInputChange}
+                    disabled={isReadOnly}
+                    className={`w-full px-3 py-2 border ${validationErrors.cost ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                    placeholder={t('maintenanceSupervisor.enterCost')}
+                    min="0"
+                    step="0.01"
+                  />
+                  {validationErrors.cost && (
+                    <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.costIsRequired')}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')} <span className="text-red-500">*</span></label>
@@ -2303,47 +2397,62 @@ export default function MaintSupervisorApproval() {
                     <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.poNumberIsRequired')}</p>
                   )}
                 </div>
+                {!isSubscriptionRenewal && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')} <span className="text-red-500">*</span></label>
+                    <input
+                      type="email"
+                      name="technician_email"
+                      value={formData.technician_email}
+                      onChange={handleInputChange}
+                      disabled={isReadOnly}
+                      className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                      placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
+                      required
+                    />
+                    {validationErrors.technician_email && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {formData.technician_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.technician_email)
+                          ? t('maintenanceSupervisor.invalidEmailFormat')
+                          : t('maintenanceSupervisor.emailIsRequired')
+                        }
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Email field - hide for subscription renewal */}
-              {!isSubscriptionRenewal && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')} <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')} <span className="text-red-500">*</span></label>
                   <input
-                    type="email"
-                    name="technician_email"
-                    value={formData.technician_email}
+                    type="text"
+                    name="invoice"
+                    value={formData.invoice}
                     onChange={handleInputChange}
                     disabled={isReadOnly}
-                    className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                    placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
-                    required
+                    className={`w-full px-3 py-2 border ${validationErrors.invoice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                    placeholder={t('maintenanceSupervisor.enterInvoiceNumber')}
                   />
-                  {validationErrors.technician_email && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {formData.technician_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.technician_email) 
-                        ? t('maintenanceSupervisor.invalidEmailFormat')
-                        : t('maintenanceSupervisor.emailIsRequired')
-                      }
-                    </p>
+                  {validationErrors.invoice && (
+                    <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.invoiceIsRequired')}</p>
                   )}
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')} <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  name="invoice"
-                  value={formData.invoice}
-                  onChange={handleInputChange}
-                  disabled={isReadOnly}
-                  className={`w-full px-3 py-2 border ${validationErrors.invoice ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-                  placeholder={t('maintenanceSupervisor.enterInvoiceNumber')}
-                />
-                {validationErrors.invoice && (
-                  <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.invoiceIsRequired')}</p>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.actualDowntime')}</label>
+                  <input
+                    type="number"
+                    name="actual_downtime"
+                    value={formData.actual_downtime}
+                    onChange={handleInputChange}
+                    disabled={isReadOnly}
+                    min="0"
+                    step="0.01"
+                    placeholder={t('maintenanceSupervisor.enterActualDowntime')}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">{t('maintenanceSupervisor.actualDowntimeOptionalHint')}</p>
+                </div>
               </div>
             </div>
 

@@ -48,7 +48,8 @@ const MaintenanceFrequency = () => {
     { label: 'Text', name: 'text' },
     { label: 'Maintained By', name: 'maintained_by' },
     { label: 'Maintenance Type', name: 'maint_type_name' },
-    { label: 'Lead Time', name: 'maint_lead_type' }
+    { label: 'Lead Time', name: 'maint_lead_type' },
+    { label: 'Downtime', name: 'downtime' }
   ];
 
   // Second Tab - Checklist
@@ -105,6 +106,17 @@ const MaintenanceFrequency = () => {
     const f = freq.frequency != null && freq.frequency !== '' ? String(freq.frequency) : '';
     const u = getUomText(freq.uom);
     return `${f} ${u}`.trim() || '—';
+  };
+
+  const formatDowntimeCell = (value) => {
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+    const hours = Number(value);
+    if (!Number.isFinite(hours)) {
+      return '-';
+    }
+    return `${hours} hour${hours === 1 ? '' : 's'}`;
   };
 
   const getMaintainedByLabel = (value) => {
@@ -445,7 +457,8 @@ const MaintenanceFrequency = () => {
       uom: uomId || '',
       text: freq.text || '',
       maintained_by: freq.maintained_by,
-      maint_type_id: freq.maint_type_id
+      maint_type_id: freq.maint_type_id,
+      downtime: freq.downtime != null && freq.downtime !== '' ? String(freq.downtime) : ''
     });
   };
 
@@ -477,12 +490,19 @@ const MaintenanceFrequency = () => {
       return;
     }
 
+    const downtimeValue = String(editingFormData.downtime ?? '').trim();
+    if (downtimeValue !== '' && (isNaN(downtimeValue) || parseFloat(downtimeValue) < 0)) {
+      showBackendTextToast({ toast, fallbackText: 'Please enter a valid downtime in hours (0 or greater)', type: 'error' });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const requestData = {
         is_recurring: isRecurring,
         maintained_by: editingFormData.maintained_by,
-        maint_type_id: editingFormData.maint_type_id
+        maint_type_id: editingFormData.maint_type_id,
+        downtime: downtimeValue !== '' ? parseFloat(downtimeValue) : null
       };
 
       if (isRecurring) {
@@ -760,6 +780,9 @@ const MaintenanceFrequency = () => {
                                           if (cf.column === 'maint_lead_type' && value) {
                                             return `${value} days`;
                                           }
+                                          if (cf.column === 'downtime') {
+                                            return formatDowntimeCell(value);
+                                          }
                                           // Return string values as-is
                                           return String(value);
                                         })
@@ -887,6 +910,9 @@ const MaintenanceFrequency = () => {
                                         if (cf.column === 'maint_lead_type' && value) {
                                           return `${value} days`;
                                         }
+                                        if (cf.column === 'downtime') {
+                                          return formatDowntimeCell(value);
+                                        }
                                         // Return string values as-is
                                         return String(value);
                                       })
@@ -1013,6 +1039,7 @@ const MaintenanceFrequency = () => {
                         <th className="px-4 py-3 text-left">Maintained By</th>
                         <th className="px-4 py-3 text-left">Maintenance Type</th>
                         <th className="px-4 py-3 text-left">Lead Time</th>
+                        <th className="px-4 py-3 text-left">Downtime</th>
                         <th className="px-4 py-3 text-center">Actions</th>
                       </tr>
                     </thead>
@@ -1026,7 +1053,7 @@ const MaintenanceFrequency = () => {
                         >
                           {editingFrequency === freq.at_main_freq_id ? (
                             <>
-                              <td colSpan="7" className="px-4 py-4">
+                              <td colSpan="8" className="px-4 py-4">
                                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                     {/* Recurring / On-Demand Selection */}
@@ -1109,7 +1136,41 @@ const MaintenanceFrequency = () => {
                                             Leave empty to auto-generate from frequency and UOM
                                           </p>
                                         </div>
+
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-700 mb-1">Downtime (hours)</label>
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={editingFormData.downtime || ''}
+                                            onChange={(e) => setEditingFormData({...editingFormData, downtime: e.target.value})}
+                                            placeholder="Enter expected downtime in hours"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
+                                          />
+                                          <p className="mt-1 text-xs text-gray-500">
+                                            Optional. Leave empty if maintenance causes no downtime.
+                                          </p>
+                                        </div>
                                       </>
+                                    )}
+
+                                    {!editingFormData.is_recurring && (
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Downtime (hours)</label>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step="0.01"
+                                          value={editingFormData.downtime || ''}
+                                          onChange={(e) => setEditingFormData({...editingFormData, downtime: e.target.value})}
+                                          placeholder="Enter expected downtime in hours"
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
+                                        />
+                                        <p className="mt-1 text-xs text-gray-500">
+                                          Optional. Leave empty if maintenance causes no downtime.
+                                        </p>
+                                      </div>
                                     )}
 
                                     <div>
@@ -1204,6 +1265,9 @@ const MaintenanceFrequency = () => {
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-900 border">
                                 {freq.maint_lead_type ? `${freq.maint_lead_type} days` : '-'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900 border">
+                                {formatDowntimeCell(freq.downtime)}
                               </td>
                               <td className="px-4 py-3 text-center border">
                                 <div className="flex items-center justify-center gap-2">

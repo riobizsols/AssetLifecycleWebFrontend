@@ -7,7 +7,7 @@ import { filterData } from "../utils/filterData";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useRevalidateOnFocus } from "../hooks/useRevalidateOnFocus";
 import { useTechnicianCertificatesStore } from "../store/useTechnicianCertificatesStore";
-import { invalidateCache } from "../utils/apiCache";
+import { useTechCertApprovalsStore } from "../store/useTechCertApprovalsStore";
 
 const TechnicianCertificates = () => {
   const { t } = useLanguage();
@@ -17,6 +17,18 @@ const TechnicianCertificates = () => {
   const listLoading = useTechnicianCertificatesStore((s) => s.listLoading);
   const loadPageData = useTechnicianCertificatesStore((s) => s.loadPageData);
   const fetchUploadedStore = useTechnicianCertificatesStore((s) => s.fetchUploadedCertificates);
+  const invalidateUploadedCertificatesCache = useTechnicianCertificatesStore(
+    (s) => s.invalidateUploadedCertificatesCache,
+  );
+  const invalidateTechCertApprovalsCache = useTechCertApprovalsStore(
+    (s) => s.invalidateTechCertApprovalsCache,
+  );
+
+  const refreshAfterMutation = async () => {
+    invalidateUploadedCertificatesCache();
+    invalidateTechCertApprovalsCache?.();
+    await fetchUploadedStore({ force: true, revalidate: false });
+  };
   const loadingList = listLoading && uploadedCertificates.length === 0;
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
@@ -81,12 +93,8 @@ const TechnicianCertificates = () => {
 
   const certificateOptions = useMemo(() => {
     return certificates.map((cert) => ({
-      value: cert.tech_cert_id || cert.tc_id,
-      label: `${cert.cert_name || cert.certificate_name || ""}${
-        cert.cert_number || cert.certificate_no
-          ? ` (${cert.cert_number || cert.certificate_no})`
-          : ""
-      }`.trim()
+      value: cert.tech_cert_id,
+      label: `${cert.cert_name || ""}${cert.cert_number ? ` (${cert.cert_number})` : ""}`.trim()
     }));
   }, [certificates]);
 
@@ -178,9 +186,7 @@ const TechnicianCertificates = () => {
       });
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATEUPDATEDSUCCES_5E07D703', fallbackText: t("technicianCertificates.certificateUpdatedSuccessfully"), type: 'success' });
       cancelEdit();
-      invalidateCache('technician-certs:');
-      invalidateCache('tech-cert-approvals:');
-      await fetchUploadedCertificates({ force: true });
+      await refreshAfterMutation();
     } catch (error) {
       console.error("Failed to update certificate:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOUPDATECERTIFICATE_1A0F83ED', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToUpdateCertificate"), type: 'error' });
@@ -197,9 +203,7 @@ const TechnicianCertificates = () => {
     try {
       await API.delete(`/employee-tech-certificates/${id}`);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATEDELETEDSUCCES_6D06A4A5', fallbackText: t("technicianCertificates.certificateDeletedSuccessfully"), type: 'success' });
-      invalidateCache('technician-certs:');
-      invalidateCache('tech-cert-approvals:');
-      await fetchUploadedCertificates({ force: true });
+      await refreshAfterMutation();
     } catch (error) {
       console.error("Failed to delete certificate:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTODELETECERTIFICATE_53BA7B98', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToDeleteCertificate"), type: 'error' });
@@ -222,9 +226,7 @@ const TechnicianCertificates = () => {
       await Promise.all(selectedRows.map((id) => API.delete(`/employee-tech-certificates/${id}`)));
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATESDELETEDSUCCE_1A7D2532', fallbackText: t("technicianCertificates.certificatesDeletedSuccessfully", { count: selectedRows.length }), type: 'success' });
       setSelectedRows([]);
-      invalidateCache('technician-certs:');
-      invalidateCache('tech-cert-approvals:');
-      await fetchUploadedCertificates({ force: true });
+      await refreshAfterMutation();
     } catch (error) {
       console.error("Failed to delete selected certificates:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTODELETESOME_3514AFF7', fallbackText: t("technicianCertificates.failedToDeleteSome"), type: 'error' });
@@ -298,12 +300,10 @@ const TechnicianCertificates = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_CERTIFICATEUPLOADEDSUCCE_7CCB808C', fallbackText: t("technicianCertificates.certificateUploadedSuccessfully"), type: 'success' });
       resetForm();
       setShowAddForm(false);
-      invalidateCache('technician-certs:');
-      invalidateCache('tech-cert-approvals:');
-      await fetchUploadedCertificates({ force: true });
+      await refreshAfterMutation();
     } catch (error) {
       console.error("Failed to upload certificate:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOUPLOADCERTIFICATE_23A7B061', fallbackText: error.response?.data?.message || error.response?.data?.error || t("technicianCertificates.failedToUploadCertificate"), type: 'error' });
+      showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTOUPLOADCERTIFICATE_23A7B061', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToUploadCertificate"), type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

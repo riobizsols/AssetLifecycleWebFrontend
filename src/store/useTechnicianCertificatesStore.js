@@ -135,6 +135,18 @@ export const useTechnicianCertificatesStore = create((set, get) => ({
     invalidateCache('technician-certs:');
     invalidateCache('tech-cert-approvals:');
     invalidateCache('certifications:tech-certs');
-    set({ uploadedCertificates: [], certificateOptions: [], employees: [] });
+    set({
+      uploadedCertificates: [],
+      certificateOptions: [],
+      employees: [],
+      listLoading: true,
+    });
+  },
+
+  /** After create/update/delete — clear list cache only; keep options/employees. */
+  invalidateUploadedCertificatesCache: () => {
+    invalidateCache(UPLOADED_KEY);
+    invalidateCache('tech-cert-approvals:');
+    set({ uploadedCertificates: [], listLoading: true });
   },
 }));

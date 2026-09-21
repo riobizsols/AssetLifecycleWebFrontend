@@ -14,7 +14,6 @@ import StatusBadge from "../components/StatusBadge";
 import InspectionSyncBanner from "../components/InspectionSyncBanner";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useAppData } from "../contexts/AppDataContext";
-import { useInspectionViewStore } from "../store/useInspectionViewStore";
 import { translateMasterDataLabel } from "../utils/masterDataLabel";
 import {
   getChecklist,
@@ -126,14 +125,26 @@ const InspectionExecutionDetail = () => {
           const assetType = cached.asset_type_id;
           if (assetType != null) {
             const cl = await getChecklist(assetType);
-            if (!cancelled && cl?.questions) {
+            if (!cancelled && cl?.questions?.length) {
               setChecklist(cl.questions);
+            } else if (!cancelled) {
+              setChecklist([]);
+              console.warn(
+                '[inspection-offline] no cached checklist for asset_type_id',
+                assetType
+              );
             }
+          } else if (!cancelled) {
+            setChecklist([]);
+            console.warn(
+              '[inspection-offline] cached schedule missing asset_type_id; open this row once while online to cache checklist'
+            );
           }
           const recs = await getRecords(id);
           if (!cancelled) applyRecords(recs);
         } else {
           setData(null);
+          setChecklist([]);
         }
         setLoading(false);
         return;
@@ -145,8 +156,8 @@ const InspectionExecutionDetail = () => {
         if (res.data.success) {
           applyDetail(res.data.data, { fromCache: false });
           await upsertSchedule(res.data.data);
-          // Prefetch checklist + records into IndexedDB (and hydrate UI)
-          prefetchInspectionDetail(id).catch(() => {});
+          // Await so checklist/records are in IndexedDB before user can go offline
+          await prefetchInspectionDetail(id);
         }
       } catch (error) {
         console.error("Error fetching inspection:", error);
@@ -210,14 +221,18 @@ const InspectionExecutionDetail = () => {
           }
         } else {
           const cl = await getChecklist(assetType);
-          if (!cancelled && cl?.questions) setChecklist(cl.questions);
+          if (!cancelled && cl?.questions?.length) {
+            setChecklist(cl.questions);
+          } else if (!cancelled) {
+            setChecklist([]);
+          }
         }
 
         const recs = await getRecords(id);
         if (!cancelled) applyRecords(recs);
-        // Also merge any pending-only list
+        // Keep pendingAnswers in sync with IndexedDB (survives leave/return while offline)
         const pending = await getPendingRecords(id);
-        if (!cancelled && pending.length) {
+        if (!cancelled) {
           setPendingRecords(pending);
         }
       } finally {
@@ -392,13 +407,20 @@ const InspectionExecutionDetail = () => {
         completePayload.inspector_phno = formData.inspector_phone;
       }
 
-      // Optimistically patch local schedule
-      await patchScheduleLocal(id, {
-        status,
-        notes: formData.notes,
-        trigger_maintenance: triggerMaintenance,
-        act_insp_end_date: completePayload.act_insp_end_date,
-      });
+      const isOffline =
+        typeof navigator !== 'undefined' && !navigator.onLine;
+
+      // Only patch local status before sync when offline (list UX while queued).
+      // When online, sendItem updates local after the server accepts COMPLETE —
+      // patching CO first used to make drainOutbox skip the server update.
+      if (isOffline) {
+        await patchScheduleLocal(id, {
+          status,
+          notes: formData.notes,
+          trigger_maintenance: triggerMaintenance,
+          act_insp_end_date: completePayload.act_insp_end_date,
+        });
+      }
 
       const result = await enqueueSaveAndSync({
         ais_id: id,
@@ -408,7 +430,16 @@ const InspectionExecutionDetail = () => {
       });
 
       if (result?.queued) {
-        setPendingRecords([]);
+        // Ensure local reflects completion if we queued without the offline branch above
+        await patchScheduleLocal(id, {
+          status,
+          notes: formData.notes,
+          trigger_maintenance: triggerMaintenance,
+          act_insp_end_date: completePayload.act_insp_end_date,
+        });
+        // Keep pendingRecords aligned with IndexedDB so leave/return still shows answers
+        const stillPending = await getPendingRecords(id);
+        setPendingRecords(stillPending);
         showBackendTextToast({
           toast,
           fallbackText: 'Saved offline. Changes will sync when you are back online.',
@@ -439,6 +470,12 @@ const InspectionExecutionDetail = () => {
       }
 
       setPendingRecords([]);
+      await patchScheduleLocal(id, {
+        status,
+        notes: formData.notes,
+        trigger_maintenance: triggerMaintenance,
+        act_insp_end_date: completePayload.act_insp_end_date,
+      });
       showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
       navigate('/inspection-view');
     } catch (error) {

@@ -1,29 +1,75 @@
-import { db } from './db';
+import { db, ensureInspectionDbOpen } from './db';
 
 function now() {
   return Date.now();
 }
 
+function resolveAisId(row) {
+  if (!row || typeof row !== 'object') return null;
+  const raw = row.ais_id ?? row.AIS_ID ?? row.aisId ?? row.id;
+  if (raw == null || raw === '') return null;
+  return String(raw);
+}
+
 /** Upsert many schedule rows from list or detail payloads. */
 export async function upsertSchedules(rows = []) {
+  await ensureInspectionDbOpen();
   const list = Array.isArray(rows) ? rows : [];
-  if (!list.length) return;
+  if (!list.length) {
+    console.warn('[inspection-offline] list prefetch skipped: empty rows');
+    return;
+  }
+
+  // Preserve detail-only fields (asset_type_id, notes, etc.) when list rows are thinner
+  const existingRows = await db.insp_schedules.bulkGet(
+    list.map((r) => resolveAisId(r)).filter(Boolean)
+  );
+  const existingById = new Map(
+    (existingRows || [])
+      .filter(Boolean)
+      .map((r) => [String(r.ais_id), r])
+  );
+
   const stamped = list
-    .filter((r) => r?.ais_id != null)
-    .map((r) => ({
-      ...r,
-      ais_id: String(r.ais_id),
-      cached_at: now(),
-    }));
-  if (!stamped.length) return;
+    .map((r) => {
+      const ais_id = resolveAisId(r);
+      if (!ais_id) return null;
+      const prev = existingById.get(ais_id) || {};
+      return {
+        ...prev,
+        ...r,
+        ais_id,
+        asset_type_id: r.asset_type_id ?? prev.asset_type_id ?? null,
+        notes: r.notes != null && r.notes !== '' ? r.notes : (prev.notes ?? r.notes ?? ''),
+        trigger_maintenance:
+          r.trigger_maintenance != null
+            ? r.trigger_maintenance
+            : prev.trigger_maintenance,
+        inspector_name: r.inspector_name ?? prev.inspector_name,
+        inspector_email: r.inspector_email ?? prev.inspector_email,
+        inspector_phone: r.inspector_phone ?? r.inspector_phno ?? prev.inspector_phone ?? prev.inspector_phno,
+        cached_at: now(),
+      };
+    })
+    .filter(Boolean);
+  if (!stamped.length) {
+    console.warn(
+      '[inspection-offline] list prefetch skipped: no ais_id on rows',
+      list.slice(0, 3).map((r) => (r && typeof r === 'object' ? Object.keys(r) : r))
+    );
+    return;
+  }
   await db.insp_schedules.bulkPut(stamped);
+  console.log(`[inspection-offline] cached ${stamped.length} schedule(s) in IndexedDB`);
 }
 
 export async function upsertSchedule(row) {
-  if (!row?.ais_id) return;
+  await ensureInspectionDbOpen();
+  const ais_id = resolveAisId(row);
+  if (!ais_id) return;
   await db.insp_schedules.put({
     ...row,
-    ais_id: String(row.ais_id),
+    ais_id,
     cached_at: now(),
   });
 }
