@@ -217,13 +217,37 @@ const TechCertApprovals = () => {
     if (!etcId) return;
     setDownloadingId(etcId);
     try {
-      const response = await API.get(`/employee-tech-certificates/${etcId}/download`);
-      const url = response.data?.url;
-      if (!url) {
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_NOFILEFORDOWNLOAD_61156FE0', fallbackText: t("techCertApprovals.noFileForDownload"), type: 'error' });
+      const response = await API.get(`/employee-tech-certificates/${etcId}/download`, {
+        params: { mode: 'view' },
+        responseType: 'blob',
+        timeout: 120000,
+      });
+      const contentType = String(response.headers?.['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const text = await (response.data instanceof Blob
+          ? response.data.text()
+          : Promise.resolve(String(response.data)));
+        let payload = {};
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          payload = { message: text };
+        }
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_TECHCERTAPPROVALS_NOFILEFORDOWNLOAD_61156FE0',
+          fallbackText: payload.message || t("techCertApprovals.noFileForDownload"),
+          type: 'error',
+        });
         return;
       }
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], { type: contentType || 'application/pdf' });
+      const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
       console.error("Failed to get download URL:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHCERTAPPROVALS_FAILEDTODOWNLOAD_2BCF20D3', fallbackText: error.response?.data?.message || t("techCertApprovals.failedToDownload"), type: 'error' });
