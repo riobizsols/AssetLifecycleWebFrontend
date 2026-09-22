@@ -74,10 +74,12 @@ export const useNavigationStore = create((set, get) => ({
       return data;
     } catch (err) {
       console.error('Error fetching navigation:', err);
+      // Mark fetched so ProtectedRoute can leave the boot loader (access checks
+      // then run against whatever nav we have, instead of spinning forever).
       set({
         loading: false,
         error: err.response?.data?.message || 'Failed to fetch navigation',
-        fetchedForUserId: null,
+        fetchedForUserId: userId,
       });
       return get().navigation;
     }
