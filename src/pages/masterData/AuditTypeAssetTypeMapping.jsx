@@ -295,10 +295,8 @@ export default function AuditTypeAssetTypeMapping() {
                       <div className="text-sm font-medium text-slate-900">
                         {t.description || t.audtp_id}
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                        <span>{t.audtp_id}</span>
-                        <span>·</span>
-                        <span>{t.is_internal ? 'Internal' : 'External'}</span>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {t.is_internal ? 'Internal' : 'External'}
                       </div>
                     </button>
                   );
@@ -347,11 +345,6 @@ export default function AuditTypeAssetTypeMapping() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-semibold text-slate-900">Mapped asset types</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Choose which asset types belong to this audit type only. The same asset type can
-                    be mapped to more than one audit if needed. Unselected types for this audit stay
-                    available in the list but are not included until you select and save.
-                  </p>
                     </div>
                     <div className="flex gap-2">
                       <button

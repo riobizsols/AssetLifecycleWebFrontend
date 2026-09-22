@@ -23,6 +23,9 @@ import Departments from "../pages/masterData/Departments";
 import Branches from "../pages/masterData/Branches";
 import BranchDeptMapping from "../pages/masterData/BranchDeptMapping";
 import AuditTypeAssetTypeMapping from "../pages/masterData/AuditTypeAssetTypeMapping";
+import UtilityMaster from "../pages/utility/UtilityMaster";
+import UtilityAssetTypeMapping from "../pages/utility/UtilityAssetTypeMapping";
+import UtilityConsumption from "../pages/utility/UtilityConsumption";
 import AddBranch from "../components/AddBranch";
 import DepartmentsAdmin from "../pages/masterData/DepartmentsAdmin";
 import DepartmentsAsset from "../pages/masterData/DepartmentsAsset";
@@ -1153,6 +1156,39 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="AUDITATMAPPING">
               <MainLayout>
                 <AuditTypeAssetTypeMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/utilities/master"
+          element={
+            <ProtectedRoute requiredAppId="UTILITYMASTER">
+              <MainLayout>
+                <UtilityMaster />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/utilities/asset-type-mapping"
+          element={
+            <ProtectedRoute requiredAppId="UTILITYATMAPPING">
+              <MainLayout>
+                <UtilityAssetTypeMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/utilities/consumption"
+          element={
+            <ProtectedRoute requiredAppId="UTILITYCONSUMPTION">
+              <MainLayout>
+                <UtilityConsumption />
               </MainLayout>
             </ProtectedRoute>
           }

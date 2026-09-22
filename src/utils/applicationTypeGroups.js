@@ -100,6 +100,7 @@ const APPLICATION_TYPE_APP_IDS = {
     "COSTCENTERTRANSFER",
     "DATABASESELECTION",
   ],
+  UTILITIES: ["UTILITYMASTER", "UTILITYATMAPPING", "UTILITYCONSUMPTION"],
   CERTIFICATIONS: [
     "CERTIFICATIONS",
     "EMPLOYEE TECH CERTIFICATION",
@@ -124,6 +125,7 @@ export const APPLICATION_TYPE_OPTIONS = [
   { id: "SCRAP", label: "Scrap" },
   { id: "ADMIN_SETTINGS", label: "Admin Settings" },
   { id: "MASTER_DATA", label: "Master Data" },
+  { id: "UTILITIES", label: "Utilities" },
   { id: "CERTIFICATIONS", label: "Certifications" },
   { id: "BREAKDOWNS", label: "Breakdowns" },
   { id: "WORKORDER", label: "Work Order Management" },

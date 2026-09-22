@@ -59,6 +59,18 @@ export default function Header() {
       title: "Audit Type – Asset Type Mapping",
       subtitle: "",
     },
+    "/utilities/master": {
+      title: "Utility Master",
+      subtitle: "Define utilities and meter/quantity measurement details.",
+    },
+    "/utilities/asset-type-mapping": {
+      title: "Utility – Asset Type Mapping",
+      subtitle: "Map utility details to asset types.",
+    },
+    "/utilities/consumption": {
+      title: "Record Utility Consumption",
+      subtitle: "Enter meter readings or quantities (999 / 9999 rollover).",
+    },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
     "/master-data/spare-parts": { title: t('navigation.sparePartLot'), subtitle: "" },
