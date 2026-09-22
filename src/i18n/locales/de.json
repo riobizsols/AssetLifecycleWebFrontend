@@ -1584,11 +1584,15 @@
     "employeeNotFound": "Mitarbeiter nicht gefunden",
     "failedToFetchEmployees": "Fehler beim Laden der Mitarbeiter",
     "firstNameRequired": "Vorname ist erforderlich",
+    "enterEmailDotCom": "E-Mail eingeben (z. B. name@firma.com)",
+    "emailMustBeDotCom": "E-Mail muss im Format name@domain.com sein",
     "emailRequired": "E-Mail ist erforderlich",
     "phoneRequired": "Telefonnummer ist erforderlich",
     "departmentRequired": "Abteilung ist erforderlich",
     "branchRequired": "Filiale ist erforderlich",
     "employeeCreatedSuccessfully": "Mitarbeiter erfolgreich angelegt!",
+    "employeeUpdatedSuccessfully": "Mitarbeiter erfolgreich aktualisiert!",
+    "failedToUpdateEmployee": "Fehler beim Aktualisieren des Mitarbeiters",
     "failedToCreateEmployee": "Fehler beim Anlegen des Mitarbeiters"
   },
   "maintenanceSchedule": {

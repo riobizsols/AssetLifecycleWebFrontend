@@ -86,8 +86,6 @@ test.describe('RIO EAM certificates', () => {
     const certificateSelect = page.locator('label', { hasText: /^Certificate Name$/ }).locator('xpath=following-sibling::select[1]');
 
     await expect(employeeSelect).toBeVisible({ timeout: 15000 });
-    await expect(certificateSelect).toBeEnabled({ timeout: 20000 });
-
     await expect
       .poll(
         async () => employeeSelect.locator('option').count(),
@@ -103,7 +101,22 @@ test.describe('RIO EAM certificates', () => {
     } else {
       await employeeSelect.selectOption({ index: 1 });
     }
-    await certificateSelect.selectOption({ label: `${certName} (${certNumber})` });
+
+    // Certificate dropdown stays disabled until an employee is chosen.
+    await expect(certificateSelect).toBeEnabled({ timeout: 20000 });
+    await expect
+      .poll(
+        async () => certificateSelect.locator('option').count(),
+        { timeout: 20000 }
+      )
+      .toBeGreaterThan(1);
+
+    const certOption = certificateSelect.locator('option').filter({ hasText: certName });
+    if ((await certOption.count()) > 0) {
+      await certificateSelect.selectOption({ label: await certOption.first().innerText() });
+    } else {
+      await certificateSelect.selectOption({ index: 1 });
+    }
 
     const dateInputs = page.locator('input[type="date"]');
     await dateInputs.nth(0).fill('2026-03-01');

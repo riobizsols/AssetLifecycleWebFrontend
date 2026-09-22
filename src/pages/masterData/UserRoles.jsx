@@ -55,6 +55,7 @@ const Users = () => {
   const [userRoles, setUserRoles] = useState([]);
   const [loadingRoles, setLoadingRoles] = useState(false);
   const [loadingAvailableRoles, setLoadingAvailableRoles] = useState(false);
+  const [savingUserInfo, setSavingUserInfo] = useState(false);
 
   const columns = useMemo(() => [
     { label: t("users.userID"), name: "user_id", visible: true },
@@ -116,8 +117,15 @@ const Users = () => {
   // Handle role management modal open
   const handleRoleManagement = async (user) => {
     console.log('Opening role management for user:', user);
-    setSelectedUser(user);
+    setSelectedUser({
+      ...user,
+      email: user.email || '',
+      phone: user.phone || '',
+      dept_id: user.dept_id || '',
+      full_name: user.full_name || '',
+    });
     setShowRoleModal(true);
+    setSavingUserInfo(false);
     
     // Ensure available roles are loaded
     if (jobRoles.length === 0) {
@@ -133,6 +141,77 @@ const Users = () => {
     }
     
     await fetchUserRoles(user.user_id);
+  };
+
+  const isValidDotComEmail = (email) =>
+    /^[^\s@]+@[^\s@]+\.com$/i.test(String(email || '').trim());
+
+  const handleSaveUserInfoFromRoleModal = async () => {
+    if (!selectedUser?.user_id) return;
+    if (!selectedUser.full_name?.trim()) {
+      toast.error(t("users.firstNameRequired") || "Full name is required");
+      return;
+    }
+    if (!selectedUser.email?.trim()) {
+      showBackendTextToast({ toast, tmdId: 'TMD_EMAIL_IS_REQUIRED_4E64DB31', fallbackText: t("users.emailRequired"), type: 'error' });
+      return;
+    }
+    if (!isValidDotComEmail(selectedUser.email)) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_EMAIL_MUST_END_WITH_COM',
+        fallbackText: t("users.emailMustBeDotCom"),
+        type: 'error',
+      });
+      return;
+    }
+
+    try {
+      setSavingUserInfo(true);
+      const payload = {
+        full_name: selectedUser.full_name.trim(),
+        email: selectedUser.email.trim(),
+        phone: selectedUser.phone?.trim() || '',
+        dept_id: selectedUser.dept_id || null,
+      };
+      const response = await API.put(`/users/update-users/${selectedUser.user_id}`, payload);
+      if (response.data) {
+        await recordActionByNameWithFetch('Update', {
+          userId: selectedUser.user_id,
+          ...payload,
+          deptName: departments.find((d) => d.dept_id === payload.dept_id)?.text,
+          action: 'User Information Updated',
+        });
+        invalidateCache('users:');
+        await fetchUsersStore({ revalidate: true, force: true, notAssignedLabel: t("users.notAssigned") });
+        const deptName = departments.find((d) => d.dept_id === payload.dept_id)?.text || selectedUser.dept_name;
+        setSelectedUser((prev) => ({
+          ...prev,
+          ...payload,
+          dept_name: deptName,
+        }));
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_USERS_USERUPDATEDSUCCESSFULLY_253AA20B',
+          fallbackText: t("users.userUpdatedSuccessfully"),
+          type: 'success',
+        });
+      }
+    } catch (error) {
+      console.error("Error updating user info:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        t("users.failedToUpdateUser");
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_USERS_FAILEDTOUPDATEUSER_76B693A8',
+        fallbackText: errorMessage,
+        type: 'error',
+      });
+    } finally {
+      setSavingUserInfo(false);
+    }
   };
 
   // Delete user role
@@ -885,21 +964,71 @@ const Users = () => {
             <div className="h-[3px] bg-[#ffc107]" />
             <div className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
               <div className="space-y-4">
-                {/* User Info */}
+                {/* User Info — editable */}
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-gray-800 mb-2">{t("users.userInformation")}</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-800">{t("users.userInformation")}</h3>
+                    <button
+                      type="button"
+                      onClick={handleSaveUserInfoFromRoleModal}
+                      disabled={savingUserInfo}
+                      className="px-3 py-1.5 text-sm bg-[#003366] text-white rounded hover:bg-[#002347] disabled:opacity-60"
+                    >
+                      {savingUserInfo ? t("users.saving") : t("users.saveChanges")}
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="font-medium">{t("users.userID")}:</span> {selectedUser.user_id}
+                      <label className="block font-medium text-gray-700 mb-1">{t("users.userID")}</label>
+                      <input
+                        type="text"
+                        value={selectedUser.user_id}
+                        disabled
+                        className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-600"
+                      />
                     </div>
                     <div>
-                      <span className="font-medium">{t("users.email")}:</span> {selectedUser.email}
+                      <label className="block font-medium text-gray-700 mb-1">{t("users.fullName")}</label>
+                      <input
+                        type="text"
+                        value={selectedUser.full_name || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, full_name: e.target.value })}
+                        className="w-full border rounded px-3 py-2 bg-white"
+                      />
                     </div>
                     <div>
-                      <span className="font-medium">{t("users.phone")}:</span> {selectedUser.phone}
+                      <label className="block font-medium text-gray-700 mb-1">{t("users.email")}</label>
+                      <input
+                        type="email"
+                        value={selectedUser.email || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                        className="w-full border rounded px-3 py-2 bg-white"
+                        placeholder={t("users.enterEmailDotCom")}
+                      />
                     </div>
                     <div>
-                      <span className="font-medium">{t("users.department")}:</span> {selectedUser.dept_name}
+                      <label className="block font-medium text-gray-700 mb-1">{t("users.phone")}</label>
+                      <input
+                        type="text"
+                        value={selectedUser.phone || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, phone: e.target.value })}
+                        className="w-full border rounded px-3 py-2 bg-white"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block font-medium text-gray-700 mb-1">{t("users.department")}</label>
+                      <select
+                        value={selectedUser.dept_id || ''}
+                        onChange={(e) => setSelectedUser({ ...selectedUser, dept_id: e.target.value })}
+                        className="w-full border rounded px-3 py-2 bg-white"
+                      >
+                        <option value="">{t("users.selectDepartment")}</option>
+                        {departments.map((dept) => (
+                          <option key={dept.dept_id} value={dept.dept_id}>
+                            {dept.text}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>

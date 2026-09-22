@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/axios';
 import toast from 'react-hot-toast';
-import { MdArrowBack, MdPersonAdd, MdDeleteOutline } from 'react-icons/md';
+import { MdArrowBack, MdPersonAdd, MdDeleteOutline, MdEdit } from 'react-icons/md';
 import { useAuthStore } from '../store/useAuthStore';
 import useAuditLog from '../hooks/useAuditLog';
 import { USERS_APP_ID } from '../constants/usersAuditEvents';
@@ -37,6 +37,10 @@ const AssignRoles = () => {
   const [rolePendingRemoval, setRolePendingRemoval] = useState(null);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [removingRole, setRemovingRole] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [savingEmployee, setSavingEmployee] = useState(false);
+  const [departments, setDepartments] = useState([]);
   const [filterValues, setFilterValues] = useState({
     columnFilters: [],
     fromDate: '',
@@ -119,9 +123,19 @@ const AssignRoles = () => {
     }
   };
 
+  const fetchDepartments = async () => {
+    try {
+      const res = await API.get('/admin/departments');
+      setDepartments(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch departments', err);
+    }
+  };
+
   useEffect(() => {
     fetchEmployees();
     fetchRoles();
+    fetchDepartments();
   }, []);
 
   // Ensure roles are loaded when modal opens
@@ -194,6 +208,82 @@ const AssignRoles = () => {
     // Ensure roles are loaded when modal opens
     if (availableRoles.length === 0) {
       fetchRoles();
+    }
+  };
+
+  const isValidDotComEmail = (email) =>
+    /^[^\s@]+@[^\s@]+\.com$/i.test(String(email || '').trim());
+
+  const handleEditEmployee = (employee) => {
+    setEditingEmployee({
+      emp_int_id: employee.emp_int_id,
+      employee_id: employee.employee_id,
+      name: employee.name || '',
+      full_name: employee.full_name || employee.name || '',
+      email_id: employee.email_id || '',
+      phone_number: employee.phone_number || '',
+      dept_id: employee.dept_id || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEmployee = async () => {
+    if (!editingEmployee?.emp_int_id) return;
+    if (!editingEmployee.full_name?.trim() && !editingEmployee.name?.trim()) {
+      toast.error(u('firstNameRequired') || 'Name is required');
+      return;
+    }
+    if (!editingEmployee.email_id?.trim()) {
+      showBackendTextToast({ toast, tmdId: 'TMD_EMAIL_IS_REQUIRED_4E64DB31', fallbackText: u('emailRequired'), type: 'error' });
+      return;
+    }
+    if (!isValidDotComEmail(editingEmployee.email_id)) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_EMAIL_MUST_END_WITH_COM',
+        fallbackText: u('emailMustBeDotCom'),
+        type: 'error',
+      });
+      return;
+    }
+
+    try {
+      setSavingEmployee(true);
+      const payload = {
+        name: (editingEmployee.name || editingEmployee.full_name || '').trim(),
+        full_name: (editingEmployee.full_name || editingEmployee.name || '').trim(),
+        email_id: editingEmployee.email_id.trim(),
+        phone_number: editingEmployee.phone_number?.trim() || '',
+        dept_id: editingEmployee.dept_id || null,
+      };
+      const response = await API.put(`/employees/${editingEmployee.emp_int_id}`, payload);
+      if (response.data?.success || response.data?.data) {
+        await recordActionByNameWithFetch('Update', {
+          empIntId: editingEmployee.emp_int_id,
+          employeeId: editingEmployee.employee_id,
+          ...payload,
+          action: 'Employee Information Updated',
+        });
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_USERS_USERUPDATEDSUCCESSFULLY_253AA20B',
+          fallbackText: u('employeeUpdatedSuccessfully') || 'Employee updated successfully',
+          type: 'success',
+        });
+        setShowEditModal(false);
+        setEditingEmployee(null);
+        await fetchEmployees();
+      }
+    } catch (error) {
+      console.error('Error updating employee:', error);
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        u('failedToUpdateEmployee') ||
+        'Failed to update employee';
+      toast.error(errorMessage);
+    } finally {
+      setSavingEmployee(false);
     }
   };
 
@@ -427,14 +517,37 @@ const AssignRoles = () => {
             data={tableData}
             selectedRows={selectedRows}
             setSelectedRows={setSelectedRows}
-            onEdit={handleAssignRole}
-            onAdd={handleAssignRole}
-            onRowAction={handleAssignRole}
             rowKey="emp_int_id"
             showActions={showActions}
             showCheckbox={false}  // Hide checkboxes for this screen
             showAddButton={false}  // Hide add button, use only action button
-            actionLabel={u("assignRole")}
+            renderActions={(row) => (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditEmployee(row);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 p-1"
+                  title={u("editUser") || t("common.edit") || "Edit"}
+                  aria-label={u("editUser") || "Edit"}
+                >
+                  <MdEdit size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAssignRole(row);
+                  }}
+                  className="px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
+                  title={u("assignRole")}
+                >
+                  {u("assignRole")}
+                </button>
+              </div>
+            )}
             renderCell={(col, row) => {
               if (col.name === 'int_status') {
                 const isActive = row.int_status === 'Active' || row.int_status === 1;
@@ -669,6 +782,117 @@ const AssignRoles = () => {
                 className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
               >
                 {removingRole ? 'Removing...' : t("common.yes")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editingEmployee && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex justify-center items-center z-50"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowEditModal(false);
+              setEditingEmployee(null);
+            }
+          }}
+        >
+          <div className="bg-white w-[520px] rounded shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="bg-[#003366] text-white font-semibold px-6 py-3 flex justify-between items-center rounded-t">
+              <span>{u("editUser") || "Edit Employee"}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingEmployee(null);
+                }}
+                className="text-yellow-400 hover:text-yellow-300 text-xl leading-none"
+                aria-label={t("common.close")}
+              >
+                ×
+              </button>
+            </div>
+            <div className="h-[3px] bg-[#ffc107]" />
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{u("employeeId")}</label>
+                <input
+                  type="text"
+                  value={editingEmployee.employee_id}
+                  disabled
+                  className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{u("fullName")}</label>
+                <input
+                  type="text"
+                  value={editingEmployee.full_name}
+                  onChange={(e) =>
+                    setEditingEmployee({
+                      ...editingEmployee,
+                      full_name: e.target.value,
+                      name: e.target.value,
+                    })
+                  }
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{u("email")}</label>
+                <input
+                  type="email"
+                  value={editingEmployee.email_id}
+                  onChange={(e) => setEditingEmployee({ ...editingEmployee, email_id: e.target.value })}
+                  className="w-full border rounded px-3 py-2"
+                  placeholder={u("enterEmailDotCom")}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{u("phone")}</label>
+                <input
+                  type="text"
+                  value={editingEmployee.phone_number}
+                  onChange={(e) => setEditingEmployee({ ...editingEmployee, phone_number: e.target.value })}
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{u("department")}</label>
+                <select
+                  value={editingEmployee.dept_id || ''}
+                  onChange={(e) => setEditingEmployee({ ...editingEmployee, dept_id: e.target.value })}
+                  className="w-full border rounded px-3 py-2"
+                >
+                  <option value="">{u("selectDepartment")}</option>
+                  {departments.map((dept) => (
+                    <option key={dept.dept_id} value={dept.dept_id}>
+                      {dept.text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 rounded-b flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingEmployee(null);
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                disabled={savingEmployee}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEmployee}
+                className="px-4 py-2 bg-[#003366] text-white rounded hover:bg-[#002347] disabled:opacity-60"
+                disabled={savingEmployee}
+              >
+                {savingEmployee ? u("saving") : u("saveChanges")}
               </button>
             </div>
           </div>

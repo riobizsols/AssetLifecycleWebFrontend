@@ -1640,11 +1640,15 @@
     "employeeNotFound": "Employee not found",
     "failedToFetchEmployees": "Failed to fetch employees",
     "firstNameRequired": "First name is required",
+    "enterEmailDotCom": "Enter Email (e.g. name@company.com)",
+    "emailMustBeDotCom": "Email must be in the format name@domain.com",
     "emailRequired": "Email is required",
     "phoneRequired": "Phone number is required",
     "departmentRequired": "Department is required",
     "branchRequired": "Branch is required",
     "employeeCreatedSuccessfully": "Employee created successfully!",
+    "employeeUpdatedSuccessfully": "Employee updated successfully!",
+    "failedToUpdateEmployee": "Failed to update employee",
     "failedToCreateEmployee": "Failed to create employee"
   },
   "maintenanceSchedule": {

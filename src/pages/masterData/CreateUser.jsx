@@ -64,6 +64,9 @@ const CreateUser = () => {
     setForm({ ...form, [name]: value });
   };
 
+  const isValidDotComEmail = (email) =>
+    /^[^\s@]+@[^\s@]+\.com$/i.test(String(email || '').trim());
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitAttempted(true);
@@ -74,6 +77,15 @@ const CreateUser = () => {
     }
     if (!form.email.trim()) {
       showBackendTextToast({ toast, tmdId: 'TMD_EMAIL_IS_REQUIRED_4E64DB31', fallbackText: u('emailRequired'), type: 'error' });
+      return;
+    }
+    if (!isValidDotComEmail(form.email)) {
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_EMAIL_MUST_END_WITH_COM',
+        fallbackText: u('emailMustBeDotCom'),
+        type: 'error',
+      });
       return;
     }
     if (!form.phone.trim()) {
@@ -216,10 +228,17 @@ const CreateUser = () => {
               value={form.email}
               onChange={handleInputChange}
               className={`w-full px-3 py-2 border text-sm bg-white ${
-                isFieldInvalid(form.email) ? 'border-red-500' : 'border-gray-300'
+                isFieldInvalid(form.email) || (submitAttempted && form.email.trim() && !isValidDotComEmail(form.email))
+                  ? 'border-red-500'
+                  : 'border-gray-300'
               }`}
-              placeholder={u("enterEmail")}
+              placeholder={u("enterEmailDotCom")}
+              pattern="[^\\s@]+@[^\\s@]+\\.com"
+              title={u("emailMustBeDotCom")}
             />
+            {submitAttempted && form.email.trim() && !isValidDotComEmail(form.email) && (
+              <p className="mt-1 text-xs text-red-500">{u("emailMustBeDotCom")}</p>
+            )}
           </div>
 
           <div>
