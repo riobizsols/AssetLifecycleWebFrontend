@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import API from '../../../lib/axios';
+import { auditReportService } from '../../../services/auditReportService';
 import { formatDate } from './utils';
 
 /** Common workflow / asset status codes → full labels */
@@ -25,6 +26,7 @@ const STATUS_FULL_FORM = {
   INACTIVE: 'Inactive',
   VALID: 'Valid',
   EXPIRED: 'Expired',
+  EXPIRING: 'Expiring',
   PENDING: 'Pending',
   COMPLETED: 'Completed',
 };
@@ -151,7 +153,7 @@ export function useAuditReportPdf({ report, enrichedAssets, fieldSelection }) {
     const assetCols = [];
     if (on.asset) assetCols.push({ key: 'asset_id', label: 'Asset' });
     if (on.assetType) assetCols.push({ key: 'asset_type_name', label: 'Asset type' });
-    if (on.location) assetCols.push({ key: 'branch_name', label: 'Location' });
+    if (on.location) assetCols.push({ key: 'branch_name', label: 'Branch' });
     if (on.department) assetCols.push({ key: 'department_name', label: 'Department' });
     if (on.serialNumber) assetCols.push({ key: 'serial_number', label: 'Serial number' });
     if (on.purchaseDate) {
@@ -362,6 +364,72 @@ export function useAuditReportPdf({ report, enrichedAssets, fieldSelection }) {
         render: (r) => sourceFullForm(r.source),
       });
       addTable('Purchase orders', cols, poRows, on.po ? 'po_number' : null);
+    }
+
+    if (
+      on.coverageType ||
+      on.coverageStatus ||
+      on.coverageVendor ||
+      on.coverageStart ||
+      on.coverageEnd ||
+      on.coverageDaysLeft ||
+      on.coverageLastRenewal
+    ) {
+      let coverageRows = report.sections?.coverage || [];
+      if (!coverageRows.length && enrichedAssets.length) {
+        try {
+          const coverageData = await auditReportService.viewCoverageReport({
+            coverage_types: ['Warranty', 'AMC', 'CMC'],
+            statuses: ['Active', 'Expiring', 'Expired'],
+            expiring_days: 30,
+          });
+          const assetIds = new Set(enrichedAssets.map((a) => a.asset_id));
+          coverageRows = (coverageData?.rows || []).filter((r) => assetIds.has(r.asset_id));
+        } catch {
+          coverageRows = [];
+        }
+      }
+
+      const cols = [];
+      if (on.asset) cols.push({ key: 'asset_id', label: 'Asset' });
+      if (on.coverageType) cols.push({ key: 'coverage_type', label: 'Coverage' });
+      if (on.coverageStatus) {
+        cols.push({
+          key: 'status',
+          label: 'Status',
+          render: (r) => statusFullForm(r.status),
+        });
+      }
+      if (on.coverageVendor) cols.push({ key: 'vendor_name', label: 'Vendor' });
+      if (on.coverageStart) {
+        cols.push({
+          key: 'coverage_start',
+          label: 'Start',
+          render: (r) => formatDate(r.coverage_start),
+        });
+      }
+      if (on.coverageEnd) {
+        cols.push({
+          key: 'coverage_end',
+          label: 'End / renewal due',
+          render: (r) => formatDate(r.coverage_end),
+        });
+      }
+      if (on.coverageDaysLeft) {
+        cols.push({
+          key: 'days_left',
+          label: 'Days left',
+          render: (r) => (r.days_left == null ? '—' : String(r.days_left)),
+        });
+      }
+      if (on.coverageLastRenewal) {
+        cols.push({
+          key: 'last_renewal_date',
+          label: 'Last renewal',
+          render: (r) => formatDate(r.last_renewal_date),
+        });
+      }
+      addTable('AMC / CMC / Warranty', cols, coverageRows);
     }
 
     // Also update field-picker labels consistency is separate; PDF labels are full form above.

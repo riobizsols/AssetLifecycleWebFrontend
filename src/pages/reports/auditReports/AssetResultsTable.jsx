@@ -49,7 +49,7 @@ export default function AssetResultsTable({
                 Asset type
               </th>
               <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[16%]">
-                Location
+                Branch
               </th>
               <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[12%]">
                 Department
@@ -93,9 +93,11 @@ export default function AssetResultsTable({
                       </td>
                       <td className="px-3 py-3 align-top min-w-0">
                         <div className="font-medium text-slate-900 break-words">
-                          {asset.serial_number || asset.asset_id}
+                          {asset.asset_description || asset.serial_number || asset.asset_id}
                         </div>
-                        <div className="text-xs text-slate-500 break-words">{asset.asset_id}</div>
+                        <div className="text-xs text-slate-500 break-words">
+                          {[asset.serial_number, asset.asset_id].filter(Boolean).join(' · ') || '—'}
+                        </div>
                       </td>
                       <td className="px-3 py-3 text-slate-700 align-top break-words">
                         {asset.asset_type_name || '—'}

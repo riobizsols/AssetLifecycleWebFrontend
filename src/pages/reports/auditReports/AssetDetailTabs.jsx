@@ -7,6 +7,8 @@ import { ASSET_TABS } from './constants';
 import { EmptyHistory, formatDate, formatHours, MiniTable, StatusPill } from './utils';
 import PmComplianceDialog from './PmComplianceDialog';
 import CalibrationDetailDialog from './CalibrationDetailDialog';
+import AssetCoverageTab from './AssetCoverageTab';
+import AssetVendorRenewalTab from './AssetVendorRenewalTab';
 
 function fileLabelFromPath(path) {
   if (!path) return 'View document';
@@ -203,12 +205,18 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
     <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-5 min-w-0 max-w-full overflow-hidden">
       <div className="min-w-0">
         <h4 className="text-lg font-semibold text-slate-900 break-words">
-          {asset.asset_type_name || 'Asset'} {asset.serial_number || asset.asset_id}
+          {asset.asset_description || asset.asset_type_name || 'Asset'}
+          {(asset.serial_number || asset.asset_id) && (
+            <span className="font-normal text-slate-500">
+              {' '}
+              · {[asset.serial_number, asset.asset_id].filter(Boolean).join(' · ')}
+            </span>
+          )}
         </h4>
         <p className="text-sm text-slate-500 mt-1 break-words">
           <StatusPill value={asset.asset_status} />
           <span className="mx-2 text-slate-300">·</span>
-          {asset.branch_name || 'No location'}
+          {asset.branch_name || 'No branch'}
           <span className="mx-2 text-slate-300">·</span>
           {report.auditType?.description}
         </p>
@@ -240,7 +248,7 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
             {[
               ['Asset ID', asset.asset_id],
               ['Asset type', asset.asset_type_name],
-              ['Location', asset.branch_name],
+              ['Branch', asset.branch_name],
               ['Department', asset.department_name],
               ['Serial number', asset.serial_number],
               ['Status', asset.asset_status],
@@ -402,6 +410,14 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
             ]}
             rows={asset.history.purchaseOrders}
           />
+        )}
+
+        {activeTab === 'amcCmcWarranty' && (
+          <AssetCoverageTab assetId={asset.asset_id} />
+        )}
+
+        {activeTab === 'vendorRenewal' && (
+          <AssetVendorRenewalTab assetId={asset.asset_id} />
         )}
       </div>
     </div>
