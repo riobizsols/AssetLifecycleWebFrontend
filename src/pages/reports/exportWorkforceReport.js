@@ -38,7 +38,7 @@ export function exportWorkforcePdf(report) {
 
   doc.setFontSize(16);
   doc.setTextColor(0);
-  doc.text('Workforce Report', margin, 36);
+  doc.text('Engineering Team Productivity Report', margin, 36);
   doc.setFontSize(10);
   doc.setTextColor(100);
   doc.text(
@@ -142,5 +142,5 @@ export function exportWorkforcePdf(report) {
   }
 
   const stamp = (report.period?.from || 'export').replace(/[^0-9A-Za-z_-]/g, '_');
-  doc.save(`Workforce_Report_${stamp}.pdf`);
+  doc.save(`Engineering_Team_Productivity_Report_${stamp}.pdf`);
 }

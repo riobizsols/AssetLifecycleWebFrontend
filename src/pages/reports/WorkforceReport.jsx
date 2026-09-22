@@ -150,7 +150,10 @@ export default function WorkforceReport() {
         className="text-left text-[#143d65] font-medium hover:underline"
         title="View technician details"
       >
-        {name}
+        <span className="block">{name}</span>
+        {row.emp_int_id ? (
+          <span className="block text-[11px] font-normal text-slate-500">{row.emp_int_id}</span>
+        ) : null}
       </button>
     );
   };
@@ -225,12 +228,10 @@ export default function WorkforceReport() {
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 text-[#143d65]">
               <Users className="w-5 h-5" />
-              <h2 className="text-lg font-semibold text-slate-900">Workforce</h2>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Engineering Team Productivity Report
+              </h2>
             </div>
-            <p className="text-sm text-slate-500 mt-1">
-              Engineer and technician assignments, closures, backlog, SLA performance, workload,
-              and productivity. Click a name to view details and certificates.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-end gap-3">
