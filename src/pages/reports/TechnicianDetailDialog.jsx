@@ -89,13 +89,27 @@ export default function TechnicianDetailDialog({ open, technician, onClose }) {
     }
     try {
       setOpeningCertId(cert.etc_id);
-      const res = await API.get(`/employee-tech-certificates/${cert.etc_id}/download`);
-      const url = res.data?.url;
-      if (!url) {
-        toast.error('No certificate file available');
+      const res = await API.get(`/employee-tech-certificates/${cert.etc_id}/download`, {
+        params: { mode: 'view' },
+        responseType: 'blob',
+        timeout: 120000,
+      });
+      const contentType = String(res.headers?.['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const text = await (res.data instanceof Blob ? res.data.text() : Promise.resolve(String(res.data)));
+        let payload = {};
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          payload = { message: text };
+        }
+        toast.error(payload.message || payload.error || 'No certificate file available');
         return;
       }
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: contentType || 'application/pdf' });
+      const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err) {
       toast.error(
         err?.response?.data?.message ||

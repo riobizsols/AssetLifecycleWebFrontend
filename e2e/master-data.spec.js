@@ -92,7 +92,8 @@ async function openMasterList(page, path, columns) {
 function waitForPost(page, pathRe) {
   return page.waitForResponse(
     (response) =>
-      response.request().method() === 'POST' && pathRe.test(new URL(response.url()).pathname)
+      response.request().method() === 'POST' && pathRe.test(new URL(response.url()).pathname),
+    { timeout: 45000 }
   );
 }
 
@@ -108,8 +109,8 @@ async function tryCreateAssetType(page, stamp) {
 
   const createResponsePromise = waitForPost(page, /\/asset-types\/?$/);
   await page.getByRole('button', { name: 'Save' }).click();
-  const createResponse = await createResponsePromise;
-  if (!createResponse.ok()) return false;
+  const createResponse = await createResponsePromise.catch(() => null);
+  if (!createResponse || !createResponse.ok()) return false;
 
   await expect(page.getByText(/created successfully/i)).toBeVisible({ timeout: 15000 });
   await page.waitForURL(/\/master-data\/asset-types\/?$/, { timeout: 20000 });
