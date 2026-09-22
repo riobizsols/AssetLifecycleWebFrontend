@@ -6,7 +6,7 @@ function buildParams(filters = {}) {
   if (filters.branchIds?.length) params.branchIds = filters.branchIds.join(',');
   if (filters.deptIds?.length) params.deptIds = filters.deptIds.join(',');
   if (filters.statuses?.length) params.statuses = filters.statuses.join(',');
-  if (filters.categories?.length) params.categories = filters.categories.join(',');
+  if (filters.assetTypeIds?.length) params.assetTypeIds = filters.assetTypeIds.join(',');
   if (filters.search) params.search = filters.search;
   if (filters.page) params.page = filters.page;
   if (filters.pageSize) params.pageSize = filters.pageSize;
@@ -24,7 +24,7 @@ export const consolidatedAssetRegisterService = {
         campuses: [],
         departments: [],
         statuses: [],
-        categories: [],
+        assetTypes: [],
       }
     );
   },

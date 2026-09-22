@@ -14,56 +14,45 @@ import {
 } from 'recharts';
 import { formatInr, formatInrCurrency, PAGE_SIZE_OPTIONS } from './utils';
 
-const COLUMN_HINTS = {
-  share: 'Share % = (assets in that category ÷ total assets in scope) × 100',
-  acquisition: 'Acquisition (₹) = sum of purchase cost (purchased_cost) for assets in that category',
-  book: 'Book value (₹) = current book value, or purchase cost − accumulated depreciation when book value is missing',
-};
-
-function ColumnHint({ children, text }) {
-  return (
-    <span className="relative inline-flex justify-end group/hint">
-      <span className="cursor-help underline decoration-dotted decoration-slate-400 underline-offset-2">
-        {children}
-      </span>
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute left-1/2 top-full z-[60] mt-1.5 w-max max-w-[260px] -translate-x-1/2 rounded-md bg-slate-900 px-2.5 py-1.5 text-left text-[11px] font-normal normal-case tracking-normal leading-snug text-white shadow-lg opacity-0 group-hover/hint:opacity-100"
-      >
-        {text}
-      </span>
-    </span>
-  );
-}
-
 const COLORS = [
-  '#0f172a',
-  '#1e3a5f',
+  '#0E2F4B',
+  '#143d65',
+  '#1e5a8a',
   '#334155',
   '#475569',
   '#64748b',
-  '#94a3b8',
   '#0ea5e9',
   '#0369a1',
-  '#cbd5e1',
+  '#94a3b8',
 ];
 
-export default function CategoriesTab({ summary, loading }) {
-  const categories = summary?.categoryDistribution || [];
+/** Breakdown by real asset types from master data (not invented category buckets). */
+export default function AssetTypesTab({ summary, loading }) {
+  const rows = summary?.assetTypeDistribution || [];
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
-  const withAssets = useMemo(
-    () => categories.filter((c) => Number(c.asset_count) > 0),
-    [categories],
+  const chartRows = useMemo(
+    () =>
+      rows
+        .filter((r) => Number(r.asset_count) > 0)
+        .slice(0, 12)
+        .map((r) => ({
+          ...r,
+          label:
+            String(r.asset_type || 'Unassigned').length > 28
+              ? `${String(r.asset_type).slice(0, 26)}…`
+              : r.asset_type || 'Unassigned',
+        })),
+    [rows],
   );
 
-  const total = categories.length;
+  const total = rows.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
 
   useEffect(() => {
     setPage(1);
-  }, [categories, pageSize]);
+  }, [rows, pageSize]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -71,8 +60,8 @@ export default function CategoriesTab({ summary, loading }) {
 
   const pageRows = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return categories.slice(start, start + pageSize);
-  }, [categories, page, pageSize]);
+    return rows.slice(start, start + pageSize);
+  }, [rows, page, pageSize]);
 
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
@@ -85,15 +74,13 @@ export default function CategoriesTab({ summary, loading }) {
     <div className="space-y-6">
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 relative z-0">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <h3 className="text-sm font-semibold text-slate-900 mb-1">Asset count by category</h3>
-          <p className="text-xs text-slate-500 mb-3">
-            Compare how many assets sit in each category.
-          </p>
+          <h3 className="text-sm font-semibold text-slate-900 mb-1">Assets by type</h3>
+          <p className="text-xs text-slate-500 mb-3">Top asset types in the current filter scope</p>
           <div className="h-64">
-            {withAssets.length ? (
+            {chartRows.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={withAssets}
+                  data={chartRows}
                   layout="vertical"
                   margin={{ top: 8, right: 16, left: 8, bottom: 8 }}
                 >
@@ -101,42 +88,43 @@ export default function CategoriesTab({ summary, loading }) {
                   <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
                   <YAxis
                     type="category"
-                    dataKey="category"
-                    width={120}
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    dataKey="label"
+                    width={140}
+                    tick={{ fontSize: 10, fill: '#64748b' }}
                   />
-                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Bar dataKey="asset_count" name="Assets" fill="#0f172a" radius={[0, 4, 4, 0]} />
+                  <Tooltip
+                    formatter={(value, _name, props) => [value, props?.payload?.asset_type || 'Assets']}
+                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                  />
+                  <Bar dataKey="asset_count" name="Assets" fill="#0E2F4B" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-sm text-slate-400">
-                No category data
+                No asset type data
               </div>
             )}
           </div>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <h3 className="text-sm font-semibold text-slate-900 mb-1">Category mix</h3>
-          <p className="text-xs text-slate-500 mb-3">
-            Share of total assets by category (proportion of the portfolio).
-          </p>
+          <h3 className="text-sm font-semibold text-slate-900 mb-1">Type mix</h3>
+          <p className="text-xs text-slate-500 mb-3">Share of assets across types</p>
           <div className="h-64 flex items-center justify-center">
-            {withAssets.length ? (
+            {chartRows.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={withAssets}
+                    data={chartRows}
                     dataKey="asset_count"
-                    nameKey="category"
+                    nameKey="asset_type"
                     cx="50%"
                     cy="50%"
                     innerRadius={52}
                     outerRadius={88}
                     paddingAngle={2}
                   >
-                    {withAssets.map((_, idx) => (
+                    {chartRows.map((_, idx) => (
                       <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
                     ))}
                   </Pie>
@@ -147,7 +135,7 @@ export default function CategoriesTab({ summary, loading }) {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-sm text-slate-400">No category mix to chart</div>
+              <div className="text-sm text-slate-400">No type mix to chart</div>
             )}
           </div>
         </div>
@@ -156,7 +144,7 @@ export default function CategoriesTab({ summary, loading }) {
       <div className="space-y-3 relative z-10">
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
           <span>
-            Showing {from}–{to} of {total.toLocaleString('en-IN')}
+            Showing {from}–{to} of {total.toLocaleString('en-IN')} asset types
           </span>
           <label className="inline-flex items-center gap-2">
             <span className="text-xs text-slate-500">Rows</span>
@@ -178,30 +166,24 @@ export default function CategoriesTab({ summary, loading }) {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-3 py-2.5 font-medium">Category</th>
+                <th className="px-3 py-2.5 font-medium">Asset type</th>
                 <th className="px-3 py-2.5 font-medium text-right">Assets</th>
-                <th className="relative z-[50] px-3 py-2.5 font-medium text-right">
-                  <ColumnHint text={COLUMN_HINTS.share}>Share %</ColumnHint>
-                </th>
-                <th className="relative z-[50] px-3 py-2.5 font-medium text-right">
-                  <ColumnHint text={COLUMN_HINTS.acquisition}>Acquisition (₹)</ColumnHint>
-                </th>
-                <th className="relative z-[50] px-3 py-2.5 font-medium text-right">
-                  <ColumnHint text={COLUMN_HINTS.book}>Book value (₹)</ColumnHint>
-                </th>
+                <th className="px-3 py-2.5 font-medium text-right">Share %</th>
+                <th className="px-3 py-2.5 font-medium text-right">Acquisition (₹)</th>
+                <th className="px-3 py-2.5 font-medium text-right">Book value (₹)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {!pageRows.length && (
                 <tr>
                   <td colSpan={5} className="px-3 py-10 text-center text-slate-500">
-                    No category data
+                    No asset type data
                   </td>
                 </tr>
               )}
               {pageRows.map((r) => (
-                <tr key={r.category} className="hover:bg-slate-50/80">
-                  <td className="px-3 py-2.5 text-slate-800">{r.category}</td>
+                <tr key={r.asset_type_id || r.asset_type} className="hover:bg-slate-50/80">
+                  <td className="px-3 py-2.5 text-slate-800">{r.asset_type}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{r.asset_count}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{r.share_pct}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">

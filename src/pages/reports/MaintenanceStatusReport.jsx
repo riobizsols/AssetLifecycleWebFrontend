@@ -2,9 +2,24 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Download, Eye, FileText, Loader2 } from 'lucide-react';
 import { DropdownMultiSelect } from '../../components/reportModels/ReportComponents';
+import {
+  applyAdvancedFilters,
+  ReportAdvancedFilters,
+  ReportColumnControls,
+  ReportPreviewButton,
+  ReportPreviewModal,
+  ReportTableToolbar,
+  useReportColumns,
+} from '../../components/reportModels/ReportExtras';
 import { maintenanceStatusReportService } from '../../services/maintenanceStatusReportService';
 import { useAuditLog } from '../../hooks/useAuditLog';
 import { REPORTS_APP_IDS } from '../../constants/reportsAuditEvents';
+import {
+  getMaintenanceStatusCellValue,
+  MAINTENANCE_STATUS_ADVANCED_FIELDS,
+  MAINTENANCE_STATUS_COLUMNS,
+  MAINTENANCE_STATUS_FIELD_ACCESSORS,
+} from './newReportExtrasConfig';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -45,6 +60,12 @@ export default function MaintenanceStatusReport() {
   const [report, setReport] = useState(null);
   const [activeTab, setActiveTab] = useState('summary');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [advanced, setAdvanced] = useState([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { columns, setColumns } = useReportColumns(
+    MAINTENANCE_STATUS_COLUMNS.default,
+    MAINTENANCE_STATUS_COLUMNS.all,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -143,9 +164,14 @@ export default function MaintenanceStatusReport() {
   const totals = report?.summary?.totals || { due: 0, overdue: 0, completed: 0, expiry: 0, assets: 0 };
   const maintenanceRows = useMemo(() => {
     const rows = report?.details?.maintenance || [];
-    if (statusFilter === 'ALL') return rows;
-    return rows.filter((row) => row.compliance_status === statusFilter);
-  }, [report, statusFilter]);
+    const statusFiltered =
+      statusFilter === 'ALL' ? rows : rows.filter((row) => row.compliance_status === statusFilter);
+    return applyAdvancedFilters(
+      statusFiltered,
+      advanced,
+      MAINTENANCE_STATUS_FIELD_ACCESSORS,
+    );
+  }, [report, statusFilter, advanced]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -153,10 +179,6 @@ export default function MaintenanceStatusReport() {
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
           <div className="px-6 py-5 border-b border-slate-100">
             <h2 className="text-lg font-semibold text-slate-900">Configure report</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Maintenance due, overdue, completed and warranty/asset expiry for electrical, plumbing,
-              HVAC, civil, lifts, generators, fire systems and campus infrastructure.
-            </p>
           </div>
 
           <div className="p-6 space-y-8">
@@ -190,9 +212,6 @@ export default function MaintenanceStatusReport() {
                   options={assetTypeOptions}
                   placeholder={loadingTypes ? 'Loading asset types…' : 'Select asset types'}
                 />
-                <p className="text-xs text-slate-500">
-                  Facility types are selected by default. You can add or remove types.
-                </p>
               </div>
             </div>
 
@@ -219,7 +238,18 @@ export default function MaintenanceStatusReport() {
               </div>
             )}
 
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <ReportPreviewButton
+                onClick={() => {
+                  if (!report) {
+                    toast.error('View the report first');
+                    return;
+                  }
+                  setActiveTab('maintenance');
+                  setPreviewOpen(true);
+                }}
+                disabled={!report}
+              />
               <button
                 type="button"
                 disabled={!canView || loadingView}
@@ -230,6 +260,12 @@ export default function MaintenanceStatusReport() {
                 View report
               </button>
             </div>
+
+            <ReportAdvancedFilters
+              fields={MAINTENANCE_STATUS_ADVANCED_FIELDS}
+              value={advanced}
+              onChange={setAdvanced}
+            />
           </div>
         </section>
 
@@ -237,10 +273,6 @@ export default function MaintenanceStatusReport() {
           <section className="rounded-2xl border border-dashed border-slate-300 bg-white/70 px-8 py-16 text-center">
             <FileText className="w-10 h-10 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-slate-800">No report yet</h3>
-            <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-              Choose yearly, monthly or a custom date range, keep the facility asset types selected,
-              then click View report.
-            </p>
           </section>
         )}
 
@@ -299,94 +331,120 @@ export default function MaintenanceStatusReport() {
             </div>
 
             {activeTab === 'summary' && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-slate-600">
-                    <tr>
-                      {['Asset type', 'Assets', 'Due', 'Overdue', 'Completed', 'Expiry'].map((h) => (
-                        <th key={h} className="text-left font-medium px-6 py-3 whitespace-nowrap">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(report.summary?.by_asset_type || []).map((row) => (
-                      <tr key={row.asset_type_id} className="border-t border-slate-100">
-                        <td className="px-6 py-3 font-medium text-slate-800">{row.asset_type_name}</td>
-                        <td className="px-6 py-3 tabular-nums">{row.asset_count}</td>
-                        <td className="px-6 py-3 tabular-nums">{row.due}</td>
-                        <td className="px-6 py-3 tabular-nums">{row.overdue}</td>
-                        <td className="px-6 py-3 tabular-nums">{row.completed}</td>
-                        <td className="px-6 py-3 tabular-nums">{row.expiry}</td>
-                      </tr>
-                    ))}
-                    {!(report.summary?.by_asset_type || []).length && (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
-                          No facility assets found for this period.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {activeTab === 'maintenance' && (
-              <div>
-                <div className="px-6 py-3 flex flex-wrap gap-2">
-                  {['ALL', 'DUE', 'OVERDUE', 'COMPLETED'].map((id) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setStatusFilter(id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
-                        statusFilter === id
-                          ? 'bg-[#143d65] text-white border-[#143d65]'
-                          : 'bg-white text-slate-600 border-slate-200'
-                      }`}
-                    >
-                      {id === 'ALL' ? 'All' : statusLabel(id)}
-                    </button>
-                  ))}
-                </div>
-                <div className="overflow-x-auto">
+              <div className="overflow-x-auto px-6 py-4">
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="min-w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-600">
+                    <thead className="bg-[#0E2F4B] text-white">
                       <tr>
-                        {['Asset', 'Type', 'Work order', 'Due date', 'Completed', 'Status'].map((h) => (
-                          <th key={h} className="text-left font-medium px-6 py-3 whitespace-nowrap">
+                        {['Asset type', 'Assets', 'Due', 'Overdue', 'Completed', 'Expiry'].map((h) => (
+                          <th
+                            key={h}
+                            className="text-left text-[11px] font-semibold uppercase tracking-wide px-4 py-2.5 whitespace-nowrap"
+                          >
                             {h}
                           </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {(report.summary?.by_asset_type || []).map((row) => (
+                        <tr key={row.asset_type_id} className="hover:bg-slate-50/80">
+                          <td className="px-4 py-2.5 font-medium text-slate-800">{row.asset_type_name}</td>
+                          <td className="px-4 py-2.5 tabular-nums">{row.asset_count}</td>
+                          <td className="px-4 py-2.5 tabular-nums">{row.due}</td>
+                          <td className="px-4 py-2.5 tabular-nums">{row.overdue}</td>
+                          <td className="px-4 py-2.5 tabular-nums">{row.completed}</td>
+                          <td className="px-4 py-2.5 tabular-nums">{row.expiry}</td>
+                        </tr>
+                      ))}
+                      {!(report.summary?.by_asset_type || []).length && (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                            No facility assets found for this period.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'maintenance' && (
+              <div className="space-y-3 px-6 py-4">
+                <ReportTableToolbar
+                  title="Maintenance detail"
+                  columnsSlot={
+                    <ReportColumnControls
+                      allColumns={MAINTENANCE_STATUS_COLUMNS.all}
+                      columns={columns}
+                      setColumns={setColumns}
+                      defaultColumns={MAINTENANCE_STATUS_COLUMNS.default}
+                    />
+                  }
+                  actions={
+                    <div className="flex flex-wrap gap-1.5">
+                      {['ALL', 'DUE', 'OVERDUE', 'COMPLETED'].map((id) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setStatusFilter(id)}
+                          className={`rounded-full px-3 py-1 text-xs font-medium border transition ${
+                            statusFilter === id
+                              ? 'bg-[#0E2F4B] text-white border-[#0E2F4B]'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          {id === 'ALL' ? 'All' : statusLabel(id)}
+                        </button>
+                      ))}
+                    </div>
+                  }
+                />
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-[#0E2F4B] text-white">
+                      <tr>
+                        {columns.map((h) => (
+                          <th
+                            key={h}
+                            className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap"
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
                       {maintenanceRows.map((row) => (
-                        <tr key={row.ams_id || `${row.wo_id}-${row.asset_id}`} className="border-t border-slate-100">
-                          <td className="px-6 py-3">
-                            <div className="font-medium text-slate-800">{row.asset_name || row.asset_id}</div>
-                            <div className="text-xs text-slate-500">{row.serial_number || row.asset_id}</div>
-                          </td>
-                          <td className="px-6 py-3">{row.asset_type_name}</td>
-                          <td className="px-6 py-3">{row.wo_id || '—'}</td>
-                          <td className="px-6 py-3">{formatDate(row.act_maint_st_date)}</td>
-                          <td className="px-6 py-3">{formatDate(row.act_main_end_date)}</td>
-                          <td className="px-6 py-3">
-                            <span
-                              className={`inline-flex px-2 py-0.5 rounded-full border text-xs font-medium ${
-                                STATUS_STYLES[row.compliance_status] || 'bg-slate-50 text-slate-700'
-                              }`}
-                            >
-                              {statusLabel(row.compliance_status)}
-                            </span>
-                          </td>
+                        <tr
+                          key={row.ams_id || `${row.wo_id}-${row.asset_id}`}
+                          className="hover:bg-slate-50/80"
+                        >
+                          {columns.map((col) => (
+                            <td key={col} className="px-4 py-2.5 text-slate-800 whitespace-nowrap">
+                              {col === 'Status' ? (
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded-full border text-xs font-medium ${
+                                    STATUS_STYLES[row.compliance_status] ||
+                                    'bg-slate-50 text-slate-700'
+                                  }`}
+                                >
+                                  {getMaintenanceStatusCellValue(row, col)}
+                                </span>
+                              ) : (
+                                getMaintenanceStatusCellValue(row, col)
+                              )}
+                            </td>
+                          ))}
                         </tr>
                       ))}
                       {!maintenanceRows.length && (
                         <tr>
-                          <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                          <td
+                            colSpan={columns.length}
+                            className="px-4 py-10 text-center text-slate-500"
+                          >
                             No maintenance records in this period.
                           </td>
                         </tr>
@@ -398,52 +456,67 @@ export default function MaintenanceStatusReport() {
             )}
 
             {activeTab === 'expiry' && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-slate-600">
-                    <tr>
-                      {['Asset', 'Type', 'Kind', 'Warranty', 'Asset expiry'].map((h) => (
-                        <th key={h} className="text-left font-medium px-6 py-3 whitespace-nowrap">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(report.details?.expiry || []).map((row) => (
-                      <tr key={row.asset_id} className="border-t border-slate-100">
-                        <td className="px-6 py-3">
-                          <div className="font-medium text-slate-800">{row.asset_name || row.asset_id}</div>
-                          <div className="text-xs text-slate-500">{row.serial_number || row.asset_id}</div>
-                        </td>
-                        <td className="px-6 py-3">{row.asset_type_name}</td>
-                        <td className="px-6 py-3">
-                          <span
-                            className={`inline-flex px-2 py-0.5 rounded-full border text-xs font-medium ${
-                              STATUS_STYLES[row.expiry_kind] || 'bg-orange-50 text-orange-800'
-                            }`}
-                          >
-                            {statusLabel(row.expiry_kind)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3">{formatDate(row.warranty_period)}</td>
-                        <td className="px-6 py-3">{formatDate(row.expiry_date)}</td>
-                      </tr>
-                    ))}
-                    {!(report.details?.expiry || []).length && (
+              <div className="overflow-x-auto px-6 py-4">
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-[#0E2F4B] text-white">
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                          No warranty or asset expiry dates in this period.
-                        </td>
+                        {['Asset', 'Type', 'Kind', 'Warranty', 'Asset expiry'].map((h) => (
+                          <th
+                            key={h}
+                            className="text-left text-[11px] font-semibold uppercase tracking-wide px-4 py-2.5 whitespace-nowrap"
+                          >
+                            {h}
+                          </th>
+                        ))}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {(report.details?.expiry || []).map((row) => (
+                        <tr key={row.asset_id} className="hover:bg-slate-50/80">
+                          <td className="px-4 py-2.5">
+                            <div className="font-medium text-slate-800">{row.asset_name || row.asset_id}</div>
+                            <div className="text-xs text-slate-500">{row.serial_number || row.asset_id}</div>
+                          </td>
+                          <td className="px-4 py-2.5">{row.asset_type_name}</td>
+                          <td className="px-4 py-2.5">
+                            <span
+                              className={`inline-flex px-2 py-0.5 rounded-full border text-xs font-medium ${
+                                STATUS_STYLES[row.expiry_kind] || 'bg-orange-50 text-orange-800'
+                              }`}
+                            >
+                              {statusLabel(row.expiry_kind)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5">{formatDate(row.warranty_period)}</td>
+                          <td className="px-4 py-2.5">{formatDate(row.expiry_date)}</td>
+                        </tr>
+                      ))}
+                      {!(report.details?.expiry || []).length && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                            No warranty or asset expiry dates in this period.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </section>
         )}
       </div>
+
+      <ReportPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title="Maintenance detail preview"
+        columns={columns}
+        rows={maintenanceRows}
+        getCellValue={getMaintenanceStatusCellValue}
+        emptyLabel="No maintenance rows to preview."
+      />
     </div>
   );
 }

@@ -600,7 +600,17 @@ const Certifications = () => {
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_CERTIFICATECREATEDSUCCESSFULLY_74BEAED1', fallbackText: "Certificate created successfully", type: 'success' });
     } catch (error) {
       console.error("Failed to create certificate:", error);
-      showBackendTextToast({ toast, tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOCREATECERTIFICATE_20C5E5BA', fallbackText: error.response?.data?.message || t("certifications.failedToCreateCertificate"), type: 'error' });
+      const apiMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        t("certifications.failedToCreateCertificate");
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_I18N_CERTIFICATIONS_FAILEDTOCREATECERTIFICATE_20C5E5BA',
+        fallbackText: apiMessage,
+        type: 'error',
+      });
     } finally {
       setIsCreating(false);
     }

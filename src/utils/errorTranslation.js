@@ -243,6 +243,14 @@ export const showBackendTextToast = ({
         return;
       }
 
+      // Never show raw TMD ids (e.g. TMD_I18N_…) when a human fallback exists.
+      if (
+        hasFallbackMessage &&
+        /^TMD_[A-Z0-9_]+$/i.test(String(resolvedMessage || '').trim())
+      ) {
+        return;
+      }
+
       const shouldKeepLocalizedFallback =
         !isEnglish &&
         resolvedMessage !== fallbackMessage &&

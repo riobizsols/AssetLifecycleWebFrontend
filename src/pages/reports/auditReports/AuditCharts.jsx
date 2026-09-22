@@ -220,7 +220,6 @@ function assetHasEvidence(asset) {
  * Audit-focused visuals: evidence coverage + operational status + scoped asset mix.
  */
 export default function AuditCharts({ assets, report }) {
-  const periodLabel = report?.period?.label || 'Selected period';
   const sections = report?.sections || {};
   const assetCount = assets?.length || 0;
 
@@ -320,45 +319,25 @@ export default function AuditCharts({ assets, report }) {
     <div className="px-6 py-5 space-y-4 border-b border-slate-100">
       <div>
         <h3 className="text-base font-semibold text-slate-900">Audit insights</h3>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Evidence coverage and operational status for {assetCount.toLocaleString('en-IN')} assets
-          · {periodLabel}
-        </p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <ChartCard
-          title="Evidence coverage"
-          subtitle={`${coverage.coveragePct}% of assets have at least one audit record in this period`}
-        >
+        <ChartCard title="Evidence coverage">
           <DonutChart
             data={coverage.pie}
             emptyLabel="No assets in scope"
             colorMap={COVERAGE_COLORS}
           />
-          {coverage.withoutCount > 0 && (
-            <p className="mt-2 text-xs text-rose-700">
-              {coverage.withoutCount.toLocaleString('en-IN')} asset
-              {coverage.withoutCount === 1 ? '' : 's'} have no maintenance, breakdown,
-              certification, invoice, or PO evidence in this period.
-            </p>
-          )}
         </ChartCard>
 
-        <ChartCard
-          title="Evidence records by category"
-          subtitle={`How many records were found across the selected assets · ${periodLabel}`}
-        >
+        <ChartCard title="Evidence records by category">
           <DonutChart
             data={evidenceRecords}
             emptyLabel="No evidence records in this period"
           />
         </ChartCard>
 
-        <ChartCard
-          title="Assets with each evidence type"
-          subtitle="An asset can appear in more than one bar (coverage by document / event type)"
-        >
+        <ChartCard title="Assets with each evidence type">
           {coverage.byType.length ? (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -400,29 +379,20 @@ export default function AuditCharts({ assets, report }) {
           )}
         </ChartCard>
 
-        <ChartCard
-          title="Asset status"
-          subtitle="Current lifecycle status of assets in this audit scope"
-        >
+        <ChartCard title="Asset status">
           <DonutChart data={byAssetStatus} emptyLabel="No status data" />
         </ChartCard>
 
         {(maintByStatus.length > 0 || breakdownByReason.length > 0) && (
           <>
-            <ChartCard
-              title="Maintenance by status"
-              subtitle={`${(sections.maintenance || []).length} maintenance record(s) · ${periodLabel}`}
-            >
+            <ChartCard title="Maintenance by status">
               <DonutChart
                 data={maintByStatus}
                 emptyLabel="No maintenance in this period"
               />
             </ChartCard>
 
-            <ChartCard
-              title="Breakdowns by reason"
-              subtitle={`${(sections.breakdown || []).length} breakdown record(s) · ${periodLabel}`}
-            >
+            <ChartCard title="Breakdowns by reason">
               <DonutChart
                 data={breakdownByReason}
                 emptyLabel="No breakdowns in this period"
@@ -431,18 +401,12 @@ export default function AuditCharts({ assets, report }) {
           </>
         )}
 
-        <ChartCard
-          title="Assets by type"
-          subtitle="Scope of this audit — mapped asset types selected above"
-        >
+        <ChartCard title="Assets by type">
           <HBarChart data={byType} emptyLabel="No asset types" />
         </ChartCard>
 
         {showBranch && (
-          <ChartCard
-            title="Assets by branch"
-            subtitle="Where assets in this audit are located"
-          >
+          <ChartCard title="Assets by branch">
             <HBarChart data={byBranch} emptyLabel="No branch data" />
           </ChartCard>
         )}
@@ -450,7 +414,6 @@ export default function AuditCharts({ assets, report }) {
         {showDept && (
           <ChartCard
             title="Assets by department"
-            subtitle="Department assignment for assets in scope"
             className={showBranch ? '' : 'xl:col-span-2'}
           >
             <HBarChart data={byDepartment} emptyLabel="No department data" />

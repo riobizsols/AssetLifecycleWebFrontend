@@ -4,9 +4,17 @@ import * as XLSX from 'xlsx';
 import { formatInr } from './utils';
 import { consolidatedAssetRegisterService } from '../../../services/consolidatedAssetRegisterService';
 
-export async function exportExcel({ summary, queryFilters }) {
+export async function exportExcel({ summary, queryFilters, filterSummary = [] }) {
   const exportData = await consolidatedAssetRegisterService.getRegisterExport(queryFilters);
   const wb = XLSX.utils.book_new();
+
+  if (filterSummary?.length) {
+    const filters = [
+      ['Filter', 'Value'],
+      ...filterSummary.map((f) => [f.label, f.value]),
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filters), 'Filters');
+  }
 
   const kpi = [
     ['Metric', 'Value'],
@@ -42,17 +50,17 @@ export async function exportExcel({ summary, queryFilters }) {
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(campus), 'Campuses');
 
-  const cats = [
-    ['Category', 'Assets', 'Share %', 'Acquisition', 'Book value'],
-    ...(summary?.categoryDistribution || []).map((r) => [
-      r.category,
+  const types = [
+    ['Asset type', 'Assets', 'Share %', 'Acquisition', 'Book value'],
+    ...(summary?.assetTypeDistribution || []).map((r) => [
+      r.asset_type,
       r.asset_count,
       r.share_pct,
       r.acquisition_value,
       r.book_value,
     ]),
   ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cats), 'Categories');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(types), 'Asset types');
 
   const reg = [
     [
@@ -62,7 +70,6 @@ export async function exportExcel({ summary, queryFilters }) {
       'Asset ID',
       'Serial',
       'Type',
-      'Category',
       'Status',
       'Acquisition',
       'Book value',
@@ -74,7 +81,6 @@ export async function exportExcel({ summary, queryFilters }) {
       r.asset_id,
       r.serial_number,
       r.asset_type,
-      r.category,
       r.status,
       r.acquisition_value,
       r.book_value,
@@ -85,7 +91,7 @@ export async function exportExcel({ summary, queryFilters }) {
   XLSX.writeFile(wb, `Consolidated_Asset_Register_${summary?.asOfLabel || 'export'}.xlsx`);
 }
 
-export async function exportPdf({ summary, queryFilters }) {
+export async function exportPdf({ summary, queryFilters, filterSummary = [] }) {
   const exportData = await consolidatedAssetRegisterService.getRegisterExport(queryFilters);
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
   const margin = 40;
@@ -101,8 +107,21 @@ export async function exportPdf({ summary, queryFilters }) {
   );
   doc.setTextColor(0);
 
+  let startY = 72;
+
+  if (filterSummary?.length) {
+    autoTable(doc, {
+      startY,
+      head: [['Applied filters', 'Value']],
+      body: filterSummary.map((f) => [f.label, f.value]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [15, 23, 42] },
+    });
+    startY = (doc.lastAutoTable?.finalY || startY) + 16;
+  }
+
   autoTable(doc, {
-    startY: 72,
+    startY,
     head: [['Institution', 'Assets', 'Acquisition (₹)', 'Depreciation (₹)', 'Book value (₹)']],
     body: (summary?.institutions || []).map((r) => [
       r.institution,
@@ -117,9 +136,9 @@ export async function exportPdf({ summary, queryFilters }) {
 
   autoTable(doc, {
     startY: (doc.lastAutoTable?.finalY || 100) + 16,
-    head: [['Category', 'Assets', 'Share %', 'Acquisition (₹)', 'Book value (₹)']],
-    body: (summary?.categoryDistribution || []).map((r) => [
-      r.category,
+    head: [['Asset type', 'Assets', 'Share %', 'Acquisition (₹)', 'Book value (₹)']],
+    body: (summary?.assetTypeDistribution || []).map((r) => [
+      r.asset_type,
       r.asset_count,
       r.share_pct,
       formatInr(r.acquisition_value),
@@ -138,7 +157,6 @@ export async function exportPdf({ summary, queryFilters }) {
         'Dept',
         'Asset ID',
         'Type',
-        'Category',
         'Status',
         'Acquisition',
         'Book',
@@ -150,7 +168,6 @@ export async function exportPdf({ summary, queryFilters }) {
       r.department,
       r.asset_id,
       r.asset_type,
-      r.category,
       r.status,
       formatInr(r.acquisition_value),
       formatInr(r.book_value),

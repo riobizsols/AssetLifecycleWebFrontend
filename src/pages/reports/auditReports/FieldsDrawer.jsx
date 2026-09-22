@@ -60,9 +60,6 @@ export default function FieldsDrawer({
         <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">Customize report</h3>
-            <p className="text-sm text-slate-500 mt-1">
-              Choose the information you want to include in your report.
-            </p>
           </div>
           <button
             type="button"

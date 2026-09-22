@@ -22,27 +22,26 @@ export default function PmComplianceDialog({ open, loading, data, error, onClose
         aria-label="Close preventive maintenance compliance"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-200 flex flex-col">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3 shrink-0">
           <div className="min-w-0">
             <h3 className="text-lg font-semibold text-slate-900">
               Preventive maintenance compliance
             </h3>
-            <p className="text-sm text-slate-500 mt-1">
-              How well scheduled preventive maintenance is completed on time
-              {data?.period?.label ? ` · ${data.period.label}` : ''}
-            </p>
+            {data?.period?.label ? (
+              <p className="text-sm text-slate-500 mt-1">{data.period.label}</p>
+            ) : null}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-4">
           {loading && (
             <div className="flex items-center justify-center gap-2 py-12 text-slate-500">
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -95,7 +94,7 @@ export default function PmComplianceDialog({ open, loading, data, error, onClose
                 </div>
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <h4 className="text-sm font-semibold text-slate-800 mb-2">
                   By institution and department
                 </h4>
@@ -104,29 +103,29 @@ export default function PmComplianceDialog({ open, loading, data, error, onClose
                     No preventive maintenance due in this period for the selected asset types.
                   </div>
                 ) : (
-                  <div className="w-full max-w-full overflow-hidden rounded-xl border border-slate-200">
-                    <table className="w-full table-fixed text-sm">
+                  <div className="w-full max-w-full overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="min-w-[640px] w-full text-sm">
                       <thead className="bg-slate-50">
                         <tr>
-                          <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[28%]">
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                             Institution
                           </th>
-                          <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[22%]">
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                             Department
                           </th>
-                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap w-16">
                             Due
                           </th>
-                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap w-20">
                             On time
                           </th>
-                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap w-16">
                             Late
                           </th>
-                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap w-16">
                             Open
                           </th>
-                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 whitespace-nowrap w-28 pr-4">
                             Compliance
                           </th>
                         </tr>
@@ -140,20 +139,20 @@ export default function PmComplianceDialog({ open, loading, data, error, onClose
                             <td className="px-3 py-2.5 text-slate-800 break-words align-top">
                               {row.department_name || '—'}
                             </td>
-                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
+                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 whitespace-nowrap">
                               {row.pms_due}
                             </td>
-                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
+                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 whitespace-nowrap">
                               {row.pms_on_time}
                             </td>
-                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
+                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 whitespace-nowrap">
                               {row.pms_late}
                             </td>
-                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
+                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-700 whitespace-nowrap">
                               {row.pms_open}
                             </td>
                             <td
-                              className={`px-3 py-2.5 text-right tabular-nums font-semibold ${pctTone(row.pm_compliance_pct)}`}
+                              className={`px-3 py-2.5 pr-4 text-right tabular-nums font-semibold whitespace-nowrap ${pctTone(row.pm_compliance_pct)}`}
                             >
                               {row.pm_compliance_pct == null
                                 ? '—'

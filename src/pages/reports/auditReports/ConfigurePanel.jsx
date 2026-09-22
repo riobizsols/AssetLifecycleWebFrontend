@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, Loader2, Link2 } from 'lucide-react';
 import { DropdownMultiSelect } from '../../../components/reportModels/ReportComponents';
+import {
+  ReportAdvancedFilters,
+  ReportPreviewButton,
+} from '../../../components/reportModels/ReportExtras';
+import { AUDIT_REPORT_ADVANCED_FIELDS } from '../newReportExtrasConfig';
 import { CURRENT_YEAR } from './constants';
 
 export default function ConfigurePanel({
@@ -24,22 +29,59 @@ export default function ConfigurePanel({
   loadingView,
   onView,
   onClearReport,
+  advanced = [],
+  setAdvanced,
+  statusDomain = [],
+  onPreview,
+  previewDisabled,
 }) {
+  const advancedFields = useMemo(
+    () =>
+      AUDIT_REPORT_ADVANCED_FIELDS.map((f) =>
+        f.key === 'status' ? { ...f, domain: statusDomain } : f,
+      ),
+    [statusDomain],
+  );
+
+  const getFilterOptions = (fieldKey) => {
+    if (fieldKey === 'status') {
+      return (statusDomain || []).map((s) => ({ value: String(s), label: String(s) }));
+    }
+    return null;
+  };
+
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-      <div className="px-6 py-5 border-b border-slate-100">
-        <h2 className="text-lg font-semibold text-slate-900">Configure report</h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Choose the audit criteria, then generate a report for the mapped assets.
-        </p>
+    <section className="relative z-10 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+        <p className="text-sm font-semibold text-slate-900">Configure report</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {onPreview ? (
+            <ReportPreviewButton onClick={onPreview} disabled={previewDisabled || loadingView} />
+          ) : null}
+          <button
+            type="button"
+            disabled={!canView || loadingView}
+            onClick={onView}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#0E2F4B] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#143d65] disabled:opacity-50"
+          >
+            {loadingView ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+            View report
+          </button>
+        </div>
       </div>
 
-      <div className="p-6 space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2 relative z-10">
-            <label className="block text-sm font-medium text-slate-700">Audit type</label>
+      <div className="p-4 space-y-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5 relative z-10">
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Audit type
+            </label>
             <select
-              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#143d65]/40"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/25"
               value={audtpId}
               onChange={(e) => {
                 setAudtpId(e.target.value);
@@ -57,10 +99,12 @@ export default function ConfigurePanel({
             </select>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-slate-700">Audit period</label>
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Audit period
+            </label>
             <select
-              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#143d65]/40"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/25"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
             >
@@ -72,21 +116,25 @@ export default function ConfigurePanel({
         </div>
 
         {period === 'specific' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-700">From</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                From
+              </label>
               <input
                 type="date"
-                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d65]/40"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/25"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-700">To</label>
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                To
+              </label>
               <input
                 type="date"
-                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#143d65]/40"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/25"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
               />
@@ -96,26 +144,24 @@ export default function ConfigurePanel({
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Asset types</label>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Only asset types mapped to this audit type are listed. History is pulled from those
-                assets for the selected period.{' '}
-                <Link
-                  to="/master-data/audit-type-mapping"
-                  className="inline-flex items-center gap-1 font-medium text-[#143d65] hover:underline"
-                >
-                  <Link2 className="w-3 h-3" />
-                  Manage mappings
-                </Link>
-              </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Asset types
+              </label>
+              <Link
+                to="/master-data/audit-type-mapping"
+                className="inline-flex items-center gap-1 text-xs font-medium text-[#0E2F4B] hover:underline"
+              >
+                <Link2 className="w-3 h-3" />
+                Manage mappings
+              </Link>
             </div>
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={!assetTypeOptions.length}
                 onClick={() => setSelectedAssetTypes(assetTypeOptions.map((o) => o.value))}
-                className="text-xs font-medium text-[#143d65] hover:underline disabled:opacity-40"
+                className="text-xs font-medium text-[#0E2F4B] hover:underline disabled:opacity-40"
               >
                 Select all
               </button>
@@ -134,6 +180,7 @@ export default function ConfigurePanel({
             options={assetTypeOptions}
             values={selectedAssetTypes}
             onChange={setSelectedAssetTypes}
+            hideSelectedText
             placeholder={
               !audtpId
                 ? 'Select an audit type first'
@@ -169,21 +216,14 @@ export default function ConfigurePanel({
           )}
         </div>
 
-        <div className="flex justify-end pt-2">
-          <button
-            type="button"
-            disabled={!canView || loadingView}
-            onClick={onView}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#143d65] hover:bg-[#1e5a8a] disabled:opacity-50"
-          >
-            {loadingView ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Eye className="w-4 h-4" />
-            )}
-            View report
-          </button>
-        </div>
+        {setAdvanced ? (
+          <ReportAdvancedFilters
+            fields={advancedFields}
+            value={advanced}
+            onChange={setAdvanced}
+            getFilterOptions={getFilterOptions}
+          />
+        ) : null}
       </div>
     </section>
   );

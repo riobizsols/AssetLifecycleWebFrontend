@@ -119,12 +119,36 @@ export default function AuditTypeAssetTypeMapping() {
   }, [auditTypes, search]);
 
   const selectedChips = useMemo(() => {
-    const byId = new Map(allAssetTypes.map((a) => [a.asset_type_id, a.asset_type_name]));
-    return selectedAssetTypeIds.map((id) => ({
-      id,
-      label: byId.get(id) || id,
-    }));
-  }, [selectedAssetTypeIds, allAssetTypes]);
+    const byId = new Map(
+      allAssetTypes.map((a) => [
+        a.asset_type_id,
+        {
+          label: a.asset_type_name || a.asset_type_id,
+          alsoOn: (a.mapped_audit_types || [])
+            .filter((m) => m.audtp_id !== selectedAudtpId)
+            .map((m) => m.description || m.audtp_id),
+        },
+      ]),
+    );
+    return selectedAssetTypeIds.map((id) => {
+      const info = byId.get(id);
+      return {
+        id,
+        label: info?.label || id,
+        alsoOn: info?.alsoOn || [],
+      };
+    });
+  }, [selectedAssetTypeIds, allAssetTypes, selectedAudtpId]);
+
+  const mappedCountByAudtp = useMemo(() => {
+    const counts = {};
+    for (const at of allAssetTypes) {
+      for (const m of at.mapped_audit_types || []) {
+        counts[m.audtp_id] = (counts[m.audtp_id] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [allAssetTypes]);
 
   const handleCreate = async () => {
     const description = newName.trim();
@@ -178,6 +202,9 @@ export default function AuditTypeAssetTypeMapping() {
       const ids = data.map((m) => m.asset_type_id);
       setSelectedAssetTypeIds(ids);
       setSavedAssetTypeIds(ids);
+      // Refresh so “also on” labels stay accurate across audit types
+      const assetTypes = await auditReportService.getAllAssetTypes();
+      setAllAssetTypes(assetTypes);
       toast.success('Mappings saved');
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Failed to save mappings');
@@ -297,6 +324,11 @@ export default function AuditTypeAssetTypeMapping() {
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
                         {t.is_internal ? 'Internal' : 'External'}
+                        {mappedCountByAudtp[t.audtp_id]
+                          ? ` · ${mappedCountByAudtp[t.audtp_id]} asset type${
+                              mappedCountByAudtp[t.audtp_id] === 1 ? '' : 's'
+                            }`
+                          : ' · no mappings'}
                       </div>
                     </button>
                   );
@@ -375,6 +407,7 @@ export default function AuditTypeAssetTypeMapping() {
                       options={assetTypeOptions}
                       values={selectedAssetTypeIds}
                       onChange={setSelectedAssetTypeIds}
+                      hideSelectedText
                       placeholder={
                         assetTypeOptions.length
                           ? 'Select asset types to include'
@@ -388,16 +421,27 @@ export default function AuditTypeAssetTypeMapping() {
                       {selectedChips.map((chip) => (
                         <span
                           key={chip.id}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                          title={
+                            chip.alsoOn.length
+                              ? `Also mapped to: ${chip.alsoOn.join(', ')}`
+                              : undefined
+                          }
                         >
-                          {chip.label}
+                          <span className="truncate">{chip.label}</span>
+                          {chip.alsoOn.length > 0 ? (
+                            <span className="font-normal text-slate-400 truncate">
+                              · also {chip.alsoOn.slice(0, 2).join(', ')}
+                              {chip.alsoOn.length > 2 ? ` +${chip.alsoOn.length - 2}` : ''}
+                            </span>
+                          ) : null}
                           <button
                             type="button"
                             aria-label={`Remove ${chip.label}`}
                             onClick={() =>
                               setSelectedAssetTypeIds((prev) => prev.filter((id) => id !== chip.id))
                             }
-                            className="text-slate-400 hover:text-slate-700"
+                            className="shrink-0 text-slate-400 hover:text-slate-700"
                           >
                             ×
                           </button>

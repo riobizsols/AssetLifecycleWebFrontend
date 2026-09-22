@@ -1,7 +1,13 @@
 import React, { useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DropdownMultiSelect } from '../../../components/reportModels/ReportComponents';
-import { formatInr, PAGE_SIZE_OPTIONS } from './utils';
+import { ReportColumnControls, ReportTableToolbar } from '../../../components/reportModels/ReportExtras';
+import { PAGE_SIZE_OPTIONS } from './utils';
+import {
+  CONSOLIDATED_REGISTER_COLUMNS,
+  getConsolidatedCellValue,
+  isNumericConsolidatedColumn,
+} from '../newReportExtrasConfig';
 
 function toDropdownOptions(options = []) {
   return (options || [])
@@ -15,7 +21,9 @@ function toDropdownOptions(options = []) {
 function FilterField({ label, children, className = '' }) {
   return (
     <div className={`min-w-[160px] flex-1 ${className}`.trim()}>
-      <label className="block text-xs font-medium text-slate-500 mb-1.5">{label}</label>
+      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </label>
       {children}
     </div>
   );
@@ -30,30 +38,35 @@ export default function RegisterTab({
   setPageSize,
   registerDraft,
   setRegisterDraft,
-  categories,
+  assetTypes,
   statuses,
   onApplyRegisterFilters,
   onResetRegisterFilters,
+  columns,
+  setColumns,
 }) {
   const totalPages = register?.totalPages || 1;
   const total = register?.total || 0;
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const categoryOpts = useMemo(() => toDropdownOptions(categories), [categories]);
+  const assetTypeOpts = useMemo(() => toDropdownOptions(assetTypes), [assetTypes]);
   const statusOpts = useMemo(() => toDropdownOptions(statuses), [statuses]);
+
+  const visibleColumns =
+    columns?.length > 0 ? columns : CONSOLIDATED_REGISTER_COLUMNS.default;
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <FilterField label="Category">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+          <FilterField label="Asset type">
             <DropdownMultiSelect
-              values={registerDraft.categories || []}
-              options={categoryOpts}
-              placeholder="All categories"
+              values={registerDraft.assetTypeIds || []}
+              options={assetTypeOpts}
+              placeholder="All asset types"
               onChange={(next) =>
-                setRegisterDraft((d) => ({ ...d, categories: next }))
+                setRegisterDraft((d) => ({ ...d, assetTypeIds: next }))
               }
             />
           </FilterField>
@@ -74,7 +87,7 @@ export default function RegisterTab({
               type="text"
               value={registerDraft.search || ''}
               placeholder="Asset ID, serial…"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/25"
               onChange={(e) =>
                 setRegisterDraft((d) => ({ ...d, search: e.target.value }))
               }
@@ -87,19 +100,19 @@ export default function RegisterTab({
           <div className="flex items-center gap-2 pb-0.5">
             <button
               type="button"
-              onClick={onApplyRegisterFilters}
+              onClick={onResetRegisterFilters}
               disabled={loading}
-              className="rounded-lg bg-slate-900 min-w-[88px] px-5 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="rounded-lg border border-slate-200 bg-white min-w-[88px] px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
             >
-              Apply
+              Reset
             </button>
             <button
               type="button"
-              onClick={onResetRegisterFilters}
+              onClick={onApplyRegisterFilters}
               disabled={loading}
-              className="rounded-lg border border-slate-200 bg-white min-w-[88px] px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-lg bg-[#0E2F4B] min-w-[88px] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#143d65] disabled:opacity-50"
             >
-              Reset
+              Apply
             </button>
           </div>
         </div>
@@ -129,23 +142,31 @@ export default function RegisterTab({
         </label>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200">
+      {setColumns ? (
+        <ReportTableToolbar
+          title="Asset register"
+          columnsSlot={
+            <ReportColumnControls
+              allColumns={CONSOLIDATED_REGISTER_COLUMNS.all}
+              columns={visibleColumns}
+              setColumns={setColumns}
+              defaultColumns={CONSOLIDATED_REGISTER_COLUMNS.default}
+            />
+          }
+        />
+      ) : null}
+
+      <div className="overflow-x-auto rounded-xl border border-slate-200">
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
+          <thead className="bg-[#0E2F4B] text-white">
             <tr>
-              {[
-                'Institution',
-                'Campus',
-                'Dept',
-                'Asset ID',
-                'Serial',
-                'Type',
-                'Category',
-                'Status',
-                'Acquisition (₹)',
-                'Book (₹)',
-              ].map((h) => (
-                <th key={h} className="px-3 py-2.5 font-medium whitespace-nowrap">
+              {visibleColumns.map((h) => (
+                <th
+                  key={h}
+                  className={`px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap ${
+                    isNumericConsolidatedColumn(h) ? 'text-right' : 'text-left'
+                  }`}
+                >
                   {h}
                 </th>
               ))}
@@ -154,14 +175,20 @@ export default function RegisterTab({
           <tbody className="divide-y divide-slate-100 bg-white">
             {loading && (
               <tr>
-                <td colSpan={10} className="px-3 py-10 text-center text-slate-500">
+                <td
+                  colSpan={visibleColumns.length}
+                  className="px-3 py-10 text-center text-slate-500"
+                >
                   Loading register…
                 </td>
               </tr>
             )}
             {!loading && !register?.rows?.length && (
               <tr>
-                <td colSpan={10} className="px-3 py-10 text-center text-slate-500">
+                <td
+                  colSpan={visibleColumns.length}
+                  className="px-3 py-10 text-center text-slate-500"
+                >
                   No assets match the current filters
                 </td>
               </tr>
@@ -169,26 +196,23 @@ export default function RegisterTab({
             {!loading &&
               register?.rows?.map((r) => (
                 <tr key={r.asset_id} className="hover:bg-slate-50/80">
-                  <td className="px-3 py-2 text-slate-800 whitespace-nowrap">{r.institution}</td>
-                  <td className="px-3 py-2 text-slate-700 max-w-[180px] truncate" title={r.campus}>
-                    {r.campus}
-                  </td>
-                  <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.department}</td>
-                  <td className="px-3 py-2 font-medium text-slate-900 whitespace-nowrap">
-                    {r.asset_id}
-                  </td>
-                  <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{r.serial_number}</td>
-                  <td className="px-3 py-2 text-slate-700 max-w-[160px] truncate" title={r.asset_type}>
-                    {r.asset_type}
-                  </td>
-                  <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.category}</td>
-                  <td className="px-3 py-2 text-slate-700 whitespace-nowrap">{r.status}</td>
-                  <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">
-                    {formatInr(r.acquisition_value)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">
-                    {formatInr(r.book_value)}
-                  </td>
+                  {visibleColumns.map((col) => (
+                    <td
+                      key={col}
+                      className={`px-3 py-2 text-slate-800 whitespace-nowrap ${
+                        isNumericConsolidatedColumn(col)
+                          ? 'text-right tabular-nums'
+                          : ''
+                      } ${col === 'Asset ID' ? 'font-medium text-slate-900' : ''}`}
+                      title={
+                        col === 'Campus' || col === 'Type'
+                          ? getConsolidatedCellValue(r, col)
+                          : undefined
+                      }
+                    >
+                      {getConsolidatedCellValue(r, col)}
+                    </td>
+                  ))}
                 </tr>
               ))}
           </tbody>

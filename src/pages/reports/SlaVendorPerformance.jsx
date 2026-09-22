@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import {
   Bar,
   BarChart,
@@ -14,12 +15,35 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { ChevronLeft, ChevronRight, Info, RefreshCw, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Download, Info, RefreshCw, X } from 'lucide-react';
 import { DropdownMultiSelect } from '../../components/reportModels/ReportComponents';
+import {
+  applyAdvancedFilters,
+  ReportAdvancedFilters,
+  ReportColumnControls,
+  ReportPreviewButton,
+  ReportPreviewModal,
+  ReportTableToolbar,
+  useReportColumns,
+} from '../../components/reportModels/ReportExtras';
+import { slaVendorPerformanceService } from '../../services/slaVendorPerformanceService';
 import { useSlaVendorPerformance } from './slaVendorPerformance/useSlaVendorPerformance';
+import { exportSlaVendorExcel, exportSlaVendorPdf } from './slaVendorPerformance/exportSlaVendorReport';
+import {
+  getSlaDetailCellValue,
+  SLA_ADVANCED_FIELDS,
+  SLA_DETAIL_COLUMNS,
+  SLA_FIELD_ACCESSORS,
+} from './newReportExtrasConfig';
 
 const PAGE_SIZES = [10, 25, 30, 50, 100];
 const PIE_COLORS = ['#15803d', '#b91c1c', '#64748b', '#a16207', '#475569'];
+const WO_DETAIL_PATH = (amsId) => `/workorder-management/workorder-detail/${amsId}`;
+
+function labelsForIds(ids = [], options = []) {
+  const map = new Map((options || []).map((o) => [String(o.id ?? o.value), o.label ?? o.name ?? o.id]));
+  return (ids || []).map((id) => map.get(String(id)) || id).filter(Boolean);
+}
 
 function Hint({ text }) {
   if (!text) return null;
@@ -101,6 +125,7 @@ export default function SlaVendorPerformance() {
     draft,
     setDraft,
     applied,
+    detailFilters,
     summary,
     trends,
     breaches,
@@ -127,12 +152,92 @@ export default function SlaVendorPerformance() {
     clearSlaStatusFilter,
   } = useSlaVendorPerformance();
 
+  const [advanced, setAdvanced] = useState([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewRows, setPreviewRows] = useState([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef(null);
+  const { columns, setColumns } = useReportColumns(
+    SLA_DETAIL_COLUMNS.default,
+    SLA_DETAIL_COLUMNS.all,
+  );
+
   const defs = options.definitions || {};
   const kpis = summary?.kpis || {};
   const vs = kpis.vs_previous || {};
   const slaStatusFilter = applied.slaStatus || 'all';
   const slaStatusLabel =
     (options.slaStatuses || []).find((s) => s.id === slaStatusFilter)?.label || slaStatusFilter;
+
+  const filterSummary = useMemo(() => {
+    const items = [];
+    const periodLabel =
+      summary?.period?.label ||
+      (options.periods || []).find((p) => p.id === applied.period)?.label ||
+      applied.period;
+    if (periodLabel) items.push({ label: 'Period', value: periodLabel });
+
+    const vendorLabels = labelsForIds(applied.vendorIds, options.vendors);
+    items.push({
+      label: 'Vendor',
+      value: vendorLabels.length ? vendorLabels.join(', ') : 'All vendors',
+    });
+
+    const typeLabels = labelsForIds(applied.assetTypeIds, options.assetTypes);
+    if (typeLabels.length) items.push({ label: 'Asset type', value: typeLabels.join(', ') });
+
+    const locLabels = labelsForIds(applied.branchIds, options.locations);
+    if (locLabels.length) items.push({ label: 'Location', value: locLabels.join(', ') });
+
+    if (slaStatusFilter && slaStatusFilter !== 'all') {
+      items.push({ label: 'SLA status', value: slaStatusLabel });
+    }
+    if (search?.trim()) items.push({ label: 'Search', value: search.trim() });
+    if (advanced?.length) {
+      items.push({
+        label: 'Advanced',
+        value: `${advanced.length} condition${advanced.length === 1 ? '' : 's'}`,
+      });
+    }
+    return items;
+  }, [
+    applied,
+    options,
+    summary,
+    slaStatusFilter,
+    slaStatusLabel,
+    search,
+    advanced,
+  ]);
+
+  const previewSummaryItems = useMemo(() => {
+    const k = summary?.kpis || {};
+    return [
+      {
+        label: 'Service requests',
+        value: k.total_requests != null ? Number(k.total_requests).toLocaleString('en-IN') : '—',
+      },
+      {
+        label: 'SLA compliance',
+        value: k.sla_compliance_pct != null ? `${k.sla_compliance_pct}%` : '—',
+      },
+      { label: 'SLA breaches', value: k.breached ?? '—' },
+      {
+        label: 'Avg response',
+        value: k.avg_response_label || (k.response_data_available ? '—' : 'N/A'),
+      },
+      { label: 'Avg resolution', value: k.avg_resolution_label || '—' },
+      { label: 'Repeat failures', value: k.repeat_failure_assets ?? '—' },
+      {
+        label: 'Service rating',
+        value: k.rating_data_available ? `${Number(k.avg_rating).toFixed(1)} / 5` : 'N/A',
+        sub: k.rating_data_available ? `${k.rating_count} ratings` : undefined,
+      },
+      { label: 'Vendors w/ breaches', value: k.vendors_with_breaches ?? '—' },
+    ];
+  }, [summary]);
 
   const statusPie = useMemo(() => {
     const d = summary?.status_distribution || {};
@@ -172,35 +277,158 @@ export default function SlaVendorPerformance() {
 
   const showTrendDots = grain === 'day' || trendData.filter((p) => p.hasCompliance).length <= 8;
 
+  const filteredDetails = useMemo(
+    () => applyAdvancedFilters(details?.rows || [], advanced, SLA_FIELD_ACCESSORS),
+    [details?.rows, advanced],
+  );
+
+  const loadScopedDetailRows = useCallback(async () => {
+    const data = await slaVendorPerformanceService.getDetails({
+      ...detailFilters,
+      page: 1,
+      pageSize: 2000,
+      search: search || undefined,
+    });
+    return applyAdvancedFilters(data?.rows || [], advanced, SLA_FIELD_ACCESSORS);
+  }, [detailFilters, search, advanced]);
+
+  const openPreview = useCallback(async () => {
+    try {
+      setPreviewLoading(true);
+      setPreviewOpen(true);
+      const rows = await loadScopedDetailRows();
+      setPreviewRows(rows);
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to load preview');
+      setPreviewOpen(false);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [loadScopedDetailRows]);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return undefined;
+    const onDocClick = (event) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [exportMenuOpen]);
+
+  const handleExport = useCallback(async (format) => {
+    try {
+      setExportMenuOpen(false);
+      setExporting(true);
+      const rows = await loadScopedDetailRows();
+      const payload = {
+        summary,
+        vendors,
+        detailRows: rows,
+        columns,
+        filterSummary,
+      };
+      if (format === 'pdf') {
+        exportSlaVendorPdf(payload);
+        toast.success('PDF downloaded');
+      } else {
+        exportSlaVendorExcel(payload);
+        toast.success('Excel downloaded');
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.error || err.message || 'Failed to export report');
+    } finally {
+      setExporting(false);
+    }
+  }, [loadScopedDetailRows, summary, vendors, columns, filterSummary]);
+
   return (
     <div className="min-h-full bg-slate-50/80">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-semibold text-slate-900">SLA & Vendor Performance</h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {summary?.period?.label || '—'}
-              {loading ? ' · Loading…' : ''}
-            </p>
+          <p className="text-sm text-slate-500">
+            {summary?.period?.label || '—'}
+            {loading ? ' · Loading…' : ''}
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen((v) => !v)}
+                disabled={exporting || loading}
+                className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {exporting ? 'Exporting…' : 'Export'}
+                <ChevronDown className={`h-3 w-3 text-slate-400 transition ${exportMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {exportMenuOpen && !exporting && (
+                <div className="absolute right-0 z-30 mt-1.5 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => handleExport('xlsx')}
+                    className="block w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+                  >
+                    Excel (.xlsx)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExport('pdf')}
+                    className="block w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+                  >
+                    PDF (.pdf)
+                  </button>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={applyFilters}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={applyFilters}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <RefreshCw className="h-4 w-4" /> Refresh
-          </button>
         </div>
 
         {/* Filters */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="relative z-10 overflow-visible rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-xl border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-900">Filters</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <ReportPreviewButton
+                onClick={openPreview}
+                disabled={previewLoading || loadingDetails}
+                label={previewLoading ? 'Loading…' : 'Preview'}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  resetFilters();
+                  setAdvanced([]);
+                }}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={applyFilters}
+                className="rounded-lg bg-[#0E2F4B] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#143d65]"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+          <div className="p-4 space-y-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[160px]">
-              <label className="block text-xs font-medium text-slate-500 mb-1.5">Period</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Period</label>
               <select
                 value={draft.period}
                 onChange={(e) => setDraft((d) => ({ ...d, period: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
               >
                 {(options.periods || []).map((p) => (
                   <option key={p.id} value={p.id}>
@@ -212,27 +440,27 @@ export default function SlaVendorPerformance() {
             {draft.period === 'custom' && (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1.5">From</label>
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">From</label>
                   <input
                     type="date"
                     value={draft.dateFrom}
                     onChange={(e) => setDraft((d) => ({ ...d, dateFrom: e.target.value }))}
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1.5">To</label>
+                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">To</label>
                   <input
                     type="date"
                     value={draft.dateTo}
                     onChange={(e) => setDraft((d) => ({ ...d, dateTo: e.target.value }))}
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
                   />
                 </div>
               </>
             )}
             <div className="min-w-[180px] flex-1">
-              <label className="block text-xs font-medium text-slate-500 mb-1.5">Vendor</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Vendor</label>
               <DropdownMultiSelect
                 values={draft.vendorIds}
                 options={toOpts(options.vendors)}
@@ -241,7 +469,7 @@ export default function SlaVendorPerformance() {
               />
             </div>
             <div className="min-w-[180px] flex-1">
-              <label className="block text-xs font-medium text-slate-500 mb-1.5">Asset type</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Asset type</label>
               <DropdownMultiSelect
                 values={draft.assetTypeIds}
                 options={toOpts(options.assetTypes)}
@@ -250,7 +478,7 @@ export default function SlaVendorPerformance() {
               />
             </div>
             <div className="min-w-[160px] flex-1">
-              <label className="block text-xs font-medium text-slate-500 mb-1.5">Location</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Location</label>
               <DropdownMultiSelect
                 values={draft.branchIds}
                 options={toOpts(options.locations)}
@@ -259,14 +487,14 @@ export default function SlaVendorPerformance() {
               />
             </div>
             <div className="min-w-[160px]">
-              <label className="block text-xs font-medium text-slate-500 mb-1.5">SLA status</label>
+              <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">SLA status</label>
               <select
                 value={draft.slaStatus}
                 onChange={(e) => setDraft((d) => ({ ...d, slaStatus: e.target.value }))}
-                className={`w-full rounded-md border px-3 py-2 text-sm ${
+                className={`w-full rounded-lg border px-3 py-2 text-sm ${
                   draft.slaStatus !== 'all'
                     ? 'border-red-300 bg-red-50 text-red-900'
-                    : 'border-gray-300'
+                    : 'border-slate-200'
                 }`}
               >
                 {(options.slaStatuses || []).map((s) => (
@@ -276,22 +504,13 @@ export default function SlaVendorPerformance() {
                 ))}
               </select>
             </div>
-            <div className="flex gap-2 pb-0.5">
-              <button
-                type="button"
-                onClick={applyFilters}
-                className="rounded-lg bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-800"
-              >
-                Apply
-              </button>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="rounded-lg border border-slate-200 bg-white px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Reset
-              </button>
-            </div>
+          </div>
+
+          <ReportAdvancedFilters
+            fields={SLA_ADVANCED_FIELDS}
+            value={advanced}
+            onChange={setAdvanced}
+          />
           </div>
         </div>
 
@@ -412,12 +631,11 @@ export default function SlaVendorPerformance() {
         {/* Response / resolution trends */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {[
-            { key: 'avg_response_hours', title: 'Avg recorded response (hrs)', note: 'From Vendor SLA form SLA-1 values' },
-            { key: 'avg_resolution_hours', title: 'Avg resolution (hrs)', note: 'Completion − request start' },
+            { key: 'avg_response_hours', title: 'Avg recorded response (hrs)' },
+            { key: 'avg_resolution_hours', title: 'Avg resolution (hrs)' },
           ].map((c) => (
             <div key={c.key} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-slate-900">{c.title}</h2>
-              <p className="text-xs text-slate-500 mb-3">{c.note}</p>
+              <h2 className="text-sm font-semibold text-slate-900 mb-3">{c.title}</h2>
               <div className="h-52">
                 {trendData.some((p) => p[c.key] != null) ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -486,7 +704,7 @@ export default function SlaVendorPerformance() {
                   {(breaches.rows || []).map((r) => (
                     <tr key={r.ams_id} className="hover:bg-slate-50">
                       <td className="px-2 py-2">
-                        <Link className="text-slate-900 font-medium hover:underline" to={`/maintenance-list-detail/${r.ams_id}`}>
+                        <Link className="text-slate-900 font-medium hover:underline" to={WO_DETAIL_PATH(r.ams_id)}>
                           {r.request_id}
                         </Link>
                       </td>
@@ -550,11 +768,7 @@ export default function SlaVendorPerformance() {
         {/* Repeat failures + quality */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900 mb-1">Repeat failure analysis</h2>
-            <p className="text-xs text-slate-500 mb-3">
-              {repeat?.overview?.asset_count || 0} assets · {repeat?.overview?.event_count || 0} events
-              {repeat?.overview?.top_reason ? ` · Top reason: ${repeat.overview.top_reason}` : ''}
-            </p>
+            <h2 className="text-sm font-semibold text-slate-900 mb-3">Repeat failure analysis</h2>
             <div className="overflow-x-auto max-h-64">
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
@@ -595,8 +809,7 @@ export default function SlaVendorPerformance() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900 mb-1">Service quality & ratings</h2>
-            <p className="text-xs text-slate-500 mb-3">From maintenance Vendor SLA ratings only</p>
+            <h2 className="text-sm font-semibold text-slate-900 mb-3">Service quality & ratings</h2>
             {!quality?.rating_data_available ? (
               <div className="rounded-lg border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500">
                 {quality?.message || 'Rating data unavailable for selected period'}
@@ -659,52 +872,58 @@ export default function SlaVendorPerformance() {
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
-              <input
-                value={search}
-                onChange={(e) => {
-                  setPage(1);
-                  setSearch(e.target.value);
-                }}
-                placeholder="Search request, asset, vendor…"
-                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm w-56"
-              />
-              <label className="inline-flex items-center gap-1.5 text-xs text-slate-500">
-                Rows
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPage(1);
-                    setPageSize(Number(e.target.value));
-                  }}
-                  className="rounded-md border border-slate-200 px-2 py-1.5 text-sm"
-                >
-                  {PAGE_SIZES.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
           </div>
-          <div className="overflow-x-auto">
+              <ReportTableToolbar
+            title="Request detail"
+            columnsSlot={
+              <ReportColumnControls
+                allColumns={SLA_DETAIL_COLUMNS.all}
+                columns={columns}
+                setColumns={setColumns}
+                defaultColumns={SLA_DETAIL_COLUMNS.default}
+              />
+            }
+            actions={
+              <>
+                <input
+                  value={search}
+                  onChange={(e) => {
+                    setPage(1);
+                    setSearch(e.target.value);
+                  }}
+                  placeholder="Search request, asset, vendor…"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-[#0E2F4B]/25"
+                />
+                <label className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+                  Rows
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPage(1);
+                      setPageSize(Number(e.target.value));
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm"
+                  >
+                    {PAGE_SIZES.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            }
+          />
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+              <thead className="bg-[#0E2F4B] text-white">
                 <tr>
-                  {[
-                    'Request',
-                    'Asset',
-                    'Type',
-                    'Vendor',
-                    'Created',
-                    'Completed',
-                    'Resolution',
-                    'Target',
-                    'SLA',
-                    'Delay',
-                    'Rating',
-                  ].map((h) => (
-                    <th key={h} className="px-2 py-2.5 text-left font-medium whitespace-nowrap">
+                  {columns.map((h) => (
+                    <th
+                      key={h}
+                      className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap"
+                    >
                       {h}
                     </th>
                   ))}
@@ -713,40 +932,41 @@ export default function SlaVendorPerformance() {
               <tbody className="divide-y divide-slate-100">
                 {loadingDetails && (
                   <tr>
-                    <td colSpan={11} className="px-2 py-8 text-center text-slate-400">
+                    <td colSpan={columns.length} className="px-2 py-8 text-center text-slate-400">
                       Loading…
                     </td>
                   </tr>
                 )}
-                {!loadingDetails && !(details.rows || []).length && (
+                {!loadingDetails && !filteredDetails.length && (
                   <tr>
-                    <td colSpan={11} className="px-2 py-8 text-center text-slate-400">
+                    <td colSpan={columns.length} className="px-2 py-8 text-center text-slate-400">
                       No records match filters
                     </td>
                   </tr>
                 )}
                 {!loadingDetails &&
-                  (details.rows || []).map((r) => (
+                  filteredDetails.map((r) => (
                     <tr key={r.ams_id} className="hover:bg-slate-50">
-                      <td className="px-2 py-2">
-                        <Link to={`/maintenance-list-detail/${r.ams_id}`} className="font-medium hover:underline">
-                          {r.request_id}
-                        </Link>
-                      </td>
-                      <td className="px-2 py-2 whitespace-nowrap">{r.asset_id}</td>
-                      <td className="px-2 py-2 max-w-[120px] truncate">{r.asset_type_name}</td>
-                      <td className="px-2 py-2 whitespace-nowrap">{r.vendor_name}</td>
-                      <td className="px-2 py-2 whitespace-nowrap">
-                        {r.request_start ? String(r.request_start).slice(0, 16).replace('T', ' ') : '—'}
-                      </td>
-                      <td className="px-2 py-2 whitespace-nowrap">
-                        {r.completed_at ? String(r.completed_at).slice(0, 16).replace('T', ' ') : '—'}
-                      </td>
-                      <td className="px-2 py-2 tabular-nums">{r.resolution_label || '—'}</td>
-                      <td className="px-2 py-2 tabular-nums">{r.resolution_target_label || '—'}</td>
-                      <td className="px-2 py-2">{statusBadge(r.sla_status)}</td>
-                      <td className="px-2 py-2 tabular-nums text-red-700">{r.delay_label || '—'}</td>
-                      <td className="px-2 py-2 tabular-nums">{r.sla_rating != null ? r.sla_rating : '—'}</td>
+                      {columns.map((col) => (
+                        <td key={col} className="px-2 py-2 whitespace-nowrap">
+                          {col === 'Request' ? (
+                            <Link
+                              to={WO_DETAIL_PATH(r.ams_id)}
+                              className="font-medium hover:underline"
+                            >
+                              {getSlaDetailCellValue(r, col)}
+                            </Link>
+                          ) : col === 'SLA' ? (
+                            statusBadge(r.sla_status)
+                          ) : col === 'Delay' ? (
+                            <span className="tabular-nums text-red-700">
+                              {getSlaDetailCellValue(r, col)}
+                            </span>
+                          ) : (
+                            <span className="tabular-nums">{getSlaDetailCellValue(r, col)}</span>
+                          )}
+                        </td>
+                      ))}
                     </tr>
                   ))}
               </tbody>
@@ -819,7 +1039,7 @@ export default function SlaVendorPerformance() {
                 <ul className="space-y-2 text-sm">
                   {(vendorDetail?.breaches || []).slice(0, 8).map((b) => (
                     <li key={b.ams_id} className="flex justify-between border-b border-slate-100 pb-2">
-                      <Link to={`/maintenance-list-detail/${b.ams_id}`} className="hover:underline">
+                      <Link to={WO_DETAIL_PATH(b.ams_id)} className="hover:underline">
                         {b.request_id}
                       </Link>
                       <span className="text-red-700 tabular-nums">{b.delay_label}</span>
@@ -834,6 +1054,21 @@ export default function SlaVendorPerformance() {
           </div>
         </div>
       )}
+
+      <ReportPreviewModal
+        open={previewOpen}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewRows([]);
+        }}
+        title="SLA & Vendor preview"
+        columns={columns}
+        rows={previewLoading ? [] : previewRows}
+        getCellValue={getSlaDetailCellValue}
+        emptyLabel={previewLoading ? 'Loading filtered data…' : 'No detail rows to preview.'}
+        filterSummary={filterSummary}
+        summaryItems={previewSummaryItems}
+      />
     </div>
   );
 }

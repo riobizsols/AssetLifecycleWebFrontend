@@ -421,9 +421,6 @@ function CoverageDetail({ row, docs, docsLoading, onBack }) {
       <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100">
           <h5 className="text-sm font-semibold text-slate-900">Documents</h5>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Attached {row.coverage_type} files for this asset (separate from the PDF report above).
-          </p>
         </div>
 
         {docsLoading ? (

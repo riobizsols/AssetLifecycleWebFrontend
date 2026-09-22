@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Download, Loader2, Users } from 'lucide-react';
 import { workforceReportService } from '../../services/workforceReportService';
@@ -6,6 +6,21 @@ import { useAuditLog } from '../../hooks/useAuditLog';
 import { REPORTS_APP_IDS } from '../../constants/reportsAuditEvents';
 import { exportWorkforcePdf } from './exportWorkforceReport';
 import TechnicianDetailDialog from './TechnicianDetailDialog';
+import {
+  applyAdvancedFilters,
+  ReportAdvancedFilters,
+  ReportColumnControls,
+  ReportPreviewButton,
+  ReportPreviewModal,
+  ReportTableToolbar,
+  useReportColumns,
+} from '../../components/reportModels/ReportExtras';
+import {
+  getWorkforceCellValue,
+  WORKFORCE_ADVANCED_FIELDS,
+  WORKFORCE_COLUMNS,
+  WORKFORCE_FIELD_ACCESSORS,
+} from './newReportExtrasConfig';
 
 const TABS = [
   { id: 'assignments', label: 'Assignments' },
@@ -67,12 +82,12 @@ function DataTable({ columns, rows, emptyLabel }) {
   return (
     <div className="w-full max-w-full overflow-hidden rounded-xl border border-slate-200">
       <table className="w-full table-fixed text-sm">
-        <thead className="bg-slate-50">
+        <thead className="bg-[#0E2F4B] text-white">
           <tr>
             {columns.map((c) => (
               <th
                 key={c.key}
-                className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide"
               >
                 {c.label}
               </th>
@@ -105,6 +120,12 @@ export default function WorkforceReport() {
   const [downloading, setDownloading] = useState(false);
   const [report, setReport] = useState(null);
   const [selectedTech, setSelectedTech] = useState(null);
+  const [advanced, setAdvanced] = useState([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { columns, setColumns } = useReportColumns(
+    WORKFORCE_COLUMNS.default,
+    WORKFORCE_COLUMNS.all,
+  );
 
   const load = useCallback(async () => {
     if (period === 'specific' && (!dateFrom || !dateTo)) return;
@@ -182,6 +203,26 @@ export default function WorkforceReport() {
   const summary = report?.summary || {};
   const technicians = report?.technicians || [];
   const sections = report?.sections || {};
+
+  const filteredAssignments = useMemo(
+    () => applyAdvancedFilters(sections.assignments || [], advanced, WORKFORCE_FIELD_ACCESSORS),
+    [sections.assignments, advanced],
+  );
+  const filteredClosures = useMemo(
+    () => applyAdvancedFilters(sections.closures || [], advanced, WORKFORCE_FIELD_ACCESSORS),
+    [sections.closures, advanced],
+  );
+  const filteredBacklog = useMemo(
+    () => applyAdvancedFilters(sections.backlog || [], advanced, WORKFORCE_FIELD_ACCESSORS),
+    [sections.backlog, advanced],
+  );
+
+  const previewRows =
+    tab === 'closures'
+      ? filteredClosures
+      : tab === 'backlog'
+        ? filteredBacklog
+        : filteredAssignments;
 
   const workOrderColumns = [
     {
@@ -285,7 +326,32 @@ export default function WorkforceReport() {
               )}
               Download report
             </button>
+            <ReportPreviewButton
+              onClick={() => setPreviewOpen(true)}
+              disabled={!previewRows.length}
+            />
           </div>
+
+          <ReportAdvancedFilters
+            fields={WORKFORCE_ADVANCED_FIELDS}
+            value={advanced}
+            onChange={setAdvanced}
+          />
+          {(tab === 'assignments' || tab === 'closures' || tab === 'backlog') && (
+            <div className="mt-3">
+              <ReportTableToolbar
+                title="Work orders"
+                columnsSlot={
+                  <ReportColumnControls
+                    allColumns={WORKFORCE_COLUMNS.all}
+                    columns={columns}
+                    setColumns={setColumns}
+                    defaultColumns={WORKFORCE_COLUMNS.default}
+                  />
+                }
+              />
+            </div>
+          )}
         </div>
 
         {loading && !report ? (
@@ -336,21 +402,21 @@ export default function WorkforceReport() {
                 <DataTable
                   emptyLabel="assignments"
                   columns={workOrderColumns}
-                  rows={sections.assignments || []}
+                  rows={filteredAssignments}
                 />
               )}
               {tab === 'closures' && (
                 <DataTable
                   emptyLabel="closures"
                   columns={workOrderColumns}
-                  rows={sections.closures || []}
+                  rows={filteredClosures}
                 />
               )}
               {tab === 'backlog' && (
                 <DataTable
                   emptyLabel="backlog items"
                   columns={workOrderColumns}
-                  rows={sections.backlog || []}
+                  rows={filteredBacklog}
                 />
               )}
               {tab === 'sla' && (
@@ -428,6 +494,16 @@ export default function WorkforceReport() {
         open={Boolean(selectedTech)}
         technician={selectedTech}
         onClose={() => setSelectedTech(null)}
+      />
+
+      <ReportPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title="Workforce preview"
+        columns={columns}
+        rows={previewRows}
+        getCellValue={getWorkforceCellValue}
+        emptyLabel="No rows to preview for this tab."
       />
     </div>
   );
