@@ -43,11 +43,12 @@ export function UtilityPanel({ title, description, children, className = '', bod
   );
 }
 
-export function UtilityField({ label, children }) {
+export function UtilityField({ label, required = false, children }) {
   return (
     <label className="block">
       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[#5A6B7C]">
         {label}
+        {required ? <span className="ml-0.5 text-[#B42318]">*</span> : null}
       </span>
       {children}
     </label>

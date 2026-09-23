@@ -193,8 +193,7 @@ export default function Header() {
     },
     "/reports/audit-reports": {
       title: "Audit Reports",
-      subtitle:
-        "Generate asset audit reports based on audit standards, audit period, and asset type.",
+      subtitle: "",
     },
     "/reports/consolidated-asset-register": {
       title: "Asset Register",

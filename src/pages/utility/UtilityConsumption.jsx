@@ -29,8 +29,8 @@ export default function UtilityConsumption() {
   );
   const isMeter = selected?.utctp_id === 'UTCTP001';
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const [d, c] = await Promise.all([
         utilityService.listDetails(),
@@ -42,7 +42,7 @@ export default function UtilityConsumption() {
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Failed to load consumption data');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -77,7 +77,8 @@ export default function UtilityConsumption() {
   }, [isMeter, reading, utildId, date]);
 
   const submit = async () => {
-    if (!utildId) return toast.error('Select a utility detail');
+    if (!utildId) return toast.error('Utility detail is required');
+    if (!date) return toast.error('Consumption date is required');
     setSaving(true);
     try {
       const payload = {
@@ -85,10 +86,10 @@ export default function UtilityConsumption() {
         consumption_date: date,
       };
       if (isMeter) {
-        if (reading === '') throw new Error('Reading is required for meter type');
+        if (reading === '') throw new Error('Meter reading is required');
         payload.reading = Number(reading);
       } else {
-        if (quantity === '') throw new Error('Quantity is required');
+        if (quantity === '') throw new Error('Quantity consumed is required');
         payload.quantity_consumed = Number(quantity);
       }
       const row = await utilityService.createConsumption(payload);
@@ -100,7 +101,7 @@ export default function UtilityConsumption() {
       setReading('');
       setQuantity('');
       setPreview(null);
-      await load();
+      await load({ silent: true });
     } catch (err) {
       toast.error(err?.response?.data?.error || err.message || 'Save failed');
     } finally {
@@ -113,13 +114,14 @@ export default function UtilityConsumption() {
       <div className="space-y-5">
         <UtilityPanel title="New consumption entry">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <UtilityField label="Utility detail">
+            <UtilityField label="Utility detail" required>
               <select
                 className={utilityInputClass}
                 value={utildId}
                 onChange={(e) => setUtildId(e.target.value)}
+                required
               >
-                {details.length === 0 && <option value="">No measurement profiles</option>}
+                <option value="">Select utility detail</option>
                 {details.map((d) => (
                   <option key={d.utild_id} value={d.utild_id}>
                     {d.utility_name} / {d.utility_sh} · {d.consumption_type}
@@ -128,16 +130,17 @@ export default function UtilityConsumption() {
                 ))}
               </select>
             </UtilityField>
-            <UtilityField label="Consumption date">
+            <UtilityField label="Consumption date" required>
               <input
                 type="date"
                 className={utilityInputClass}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                required
               />
             </UtilityField>
             {isMeter ? (
-              <UtilityField label="Meter reading">
+              <UtilityField label="Meter reading" required>
                 <input
                   type="number"
                   min={0}
@@ -145,10 +148,11 @@ export default function UtilityConsumption() {
                   value={reading}
                   onChange={(e) => setReading(e.target.value)}
                   placeholder="e.g. 250"
+                  required
                 />
               </UtilityField>
             ) : (
-              <UtilityField label="Quantity consumed">
+              <UtilityField label="Quantity consumed" required>
                 <input
                   type="number"
                   min={0}
@@ -156,6 +160,7 @@ export default function UtilityConsumption() {
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   placeholder="e.g. 100"
+                  required
                 />
               </UtilityField>
             )}

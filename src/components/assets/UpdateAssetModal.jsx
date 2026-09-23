@@ -551,13 +551,11 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate only visible fields
+    // Validate only visible fields.
+    // Serial number is optional on update (create allows "No serial number").
     const validationErrors = [];
     if (!isWarrantyActionMode && isColumnVisible('asset_type_id') && !form.assetType) {
       validationErrors.push('Asset Type');
-    }
-    if (!isWarrantyActionMode && isColumnVisible('serial_number') && !form.serialNumber) {
-      validationErrors.push('Serial Number');
     }
     if (!isWarrantyActionMode && isColumnVisible('purchased_on') && !form.purchaseDate) {
       validationErrors.push('Purchase Date');
