@@ -61,7 +61,7 @@ export default function Header() {
     },
     "/utilities/master": {
       title: "Utility Master",
-      subtitle: "Define utilities and meter/quantity measurement details.",
+      subtitle: "",
     },
     "/utilities/asset-type-mapping": {
       title: "Utility – Asset Type Mapping",

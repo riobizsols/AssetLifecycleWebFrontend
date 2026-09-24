@@ -35,6 +35,7 @@ const badgeColors = {
   "Spare Part Requested": "bg-violet-100 text-violet-800",
   "Spare Part Issued": "bg-emerald-100 text-emerald-800",
   "Spare Part Confirmed": "bg-sky-100 text-sky-800",
+  "Consumption Miss Alert": "bg-orange-100 text-orange-800",
   Urgent: "bg-red-100 text-red-800",
 };
 
