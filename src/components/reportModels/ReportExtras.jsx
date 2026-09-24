@@ -157,7 +157,7 @@ export function ReportAdvancedFilters({
   const count = value?.length || 0;
 
   return (
-    <div className="relative z-20 mt-4 overflow-visible rounded-xl border border-slate-200 bg-slate-50/50">
+    <div className="relative z-20 overflow-visible rounded-xl border border-slate-200 bg-slate-50/50">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

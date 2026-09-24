@@ -1,6 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM maintenance', () => {
@@ -11,9 +12,9 @@ test.describe('RIO EAM maintenance', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/maintenance-list`);
+    await gotoProtected(page, `${BASE}/maintenance-list`);
 
-    await expect(page.getByText('Maintenance List').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Maintenance List').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText(/Loading/i)).toHaveCount(0, { timeout: 30000 });
 
     const empty = page.getByText(/No data found/i);
@@ -46,7 +47,7 @@ test.describe('RIO EAM maintenance', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/workorder-management`);
+    await gotoProtected(page, `${BASE}/workorder-management`);
 
     await expect(page.getByText('Work Order Management').first()).toBeVisible({
       timeout: 20000,
@@ -88,10 +89,10 @@ test.describe('RIO EAM maintenance', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/maintenance-list/create`);
+    await gotoProtected(page, `${BASE}/maintenance-list/create`);
 
     await expect(page.getByText('Create Manual Maintenance').first()).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByRole('button', { name: 'Select Asset' })).toBeVisible();
 

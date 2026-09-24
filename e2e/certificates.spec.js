@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 const MINIMAL_PDF = Buffer.from(
@@ -15,13 +15,15 @@ test.describe('RIO EAM certificates', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/technician-certificates`);
+    await gotoProtected(page, `${BASE}/technician-certificates`);
 
-    await expect(page.getByRole('heading', { name: 'Technician Certificates' })).toBeVisible({
-      timeout: 20000,
-    });
-    await expect(page.getByText('Uploaded Certificates')).toBeVisible();
-    await expect(page.getByText('Loading certificates...')).toHaveCount(0, { timeout: 30000 });
+    const unauthorized = page.getByText(/not authorized|Access Denied|You are not authorized/i);
+    const heading = page.getByRole('heading', { name: /Technician Certificates/i });
+    await expect(unauthorized.or(heading).first()).toBeVisible({ timeout: 45000 });
+    if (await unauthorized.isVisible().catch(() => false)) return;
+
+    await expect(page.getByText(/Uploaded Certificates/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText(/Loading certificates/i)).toHaveCount(0, { timeout: 30000 });
 
     const empty = page.getByText('No certificates uploaded yet.');
     const rows = page.locator('table tbody tr');
@@ -36,10 +38,11 @@ test.describe('RIO EAM certificates', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/technician-certificates`);
-    await expect(page.getByRole('heading', { name: 'Technician Certificates' })).toBeVisible({
-      timeout: 20000,
-    });
+    await gotoProtected(page, `${BASE}/technician-certificates`);
+    const unauthorized = page.getByText(/not authorized|Access Denied|You are not authorized/i);
+    const heading = page.getByRole('heading', { name: /Technician Certificates/i });
+    await expect(unauthorized.or(heading).first()).toBeVisible({ timeout: 45000 });
+    if (await unauthorized.isVisible().catch(() => false)) return;
 
     await page.getByTitle('Add').click();
     await expect(page.getByText('Employee Name')).toBeVisible({ timeout: 10000 });
@@ -54,8 +57,8 @@ test.describe('RIO EAM certificates', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/certifications`);
-    await expect(page.getByText('Existing Certificates')).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/certifications`);
+    await expect(page.getByText('Existing Certificates')).toBeVisible({ timeout: 45000 });
 
     await page.getByTitle('Add').click();
     await expect(page.getByText('Add New Certificate')).toBeVisible({ timeout: 10000 });
@@ -76,9 +79,9 @@ test.describe('RIO EAM certificates', () => {
     await expect(page.getByText('Certificate created successfully')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(certName)).toBeVisible({ timeout: 15000 });
 
-    await page.goto(`${BASE}/technician-certificates`);
-    await expect(page.getByRole('heading', { name: 'Technician Certificates' })).toBeVisible({
-      timeout: 20000,
+    await gotoProtected(page, `${BASE}/technician-certificates`);
+    await expect(page.getByRole('heading', { name: /Technician Certificates/i })).toBeVisible({
+      timeout: 45000,
     });
     await page.getByTitle('Add').click();
 

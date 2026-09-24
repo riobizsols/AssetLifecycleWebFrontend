@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM vendor renewal approval', () => {
@@ -11,9 +11,9 @@ test.describe('RIO EAM vendor renewal approval', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/vendor-renewal-approval`);
+    await gotoProtected(page, `${BASE}/vendor-renewal-approval`);
 
-    await expect(page.getByText('Vendor Renewal Approval').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Vendor Renewal Approval').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
 
     await expect(page.getByText('Vendor Name').first()).toBeVisible();

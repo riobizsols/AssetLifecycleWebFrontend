@@ -158,6 +158,186 @@ export function getMaintenanceStatusCellValue(row, column) {
   }
 }
 
+/** Out of Stock report columns (legacy — prefer STOCK_PURCHASE_COLUMNS) */
+export const OUT_OF_STOCK_COLUMNS = {
+  default: [
+    'Part code',
+    'Description',
+    'Available',
+    'On hand',
+    'Reserved',
+    'Open WOs',
+    'Upcoming PM',
+  ],
+  all: [
+    'Part code',
+    'Description',
+    'UOM',
+    'Branch',
+    'On hand',
+    'Reserved',
+    'Blocked',
+    'Available',
+    'Requested',
+    'Stock-out start',
+    'Affected assets',
+    'Open WOs',
+    'Upcoming PM',
+    'Work orders',
+    'Earliest required',
+    'Min stock',
+    'Reorder level',
+  ],
+};
+
+export const OUT_OF_STOCK_ADVANCED_FIELDS = [
+  { key: 'partCode', label: 'Part code', type: 'text' },
+  { key: 'description', label: 'Description', type: 'text' },
+  { key: 'branch', label: 'Branch', type: 'text' },
+];
+
+export const OUT_OF_STOCK_FIELD_ACCESSORS = {
+  partCode: (r) => r.part_code,
+  description: (r) => r.description,
+  branch: (r) => r.branch_name || r.branch_id,
+};
+
+export function getOutOfStockCellValue(row, column) {
+  const date = (v) => (v ? String(v).slice(0, 10) : '—');
+  switch (column) {
+    case 'Part code':
+      return row.part_code ?? '—';
+    case 'Description':
+      return row.description ?? '—';
+    case 'UOM':
+      return row.uom ?? '—';
+    case 'Branch':
+      return row.branch_name || row.branch_id || '—';
+    case 'On hand':
+      return row.on_hand ?? 0;
+    case 'Reserved':
+      return row.reserved ?? 0;
+    case 'Blocked':
+      return row.blocked ?? 0;
+    case 'Available':
+      return row.available ?? 0;
+    case 'Requested':
+      return row.requested ?? 0;
+    case 'Stock-out start':
+      return date(row.stock_out_start_date);
+    case 'Affected assets':
+      return row.affected_asset_count ?? 0;
+    case 'Open WOs':
+      return row.open_wo_count ?? 0;
+    case 'Upcoming PM':
+      return row.upcoming_pm_count ?? row.upcoming_pm_demand ?? 0;
+    case 'Work orders':
+      return row.work_order_numbers || '—';
+    case 'Earliest required':
+      return date(row.earliest_required_date);
+    case 'Min stock':
+      return row.minimum_stock ?? '—';
+    case 'Reorder level':
+      return row.re_order_level ?? '—';
+    default:
+      return '—';
+  }
+}
+
+/** Combined Stock & Purchase report columns */
+export const STOCK_PURCHASE_COLUMNS = {
+  default: [
+    'Part code',
+    'Description',
+    'Status',
+    'Available',
+    'Requested',
+    'Upcoming PM',
+    'Minimum qty',
+  ],
+  all: [
+    'Part code',
+    'Description',
+    'Status',
+    'UOM',
+    'Branch',
+    'Available',
+    'On hand',
+    'Min stock',
+    'Reorder level',
+    'Reserved',
+    'Requested',
+    'Upcoming PM',
+    'Open WOs',
+    'Avg usage 90d',
+    'Minimum qty',
+    'Earliest demand',
+  ],
+};
+
+export const STOCK_PURCHASE_ADVANCED_FIELDS = [
+  { key: 'partCode', label: 'Part code', type: 'text' },
+  { key: 'description', label: 'Description', type: 'text' },
+  { key: 'branch', label: 'Branch', type: 'text' },
+  { key: 'status', label: 'Status', type: 'text' },
+];
+
+export const STOCK_PURCHASE_FIELD_ACCESSORS = {
+  partCode: (r) => r.part_code,
+  description: (r) => r.description,
+  branch: (r) => r.branch_name || r.branch_id,
+  status: (r) =>
+    r.is_out_of_stock ? 'Out of stock' : r.needs_purchase ? 'Needs purchase' : '',
+};
+
+export function getStockPurchaseCellValue(row, column) {
+  const date = (v) => (v ? String(v).slice(0, 10) : '—');
+  switch (column) {
+    case 'Part code':
+      return row.part_code ?? '—';
+    case 'Description':
+      return row.description ?? '—';
+    case 'Status':
+      if (row.is_out_of_stock) return 'Out of stock';
+      if (row.needs_purchase) return 'Needs purchase';
+      return '—';
+    case 'UOM':
+      return row.uom ?? '—';
+    case 'Branch':
+      return row.branch_name || row.branch_id || '—';
+    case 'Available':
+      return row.available ?? 0;
+    case 'On hand':
+      return row.on_hand ?? 0;
+    case 'Min stock':
+      return row.minimum_stock ?? '—';
+    case 'Reorder level':
+      return row.re_order_level ?? '—';
+    case 'Reserved':
+      return row.reserved ?? 0;
+    case 'Requested':
+      return row.requested ?? 0;
+    case 'Upcoming PM':
+      return row.upcoming_pm_demand ?? 0;
+    case 'Open WOs':
+      return row.open_wo_count ?? 0;
+    case 'Avg usage 90d':
+      return row.avg_usage_90d ?? 0;
+    case 'Minimum qty':
+      return row.recommended_qty ?? row.minimum_stock ?? '—';
+    case 'Earliest demand':
+      return date(row.earliest_demand_date);
+    default:
+      return '—';
+  }
+}
+
+/** @deprecated use STOCK_PURCHASE_* */
+export const PURCHASE_REQUIREMENT_COLUMNS = STOCK_PURCHASE_COLUMNS;
+export const PURCHASE_REQUIREMENT_ADVANCED_FIELDS = STOCK_PURCHASE_ADVANCED_FIELDS;
+export const PURCHASE_REQUIREMENT_FIELD_ACCESSORS = STOCK_PURCHASE_FIELD_ACCESSORS;
+export const getPurchaseRequirementCellValue = getStockPurchaseCellValue;
+
 /** SLA & Vendor Performance — work-order detail columns */
 export const SLA_DETAIL_COLUMNS = {
   default: [

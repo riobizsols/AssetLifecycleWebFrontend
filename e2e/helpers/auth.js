@@ -39,11 +39,58 @@ async function gotoWithRetry(page, path, attempts = 8) {
   throw lastError;
 }
 
+/**
+ * Login lives at `/` and `/login` (ProtectedRoute sends unauthenticated users to `/`).
+ * @param {string | URL} url
+ */
+export function isLoginPath(url) {
+  const path = typeof url === 'string' ? new URL(url, BASE).pathname : new URL(url).pathname;
+  return path === '/' || /^\/login(\/|$)/.test(path);
+}
+
 function isAppPath(url) {
   const path = new URL(url).pathname;
   return /\/(dashboard|change-password|adminsettings|assets|assign-|spare-|maintenance|group-asset|master-data|workorder|scrap|inspection|certif|tech-cert|report|serial|vendor)(\/|$)/i.test(
     path
   );
+}
+
+/**
+ * Wait until React has painted either the login form or an authenticated shell.
+ * Avoids treating a pre-hydration `/dashboard` as "already logged in".
+ * @param {import('@playwright/test').Page} page
+ * @param {{ timeoutMs?: number }} [opts]
+ * @returns {Promise<'login' | 'app'>}
+ */
+async function waitForLoginOrApp(page, opts = {}) {
+  const timeoutMs = opts.timeoutMs ?? 45000;
+  const loginMarker = page
+    .locator('#email')
+    .or(page.getByRole('heading', { name: 'Welcome back!' }));
+  const appMarker = page
+    .getByText('Total Assets')
+    .or(page.getByRole('heading', { name: 'Change Password' }))
+    .or(page.locator('nav, aside').getByText(/RIO|Dashboard|Assets/i).first());
+
+  const outcome = await Promise.race([
+    loginMarker
+      .first()
+      .waitFor({ state: 'visible', timeout: timeoutMs })
+      .then(() => /** @type {const} */ ('login')),
+    appMarker
+      .first()
+      .waitFor({ state: 'visible', timeout: timeoutMs })
+      .then(() => /** @type {const} */ ('app')),
+  ]).catch(() => null);
+
+  if (outcome === 'app' && !isLoginPath(page.url())) return 'app';
+  if (outcome === 'login' || isLoginPath(page.url()) || (await page.locator('#email').count()) > 0) {
+    return 'login';
+  }
+  if (outcome === 'app') return 'app';
+
+  // Last resort: URL-based guess after timeout
+  return isLoginPath(page.url()) || isAppPath(page.url()) === false ? 'login' : 'app';
 }
 
 /**
@@ -53,18 +100,14 @@ function isAppPath(url) {
 export async function loginToRioEam(page) {
   await gotoWithRetry(page, '/dashboard');
 
+  const gate = await waitForLoginOrApp(page);
   // Already authenticated via storageState (or prior login in this test).
-  if (!/\/login(\/|$)/.test(page.url())) {
-    const emailCount = await page.locator('#email').count().catch(() => 0);
-    if (emailCount === 0) return;
-  }
+  if (gate === 'app') return;
 
   await gotoWithRetry(page, '/login');
 
-  // If session revived and redirected away from login, we're done.
-  if (!/\/login(\/|$)/.test(page.url()) && (await page.locator('#email').count()) === 0) {
-    return;
-  }
+  const gateAfterLoginNav = await waitForLoginOrApp(page);
+  if (gateAfterLoginNav === 'app') return;
 
   const welcome = page.getByRole('heading', { name: 'Welcome back!' });
   const badGateway = page.getByRole('heading', { name: '502 Bad Gateway' });
@@ -73,12 +116,14 @@ export async function loginToRioEam(page) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     if (await welcome.isVisible().catch(() => false)) break;
     if (await emailField.isVisible().catch(() => false)) break;
-    if (!/\/login(\/|$)/.test(page.url()) && (await emailField.count()) === 0) return;
+
+    const settled = await waitForLoginOrApp(page, { timeoutMs: 10000 }).catch(() => 'login');
+    if (settled === 'app') return;
 
     if ((await badGateway.isVisible().catch(() => false)) || attempt < 4) {
       await page.waitForTimeout(2000 * (attempt + 1));
       await gotoWithRetry(page, '/login', 3);
-      if (!/\/login(\/|$)/.test(page.url()) && (await emailField.count()) === 0) return;
+      if ((await waitForLoginOrApp(page, { timeoutMs: 15000 })) === 'app') return;
     }
   }
 
@@ -129,7 +174,8 @@ export async function loginToRioEam(page) {
 
   expect(loginResponse?.ok()).toBeTruthy();
 
-  await page.waitForURL((url) => isAppPath(url) || !/\/login(\/|$)/.test(new URL(url).pathname), {
+  // `/` is the login page — do not treat it as a post-login success URL.
+  await page.waitForURL((url) => isAppPath(url) && !isLoginPath(url), {
     timeout: 60000,
   });
 

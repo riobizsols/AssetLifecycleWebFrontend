@@ -1,6 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM inspection', () => {
@@ -10,9 +11,9 @@ test.describe('RIO EAM inspection', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/inspection-view`);
+    await gotoProtected(page, `${BASE}/inspection-view`);
 
-    await expect(page.getByText('Inspection View').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Inspection View').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
 
     const empty = page.getByText('No data found');
@@ -47,10 +48,10 @@ test.describe('RIO EAM inspection', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/inspection-view/create`);
+    await gotoProtected(page, `${BASE}/inspection-view/create`);
     await expect(page).toHaveURL(/\/inspection-view\/create\/?$/);
     await expect(page.getByText('Trigger Inspection for Asset').first()).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByText('Select an asset type to see available assets.')).toBeVisible();
 
@@ -69,7 +70,8 @@ test.describe('RIO EAM inspection', () => {
     );
     const menuItems = panel.locator('div.cursor-pointer');
     await expect(menuItems.first()).toBeVisible({ timeout: 15000 });
-    await expect(panel.getByLabel('Loading')).toHaveCount(0, { timeout: 30000 });
+    // Do not wait on aria-label="Loading" — SearchableDropdown puts that on every
+    // option while secondary fields load, so count never reaches 0.
 
     const typesToTry = [];
     const optionCount = await menuItems.count();

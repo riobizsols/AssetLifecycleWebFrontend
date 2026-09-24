@@ -123,6 +123,8 @@ import AuditReports from "../pages/reports/AuditReports";
 import ConsolidatedAssetRegister from "../pages/reports/ConsolidatedAssetRegister";
 import SlaVendorPerformance from "../pages/reports/SlaVendorPerformance";
 import MaintenanceStatusReport from "../pages/reports/MaintenanceStatusReport";
+import OutOfStockReport from "../pages/reports/OutOfStockReport";
+import PurchaseRequirementReport from "../pages/reports/PurchaseRequirementReport";
 import WorkforceReport from "../pages/reports/WorkforceReport";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
@@ -687,6 +689,32 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="MAINTENANCESTATUSREPORT">
               <MainLayout>
                 <MaintenanceStatusReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/out-of-stock"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={['OUTOFSTOCKREPORT', 'PURCHASEREQUIREMENTREPORT']}
+            >
+              <MainLayout>
+                <OutOfStockReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/purchase-requirement"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={['PURCHASEREQUIREMENTREPORT', 'OUTOFSTOCKREPORT']}
+            >
+              <MainLayout>
+                <PurchaseRequirementReport />
               </MainLayout>
             </ProtectedRoute>
           }

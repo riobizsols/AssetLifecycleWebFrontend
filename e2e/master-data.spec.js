@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM master data', () => {
@@ -13,56 +13,56 @@ test.describe('RIO EAM master data', () => {
     await loginToRioEam(page);
 
     await openMasterList(page, '/master-data/asset-types', ['Asset Type Name', 'Status', 'Assignment Type']);
-    await page.goto(`${BASE}/master-data/asset-types/add`);
-    await expect(page.getByPlaceholder('Enter asset type name')).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/asset-types/add`);
+    await expect(page.getByPlaceholder(/Enter asset type name/i)).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Assignment Type').first()).toBeVisible();
 
     await openMasterList(page, '/master-data/branches', ['Branch Name', 'City', 'Branch Code']);
-    await page.goto(`${BASE}/master-data/branches/add`);
-    await expect(page.getByPlaceholder('Enter Branch Name')).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/branches/add`);
+    await expect(page.getByPlaceholder('Enter Branch Name')).toBeVisible({ timeout: 45000 });
     await expect(page.getByPlaceholder('Enter Branch Code')).toBeVisible();
     await expect(page.getByPlaceholder('Enter City')).toBeVisible();
 
     await openMasterList(page, '/master-data/vendors', ['Vendor Name', 'Company', 'GST Number']);
-    await page.goto(`${BASE}/master-data/add-vendor`);
-    await expect(page.getByText(/Vendor|Company|GST/i).first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/add-vendor`);
+    await expect(page.getByText(/Vendor|Company|GST/i).first()).toBeVisible({ timeout: 45000 });
 
     await openMasterList(page, '/master-data/user-roles', ['Full Name', 'Email', 'Department']);
 
-    await page.goto(`${BASE}/master-data/prod-serv`);
-    await expect(page.getByText('Product / Service').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/prod-serv`);
+    await expect(page.getByText('Product / Service').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Product Details')).toBeVisible();
     await page.getByText('Service Details').click();
     await expect(page.getByText('Service List').first()).toBeVisible();
 
-    await page.goto(`${BASE}/master-data/branch-dept-mapping`);
+    await gotoProtected(page, `${BASE}/master-data/branch-dept-mapping`);
     await expect(page.getByText('Branch – Department Mapping').first()).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
 
-    await page.goto(`${BASE}/master-data/spare-part`);
-    await expect(page.getByText('Part Number').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/spare-part`);
+    await expect(page.getByText('Part Number').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
 
-    await page.goto(`${BASE}/master-data/spare-parts-configuration`);
+    await gotoProtected(page, `${BASE}/master-data/spare-parts-configuration`);
     await expect(page.getByRole('button', { name: 'Spare Part Category' })).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByRole('button', { name: 'Asset Type Mapping' })).toBeVisible();
 
-    await page.goto(`${BASE}/master-data/uploads`);
-    await expect(page.getByText('Bulk Upload').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/uploads`);
+    await expect(page.getByText('Bulk Upload').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Assets').first()).toBeVisible();
 
-    await page.goto(`${BASE}/master-data/departments-asset`);
-    await expect(page.getByText(/Department.*Asset/i).first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/departments-asset`);
+    await expect(page.getByText(/Department.*Asset/i).first()).toBeVisible({ timeout: 45000 });
 
-    await page.goto(`${BASE}/master-data/departments`);
-    await expect(page.getByText('Department List')).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/departments`);
+    await expect(page.getByText('Department List')).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Department Name').first()).toBeVisible();
 
-    await page.goto(`${BASE}/master-data/departments-admin`);
-    await expect(page.getByText('Admin List').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/departments-admin`);
+    await expect(page.getByText('Admin List').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Department Name').first()).toBeVisible();
 
     const stamp = Date.now();
@@ -78,10 +78,10 @@ test.describe('RIO EAM master data', () => {
  * @param {string[]} columns
  */
 async function openMasterList(page, path, columns) {
-  await page.goto(`${BASE}${path}`);
+  await gotoProtected(page, `${BASE}${path}`);
   await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
   for (const column of columns) {
-    await expect(page.getByText(column).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText(column).first()).toBeVisible({ timeout: 45000 });
   }
 }
 
@@ -103,9 +103,10 @@ function waitForPost(page, pathRe) {
  */
 async function tryCreateAssetType(page, stamp) {
   const name = `PW-E2E-AT-${stamp}`;
-  await page.goto(`${BASE}/master-data/asset-types/add`);
-  await expect(page.getByPlaceholder('Enter asset type name')).toBeVisible({ timeout: 20000 });
-  await page.getByPlaceholder('Enter asset type name').fill(name);
+  await gotoProtected(page, `${BASE}/master-data/asset-types/add`);
+  const nameField = page.getByPlaceholder(/Enter asset type name/i);
+  await expect(nameField).toBeVisible({ timeout: 45000 });
+  await nameField.fill(name);
 
   const createResponsePromise = waitForPost(page, /\/asset-types\/?$/);
   await page.getByRole('button', { name: 'Save' }).click();
@@ -125,8 +126,8 @@ async function tryCreateAssetType(page, stamp) {
 async function tryCreateProduct(page, stamp) {
   const brand = `PW-E2E-BRAND-${stamp}`;
   const model = `PW-E2E-MODEL-${stamp}`;
-  await page.goto(`${BASE}/master-data/prod-serv`);
-  await expect(page.getByText('Product Details')).toBeVisible({ timeout: 20000 });
+  await gotoProtected(page, `${BASE}/master-data/prod-serv`);
+  await expect(page.getByText('Product Details')).toBeVisible({ timeout: 45000 });
 
   await page.getByRole('button', { name: /Select Asset Type/i }).first().click();
   const option = page.locator('div.cursor-pointer').filter({ hasNotText: /^\s*$/ }).first();
@@ -152,9 +153,9 @@ async function tryCreateProduct(page, stamp) {
  */
 async function createSparePartCategory(page, stamp) {
   const categoryName = `PW-E2E-SPCAT-${stamp}`;
-  await page.goto(`${BASE}/master-data/spare-parts-configuration/categories/add`);
+  await gotoProtected(page, `${BASE}/master-data/spare-parts-configuration/categories/add`);
   await expect(page.getByRole('main').getByText('Add Spare Part Category')).toBeVisible({
-    timeout: 20000,
+    timeout: 45000,
   });
   await page.getByPlaceholder('Enter category name').fill(categoryName);
 

@@ -179,6 +179,8 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "CONSOLIDATEDASSETREPORT",
     "SLAVENDORPERFORMANCE",
     "MAINTENANCESTATUSREPORT",
+    "OUTOFSTOCKREPORT",
+    "PURCHASEREQUIREMENTREPORT",
     "WORKFORCEREPORT",
   ],
 };
@@ -1628,6 +1630,8 @@ const DatabaseSidebar = () => {
     CONSOLIDATEDASSETREPORT: "/reports/consolidated-asset-register",
     SLAVENDORPERFORMANCE: "/reports/sla-vendor-performance",
     MAINTENANCESTATUSREPORT: "/reports/maintenance-status",
+    OUTOFSTOCKREPORT: "/reports/purchase-requirement",
+    PURCHASEREQUIREMENTREPORT: "/reports/purchase-requirement",
     WORKFORCEREPORT: "/reports/workforce",
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
     MASTERDATA: "/master-data/vendors",  //done
@@ -1807,6 +1811,8 @@ const DatabaseSidebar = () => {
       CONSOLIDATEDASSETREPORT: FileText,
       SLAVENDORPERFORMANCE: FileText,
       MAINTENANCESTATUSREPORT: Wrench,
+      OUTOFSTOCKREPORT: Package,
+      PURCHASEREQUIREMENTREPORT: Package,
       WORKFORCEREPORT: Users,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
