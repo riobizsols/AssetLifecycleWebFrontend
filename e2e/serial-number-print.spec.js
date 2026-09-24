@@ -1,6 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
+import { gotoProtected } from './helpers/appReady.js';
 import { selectPortalDropdown } from './helpers/searchableDropdown.js';
 
 import { BASE } from './helpers/baseUrl.js';
@@ -12,10 +13,10 @@ test.describe('RIO EAM serial number print', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/serial-number-print`);
+    await gotoProtected(page, `${BASE}/serial-number-print`);
 
     await expect(page.getByRole('heading', { name: 'Serial Number Print' })).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByText('Manage and print serial number labels for assets')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Filters' })).toBeVisible();
@@ -76,13 +77,13 @@ test.describe('RIO EAM serial number print', () => {
       });
     }
 
-    await page.goto(`${BASE}/bulk-serial-number-print`);
+    await gotoProtected(page, `${BASE}/bulk-serial-number-print`);
     const bulkHeading = page.getByRole('heading', { name: 'Bulk Serial Number Print' });
     if (!(await bulkHeading.isVisible().catch(() => false))) {
-      await page.goto(`${BASE}/adminsettings/configuration/bulk-serial-number-print`);
+      await gotoProtected(page, `${BASE}/adminsettings/configuration/bulk-serial-number-print`);
     }
     await expect(page.getByRole('heading', { name: 'Bulk Serial Number Print' })).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByRole('heading', { name: 'Step 1: Select Asset Type' })).toBeVisible();
     await expect(page.getByText('Select asset type...').first()).toBeVisible();

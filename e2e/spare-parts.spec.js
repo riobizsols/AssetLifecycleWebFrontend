@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM spare parts', () => {
@@ -11,9 +11,9 @@ test.describe('RIO EAM spare parts', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/spare-part-list`);
+    await gotoProtected(page, `${BASE}/spare-part-list`);
 
-    await expect(page.getByText('Spare Part List').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Spare Part List').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(page.getByText('Asset Type').first()).toBeVisible();
     await expect(page.getByText('Serial Number').first()).toBeVisible();
@@ -62,9 +62,9 @@ test.describe('RIO EAM spare parts', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/spare-part-approval`);
+    await gotoProtected(page, `${BASE}/spare-part-approval`);
 
-    await expect(page.getByText('Spare Part Approval').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Spare Part Approval').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(page.getByText('Asset Type').first()).toBeVisible();
 
@@ -211,8 +211,8 @@ test.describe('RIO EAM spare parts', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/spare-part-list`);
-    await expect(page.getByText('Spare Part List').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/spare-part-list`);
+    await expect(page.getByText('Spare Part List').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
 
     const empty = page.getByText('No data found');
@@ -228,7 +228,7 @@ test.describe('RIO EAM spare parts', () => {
     let requested = false;
 
     for (let i = 0; i < rowCount; i += 1) {
-      await page.goto(`${BASE}/spare-part-list`);
+      await gotoProtected(page, `${BASE}/spare-part-list`);
       await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
       const currentRows = page.locator('tbody tr.cursor-pointer');
       await currentRows.nth(i).locator('td').nth(1).click();

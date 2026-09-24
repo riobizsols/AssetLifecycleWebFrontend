@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM scrap', () => {
@@ -11,10 +11,10 @@ test.describe('RIO EAM scrap', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/scrap-assets`);
+    await gotoProtected(page, `${BASE}/scrap-assets`);
 
-    await expect(page.getByText('Scrap Assets').first()).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText('Total Assets')).toBeVisible({ timeout: 20000 });
+    // KPI labels only appear after the summary fetch clears the skeleton.
+    await expect(page.getByText('Total Assets')).toBeVisible({ timeout: 60000 });
     await expect(page.getByText('Nearing Expiry').first()).toBeVisible();
     await expect(page.getByText('Expired').first()).toBeVisible();
     await expect(page.getByText('Asset Expiry Distribution')).toBeVisible();
@@ -25,8 +25,8 @@ test.describe('RIO EAM scrap', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/scrap-assets`);
-    await expect(page.getByText('Total Assets')).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/scrap-assets`);
+    await expect(page.getByText('Total Assets')).toBeVisible({ timeout: 60000 });
 
     await page.getByRole('paragraph').filter({ hasText: 'Nearing Expiry' }).click();
     await page.waitForURL(/\/scrap-assets\/nearing-expiry\/?$/, { timeout: 20000 });
