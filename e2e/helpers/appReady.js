@@ -1,6 +1,6 @@
 // @ts-check
 import { expect } from '@playwright/test';
-import { loginToRioEam } from './auth.js';
+import { isLoginPath, loginToRioEam } from './auth.js';
 
 /**
  * Full-page boot spinner from ProtectedRoute while navigation permissions load.
@@ -16,7 +16,7 @@ export function bootLoadingLocator(page) {
  * @param {import('@playwright/test').Page} page
  */
 async function isLoginPage(page) {
-  if (/\/login(\/|$)/.test(page.url())) return true;
+  if (isLoginPath(page.url())) return true;
   return (await page.locator('#email').count().catch(() => 0)) > 0;
 }
 
