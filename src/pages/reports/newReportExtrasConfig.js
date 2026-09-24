@@ -253,7 +253,7 @@ export const STOCK_PURCHASE_COLUMNS = {
     'Available',
     'Requested',
     'Upcoming PM',
-    'Recommended qty',
+    'Minimum qty',
   ],
   all: [
     'Part code',
@@ -270,7 +270,7 @@ export const STOCK_PURCHASE_COLUMNS = {
     'Upcoming PM',
     'Open WOs',
     'Avg usage 90d',
-    'Recommended qty',
+    'Minimum qty',
     'Earliest demand',
   ],
 };
@@ -323,8 +323,8 @@ export function getStockPurchaseCellValue(row, column) {
       return row.open_wo_count ?? 0;
     case 'Avg usage 90d':
       return row.avg_usage_90d ?? 0;
-    case 'Recommended qty':
-      return row.recommended_qty ?? 0;
+    case 'Minimum qty':
+      return row.recommended_qty ?? row.minimum_stock ?? '—';
     case 'Earliest demand':
       return date(row.earliest_demand_date);
     default:

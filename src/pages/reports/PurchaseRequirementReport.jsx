@@ -307,7 +307,7 @@ export default function PurchaseRequirementReport() {
         <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
           <KpiCard label="Parts to buy" value={totals.parts_to_buy} danger />
           <KpiCard label="Out of stock" value={totals.out_of_stock} danger />
-          <KpiCard label="Recommended qty" value={totals.total_recommended_qty} />
+          <KpiCard label="Minimum qty" value={totals.total_recommended_qty} />
           <KpiCard label="WO impact" value={totals.with_wo_impact} />
           <KpiCard label="Upcoming PM" value={totals.with_upcoming_pm} />
         </div>
@@ -360,7 +360,7 @@ export default function PurchaseRequirementReport() {
                         <td
                           key={col}
                           className={`whitespace-nowrap px-4 py-3 ${
-                            col === 'Recommended qty'
+                            col === 'Minimum qty'
                               ? 'font-semibold text-amber-700'
                               : col === 'Available' && Number(row.available) <= 0
                                 ? 'font-semibold text-rose-700'
