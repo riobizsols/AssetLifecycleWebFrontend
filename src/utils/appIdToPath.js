@@ -27,7 +27,7 @@ export const APP_ID_TO_PATH = {
   SPAREPARTLIST: '/spare-part-list',
   SPAREPARTISSUE: '/spare-part-issue',
   SPAREPARTAPPROVAL: '/spare-part-approval',
-  SPAREPARTMGMT: '/spare-part-management',
+  SPAREPARTMGMT: '/reports/spare-parts-report',
   REPORTBREAKDOWN: '/report-breakdown',
   'EMPLOYEE REPORT BREAKDOWN': '/employee-report-breakdown',
   ASSETLIFECYCLEREPORT: '/reports/asset-lifecycle-report',

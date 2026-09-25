@@ -59,6 +59,10 @@ export const ALL_COLUMNS = {
   "breakdown-history": ["Breakdown ID", "Asset ID", "Asset Name", "Breakdown Date", "Description", "Reported By", "Vendor ID", "Vendor Name", "Work Order Status", "Breakdown Status", "Breakdown Reason", "Asset Type", "Department", "Branch", "Serial Number", "Asset Status", "Purchased On", "Purchased Cost", "Vendor Contact", "Vendor Email", "Vendor Phone", "Vendor Address", "Reported By Email", "Reported By Phone"],
   "reopened-breakdowns": ["AMS ID", "Asset ID", "Asset Name", "Serial Number", "Asset Type", "Reopen Count (RO)", "Last Reopened On"],
   "warranty-amc-expiry": ["Asset", "Category", "Vendor", "Coverage", "Start", "End", "Days Left"],
+  "spare-parts-report": [
+    "Part Code", "Description", "Category", "Brand", "UoM", "On Hand", "Quantity",
+    "Unit Price", "Purchase Date", "Invoice Number", "Vendor", "Current Status"
+  ],
   "spares-inventory": ["Part Code", "Description", "UoM", "On Hand", "Safety", "Reorder", "Non‑Moving (days)", "Preferred Vendor"],
   "vendor-performance": ["Vendor", "Jobs", "On‑time %", "Avg TAT (hrs)", "FTF %", "Defect %"],
 };
@@ -448,6 +452,28 @@ export const REPORTS = [
     ],
     defaultColumns: ["Asset", "Category", "Vendor", "Coverage", "Start", "End", "Days Left"],
     allColumns: ALL_COLUMNS["warranty-amc-expiry"] || [],
+  },
+  {
+    id: "spare-parts-report",
+    name: "Spare Parts Report",
+    description: "Inventory and usage view of spare parts including stock, lots, vendors, and issue status.",
+    quickFields: [
+      { key: "category", label: "Category", type: "multiselect", domain: [] },
+      { key: "brand", label: "Brand", type: "multiselect", domain: [] },
+      { key: "currentStatus", label: "Current Status", type: "multiselect", domain: ["Available", "Partially Used", "Fully Used"] },
+      { key: "purchaseDateRange", label: "Purchase Date", type: "daterange", preset: "COMMON" },
+    ],
+    fields: [
+      { key: "partCode", label: "Part Code", type: "text" },
+      { key: "invoiceNumber", label: "Invoice Number", type: "text" },
+      { key: "vendor", label: "Vendor", type: "text" },
+      { key: "onHand", label: "On Hand ≥", type: "number" },
+    ],
+    defaultColumns: [
+      "Part Code", "Description", "Category", "Brand", "UoM", "On Hand",
+      "Purchase Date", "Invoice Number", "Vendor", "Current Status"
+    ],
+    allColumns: ALL_COLUMNS["spare-parts-report"] || [],
   },
   {
     id: "spares-inventory",
@@ -895,6 +921,21 @@ export function fakeRows(reportId, n = 8) {
         Start: dateOffset(-300 + i * 10),
         End: dateOffset(10 + i * 5),
         "Days Left": 10 + i * 5,
+      });
+    } else if (reportId === "spare-parts-report") {
+      r.push({
+        "Part Code": `SPC-${900 + i}`,
+        Description: ["Air filter", "Bearings", "Belts", "Cables", "Display Panel", "Fan wing"][i % 6],
+        Category: ["Air filter", "Bearings", "Belts", "Cables", "Display Panel", "Fan wing"][i % 6],
+        Brand: ["OEM", "Generic", "Bosch"][i % 3],
+        UoM: ["pcs", "pcs", "m", "m", "pcs", "pcs"][i % 6],
+        "On Hand": 2 + (i % 8),
+        Quantity: 10 + i,
+        "Unit Price": 100 + i * 12,
+        "Purchase Date": dateOffset(-60 + i * 3),
+        "Invoice Number": `INV-SP-${1000 + i}`,
+        Vendor: VENDORS[i % VENDORS.length],
+        "Current Status": ["Available", "Partially Used", "Fully Used"][i % 3],
       });
     } else if (reportId === "spares-inventory") {
       r.push({
