@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Save } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { utilityService } from '../../services/utilityService';
 import {
   UtilityField,
@@ -13,21 +14,70 @@ import {
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function UtilityConsumption() {
+  const [searchParams] = useSearchParams();
+  const queryUtilId = searchParams.get('utilId') || '';
+  const queryUtildId = searchParams.get('utildId') || '';
+  const queryAssetId = searchParams.get('assetId') || '';
+  const queryDate = searchParams.get('date') || '';
+
   const [details, setDetails] = useState([]);
   const [rows, setRows] = useState([]);
-  const [utildId, setUtildId] = useState('');
+  const [utilId, setUtilId] = useState(queryUtilId);
+  const [utildId, setUtildId] = useState(queryUtildId);
+  const [assetId, setAssetId] = useState(queryAssetId);
   const [reading, setReading] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [date, setDate] = useState(today());
+  const [date, setDate] = useState(queryDate || today());
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const utilities = useMemo(() => {
+    const map = new Map();
+    for (const d of details) {
+      if (!d.util_id) continue;
+      if (!map.has(d.util_id)) {
+        map.set(d.util_id, {
+          util_id: d.util_id,
+          utility_name: d.utility_name || d.util_id,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      String(a.utility_name).localeCompare(String(b.utility_name)),
+    );
+  }, [details]);
+
+  const profilesForUtility = useMemo(
+    () => details.filter((d) => d.util_id === utilId),
+    [details, utilId],
+  );
 
   const selected = useMemo(
     () => details.find((d) => d.utild_id === utildId) || null,
     [details, utildId],
   );
   const isMeter = selected?.utctp_id === 'UTCTP001';
+
+  const resolveSelection = useCallback(
+    (list, preferredUtilId, preferredUtildId) => {
+      const byUtild = preferredUtildId
+        ? list.find((d) => d.utild_id === preferredUtildId)
+        : null;
+      if (byUtild) {
+        return { utilId: byUtild.util_id, utildId: byUtild.utild_id };
+      }
+      const utilMatch = preferredUtilId
+        ? list.filter((d) => d.util_id === preferredUtilId)
+        : [];
+      if (utilMatch.length) {
+        return { utilId: preferredUtilId, utildId: utilMatch[0].utild_id };
+      }
+      if (!list.length) return { utilId: '', utildId: '' };
+      return { utilId: list[0].util_id, utildId: list[0].utild_id };
+    },
+    [],
+  );
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -38,7 +88,6 @@ export default function UtilityConsumption() {
       ]);
       setDetails(d);
       setRows(c);
-      setUtildId((prev) => prev || d[0]?.utild_id || '');
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Failed to load consumption data');
     } finally {
@@ -49,6 +98,28 @@ export default function UtilityConsumption() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Apply URL / default selection once details are available
+  useEffect(() => {
+    if (!details.length) return;
+    const next = resolveSelection(
+      details,
+      queryUtilId || utilId,
+      queryUtildId || utildId,
+    );
+    if (next.utilId !== utilId) setUtilId(next.utilId);
+    if (next.utildId !== utildId) setUtildId(next.utildId);
+    if (queryAssetId && queryAssetId !== assetId) setAssetId(queryAssetId);
+    if (queryDate && queryDate !== date) setDate(queryDate);
+    // Only re-run when details or query params change — not on every utilId edit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [details, queryUtilId, queryUtildId, queryAssetId, queryDate, resolveSelection]);
+
+  const onUtilityChange = (nextUtilId) => {
+    setUtilId(nextUtilId);
+    const profiles = details.filter((d) => d.util_id === nextUtilId);
+    setUtildId(profiles[0]?.utild_id || '');
+  };
 
   useEffect(() => {
     setPreview(null);
@@ -67,6 +138,7 @@ export default function UtilityConsumption() {
           utild_id: utildId,
           reading: Number(reading),
           consumption_date: date,
+          asset_id: assetId || undefined,
         });
         setPreview(p);
       } catch {
@@ -74,10 +146,11 @@ export default function UtilityConsumption() {
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [isMeter, reading, utildId, date]);
+  }, [isMeter, reading, utildId, date, assetId]);
 
   const submit = async () => {
-    if (!utildId) return toast.error('Utility detail is required');
+    if (!utilId) return toast.error('Utility is required');
+    if (!utildId) return toast.error('Measurement profile is required');
     if (!date) return toast.error('Consumption date is required');
     setSaving(true);
     try {
@@ -85,6 +158,7 @@ export default function UtilityConsumption() {
         utild_id: utildId,
         consumption_date: date,
       };
+      if (assetId) payload.asset_id = assetId;
       if (isMeter) {
         if (reading === '') throw new Error('Meter reading is required');
         payload.reading = Number(reading);
@@ -113,18 +187,42 @@ export default function UtilityConsumption() {
     <UtilityPageShell loading={loading}>
       <div className="space-y-5">
         <UtilityPanel title="New consumption entry">
+          {assetId ? (
+            <p className="mb-3 text-xs text-[#5A6B7C]">
+              Recording for asset <span className="font-semibold text-[#0E2F4B]">{assetId}</span>
+            </p>
+          ) : null}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <UtilityField label="Utility detail" required>
+            <UtilityField label="Utility" required>
+              <select
+                className={utilityInputClass}
+                value={utilId}
+                onChange={(e) => onUtilityChange(e.target.value)}
+                required
+              >
+                <option value="">Select utility</option>
+                {utilities.map((u) => (
+                  <option key={u.util_id} value={u.util_id}>
+                    {u.utility_name}
+                  </option>
+                ))}
+              </select>
+            </UtilityField>
+            <UtilityField label="Measurement profile" required>
               <select
                 className={utilityInputClass}
                 value={utildId}
                 onChange={(e) => setUtildId(e.target.value)}
                 required
+                disabled={!utilId}
               >
-                <option value="">Select utility detail</option>
-                {details.map((d) => (
+                <option value="">
+                  {utilId ? 'Select measurement profile' : 'Select utility first'}
+                </option>
+                {profilesForUtility.map((d) => (
                   <option key={d.utild_id} value={d.utild_id}>
-                    {d.utility_name} / {d.utility_sh} · {d.consumption_type}
+                    {d.utility_sh}
+                    {d.consumption_type ? ` · ${d.consumption_type}` : ''}
                     {d.meter_max ? ` · max ${d.meter_max}` : ''}
                   </option>
                 ))}
@@ -149,6 +247,7 @@ export default function UtilityConsumption() {
                   onChange={(e) => setReading(e.target.value)}
                   placeholder="e.g. 250"
                   required
+                  disabled={!utildId}
                 />
               </UtilityField>
             ) : (
@@ -161,6 +260,7 @@ export default function UtilityConsumption() {
                   onChange={(e) => setQuantity(e.target.value)}
                   placeholder="e.g. 100"
                   required
+                  disabled={!utildId}
                 />
               </UtilityField>
             )}
@@ -197,7 +297,7 @@ export default function UtilityConsumption() {
             <button
               type="button"
               onClick={submit}
-              disabled={saving || !details.length}
+              disabled={saving || !details.length || !utildId}
               className={utilityPrimaryBtn}
             >
               <Save className="h-4 w-4" /> Save record
@@ -227,30 +327,27 @@ export default function UtilityConsumption() {
                 )}
                 {rows.map((r) => (
                   <tr key={r.utcv_id} className="bg-white hover:bg-[#F8FAFC]">
-                    <td className="px-4 py-3 text-[#334155]">
-                      {r.consumption_date ? String(r.consumption_date).slice(0, 10) : '—'}
+                    <td className="px-4 py-2.5 text-[#334155]">
+                      {r.consumption_date
+                        ? String(r.consumption_date).slice(0, 10)
+                        : '—'}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-[#0E2F4B]">
-                        {r.utility_name} / {r.utility_sh}
-                      </div>
-                      <div className="text-xs capitalize text-[#5A6B7C]">
-                        {r.consumption_type}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[#334155]">{r.reading ?? '—'}</td>
-                    <td className="px-4 py-3 font-medium text-[#0E2F4B]">
-                      {r.quantity_consumed ?? '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      {r.rolled_over ? (
-                        <span className="rounded bg-[#FFFAEB] px-2 py-0.5 text-xs font-semibold text-[#B54708]">
-                          Rollover
+                    <td className="px-4 py-2.5 font-medium text-[#0E2F4B]">
+                      {r.utility_name} / {r.utility_sh}
+                      {r.asset_id ? (
+                        <span className="ml-1 text-xs font-normal text-[#5A6B7C]">
+                          · {r.asset_id}
                         </span>
-                      ) : (
-                        <span className="text-[#5A6B7C]">—</span>
-                      )}
+                      ) : null}
                     </td>
+                    <td className="px-4 py-2.5 text-[#334155]">{r.reading ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-[#334155]">
+                      {r.quantity_consumed ?? '—'}
+                      {r.rolled_over ? (
+                        <span className="ml-1 text-xs text-[#B54708]">rollover</span>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2.5 text-[#5A6B7C]">{r.notes || '—'}</td>
                   </tr>
                 ))}
               </tbody>

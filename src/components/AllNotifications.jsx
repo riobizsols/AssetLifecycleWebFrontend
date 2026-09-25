@@ -20,7 +20,7 @@ const isSpareAlert = (alert) =>
   alert?.workflowType === "SPARE_ISSUED" ||
   alert?.workflowType === "SPARE_CONFIRMED";
 
-const badgeColors = {
+  const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
   "Inspection": "bg-green-100 text-green-800",
   "Warranty Expiry": "bg-amber-100 text-amber-800",
@@ -30,6 +30,7 @@ const badgeColors = {
   "Spare Part Requested": "bg-violet-100 text-violet-800",
   "Spare Part Issued": "bg-emerald-100 text-emerald-800",
   "Spare Part Confirmed": "bg-sky-100 text-sky-800",
+  "Consumption Miss Alert": "bg-orange-100 text-orange-800",
 };
 
 const AllNotifications = () => {
@@ -51,6 +52,7 @@ const AllNotifications = () => {
     spareApproval: true,
     spareIssued: true,
     spareConfirmed: true,
+    consumptionMiss: true,
   });
   const [showFilters, setShowFilters] = useState(false);
   const [snoozeDrafts, setSnoozeDrafts] = useState({});
@@ -68,6 +70,7 @@ const AllNotifications = () => {
       "Spare Part Requested": t("allNotifications.alertTypeSparePartApproval") || "Spare Part Approval",
       "Spare Part Issued": t("allNotifications.alertTypeSparePartIssued") || "Spare Part Requested",
       "Spare Part Confirmed": t("allNotifications.alertTypeSparePartConfirmed") || "Spare Part Issued",
+      "Consumption Miss Alert": t("allNotifications.alertTypeConsumptionMiss") || "Consumption Miss Alert",
     };
     return labels[alertType] || alertType;
   };
@@ -121,6 +124,13 @@ const AllNotifications = () => {
       alert.alertType === "Spare Part Confirmed"
     ) {
       return "spareConfirmed";
+    }
+
+    if (
+      alert.workflowType === "CONSUMPTION_MISS" ||
+      alert.alertType === "Consumption Miss Alert"
+    ) {
+      return "consumptionMiss";
     }
     
     // Check for subscription renewal notifications
@@ -195,6 +205,8 @@ const AllNotifications = () => {
           ? "Spare Part Issued"
           : notification.workflowType === "SPARE_CONFIRMED"
           ? "Spare Part Confirmed"
+          : notification.workflowType === "CONSUMPTION_MISS"
+          ? "Consumption Miss Alert"
           : notification.maintenanceType || "Regular Maintenance",
         alertText: notification.isGroupMaintenance && notification.groupName
           ? t("allNotifications.groupNameWithAssets", { groupName: notification.groupName, count: notification.groupAssetCount })
@@ -209,11 +221,15 @@ const AllNotifications = () => {
             notification.workflowType === "SPARE_ISSUED" ||
             notification.workflowType === "SPARE_CONFIRMED"
           ? `${notification.assetTypeName || "-"}`
+          : notification.workflowType === "CONSUMPTION_MISS"
+          ? (notification.body || `${notification.assetId} — ${notification.categoryName || notification.utilitySh || "Utility"} reading missed`)
           : String(notification.maintenanceType || "").toLowerCase().includes("subscription")
           ? `${notification.assetTypeName}`
           : t("allNotifications.assetTypeMaintenance", { assetType: notification.assetTypeName }),
         dueOn: formatDate(notification.dueDate),
-        actionBy: notification.userName || t("allNotifications.unassigned"),
+        actionBy: notification.workflowType === "CONSUMPTION_MISS"
+          ? (t("allNotifications.actionByYou") || "You")
+          : notification.userName || t("allNotifications.unassigned"),
         cutoffDate: formatDate(notification.cutoffDate),
         isUrgent: notification.daysUntilCutoff <= 2 &&
           notification.workflowType !== "SPARE_APPROVAL" &&
@@ -584,6 +600,21 @@ const AllNotifications = () => {
                   </span>
                   <span className="px-2 py-1 text-xs bg-sky-100 text-sky-800 rounded-full">
                     {t("sparePartList.confirmedIssued") || "Issued"}
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFilters.consumptionMiss}
+                    onChange={() => handleFilterChange('consumptionMiss')}
+                    className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {t("allNotifications.filterConsumptionMiss") || "Consumption miss alert"} ({getFilterCount('consumptionMiss')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
+                    {t("allNotifications.statusMissed") || "Missed"}
                   </span>
                 </label>
               </div>
