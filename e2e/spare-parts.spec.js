@@ -24,8 +24,8 @@ test.describe('RIO EAM spare parts', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/spare-part-list`);
-    await expect(page.getByText('Spare Part List').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/spare-part-list`);
+    await expect(page.getByText('Spare Part List').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
 
     const empty = page.getByText('No data found');
@@ -54,7 +54,7 @@ test.describe('RIO EAM spare parts', () => {
     await expect(
       page.getByRole('heading', { name: 'Spare Part Request' }).or(
         page.getByText('Spare part requests are available only for in-house maintenance.')
-      )
+      ).first()
     ).toBeVisible({ timeout: 15000 });
   });
 

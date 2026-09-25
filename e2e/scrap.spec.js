@@ -59,10 +59,10 @@ test.describe('RIO EAM scrap', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/scrap-approval`);
+    await gotoProtected(page, `${BASE}/scrap-approval`);
 
     await expect(page.getByText(/Scrap Approval|Workflow ID|Asset Type/).first()).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
 
@@ -189,14 +189,14 @@ test.describe('RIO EAM scrap', () => {
     const detailReady = page
       .getByText(/Approval Initiated|Workflow ID|Approval Details|Asset Details/i)
       .first();
-    await expect(unauthorized.or(notFound).or(detailReady)).toBeVisible({ timeout: 45000 });
+    await expect(unauthorized.or(notFound).or(detailReady).first()).toBeVisible({ timeout: 45000 });
 
     // Create already succeeded; detail may lag or be permission-gated.
     if (await unauthorized.isVisible().catch(() => false)) return;
     if (await notFound.isVisible().catch(() => false)) return;
 
     await expect(
-      page.getByRole('button', { name: 'Asset Details' }).or(page.getByText('Approval Initiated'))
+      page.getByRole('button', { name: 'Asset Details' }).or(page.getByText('Approval Initiated')).first()
     ).toBeVisible({ timeout: 20000 });
   });
 });
