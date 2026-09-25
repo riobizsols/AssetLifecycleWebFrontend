@@ -106,6 +106,15 @@ test.describe('RIO EAM spare parts', () => {
     const rows = page.locator('tbody tr.cursor-pointer');
     if (!(await empty.isVisible()) && (await rows.count()) > 0) {
       await expect(page.getByText('Serial Number').first()).toBeVisible();
+      await rows.first().click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible({ timeout: 20000 });
+      await expect(dialog.getByText('Spare Request Details')).toBeVisible();
+      await expect(dialog.getByText('Requested By')).toBeVisible();
+      await expect(dialog.getByText('Approved By')).toBeVisible();
+      await expect(dialog.getByText('Spare Part Name')).toBeVisible();
+      await page.getByRole('button', { name: 'Close' }).click();
+      await expect(dialog).toHaveCount(0);
     }
   });
 
@@ -186,6 +195,7 @@ test.describe('RIO EAM spare parts', () => {
 
     await page.getByPlaceholder('Enter minimum stock').fill('1');
     await page.getByPlaceholder('Enter reorder level').fill('2');
+    await page.locator('select[name="expiry_type"]').selectOption('0');
 
     const createResponsePromise = page.waitForResponse(
       (response) =>

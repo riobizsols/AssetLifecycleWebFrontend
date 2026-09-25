@@ -10,6 +10,20 @@ import { filterData } from '../../utils/filterData';
 import { applyListFilterChange } from '../../utils/listFilterState';
 import { useNavigation } from '../../hooks/useNavigation';
 
+const formatExpiry = (value) => {
+  if (value === 0 || value === '0') return '0';
+  if (value == null || value === '') return '';
+  const iso = String(value).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return String(value);
+  const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
 const SparePartCategoryTab = () => {
   const navigate = useNavigate();
   const { hasEditAccess } = useNavigation();
@@ -32,6 +46,7 @@ const SparePartCategoryTab = () => {
     { label: 'UOM', name: 'uom', visible: true },
     { label: 'Minimum Stock', name: 'minimum_stock', visible: true },
     { label: 'Reorder Level', name: 're_order_level', visible: true },
+    { label: 'Expiry', name: 'expiry', visible: true },
     { label: 'Status', name: 'int_status', visible: true },
   ];
 
@@ -51,6 +66,7 @@ const SparePartCategoryTab = () => {
             row.minimum_stock != null ? Number(row.minimum_stock) : row.minimum_stock,
           re_order_level:
             row.re_order_level != null ? Number(row.re_order_level) : row.re_order_level,
+          expiry: formatExpiry(row.expiry),
         }))
       );
     } catch (error) {

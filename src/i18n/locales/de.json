@@ -3701,7 +3701,20 @@
     "action": "Aktion",
     "issueAction": "Ausgeben",
     "issuedSuccessfully": "Ersatzteil erfolgreich ausgegeben",
-    "issueFailed": "Ersatzteil konnte nicht ausgegeben werden"
+    "issueFailed": "Ersatzteil konnte nicht ausgegeben werden",
+    "requestDetails": "Details der Ersatzteilanfrage",
+    "sparePartName": "Ersatzteilname",
+    "requestedBy": "Angefordert von",
+    "requestedOn": "Angefordert am",
+    "approvedBy": "Genehmigt von",
+    "approvedOn": "Genehmigt am",
+    "issuedBy": "Ausgegeben von",
+    "issuedOn": "Ausgegeben am",
+    "brand": "Marke",
+    "model": "Modell",
+    "close": "Schließen",
+    "noRequestDetails": "Für diesen Datensatz wurde keine Ersatzteilanfrage gefunden",
+    "failedToFetchDetails": "Details der Ersatzteilanfrage konnten nicht geladen werden"
   },
   "sparePartApproval": {
     "title": "Ersatzteilgenehmigung",
