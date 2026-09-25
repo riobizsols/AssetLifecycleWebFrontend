@@ -681,15 +681,136 @@ export default function SparePartManagement() {
     return chips;
   }, [poNumber, invoiceNumber, advanced]);
 
-  const handleGenerateReport = async () => {
-    if (!reportType) {
-      toast.error('Select a report type first');
-      return;
+  const cellTextForPdf = (colName, row) => {
+    if (
+      colName === 'on_hand' ||
+      colName === 'quantity_net' ||
+      colName === 'quantity_issued'
+    ) {
+      return fmtNum(row[colName]);
     }
+    const v = row[colName];
+    if (v == null || v === '') return '—';
+    return String(v);
+  };
+
+  const buildAndDownloadPdf = ({ tabId, tabLabel, columns, rows, filtersText }) => {
+    if (!columns.length) {
+      toast.error('No columns to export');
+      return false;
+    }
+    if (!rows.length) {
+      toast.error('No rows to export. Preview the report first.');
+      return false;
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const margin = 36;
+    const generatedAt = new Date().toLocaleString();
+
+    doc.setFillColor(14, 47, 75);
+    doc.rect(0, 0, doc.internal.pageSize.getWidth(), 48, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.text('Spare Part Report', margin, 22);
+    doc.setFontSize(10);
+    doc.text(tabLabel, margin, 38);
+
+    doc.setTextColor(80, 80, 80);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${generatedAt}`, margin, 64);
+    doc.text(`Rows: ${rows.length}`, margin + 220, 64);
+    const filterLine = filtersText || 'Filters: None';
+    const wrapped = doc.splitTextToSize(filterLine, doc.internal.pageSize.getWidth() - margin * 2);
+    doc.text(wrapped, margin, 78);
+
+    autoTable(doc, {
+      startY: 78 + wrapped.length * 12 + 8,
+      head: [columns.map((c) => c.label)],
+      body: rows.map((row) => columns.map((c) => cellTextForPdf(c.name, row))),
+      styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak', valign: 'middle' },
+      headStyles: {
+        fillColor: [14, 47, 75],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 8,
+      },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      margin: { left: margin, right: margin },
+      didDrawPage: (data) => {
+        const pageCount = doc.internal.getNumberOfPages();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        doc.setFontSize(8);
+        doc.setTextColor(120);
+        doc.text(
+          `Page ${data.pageNumber} of ${pageCount}`,
+          pageWidth - margin,
+          pageHeight - 16,
+          { align: 'right' },
+        );
+      },
+    });
+
+    const safeName = String(tabLabel || tabId || 'report')
+      .replace(/[^\w\-]+/g, '_')
+      .replace(/_+/g, '_');
+    doc.save(`Spare_Part_Report_${safeName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    return true;
+  };
+
+  const handleGenerateReport = async () => {
     setIsGeneratingReport(true);
     try {
+      // Prefer what is already on screen (matches Preview table).
+      if (hasViewed && activeTab === 'overview') {
+        // Overview has no detail grid — export Slow & Non-moving as the detail PDF.
+        let rows = mapSlowRows(slowData.rows);
+        if (fsnFilter !== 'all') {
+          rows = rows.filter((r) => r.fsn_class === fsnFilter);
+        }
+        rows = applyAdvancedConditions(rows, advanced);
+        const ok = buildAndDownloadPdf({
+          tabId: 'slow',
+          tabLabel: 'Overview / Slow & Non-moving',
+          columns: slowColumns,
+          rows,
+          filtersText: activeChips.length
+            ? `Filters: ${activeChips.map((c) => c.label).join('  ·  ')}`
+            : 'Filters: None',
+        });
+        if (ok) toast.success('PDF report downloaded');
+        return;
+      }
+
+      if (hasViewed && activeTab !== 'overview' && previewColumns.length) {
+        const tabLabel =
+          TABS.find((t) => t.id === activeTab)?.label || 'Spare Part Report';
+        const filtersText = [
+          ...activeChips.map((c) => c.label),
+          activeTab === 'slow' && fsnFilter !== 'all' ? `FSN: ${fsnFilter}` : null,
+        ]
+          .filter(Boolean)
+          .join('  ·  ');
+        const ok = buildAndDownloadPdf({
+          tabId: activeTab,
+          tabLabel,
+          columns: previewColumns,
+          rows: scopedRows,
+          filtersText: filtersText ? `Filters: ${filtersText}` : 'Filters: None',
+        });
+        if (ok) toast.success('PDF report downloaded');
+        return;
+      }
+
+      if (!reportType) {
+        toast.error('Select a report type first');
+        return;
+      }
+
       const loaded = await loadAll();
       if (!loaded) return;
+
       const tab = reportType === 'overview' ? 'slow' : reportType;
       const columns =
         tab === 'slow'
@@ -705,38 +826,29 @@ export default function SparePartManagement() {
       }
       const rows = applyAdvancedConditions(source, advanced);
       const colNames =
-        tab === activeTab && cols.length
-          ? cols
-          : columns.map((c) => c.name);
+        tab === activeTab && cols.length ? cols : columns.map((c) => c.name);
       const visible = colNames
         .map((name) => columns.find((c) => c.name === name))
         .filter(Boolean);
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-      const title =
-        TABS.find((t) => t.id === reportType)?.label || 'Spare Part Report';
-      doc.setFontSize(14);
-      doc.text(`Spare Part Report — ${title}`, 40, 36);
-      doc.setFontSize(9);
-      const filterLine = activeChips.length
-        ? activeChips.map((c) => c.label).join('  ·  ')
-        : 'No filters';
-      doc.text(filterLine, 40, 52);
-      autoTable(doc, {
-        startY: 64,
-        head: [visible.map((c) => c.label)],
-        body: rows.map((row) =>
-          visible.map((c) => {
-            const value = row[c.name];
-            return value == null || value === '' ? '—' : String(value);
-          }),
-        ),
-        styles: { fontSize: 8, cellPadding: 3 },
-        headStyles: { fillColor: [20, 61, 101] },
+      const tabLabel =
+        TABS.find((t) => t.id === reportType)?.label ||
+        TABS.find((t) => t.id === tab)?.label ||
+        'Spare Part Report';
+      const filtersText = activeChips.length
+        ? `Filters: ${activeChips.map((c) => c.label).join('  ·  ')}`
+        : 'Filters: None';
+
+      const ok = buildAndDownloadPdf({
+        tabId: tab,
+        tabLabel,
+        columns: visible,
+        rows,
+        filtersText,
       });
-      doc.save(`Spare_Part_Report_${tab}.pdf`);
-      toast.success('Report generated');
+      if (ok) toast.success('PDF report downloaded');
     } catch (err) {
-      toast.error('Failed to generate report');
+      console.error('[SparePartReport] PDF generate failed:', err);
+      toast.error('Failed to generate PDF report');
     } finally {
       setIsGeneratingReport(false);
     }
@@ -982,7 +1094,7 @@ export default function SparePartManagement() {
               </button>
               <button
                 type="button"
-                disabled={!canView || loading || isGeneratingReport}
+                disabled={(!canView && !hasViewed) || loading || isGeneratingReport}
                 onClick={handleGenerateReport}
                 className="px-3 py-2 rounded-xl bg-[#143d65] text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1e5a8a]"
               >
@@ -1233,6 +1345,14 @@ export default function SparePartManagement() {
                 className="text-sm px-3 py-1 rounded-lg bg-white border border-slate-300"
               >
                 Reset
+              </button>
+              <button
+                type="button"
+                disabled={isGeneratingReport || scopedRows.length === 0}
+                onClick={handleGenerateReport}
+                className="text-sm px-3 py-1.5 rounded-lg bg-[#143d65] text-white disabled:opacity-50 hover:bg-[#1e5a8a]"
+              >
+                {isGeneratingReport ? 'Generating…' : 'Download PDF'}
               </button>
             </div>
           </div>
