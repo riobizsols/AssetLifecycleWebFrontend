@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { ArrowLeft, Download, Eye, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import API from '../../../lib/axios';
 import { auditReportService } from '../../../services/auditReportService';
 import { formatDate, StatusPill } from './utils';
 
@@ -11,6 +12,104 @@ function daysLabel(daysLeft) {
   if (daysLeft < 0) return `${Math.abs(daysLeft)} day${Math.abs(daysLeft) === 1 ? '' : 's'} overdue`;
   if (daysLeft === 0) return 'Expires today';
   return `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`;
+}
+
+function fileLabel(path, fallback = 'Document') {
+  if (!path) return fallback;
+  const parts = String(path).split('/');
+  return parts[parts.length - 1] || fallback;
+}
+
+function matchesRenewalDoc(doc) {
+  const code = String(doc.doc_type || '').toUpperCase();
+  const name = `${doc.doc_type_name || ''} ${doc.doc_type_text || ''}`.toLowerCase();
+  return (
+    code === 'CT' ||
+    code === 'VR' ||
+    code === 'AMC' ||
+    /renew|contract|amc|vendor/.test(name)
+  );
+}
+
+function VendorDocActions({ doc }) {
+  const [busy, setBusy] = useState(null);
+
+  const openDoc = async (mode) => {
+    if (busy) return;
+    const id = doc.vd_id || doc.id;
+    if (!id) {
+      toast.error('Document id missing');
+      return;
+    }
+    try {
+      setBusy(mode);
+      const res = await API.get(`/vendor-docs/${id}/download?mode=${mode}`);
+      if (res.data?.url) {
+        if (mode === 'download') {
+          const a = document.createElement('a');
+          a.href = res.data.url;
+          a.download = res.data.fileName || fileLabel(doc.doc_path);
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.click();
+        } else {
+          window.open(res.data.url, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+
+      const streamPath = res.data?.path || `/vendor-docs/${id}/file?mode=${mode}`;
+      const blobRes = await API.get(streamPath, { responseType: 'blob' });
+      const blobUrl = URL.createObjectURL(blobRes.data);
+      if (mode === 'download') {
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = res.data?.fileName || fileLabel(doc.doc_path) || 'vendor-renewal.pdf';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+        toast.success('Document downloaded');
+      } else {
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      }
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err.message ||
+          `Failed to ${mode} document`,
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => openDoc('view')}
+        disabled={!!busy}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+      >
+        {busy === 'view' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+        View
+      </button>
+      <button
+        type="button"
+        onClick={() => openDoc('download')}
+        disabled={!!busy}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+      >
+        {busy === 'download' ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Download className="w-3.5 h-3.5" />
+        )}
+        Download
+      </button>
+    </div>
+  );
 }
 
 function buildVendorRenewalPdf(row, asset = {}) {
@@ -92,6 +191,8 @@ function buildVendorRenewalPdf(row, asset = {}) {
 
 function VendorRenewalDetail({ row, asset, onBack }) {
   const [reportBusy, setReportBusy] = useState(null);
+  const [docs, setDocs] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(false);
 
   const fields = [
     ['Vendor', row.vendor_name],
@@ -112,6 +213,36 @@ function VendorRenewalDetail({ row, asset, onBack }) {
   ];
 
   const renewals = Array.isArray(row.renewals) ? row.renewals : [];
+
+  useEffect(() => {
+    if (!row?.vendor_id) {
+      setDocs([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        setDocsLoading(true);
+        const res = await API.get(`/vendor-docs/${encodeURIComponent(row.vendor_id)}`);
+        const list = Array.isArray(res.data?.documents)
+          ? res.data.documents
+          : Array.isArray(res.data)
+            ? res.data
+            : [];
+        if (cancelled) return;
+        setDocs(list.filter((d) => !d.is_archived && matchesRenewalDoc(d)));
+      } catch (err) {
+        if (cancelled) return;
+        setDocs([]);
+        toast.error(err?.response?.data?.message || 'Failed to load vendor documents');
+      } finally {
+        if (!cancelled) setDocsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [row?.vendor_id]);
 
   const handleReport = async (mode) => {
     if (reportBusy) return;
@@ -202,6 +333,42 @@ function VendorRenewalDetail({ row, asset, onBack }) {
             </div>
           </div>
         ))}
+      </div>
+
+      <div>
+        <h5 className="text-sm font-semibold text-[#143d65] mb-1">Documents</h5>
+        <p className="text-xs text-slate-500 mb-2">
+          Attached vendor renewal / contract files for this vendor (separate from the PDF report above).
+        </p>
+        {docsLoading ? (
+          <div className="flex items-center gap-2 py-6 text-sm text-slate-500">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Loading documents…
+          </div>
+        ) : !docs.length ? (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-sm text-slate-500">
+            No vendor renewal documents attached to this vendor.
+          </div>
+        ) : (
+          <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 bg-white">
+            {docs.map((doc) => (
+              <div
+                key={doc.vd_id || doc.doc_path}
+                className="px-4 py-3 flex flex-wrap items-center justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-slate-800 truncate">
+                    {doc.doc_type_name || doc.doc_type_text || fileLabel(doc.doc_path)}
+                  </div>
+                  <div className="text-xs text-slate-500 truncate mt-0.5">
+                    {fileLabel(doc.doc_path)}
+                  </div>
+                </div>
+                <VendorDocActions doc={doc} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div>

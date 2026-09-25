@@ -56,6 +56,7 @@ import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
 import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
 import SparePartList from "../pages/SparePartList";
+import SparePartManagement from "../pages/SparePartManagement";
 import SparePartIssue from "../pages/SparePartIssue";
 import SparePartApproval from "../pages/SparePartApproval";
 import SparePartListDetail from "../components/SparePartListDetail";
@@ -362,6 +363,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="SUPERVISORAPPROVAL">
               <MainLayout>
                 <MaintSupervisorApproval />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/spare-part-management"
+          element={
+            <ProtectedRoute requiredAnyOfAppIds={["SPAREPARTMGMT", "SPAREPARTLIST", "SPAREPARTISSUE"]}>
+              <MainLayout>
+                <SparePartManagement />
               </MainLayout>
             </ProtectedRoute>
           }
