@@ -3639,7 +3639,20 @@
     "action": "Action",
     "issueAction": "Issue",
     "issuedSuccessfully": "Spare part issued successfully",
-    "issueFailed": "Failed to issue spare part"
+    "issueFailed": "Failed to issue spare part",
+    "requestDetails": "Spare Request Details",
+    "sparePartName": "Spare Part Name",
+    "requestedBy": "Requested By",
+    "requestedOn": "Requested On",
+    "approvedBy": "Approved By",
+    "approvedOn": "Approved On",
+    "issuedBy": "Issued By",
+    "issuedOn": "Issued On",
+    "brand": "Brand",
+    "model": "Model",
+    "close": "Close",
+    "noRequestDetails": "No spare part request found for this record",
+    "failedToFetchDetails": "Failed to load spare request details"
   },
   "sparePartApproval": {
     "title": "Spare Part Approval",

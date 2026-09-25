@@ -15,6 +15,16 @@ const emptyForm = {
   uom: '',
   minimum_stock: '',
   re_order_level: '',
+  expiry_type: '',
+  expiry_date: '',
+};
+
+const expiryFromRow = (value) => {
+  if (value === 0 || value === '0') return { expiry_type: '0', expiry_date: '' };
+  if (!value) return { expiry_type: '', expiry_date: '' };
+  const iso = String(value).slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return { expiry_type: 'date', expiry_date: iso };
+  return { expiry_type: '', expiry_date: '' };
 };
 
 const CreateNameModal = ({
@@ -214,6 +224,7 @@ const AddSparePartCategory = () => {
           uom: row.uom || '',
           minimum_stock: row.minimum_stock != null ? String(row.minimum_stock) : '',
           re_order_level: row.re_order_level != null ? String(row.re_order_level) : '',
+          ...expiryFromRow(row.expiry),
         });
         if (row.spb_id) await fetchModels(row.spb_id);
       } catch (error) {
@@ -236,7 +247,16 @@ const AddSparePartCategory = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      if (name === 'expiry_type') {
+        return {
+          ...prev,
+          expiry_type: value,
+          expiry_date: value === 'date' ? prev.expiry_date : '',
+        };
+      }
+      return { ...prev, [name]: value };
+    });
   };
 
   const handleBrandChange = (value) => {
@@ -453,6 +473,22 @@ const AddSparePartCategory = () => {
       });
       return false;
     }
+    if (form.expiry_type !== '0' && form.expiry_type !== 'date') {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Expiry is required. Choose 0 or an expiry date',
+        type: 'error',
+      });
+      return false;
+    }
+    if (form.expiry_type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(form.expiry_date)) {
+      showBackendTextToast({
+        toast,
+        fallbackText: 'Enter a valid expiry date',
+        type: 'error',
+      });
+      return false;
+    }
     return true;
   };
 
@@ -470,6 +506,7 @@ const AddSparePartCategory = () => {
         uom: form.uom.trim(),
         minimum_stock: form.minimum_stock === '' ? null : Number(form.minimum_stock),
         re_order_level: form.re_order_level === '' ? null : Number(form.re_order_level),
+        expiry: form.expiry_type === '0' ? '0' : form.expiry_date,
       };
       if (isEdit) {
         await API.put(`/spare-parts/categories/${encodeURIComponent(spcId)}`, payload);
@@ -684,6 +721,43 @@ const AddSparePartCategory = () => {
               className="w-full px-3 py-2 border text-sm bg-white border-gray-300"
               placeholder="Enter reorder level"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm mb-1 font-medium" htmlFor="spc_expiry_type">
+              Expiry <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="spc_expiry_type"
+              name="expiry_type"
+              value={form.expiry_type}
+              onChange={handleChange}
+              className={`w-full px-3 py-2 border text-sm bg-white ${
+                submitAttempted && form.expiry_type !== '0' && form.expiry_type !== 'date'
+                  ? 'border-red-500'
+                  : 'border-gray-300'
+              }`}
+            >
+              <option value="">Select expiry</option>
+              <option value="0">0</option>
+              <option value="date">Expiry date</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Choose 0 when this category does not expire. Otherwise select an expiry date.
+            </p>
+            {form.expiry_type === 'date' && (
+              <input
+                type="date"
+                name="expiry_date"
+                value={form.expiry_date}
+                onChange={handleChange}
+                className={`mt-2 w-full px-3 py-2 border text-sm bg-white ${
+                  submitAttempted && !/^\d{4}-\d{2}-\d{2}$/.test(form.expiry_date)
+                    ? 'border-red-500'
+                    : 'border-gray-300'
+                }`}
+              />
+            )}
           </div>
         </div>
 

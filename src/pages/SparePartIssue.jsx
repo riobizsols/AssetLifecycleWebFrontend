@@ -4,10 +4,10 @@ import ContentBox from '../components/ContentBox';
 import CustomTable from '../components/CustomTable';
 import { filterData } from '../utils/filterData';
 import { exportToExcel } from '../utils/exportToExcel';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import API from '../lib/axios';
 import { useLanguage } from '../contexts/LanguageContext';
+import SparePartIssueDetailModal from '../components/spareParts/SparePartIssueDetailModal';
 import { useRevalidateOnFocus } from '../hooks/useRevalidateOnFocus';
 import {
   formatSparePartListRows,
@@ -25,7 +25,6 @@ const isIssuedWithinRetention = (issuedOn) => {
 };
 
 const SparePartIssue = () => {
-  const navigate = useNavigate();
   const { t } = useLanguage();
   const items = useSparePartListStore((s) => s.items);
   const listLoading = useSparePartListStore((s) => s.listLoading);
@@ -38,6 +37,7 @@ const SparePartIssue = () => {
   });
   const [sortConfig, setSortConfig] = useState({ sorts: [] });
   const [issuingIds, setIssuingIds] = useState({});
+  const [detailRow, setDetailRow] = useState(null);
 
   const data = useMemo(
     () =>
@@ -121,8 +121,7 @@ const SparePartIssue = () => {
   }));
 
   const handleRowClick = (row) => {
-    useSparePartListStore.getState().fetchDetail(row.ams_id, { revalidate: true });
-    navigate(`/spare-part-list-detail/${row.ams_id}`);
+    setDetailRow(row);
   };
 
   const handleIssue = async (row) => {
@@ -232,6 +231,9 @@ const SparePartIssue = () => {
           );
         }}
       </ContentBox>
+      {detailRow ? (
+        <SparePartIssueDetailModal row={detailRow} onClose={() => setDetailRow(null)} />
+      ) : null}
     </div>
   );
 };

@@ -198,6 +198,7 @@ async function tryCreateSparePartCategory(page, stamp) {
 
   await page.getByPlaceholder('Enter minimum stock').fill('1');
   await page.getByPlaceholder('Enter reorder level').fill('2');
+  await page.locator('select[name="expiry_type"]').selectOption('0');
 
   const createResponsePromise = waitForPost(page, /\/spare-parts\/categories\/?$/);
   await page.getByRole('button', { name: 'Save' }).click();
