@@ -11,7 +11,7 @@ const emptyFilters = {
 };
 
 const emptyRegisterFilters = {
-  categories: [],
+  assetTypeIds: [],
   statuses: [],
   search: '',
 };
@@ -96,7 +96,7 @@ export function useConsolidatedAssetRegister() {
     campuses: [],
     departments: [],
     statuses: [],
-    categories: [],
+    assetTypes: [],
   });
   const [draft, setDraft] = useState(emptyFilters);
   const [applied, setApplied] = useState(emptyFilters);
@@ -134,7 +134,7 @@ export function useConsolidatedAssetRegister() {
   const registerQueryFilters = useMemo(
     () => ({
       ...queryFilters,
-      categories: registerApplied.categories,
+      assetTypeIds: registerApplied.assetTypeIds,
       statuses: registerApplied.statuses,
       search: registerApplied.search || undefined,
     }),
@@ -161,7 +161,7 @@ export function useConsolidatedAssetRegister() {
           campuses: data.campuses || [],
           departments: data.departments || [],
           statuses: data.statuses || [],
-          categories: data.categories || [],
+          assetTypes: data.assetTypes || [],
         };
         optionsRef.current = normalized;
         setFilterOptions(normalized);
@@ -318,6 +318,7 @@ export function useConsolidatedAssetRegister() {
     applied,
     registerDraft,
     setRegisterDraft,
+    registerApplied,
     summary,
     register,
     loadingOptions,

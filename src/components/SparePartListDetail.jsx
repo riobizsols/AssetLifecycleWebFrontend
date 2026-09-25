@@ -72,7 +72,19 @@ export default function SparePartListDetail() {
       }
       setLoadingChecklist(true);
       try {
-        const res = await API.get(`/checklist/asset-type/${assetTypeId}`);
+        const assetId = maintenanceData?.asset_id;
+        const wfamshId = maintenanceData?.wfamsh_id;
+        const freqId = maintenanceData?.at_main_freq_id;
+        let res;
+        if (assetId && wfamshId) {
+          res = await API.get(`/checklist/asset/${assetId}`, {
+            params: { wfamshId },
+          });
+        } else {
+          const params = {};
+          if (freqId) params.at_main_freq_id = freqId;
+          res = await API.get(`/checklist/asset-type/${assetTypeId}`, { params });
+        }
         if (!cancelled) {
           setChecklist(res.data?.success ? res.data.data || [] : []);
         }

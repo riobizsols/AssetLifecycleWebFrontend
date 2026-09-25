@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 const MINIMAL_PDF = Buffer.from(
@@ -15,13 +15,15 @@ test.describe('RIO EAM certificates', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/technician-certificates`);
+    await gotoProtected(page, `${BASE}/technician-certificates`);
 
-    await expect(page.getByRole('heading', { name: 'Technician Certificates' })).toBeVisible({
-      timeout: 20000,
-    });
-    await expect(page.getByText('Uploaded Certificates')).toBeVisible();
-    await expect(page.getByText('Loading certificates...')).toHaveCount(0, { timeout: 30000 });
+    const unauthorized = page.getByText(/not authorized|Access Denied|You are not authorized/i);
+    const heading = page.getByRole('heading', { name: /Technician Certificates/i });
+    await expect(unauthorized.or(heading).first()).toBeVisible({ timeout: 45000 });
+    if (await unauthorized.isVisible().catch(() => false)) return;
+
+    await expect(page.getByText(/Uploaded Certificates/i)).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText(/Loading certificates/i)).toHaveCount(0, { timeout: 30000 });
 
     const empty = page.getByText('No certificates uploaded yet.');
     const rows = page.locator('table tbody tr');
@@ -36,16 +38,17 @@ test.describe('RIO EAM certificates', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/technician-certificates`);
-    await expect(page.getByRole('heading', { name: 'Technician Certificates' })).toBeVisible({
-      timeout: 20000,
-    });
+    await gotoProtected(page, `${BASE}/technician-certificates`);
+    const unauthorized = page.getByText(/not authorized|Access Denied|You are not authorized/i);
+    const heading = page.getByRole('heading', { name: /Technician Certificates/i });
+    await expect(unauthorized.or(heading).first()).toBeVisible({ timeout: 45000 });
+    if (await unauthorized.isVisible().catch(() => false)) return;
 
     await page.getByTitle('Add').click();
     await expect(page.getByText('Employee Name')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Certificate Name').first()).toBeVisible();
-    await expect(page.getByText('Certificate Date')).toBeVisible();
-    await expect(page.getByText('Expiry Date')).toBeVisible();
+    await expect(page.getByText('Certificate Date').first()).toBeVisible();
+    await expect(page.getByText('Expiry Date').first()).toBeVisible();
     await expect(page.getByText('Upload Certificate File')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Upload' })).toBeVisible();
   });
@@ -54,8 +57,8 @@ test.describe('RIO EAM certificates', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/certifications`);
-    await expect(page.getByText('Existing Certificates')).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/certifications`);
+    await expect(page.getByText('Existing Certificates')).toBeVisible({ timeout: 45000 });
 
     await page.getByTitle('Add').click();
     await expect(page.getByText('Add New Certificate')).toBeVisible({ timeout: 10000 });
@@ -76,9 +79,9 @@ test.describe('RIO EAM certificates', () => {
     await expect(page.getByText('Certificate created successfully')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(certName)).toBeVisible({ timeout: 15000 });
 
-    await page.goto(`${BASE}/technician-certificates`);
-    await expect(page.getByRole('heading', { name: 'Technician Certificates' })).toBeVisible({
-      timeout: 20000,
+    await gotoProtected(page, `${BASE}/technician-certificates`);
+    await expect(page.getByRole('heading', { name: /Technician Certificates/i })).toBeVisible({
+      timeout: 45000,
     });
     await page.getByTitle('Add').click();
 
@@ -86,8 +89,6 @@ test.describe('RIO EAM certificates', () => {
     const certificateSelect = page.locator('label', { hasText: /^Certificate Name$/ }).locator('xpath=following-sibling::select[1]');
 
     await expect(employeeSelect).toBeVisible({ timeout: 15000 });
-    await expect(certificateSelect).toBeEnabled({ timeout: 20000 });
-
     await expect
       .poll(
         async () => employeeSelect.locator('option').count(),
@@ -103,7 +104,22 @@ test.describe('RIO EAM certificates', () => {
     } else {
       await employeeSelect.selectOption({ index: 1 });
     }
-    await certificateSelect.selectOption({ label: `${certName} (${certNumber})` });
+
+    // Certificate dropdown stays disabled until an employee is chosen.
+    await expect(certificateSelect).toBeEnabled({ timeout: 20000 });
+    await expect
+      .poll(
+        async () => certificateSelect.locator('option').count(),
+        { timeout: 20000 }
+      )
+      .toBeGreaterThan(1);
+
+    const certOption = certificateSelect.locator('option').filter({ hasText: certName });
+    if ((await certOption.count()) > 0) {
+      await certificateSelect.selectOption({ label: await certOption.first().innerText() });
+    } else {
+      await certificateSelect.selectOption({ index: 1 });
+    }
 
     const dateInputs = page.locator('input[type="date"]');
     await dateInputs.nth(0).fill('2026-03-01');

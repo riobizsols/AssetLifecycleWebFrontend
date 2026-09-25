@@ -63,6 +63,15 @@ const EXACT_LABEL_KEYS = {
   'Monitor': 'monitor',
   'Chair': 'chair',
   'Desk': 'desk',
+  'Electrical': 'electrical',
+  'Plumbing': 'plumbing',
+  'HVAC': 'hvac',
+  'Civil': 'civil',
+  'Lifts': 'lifts',
+  'Lift': 'lift',
+  'Generators': 'generators',
+  'Fire Systems': 'fireSystems',
+  'Campus Infrastructure': 'campusInfrastructure',
 };
 
 let englishToGermanMap = null;

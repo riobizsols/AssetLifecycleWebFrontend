@@ -239,13 +239,37 @@ const TechnicianCertificates = () => {
     if (!id) return;
     setDownloadingId(id);
     try {
-      const response = await API.get(`/employee-tech-certificates/${id}/download`);
-      const url = response.data?.url;
-      if (!url) {
-        showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_NOFILEFORDOWNLOAD_6CD279FE', fallbackText: t("technicianCertificates.noFileForDownload"), type: 'error' });
+      const response = await API.get(`/employee-tech-certificates/${id}/download`, {
+        params: { mode: 'view' },
+        responseType: 'blob',
+        timeout: 120000,
+      });
+      const contentType = String(response.headers?.['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const text = await (response.data instanceof Blob
+          ? response.data.text()
+          : Promise.resolve(String(response.data)));
+        let payload = {};
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          payload = { message: text };
+        }
+        showBackendTextToast({
+          toast,
+          tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_NOFILEFORDOWNLOAD_6CD279FE',
+          fallbackText: payload.message || t("technicianCertificates.noFileForDownload"),
+          type: 'error',
+        });
         return;
       }
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], { type: contentType || 'application/pdf' });
+      const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
       console.error("Failed to get download URL:", error);
       showBackendTextToast({ toast, tmdId: 'TMD_I18N_TECHNICIANCERTIFICATES_FAILEDTODOWNLOAD_0990D73E', fallbackText: error.response?.data?.message || t("technicianCertificates.failedToDownload"), type: 'error' });

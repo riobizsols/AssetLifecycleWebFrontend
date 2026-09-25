@@ -56,6 +56,22 @@ export default function Header() {
       title: t('branchDeptMapping.title', { defaultValue: 'Branch – Department Mapping' }),
       subtitle: "",
     },
+    "/master-data/audit-type-mapping": {
+      title: "Audit Type – Asset Type Mapping",
+      subtitle: "",
+    },
+    "/utilities/master": {
+      title: "Utility Master",
+      subtitle: "",
+    },
+    "/utilities/asset-type-mapping": {
+      title: "Utility – Asset Type Mapping",
+      subtitle: "Map utility details to asset types.",
+    },
+    "/utilities/consumption": {
+      title: "Record Utility Consumption",
+      subtitle: "Enter meter readings or quantities (999 / 9999 rollover).",
+    },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
     "/master-data/spare-parts": { title: t('navigation.sparePartLot'), subtitle: "" },
@@ -178,13 +194,26 @@ export default function Header() {
     },
     "/reports/audit-reports": {
       title: "Audit Reports",
-      subtitle:
-        "Generate asset audit reports based on audit standards, audit period, and asset type.",
+      subtitle: "",
     },
     "/reports/consolidated-asset-register": {
       title: "Asset Register",
       subtitle:
         "Institution-wide asset count, values, distribution and category mix.",
+    },
+    "/reports/sla-vendor-performance": {
+      title: "SLA & Vendor Performance",
+      subtitle:
+        "Vendor response, resolution SLA, breaches, repeat failures and service ratings.",
+    },
+    "/reports/maintenance-status": {
+      title: t("navigation.maintenanceStatusReport"),
+      subtitle:
+        "Due, overdue, completed maintenance and expiry for facility asset types.",
+    },
+    "/reports/workforce": {
+      title: "Engineering Team Productivity Report",
+      subtitle: "",
     },
     "/reports/reopened-breakdowns": {
       title: t("reports.reopenedBreakdowns.title"),

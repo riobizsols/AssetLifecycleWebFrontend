@@ -470,6 +470,12 @@ const InspectionExecutionDetail = () => {
       }
 
       setPendingRecords([]);
+      await patchScheduleLocal(id, {
+        status,
+        notes: formData.notes,
+        trigger_maintenance: triggerMaintenance,
+        act_insp_end_date: completePayload.act_insp_end_date,
+      });
       showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
       navigate('/inspection-view');
     } catch (error) {

@@ -27,6 +27,20 @@ const sanitizePhoneDigits = (value, maxLen = PHONE_MAX_DIGITS) =>
 const isValidPhoneNumber = (value) =>
   /^\d{10}$/.test(String(value ?? "").trim());
 
+const isInhouseMaintenanceRecord = (detail) => {
+  if (!detail) return false;
+  if (detail.maint_type_id === "MT005") return false;
+  if (detail.is_inhouse === true) return true;
+  const maint = String(detail.maintained_by || "")
+    .toLowerCase()
+    .replace(/\s|-/g, "");
+  if (maint.includes("vendor")) return false;
+  if (detail.emp_int_id || detail.header_emp_int_id) return true;
+  if (maint.includes("inhouse") || maint === "internal") return true;
+  if (!maint) return Boolean(detail.emp_int_id || detail.header_emp_int_id);
+  return !maint.includes("vendor");
+};
+
 export default function MaintSupervisorApproval() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -34,7 +48,7 @@ export default function MaintSupervisorApproval() {
   const appliedOrgId = useAcmContextStore((s) => s.appliedOrgId);
   const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
   const appliedDeptId = useAcmContextStore((s) => s.appliedDeptId);
-  
+
   // Access control
   const { getAccessLevel } = useNavigation();
   const accessLevel = getAccessLevel('SUPERVISORAPPROVAL');
@@ -213,6 +227,18 @@ export default function MaintSupervisorApproval() {
   // Form state for updatable fields
   const [formData, setFormData] = useState(() => buildFormFromDetail(cachedDetail));
 
+  const isInhouseTech =
+    isInhouseMaintenanceRecord(maintenanceData) &&
+    Boolean(maintenanceData?.emp_int_id || maintenanceData?.header_emp_int_id);
+  const technicianFieldsLocked =
+    isInhouseTech &&
+    Boolean(
+      formData.technician_name &&
+        formData.technician_email &&
+        formData.technician_phno,
+    );
+  const technicianInputDisabled = isReadOnly || technicianFieldsLocked;
+
   // Validation state for each field
   const [validationErrors, setValidationErrors] = useState({
     status: false,
@@ -374,15 +400,27 @@ export default function MaintSupervisorApproval() {
   const fetchChecklist = async () => {
     setLoadingChecklist(true);
     try {
-      // Get checklist for the specific asset type
-      if (maintenanceData?.asset_type_id) {
-        const apiUrl = `/checklist/asset-type/${maintenanceData.asset_type_id}`;
-        // Pass context so logs go to SUPERVISORAPPROVAL CSV
-        const res = await API.get(apiUrl, {
-          params: { context: 'SUPERVISORAPPROVAL' }
+      // Scope to this schedule's frequency — asset-type-only returns every freq's items.
+      if (maintenanceData?.asset_id && maintenanceData?.wfamsh_id) {
+        const res = await API.get(`/checklist/asset/${maintenanceData.asset_id}`, {
+          params: {
+            context: 'SUPERVISORAPPROVAL',
+            wfamshId: maintenanceData.wfamsh_id,
+          },
         });
-        
-        // The API returns { success: true, data: [...], count: 3 }
+        if (res.data && res.data.success && Array.isArray(res.data.data)) {
+          setChecklist(res.data.data);
+        } else {
+          setChecklist([]);
+        }
+      } else if (maintenanceData?.asset_type_id) {
+        const params = { context: 'SUPERVISORAPPROVAL' };
+        if (maintenanceData.at_main_freq_id) {
+          params.at_main_freq_id = maintenanceData.at_main_freq_id;
+        }
+        const res = await API.get(`/checklist/asset-type/${maintenanceData.asset_type_id}`, {
+          params,
+        });
         if (res.data && res.data.success && Array.isArray(res.data.data)) {
           setChecklist(res.data.data);
         } else {
@@ -900,28 +938,42 @@ export default function MaintSupervisorApproval() {
       }
       
       if (action === 'view') {
-        // Use maintenance document API if amd_id exists, otherwise use asset document API
-        const endpoint = doc.amd_id 
-          ? `/asset-maint-docs/${docId}/download?mode=view`
-          : `/asset-docs/${docId}/download-url?mode=view`;
-        const res = await API.get(endpoint);
-        console.log('View response:', res.data);
-        if (res.data && res.data.url) {
-          window.open(res.data.url, '_blank');
+        if (doc.amd_id) {
+          const fileRes = await API.get(`/asset-maint-docs/${docId}/file?mode=view`, {
+            responseType: 'blob',
+          });
+          if (fileRes.data?.type && String(fileRes.data.type).includes('json')) {
+            const text = await fileRes.data.text();
+            const parsed = JSON.parse(text);
+            throw new Error(parsed.message || parsed.error || 'Failed to open document');
+          }
+          window.open(URL.createObjectURL(fileRes.data), '_blank');
         } else {
-          throw new Error('No URL returned from API');
+          const res = await API.get(`/asset-docs/${docId}/download-url?mode=view`);
+          if (res.data && res.data.url) {
+            window.open(res.data.url, '_blank');
+          } else {
+            throw new Error('No URL returned from API');
+          }
         }
       } else if (action === 'download') {
-        // Use maintenance document API if amd_id exists, otherwise use asset document API
-        const endpoint = doc.amd_id 
-          ? `/asset-maint-docs/${docId}/download?mode=download`
-          : `/asset-docs/${docId}/download-url?mode=download`;
-        const res = await API.get(endpoint);
-        console.log('Download response:', res.data);
-        if (res.data && res.data.url) {
-          window.open(res.data.url, '_blank');
+        if (doc.amd_id) {
+          const fileRes = await API.get(`/asset-maint-docs/${docId}/file?mode=download`, {
+            responseType: 'blob',
+          });
+          if (fileRes.data?.type && String(fileRes.data.type).includes('json')) {
+            const text = await fileRes.data.text();
+            const parsed = JSON.parse(text);
+            throw new Error(parsed.message || parsed.error || 'Failed to download document');
+          }
+          window.open(URL.createObjectURL(fileRes.data), '_blank');
         } else {
-          throw new Error('No URL returned from API');
+          const res = await API.get(`/asset-docs/${docId}/download-url?mode=download`);
+          if (res.data && res.data.url) {
+            window.open(res.data.url, '_blank');
+          } else {
+            throw new Error('No URL returned from API');
+          }
         }
       } else if (action === 'archive') {
         // Use maintenance document API if amd_id exists, otherwise use asset document API
@@ -2304,10 +2356,16 @@ export default function MaintSupervisorApproval() {
                       name="technician_name"
                       value={formData.technician_name}
                       onChange={handleInputChange}
-                      disabled={isReadOnly}
-                      className={`w-full px-3 py-2 border ${validationErrors.technician_name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                      disabled={technicianInputDisabled}
+                      readOnly={technicianFieldsLocked}
+                      className={`w-full px-3 py-2 border ${validationErrors.technician_name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${technicianInputDisabled ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                       placeholder={t('maintenanceSupervisor.enterTechnicianName')}
                     />
+                    {technicianFieldsLocked && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Auto-filled from in-house technician{maintenanceData?.emp_int_id ? ` (${maintenanceData.emp_int_id})` : ''}
+                      </p>
+                    )}
                     {validationErrors.technician_name && (
                       <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.nameIsRequired')}</p>
                     )}
@@ -2323,8 +2381,9 @@ export default function MaintSupervisorApproval() {
                       name="technician_phno"
                       value={formData.technician_phno}
                       onChange={handleInputChange}
-                      disabled={isReadOnly}
-                      className={`w-full px-3 py-2 border ${validationErrors.technician_phno ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                      disabled={technicianInputDisabled}
+                      readOnly={technicianFieldsLocked}
+                      className={`w-full px-3 py-2 border ${validationErrors.technician_phno ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${technicianInputDisabled ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                       placeholder={t('maintenanceSupervisor.enterTechnicianPhone')}
                     />
                     {validationErrors.technician_phno && (
@@ -2379,8 +2438,9 @@ export default function MaintSupervisorApproval() {
                       name="technician_email"
                       value={formData.technician_email}
                       onChange={handleInputChange}
-                      disabled={isReadOnly}
-                      className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isReadOnly ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
+                      disabled={technicianInputDisabled}
+                      readOnly={technicianFieldsLocked}
+                      className={`w-full px-3 py-2 border ${validationErrors.technician_email ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${technicianInputDisabled ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
                       placeholder={t('maintenanceSupervisor.enterTechnicianEmail')}
                       required
                     />

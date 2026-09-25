@@ -11,6 +11,18 @@ import {
 } from 'recharts';
 import { formatInr, formatInrCurrency, PAGE_SIZE_OPTIONS } from './utils';
 
+function isNumericHeader(header) {
+  return /assets|acquisition|depreciation|book\s*value|share/i.test(String(header || ''));
+}
+
+function isNumericCell(cell) {
+  if (typeof cell === 'number') return true;
+  const s = String(cell ?? '').trim();
+  if (!s) return false;
+  if (s.startsWith('₹')) return true;
+  return /^[\d,.]+%?$/.test(s) && !Number.isNaN(Number(s.replace(/[,%]/g, '')));
+}
+
 function DataTable({ headers, rows, emptyLabel }) {
   if (!rows?.length) {
     return (
@@ -19,13 +31,24 @@ function DataTable({ headers, rows, emptyLabel }) {
       </div>
     );
   }
+
+  const numericCols = headers.map((h, idx) => {
+    if (isNumericHeader(h)) return true;
+    return rows.some((row) => isNumericCell(row[idx]));
+  });
+
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="min-w-full text-sm">
-        <thead className="bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
+        <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
           <tr>
-            {headers.map((h) => (
-              <th key={h} className="px-3 py-2.5 font-medium whitespace-nowrap">
+            {headers.map((h, idx) => (
+              <th
+                key={h}
+                className={`px-3 py-2.5 font-medium whitespace-nowrap ${
+                  numericCols[idx] ? 'text-right' : 'text-left'
+                }`}
+              >
                 {h}
               </th>
             ))}
@@ -38,13 +61,9 @@ function DataTable({ headers, rows, emptyLabel }) {
                 <td
                   key={cIdx}
                   className={`px-3 py-2.5 text-slate-800 ${
-                    cIdx > 0 && typeof cell === 'string' && cell.startsWith('₹')
+                    numericCols[cIdx] || isNumericCell(cell)
                       ? 'text-right tabular-nums'
-                      : cIdx > 0 &&
-                          !Number.isNaN(Number(String(cell).replace(/,/g, ''))) &&
-                          String(cell).match(/^[\d,.]+$/)
-                        ? 'text-right tabular-nums'
-                        : ''
+                      : 'text-left'
                   }`}
                 >
                   {cell}

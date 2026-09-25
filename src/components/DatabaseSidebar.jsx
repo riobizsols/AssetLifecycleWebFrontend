@@ -74,6 +74,8 @@ import {
   History,
   DollarSign,
   GitBranch,
+  Link2,
+  Zap,
   AlertTriangle,
   Tag,
   Gauge,
@@ -137,6 +139,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
   ],
   "Spare Parts": ["SPAREPARTS", "SPAREPARTMGMT", "SPAREPARTLIST", "SPAREPARTAPPROVAL", "SPAREPARTISSUE"],
   Scrap: ["SCRAPASSETS", "SCRAPMAINTENANCEAPPROVAL", "SCRAPSALES"],
+  Utilities: ["UTILITYMASTER", "UTILITYATMAPPING", "UTILITYCONSUMPTION"],
   Inspection: [
     "INSPECTIONAPPROVAL",
     "INSPECTIONVIEW",
@@ -148,6 +151,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "ASSETTYPES",
     "BRANCHES",
     "BRANCHDEPTMAPPING",
+    "AUDITATMAPPING",
     "DEPARTMENTS",
     "DEPARTMENTSADMIN",
     "DEPARTMENTSASSET",
@@ -173,6 +177,11 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "QAAUDITREPORT",
     "AUDITREPORT",
     "CONSOLIDATEDASSETREPORT",
+    "SLAVENDORPERFORMANCE",
+    "MAINTENANCESTATUSREPORT",
+    "OUTOFSTOCKREPORT",
+    "PURCHASEREQUIREMENTREPORT",
+    "WORKFORCEREPORT",
   ],
 };
 
@@ -913,6 +922,112 @@ function ensureSparePartMasterMenu(items) {
   return inject(items);
 }
 
+const UTILITY_MENU_DEFS = [
+  { app_id: "UTILITYMASTER", label: "Utility Master", seq: 1 },
+  { app_id: "UTILITYATMAPPING", label: "Utility – Asset Type Mapping", seq: 2 },
+  { app_id: "UTILITYCONSUMPTION", label: "Record Consumption", seq: 3 },
+];
+
+/**
+ * Ensure Utilities group + screens appear for admin/master-data users
+ * even when tenant nav has not been backfilled yet.
+ */
+function ensureUtilityMenus(items) {
+  if (!items?.length) return items;
+
+  const flat = flattenNavItems(items);
+  const existingKeys = new Set(
+    flat
+      .filter((item) => item.app_id)
+      .map((item) => normalizeNavAppId(item.app_id)),
+  );
+
+  const hasUtility = UTILITY_MENU_DEFS.some((def) =>
+    existingKeys.has(normalizeNavAppId(def.app_id)),
+  );
+  let group = findNavGroupByLabel(items, "Utilities");
+
+  if (hasUtility && group) {
+    return items;
+  }
+
+  const canInject =
+    hasUtility ||
+    !!findNavGroupByLabel(items, "Master Data") ||
+    !!findNavGroupByLabel(items, "Admin Settings") ||
+    existingKeys.has("ASSETTYPES") ||
+    existingKeys.has("USERS") ||
+    existingKeys.has("AUDITLOGS");
+
+  if (!canInject) return items;
+
+  const accessLevel =
+    group?.access_level ||
+    findNavGroupByLabel(items, "Master Data")?.access_level ||
+    findNavGroupByLabel(items, "Admin Settings")?.access_level ||
+    "A";
+
+  const children = [...(group?.children || [])];
+  for (const def of UTILITY_MENU_DEFS) {
+    const key = normalizeNavAppId(def.app_id);
+    if (children.some((child) => normalizeNavAppId(child.app_id) === key)) {
+      continue;
+    }
+    const fromFlat = flat.find(
+      (item) => normalizeNavAppId(item.app_id) === key,
+    );
+    children.push({
+      id: fromFlat?.id || `ensure-utility-${key}`,
+      app_id: def.app_id,
+      label: fromFlat?.label || def.label,
+      is_group: false,
+      children: undefined,
+      access_level: fromFlat?.access_level || accessLevel,
+      seq: fromFlat?.seq ?? def.seq,
+    });
+  }
+
+  children.sort((a, b) => {
+    const rankA = UTILITY_MENU_DEFS.findIndex(
+      (d) => normalizeNavAppId(d.app_id) === normalizeNavAppId(a.app_id),
+    );
+    const rankB = UTILITY_MENU_DEFS.findIndex(
+      (d) => normalizeNavAppId(d.app_id) === normalizeNavAppId(b.app_id),
+    );
+    const safeA = rankA >= 0 ? rankA : 1000;
+    const safeB = rankB >= 0 ? rankB : 1000;
+    if (safeA !== safeB) return safeA - safeB;
+    return (a.seq ?? 9999) - (b.seq ?? 9999);
+  });
+
+  const utilityGroup = {
+    id: group?.id || "ensure-utilities",
+    label: "Utilities",
+    is_group: true,
+    seq: group?.seq ?? 12,
+    access_level: accessLevel,
+    children,
+  };
+
+  const withoutLoose = items.filter(
+    (item) =>
+      isNavGroup(item) ||
+      !UTILITY_MENU_DEFS.some(
+        (def) => normalizeNavAppId(def.app_id) === normalizeNavAppId(item.app_id),
+      ),
+  );
+
+  if (group) {
+    return withoutLoose.map((item) =>
+      isNavGroup(item) && canonicalGroupLabel(item.label) === "utilities"
+        ? utilityGroup
+        : item,
+    );
+  }
+
+  return [...withoutLoose, utilityGroup];
+}
+
 function ensureDomainNavGroups(items) {
   const flat = flattenNavItems(items);
   let result = [...items];
@@ -998,6 +1113,7 @@ const SIDEBAR_LABEL_ORDER = [
   "maintenance",
   "spare parts",
   "inspection",
+  "utilities",
   "reports",
   "scrap",
   "admin settings",
@@ -1036,6 +1152,7 @@ function finalizeSidebarNavigation(items) {
   tree = ensureSparePartManagementMenu(tree);
   tree = ensureSparePartIssueMenu(tree);
   tree = ensureSparePartMasterMenu(tree);
+  tree = ensureUtilityMenus(tree);
   tree = ensureDomainNavGroups(tree);
   tree = sortMasterDataNavOrder(tree);
   tree = sortScrapNavOrder(tree);
@@ -1572,6 +1689,11 @@ const DatabaseSidebar = () => {
     QAAUDITREPORT: "/reports/qa-audit-report",  //done
     AUDITREPORT: "/reports/audit-reports",
     CONSOLIDATEDASSETREPORT: "/reports/consolidated-asset-register",
+    SLAVENDORPERFORMANCE: "/reports/sla-vendor-performance",
+    MAINTENANCESTATUSREPORT: "/reports/maintenance-status",
+    OUTOFSTOCKREPORT: "/reports/purchase-requirement",
+    PURCHASEREQUIREMENTREPORT: "/reports/purchase-requirement",
+    WORKFORCEREPORT: "/reports/workforce",
     ADMINSETTINGS: "/admin-settings-view", // Unique route for admin settings  //done
     MASTERDATA: "/master-data/vendors",  //done
     ORGANIZATIONS: "/master-data/organizations",  //done
@@ -1581,6 +1703,10 @@ const DatabaseSidebar = () => {
     DEPARTMENTSASSET: "/master-data/departments-asset",  //not required
     BRANCHES: "/master-data/branches", //done
     BRANCHDEPTMAPPING: "/master-data/branch-dept-mapping",
+    AUDITATMAPPING: "/master-data/audit-type-mapping",
+    UTILITYMASTER: "/utilities/master",
+    UTILITYATMAPPING: "/utilities/asset-type-mapping",
+    UTILITYCONSUMPTION: "/utilities/consumption",
     PRODSERV: "/master-data/prod-serv",  //no required
     ROLES: "/master-data/uploads",
     USERS: "/master-data/user-roles",
@@ -1745,6 +1871,11 @@ const DatabaseSidebar = () => {
       QAAUDITREPORT: FileText,
       AUDITREPORT: FileText,
       CONSOLIDATEDASSETREPORT: FileText,
+      SLAVENDORPERFORMANCE: FileText,
+      MAINTENANCESTATUSREPORT: Wrench,
+      OUTOFSTOCKREPORT: Package,
+      PURCHASEREQUIREMENTREPORT: Package,
+      WORKFORCEREPORT: Users,
       ADMINSETTINGS: Settings,
       MASTERDATA: Database,
       ORGANIZATIONS: Building,
@@ -1754,6 +1885,10 @@ const DatabaseSidebar = () => {
       DEPARTMENTSASSET: Package,
       BRANCHES: Home,
       BRANCHDEPTMAPPING: GitBranch,
+      AUDITATMAPPING: Link2,
+      UTILITYMASTER: Zap,
+      UTILITYATMAPPING: Link2,
+      UTILITYCONSUMPTION: Zap,
       VENDORS: Truck,
       SPAREPARTS: Package,
       SPAREPARTSCONFIG: Package,

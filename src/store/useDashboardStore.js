@@ -90,6 +90,8 @@ function transformNotifications(notifications) {
       alertType = 'Spare Part Issued';
     } else if (notification.workflowType === 'SPARE_CONFIRMED') {
       alertType = 'Spare Part Confirmed';
+    } else if (notification.workflowType === 'CONSUMPTION_MISS') {
+      alertType = 'Consumption Miss Alert';
     } else if (notification.maintenanceType) {
       alertType = notification.maintenanceType;
     }
@@ -99,6 +101,10 @@ function transformNotifications(notifications) {
       alertText = `${notification.assetTypeName} Inspection`;
     } else if (alertType === 'Warranty Expiry') {
       alertText = `${notification.assetId} - ${notification.title || 'Warranty Expiry'}`;
+    } else if (alertType === 'Consumption Miss Alert') {
+      alertText =
+        notification.body ||
+        `${notification.assetId} — ${notification.categoryName || notification.utilitySh || 'Utility'} reading missed`;
     } else if (
       alertType === 'Spare Part Approval' ||
       alertType === 'Spare Part Requested' ||
@@ -120,7 +126,10 @@ function transformNotifications(notifications) {
       alertType,
       alertText,
       dueOn: formatNotificationDate(notification.dueDate),
-      actionBy: notification.userName || 'Unassigned',
+      actionBy:
+        notification.workflowType === 'CONSUMPTION_MISS'
+          ? 'You'
+          : notification.userName || 'Unassigned',
       cutoffDate: formatNotificationDate(notification.cutoffDate),
       isUrgent:
         notification.workflowType === 'SPARE_APPROVAL' ||
@@ -128,7 +137,9 @@ function transformNotifications(notifications) {
         notification.workflowType === 'SPARE_ISSUED' ||
         notification.workflowType === 'SPARE_CONFIRMED'
           ? false
-          : notification.daysUntilCutoff <= 2,
+          : notification.workflowType === 'CONSUMPTION_MISS'
+            ? true
+            : notification.daysUntilCutoff <= 2,
       wfamshId: notification.wfamshId,
       route: notification.route,
       workflowType: notification.workflowType,

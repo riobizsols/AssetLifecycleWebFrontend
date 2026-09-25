@@ -1,21 +1,33 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Download, FileText, Settings2 } from 'lucide-react';
+import { ChevronDown, Download, FileText, Settings2 } from 'lucide-react';
 import { auditReportService } from '../../services/auditReportService';
 import { useAuditLog } from '../../hooks/useAuditLog';
 import { REPORTS_APP_IDS } from '../../constants/reportsAuditEvents';
 import {
+  applyAdvancedFilters,
+  ReportPreviewModal,
+  useReportColumns,
+} from '../../components/reportModels/ReportExtras';
+import {
   API_SECTIONS,
   PAGE_SIZE,
+  CURRENT_YEAR,
   defaultFieldSelection,
 } from './auditReports/constants';
 import { buildHistoryByAsset, enrichAssets } from './auditReports/utils';
 import { useAuditReportPdf, pdfNeedsDocUrlPrep } from './auditReports/useAuditReportPdf';
 import ConfigurePanel from './auditReports/ConfigurePanel';
 import SummaryStrip from './auditReports/SummaryStrip';
+import AuditCharts from './auditReports/AuditCharts';
 import AssetResultsTable from './auditReports/AssetResultsTable';
 import FieldsDrawer from './auditReports/FieldsDrawer';
-import ExportDialog from './auditReports/ExportDialog';
+import { exportAuditReportExcel } from './auditReports/exportAuditReport';
+import {
+  AUDIT_REPORT_COLUMNS,
+  AUDIT_REPORT_FIELD_ACCESSORS,
+  getAuditReportCellValue,
+} from './newReportExtrasConfig';
 
 export default function AuditReports() {
   const { recordActionByNameWithFetch } = useAuditLog(REPORTS_APP_IDS.AUDIT_REPORT);
@@ -38,54 +50,101 @@ export default function AuditReports() {
   const [expandedAssetId, setExpandedAssetId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [fieldsOpen, setFieldsOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef(null);
+  const [advanced, setAdvanced] = useState([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const { columns } = useReportColumns(
+    AUDIT_REPORT_COLUMNS.default,
+    AUDIT_REPORT_COLUMNS.all,
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoadingTypes(true);
-        const data = await auditReportService.getAuditTypes();
-        if (cancelled) return;
-        setAuditTypes(data);
-      } catch (err) {
-        toast.error(err?.response?.data?.error || 'Failed to load audit types');
-      } finally {
-        if (!cancelled) setLoadingTypes(false);
+  const loadAuditTypes = useCallback(async ({ preserveSelection = true } = {}) => {
+    try {
+      setLoadingTypes(true);
+      const data = await auditReportService.getAuditTypes();
+      setAuditTypes(data);
+      if (preserveSelection) {
+        setAudtpId((prev) => {
+          if (prev && data.some((t) => t.audtp_id === prev)) return prev;
+          return data[0]?.audtp_id || '';
+        });
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      return data;
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to load audit types');
+      return [];
+    } finally {
+      setLoadingTypes(false);
+    }
+  }, []);
+
+  const loadMappedTypes = useCallback(async (id, { resetSelection = true } = {}) => {
+    if (!id) {
+      setMappedTypes([]);
+      setSelectedAssetTypes([]);
+      return [];
+    }
+    try {
+      setLoadingMapped(true);
+      const data = await auditReportService.getMappedAssetTypes(id);
+      setMappedTypes(data);
+      const mappedIds = data.map((d) => d.asset_type_id);
+      if (resetSelection) {
+        setSelectedAssetTypes(mappedIds);
+      } else {
+        setSelectedAssetTypes((prev) => {
+          const allowed = new Set(mappedIds);
+          const kept = prev.filter((x) => allowed.has(x));
+          if (kept.length) return kept;
+          return mappedIds;
+        });
+      }
+      return data;
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to load mapped asset types');
+      setMappedTypes([]);
+      setSelectedAssetTypes([]);
+      return [];
+    } finally {
+      setLoadingMapped(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (!audtpId) {
-      setMappedTypes([]);
-      setSelectedAssetTypes([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoadingMapped(true);
-        const data = await auditReportService.getMappedAssetTypes(audtpId);
-        if (cancelled) return;
-        setMappedTypes(data);
-        setSelectedAssetTypes(data.map((d) => d.asset_type_id));
-      } catch (err) {
-        toast.error(err?.response?.data?.error || 'Failed to load mapped asset types');
-        setMappedTypes([]);
-        setSelectedAssetTypes([]);
-      } finally {
-        if (!cancelled) setLoadingMapped(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
+    loadAuditTypes();
+  }, [loadAuditTypes]);
+
+  useEffect(() => {
+    loadMappedTypes(audtpId, { resetSelection: true });
+  }, [audtpId, loadMappedTypes]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState && document.visibilityState !== 'visible') return;
+      loadAuditTypes({ preserveSelection: true }).then(() => {
+        if (audtpId) loadMappedTypes(audtpId, { resetSelection: false });
+      });
     };
-  }, [audtpId]);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [audtpId, loadAuditTypes, loadMappedTypes]);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return undefined;
+    const onDocClick = (event) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [exportMenuOpen]);
 
   const assetTypeOptions = useMemo(
     () =>
@@ -125,7 +184,6 @@ export default function AuditReports() {
         sections: API_SECTIONS,
       });
 
-      // Attach AMC / CMC / warranty rows for assets in this audit (used by PDF + summary).
       try {
         const assetIds = new Set(
           (data?.assets || data?.sections?.assetDetails || []).map((a) => a.asset_id).filter(Boolean),
@@ -171,10 +229,23 @@ export default function AuditReports() {
   const byAsset = useMemo(() => buildHistoryByAsset(report), [report]);
   const enrichedAssets = useMemo(() => enrichAssets(byAsset), [byAsset]);
 
+  const statusDomain = useMemo(() => {
+    const set = new Set();
+    enrichedAssets.forEach((a) => {
+      if (a.asset_status) set.add(String(a.asset_status));
+    });
+    return Array.from(set).sort();
+  }, [enrichedAssets]);
+
+  const advancedFilteredAssets = useMemo(
+    () => applyAdvancedFilters(enrichedAssets, advanced, AUDIT_REPORT_FIELD_ACCESSORS),
+    [enrichedAssets, advanced],
+  );
+
   const filteredAssets = useMemo(() => {
     const q = assetSearch.trim().toLowerCase();
-    if (!q) return enrichedAssets;
-    return enrichedAssets.filter((a) => {
+    if (!q) return advancedFilteredAssets;
+    return advancedFilteredAssets.filter((a) => {
       const hay = [
         a.asset_id,
         a.serial_number,
@@ -189,7 +260,7 @@ export default function AuditReports() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [enrichedAssets, assetSearch]);
+  }, [advancedFilteredAssets, assetSearch]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAssets.length / PAGE_SIZE));
   const pagedAssets = filteredAssets.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -198,10 +269,14 @@ export default function AuditReports() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [advanced]);
+
   const summary = useMemo(() => {
     if (!report) return null;
     return [
-      { label: 'Assets', value: enrichedAssets.length },
+      { label: 'Assets', value: filteredAssets.length },
       { label: 'Maintenance records', value: report.sections?.maintenance?.length || 0 },
       { label: 'Breakdowns', value: report.sections?.breakdown?.length || 0 },
       { label: 'Certifications', value: report.sections?.certifications?.length || 0 },
@@ -209,14 +284,62 @@ export default function AuditReports() {
       { label: 'Purchase orders', value: report.sections?.purchaseOrders?.length || 0 },
       { label: 'AMC / CMC / Warranty', value: report.sections?.coverage?.length || 0 },
     ];
-  }, [report, enrichedAssets.length]);
+  }, [report, filteredAssets.length]);
+
+  const previewSummaryItems = useMemo(() => {
+    if (!summary) return [];
+    return summary.map((s) => ({ label: s.label, value: String(s.value ?? 0) }));
+  }, [summary]);
+
+  const filterSummary = useMemo(() => {
+    const items = [];
+    const auditType = auditTypes.find((t) => t.audtp_id === audtpId);
+    items.push({
+      label: 'Audit type',
+      value: auditType?.description || audtpId || '—',
+    });
+
+    let periodLabel = report?.period?.label;
+    if (!periodLabel) {
+      if (period === 'current_year') periodLabel = `Current year (${CURRENT_YEAR})`;
+      else if (period === 'last_year') periodLabel = `Last year (${CURRENT_YEAR - 1})`;
+      else if (period === 'specific') periodLabel = `${dateFrom || '—'} → ${dateTo || '—'}`;
+      else periodLabel = period;
+    }
+    items.push({ label: 'Period', value: periodLabel });
+
+    const typeLabels = selectedAssetTypeChips.map((c) => c.label);
+    items.push({
+      label: 'Asset types',
+      value: typeLabels.length ? typeLabels.join(', ') : '—',
+    });
+
+    if (assetSearch?.trim()) items.push({ label: 'Search', value: assetSearch.trim() });
+    if (advanced?.length) {
+      items.push({
+        label: 'Advanced',
+        value: `${advanced.length} condition${advanced.length === 1 ? '' : 's'}`,
+      });
+    }
+    return items;
+  }, [
+    auditTypes,
+    audtpId,
+    report,
+    period,
+    dateFrom,
+    dateTo,
+    selectedAssetTypeChips,
+    assetSearch,
+    advanced,
+  ]);
 
   const selectedFieldCount = useMemo(
     () => Object.values(fieldSelection).filter(Boolean).length,
     [fieldSelection],
   );
 
-  const buildPdf = useAuditReportPdf({ report, enrichedAssets, fieldSelection });
+  const buildPdf = useAuditReportPdf({ report, enrichedAssets: filteredAssets, fieldSelection });
 
   const needsDocPrep = useMemo(
     () => pdfNeedsDocUrlPrep(report, fieldSelection),
@@ -238,28 +361,65 @@ export default function AuditReports() {
     setActiveTab('overview');
   };
 
-  const handleExport = async () => {
-    const showLoading = needsDocPrep;
-    try {
-      if (showLoading) setExporting(true);
-      await buildPdf();
-      setExportOpen(false);
-      await recordActionByNameWithFetch('Export Report', {
-        reportType: 'Audit Reports',
-        action: 'Audit report PDF downloaded',
-        audtp_id: report?.auditType?.audtp_id,
-      }).catch(() => {});
-      toast.success('PDF downloaded');
-    } catch (err) {
-      toast.error(err?.message || 'Failed to export PDF');
-    } finally {
-      if (showLoading) setExporting(false);
+  const handleExport = useCallback(async (format) => {
+    if (!report) {
+      toast.error('View the report first');
+      return;
     }
+    try {
+      setExportMenuOpen(false);
+      setExporting(true);
+      if (format === 'pdf') {
+        await buildPdf();
+        await recordActionByNameWithFetch('Export Report', {
+          reportType: 'Audit Reports',
+          action: 'Audit report PDF downloaded',
+          audtp_id: report?.auditType?.audtp_id,
+          format: 'pdf',
+        }).catch(() => {});
+        toast.success('PDF downloaded');
+      } else {
+        exportAuditReportExcel({
+          report,
+          assets: filteredAssets,
+          columns,
+          filterSummary,
+          summaryItems: previewSummaryItems,
+        });
+        await recordActionByNameWithFetch('Export Report', {
+          reportType: 'Audit Reports',
+          action: 'Audit report Excel downloaded',
+          audtp_id: report?.auditType?.audtp_id,
+          format: 'xlsx',
+        }).catch(() => {});
+        toast.success('Excel downloaded');
+      }
+    } catch (err) {
+      toast.error(err?.message || `Failed to export ${format === 'pdf' ? 'PDF' : 'Excel'}`);
+    } finally {
+      setExporting(false);
+    }
+  }, [
+    report,
+    buildPdf,
+    filteredAssets,
+    columns,
+    filterSummary,
+    previewSummaryItems,
+    recordActionByNameWithFetch,
+  ]);
+
+  const openPreview = () => {
+    if (!report) {
+      toast.error('View the report first');
+      return;
+    }
+    setPreviewOpen(true);
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-6xl mx-auto px-6 py-8 space-y-5">
         <ConfigurePanel
           auditTypes={auditTypes}
           audtpId={audtpId}
@@ -280,50 +440,78 @@ export default function AuditReports() {
           loadingView={loadingView}
           onView={handleView}
           onClearReport={() => setReport(null)}
+          advanced={advanced}
+          setAdvanced={setAdvanced}
+          statusDomain={statusDomain}
+          onPreview={openPreview}
+          previewDisabled={!report || loadingView}
         />
 
         {!report && !loadingView && (
           <section className="rounded-2xl border border-dashed border-slate-300 bg-white/70 px-8 py-16 text-center">
             <FileText className="w-10 h-10 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-slate-800">No report yet</h3>
-            <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-              Select an audit type, period, and asset types, then click View report. Summary counts
-              and tabs fill from maintenance, breakdowns, documents, invoices, and POs already
-              stored on those assets.
-            </p>
           </section>
         )}
 
         {report && (
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 flex flex-wrap items-start justify-between gap-4">
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
                   {report.auditType?.description || 'Audit report'}
                 </h2>
-                <p className="text-sm text-slate-500 mt-1">{report.period?.label}</p>
+                <p className="text-sm text-slate-500 mt-0.5">{report.period?.label}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={openFieldsDrawer}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
-                  <Settings2 className="w-4 h-4" />
-                  Select fields
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Fields
+                  <span className="text-slate-400">({selectedFieldCount})</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setExportOpen(true)}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                >
-                  <Download className="w-4 h-4" />
-                  Download PDF
-                </button>
+                <div className="relative" ref={exportMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setExportMenuOpen((v) => !v)}
+                    disabled={exporting}
+                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    {exporting
+                      ? needsDocPrep
+                        ? 'Preparing…'
+                        : 'Exporting…'
+                      : 'Export'}
+                    <ChevronDown className={`h-3 w-3 text-slate-400 transition ${exportMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {exportMenuOpen && !exporting && (
+                    <div className="absolute right-0 z-30 mt-1.5 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                      <button
+                        type="button"
+                        onClick={() => handleExport('xlsx')}
+                        className="block w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+                      >
+                        Excel (.xlsx)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleExport('pdf')}
+                        className="block w-full px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50"
+                      >
+                        PDF (.pdf)
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             <SummaryStrip summary={summary} />
+            <AuditCharts assets={filteredAssets} report={report} />
             <AssetResultsTable
               report={report}
               filteredAssets={filteredAssets}
@@ -351,16 +539,16 @@ export default function AuditReports() {
         onApply={applyFields}
       />
 
-      <ExportDialog
-        open={exportOpen}
-        report={report}
-        assetCount={enrichedAssets.length}
-        fieldCount={selectedFieldCount}
-        loading={exporting}
-        onClose={() => {
-          if (!exporting) setExportOpen(false);
-        }}
-        onExport={handleExport}
+      <ReportPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title="Audit report preview"
+        columns={columns}
+        rows={filteredAssets}
+        getCellValue={getAuditReportCellValue}
+        filterSummary={filterSummary}
+        summaryItems={previewSummaryItems}
+        emptyLabel="No assets to preview — View the report first."
       />
     </div>
   );

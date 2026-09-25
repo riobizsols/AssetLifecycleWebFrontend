@@ -88,9 +88,23 @@ export function Select({ value, onChange, options, placeholder }) {
 }
 
 // Error boundary wrapper for DropdownMultiSelect - Updated to fix React errors
-function SafeDropdownMultiSelect({ values = [], onChange, options, placeholder = "Select..." }) {
+function SafeDropdownMultiSelect({
+  values = [],
+  onChange,
+  options,
+  placeholder = "Select...",
+  hideSelectedText = false,
+}) {
   try {
-    return <DropdownMultiSelectInner values={values} onChange={onChange} options={options} placeholder={placeholder} />;
+    return (
+      <DropdownMultiSelectInner
+        values={values}
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        hideSelectedText={hideSelectedText}
+      />
+    );
   } catch (error) {
     console.error('🔍 [SafeDropdownMultiSelect] Error in DropdownMultiSelect:', error);
     return (
@@ -101,7 +115,13 @@ function SafeDropdownMultiSelect({ values = [], onChange, options, placeholder =
   }
 }
 
-function DropdownMultiSelectInner({ values = [], onChange, options, placeholder = "Select..." }) {
+function DropdownMultiSelectInner({
+  values = [],
+  onChange,
+  options,
+  placeholder = "Select...",
+  hideSelectedText = false,
+}) {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -186,7 +206,8 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
 
   // Get display text for the input when closed
   const getDisplayText = () => {
-    if (values.length === 0) return placeholder;
+    // When chips render the selection below, keep the field empty (placeholder only)
+    if (hideSelectedText || values.length === 0) return placeholder;
     return values.map(v => {
       // If value is an object, use label; otherwise find the label from options
       if (typeof v === 'object' && v !== null && v.label) {
@@ -260,7 +281,7 @@ function DropdownMultiSelectInner({ values = [], onChange, options, placeholder 
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span className="truncate pr-2 flex-1 text-left">
+          <span className={`truncate pr-2 flex-1 text-left ${hideSelectedText || values.length === 0 ? 'text-slate-400' : ''}`}>
             {getDisplayText()}
           </span>
         )}
@@ -726,7 +747,7 @@ export function AdvancedBuilder({ fields, value, onChange, quickFilters = {}, ge
   const fieldByKey = (k) => fields.find((f) => f.key === k);
 
   return (
-    <div className="border border-slate-200 rounded-2xl p-3">
+    <div className="relative z-30 overflow-visible rounded-2xl border border-slate-200 p-3">
       <div className="flex items-center justify-between mb-2">
         <SectionTitle>{t('reports.advancedConditions.title')}</SectionTitle>
         <button onClick={add} className="text-sm px-3 py-1 rounded-lg bg-[#143d65] text-white">
@@ -734,7 +755,7 @@ export function AdvancedBuilder({ fields, value, onChange, quickFilters = {}, ge
         </button>
       </div>
       {rows?.length === 0 && <div className="text-sm text-slate-500">{t('reports.advancedConditions.noConditions')}</div>}
-      <div className="space-y-3">
+      <div className="space-y-3 overflow-visible">
         {rows?.map((r, i) => {
           const field = fieldByKey(r.field);
           if (!field) return null;
@@ -747,8 +768,12 @@ export function AdvancedBuilder({ fields, value, onChange, quickFilters = {}, ge
           }
           
           return (
-            <div key={i} className="grid grid-cols-12 gap-2 items-center">
-              <div className="col-span-3">
+            <div
+              key={i}
+              className="relative grid grid-cols-12 items-center gap-2 overflow-visible"
+              style={{ zIndex: (rows?.length || 0) - i + 10 }}
+            >
+              <div className="relative col-span-3">
                 <Select 
                   value={field.label} 
                   onChange={(v) => {
@@ -761,11 +786,11 @@ export function AdvancedBuilder({ fields, value, onChange, quickFilters = {}, ge
                 />
               </div>
               {!isPropertyValue && (
-                <div className="col-span-3">
+                <div className="relative col-span-3">
                   <Select value={r.op} onChange={(v) => update(i, { op: v })} options={ops} />
                 </div>
               )}
-              <div className={isPropertyValue ? "col-span-8" : "col-span-5"}>
+              <div className={`relative ${isPropertyValue ? "col-span-8" : "col-span-5"}`}>
                 <AdvValueInput field={field} cur={r.val} onChange={(v) => update(i, { val: v })} quickFilters={quickFilters} getFilterOptions={getFilterOptions} />
               </div>
               <div className="col-span-1 text-right">

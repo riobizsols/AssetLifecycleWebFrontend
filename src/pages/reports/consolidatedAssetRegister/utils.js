@@ -24,7 +24,7 @@ export const EMPTY_SUMMARY = {
   institutions: [],
   byCampus: [],
   byDepartment: [],
-  categoryDistribution: [],
+  assetTypeDistribution: [],
   dataQuality: {
     departmentAllUnassigned: false,
     depreciationIsZero: false,

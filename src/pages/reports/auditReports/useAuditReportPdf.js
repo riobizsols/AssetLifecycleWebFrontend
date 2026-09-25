@@ -153,7 +153,7 @@ export function useAuditReportPdf({ report, enrichedAssets, fieldSelection }) {
     const assetCols = [];
     if (on.asset) assetCols.push({ key: 'asset_id', label: 'Asset' });
     if (on.assetType) assetCols.push({ key: 'asset_type_name', label: 'Asset type' });
-    if (on.location) assetCols.push({ key: 'branch_name', label: 'Location' });
+    if (on.location) assetCols.push({ key: 'branch_name', label: 'Branch' });
     if (on.department) assetCols.push({ key: 'department_name', label: 'Department' });
     if (on.serialNumber) assetCols.push({ key: 'serial_number', label: 'Serial number' });
     if (on.purchaseDate) {
@@ -205,7 +205,17 @@ export function useAuditReportPdf({ report, enrichedAssets, fieldSelection }) {
       addTable('Maintenance', cols, report.sections?.maintenance || []);
     }
 
-    if (on.brDate || on.brIssue || on.brReason || on.brStatus || on.brReportedBy) {
+    if (
+      on.brDate ||
+      on.brIssue ||
+      on.brReason ||
+      on.brStatus ||
+      on.brReportedBy ||
+      on.brAffectedDept ||
+      on.brExpectedDowntime ||
+      on.brActualDowntime ||
+      on.brRepeat
+    ) {
       const cols = [];
       if (on.asset) cols.push({ key: 'asset_id', label: 'Asset' });
       if (on.brDate) {
@@ -216,7 +226,49 @@ export function useAuditReportPdf({ report, enrichedAssets, fieldSelection }) {
         });
       }
       if (on.brIssue) cols.push({ key: 'breakdown_description', label: 'Issue' });
-      if (on.brReason) cols.push({ key: 'breakdown_reason', label: 'Reason' });
+      if (on.brReason) cols.push({ key: 'breakdown_reason', label: 'Cause' });
+      if (on.brAffectedDept) {
+        cols.push({
+          key: 'affected_department_name',
+          label: 'Affected department',
+          render: (r) => r.affected_department_name || '—',
+        });
+      }
+      if (on.brExpectedDowntime) {
+        cols.push({
+          key: 'expected_downtime_hours',
+          label: 'Expected downtime (h)',
+          render: (r) =>
+            r.expected_downtime_hours == null || r.expected_downtime_hours === ''
+              ? '—'
+              : String(r.expected_downtime_hours),
+        });
+      }
+      if (on.brActualDowntime) {
+        cols.push({
+          key: 'actual_downtime_hours',
+          label: 'Actual downtime (h)',
+          render: (r) =>
+            r.actual_downtime_hours == null || r.actual_downtime_hours === ''
+              ? '—'
+              : String(r.actual_downtime_hours),
+        });
+      }
+      if (on.brRepeat) {
+        cols.push({
+          key: 'is_repeat_problem',
+          label: 'Repeat problem',
+          render: (r) => {
+            if (!r.is_repeat_problem) return 'No';
+            const parts = [];
+            if (Number(r.reopen_count) > 0) parts.push(`${r.reopen_count} reopen`);
+            if (Number(r.same_cause_count_in_period) > 1) {
+              parts.push(`${r.same_cause_count_in_period}× same cause`);
+            }
+            return parts.join(' · ') || 'Yes';
+          },
+        });
+      }
       if (on.brStatus) {
         cols.push({
           key: 'breakdown_status',

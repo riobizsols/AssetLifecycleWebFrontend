@@ -3,3 +3,4 @@ export { default as ReportLayout } from './ReportLayout';
 export { useReportState } from './useReportState';
 export * from './ReportConfig';
 export * from './ReportComponents';
+export * from './ReportExtras';

@@ -50,6 +50,7 @@
     "breakdownHistory": "Breakdown History",
     "usageBasedAssetReport": "Usage-Based Asset Report",
     "slaReport": "SLA Reports",
+    "workforceReport": "Engineering Team Productivity Report",
     "certifications": "Certifications",
     "assetGroups": "Asset Groups",
     "costCenterTransfer": "Cost Center Transfer",
@@ -66,7 +67,8 @@
     "hrManagerApproval": "HR/Manager Approval",
     "qaAuditReport": "QA Audit Report",
     "approvalsGroup": "Approvals",
-    "certificatesGroup": "Certificates"
+    "certificatesGroup": "Certificates",
+    "maintenanceStatusReport": "Maintenance Status Report"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -132,6 +134,9 @@
     "filterSpareConfirmed": "Spare Issued",
     "alertTypeSparePartConfirmed": "Spare Part Issued",
     "noNotifications": "No Notifications",
+    "filterConsumptionMiss": "Consumption miss alert",
+    "alertTypeConsumptionMiss": "Consumption Miss Alert",
+    "statusMissed": "Missed",
     "noMatchingNotifications": "No Matching Notifications",
     "noNotificationsDescription": "You don't have any maintenance notifications at the moment.",
     "noMatchingDescription": "No notifications match your current filter selection. Try adjusting the filters above.",
@@ -142,6 +147,7 @@
     "daysLeft_other": "{{count}} days left",
     "dueOn": "Due On",
     "actionBy": "Action By",
+    "actionByYou": "You",
     "cutoffDate": "Cut-off Date",
     "actions": "Actions",
     "discard": "Discard",
@@ -1640,11 +1646,15 @@
     "employeeNotFound": "Employee not found",
     "failedToFetchEmployees": "Failed to fetch employees",
     "firstNameRequired": "First name is required",
+    "enterEmailDotCom": "Enter Email (e.g. name@company.com)",
+    "emailMustBeDotCom": "Email must be in the format name@domain.com",
     "emailRequired": "Email is required",
     "phoneRequired": "Phone number is required",
     "departmentRequired": "Department is required",
     "branchRequired": "Branch is required",
     "employeeCreatedSuccessfully": "Employee created successfully!",
+    "employeeUpdatedSuccessfully": "Employee updated successfully!",
+    "failedToUpdateEmployee": "Failed to update employee",
     "failedToCreateEmployee": "Failed to create employee"
   },
   "maintenanceSchedule": {
@@ -2459,7 +2469,15 @@
     "phone": "Phone",
     "monitor": "Monitor",
     "chair": "Chair",
-    "desk": "Desk"
+    "desk": "Desk",
+    "electrical": "Electrical",
+    "plumbing": "Plumbing",
+    "hvac": "HVAC",
+    "civil": "Civil",
+    "lifts": "Lifts",
+    "generators": "Generators",
+    "fireSystems": "Fire Systems",
+    "campusInfrastructure": "Campus Infrastructure"
   },
   "inspectionExecution": {
     "assetInformation": "Asset Information",

@@ -24,9 +24,6 @@ export default function ExportDialog({
       <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 p-6 space-y-5">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">Export audit report</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            The PDF will include only the fields you selected.
-          </p>
         </div>
         <div className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 space-y-1 text-sm text-slate-700">
           <div>

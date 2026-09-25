@@ -48,6 +48,7 @@
     "assetTypeChecklistMapping": "Assettyp–Inspektions-Checklisten-Zuordnung",
     "usageBasedAssetReport": "Nutzungsbasierter Anlagenbericht",
     "slaReport": "SLA-Berichte",
+    "workforceReport": "Engineering Team Productivity Report",
     "assetGroups": "Anlagengruppen",
     "costCenterTransfer": "Kostenstellentransfer",
     "scrapApproval": "Schrottgenehmigung",
@@ -63,7 +64,8 @@
     "hrManagerApproval": "HR/Vorgesetzten-Genehmigung",
     "qaAuditReport": "QA-Prüfbericht",
     "approvalsGroup": "Genehmigungen",
-    "certificatesGroup": "Zertifikate"
+    "certificatesGroup": "Zertifikate",
+    "maintenanceStatusReport": "Wartungsstatusbericht"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1582,11 +1584,15 @@
     "employeeNotFound": "Mitarbeiter nicht gefunden",
     "failedToFetchEmployees": "Fehler beim Laden der Mitarbeiter",
     "firstNameRequired": "Vorname ist erforderlich",
+    "enterEmailDotCom": "E-Mail eingeben (z. B. name@firma.com)",
+    "emailMustBeDotCom": "E-Mail muss im Format name@domain.com sein",
     "emailRequired": "E-Mail ist erforderlich",
     "phoneRequired": "Telefonnummer ist erforderlich",
     "departmentRequired": "Abteilung ist erforderlich",
     "branchRequired": "Filiale ist erforderlich",
     "employeeCreatedSuccessfully": "Mitarbeiter erfolgreich angelegt!",
+    "employeeUpdatedSuccessfully": "Mitarbeiter erfolgreich aktualisiert!",
+    "failedToUpdateEmployee": "Fehler beim Aktualisieren des Mitarbeiters",
     "failedToCreateEmployee": "Fehler beim Anlegen des Mitarbeiters"
   },
   "maintenanceSchedule": {
@@ -2254,7 +2260,15 @@
     "phone": "Telefon",
     "monitor": "Monitor",
     "chair": "Stuhl",
-    "desk": "Schreibtisch"
+    "desk": "Schreibtisch",
+    "electrical": "Elektrik",
+    "plumbing": "Sanitär",
+    "hvac": "HLK",
+    "civil": "Hochbau",
+    "lifts": "Aufzüge",
+    "generators": "Generatoren",
+    "fireSystems": "Brandschutzsysteme",
+    "campusInfrastructure": "Campus-Infrastruktur"
   },
   "inspectionExecution": {
     "assetInformation": "Anlageninformationen",

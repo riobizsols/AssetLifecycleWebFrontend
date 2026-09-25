@@ -37,33 +37,33 @@ export default function AssetResultsTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200">
-        <table className="min-w-full text-sm">
+      <div className="w-full max-w-full overflow-hidden rounded-xl border border-slate-200">
+        <table className="w-full table-fixed text-sm">
           <thead className="bg-slate-50">
             <tr>
               <th className="w-10 px-3 py-3" />
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[16%]">
                 Asset
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[14%]">
                 Asset type
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Location
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[16%]">
+                Branch
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[12%]">
                 Department
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[10%]">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[10%]">
                 Invoice
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[12%]">
                 Certification
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 w-[10%]">
                 Last maintenance
               </th>
             </tr>
@@ -91,33 +91,47 @@ export default function AssetResultsTable({
                           <ChevronRight className="w-4 h-4" />
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-slate-900">
-                          {asset.serial_number || asset.asset_id}
+                      <td className="px-3 py-3 align-top min-w-0">
+                        <div className="font-medium text-slate-900 break-words">
+                          {asset.asset_description || asset.serial_number || asset.asset_id}
                         </div>
-                        <div className="text-xs text-slate-500">{asset.asset_id}</div>
+                        <div className="text-xs text-slate-500 break-words">
+                          {[asset.serial_number, asset.asset_id].filter(Boolean).join(' · ') || '—'}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-slate-700">{asset.asset_type_name || '—'}</td>
-                      <td className="px-4 py-3 text-slate-700">{asset.branch_name || '—'}</td>
-                      <td className="px-4 py-3 text-slate-700">{asset.department_name || '—'}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 text-slate-700 align-top break-words">
+                        {asset.asset_type_name || '—'}
+                      </td>
+                      <td className="px-3 py-3 text-slate-700 align-top break-words">
+                        {asset.branch_name || '—'}
+                      </td>
+                      <td className="px-3 py-3 text-slate-700 align-top break-words">
+                        {asset.department_name || '—'}
+                      </td>
+                      <td className="px-3 py-3 align-top">
                         <StatusPill value={asset.asset_status} />
                       </td>
-                      <td className="px-4 py-3 text-slate-700">{asset.invoice_no || '—'}</td>
-                      <td className="px-4 py-3 text-slate-700">{asset.certification_summary}</td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-3 py-3 text-slate-700 align-top break-words">
+                        {asset.invoice_no || '—'}
+                      </td>
+                      <td className="px-3 py-3 text-slate-700 align-top break-words">
+                        {asset.certification_summary}
+                      </td>
+                      <td className="px-3 py-3 text-slate-700 align-top break-words">
                         {formatDate(asset.last_maintenance)}
                       </td>
                     </tr>
                     {open && (
                       <tr>
-                        <td colSpan={9} className="bg-slate-50/80 px-4 py-5">
-                          <AssetDetailTabs
-                            asset={asset}
-                            report={report}
-                            activeTab={activeTab}
-                            setActiveTab={setActiveTab}
-                          />
+                        <td colSpan={9} className="bg-slate-50/80 px-3 py-5 max-w-0">
+                          <div className="min-w-0 max-w-full overflow-hidden">
+                            <AssetDetailTabs
+                              asset={asset}
+                              report={report}
+                              activeTab={activeTab}
+                              setActiveTab={setActiveTab}
+                            />
+                          </div>
                         </td>
                       </tr>
                     )}

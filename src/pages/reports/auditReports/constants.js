@@ -7,8 +7,8 @@ export const FIELD_GROUPS = [
     fields: [
       { key: 'asset', label: 'Asset', defaultOn: true },
       { key: 'assetType', label: 'Asset type', defaultOn: true },
-      { key: 'location', label: 'Location', defaultOn: true },
-      { key: 'department', label: 'Department', defaultOn: false },
+      { key: 'location', label: 'Branch', defaultOn: true },
+      { key: 'department', label: 'Department', defaultOn: true },
       { key: 'serialNumber', label: 'Serial number', defaultOn: true },
       { key: 'purchaseDate', label: 'Purchase date', defaultOn: true },
       { key: 'purchaseCost', label: 'Purchase cost', defaultOn: false },
@@ -35,7 +35,11 @@ export const FIELD_GROUPS = [
     fields: [
       { key: 'brDate', label: 'Breakdown date', defaultOn: true },
       { key: 'brIssue', label: 'Issue', defaultOn: true },
-      { key: 'brReason', label: 'Reason', defaultOn: true },
+      { key: 'brReason', label: 'Cause (reason for failure)', defaultOn: true },
+      { key: 'brAffectedDept', label: 'Affected department', defaultOn: true },
+      { key: 'brExpectedDowntime', label: 'Expected downtime (h)', defaultOn: true },
+      { key: 'brActualDowntime', label: 'Actual downtime (h)', defaultOn: true },
+      { key: 'brRepeat', label: 'Repeat problem', defaultOn: true },
       { key: 'brStatus', label: 'Status', defaultOn: true },
       { key: 'brReportedBy', label: 'Reported by', defaultOn: false },
     ],

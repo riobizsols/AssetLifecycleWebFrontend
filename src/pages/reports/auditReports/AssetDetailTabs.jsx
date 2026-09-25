@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { ExternalLink, Loader2 } from 'lucide-react';
 import API from '../../../lib/axios';
+import { auditReportService } from '../../../services/auditReportService';
 import { ASSET_TABS } from './constants';
-import { formatDate, MiniTable, StatusPill } from './utils';
+import { EmptyHistory, formatDate, formatHours, MiniTable, StatusPill } from './utils';
+import PmComplianceDialog from './PmComplianceDialog';
+import CalibrationDetailDialog from './CalibrationDetailDialog';
 import AssetCoverageTab from './AssetCoverageTab';
 import AssetVendorRenewalTab from './AssetVendorRenewalTab';
 
@@ -11,6 +14,18 @@ function fileLabelFromPath(path) {
   if (!path) return 'View document';
   const parts = String(path).split('/');
   return parts[parts.length - 1] || 'View document';
+}
+
+function isPreventiveMaintenance(row) {
+  if (!row) return false;
+  if (String(row.maint_type_id || '').toUpperCase() === 'MT006') return true;
+  return /prevent/i.test(String(row.maintenance_type_name || ''));
+}
+
+function isCalibrationMaintenance(row) {
+  if (!row) return false;
+  if (String(row.maint_type_id || '').toUpperCase() === 'MT017') return true;
+  return /calibrat/i.test(String(row.maintenance_type_name || ''));
 }
 
 function DocumentLink({ docId, path, label }) {
@@ -62,17 +77,146 @@ function DocumentLink({ docId, path, label }) {
   );
 }
 
-export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab }) {
+function repeatLabel(r) {
+  if (!r.is_repeat_problem) return 'No';
+  const parts = [];
+  if (Number(r.reopen_count) > 0) parts.push(`${r.reopen_count} reopen`);
+  if (Number(r.same_cause_count_in_period) > 1) {
+    parts.push(`${r.same_cause_count_in_period}× same cause`);
+  }
+  return parts.join(' · ') || 'Yes';
+}
+
+function BreakdownHistory({ asset, rows }) {
+  if (!rows?.length) return <EmptyHistory label="breakdown history" />;
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-5">
-      <div>
-        <h4 className="text-lg font-semibold text-slate-900">
-          {asset.asset_type_name || 'Asset'} {asset.serial_number || asset.asset_id}
+    <div className="space-y-3 min-w-0">
+      {rows.map((r, idx) => (
+        <article
+          key={r.abr_id || idx}
+          className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 min-w-0"
+        >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 justify-between">
+            <div className="text-sm font-medium text-slate-900">
+              {formatDate(r.breakdown_date)}
+            </div>
+            <StatusPill value={r.breakdown_status} />
+          </div>
+
+          <p className="text-sm text-slate-700 break-words whitespace-normal">
+            {r.breakdown_description || '—'}
+          </p>
+
+          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+            {[
+              ['Cause', r.breakdown_reason || '—'],
+              [
+                'Affected dept',
+                r.affected_department_name || asset.department_name || '—',
+              ],
+              ['Expected downtime', formatHours(r.expected_downtime_hours)],
+              ['Actual downtime', formatHours(r.actual_downtime_hours)],
+              ['Repeat', repeatLabel(r)],
+              ['Reported by', r.reported_by_name || '—'],
+              ['Decision', r.decision_code || '—'],
+            ].map(([label, value]) => (
+              <div key={label} className="min-w-0">
+                <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  {label}
+                </dt>
+                <dd className="mt-0.5 text-sm text-slate-800 break-words">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab }) {
+  const [pmOpen, setPmOpen] = useState(false);
+  const [pmLoading, setPmLoading] = useState(false);
+  const [pmData, setPmData] = useState(null);
+  const [pmError, setPmError] = useState('');
+
+  const [calOpen, setCalOpen] = useState(false);
+  const [calLoading, setCalLoading] = useState(false);
+  const [calData, setCalData] = useState(null);
+  const [calError, setCalError] = useState('');
+
+  const openPmCompliance = async (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    setPmOpen(true);
+    setPmLoading(true);
+    setPmError('');
+    setPmData(null);
+    try {
+      const data = await auditReportService.getPmCompliance({
+        audtp_id: report?.auditType?.audtp_id,
+        period: report?.period?.type || 'current_year',
+        date_from: report?.period?.from,
+        date_to: report?.period?.to,
+        asset_type_ids: report?.assetTypeIds || [],
+      });
+      setPmData(data);
+    } catch (err) {
+      setPmError(
+        err?.response?.data?.error ||
+          err?.message ||
+          'Failed to load preventive maintenance compliance',
+      );
+    } finally {
+      setPmLoading(false);
+    }
+  };
+
+  const openCalibrationDetail = async (e, row) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (!row?.ams_id) {
+      toast.error('Calibration work order id is missing');
+      return;
+    }
+    setCalOpen(true);
+    setCalLoading(true);
+    setCalError('');
+    setCalData(null);
+    try {
+      const data = await auditReportService.getCalibrationDetail({
+        ams_id: row.ams_id,
+      });
+      setCalData(data);
+    } catch (err) {
+      setCalError(
+        err?.response?.data?.error ||
+          err?.message ||
+          'Failed to load calibration detail',
+      );
+    } finally {
+      setCalLoading(false);
+    }
+  };
+
+  return (
+    <>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-5 min-w-0 max-w-full overflow-hidden">
+      <div className="min-w-0">
+        <h4 className="text-lg font-semibold text-slate-900 break-words">
+          {asset.asset_description || asset.asset_type_name || 'Asset'}
+          {(asset.serial_number || asset.asset_id) && (
+            <span className="font-normal text-slate-500">
+              {' '}
+              · {[asset.serial_number, asset.asset_id].filter(Boolean).join(' · ')}
+            </span>
+          )}
         </h4>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-slate-500 mt-1 break-words">
           <StatusPill value={asset.asset_status} />
           <span className="mx-2 text-slate-300">·</span>
-          {asset.branch_name || 'No location'}
+          {asset.branch_name || 'No branch'}
           <span className="mx-2 text-slate-300">·</span>
           {report.auditType?.description}
         </p>
@@ -98,13 +242,13 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
         ))}
       </div>
 
-      <div onClick={(e) => e.stopPropagation()}>
+      <div className="min-w-0" onClick={(e) => e.stopPropagation()}>
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-5">
             {[
               ['Asset ID', asset.asset_id],
               ['Asset type', asset.asset_type_name],
-              ['Location', asset.branch_name],
+              ['Branch', asset.branch_name],
               ['Department', asset.department_name],
               ['Serial number', asset.serial_number],
               ['Status', asset.asset_status],
@@ -115,11 +259,11 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
               ['Service vendor', asset.service_vendor_name],
               ['Description', asset.asset_description],
             ].map(([label, value]) => (
-              <div key={label}>
+              <div key={label} className="min-w-0">
                 <div className="text-xs font-medium uppercase tracking-wide text-slate-400">
                   {label}
                 </div>
-                <div className="mt-1 text-sm text-slate-800">
+                <div className="mt-1 text-sm text-slate-800 break-words">
                   {value == null || value === '' ? '—' : String(value)}
                 </div>
               </div>
@@ -136,8 +280,40 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
                 label: 'Date',
                 render: (r) => formatDate(r.act_maint_st_date),
               },
-              { key: 'maintenance_type_name', label: 'Type' },
-              { key: 'notes', label: 'Description' },
+              {
+                key: 'maintenance_type_name',
+                label: 'Type',
+                wrap: true,
+                render: (r) => {
+                  const label = r.maintenance_type_name || '—';
+                  if (isPreventiveMaintenance(r)) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={openPmCompliance}
+                        className="text-left text-[#143d65] font-medium hover:underline"
+                        title="View preventive maintenance compliance"
+                      >
+                        {label}
+                      </button>
+                    );
+                  }
+                  if (isCalibrationMaintenance(r)) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={(e) => openCalibrationDetail(e, r)}
+                        className="text-left text-[#143d65] font-medium hover:underline"
+                        title="View calibration checklist and certificate"
+                      >
+                        {label}
+                      </button>
+                    );
+                  }
+                  return label;
+                },
+              },
+              { key: 'notes', label: 'Description', wrap: true },
               {
                 key: 'vendor_name',
                 label: 'Technician / vendor',
@@ -155,33 +331,14 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
         )}
 
         {activeTab === 'breakdowns' && (
-          <MiniTable
-            emptyLabel="breakdown history"
-            columns={[
-              {
-                key: 'breakdown_date',
-                label: 'Date',
-                render: (r) => formatDate(r.breakdown_date),
-              },
-              { key: 'breakdown_description', label: 'Issue' },
-              { key: 'breakdown_reason', label: 'Reason' },
-              {
-                key: 'breakdown_status',
-                label: 'Status',
-                render: (r) => <StatusPill value={r.breakdown_status} />,
-              },
-              { key: 'reported_by_name', label: 'Reported by' },
-              { key: 'decision_code', label: 'Decision' },
-            ]}
-            rows={asset.history.breakdown}
-          />
+          <BreakdownHistory asset={asset} rows={asset.history.breakdown} />
         )}
 
         {activeTab === 'certifications' && (
           <MiniTable
             emptyLabel="certifications"
             columns={[
-              { key: 'document_type', label: 'Certification' },
+              { key: 'document_type', label: 'Certification', wrap: true },
               {
                 key: 'doc_path',
                 label: 'Document',
@@ -202,18 +359,26 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
           <MiniTable
             emptyLabel="invoices"
             columns={[
-              { key: 'invoice_no', label: 'Invoice number' },
-              { key: 'vendor_name', label: 'Vendor' },
+              { key: 'invoice_no', label: 'Invoice number', wrap: true },
+              { key: 'vendor_name', label: 'Vendor', wrap: true },
               {
                 key: 'purchased_on',
                 label: 'Date',
                 render: (r) => formatDate(r.purchased_on),
               },
               { key: 'purchased_cost', label: 'Amount' },
-              { key: 'source', label: 'Source', render: (r) => {
-                const map = { asset: 'Asset record', maintenance: 'Maintenance record', document: 'Document' };
-                return map[String(r.source || '').toLowerCase()] || r.source || '—';
-              }},
+              {
+                key: 'source',
+                label: 'Source',
+                render: (r) => {
+                  const map = {
+                    asset: 'Asset record',
+                    maintenance: 'Maintenance record',
+                    document: 'Document',
+                  };
+                  return map[String(r.source || '').toLowerCase()] || r.source || '—';
+                },
+              },
             ]}
             rows={asset.history.invoices}
           />
@@ -223,17 +388,25 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
           <MiniTable
             emptyLabel="purchase orders"
             columns={[
-              { key: 'po_number', label: 'Purchase order number' },
-              { key: 'vendor_name', label: 'Vendor' },
+              { key: 'po_number', label: 'PO number', wrap: true },
+              { key: 'vendor_name', label: 'Vendor', wrap: true },
               {
                 key: 'po_date',
                 label: 'Date',
                 render: (r) => formatDate(r.po_date),
               },
-              { key: 'source', label: 'Source', render: (r) => {
-                const map = { asset: 'Asset record', maintenance: 'Maintenance record', document: 'Document' };
-                return map[String(r.source || '').toLowerCase()] || r.source || '—';
-              }},
+              {
+                key: 'source',
+                label: 'Source',
+                render: (r) => {
+                  const map = {
+                    asset: 'Asset record',
+                    maintenance: 'Maintenance record',
+                    document: 'Document',
+                  };
+                  return map[String(r.source || '').toLowerCase()] || r.source || '—';
+                },
+              },
             ]}
             rows={asset.history.purchaseOrders}
           />
@@ -248,5 +421,20 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
         )}
       </div>
     </div>
+    <PmComplianceDialog
+      open={pmOpen}
+      loading={pmLoading}
+      data={pmData}
+      error={pmError}
+      onClose={() => setPmOpen(false)}
+    />
+    <CalibrationDetailDialog
+      open={calOpen}
+      loading={calLoading}
+      data={calData}
+      error={calError}
+      onClose={() => setCalOpen(false)}
+    />
+    </>
   );
 }

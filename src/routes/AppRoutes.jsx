@@ -22,6 +22,10 @@ import CreateUser from "../pages/masterData/CreateUser";
 import Departments from "../pages/masterData/Departments";
 import Branches from "../pages/masterData/Branches";
 import BranchDeptMapping from "../pages/masterData/BranchDeptMapping";
+import AuditTypeAssetTypeMapping from "../pages/masterData/AuditTypeAssetTypeMapping";
+import UtilityMaster from "../pages/utility/UtilityMaster";
+import UtilityAssetTypeMapping from "../pages/utility/UtilityAssetTypeMapping";
+import UtilityConsumption from "../pages/utility/UtilityConsumption";
 import AddBranch from "../components/AddBranch";
 import DepartmentsAdmin from "../pages/masterData/DepartmentsAdmin";
 import DepartmentsAsset from "../pages/masterData/DepartmentsAsset";
@@ -118,6 +122,11 @@ import SLAReport from "../pages/reports/SLAReport";
 import QAAuditReport from "../pages/reports/QAAuditReport";
 import AuditReports from "../pages/reports/AuditReports";
 import ConsolidatedAssetRegister from "../pages/reports/ConsolidatedAssetRegister";
+import SlaVendorPerformance from "../pages/reports/SlaVendorPerformance";
+import MaintenanceStatusReport from "../pages/reports/MaintenanceStatusReport";
+import OutOfStockReport from "../pages/reports/OutOfStockReport";
+import PurchaseRequirementReport from "../pages/reports/PurchaseRequirementReport";
+import WorkforceReport from "../pages/reports/WorkforceReport";
 import AdminSettingsRedirect from "./AdminSettingsRedirect";
 import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
@@ -676,6 +685,65 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/reports/sla-vendor-performance"
+          element={
+            <ProtectedRoute requiredAppId="SLAVENDORPERFORMANCE">
+              <MainLayout>
+                <SlaVendorPerformance />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/maintenance-status"
+          element={
+            <ProtectedRoute requiredAppId="MAINTENANCESTATUSREPORT">
+              <MainLayout>
+                <MaintenanceStatusReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/out-of-stock"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={['OUTOFSTOCKREPORT', 'PURCHASEREQUIREMENTREPORT']}
+            >
+              <MainLayout>
+                <OutOfStockReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/purchase-requirement"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={['PURCHASEREQUIREMENTREPORT', 'OUTOFSTOCKREPORT']}
+            >
+              <MainLayout>
+                <PurchaseRequirementReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/workforce"
+          element={
+            <ProtectedRoute requiredAppId="WORKFORCEREPORT">
+              <MainLayout>
+                <WorkforceReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/breakdown-selection"
           element={
             <ProtectedRoute requiredAppId="REPORTBREAKDOWN">
@@ -1117,6 +1185,50 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="BRANCHDEPTMAPPING">
               <MainLayout>
                 <BranchDeptMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/master-data/audit-type-mapping"
+          element={
+            <ProtectedRoute requiredAppId="AUDITATMAPPING">
+              <MainLayout>
+                <AuditTypeAssetTypeMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/utilities/master"
+          element={
+            <ProtectedRoute requiredAppId="UTILITYMASTER">
+              <MainLayout>
+                <UtilityMaster />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/utilities/asset-type-mapping"
+          element={
+            <ProtectedRoute requiredAppId="UTILITYATMAPPING">
+              <MainLayout>
+                <UtilityAssetTypeMapping />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/utilities/consumption"
+          element={
+            <ProtectedRoute requiredAppId="UTILITYCONSUMPTION">
+              <MainLayout>
+                <UtilityConsumption />
               </MainLayout>
             </ProtectedRoute>
           }

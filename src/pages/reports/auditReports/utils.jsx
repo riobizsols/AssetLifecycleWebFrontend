@@ -44,17 +44,24 @@ export function EmptyHistory({ label }) {
   );
 }
 
+export function formatHours(value) {
+  if (value == null || value === '') return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  return Number.isInteger(n) ? `${n} h` : `${n.toFixed(2)} h`;
+}
+
 export function MiniTable({ columns, rows, emptyLabel }) {
   if (!rows?.length) return <EmptyHistory label={emptyLabel} />;
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200">
-      <table className="min-w-full text-sm">
+    <div className="w-full max-w-full overflow-hidden rounded-xl border border-slate-200">
+      <table className="w-full table-fixed text-sm">
         <thead className="bg-slate-50">
           <tr>
             {columns.map((c) => (
               <th
                 key={c.key}
-                className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
+                className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
               >
                 {c.label}
               </th>
@@ -65,7 +72,12 @@ export function MiniTable({ columns, rows, emptyLabel }) {
           {rows.map((row, idx) => (
             <tr key={idx} className="hover:bg-slate-50/80">
               {columns.map((c) => (
-                <td key={c.key} className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                <td
+                  key={c.key}
+                  className={`px-3 py-3 text-slate-700 align-top ${
+                    c.wrap === false ? 'whitespace-nowrap' : 'break-words whitespace-normal'
+                  }`}
+                >
                   {c.render ? c.render(row) : row[c.key] ?? '—'}
                 </td>
               ))}
