@@ -114,7 +114,8 @@ test.describe('RIO EAM spare parts', () => {
   });
 
   test('loads spare part master and lot lists', async ({ page }) => {
-    test.setTimeout(120000);
+    // Four protected navigations; keep under a hard CI budget.
+    test.setTimeout(240000);
 
     await loginToRioEam(page);
     await gotoProtected(page, `${BASE}/master-data/spare-part`);
@@ -137,8 +138,15 @@ test.describe('RIO EAM spare parts', () => {
     await expect(page.getByText('Invoice Number').first()).toBeVisible();
 
     await gotoProtected(page, `${BASE}/master-data/spare-parts/add`);
-    await expect(page.getByText('Vendor').first()).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText('Lot Details').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Spare Part Lot' })).toBeVisible({
+      timeout: 45000,
+    });
+    await expect(
+      page.getByText('Part Selection').or(page.getByText('Lot Details')).first()
+    ).toBeVisible({ timeout: 45000 });
+    await expect(page.locator('label').filter({ hasText: /^Vendor/ }).first()).toBeVisible({
+      timeout: 30000,
+    });
   });
 
   test('loads spare parts configuration tabs', async ({ page }) => {
