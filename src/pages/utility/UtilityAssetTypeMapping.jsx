@@ -107,7 +107,7 @@ export default function UtilityAssetTypeMapping() {
 
   const add = async () => {
     if (!utilId) return toast.error('Utility is required');
-    if (!utildId) return toast.error('Measurement profile is required');
+    if (!utildId) return toast.error('Consumption metric is required');
     if (!assetTypeId) return toast.error('Asset type is required');
     setSaving(true);
     try {
@@ -137,7 +137,7 @@ export default function UtilityAssetTypeMapping() {
       <div className="space-y-5">
         <UtilityPanel
           title="Create mapping"
-          description="Select a utility, then its measurement profile, then the asset type."
+          description="Select a utility, then choose consumption metric, then the asset type."
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
             <UtilityField label="Utility" required>
@@ -159,7 +159,7 @@ export default function UtilityAssetTypeMapping() {
               </select>
             </UtilityField>
 
-            <UtilityField label="Measurement profile" required>
+            <UtilityField label="Choose consumption metric" required>
               <select
                 className={utilityInputClass}
                 value={utildId}
@@ -169,10 +169,10 @@ export default function UtilityAssetTypeMapping() {
               >
                 {!utilId && <option value="">Select utility first</option>}
                 {utilId && profilesForUtility.length === 0 && (
-                  <option value="">No profiles for this utility</option>
+                  <option value="">No consumption metrics for this utility</option>
                 )}
                 {utilId && profilesForUtility.length > 0 && (
-                  <option value="">Select measurement profile</option>
+                  <option value="">Choose consumption metric</option>
                 )}
                 {profilesForUtility.map((d) => (
                   <option key={d.utild_id} value={d.utild_id}>
@@ -290,7 +290,7 @@ export default function UtilityAssetTypeMapping() {
               <thead className="bg-[#0E2F4B] text-left text-[11px] uppercase tracking-wide text-white">
                 <tr>
                   <th className="px-4 py-2.5 font-semibold">Utility</th>
-                  <th className="px-4 py-2.5 font-semibold">Detail</th>
+                  <th className="px-4 py-2.5 font-semibold">Consumption metric</th>
                   <th className="px-4 py-2.5 font-semibold">Asset type</th>
                   <th className="px-4 py-2.5" />
                 </tr>

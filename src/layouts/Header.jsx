@@ -71,7 +71,7 @@ export default function Header() {
     },
     "/utilities/consumption": {
       title: "Record Utility Consumption",
-      subtitle: "Enter meter readings or quantities (999 / 9999 rollover).",
+      subtitle: "",
     },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
