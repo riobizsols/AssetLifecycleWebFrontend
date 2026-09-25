@@ -29,7 +29,7 @@ export default function Header() {
   const pathTitleMap = {
     "/maintenance-list": { title: t('maintenance.maintenanceList'), subtitle: "" },
     "/maintenance-list/create": { title: t('maintenanceSupervisor.createManualMaintenance'), subtitle: "" },
-    "/spare-part-management": { title: t('navigation.sparePartReport'), subtitle: "" },
+    "/spare-part-management": { title: t('navigation.sparePartConsumptionReport'), subtitle: "" },
     "/spare-part-list": { title: t('sparePartList.title'), subtitle: "" },
     "/spare-part-issue": { title: t('sparePartIssue.title'), subtitle: "" },
     "/spare-part-approval": { title: t('sparePartApproval.title'), subtitle: "" },
