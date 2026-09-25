@@ -21,6 +21,7 @@ import {
   STOCK_PURCHASE_COLUMNS,
   STOCK_PURCHASE_FIELD_ACCESSORS,
 } from './newReportExtrasConfig';
+import { exportStockPurchasePdf } from './exportStockPurchaseReport';
 
 function KpiCard({ label, value, danger }) {
   return (
@@ -57,6 +58,7 @@ export default function PurchaseRequirementReport() {
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadingView, setLoadingView] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [report, setReport] = useState(null);
   const [advanced, setAdvanced] = useState([]);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -151,18 +153,52 @@ export default function PurchaseRequirementReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadingOptions]);
 
-  const totals = report?.summary?.totals || {
-    parts_to_buy: 0,
-    out_of_stock: 0,
-    total_recommended_qty: 0,
-    with_wo_impact: 0,
-    with_upcoming_pm: 0,
-  };
+  const rows = useMemo(() => {
+    const filtered = (report?.rows || []).filter((r) => {
+      const available = Number(r.available) || 0;
+      const minRaw = r.minimum_stock ?? r.recommended_qty;
+      const min = minRaw == null || minRaw === '' ? null : Number(minRaw);
+      const hasMin = min != null && !Number.isNaN(min) && min > 0;
+      if (available <= 0) return true;
+      return hasMin && available <= min;
+    });
+    return applyAdvancedFilters(filtered, advanced, STOCK_PURCHASE_FIELD_ACCESSORS);
+  }, [report, advanced]);
 
-  const rows = useMemo(
-    () => applyAdvancedFilters(report?.rows || [], advanced, STOCK_PURCHASE_FIELD_ACCESSORS),
-    [report, advanced],
-  );
+  const totals = useMemo(() => {
+    const outOfStock = rows.filter((r) => Number(r.available) <= 0).length;
+    return {
+      parts_to_buy: rows.length,
+      out_of_stock: outOfStock,
+      with_wo_impact: rows.filter((r) => Number(r.open_wo_count) > 0).length,
+      with_upcoming_pm: rows.filter((r) => Number(r.upcoming_pm_demand) > 0).length,
+    };
+  }, [rows]);
+
+  const handleExportPdf = useCallback(async () => {
+    if (!report) {
+      toast.error('Generate the report first');
+      return;
+    }
+    try {
+      setExportingPdf(true);
+      exportStockPurchasePdf({
+        rows,
+        totals,
+        horizonDays: report?.summary?.horizon_days || horizonDays,
+      });
+      await recordActionByNameWithFetch('Export Report', {
+        reportType: 'Stock & Purchase',
+        exportFormat: 'pdf',
+        action: 'PDF report downloaded',
+      }).catch(() => {});
+      toast.success('PDF downloaded');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to download PDF');
+    } finally {
+      setExportingPdf(false);
+    }
+  }, [rows, totals, report, horizonDays, recordActionByNameWithFetch]);
 
   const branchOptions = useMemo(
     () => branches.map((b) => ({ value: b.id, label: b.label || b.id })),
@@ -185,6 +221,15 @@ export default function PurchaseRequirementReport() {
           >
             {loadingView ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             Refresh
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={!report || exportingPdf}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Download PDF
           </button>
           <button
             type="button"
@@ -304,10 +349,9 @@ export default function PurchaseRequirementReport() {
           </div>
         </section>
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <KpiCard label="Parts to buy" value={totals.parts_to_buy} danger />
           <KpiCard label="Out of stock" value={totals.out_of_stock} danger />
-          <KpiCard label="Minimum qty" value={totals.total_recommended_qty} />
           <KpiCard label="WO impact" value={totals.with_wo_impact} />
           <KpiCard label="Upcoming PM" value={totals.with_upcoming_pm} />
         </div>

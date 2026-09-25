@@ -17,6 +17,10 @@ const isSpareAlert = (alert) =>
   alert?.workflowType === "SPARE_ISSUED" ||
   alert?.workflowType === "SPARE_CONFIRMED";
 
+const isStockAlert = (alert) =>
+  alert?.workflowType === "STOCK_OUT_OF_STOCK" ||
+  alert?.workflowType === "STOCK_NEEDS_PURCHASE";
+
 const spareAlertTypeLabel = (alertType) => {
   if (alertType === "Spare Part Approval" || alertType === "Spare Part Requested") {
     return "Spare Part Approval";
@@ -36,6 +40,8 @@ const badgeColors = {
   "Spare Part Issued": "bg-emerald-100 text-emerald-800",
   "Spare Part Confirmed": "bg-sky-100 text-sky-800",
   "Consumption Miss Alert": "bg-orange-100 text-orange-800",
+  "Out of stock": "bg-rose-100 text-rose-800",
+  "Needs purchase": "bg-amber-100 text-amber-800",
   Urgent: "bg-red-100 text-red-800",
 };
 
@@ -97,6 +103,31 @@ const NotificationsPanel = () => {
             return next;
           });
         });
+      return;
+    }
+
+    if (isStockAlert(alert) && alert.notifyId) {
+      const currentStatus = String(alert.notificationStatus || "").toUpperCase();
+      if (isUnreadWarranty(currentStatus) && !openingNotifyIds[alert.notifyId]) {
+        patchAlerts((prev) =>
+          prev.map((item) =>
+            item.notifyId === alert.notifyId
+              ? { ...item, notificationStatus: "OPEN" }
+              : item,
+          ),
+        );
+        setOpeningNotifyIds((prev) => ({ ...prev, [alert.notifyId]: true }));
+        API.put(`/notifications/stock/${alert.notifyId}/open`)
+          .catch(() => {})
+          .finally(() => {
+            setOpeningNotifyIds((prev) => {
+              const next = { ...prev };
+              delete next[alert.notifyId];
+              return next;
+            });
+          });
+      }
+      navigate(alert.route || "/reports/purchase-requirement");
       return;
     }
 
@@ -211,7 +242,7 @@ const NotificationsPanel = () => {
                   </span>
                 )}
                 <span className={isUnreadWarranty(alert.notificationStatus) ? "font-bold text-gray-900" : "font-normal text-gray-800"}>{alert.alertText}</span>
-                {!isSpareAlert(alert) && alert.daysUntilCutoff !== undefined && (
+                {!isSpareAlert(alert) && !isStockAlert(alert) && alert.daysUntilCutoff !== undefined && (
                   <span className={`text-xs px-2 py-1 rounded ml-auto ${
                     alert.isUrgent 
                       ? "bg-red-100 text-red-700 font-semibold" 
@@ -222,6 +253,9 @@ const NotificationsPanel = () => {
                       : `${alert.daysUntilCutoff} day${alert.daysUntilCutoff !== 1 ? 's' : ''} left`
                     }
                   </span>
+                )}
+                {isStockAlert(alert) && (
+                  <ExclamationTriangleIcon className="w-5 h-5 text-amber-500 ml-auto" />
                 )}
                 {isSpareAlert(alert) && (
                   <span className={`text-xs px-2 py-1 rounded ml-auto font-semibold ${
@@ -258,6 +292,17 @@ const NotificationsPanel = () => {
                     </span>
                     <span>
                       Category: <b>{alert.categoryName || "-"}</b>
+                    </span>
+                  </>
+                ) : isStockAlert(alert) ? (
+                  <>
+                    <span className="flex items-center gap-1">
+                      <CalendarIcon className="w-4 h-4" />
+                      Due On: <b>{alert.dueOn}</b>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <UserIcon className="w-4 h-4" />
+                      Action By: <b>{alert.actionBy}</b>
                     </span>
                   </>
                 ) : (

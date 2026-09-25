@@ -282,12 +282,24 @@ export const STOCK_PURCHASE_ADVANCED_FIELDS = [
   { key: 'status', label: 'Status', type: 'text' },
 ];
 
+function stockPurchaseStatus(row) {
+  const available = Number(row.available) || 0;
+  const minRaw = row.minimum_stock ?? row.recommended_qty;
+  const min =
+    minRaw == null || minRaw === '' ? null : Number(minRaw);
+  const hasMin = min != null && !Number.isNaN(min) && min > 0;
+
+  if (available <= 0) return 'Out of stock';
+  // At or below minimum (and not zero)
+  if (hasMin && available <= min) return 'Needs purchase';
+  return '';
+}
+
 export const STOCK_PURCHASE_FIELD_ACCESSORS = {
   partCode: (r) => r.part_code,
   description: (r) => r.description,
   branch: (r) => r.branch_name || r.branch_id,
-  status: (r) =>
-    r.is_out_of_stock ? 'Out of stock' : r.needs_purchase ? 'Needs purchase' : '',
+  status: (r) => stockPurchaseStatus(r),
 };
 
 export function getStockPurchaseCellValue(row, column) {
@@ -298,9 +310,7 @@ export function getStockPurchaseCellValue(row, column) {
     case 'Description':
       return row.description ?? '—';
     case 'Status':
-      if (row.is_out_of_stock) return 'Out of stock';
-      if (row.needs_purchase) return 'Needs purchase';
-      return '—';
+      return stockPurchaseStatus(row) || '—';
     case 'UOM':
       return row.uom ?? '—';
     case 'Branch':
@@ -324,7 +334,7 @@ export function getStockPurchaseCellValue(row, column) {
     case 'Avg usage 90d':
       return row.avg_usage_90d ?? 0;
     case 'Minimum qty':
-      return row.recommended_qty ?? row.minimum_stock ?? '—';
+      return row.minimum_stock ?? row.recommended_qty ?? '—';
     case 'Earliest demand':
       return date(row.earliest_demand_date);
     default:

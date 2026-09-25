@@ -20,7 +20,11 @@ const isSpareAlert = (alert) =>
   alert?.workflowType === "SPARE_ISSUED" ||
   alert?.workflowType === "SPARE_CONFIRMED";
 
-  const badgeColors = {
+const isStockAlert = (alert) =>
+  alert?.workflowType === "STOCK_OUT_OF_STOCK" ||
+  alert?.workflowType === "STOCK_NEEDS_PURCHASE";
+
+const badgeColors = {
   "Regular Maintenance": "bg-blue-100 text-blue-800",
   "Inspection": "bg-green-100 text-green-800",
   "Warranty Expiry": "bg-amber-100 text-amber-800",
@@ -31,6 +35,8 @@ const isSpareAlert = (alert) =>
   "Spare Part Issued": "bg-emerald-100 text-emerald-800",
   "Spare Part Confirmed": "bg-sky-100 text-sky-800",
   "Consumption Miss Alert": "bg-orange-100 text-orange-800",
+  "Out of stock": "bg-rose-100 text-rose-800",
+  "Needs purchase": "bg-amber-100 text-amber-800",
 };
 
 const AllNotifications = () => {
@@ -53,6 +59,7 @@ const AllNotifications = () => {
     spareIssued: true,
     spareConfirmed: true,
     consumptionMiss: true,
+    stockAlert: true,
   });
   const [showFilters, setShowFilters] = useState(false);
   const [snoozeDrafts, setSnoozeDrafts] = useState({});
@@ -71,6 +78,8 @@ const AllNotifications = () => {
       "Spare Part Issued": t("allNotifications.alertTypeSparePartIssued") || "Spare Part Requested",
       "Spare Part Confirmed": t("allNotifications.alertTypeSparePartConfirmed") || "Spare Part Issued",
       "Consumption Miss Alert": t("allNotifications.alertTypeConsumptionMiss") || "Consumption Miss Alert",
+      "Out of stock": "Out of stock",
+      "Needs purchase": "Needs purchase",
     };
     return labels[alertType] || alertType;
   };
@@ -131,6 +140,10 @@ const AllNotifications = () => {
       alert.alertType === "Consumption Miss Alert"
     ) {
       return "consumptionMiss";
+    }
+
+    if (isStockAlert(alert) || alert.alertType === "Out of stock" || alert.alertType === "Needs purchase") {
+      return "stockAlert";
     }
     
     // Check for subscription renewal notifications
@@ -207,6 +220,10 @@ const AllNotifications = () => {
           ? "Spare Part Confirmed"
           : notification.workflowType === "CONSUMPTION_MISS"
           ? "Consumption Miss Alert"
+          : notification.workflowType === "STOCK_OUT_OF_STOCK"
+          ? "Out of stock"
+          : notification.workflowType === "STOCK_NEEDS_PURCHASE"
+          ? "Needs purchase"
           : notification.maintenanceType || "Regular Maintenance",
         alertText: notification.isGroupMaintenance && notification.groupName
           ? t("allNotifications.groupNameWithAssets", { groupName: notification.groupName, count: notification.groupAssetCount })
@@ -223,6 +240,9 @@ const AllNotifications = () => {
           ? `${notification.assetTypeName || "-"}`
           : notification.workflowType === "CONSUMPTION_MISS"
           ? (notification.body || `${notification.assetId} — ${notification.categoryName || notification.utilitySh || "Utility"} reading missed`)
+          : notification.workflowType === "STOCK_OUT_OF_STOCK" ||
+            notification.workflowType === "STOCK_NEEDS_PURCHASE"
+          ? notification.body || `${notification.assetTypeName || notification.categoryName || "-"}`
           : String(notification.maintenanceType || "").toLowerCase().includes("subscription")
           ? `${notification.assetTypeName}`
           : t("allNotifications.assetTypeMaintenance", { assetType: notification.assetTypeName }),
@@ -235,7 +255,9 @@ const AllNotifications = () => {
           notification.workflowType !== "SPARE_APPROVAL" &&
           notification.workflowType !== "SPARE_REQUESTED" &&
           notification.workflowType !== "SPARE_ISSUED" &&
-          notification.workflowType !== "SPARE_CONFIRMED",
+          notification.workflowType !== "SPARE_CONFIRMED" &&
+          notification.workflowType !== "STOCK_OUT_OF_STOCK" &&
+          notification.workflowType !== "STOCK_NEEDS_PURCHASE",
         wfamshId: notification.wfamshId, // For navigation
         route: notification.route,
         workflowType: notification.workflowType,
@@ -258,6 +280,8 @@ const AllNotifications = () => {
         title: notification.title,
         isOverdue: !!notification.isOverdue,
         canChangeVendor: !!notification.canChangeVendor,
+        body: notification.body,
+        spcId: notification.spcId,
       }));
       console.log("Transformed alerts:", transformedAlerts);
       setAlerts(transformedAlerts);
@@ -318,6 +342,31 @@ const AllNotifications = () => {
             return next;
           });
         });
+      return;
+    }
+
+    if (isStockAlert(alert) && alert.notifyId) {
+      const currentStatus = String(alert.notificationStatus || "").toUpperCase();
+      if (isUnreadWarranty(currentStatus) && !openingNotifyIds[alert.notifyId]) {
+        setAlerts((prev) =>
+          prev.map((item) =>
+            item.notifyId === alert.notifyId
+              ? { ...item, notificationStatus: "OPEN" }
+              : item,
+          ),
+        );
+        setOpeningNotifyIds((prev) => ({ ...prev, [alert.notifyId]: true }));
+        API.put(`/notifications/stock/${alert.notifyId}/open`)
+          .catch(() => {})
+          .finally(() => {
+            setOpeningNotifyIds((prev) => {
+              const next = { ...prev };
+              delete next[alert.notifyId];
+              return next;
+            });
+          });
+      }
+      navigate(alert.route || "/reports/purchase-requirement");
       return;
     }
 
@@ -617,6 +666,21 @@ const AllNotifications = () => {
                     {t("allNotifications.statusMissed") || "Missed"}
                   </span>
                 </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedFilters.stockAlert}
+                    onChange={() => handleFilterChange('stockAlert')}
+                    className="w-4 h-4 text-rose-600 border-gray-300 rounded focus:ring-rose-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Stock alerts ({getFilterCount('stockAlert')})
+                  </span>
+                  <span className="px-2 py-1 text-xs bg-rose-100 text-rose-800 rounded-full">
+                    Out of stock / Needs purchase
+                  </span>
+                </label>
               </div>
             </div>
           )}
@@ -670,7 +734,7 @@ const AllNotifications = () => {
                   </span>
                 )}
                 <span className={`text-lg ${isUnreadWarranty(alert.notificationStatus) ? "font-bold text-gray-900" : "font-normal text-gray-800"}`}>{alert.alertText}</span>
-                {!isSpareAlert(alert) && alert.daysUntilCutoff !== undefined && (
+                {!isSpareAlert(alert) && !isStockAlert(alert) && alert.daysUntilCutoff !== undefined && (
                   <span className={`text-sm px-3 py-1 rounded-full ml-auto ${
                     alert.isUrgent 
                       ? "bg-red-100 text-red-700 font-semibold" 
@@ -681,6 +745,9 @@ const AllNotifications = () => {
                       : t("allNotifications.daysLeft", { count: alert.daysUntilCutoff })
                     }
                   </span>
+                )}
+                {isStockAlert(alert) && (
+                  <ExclamationTriangleIcon className="w-6 h-6 text-amber-500 ml-auto" />
                 )}
                 {isSpareAlert(alert) && (
                   <span className={`text-sm px-3 py-1 rounded-full ml-auto font-semibold ${
@@ -718,6 +785,17 @@ const AllNotifications = () => {
                     <span>
                       {t("sparePartApproval.category") || "Category"}:{" "}
                       <b className="text-gray-800">{alert.categoryName || "-"}</b>
+                    </span>
+                  </>
+                ) : isStockAlert(alert) ? (
+                  <>
+                    <span className="flex items-center gap-2">
+                      <CalendarIcon className="w-5 h-5" />
+                      <span>{t("allNotifications.dueOn")}: <b className="text-gray-800">{alert.dueOn}</b></span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <UserIcon className="w-5 h-5" />
+                      <span>{t("allNotifications.actionBy")}: <b className="text-gray-800">{alert.actionBy}</b></span>
                     </span>
                   </>
                 ) : (
