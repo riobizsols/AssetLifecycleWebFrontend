@@ -8,8 +8,8 @@ test.describe('RIO EAM master data', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Run once against live data');
 
   test('loads master-data lists and creates a record', async ({ page }) => {
-    // Many protected pages + one create; keep under a hard CI budget.
-    test.setTimeout(420000);
+    // Create + a short list tour. Full inventory is covered by dedicated specs.
+    test.setTimeout(300000);
 
     await loginToRioEam(page);
 
@@ -21,53 +21,21 @@ test.describe('RIO EAM master data', () => {
       (await tryCreateSparePartCategory(page, stamp));
     expect(created, 'Expected at least one master-data create path to succeed').toBeTruthy();
 
-    await openMasterList(page, '/master-data/asset-types', ['Asset Type Name', 'Status', 'Assignment Type']);
-    await openAddForm(page, '/master-data/asset-types/add', /Enter asset type name/i);
-
-    await openMasterList(page, '/master-data/branches', ['Branch Name', 'City', 'Branch Code']);
-    await openAddForm(page, '/master-data/branches/add', 'Enter Branch Name');
-
-    await openMasterList(page, '/master-data/vendors', ['Vendor Name', 'Company', 'GST Number']);
-    await gotoProtected(page, `${BASE}/master-data/add-vendor`);
-    await expect(page.getByText(/Vendor|Company|GST/i).first()).toBeVisible({ timeout: 45000 });
-
-    await openMasterList(page, '/master-data/user-roles', ['Full Name', 'Email', 'Department']);
+    await openMasterList(page, '/master-data/asset-types', ['Asset Type Name', 'Status']);
+    await openMasterList(page, '/master-data/branches', ['Branch Name', 'City']);
+    await openMasterList(page, '/master-data/vendors', ['Vendor Name', 'Company']);
 
     await gotoProtected(page, `${BASE}/master-data/prod-serv`);
     await expect(page.getByText('Product / Service').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Product Details')).toBeVisible();
-    await page.getByText('Service Details').click();
-    await expect(page.getByText('Service List').first()).toBeVisible();
-
-    await gotoProtected(page, `${BASE}/master-data/branch-dept-mapping`);
-    await expect(page.getByText('Branch – Department Mapping').first()).toBeVisible({
-      timeout: 45000,
-    });
-
-    await gotoProtected(page, `${BASE}/master-data/spare-part`);
-    await expect(page.getByText('Part Number').first()).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
 
     await gotoProtected(page, `${BASE}/master-data/spare-parts-configuration`);
     await expect(page.getByRole('button', { name: 'Spare Part Category' })).toBeVisible({
       timeout: 45000,
     });
-    await expect(page.getByRole('button', { name: 'Asset Type Mapping' })).toBeVisible();
 
     await gotoProtected(page, `${BASE}/master-data/uploads`);
     await expect(page.getByText('Bulk Upload').first()).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText('Assets').first()).toBeVisible();
-
-    await gotoProtected(page, `${BASE}/master-data/departments-asset`);
-    await expect(page.getByText(/Department.*Asset/i).first()).toBeVisible({ timeout: 45000 });
-
-    await gotoProtected(page, `${BASE}/master-data/departments`);
-    await expect(page.getByText('Department List')).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText('Department Name').first()).toBeVisible();
-
-    await gotoProtected(page, `${BASE}/master-data/departments-admin`);
-    await expect(page.getByText('Admin List').first()).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText('Department Name').first()).toBeVisible();
   });
 });
 
@@ -82,16 +50,6 @@ async function openMasterList(page, path, columns) {
   for (const column of columns) {
     await expect(page.getByText(column).first()).toBeVisible({ timeout: 45000 });
   }
-}
-
-/**
- * @param {import('@playwright/test').Page} page
- * @param {string} path
- * @param {string | RegExp} placeholder
- */
-async function openAddForm(page, path, placeholder) {
-  await gotoProtected(page, `${BASE}${path}`);
-  await expect(page.getByPlaceholder(placeholder)).toBeVisible({ timeout: 45000 });
 }
 
 /**

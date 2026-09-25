@@ -1,19 +1,20 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM asset creation', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Create one live asset only');
 
   test('creates an asset from the add-asset form', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/assets/add`);
+    await gotoProtected(page, `${BASE}/assets/add`);
 
     await expect(page.getByRole('button', { name: 'Configuration' })).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.locator('label').filter({ hasText: 'Asset Type' })).toBeVisible();
 

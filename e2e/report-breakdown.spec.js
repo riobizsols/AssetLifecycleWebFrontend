@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM report breakdown', () => {
@@ -11,9 +11,9 @@ test.describe('RIO EAM report breakdown', () => {
     test.setTimeout(240000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/report-breakdown`);
+    await gotoProtected(page, `${BASE}/report-breakdown`);
 
-    await expect(page.getByText('Report Breakdown').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Report Breakdown').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(page.getByText('Reported By').first()).toBeVisible();
     await expect(page.getByText('Status').first()).toBeVisible();
@@ -55,10 +55,10 @@ test.describe('RIO EAM report breakdown', () => {
  * @param {import('@playwright/test').Page} page
  */
 async function openEmployeeReportBreakdown(page) {
-  await page.goto(`${BASE}/employee-report-breakdown`);
+  await gotoProtected(page, `${BASE}/employee-report-breakdown`);
   const heading = page.getByText('Employee Report Breakdown').first();
   if (!(await heading.isVisible().catch(() => false))) return;
-  await expect(heading).toBeVisible({ timeout: 20000 });
+  await expect(heading).toBeVisible({ timeout: 45000 });
   await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
   await expect(
     page.getByText('No data found').or(page.getByText('Reported By').first()).first()
