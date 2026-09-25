@@ -137,7 +137,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "MAINTENANCESCHEDULE",
     "MAINTENANCEAPPROVAL",
   ],
-  "Spare Parts": ["SPAREPARTS", "SPAREPARTLIST", "SPAREPARTAPPROVAL", "SPAREPARTISSUE"],
+  "Spare Parts": ["SPAREPARTS", "SPAREPARTMGMT", "SPAREPARTLIST", "SPAREPARTAPPROVAL", "SPAREPARTISSUE"],
   Scrap: ["SCRAPASSETS", "SCRAPMAINTENANCEAPPROVAL", "SCRAPSALES"],
   Utilities: ["UTILITYMASTER", "UTILITYATMAPPING", "UTILITYCONSUMPTION"],
   Inspection: [
@@ -689,7 +689,7 @@ function moveReopenedBreakdownsToReports(items) {
 function moveSparePartsMenusToGroup(items) {
   if (!items?.length) return items;
 
-  const memberKeys = ["SPAREPARTS", "SPAREPARTLIST", "SPAREPARTAPPROVAL", "SPAREPARTISSUE"].map(
+  const memberKeys = ["SPAREPARTS", "SPAREPARTMGMT", "SPAREPARTLIST", "SPAREPARTAPPROVAL", "SPAREPARTISSUE"].map(
     normalizeNavAppId,
   );
   const collected = new Map();
@@ -734,6 +734,9 @@ function moveSparePartsMenusToGroup(items) {
     .map((item) => {
       if (normalizeNavAppId(item.app_id) === "SPAREPARTS") {
         return { ...item, label: "Spare Part Lot" };
+      }
+      if (normalizeNavAppId(item.app_id) === "SPAREPARTMGMT") {
+        return { ...item, label: "Spare Part Report" };
       }
       return item;
     });
@@ -812,6 +815,57 @@ function ensureSparePartIssueMenu(items) {
           nextChildren.splice(approvalIdx + 1, 0, issueItem);
         } else {
           nextChildren.push(issueItem);
+        }
+        return { ...item, children: nextChildren };
+      }
+      if (item.children?.length) {
+        return { ...item, children: inject(item.children) };
+      }
+      return item;
+    });
+
+  return inject(items);
+}
+
+function ensureSparePartManagementMenu(items) {
+  if (!items?.length) return items;
+
+  const inject = (nodes) =>
+    nodes.map((item) => {
+      if (isNavGroup(item) && canonicalGroupLabel(item.label) === "spare parts") {
+        const children = [...(item.children || [])];
+        const hasMgmt = children.some(
+          (child) => normalizeNavAppId(child.app_id) === "SPAREPARTMGMT",
+        );
+        if (hasMgmt) {
+          return { ...item, children };
+        }
+
+        const anchor =
+          children.find((child) => normalizeNavAppId(child.app_id) === "SPAREPARTS") ||
+          children.find((child) => normalizeNavAppId(child.app_id) === "SPAREPARTLIST") ||
+          children[0];
+        if (!anchor) {
+          return { ...item, children };
+        }
+
+        const mgmtItem = {
+          id: "ensure-spare-part-management",
+          app_id: "SPAREPARTMGMT",
+          label: "Spare Part Report",
+          is_group: false,
+          children: undefined,
+          access_level: anchor.access_level || "A",
+          seq: 2,
+        };
+        const lotIdx = children.findIndex(
+          (child) => normalizeNavAppId(child.app_id) === "SPAREPARTS",
+        );
+        const nextChildren = [...children];
+        if (lotIdx >= 0) {
+          nextChildren.splice(lotIdx + 1, 0, mgmtItem);
+        } else {
+          nextChildren.unshift(mgmtItem);
         }
         return { ...item, children: nextChildren };
       }
@@ -1095,6 +1149,7 @@ function finalizeSidebarNavigation(items) {
   tree = flattenApprovalsGroup(tree);
   tree = moveReopenedBreakdownsToReports(tree);
   tree = moveSparePartsMenusToGroup(tree);
+  tree = ensureSparePartManagementMenu(tree);
   tree = ensureSparePartIssueMenu(tree);
   tree = ensureSparePartMasterMenu(tree);
   tree = ensureUtilityMenus(tree);
@@ -1461,6 +1516,9 @@ const DatabaseSidebar = () => {
     if (normalizeNavAppId(appId) === "SPAREPARTISSUE") {
       return t("navigation.sparePartIssue");
     }
+    if (normalizeNavAppId(appId) === "SPAREPARTMGMT") {
+      return t("navigation.sparePartReport");
+    }
     if (normalizeNavAppId(appId) === "SPAREPARTSCONFIG") {
       return t("navigation.sparePartsConfiguration");
     }
@@ -1490,6 +1548,8 @@ const DatabaseSidebar = () => {
       'Spare Parts': t('navigation.spareParts'),
       'Spare Part Lot': t('navigation.sparePartLot'),
       'Spare Part Issue': t('navigation.sparePartIssue'),
+      'Spare Part Management': t('navigation.sparePartReport'),
+      'Spare Part Report': t('navigation.sparePartReport'),
       'Spare Parts Configuration': t('navigation.sparePartsConfiguration'),
       'Spare Part Category': t('navigation.sparePartsConfiguration'),
       'SPARE PART': t('navigation.sparePartMaster'),
@@ -1610,6 +1670,7 @@ const DatabaseSidebar = () => {
     SPAREPARTLIST: "/spare-part-list",
     SPAREPARTISSUE: "/spare-part-issue",
     SPAREPARTAPPROVAL: "/spare-part-approval",
+    SPAREPARTMGMT: "/reports/spare-parts-report",
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
     "EMPLOYEE REPORT BREAKDOWN": "/employee-report-breakdown", // Employee Report Breakdown route //done
     // Report routes
@@ -1792,6 +1853,7 @@ const DatabaseSidebar = () => {
       SPAREPARTLIST: Package,
       SPAREPARTISSUE: Package,
       SPAREPARTAPPROVAL: ClipboardList,
+      SPAREPARTMGMT: Package,
       SPAREPARTSGROUP: Package,
       REPORTBREAKDOWN: BarChart3,
       "EMPLOYEE REPORT BREAKDOWN": BarChart3,
@@ -2001,6 +2063,9 @@ const DatabaseSidebar = () => {
     }
     if (key === "SPAREPARTLIST") {
       return ["/spare-part-list", "/spare-part-list-detail"];
+    }
+    if (key === "SPAREPARTMGMT") {
+      return ["/reports/spare-parts-report", "/spare-part-management"];
     }
     if (key === "SPAREPARTISSUE") {
       return ["/spare-part-issue"];
