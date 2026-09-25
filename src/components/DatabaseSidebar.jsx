@@ -182,6 +182,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "OUTOFSTOCKREPORT",
     "PURCHASEREQUIREMENTREPORT",
     "WORKFORCEREPORT",
+    "SPAREPARTSREPORT",
   ],
 };
 
@@ -1525,6 +1526,9 @@ const DatabaseSidebar = () => {
     if (normalizeNavAppId(appId) === "SPAREPARTMASTER") {
       return t("navigation.sparePartMaster");
     }
+    if (normalizeNavAppId(appId) === "MAINTENANCESTATUSREPORT") {
+      return t("navigation.maintenanceStatusReport");
+    }
     // Create a mapping from English labels to translation keys
     const labelMap = {
       'Dashboard': t('navigation.dashboard'),
@@ -1622,6 +1626,10 @@ const DatabaseSidebar = () => {
       'Usage-Based Asset Report': t('navigation.usageBasedAssetReport'),
       'SLA Reports': t('navigation.slaReport'),
       'Usage-Based Asset...': t('navigation.usageBasedAssetReport'),
+      'Maintenance Status Report': t('navigation.maintenanceStatusReport'),
+      'Maintenance Status Rep...': t('navigation.maintenanceStatusReport'),
+      'Facility Maintenance Report': t('navigation.maintenanceStatusReport'),
+      'Spare Parts Report': t('navigation.sparePartsReport'),
     };
 
     if (labelMap[label]) return labelMap[label];
@@ -1675,6 +1683,7 @@ const DatabaseSidebar = () => {
     "EMPLOYEE REPORT BREAKDOWN": "/employee-report-breakdown", // Employee Report Breakdown route //done
     // Report routes
     ASSETLIFECYCLEREPORT: "/reports/asset-lifecycle-report",  //done
+    SPAREPARTSREPORT: "/reports/spare-parts-report",
     ASSETREPORT: "/reports/asset-report",  //done
     MAINTENANCEHISTORY: "/reports/maintenance-history", //done
     ASSETVALUATION: "/reports/asset-valuation",  //done
@@ -1860,6 +1869,7 @@ const DatabaseSidebar = () => {
       REOPENEDBREAKDOWNS: BarChart3,
       // Report icons
       ASSETLIFECYCLEREPORT: FileText,
+      SPAREPARTSREPORT: Package,
       ASSETREPORT: FileText,
       MAINTENANCEHISTORY: Wrench,
       ASSETVALUATION: DollarSign,

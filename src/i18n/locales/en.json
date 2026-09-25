@@ -68,7 +68,8 @@
     "qaAuditReport": "QA Audit Report",
     "approvalsGroup": "Approvals",
     "certificatesGroup": "Certificates",
-    "maintenanceStatusReport": "Maintenance Status Report"
+    "maintenanceStatusReport": "Facility Maintenance Report",
+    "sparePartsReport": "Spare Parts Report"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -641,7 +642,16 @@
       "plannedScheduleDateRange": "Planned Schedule Date Range",
       "actualScheduleDateRange": "Actual Schedule Date Range",
       "breakdownDateRange": "Breakdown Date Range",
-      "reportedBy": "Reported By"
+      "reportedBy": "Reported By",
+      "brand": "Brand",
+      "partNumber": "Part Number",
+      "serialNumber": "Serial Number",
+      "model": "Model",
+      "lotId": "Lot ID",
+      "issuedDate": "Issued Date",
+      "unitPrice": "Unit Price",
+      "belowSafety": "Below Safety Stock",
+      "uom": "UoM"
     },
     "statusOptions": {
       "inUse": "In-Use",
@@ -720,6 +730,10 @@
     "assetLifecycleReport": {
       "name": "Asset Lifecycle Report",
       "description": "Complete view of an asset's history and current status including purchase, commissioning, usage, and disposal information."
+    },
+    "sparePartsReport": {
+      "name": "Spare Parts Report",
+      "description": "Stock, purchase, and issue status for spare parts, including category, brand, and current status."
     },
     "assetRegisterReport": {
       "name": "Asset Register",

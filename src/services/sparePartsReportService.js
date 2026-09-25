@@ -1,34 +1,31 @@
-import API from '../lib/axios';
+import API from "../lib/axios";
 
-const toCsv = (value) => {
-  if (value == null || value === '') return undefined;
-  if (Array.isArray(value)) return value.length ? value.join(',') : undefined;
-  return String(value);
-};
-
-const buildParams = (filters = {}) => {
-  const params = {};
-  const category = toCsv(filters.category);
-  const brand = toCsv(filters.brand);
-  const currentStatus = toCsv(filters.currentStatus);
-  if (category) params.category = category;
-  if (brand) params.brand = brand;
-  if (currentStatus) params.currentStatus = currentStatus;
-
-  const range = filters.purchaseDateRange || {};
-  if (range.from) params.purchaseDateFrom = range.from;
-  if (range.to) params.purchaseDateTo = range.to;
-  return params;
-};
+const API_BASE_URL = "/spare-parts-report";
 
 export const sparePartsReportService = {
-  async getFilterOptions() {
-    const res = await API.get('/spare-parts/report/filter-options');
-    return res.data;
+  getSparePartsReport: async (filters = {}) => {
+    const apiParams = {
+      limit: filters.limit || 1000,
+      offset: filters.offset || 0,
+    };
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") return;
+      if (key === "advancedConditions") {
+        apiParams.advancedConditions = JSON.stringify(value);
+        return;
+      }
+      if (Array.isArray(value)) {
+        if (value.length > 0) apiParams[key] = value;
+        return;
+      }
+      apiParams[key] = value;
+    });
+
+    return API.get(API_BASE_URL, { params: apiParams });
   },
 
-  async getReport(filters = {}) {
-    const res = await API.get('/spare-parts/report', { params: buildParams(filters) });
-    return res.data;
-  },
+  getFilterOptions: async () => API.get(`${API_BASE_URL}/filter-options`),
 };
+
+export default sparePartsReportService;

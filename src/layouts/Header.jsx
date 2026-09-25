@@ -207,10 +207,13 @@ export default function Header() {
       subtitle:
         "Vendor response, resolution SLA, breaches, repeat failures and service ratings.",
     },
+    "/reports/spare-parts-report": {
+      title: t("navigation.sparePartsReport") || "Spare Parts Report",
+      subtitle: "",
+    },
     "/reports/maintenance-status": {
       title: t("navigation.maintenanceStatusReport"),
-      subtitle:
-        "Due, overdue, completed maintenance and expiry for facility asset types.",
+      subtitle: "",
     },
     "/reports/workforce": {
       title: "Engineering Team Productivity Report",

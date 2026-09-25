@@ -7,6 +7,7 @@ import { breakdownHistoryService } from "../../services/breakdownHistoryService"
 import { reopenedBreakdownsService } from "../../services/reopenedBreakdownsService";
 import assetWorkflowHistoryService from "../../services/assetWorkflowHistoryService";
 import { slaReportService } from "../../services/slaReportService";
+import { sparePartsReportService } from "../../services/sparePartsReportService";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getActiveOrgId } from '../../utils/acmContext';
@@ -571,12 +572,48 @@ export function useReportState(reportId, report) {
       };
 
       fetchFilterOptions();
+    } else if (reportId === "spare-parts") {
+      const fetchFilterOptions = async () => {
+        try {
+          const filterData = await fetchReportFilterOptionsCached("spare-parts", async () => {
+            const response = await sparePartsReportService.getFilterOptions();
+            return response.data?.data || response.data || {};
+          });
+          setFilterOptions(filterData);
+
+          const reportDef = REPORTS.find((r) => r.id === reportId);
+          if (reportDef && filterData) {
+            const applyDomain = (field) => {
+              if (field.key === "category" && filterData.categories) field.domain = filterData.categories;
+              else if (field.key === "brand" && filterData.brands) field.domain = filterData.brands;
+              else if (field.key === "currentStatus" && filterData.statuses) field.domain = filterData.statuses;
+              else if (field.key === "model" && filterData.models) field.domain = filterData.models;
+              else if (field.key === "vendor" && filterData.vendors) field.domain = filterData.vendors;
+              else if (field.key === "uom" && filterData.uoms) field.domain = filterData.uoms;
+              else if (field.key === "partNumber" && filterData.part_numbers) field.domain = filterData.part_numbers;
+              else if (field.key === "lotId" && filterData.lot_options) field.domain = filterData.lot_options;
+              else if (field.key === "assetId" && filterData.asset_options) field.domain = filterData.asset_options;
+            };
+            reportDef.quickFields.forEach(applyDomain);
+            reportDef.fields.forEach(applyDomain);
+            setUpdatedReport({
+              ...reportDef,
+              quickFields: reportDef.quickFields.map((field) => ({ ...field })),
+              fields: reportDef.fields.map((field) => ({ ...field })),
+            });
+          }
+        } catch (err) {
+          console.error("[useReportState] Error fetching spare parts filter options:", err);
+        }
+      };
+
+      fetchFilterOptions();
     }
   }, [reportId]);
 
   // Dropdown options for legacy reports without filter-options API
   useEffect(() => {
-    if (!["asset-register", "asset-lifecycle", "maintenance-history", "breakdown-history", "asset-workflow-history", "asset-valuation", "reopened-breakdowns", "sla-report"].includes(reportId)) {
+    if (!["asset-register", "asset-lifecycle", "maintenance-history", "breakdown-history", "asset-workflow-history", "asset-valuation", "reopened-breakdowns", "sla-report", "spare-parts"].includes(reportId)) {
       setAllAvailableAssets(fakeRows(reportId, 12));
     }
   }, [reportId]);
@@ -1137,6 +1174,51 @@ export function useReportState(reportId, report) {
       };
       
       fetchSLAReportData();
+    } else if (reportId === "spare-parts") {
+      const fetchSparePartsData = async () => {
+        const apiFilters = {};
+        Object.entries(quick).forEach(([key, value]) => {
+          if (value && (Array.isArray(value) ? value.length > 0 : value !== "")) {
+            apiFilters[key] = Array.isArray(value)
+              ? value.map((item) => (item && typeof item === "object" ? item.value ?? item.label : item))
+              : value;
+          }
+        });
+        if (advanced?.length) {
+          const validAdvancedConditions = advanced.filter((condition) => {
+            if (condition.val === null || condition.val === undefined) return false;
+            if (Array.isArray(condition.val) && condition.val.length === 0) return false;
+            if (typeof condition.val === "string" && condition.val.trim() === "") return false;
+            if (Array.isArray(condition.val) && condition.val.every((v) => v === null || v === undefined || (typeof v === "string" && v.trim() === ""))) return false;
+            return true;
+          });
+          if (validAdvancedConditions.length > 0) {
+            apiFilters.advancedConditions = validAdvancedConditions;
+          }
+        }
+
+        const requestFilters = { ...apiFilters, limit: 1000, offset: 0 };
+
+        await loadReportData({
+          reportId,
+          apiFilters: requestFilters,
+          quick,
+          advancedFetchKey,
+          report,
+          setLoading,
+          setError,
+          setAllRows,
+          setAllAvailableAssets,
+          fallbackRows: [],
+          onRowsLoaded: () => setForceUpdate((prev) => prev + 1),
+          fetcher: async () => {
+            const response = await sparePartsReportService.getSparePartsReport(requestFilters);
+            return response.data?.data || [];
+          },
+        });
+      };
+
+      fetchSparePartsData();
     } else if (reportId === "asset-valuation") {
       // Asset Valuation uses its own service and doesn't need data fetching here
       // as it's handled by the AssetValuation component itself
@@ -1629,7 +1711,7 @@ export function useReportState(reportId, report) {
   const filteredRows = useMemo(() => {
     // For asset-register, asset-lifecycle, maintenance-history, and breakdown-history, we're doing server-side filtering, so return allRows
     // For other reports, use client-side filtering
-    if (reportId === "asset-register" || reportId === "asset-lifecycle" || reportId === "asset-valuation" || reportId === "maintenance-history" || reportId === "breakdown-history" || reportId === "asset-workflow-history" || reportId === "reopened-breakdowns" || reportId === "sla-report") {
+    if (reportId === "asset-register" || reportId === "asset-lifecycle" || reportId === "asset-valuation" || reportId === "maintenance-history" || reportId === "breakdown-history" || reportId === "asset-workflow-history" || reportId === "reopened-breakdowns" || reportId === "sla-report" || reportId === "spare-parts") {
       return allRows;
     }
     return filterRows(allRows, reportId, quick, advanced);

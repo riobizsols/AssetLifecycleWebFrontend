@@ -60,7 +60,6 @@ import ScrapMaintenanceApproval from "../pages/ScrapMaintenanceApproval";
 import ScrapMaintenanceApprovalDetail from "../components/ScrapMaintenanceApprovalDetail";
 import MaintenanceSupervisor from "../pages/MaintenanceSupervisor";
 import SparePartList from "../pages/SparePartList";
-import SparePartsReport from "../pages/reports/SparePartsReport";
 import SparePartIssue from "../pages/SparePartIssue";
 import SparePartApproval from "../pages/SparePartApproval";
 import SparePartListDetail from "../components/SparePartListDetail";
@@ -105,6 +104,7 @@ import WorkorderManagement from "../pages/WorkorderManagement";
 import WorkOrderDetail from "../pages/WorkOrderDetail";
 import AssetReport from "../pages/reports/AssetReport";
 import AssetLifecycleReport from "../pages/reports/AssetLifecycleReport";
+import SparePartsReport from "../pages/reports/SparePartsReport";
 import MaintenanceHistory from "../pages/reports/MaintenanceHistory";
 import AssetValuation from "../pages/reports/AssetValuation";
 import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
@@ -380,18 +380,7 @@ export default function AppRoutes() {
         <Route
           path="/spare-part-management"
           element={
-            <ProtectedRoute requiredAnyOfAppIds={["SPAREPARTMGMT", "SPAREPARTLIST", "SPAREPARTISSUE"]}>
-              <MainLayout>
-                <SparePartsReport />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/reports/spare-parts-report"
-          element={
-            <ProtectedRoute requiredAnyOfAppIds={["SPAREPARTMGMT", "SPAREPARTLIST", "SPAREPARTISSUE"]}>
+            <ProtectedRoute requiredAnyOfAppIds={["SPAREPARTMGMT", "SPAREPARTLIST", "SPAREPARTISSUE", "SPAREPARTSREPORT"]}>
               <MainLayout>
                 <SparePartsReport />
               </MainLayout>
@@ -507,6 +496,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="ASSETLIFECYCLEREPORT">
               <MainLayout>
                 <AssetLifecycleReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/spare-parts-report"
+          element={
+            <ProtectedRoute requiredAnyOfAppIds={["SPAREPARTSREPORT", "SPAREPARTMGMT", "SPAREPARTLIST", "SPAREPARTISSUE"]}>
+              <MainLayout>
+                <SparePartsReport />
               </MainLayout>
             </ProtectedRoute>
           }

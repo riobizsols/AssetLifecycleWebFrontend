@@ -14,6 +14,7 @@ import assetWorkflowHistoryService from '../services/assetWorkflowHistoryService
 import { assetValuationService } from '../services/assetValuationService';
 import { reopenedBreakdownsService } from '../services/reopenedBreakdownsService';
 import { slaReportService } from '../services/slaReportService';
+import { sparePartsReportService } from '../services/sparePartsReportService';
 
 export const REPORT_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -135,6 +136,7 @@ const BASE_REPORT_FILTERS = {
   },
   'reopened-breakdowns': { orgId: null },
   'sla-report': { limit: 1000, offset: 0 },
+  'spare-parts': { limit: 1000, offset: 0 },
 };
 
 const REPORT_APP_IDS = {
@@ -146,6 +148,7 @@ const REPORT_APP_IDS = {
   BREAKDOWNHISTORY: 'breakdown-history',
   REOPENEDBREAKDOWNS: 'reopened-breakdowns',
   SLAREPORT: 'sla-report',
+  SPAREPARTSREPORT: 'spare-parts',
 };
 
 export function prefetchReportByAppId(appId) {
@@ -164,6 +167,7 @@ export function prefetchReportByAppId(appId) {
     'asset-valuation': () => assetValuationService.getFilterOptions().then((r) => r.data),
     'reopened-breakdowns': () => reopenedBreakdownsService.getFilterOptions(),
     'sla-report': () => slaReportService.getFilterOptions().then((r) => r.data?.data ?? r.data),
+    'spare-parts': () => sparePartsReportService.getFilterOptions().then((r) => r.data?.data ?? r.data),
   };
 
   const dataFetchers = {
@@ -182,6 +186,7 @@ export function prefetchReportByAppId(appId) {
       return reopenedBreakdownsService.getReopenedBreakdowns({ orgId: oid }).then((r) => r);
     },
     'sla-report': () => slaReportService.getSLAReport({ limit: 1000, offset: 0 }).then((r) => r.data?.data ?? []),
+    'spare-parts': () => sparePartsReportService.getSparePartsReport({ limit: 1000, offset: 0 }).then((r) => r.data?.data ?? []),
   };
 
   fetchReportFilterOptionsCached(reportId, filterFetchers[reportId]).catch(() => {});

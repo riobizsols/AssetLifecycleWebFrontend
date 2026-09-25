@@ -64,6 +64,12 @@ export const ALL_COLUMNS = {
     "Unit Price", "Purchase Date", "Invoice Number", "Vendor", "Current Status"
   ],
   "spares-inventory": ["Part Code", "Description", "UoM", "On Hand", "Safety", "Reorder", "Non‑Moving (days)", "Preferred Vendor"],
+  "spare-parts": [
+    "Serial Number", "Part Number", "Category", "Brand", "Model", "UoM",
+    "Status", "Available Qty", "Min Stock", "Reorder Level", "Store", "Vendor",
+    "Lot ID", "Invoice Number", "Purchase Date", "Unit Price",
+    "Asset ID", "Asset Name", "Issued On"
+  ],
   "vendor-performance": ["Vendor", "Jobs", "On‑time %", "Avg TAT (hrs)", "FTF %", "Defect %"],
 };
 
@@ -191,6 +197,22 @@ export const FIELD_TO_COLUMN_MAP = {
     assetType: "Asset Type",
     purchasedCost: "Purchased Cost",
     workflowCreatedDateRange: "Workflow Created Date"
+  },
+  "spare-parts": {
+    purchaseDateRange: "Purchase Date",
+    category: "Category",
+    brand: "Brand",
+    currentStatus: "Status",
+    partNumber: "Part Number",
+    serialNumber: "Serial Number",
+    model: "Model",
+    lotId: "Lot ID",
+    vendor: "Vendor",
+    invoiceNumber: "Invoice Number",
+    assetId: "Asset ID",
+    issuedDateRange: "Issued On",
+    unitPrice: "Unit Price",
+    uom: "UoM",
   },
   "usage-based-asset": {
     assetId: "Asset ID",
@@ -548,6 +570,35 @@ export const REPORTS = [
       "Asset ID", "Asset Name", "Asset Type", "Serial Number", "Department", "Branch",
       "Quality Certificates", "Maintenance Certificates", "Certificate Date", "Status"
     ],
+  },
+  {
+    id: "spare-parts",
+    name: "Spare Parts Report",
+    description: "Stock, purchase, and issue status for spare parts, with category, brand, and status filters.",
+    quickFields: [
+      { key: "purchaseDateRange", label: "Purchase Date", type: "daterange" },
+      { key: "category", label: "Category", type: "multiselect", domain: [] },
+      { key: "brand", label: "Brand", type: "multiselect", domain: [] },
+      { key: "currentStatus", label: "Current Status", type: "multiselect", domain: ["Available", "Requested", "Reserved", "Used"] },
+    ],
+    fields: [
+      { key: "partNumber", label: "Part Number", type: "multiselect", domain: [] },
+      { key: "serialNumber", label: "Serial Number", type: "text" },
+      { key: "model", label: "Model", type: "multiselect", domain: [] },
+      { key: "lotId", label: "Lot ID", type: "multiselect", domain: [] },
+      { key: "vendor", label: "Vendor", type: "multiselect", domain: [] },
+      { key: "invoiceNumber", label: "Invoice Number", type: "text" },
+      { key: "assetId", label: "Asset ID", type: "multiselect", domain: [] },
+      { key: "issuedDateRange", label: "Issued Date", type: "daterange" },
+      { key: "unitPrice", label: "Unit Price", type: "number" },
+      { key: "belowSafety", label: "Below Safety Stock", type: "select", domain: ["Yes", "No"] },
+      { key: "uom", label: "UoM", type: "multiselect", domain: [] },
+    ],
+    defaultColumns: [
+      "Serial Number", "Part Number", "Category", "Brand", "Model", "UoM",
+      "Status", "Available Qty", "Store", "Vendor", "Purchase Date", "Unit Price"
+    ],
+    allColumns: ALL_COLUMNS["spare-parts"] || [],
   },
 ];
 
