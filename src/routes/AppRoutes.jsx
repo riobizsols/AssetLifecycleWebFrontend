@@ -100,6 +100,7 @@ import WorkorderManagement from "../pages/WorkorderManagement";
 import WorkOrderDetail from "../pages/WorkOrderDetail";
 import AssetReport from "../pages/reports/AssetReport";
 import AssetLifecycleReport from "../pages/reports/AssetLifecycleReport";
+import SparePartsReport from "../pages/reports/SparePartsReport";
 import MaintenanceHistory from "../pages/reports/MaintenanceHistory";
 import AssetValuation from "../pages/reports/AssetValuation";
 import AssetWorkflowHistory from "../pages/reports/AssetWorkflowHistory";
@@ -476,6 +477,17 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="ASSETLIFECYCLEREPORT">
               <MainLayout>
                 <AssetLifecycleReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/reports/spare-parts-report"
+          element={
+            <ProtectedRoute requiredAppId="SPAREPARTSREPORT">
+              <MainLayout>
+                <SparePartsReport />
               </MainLayout>
             </ProtectedRoute>
           }

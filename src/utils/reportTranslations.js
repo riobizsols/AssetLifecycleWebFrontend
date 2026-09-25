@@ -17,6 +17,15 @@ export const getTranslatedFieldLabel = (key) => {
     'assetId': t('reports.fieldLabels.assetId'),
     'assetName': t('reports.fieldLabels.assetName'),
     'category': t('reports.fieldLabels.category'),
+    'brand': t('reports.fieldLabels.brand'),
+    'partNumber': t('reports.fieldLabels.partNumber'),
+    'serialNumber': t('reports.fieldLabels.serialNumber'),
+    'model': t('reports.fieldLabels.model'),
+    'lotId': t('reports.fieldLabels.lotId'),
+    'issuedDateRange': t('reports.fieldLabels.issuedDate'),
+    'unitPrice': t('reports.fieldLabels.unitPrice'),
+    'belowSafety': t('reports.fieldLabels.belowSafety'),
+    'uom': t('reports.fieldLabels.uom'),
     'location': t('reports.fieldLabels.location'),
     'department': t('reports.fieldLabels.department'),
     'vendor': t('reports.fieldLabels.vendor'),
@@ -70,6 +79,10 @@ export const getTranslatedReportInfo = (reportId) => {
     'asset-lifecycle': {
       name: t('reports.assetLifecycleReport.name'),
       description: t('reports.assetLifecycleReport.description')
+    },
+    'spare-parts': {
+      name: t('reports.sparePartsReport.name'),
+      description: t('reports.sparePartsReport.description')
     },
     'asset-register': {
       name: t('reports.assetRegisterReport.name'),

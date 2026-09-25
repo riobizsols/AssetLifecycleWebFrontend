@@ -30,6 +30,7 @@ export const APP_ID_TO_PATH = {
   REPORTBREAKDOWN: '/report-breakdown',
   'EMPLOYEE REPORT BREAKDOWN': '/employee-report-breakdown',
   ASSETLIFECYCLEREPORT: '/reports/asset-lifecycle-report',
+  SPAREPARTSREPORT: '/reports/spare-parts-report',
   ASSETREPORT: '/reports/asset-report',
   MAINTENANCEHISTORY: '/reports/maintenance-history',
   ASSETVALUATION: '/reports/asset-valuation',

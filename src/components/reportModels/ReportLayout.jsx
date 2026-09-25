@@ -276,6 +276,20 @@ export default function ReportLayout({
     switch (fieldKey) {
       case 'category':
         return filterOptions.categories || [];
+      case 'brand':
+        return Array.isArray(filterOptions.brands) ? filterOptions.brands : null;
+      case 'model':
+        return Array.isArray(filterOptions.models) ? filterOptions.models : null;
+      case 'uom':
+        return Array.isArray(filterOptions.uoms) ? filterOptions.uoms : null;
+      case 'currentStatus':
+        return Array.isArray(filterOptions.statuses) && filterOptions.statuses.length > 0
+          ? filterOptions.statuses
+          : null;
+      case 'partNumber':
+        return Array.isArray(filterOptions.part_numbers) ? filterOptions.part_numbers : null;
+      case 'lotId':
+        return Array.isArray(filterOptions.lot_options) ? filterOptions.lot_options : null;
       case 'location':
         return filterOptions.locations || [];
       case 'department': {
@@ -310,6 +324,9 @@ export default function ReportLayout({
         return filterOptions.vendor_options || [];
       case 'assetId':
       case 'assets':
+        if (Array.isArray(filterOptions.asset_options) && !filterOptions.assets) {
+          return filterOptions.asset_options;
+        }
         // Transform assets to dropdown format: {value: asset_id, label: asset_id - asset_name}
         // Use description for asset name (not text which is asset type name)
         if (filterOptions.assets && Array.isArray(filterOptions.assets)) {

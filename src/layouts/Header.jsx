@@ -185,10 +185,13 @@ export default function Header() {
       subtitle:
         "Institution-wide asset count, values, distribution and category mix.",
     },
+    "/reports/spare-parts-report": {
+      title: t("navigation.sparePartsReport"),
+      subtitle: "",
+    },
     "/reports/maintenance-status": {
       title: t("navigation.maintenanceStatusReport"),
-      subtitle:
-        "Due, overdue, completed maintenance and expiry for facility asset types.",
+      subtitle: "",
     },
     "/reports/reopened-breakdowns": {
       title: t("reports.reopenedBreakdowns.title"),
