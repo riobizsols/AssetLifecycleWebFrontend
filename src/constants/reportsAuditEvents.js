@@ -22,7 +22,6 @@ export const REPORTS_APP_IDS = {
   OUT_OF_STOCK_REPORT: 'OUTOFSTOCKREPORT',
   PURCHASE_REQUIREMENT_REPORT: 'PURCHASEREQUIREMENTREPORT',
   WORKFORCE_REPORT: 'WORKFORCEREPORT',
-  SPARE_PARTS_REPORT: 'SPAREPARTMGMT',
 };
 
 /**
@@ -93,7 +92,6 @@ export const getAppIdForReport = (reportType) => {
     'out-of-stock': REPORTS_APP_IDS.OUT_OF_STOCK_REPORT,
     'purchase-requirement': REPORTS_APP_IDS.PURCHASE_REQUIREMENT_REPORT,
     workforce: REPORTS_APP_IDS.WORKFORCE_REPORT,
-    'spare-parts-report': REPORTS_APP_IDS.SPARE_PARTS_REPORT,
   };
   
   return reportTypeMap[reportType] || null;

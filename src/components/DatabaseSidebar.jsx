@@ -1670,7 +1670,7 @@ const DatabaseSidebar = () => {
     SPAREPARTLIST: "/spare-part-list",
     SPAREPARTISSUE: "/spare-part-issue",
     SPAREPARTAPPROVAL: "/spare-part-approval",
-    SPAREPARTMGMT: "/reports/spare-parts-report",
+    SPAREPARTMGMT: "/spare-part-management",
     REPORTBREAKDOWN: "/report-breakdown", // Unique route for reports //done
     "EMPLOYEE REPORT BREAKDOWN": "/employee-report-breakdown", // Employee Report Breakdown route //done
     // Report routes
@@ -2065,7 +2065,7 @@ const DatabaseSidebar = () => {
       return ["/spare-part-list", "/spare-part-list-detail"];
     }
     if (key === "SPAREPARTMGMT") {
-      return ["/reports/spare-parts-report", "/spare-part-management"];
+      return ["/spare-part-management"];
     }
     if (key === "SPAREPARTISSUE") {
       return ["/spare-part-issue"];
