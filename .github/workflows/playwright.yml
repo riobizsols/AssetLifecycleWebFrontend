@@ -15,7 +15,7 @@ name: Playwright E2E
 on:
   workflow_dispatch:
   push:
-    branches: [Niranjan-Prod, main, master]
+    branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
     paths:
       - 'e2e/**'
       - 'playwright.config.js'
@@ -24,7 +24,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
   pull_request:
-    branches: [Niranjan-Prod, main, master]
+    branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
     paths:
       - 'e2e/**'
       - 'playwright.config.js'
@@ -44,11 +44,26 @@ jobs:
       - name: Checkout frontend
         uses: actions/checkout@v4
 
+      - name: Resolve backend branch
+        id: backend_ref
+        run: |
+          REF="${{ github.head_ref || github.ref_name }}"
+          case "$REF" in
+            Niranjan-Prod|sanjana-prod|Harshini-Prod|production)
+              BACKEND_REF="$REF"
+              ;;
+            *)
+              BACKEND_REF="Niranjan-Prod"
+              ;;
+          esac
+          echo "ref=$BACKEND_REF" >> "$GITHUB_OUTPUT"
+          echo "Using backend branch: $BACKEND_REF"
+
       - name: Checkout backend
         uses: actions/checkout@v4
         with:
           repository: riobizsols/AssetLifecycleBackend
-          ref: Niranjan-Prod
+          ref: ${{ steps.backend_ref.outputs.ref }}
           token: ${{ secrets.GH_PAT }}
           path: backend
 
@@ -100,6 +115,7 @@ jobs:
             echo "JWT_SECRET=${E2E_JWT_SECRET}"
             echo "CACHE_ENABLED=false"
             echo "DB_SSL=false"
+            echo "SKIP_LOGIN_NAV_SYNC=true"
           } > .env
 
       - name: Start backend
