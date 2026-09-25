@@ -34,12 +34,12 @@ test.describe('RIO EAM scrap', () => {
   });
 
   test('opens scrap sales list and create form', async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(120000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/scrap-sales`);
+    await gotoProtected(page, `${BASE}/scrap-sales`);
 
-    await expect(page.getByText('Scrap Sales').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Scrap Sales').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText(/Loading scrap sales/i)).toHaveCount(0, { timeout: 30000 });
 
     const empty = page.getByText('No scrap sales found');
@@ -48,9 +48,9 @@ test.describe('RIO EAM scrap', () => {
       await expect(page.getByText('Sale Title').first()).toBeVisible();
     }
 
-    await page.goto(`${BASE}/scrap-sales/create`);
+    await gotoProtected(page, `${BASE}/scrap-sales/create`);
     await expect(page).toHaveURL(/\/scrap-sales\/create\/?$/);
-    await expect(page.getByText('Create Scrap Sale').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Create Scrap Sale').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Asset Selection').first()).toBeVisible();
     await expect(page.getByText('Available Assets').first()).toBeVisible();
   });

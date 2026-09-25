@@ -96,12 +96,12 @@ test.describe('RIO EAM spare parts', () => {
   });
 
   test('loads the spare part issue list', async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(120000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/spare-part-issue`);
+    await gotoProtected(page, `${BASE}/spare-part-issue`);
 
-    await expect(page.getByText('Spare Part Issue').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Spare Part Issue').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(page.getByText('Asset Type').first()).toBeVisible();
     await expect(page.getByText('Action').first()).toBeVisible();

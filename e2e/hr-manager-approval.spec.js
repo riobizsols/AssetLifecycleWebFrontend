@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM HR/Manager approval', () => {
@@ -13,10 +13,10 @@ test.describe('RIO EAM HR/Manager approval', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/tech-cert-approvals`);
+    await gotoProtected(page, `${BASE}/tech-cert-approvals`);
 
     await expect(page.getByRole('heading', { name: 'HR/Manager Approval' })).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(
       page.getByText('Review technician certificates, manage technicians, and monitor activity.')

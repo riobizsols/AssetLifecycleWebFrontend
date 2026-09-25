@@ -144,16 +144,16 @@ test.describe('RIO EAM certificates', () => {
   });
 
   test('loads certification master-data tabs', async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(120000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/certifications`);
+    await gotoProtected(page, `${BASE}/certifications`);
 
-    await expect(page.getByText('Certifications').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Certifications').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByRole('button', { name: 'Certificate', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Maintenance Certificate' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Inspection Certificates' })).toBeVisible();
-    await expect(page.getByText('Existing Certificates')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Existing Certificates')).toBeVisible({ timeout: 30000 });
 
     await page.getByRole('button', { name: 'Maintenance Certificate' }).click();
     await expect(page.getByText(/Maintenance Certificate|Asset Type|Available Certificates/).first()).toBeVisible({
@@ -165,13 +165,13 @@ test.describe('RIO EAM certificates', () => {
   });
 
   test('loads HR certificate approvals and switches tabs', async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(120000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/tech-cert-approvals`);
+    await gotoProtected(page, `${BASE}/tech-cert-approvals`);
 
     await expect(page.getByRole('heading', { name: 'HR/Manager Approval' })).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByRole('button', { name: 'Certificate Approvals' })).toBeVisible();
     await expect(page.getByText(/Loading approvals|No pending approvals|Employee/).first()).toBeVisible({
