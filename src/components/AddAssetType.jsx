@@ -247,21 +247,8 @@ const AddAssetType = () => {
       // Make API call
       const response = await API.post('/asset-types', formData);
 
-      // Log create action after successful creation
-      await recordActionByNameWithFetch('Create', {
-        assetTypeId: response.data?.asset_type?.asset_type_id,
-        assetTypeName: assetType.trim(),
-        assignmentType: assignmentType,
-        maintenanceSchedule: requireMaintenance,
-        requireSpareParts: requireMaintenance ? requireSpareParts : false,
-        inspectionRequired: requireInspection,
-        groupRequired: groupRequired,
-        status: isActive ? 'Active' : 'Inactive',
-        parentAssetType: parentChild === "child" ? selectedParentType : null,
-        action: 'Asset Type Created'
-      });
-
       const createdName = assetType.trim();
+      // Toast before audit so a slow audit write never blocks user feedback / navigation.
       showBackendTextToast({
         toast,
         tmdId: 'TMD_ASSET_TYPE_CREATED_SUCCESSFULLY_FD64A758',
@@ -269,6 +256,25 @@ const AddAssetType = () => {
         values: { name: createdName },
         type: 'success',
       });
+
+      // Log create action after successful creation (non-blocking for UX)
+      try {
+        await recordActionByNameWithFetch('Create', {
+          assetTypeId: response.data?.asset_type?.asset_type_id,
+          assetTypeName: assetType.trim(),
+          assignmentType: assignmentType,
+          maintenanceSchedule: requireMaintenance,
+          requireSpareParts: requireMaintenance ? requireSpareParts : false,
+          inspectionRequired: requireInspection,
+          groupRequired: groupRequired,
+          status: isActive ? 'Active' : 'Inactive',
+          parentAssetType: parentChild === "child" ? selectedParentType : null,
+          action: 'Asset Type Created'
+        });
+      } catch (auditErr) {
+        console.error('Asset type create audit log failed', auditErr);
+      }
+
       // Upload checklist files if any are provided
       const newId = response.data?.asset_type?.asset_type_id;
       console.log('Asset type creation response:', response.data);
