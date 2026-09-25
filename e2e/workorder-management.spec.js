@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM workorder management', () => {
@@ -11,9 +11,9 @@ test.describe('RIO EAM workorder management', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/workorder-management`);
+    await gotoProtected(page, `${BASE}/workorder-management`);
 
-    await expect(page.getByText('Work Order Management').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Work Order Management').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading work orders...')).toHaveCount(0, { timeout: 30000 });
 
     await expect(page.getByText('Description').first()).toBeVisible();

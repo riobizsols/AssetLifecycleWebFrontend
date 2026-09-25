@@ -27,6 +27,8 @@ async function isLoginPage(page) {
  */
 export async function waitForAppShell(page, opts = {}) {
   const timeoutMs = opts.timeoutMs ?? 90000;
+  if (page.isClosed()) return;
+
   const loader = bootLoadingLocator(page);
 
   const cleared = await loader
@@ -35,11 +37,15 @@ export async function waitForAppShell(page, opts = {}) {
     .then(() => true)
     .catch(() => false);
 
-  if (cleared || (await loader.count()) === 0) {
+  if (page.isClosed()) return;
+
+  const remaining = await loader.count().catch(() => 0);
+  if (cleared || remaining === 0) {
     return;
   }
 
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+  if (page.isClosed()) return;
   await expect(loader).toHaveCount(0, { timeout: timeoutMs });
 }
 

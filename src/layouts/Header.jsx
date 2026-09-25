@@ -70,7 +70,7 @@ export default function Header() {
     },
     "/utilities/consumption": {
       title: "Record Utility Consumption",
-      subtitle: "Enter meter readings or quantities (999 / 9999 rollover).",
+      subtitle: "",
     },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
@@ -206,10 +206,13 @@ export default function Header() {
       subtitle:
         "Vendor response, resolution SLA, breaches, repeat failures and service ratings.",
     },
+    "/reports/spare-parts-report": {
+      title: t("navigation.sparePartsReport") || "Spare Parts Report",
+      subtitle: "",
+    },
     "/reports/maintenance-status": {
       title: t("navigation.maintenanceStatusReport"),
-      subtitle:
-        "Due, overdue, completed maintenance and expiry for facility asset types.",
+      subtitle: "",
     },
     "/reports/workforce": {
       title: "Engineering Team Productivity Report",

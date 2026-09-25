@@ -121,29 +121,45 @@ const Dashboard = () => {
                       <h4 className="text-sm font-semibold text-gray-700 mb-3">
                         {t('dashboard.overlaps') || 'Overlaps (Assets in Multiple Categories)'}
                       </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {summary.overlaps.assigned_and_maintenance > 0 && (
-                          <div className="bg-blue-50 rounded p-2">
-                            <p className="text-xs text-gray-600">{t('dashboard.assignedAndMaintenance') || 'Assigned + Maintenance'}</p>
-                            <p className="text-lg font-bold text-blue-700">{summary.overlaps.assigned_and_maintenance}</p>
+                          <div className="flex items-center justify-between gap-3 rounded-lg bg-blue-50 px-3 py-3">
+                            <p className="min-w-0 flex-1 text-xs leading-snug text-gray-600">
+                              {t('dashboard.assignedAndMaintenance') || 'Assigned + Maintenance'}
+                            </p>
+                            <p className="shrink-0 text-lg font-bold tabular-nums text-blue-700">
+                              {summary.overlaps.assigned_and_maintenance}
+                            </p>
                           </div>
                         )}
                         {summary.overlaps.assigned_and_decommissioned > 0 && (
-                          <div className="bg-yellow-50 rounded p-2">
-                            <p className="text-xs text-gray-600">{t('dashboard.assignedAndDecommissioned') || 'Assigned + Decommissioned'}</p>
-                            <p className="text-lg font-bold text-yellow-700">{summary.overlaps.assigned_and_decommissioned}</p>
+                          <div className="flex items-center justify-between gap-3 rounded-lg bg-yellow-50 px-3 py-3">
+                            <p className="min-w-0 flex-1 text-xs leading-snug text-gray-600">
+                              {t('dashboard.assignedAndDecommissioned') || 'Assigned + Decommissioned'}
+                            </p>
+                            <p className="shrink-0 text-lg font-bold tabular-nums text-yellow-700">
+                              {summary.overlaps.assigned_and_decommissioned}
+                            </p>
                           </div>
                         )}
                         {summary.overlaps.maintenance_and_decommissioned > 0 && (
-                          <div className="bg-orange-50 rounded p-2">
-                            <p className="text-xs text-gray-600">{t('dashboard.maintenanceAndDecommissioned') || 'Maintenance + Decommissioned'}</p>
-                            <p className="text-lg font-bold text-orange-700">{summary.overlaps.maintenance_and_decommissioned}</p>
+                          <div className="flex items-center justify-between gap-3 rounded-lg bg-orange-50 px-3 py-3">
+                            <p className="min-w-0 flex-1 text-xs leading-snug text-gray-600">
+                              {t('dashboard.maintenanceAndDecommissioned') || 'Maintenance + Decommissioned'}
+                            </p>
+                            <p className="shrink-0 text-lg font-bold tabular-nums text-orange-700">
+                              {summary.overlaps.maintenance_and_decommissioned}
+                            </p>
                           </div>
                         )}
                         {summary.overlaps.all_three > 0 && (
-                          <div className="bg-red-50 rounded p-2">
-                            <p className="text-xs text-gray-600">{t('dashboard.allThree') || 'All Three Categories'}</p>
-                            <p className="text-lg font-bold text-red-700">{summary.overlaps.all_three}</p>
+                          <div className="flex items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-3">
+                            <p className="min-w-0 flex-1 text-xs leading-snug text-gray-600">
+                              {t('dashboard.allThree') || 'All Three Categories'}
+                            </p>
+                            <p className="shrink-0 text-lg font-bold tabular-nums text-red-700">
+                              {summary.overlaps.all_three}
+                            </p>
                           </div>
                         )}
                       </div>

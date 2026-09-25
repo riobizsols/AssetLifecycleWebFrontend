@@ -150,7 +150,7 @@ export default function UtilityConsumption() {
 
   const submit = async () => {
     if (!utilId) return toast.error('Utility is required');
-    if (!utildId) return toast.error('Measurement profile is required');
+    if (!utildId) return toast.error('Consumption metric is required');
     if (!date) return toast.error('Consumption date is required');
     setSaving(true);
     try {
@@ -167,11 +167,7 @@ export default function UtilityConsumption() {
         payload.quantity_consumed = Number(quantity);
       }
       const row = await utilityService.createConsumption(payload);
-      toast.success(
-        row.rolled_over
-          ? `Saved with meter rollover · consumed ${row.quantity_consumed}`
-          : `Saved · consumed ${row.quantity_consumed ?? '—'}`,
-      );
+      toast.success(`Saved · consumed ${row.quantity_consumed ?? '—'}`);
       setReading('');
       setQuantity('');
       setPreview(null);
@@ -208,7 +204,7 @@ export default function UtilityConsumption() {
                 ))}
               </select>
             </UtilityField>
-            <UtilityField label="Measurement profile" required>
+            <UtilityField label="Choose consumption metric" required>
               <select
                 className={utilityInputClass}
                 value={utildId}
@@ -217,13 +213,13 @@ export default function UtilityConsumption() {
                 disabled={!utilId}
               >
                 <option value="">
-                  {utilId ? 'Select measurement profile' : 'Select utility first'}
+                  {utilId ? 'Choose consumption metric' : 'Select utility first'}
                 </option>
                 {profilesForUtility.map((d) => (
                   <option key={d.utild_id} value={d.utild_id}>
                     {d.utility_sh}
                     {d.consumption_type ? ` · ${d.consumption_type}` : ''}
-                    {d.meter_max ? ` · max ${d.meter_max}` : ''}
+                    {d.meter_max ? ` · Maximum Reading ${d.meter_max}` : ''}
                   </option>
                 ))}
               </select>
@@ -280,16 +276,8 @@ export default function UtilityConsumption() {
                       ? '— (first / baseline reading)'
                       : preview.preview.quantity_consumed}
                   </strong>
-                  {preview.preview?.rolled_over ? (
-                    <span className="ml-2 font-semibold text-[#B54708]">
-                      rollover at {selected?.meter_max}
-                    </span>
-                  ) : null}
                 </div>
               </div>
-              <p className="mt-1 text-xs text-[#5A6B7C]">
-                If current &lt; previous: (meter_max − previous) + current
-              </p>
             </div>
           )}
 
@@ -307,20 +295,19 @@ export default function UtilityConsumption() {
 
         <UtilityPanel title="Recent records" bodyClassName="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-[#0E2F4B] text-left text-[11px] uppercase tracking-wide text-white">
                 <tr>
                   <th className="px-4 py-2.5 font-semibold">Date</th>
                   <th className="px-4 py-2.5 font-semibold">Utility</th>
                   <th className="px-4 py-2.5 font-semibold">Reading</th>
                   <th className="px-4 py-2.5 font-semibold">Qty consumed</th>
-                  <th className="px-4 py-2.5 font-semibold">Notes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8EEF4]">
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-sm text-[#5A6B7C]">
+                    <td colSpan={4} className="px-4 py-12 text-center text-sm text-[#5A6B7C]">
                       No consumption recorded yet
                     </td>
                   </tr>
@@ -343,11 +330,7 @@ export default function UtilityConsumption() {
                     <td className="px-4 py-2.5 text-[#334155]">{r.reading ?? '—'}</td>
                     <td className="px-4 py-2.5 text-[#334155]">
                       {r.quantity_consumed ?? '—'}
-                      {r.rolled_over ? (
-                        <span className="ml-1 text-xs text-[#B54708]">rollover</span>
-                      ) : null}
                     </td>
-                    <td className="px-4 py-2.5 text-[#5A6B7C]">{r.notes || '—'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -246,20 +246,20 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
           <div className="space-y-3">
                          <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                <h4 className="font-medium text-blue-900 mb-2">{t('dashboard.maintenanceScheduleGeneration')}</h4>
-               <div className="space-y-1 text-sm">
-                 <div className="flex justify-between">
+               <div className="space-y-2 text-sm">
+                 <div className="grid grid-cols-1 gap-1 sm:grid-cols-[8rem_1fr] sm:items-baseline sm:gap-x-3">
                    <span className="text-blue-700">{t('dashboard.schedule')}:</span>
-                   <span className="font-mono text-blue-900">0 0 * * *</span>
+                   <span className="font-mono text-blue-900 break-all">0 0 * * *</span>
                  </div>
-                 <div className="flex justify-between">
+                 <div className="grid grid-cols-1 gap-1 sm:grid-cols-[8rem_1fr] sm:items-baseline sm:gap-x-3">
                    <span className="text-blue-700">{t('dashboard.timezone')}:</span>
                    <span className="text-blue-900">Asia/Kolkata (IST)</span>
                  </div>
-                 <div className="flex justify-between">
+                 <div className="grid grid-cols-1 gap-1 sm:grid-cols-[8rem_1fr] sm:items-baseline sm:gap-x-3">
                    <span className="text-blue-700">{t('dashboard.nextRun')}:</span>
                    <span className="text-blue-900">{getNextRunTime()}</span>
                  </div>
-                 <div className="flex justify-between">
+                 <div className="grid grid-cols-1 gap-1 sm:grid-cols-[8rem_1fr] sm:items-baseline sm:gap-x-3">
                    <span className="text-blue-700">{t('dashboard.status')}:</span>
                    <span className={`font-medium ${maintenanceRunning ? 'text-amber-600' : 'text-green-600'}`}>
                      {maintenanceRunning ? `Running (${currentRun.status})` : t('dashboard.active')}
@@ -331,20 +331,20 @@ const CronJobMonitor = ({ deferMs = 0 }) => {
             {/* Vendor Contract Renewal Section */}
             <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
               <h4 className="font-medium text-purple-900 mb-2">{t('dashboard.vendorContractRenewal') || 'Vendor Contract Renewal'}</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
+              <div className="space-y-2 text-sm">
+                <div className="grid grid-cols-1 gap-1 sm:grid-cols-[8rem_1fr] sm:items-baseline sm:gap-x-3">
                   <span className="text-purple-700">{t('dashboard.schedule')}:</span>
-                  <span className="font-mono text-purple-900">0 8 * * *</span>
+                  <span className="font-mono text-purple-900 break-all">0 8 * * *</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="grid grid-cols-1 gap-1 sm:grid-cols-[8rem_1fr] sm:items-baseline sm:gap-x-3">
                   <span className="text-purple-700">{t('dashboard.timezone')}:</span>
                   <span className="text-purple-900">Asia/Kolkata (IST)</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="grid grid-cols-1 gap-1 sm:grid-cols-[8rem_1fr] sm:items-baseline sm:gap-x-3">
                   <span className="text-purple-700">{t('dashboard.nextRun')}:</span>
                   <span className="text-purple-900">Daily at 8:00 AM IST</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="grid grid-cols-1 gap-1 sm:grid-cols-[8rem_1fr] sm:items-baseline sm:gap-x-3">
                   <span className="text-purple-700">{t('dashboard.status')}:</span>
                   <span className="text-green-600 font-medium">{t('dashboard.active')}</span>
                 </div>

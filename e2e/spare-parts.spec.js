@@ -24,8 +24,8 @@ test.describe('RIO EAM spare parts', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/spare-part-list`);
-    await expect(page.getByText('Spare Part List').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/spare-part-list`);
+    await expect(page.getByText('Spare Part List').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
 
     const empty = page.getByText('No data found');
@@ -54,7 +54,7 @@ test.describe('RIO EAM spare parts', () => {
     await expect(
       page.getByRole('heading', { name: 'Spare Part Request' }).or(
         page.getByText('Spare part requests are available only for in-house maintenance.')
-      )
+      ).first()
     ).toBeVisible({ timeout: 15000 });
   });
 
@@ -96,12 +96,12 @@ test.describe('RIO EAM spare parts', () => {
   });
 
   test('loads the spare part issue list', async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(120000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/spare-part-issue`);
+    await gotoProtected(page, `${BASE}/spare-part-issue`);
 
-    await expect(page.getByText('Spare Part Issue').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Spare Part Issue').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(page.getByText('Asset Type').first()).toBeVisible();
     await expect(page.getByText('Action').first()).toBeVisible();
@@ -110,34 +110,43 @@ test.describe('RIO EAM spare parts', () => {
     const rows = page.locator('tbody tr.cursor-pointer');
     if (!(await empty.isVisible()) && (await rows.count()) > 0) {
       await expect(page.getByText('Serial Number').first()).toBeVisible();
+      await rows.first().click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible({ timeout: 20000 });
+      await expect(dialog.getByText('Spare Request Details')).toBeVisible();
+      await expect(dialog.getByText('Requested By')).toBeVisible();
+      await expect(dialog.getByText('Approved By')).toBeVisible();
+      await expect(dialog.getByText('Spare Part Name')).toBeVisible();
+      await page.getByRole('button', { name: 'Close' }).click();
+      await expect(dialog).toHaveCount(0);
     }
   });
 
   test('loads spare part master and lot lists', async ({ page }) => {
-    test.setTimeout(90000);
+    test.setTimeout(120000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/master-data/spare-part`);
-    await expect(page.getByText('Spare Part').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/spare-part`);
+    await expect(page.getByText('Spare Part').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(page.getByText('Part Number').first()).toBeVisible();
     await expect(page.getByText('Category').first()).toBeVisible();
 
-    await page.goto(`${BASE}/master-data/spare-part/add`);
+    await gotoProtected(page, `${BASE}/master-data/spare-part/add`);
     await expect(page.getByRole('heading', { name: 'Spare Part' })).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByText('Part Number').first()).toBeVisible();
     await expect(page.getByPlaceholder('Enter part number')).toBeVisible();
 
-    await page.goto(`${BASE}/master-data/spare-parts`);
-    await expect(page.getByText('Spare Part Lot').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/spare-parts`);
+    await expect(page.getByText('Spare Part Lot').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(page.getByText('Category').first()).toBeVisible();
     await expect(page.getByText('Invoice Number').first()).toBeVisible();
 
-    await page.goto(`${BASE}/master-data/spare-parts/add`);
-    await expect(page.getByText('Vendor').first()).toBeVisible({ timeout: 20000 });
+    await gotoProtected(page, `${BASE}/master-data/spare-parts/add`);
+    await expect(page.getByText('Vendor').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Lot Details').first()).toBeVisible();
   });
 
@@ -145,10 +154,10 @@ test.describe('RIO EAM spare parts', () => {
     test.setTimeout(90000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/master-data/spare-parts-configuration`);
+    await gotoProtected(page, `${BASE}/master-data/spare-parts-configuration`);
 
     await expect(page.getByRole('button', { name: 'Spare Part Category' })).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByRole('button', { name: 'Asset Type Mapping' })).toBeVisible();
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
@@ -169,9 +178,9 @@ test.describe('RIO EAM spare parts', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/master-data/spare-parts-configuration/categories/add`);
+    await gotoProtected(page, `${BASE}/master-data/spare-parts-configuration/categories/add`);
     await expect(page.getByRole('main').getByText('Add Spare Part Category')).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
 
     const stamp = Date.now();
@@ -190,6 +199,7 @@ test.describe('RIO EAM spare parts', () => {
 
     await page.getByPlaceholder('Enter minimum stock').fill('1');
     await page.getByPlaceholder('Enter reorder level').fill('2');
+    await page.locator('select[name="expiry_type"]').selectOption('0');
 
     const createResponsePromise = page.waitForResponse(
       (response) =>

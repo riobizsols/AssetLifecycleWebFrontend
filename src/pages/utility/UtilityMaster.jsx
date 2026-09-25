@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Check, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { Check, ChevronDown, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { utilityService } from '../../services/utilityService';
 import {
   UtilityField,
@@ -31,6 +31,8 @@ export default function UtilityMaster() {
   const [detailForm, setDetailForm] = useState(emptyDetail);
   const [editingId, setEditingId] = useState('');
   const [editForm, setEditForm] = useState(emptyDetail);
+  const [nameMenuOpen, setNameMenuOpen] = useState(false);
+  const nameComboRef = useRef(null);
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -96,6 +98,29 @@ export default function UtilityMaster() {
     setSelectedId(utilId);
     setEditingId('');
     setDetailForm(emptyDetail);
+    setNameMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (!nameMenuOpen) return undefined;
+    const onDocMouseDown = (e) => {
+      if (nameComboRef.current && !nameComboRef.current.contains(e.target)) {
+        setNameMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [nameMenuOpen]);
+
+  const onNameChange = (value) => {
+    setHeader((prev) => (prev ? { ...prev, utility_name: value } : prev));
+    setHeaders((prev) =>
+      prev.map((h) =>
+        h.util_id === (selectedId || header?.util_id)
+          ? { ...h, utility_name: value }
+          : h,
+      ),
+    );
   };
 
   const startEditDetail = (d) => {
@@ -271,39 +296,65 @@ export default function UtilityMaster() {
 
         {!showEditor ? (
           <div className="rounded-lg border border-dashed border-[#C9D5E3] bg-white px-6 py-16 text-center text-sm text-[#5A6B7C]">
-            Create a utility above to edit details and measurement profiles.
+            Create a utility above to manage consumption metrics.
           </div>
         ) : (
-          <UtilityPanel title="Utility details & measurement profiles">
+          <UtilityPanel title="Consumption metric">
             <div className={`space-y-5 ${detailLoading ? 'opacity-70' : ''}`}>
               <div className="flex flex-wrap items-end gap-3">
                 <div className="min-w-[220px] flex-1">
                   <UtilityField label="Name" required>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <select
-                        className={`${utilityInputClass} sm:max-w-[220px]`}
-                        value={selectedId || header?.util_id || ''}
-                        onChange={(e) => onSelectUtility(e.target.value)}
-                        aria-label="Select utility"
-                      >
-                        {headers.map((h) => (
-                          <option key={h.util_id} value={h.util_id}>
-                            {h.utility_name}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="relative" ref={nameComboRef}>
                       <input
-                        className={utilityInputClass}
+                        className={`${utilityInputClass} pr-10`}
                         value={header?.utility_name || ''}
-                        onChange={(e) =>
-                          setHeader((prev) =>
-                            prev ? { ...prev, utility_name: e.target.value } : prev,
-                          )
-                        }
-                        placeholder="Edit selected utility name"
+                        onChange={(e) => onNameChange(e.target.value)}
+                        onFocus={() => setNameMenuOpen(true)}
+                        placeholder="Select or edit utility name"
                         required
                         disabled={!header}
+                        aria-autocomplete="list"
+                        aria-expanded={nameMenuOpen}
+                        aria-haspopup="listbox"
                       />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-[#5A6B7C] hover:text-[#0E2F4B] disabled:opacity-50"
+                        onClick={() => setNameMenuOpen((open) => !open)}
+                        disabled={!headers.length}
+                        aria-label="Open utility list"
+                        tabIndex={-1}
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition ${nameMenuOpen ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+                      {nameMenuOpen && headers.length > 0 ? (
+                        <ul
+                          role="listbox"
+                          className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-[#C9D5E3] bg-white py-1 shadow-lg"
+                        >
+                          {headers.map((h) => {
+                            const active = (selectedId || header?.util_id) === h.util_id;
+                            return (
+                              <li key={h.util_id} role="option" aria-selected={active}>
+                                <button
+                                  type="button"
+                                  className={`flex w-full px-3 py-2 text-left text-sm transition ${
+                                    active
+                                      ? 'bg-[#FFF8E1] font-semibold text-[#0E2F4B]'
+                                      : 'text-[#0E2F4B] hover:bg-[#F3F6F9]'
+                                  }`}
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => onSelectUtility(h.util_id)}
+                                >
+                                  {h.utility_name}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
                     </div>
                   </UtilityField>
                 </div>
@@ -338,12 +389,8 @@ export default function UtilityMaster() {
                   <Save className="h-4 w-4" /> Save
                 </button>
               </div>
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-[#0E2F4B]">
-                  Measurement profiles
-                </h3>
 
-                <div className="-mx-4 overflow-x-auto border-y border-[#E8EEF4]">
+              <div className="-mx-4 overflow-x-auto border-y border-[#E8EEF4]">
                   <table className="w-full min-w-[640px] text-sm">
                     <thead className="bg-[#0E2F4B] text-left text-[11px] uppercase tracking-wide text-white">
                       <tr>
@@ -353,7 +400,7 @@ export default function UtilityMaster() {
                         <th className="px-4 py-2.5 font-semibold">Type</th>
                         <th className="px-4 py-2.5 font-semibold">UOM</th>
                         <th className="px-4 py-2.5 font-semibold">Frequency</th>
-                        <th className="px-4 py-2.5 font-semibold">Meter max</th>
+                        <th className="px-4 py-2.5 font-semibold">Maximum Reading</th>
                         <th className="px-4 py-2.5" />
                       </tr>
                     </thead>
@@ -584,7 +631,7 @@ export default function UtilityMaster() {
                     />
                   </UtilityField>
                   {isMeter && (
-                    <UtilityField label="Meter max">
+                    <UtilityField label="Maximum Reading">
                       <select
                         className={utilityInputClass}
                         value={detailForm.meter_max || 999}
@@ -612,7 +659,6 @@ export default function UtilityMaster() {
                     </button>
                   </div>
                 </div>
-              </div>
             </div>
           </UtilityPanel>
         )}

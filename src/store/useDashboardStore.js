@@ -92,6 +92,10 @@ function transformNotifications(notifications) {
       alertType = 'Spare Part Confirmed';
     } else if (notification.workflowType === 'CONSUMPTION_MISS') {
       alertType = 'Consumption Miss Alert';
+    } else if (notification.workflowType === 'STOCK_OUT_OF_STOCK') {
+      alertType = 'Out of stock';
+    } else if (notification.workflowType === 'STOCK_NEEDS_PURCHASE') {
+      alertType = 'Needs purchase';
     } else if (notification.maintenanceType) {
       alertType = notification.maintenanceType;
     }
@@ -112,6 +116,8 @@ function transformNotifications(notifications) {
       alertType === 'Spare Part Confirmed'
     ) {
       alertText = `${notification.assetTypeName || 'Asset'}`;
+    } else if (alertType === 'Out of stock' || alertType === 'Needs purchase') {
+      alertText = notification.body || `${notification.assetTypeName || notification.categoryName || 'Part'}`;
     } else if (String(notification.maintenanceType || '').toLowerCase().includes('subscription')) {
       alertText = `${notification.assetTypeName}`;
     } else if (alertType === 'Vendor Contract Renewal') {
@@ -135,7 +141,9 @@ function transformNotifications(notifications) {
         notification.workflowType === 'SPARE_APPROVAL' ||
         notification.workflowType === 'SPARE_REQUESTED' ||
         notification.workflowType === 'SPARE_ISSUED' ||
-        notification.workflowType === 'SPARE_CONFIRMED'
+        notification.workflowType === 'SPARE_CONFIRMED' ||
+        notification.workflowType === 'STOCK_OUT_OF_STOCK' ||
+        notification.workflowType === 'STOCK_NEEDS_PURCHASE'
           ? false
           : notification.workflowType === 'CONSUMPTION_MISS'
             ? true
@@ -159,6 +167,9 @@ function transformNotifications(notifications) {
       notifyId: notification.notifyId,
       notificationStatus: notification.notificationStatus,
       canChangeVendor: !!notification.canChangeVendor,
+      body: notification.body,
+      title: notification.title,
+      spcId: notification.spcId,
     };
   });
 

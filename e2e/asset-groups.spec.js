@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
-
+import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 
 test.describe('RIO EAM asset groups', () => {
@@ -11,9 +11,9 @@ test.describe('RIO EAM asset groups', () => {
     test.setTimeout(240000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/group-asset`);
+    await gotoProtected(page, `${BASE}/group-asset`);
 
-    await expect(page.getByText('Asset Groups').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Asset Groups').first()).toBeVisible({ timeout: 45000 });
     await expect(page.getByText('Loading asset groups...')).toHaveCount(0, { timeout: 30000 });
 
     const empty = page.getByText('No asset groups found.');
