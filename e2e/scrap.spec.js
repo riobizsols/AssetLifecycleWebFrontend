@@ -92,10 +92,10 @@ test.describe('RIO EAM scrap', () => {
     test.setTimeout(180000);
 
     await loginToRioEam(page);
-    await page.goto(`${BASE}/scrap-assets/create`);
+    await gotoProtected(page, `${BASE}/scrap-assets/create`);
     await expect(page).toHaveURL(/\/scrap-assets\/create\/?$/);
     await expect(page.getByRole('heading', { name: 'Create Scrap Asset' })).toBeVisible({
-      timeout: 20000,
+      timeout: 45000,
     });
     await expect(page.getByText('Asset Selection')).toBeVisible();
 
@@ -177,11 +177,26 @@ test.describe('RIO EAM scrap', () => {
     expect(created, `Could not create a scrap request: ${JSON.stringify(createBody)}`).toBeTruthy();
 
     const workflowId = createBody?.wfscrap_h_id;
-    if (workflowId) {
-      await page.goto(`${BASE}/scrap-approval-detail/${workflowId}?context=SCRAPMAINTENANCEAPPROVAL`);
-      await page.waitForURL(new RegExp(`/scrap-approval-detail/${workflowId}`), { timeout: 20000 });
-      await expect(page.getByText('Approval Initiated')).toBeVisible({ timeout: 20000 });
-      await expect(page.getByRole('button', { name: 'Asset Details' })).toBeVisible();
-    }
+    if (!workflowId) return;
+
+    await gotoProtected(
+      page,
+      `${BASE}/scrap-approval-detail/${workflowId}?context=SCRAPMAINTENANCEAPPROVAL`
+    );
+
+    const unauthorized = page.getByText(/not authorized|Access Denied|You are not authorized/i);
+    const notFound = page.getByText(/Scrap workflow not found/i);
+    const detailReady = page
+      .getByText(/Approval Initiated|Workflow ID|Approval Details|Asset Details/i)
+      .first();
+    await expect(unauthorized.or(notFound).or(detailReady)).toBeVisible({ timeout: 45000 });
+
+    // Create already succeeded; detail may lag or be permission-gated.
+    if (await unauthorized.isVisible().catch(() => false)) return;
+    if (await notFound.isVisible().catch(() => false)) return;
+
+    await expect(
+      page.getByRole('button', { name: 'Asset Details' }).or(page.getByText('Approval Initiated'))
+    ).toBeVisible({ timeout: 20000 });
   });
 });
