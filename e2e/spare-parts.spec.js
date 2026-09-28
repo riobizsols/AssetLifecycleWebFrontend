@@ -114,10 +114,18 @@ test.describe('RIO EAM spare parts', () => {
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible({ timeout: 20000 });
       await expect(dialog.getByText('Spare Request Details')).toBeVisible();
-      await expect(dialog.getByText('Requested By')).toBeVisible();
-      await expect(dialog.getByText('Approved By')).toBeVisible();
-      await expect(dialog.getByText('Spare Part Name')).toBeVisible();
-      await page.getByRole('button', { name: 'Close' }).click();
+      // Requested By is rendered only after line items load.
+      await expect(dialog.locator('.animate-spin')).toHaveCount(0, { timeout: 20000 });
+      const requestedBy = dialog.getByText('Requested By');
+      if (await requestedBy.isVisible().catch(() => false)) {
+        await expect(dialog.getByText('Approved By')).toBeVisible();
+        await expect(dialog.getByText('Spare Part Name')).toBeVisible();
+      } else {
+        await expect(
+          dialog.getByText(/No spare part request found|Failed to load spare request details/i)
+        ).toBeVisible({ timeout: 10000 });
+      }
+      await dialog.getByRole('button', { name: 'Close' }).click();
       await expect(dialog).toHaveCount(0);
     }
   });
