@@ -712,7 +712,7 @@ export default function SparePartManagement() {
     doc.rect(0, 0, doc.internal.pageSize.getWidth(), 48, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
-    doc.text('Spare Part Report', margin, 22);
+    doc.text('Spare part consumption report', margin, 22);
     doc.setFontSize(10);
     doc.text(tabLabel, margin, 38);
 
@@ -785,7 +785,7 @@ export default function SparePartManagement() {
 
       if (hasViewed && activeTab !== 'overview' && previewColumns.length) {
         const tabLabel =
-          TABS.find((t) => t.id === activeTab)?.label || 'Spare Part Report';
+          TABS.find((t) => t.id === activeTab)?.label || 'Spare part consumption report';
         const filtersText = [
           ...activeChips.map((c) => c.label),
           activeTab === 'slow' && fsnFilter !== 'all' ? `FSN: ${fsnFilter}` : null,
@@ -833,7 +833,7 @@ export default function SparePartManagement() {
       const tabLabel =
         TABS.find((t) => t.id === reportType)?.label ||
         TABS.find((t) => t.id === tab)?.label ||
-        'Spare Part Report';
+        'Spare part consumption report';
       const filtersText = activeChips.length
         ? `Filters: ${activeChips.map((c) => c.label).join('  ·  ')}`
         : 'Filters: None';
