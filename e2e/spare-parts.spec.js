@@ -130,6 +130,7 @@ test.describe('RIO EAM spare parts', () => {
   });
 
   test('loads spare part master and lot lists', async ({ page }) => {
+    // Four protected navigations; keep under a hard CI budget.
     test.setTimeout(240000);
 
     await loginToRioEam(page);
