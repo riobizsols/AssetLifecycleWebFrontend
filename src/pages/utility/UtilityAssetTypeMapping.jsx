@@ -135,10 +135,7 @@ export default function UtilityAssetTypeMapping() {
   return (
     <UtilityPageShell loading={loading}>
       <div className="space-y-5">
-        <UtilityPanel
-          title="Create mapping"
-          description="Select a utility, then choose consumption metric, then the asset type."
-        >
+        <UtilityPanel title="Create mapping">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
             <UtilityField label="Utility" required>
               <select
@@ -177,7 +174,6 @@ export default function UtilityAssetTypeMapping() {
                 {profilesForUtility.map((d) => (
                   <option key={d.utild_id} value={d.utild_id}>
                     {d.utility_sh}
-                    {d.consumption_type ? ` (${d.consumption_type})` : ''}
                   </option>
                 ))}
               </select>
@@ -194,7 +190,7 @@ export default function UtilityAssetTypeMapping() {
                       assetTypeOpen
                         ? assetTypeSearch
                         : selectedAssetType
-                          ? `${selectedAssetType.asset_type_name} (${selectedAssetType.asset_type_id})`
+                          ? selectedAssetType.asset_type_name
                           : ''
                     }
                     placeholder={
@@ -259,7 +255,6 @@ export default function UtilityAssetTypeMapping() {
                             onClick={() => selectAssetType(a.asset_type_id)}
                           >
                             <span>{a.asset_type_name}</span>
-                            <span className="text-xs text-[#5A6B7C]">{a.asset_type_id}</span>
                           </button>
                         </li>
                       );
@@ -306,13 +301,9 @@ export default function UtilityAssetTypeMapping() {
                 {mappings.map((m) => (
                   <tr key={m.atum_id} className="bg-white hover:bg-[#F8FAFC]">
                     <td className="px-4 py-3 font-medium text-[#0E2F4B]">{m.utility_name}</td>
-                    <td className="px-4 py-3 text-[#334155]">
-                      {m.utility_sh}
-                      <div className="text-xs text-[#5A6B7C]">{m.utild_id}</div>
-                    </td>
+                    <td className="px-4 py-3 text-[#334155]">{m.utility_sh}</td>
                     <td className="px-4 py-3 text-[#334155]">
                       {m.asset_type_name || m.assettype_id}
-                      <div className="text-xs text-[#5A6B7C]">{m.assettype_id}</div>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button

@@ -218,8 +218,6 @@ export default function UtilityConsumption() {
                 {profilesForUtility.map((d) => (
                   <option key={d.utild_id} value={d.utild_id}>
                     {d.utility_sh}
-                    {d.consumption_type ? ` · ${d.consumption_type}` : ''}
-                    {d.meter_max ? ` · Maximum Reading ${d.meter_max}` : ''}
                   </option>
                 ))}
               </select>

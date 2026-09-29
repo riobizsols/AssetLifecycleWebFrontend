@@ -67,7 +67,7 @@ export default function Header() {
     },
     "/utilities/asset-type-mapping": {
       title: "Utility – Asset Type Mapping",
-      subtitle: "Map utility details to asset types.",
+      subtitle: "",
     },
     "/utilities/consumption": {
       title: "Record Utility Consumption",
