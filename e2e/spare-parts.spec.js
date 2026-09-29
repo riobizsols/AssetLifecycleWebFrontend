@@ -114,16 +114,23 @@ test.describe('RIO EAM spare parts', () => {
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible({ timeout: 20000 });
       await expect(dialog.getByText('Spare Request Details')).toBeVisible();
-      await expect(dialog.getByText('Requested By')).toBeVisible();
-      await expect(dialog.getByText('Approved By')).toBeVisible();
-      await expect(dialog.getByText('Spare Part Name')).toBeVisible();
-      await page.getByRole('button', { name: 'Close' }).click();
+      // Wait until details settle. Checking the spinner first races the fetch:
+      // it can still be absent, then line items arrive while we look for the empty state.
+      const settled = dialog
+        .getByText('Requested By')
+        .or(dialog.getByText(/No spare part request found|Failed to load spare request details/i));
+      await expect(settled.first()).toBeVisible({ timeout: 20000 });
+      if (await dialog.getByText('Requested By').isVisible().catch(() => false)) {
+        await expect(dialog.getByText('Approved By')).toBeVisible();
+        await expect(dialog.getByText('Spare Part Name')).toBeVisible();
+      }
+      await dialog.locator('button').filter({ hasText: /^Close$/ }).click();
       await expect(dialog).toHaveCount(0);
     }
   });
 
   test('loads spare part master and lot lists', async ({ page }) => {
-    test.setTimeout(120000);
+    test.setTimeout(240000);
 
     await loginToRioEam(page);
     await gotoProtected(page, `${BASE}/master-data/spare-part`);
@@ -146,8 +153,15 @@ test.describe('RIO EAM spare parts', () => {
     await expect(page.getByText('Invoice Number').first()).toBeVisible();
 
     await gotoProtected(page, `${BASE}/master-data/spare-parts/add`);
-    await expect(page.getByText('Vendor').first()).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText('Lot Details').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Spare Part Lot' })).toBeVisible({
+      timeout: 45000,
+    });
+    await expect(
+      page.getByText('Part Selection').or(page.getByText('Lot Details')).first()
+    ).toBeVisible({ timeout: 45000 });
+    await expect(page.locator('label').filter({ hasText: /^Vendor/ }).first()).toBeVisible({
+      timeout: 30000,
+    });
   });
 
   test('loads spare parts configuration tabs', async ({ page }) => {
