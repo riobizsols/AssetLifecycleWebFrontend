@@ -66,6 +66,10 @@ export const ALL_COLUMNS = {
     "Lot ID", "Invoice Number", "Purchase Date", "Unit Price",
     "Asset ID", "Asset Name", "Issued On"
   ],
+  "utility-consumption": [
+    "Date", "Utility", "Consumption metric", "Asset", "Asset type",
+    "Reading", "Quantity consumed", "Unit", "Frequency"
+  ],
   "vendor-performance": ["Vendor", "Jobs", "On‑time %", "Avg TAT (hrs)", "FTF %", "Defect %"],
 };
 
@@ -221,6 +225,17 @@ export const FIELD_TO_COLUMN_MAP = {
     createdBy: "Recorded By",
     usageCounterMin: "Usage Counter",
     usageCounterMax: "Usage Counter",
+  },
+  "utility-consumption": {
+    utility: "Utility",
+    consumptionMetric: "Consumption metric",
+    dateRange: "Date",
+    assetType: "Asset type",
+    asset: "Asset",
+    frequency: "Frequency",
+    unit: "Unit",
+    reading: "Reading",
+    quantity: "Quantity consumed",
   },
 };
 
@@ -573,6 +588,29 @@ export const REPORTS = [
       "Status", "Available Qty", "Store", "Vendor", "Purchase Date", "Unit Price"
     ],
     allColumns: ALL_COLUMNS["spare-parts"] || [],
+  },
+  {
+    id: "utility-consumption",
+    name: "Utility Consumption Report",
+    description: "Recorded utility consumption by metric, asset, and date.",
+    quickFields: [
+      { key: "utility", label: "Utility", type: "multiselect", domain: [] },
+      { key: "consumptionMetric", label: "Consumption metric", type: "multiselect", domain: [] },
+      { key: "dateRange", label: "Date", type: "daterange" },
+      { key: "assetType", label: "Asset type", type: "multiselect", domain: [] },
+    ],
+    fields: [
+      { key: "asset", label: "Asset", type: "multiselect", domain: [] },
+      { key: "frequency", label: "Frequency", type: "multiselect", domain: [] },
+      { key: "unit", label: "Unit", type: "multiselect", domain: [] },
+      { key: "reading", label: "Reading", type: "number" },
+      { key: "quantity", label: "Quantity consumed", type: "number" },
+    ],
+    defaultColumns: [
+      "Date", "Utility", "Consumption metric", "Asset", "Asset type",
+      "Quantity consumed", "Unit"
+    ],
+    allColumns: ALL_COLUMNS["utility-consumption"] || [],
   },
 ];
 

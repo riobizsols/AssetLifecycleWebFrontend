@@ -72,6 +72,10 @@ export default function Header() {
       title: "Record Utility Consumption",
       subtitle: "",
     },
+    "/reports/utility-consumption": {
+      title: "Utility Consumption Report",
+      subtitle: "",
+    },
     "/master-data/vendors/add": { title: t('vendors.addVendor'), subtitle: "" },
     "/master-data/prod-serv": { title: t('masterDataTitles.prodServ'), subtitle: "" },
     "/master-data/spare-parts": { title: t('navigation.sparePartLot'), subtitle: "" },

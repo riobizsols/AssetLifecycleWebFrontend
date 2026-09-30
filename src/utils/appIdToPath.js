@@ -62,6 +62,7 @@ export const APP_ID_TO_PATH = {
   UTILITYMASTER: '/utilities/master',
   UTILITYATMAPPING: '/utilities/asset-type-mapping',
   UTILITYCONSUMPTION: '/utilities/consumption',
+  UTILITYREPORT: '/reports/utility-consumption',
   ROLES: '/master-data/uploads',
   USERS: '/master-data/user-roles',
   USERROLES: '/master-data/job-roles',

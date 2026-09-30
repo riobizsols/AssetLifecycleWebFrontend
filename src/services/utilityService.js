@@ -32,6 +32,8 @@ export const utilityService = {
     data(await API.post('/utilities/consumptions/preview', payload)),
   createConsumption: async (payload) =>
     data(await API.post('/utilities/consumptions', payload)),
+  getConsumptionReport: async (params = {}) =>
+    data(await API.get('/utilities/report', { params })),
 };
 
 export default utilityService;

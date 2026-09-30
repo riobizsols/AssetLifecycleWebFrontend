@@ -8,6 +8,7 @@ import { reopenedBreakdownsService } from "../../services/reopenedBreakdownsServ
 import assetWorkflowHistoryService from "../../services/assetWorkflowHistoryService";
 import { slaReportService } from "../../services/slaReportService";
 import { sparePartsReportService } from "../../services/sparePartsReportService";
+import { utilityService } from "../../services/utilityService";
 import API from "../../lib/axios";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getActiveOrgId } from '../../utils/acmContext';
@@ -608,12 +609,46 @@ export function useReportState(reportId, report) {
       };
 
       fetchFilterOptions();
+    } else if (reportId === "utility-consumption") {
+      const fetchFilterOptions = async () => {
+        try {
+          const [details, assetTypes] = await Promise.all([
+            utilityService.listDetails(),
+            utilityService.listAssetTypes(),
+          ]);
+          const utilities = [...new Set((details || []).map((d) => d.utility_name).filter(Boolean))].sort();
+          const metrics = [...new Set((details || []).map((d) => d.utility_sh).filter(Boolean))].sort();
+          const types = [...new Set((assetTypes || []).map((t) => t.asset_type_name || t.text).filter(Boolean))].sort();
+          const frequencies = [...new Set((details || []).map((d) => d.frequency_label).filter(Boolean))].sort();
+          const units = [...new Set((details || []).map((d) => d.uom_name).filter(Boolean))].sort();
+
+          const reportDef = REPORTS.find((r) => r.id === reportId);
+          if (!reportDef) return;
+          const applyDomain = (field) => {
+            if (field.key === "utility") field.domain = utilities;
+            else if (field.key === "consumptionMetric") field.domain = metrics;
+            else if (field.key === "assetType") field.domain = types;
+            else if (field.key === "frequency") field.domain = frequencies;
+            else if (field.key === "unit") field.domain = units;
+          };
+          reportDef.quickFields.forEach(applyDomain);
+          reportDef.fields.forEach(applyDomain);
+          setUpdatedReport({
+            ...reportDef,
+            quickFields: reportDef.quickFields.map((field) => ({ ...field })),
+            fields: reportDef.fields.map((field) => ({ ...field })),
+          });
+        } catch (err) {
+          console.error("[useReportState] Error fetching utility report filters:", err);
+        }
+      };
+      fetchFilterOptions();
     }
   }, [reportId]);
 
   // Dropdown options for legacy reports without filter-options API
   useEffect(() => {
-    if (!["asset-register", "asset-lifecycle", "maintenance-history", "breakdown-history", "asset-workflow-history", "asset-valuation", "reopened-breakdowns", "sla-report", "spare-parts"].includes(reportId)) {
+    if (!["asset-register", "asset-lifecycle", "maintenance-history", "breakdown-history", "asset-workflow-history", "asset-valuation", "reopened-breakdowns", "sla-report", "spare-parts", "utility-consumption"].includes(reportId)) {
       setAllAvailableAssets(fakeRows(reportId, 12));
     }
   }, [reportId]);
@@ -1219,6 +1254,54 @@ export function useReportState(reportId, report) {
       };
 
       fetchSparePartsData();
+    } else if (reportId === "utility-consumption") {
+      const fetchUtilityReport = async () => {
+        await loadReportData({
+          reportId,
+          apiFilters: { limit: 5000 },
+          quick,
+          advancedFetchKey,
+          report,
+          setLoading,
+          setError,
+          setAllRows,
+          setAllAvailableAssets,
+          fallbackRows: [],
+          onRowsLoaded: (rows) => {
+            const assets = [...new Set(rows.map((row) => row.Asset).filter(Boolean))].sort();
+            const reportDef = REPORTS.find((r) => r.id === reportId);
+            const assetField = reportDef?.fields?.find((field) => field.key === "asset");
+            if (assetField && assets.length) {
+              assetField.domain = assets;
+              setUpdatedReport((prev) => {
+                const base = prev || reportDef;
+                return {
+                  ...base,
+                  fields: base.fields.map((field) =>
+                    field.key === "asset" ? { ...field, domain: assets } : { ...field },
+                  ),
+                };
+              });
+            }
+            setForceUpdate((prev) => prev + 1);
+          },
+          fetcher: async () => {
+            const data = await utilityService.getConsumptionReport({ dateOrder: "desc" });
+            return (data?.rows || []).map((row) => ({
+              Date: row.consumption_date ? String(row.consumption_date).slice(0, 10) : "",
+              Utility: row.utility_name || "",
+              "Consumption metric": row.utility_sh || "",
+              Asset: row.asset_name || "",
+              "Asset type": row.asset_type_name || "",
+              Reading: row.reading == null || row.reading === "" ? "" : Number(row.reading),
+              "Quantity consumed": Number(row.quantity_consumed || 0),
+              Unit: row.uom_name || "",
+              Frequency: row.frequency_label || "",
+            }));
+          },
+        });
+      };
+      fetchUtilityReport();
     } else if (reportId === "asset-valuation") {
       // Asset Valuation uses its own service and doesn't need data fetching here
       // as it's handled by the AssetValuation component itself

@@ -60,7 +60,8 @@ export default function ReportLayout({
   hideTable = false,
   hideAdvancedFilters = false,
   hideGenerateReport = false,
-  onPreviewReport
+  onPreviewReport,
+  paginate = false,
 }) {
   const { t } = useLanguage();
   const [isSaving, setIsSaving] = useState(false);
@@ -70,6 +71,8 @@ export default function ReportLayout({
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [selectedAssetType, setSelectedAssetType] = useState(null);
   const [showAssetTypeModal, setShowAssetTypeModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Get translated report configuration
   const translatedReport = useTranslatedReport(report);
@@ -883,6 +886,12 @@ export default function ReportLayout({
     { label: t('reports.exportAsPDF'), action: () => exportPDF(false) } // Don't skip audit log for explicit export
   ];
 
+  const pageCount = Math.max(1, Math.ceil((filteredRows?.length || 0) / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const tableRows = paginate
+    ? filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize)
+    : filteredRows;
+
   // Mock users for sharing (this should come from props or context in real app)
   const USERS = ["Arun Kumar", "Divya T", "Shweta", "Rahul", "Sanjay"];
 
@@ -1628,7 +1637,7 @@ export default function ReportLayout({
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((r, idx) => (
+                    {tableRows.map((r, idx) => (
                       <tr key={idx} className="odd:bg-white even:bg-slate-50">
                         {cols.map((c) => {
                           // Determine alignment based on column type
@@ -1640,7 +1649,9 @@ export default function ReportLayout({
                             "Accumulated Depreciation",
                             "Net Book Value",
                             "Purchase Cost",
-                            "Sale Amount"
+                            "Sale Amount",
+                            "Quantity consumed",
+                            "Reading"
                           ].includes(c);
                           
                           const isDate = [
@@ -1689,6 +1700,50 @@ export default function ReportLayout({
                   </tbody>
                 </table>
               </div>
+              {paginate && filteredRows.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-3 py-2 text-sm text-slate-600">
+                  <div>
+                    {(safePage - 1) * pageSize + 1}
+                    –
+                    {Math.min(safePage * pageSize, filteredRows.length)}
+                    {' '}of {filteredRows.length}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2">
+                      Rows
+                      <select
+                        className="rounded-lg border border-slate-300 bg-white px-2 py-1"
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setPage(1);
+                        }}
+                      >
+                        {[10, 25, 50, 100].map((size) => (
+                          <option key={size} value={size}>{size}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 disabled:opacity-40"
+                      disabled={safePage <= 1}
+                      onClick={() => setPage(safePage - 1)}
+                    >
+                      Previous
+                    </button>
+                    <span>{safePage} / {pageCount}</span>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1 disabled:opacity-40"
+                      disabled={safePage >= pageCount}
+                      onClick={() => setPage(safePage + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             )}
           </main>

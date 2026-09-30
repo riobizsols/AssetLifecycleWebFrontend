@@ -184,6 +184,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "WORKFORCEREPORT",
     "SPAREPARTSREPORT",
     "SPAREPARTMGMT",
+    "UTILITYREPORT",
   ],
 };
 
@@ -1001,6 +1002,37 @@ function ensureSparePartMasterMenu(items) {
   return inject(items);
 }
 
+function ensureUtilityReportMenu(items) {
+  if (!items?.length) return items;
+
+  const inject = (nodes) =>
+    nodes.map((item) => {
+      if (isNavGroup(item) && canonicalGroupLabel(item.label) === "reports") {
+        const children = [...(item.children || [])];
+        if (children.some((child) => normalizeNavAppId(child.app_id) === "UTILITYREPORT")) {
+          return { ...item, children };
+        }
+        const anchor = children[children.length - 1];
+        children.push({
+          id: "ensure-utility-report",
+          app_id: "UTILITYREPORT",
+          label: "Utility Consumption Report",
+          is_group: false,
+          children: undefined,
+          access_level: anchor?.access_level || "A",
+          seq: (anchor?.seq || 20) + 1,
+        });
+        return { ...item, children };
+      }
+      if (item.children?.length) {
+        return { ...item, children: inject(item.children) };
+      }
+      return item;
+    });
+
+  return inject(items);
+}
+
 const UTILITY_MENU_DEFS = [
   { app_id: "UTILITYMASTER", label: "Utility Master", seq: 1 },
   { app_id: "UTILITYATMAPPING", label: "Utility – Asset Type Mapping", seq: 2 },
@@ -1027,7 +1059,13 @@ function ensureUtilityMenus(items) {
   let group = findNavGroupByLabel(items, "Utilities");
 
   if (hasUtility && group) {
-    return items;
+    const childKeys = new Set(
+      (group.children || []).map((child) => normalizeNavAppId(child.app_id)),
+    );
+    const missing = UTILITY_MENU_DEFS.filter(
+      (def) => !childKeys.has(normalizeNavAppId(def.app_id)),
+    );
+    if (!missing.length) return items;
   }
 
   const canInject =
@@ -1233,6 +1271,7 @@ function finalizeSidebarNavigation(items) {
   tree = ensureSparePartIssueMenu(tree);
   tree = ensureSparePartMasterMenu(tree);
   tree = ensureUtilityMenus(tree);
+  tree = ensureUtilityReportMenu(tree);
   tree = ensureDomainNavGroups(tree);
   tree = sortMasterDataNavOrder(tree);
   tree = sortScrapNavOrder(tree);
@@ -1796,6 +1835,7 @@ const DatabaseSidebar = () => {
     UTILITYMASTER: "/utilities/master",
     UTILITYATMAPPING: "/utilities/asset-type-mapping",
     UTILITYCONSUMPTION: "/utilities/consumption",
+    UTILITYREPORT: "/reports/utility-consumption",
     PRODSERV: "/master-data/prod-serv",  //no required
     ROLES: "/master-data/uploads",
     USERS: "/master-data/user-roles",
@@ -1979,6 +2019,7 @@ const DatabaseSidebar = () => {
       UTILITYMASTER: Zap,
       UTILITYATMAPPING: Link2,
       UTILITYCONSUMPTION: Zap,
+      UTILITYREPORT: BarChart3,
       VENDORS: Truck,
       SPAREPARTS: Package,
       SPAREPARTSCONFIG: Package,

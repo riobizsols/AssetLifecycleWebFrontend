@@ -28,9 +28,12 @@ export default function UtilityConsumption() {
   const [reading, setReading] = useState('');
   const [quantity, setQuantity] = useState('');
   const [date, setDate] = useState(queryDate || today());
-  const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [recordUtility, setRecordUtility] = useState('');
+  const [recordDateFrom, setRecordDateFrom] = useState('');
+  const [recordDateTo, setRecordDateTo] = useState('');
+  const [dateOrder, setDateOrder] = useState('desc');
 
   const utilities = useMemo(() => {
     const map = new Map();
@@ -52,6 +55,30 @@ export default function UtilityConsumption() {
     () => details.filter((d) => d.util_id === utilId),
     [details, utilId],
   );
+
+  const recordUtilityNames = useMemo(() => {
+    const names = new Set();
+    for (const row of rows) {
+      if (row.utility_name) names.add(row.utility_name);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const visibleRows = useMemo(() => {
+    const filtered = rows.filter((row) => {
+      if (recordUtility && row.utility_name !== recordUtility) return false;
+      const day = row.consumption_date ? String(row.consumption_date).slice(0, 10) : '';
+      if (recordDateFrom && day < recordDateFrom) return false;
+      if (recordDateTo && day > recordDateTo) return false;
+      return true;
+    });
+    filtered.sort((a, b) => {
+      const left = String(a.consumption_date || '');
+      const right = String(b.consumption_date || '');
+      return dateOrder === 'asc' ? left.localeCompare(right) : right.localeCompare(left);
+    });
+    return filtered;
+  }, [rows, recordUtility, recordDateFrom, recordDateTo, dateOrder]);
 
   const selected = useMemo(
     () => details.find((d) => d.utild_id === utildId) || null,
@@ -122,31 +149,9 @@ export default function UtilityConsumption() {
   };
 
   useEffect(() => {
-    setPreview(null);
     setReading('');
     setQuantity('');
   }, [utildId]);
-
-  useEffect(() => {
-    if (!isMeter || reading === '' || !utildId) {
-      setPreview(null);
-      return;
-    }
-    const t = setTimeout(async () => {
-      try {
-        const p = await utilityService.previewConsumption({
-          utild_id: utildId,
-          reading: Number(reading),
-          consumption_date: date,
-          asset_id: assetId || undefined,
-        });
-        setPreview(p);
-      } catch {
-        setPreview(null);
-      }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [isMeter, reading, utildId, date, assetId]);
 
   const submit = async () => {
     if (!utilId) return toast.error('Utility is required');
@@ -170,7 +175,6 @@ export default function UtilityConsumption() {
       toast.success(`Saved · consumed ${row.quantity_consumed ?? '—'}`);
       setReading('');
       setQuantity('');
-      setPreview(null);
       await load({ silent: true });
     } catch (err) {
       toast.error(err?.response?.data?.error || err.message || 'Save failed');
@@ -260,25 +264,6 @@ export default function UtilityConsumption() {
             )}
           </div>
 
-          {isMeter && preview && (
-            <div className="mt-4 rounded-md border border-[#D7E0EA] bg-[#F3F6F9] px-4 py-3 text-sm text-[#0E2F4B]">
-              <div className="flex flex-wrap gap-x-6 gap-y-1">
-                <div>
-                  Previous reading:{' '}
-                  <strong>{preview.previousReading?.reading ?? 'none (baseline)'}</strong>
-                </div>
-                <div>
-                  Quantity consumed:{' '}
-                  <strong>
-                    {preview.preview?.quantity_consumed == null
-                      ? '— (first / baseline reading)'
-                      : preview.preview.quantity_consumed}
-                  </strong>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="mt-4">
             <button
               type="button"
@@ -292,6 +277,48 @@ export default function UtilityConsumption() {
         </UtilityPanel>
 
         <UtilityPanel title="Recent records" bodyClassName="p-0">
+          <div className="grid grid-cols-1 gap-3 border-b border-[#E8EEF4] px-4 py-3 sm:grid-cols-2 lg:grid-cols-4">
+            <UtilityField label="Utility">
+              <select
+                className={utilityInputClass}
+                value={recordUtility}
+                onChange={(e) => setRecordUtility(e.target.value)}
+              >
+                <option value="">All utilities</option>
+                {recordUtilityNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </UtilityField>
+            <UtilityField label="From date">
+              <input
+                type="date"
+                className={utilityInputClass}
+                value={recordDateFrom}
+                onChange={(e) => setRecordDateFrom(e.target.value)}
+              />
+            </UtilityField>
+            <UtilityField label="To date">
+              <input
+                type="date"
+                className={utilityInputClass}
+                value={recordDateTo}
+                onChange={(e) => setRecordDateTo(e.target.value)}
+              />
+            </UtilityField>
+            <UtilityField label="Date order">
+              <select
+                className={utilityInputClass}
+                value={dateOrder}
+                onChange={(e) => setDateOrder(e.target.value)}
+              >
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </UtilityField>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-[#0E2F4B] text-left text-[11px] uppercase tracking-wide text-white">
@@ -303,14 +330,16 @@ export default function UtilityConsumption() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8EEF4]">
-                {rows.length === 0 && (
+                {visibleRows.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-4 py-12 text-center text-sm text-[#5A6B7C]">
-                      No consumption recorded yet
+                      {rows.length === 0
+                        ? 'No consumption recorded yet'
+                        : 'No records match these filters'}
                     </td>
                   </tr>
                 )}
-                {rows.map((r) => (
+                {visibleRows.map((r) => (
                   <tr key={r.utcv_id} className="bg-white hover:bg-[#F8FAFC]">
                     <td className="px-4 py-2.5 text-[#334155]">
                       {r.consumption_date

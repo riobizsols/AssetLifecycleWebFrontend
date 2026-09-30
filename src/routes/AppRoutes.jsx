@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import Login from "../pages/auth/Login";
 import SsoComplete from "../pages/auth/SsoComplete";
 import Dashboard from "../pages/Dashboard";
@@ -26,6 +26,7 @@ import AuditTypeAssetTypeMapping from "../pages/masterData/AuditTypeAssetTypeMap
 import UtilityMaster from "../pages/utility/UtilityMaster";
 import UtilityAssetTypeMapping from "../pages/utility/UtilityAssetTypeMapping";
 import UtilityConsumption from "../pages/utility/UtilityConsumption";
+import UtilityConsumptionReport from "../pages/utility/UtilityConsumptionReport";
 import AddBranch from "../components/AddBranch";
 import DepartmentsAdmin from "../pages/masterData/DepartmentsAdmin";
 import DepartmentsAsset from "../pages/masterData/DepartmentsAsset";
@@ -1241,6 +1242,26 @@ export default function AppRoutes() {
             <ProtectedRoute requiredAppId="UTILITYCONSUMPTION">
               <MainLayout>
                 <UtilityConsumption />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/utilities/report"
+          element={<Navigate to="/reports/utility-consumption" replace />}
+        />
+        <Route
+          path="/reports/utility-consumption"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={[
+                "UTILITYREPORT",
+                "UTILITYCONSUMPTION",
+                "UTILITYMASTER",
+              ]}
+            >
+              <MainLayout>
+                <UtilityConsumptionReport />
               </MainLayout>
             </ProtectedRoute>
           }

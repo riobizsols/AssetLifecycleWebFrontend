@@ -23,6 +23,7 @@ export const REPORTS_APP_IDS = {
   PURCHASE_REQUIREMENT_REPORT: 'PURCHASEREQUIREMENTREPORT',
   WORKFORCE_REPORT: 'WORKFORCEREPORT',
   SPARE_PARTS_REPORT: 'SPAREPARTSREPORT',
+  UTILITY_CONSUMPTION_REPORT: 'UTILITYREPORT',
 };
 
 /**
@@ -95,6 +96,7 @@ export const getAppIdForReport = (reportType) => {
     workforce: REPORTS_APP_IDS.WORKFORCE_REPORT,
     'spare-parts': REPORTS_APP_IDS.SPARE_PARTS_REPORT,
     'spare-parts-report': REPORTS_APP_IDS.SPARE_PARTS_REPORT,
+    'utility-consumption': REPORTS_APP_IDS.UTILITY_CONSUMPTION_REPORT,
   };
   
   return reportTypeMap[reportType] || null;
