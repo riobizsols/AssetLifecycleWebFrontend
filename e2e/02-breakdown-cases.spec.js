@@ -41,7 +41,7 @@ test.describe('RIO EAM breakdown', () => {
       return;
     }
 
-    const opener = page.getByTitle('View/Edit Details').first();
+    const opener = page.locator('tbody button[title="Edit"], tbody button[title="View"]').first();
     const hasRow = await waitForRowOrEmpty(page, opener, /No data found/i);
     if (!hasRow) return;
 
@@ -60,7 +60,7 @@ test.describe('RIO EAM breakdown', () => {
       return;
     }
 
-    const opener = page.getByTitle('View/Edit Details').first();
+    const opener = page.locator('tbody button[title="Edit"], tbody button[title="View"]').first();
     const hasRow = await waitForRowOrEmpty(page, opener, /No data found/i);
     if (!hasRow) return;
 

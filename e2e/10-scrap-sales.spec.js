@@ -14,7 +14,7 @@ test.describe('RIO EAM scrap sales', () => {
     }
 
     await expect(page.getByText('Buyer Name').first()).toBeVisible();
-    await expect(page.getByText('Total Sale Value').first()).toBeVisible();
+    await expect(page.getByText('Sale Title').first()).toBeVisible();
     await expect(
       page.getByText('No scrap sales found').or(page.locator('tbody tr').first()).first()
     ).toBeVisible({ timeout: 20000 });

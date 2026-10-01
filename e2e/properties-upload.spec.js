@@ -19,9 +19,9 @@ test.describe('RIO EAM properties, products, and upload', () => {
       return;
     }
 
-    const stamp = Date.now();
+    const stamp = String(Date.now()).slice(-8);
     const name = `PW-E2E-PROP-${stamp}`;
-    const value = `PW-E2E-VAL-${stamp}`;
+    const value = `V${stamp}`;
     await create.click();
     await expect(page.getByRole('heading', { name: 'Create New Property' })).toBeVisible();
     const nameInput = page.getByPlaceholder('e.g., Material, Color, Brand');
@@ -47,13 +47,13 @@ test.describe('RIO EAM properties, products, and upload', () => {
       return;
     }
 
-    const stamp = Date.now();
-    const name = `PW-E2E-PROP2-${stamp}`;
+    const stamp = String(Date.now()).slice(-8);
+    const name = `PW-E2E-P2-${stamp}`;
     await create.click();
     const nameInput = page.getByPlaceholder('e.g., Material, Color, Brand');
     await nameInput.fill(name);
     await expect(nameInput).toHaveValue(name);
-    await page.getByPlaceholder(/Value 1/i).fill(`PW-E2E-A-${stamp}`);
+    await page.getByPlaceholder(/Value 1/i).fill(`A${stamp}`);
     await saveProperty(page);
     await page.getByPlaceholder('Search by property name...').fill(name);
     await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 20000 });
@@ -65,7 +65,7 @@ test.describe('RIO EAM properties, products, and upload', () => {
       await page.getByText(name, { exact: true }).first().click();
     }
     await expect(valueInput).toBeVisible({ timeout: 10000 });
-    const extra = `PW-E2E-B-${stamp}`;
+    const extra = `B${stamp}`;
     await valueInput.fill(extra);
     await page.locator('form').filter({ has: valueInput }).getByRole('button', { name: 'Add' }).click();
     await expect(page.getByText(extra).first()).toBeVisible({ timeout: 15000 });
@@ -104,7 +104,7 @@ test.describe('RIO EAM properties, products, and upload', () => {
     await option.click();
     await expect(assetType).not.toHaveText(/Select Asset Type/i);
 
-    const description = `PW-E2E-SVC-${Date.now()}`;
+    const description = `E2E-S-${String(Date.now()).slice(-8)}`;
     const descriptionField = page.getByPlaceholder(/Enter description/i);
     await descriptionField.fill(description);
     await page
