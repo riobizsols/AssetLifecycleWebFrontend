@@ -114,7 +114,7 @@ export const getTranslatedReportInfo = (reportId) => {
     }
   };
   
-  return reportInfoMap[reportId] || { name: reportId, description: '' };
+  return reportInfoMap[reportId] || { name: '', description: '' };
 };
 
 /**

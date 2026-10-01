@@ -6,7 +6,7 @@ import { Download, FileText, BarChart3, Filter, Calendar, User, Building2 } from
  * Comprehensive Report Display Component
  * Shows the generated report with header, filters, summary, and detailed data
  */
-export default function ReportDisplay({ reportData, onClose }) {
+export default function ReportDisplay({ reportData, onClose, hideMeta = false }) {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('summary');
 
@@ -36,8 +36,10 @@ export default function ReportDisplay({ reportData, onClose }) {
         <div className="bg-gradient-to-r from-[#143d65] to-[#1e5a8a] text-white p-6">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-2xl font-bold mb-2">{header.title}</h2>
-              <p className="text-blue-100">{header.description}</p>
+              <h2 className="text-2xl font-bold">{header.title}</h2>
+              {!hideMeta && header.description ? (
+                <p className="mt-2 text-blue-100">{header.description}</p>
+              ) : null}
             </div>
             <button
               onClick={onClose}
@@ -47,7 +49,7 @@ export default function ReportDisplay({ reportData, onClose }) {
             </button>
           </div>
           
-          {/* Report Info */}
+          {!hideMeta && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-sm">
             <div className="flex items-center">
               <Building2 className="w-4 h-4 mr-2" />
@@ -62,6 +64,7 @@ export default function ReportDisplay({ reportData, onClose }) {
               <span>{header.generatedBy.name}</span>
             </div>
           </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -102,8 +105,8 @@ export default function ReportDisplay({ reportData, onClose }) {
         <div className="border-t border-gray-200 p-4 bg-gray-50">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
-              {t('reports.modal.totalRecords')}: {header.generationInfo.totalRecords} | 
-              {t('reports.modal.generated')}: {header.generationInfo.date}
+              {t('reports.modal.totalRecords')}: {header.generationInfo.totalRecords}
+              {!hideMeta ? ` | ${t('reports.modal.generated')}: ${header.generationInfo.date}` : ''}
             </div>
           </div>
         </div>
