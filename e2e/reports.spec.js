@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 import { loginToRioEam } from './helpers/auth.js';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { openReport, previewReport } from './helpers/reportScreen.js';
 
 test.describe('RIO EAM reports', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Run once against live data');
@@ -86,49 +87,3 @@ test.describe('RIO EAM reports', () => {
     }
   });
 });
-
-/**
- * @param {import('@playwright/test').Page} page
- * @param {string} path
- * @param {string | RegExp} title
- * @returns {Promise<boolean>}
- */
-async function openReport(page, path, title) {
-  await gotoProtected(page, `${BASE}${path}`);
-
-  const unauthorized = page.getByText(/not authorized|Access Denied|You are not authorized/i);
-  const titleLocator =
-    title instanceof RegExp
-      ? page.getByText(title).first()
-      : page.getByText(title, { exact: true }).first();
-
-  await expect(unauthorized.or(titleLocator).first()).toBeVisible({ timeout: 45000 });
-  if (await unauthorized.isVisible().catch(() => false)) {
-    return false;
-  }
-
-  await expect(titleLocator).toBeVisible({ timeout: 15000 });
-  await expect(page.getByRole('button', { name: 'Preview' })).toBeVisible({ timeout: 15000 });
-  await expect(page.getByText('Active Filters')).toBeVisible();
-  await expect(page.getByText('Loading asset valuation data...')).toHaveCount(0, {
-    timeout: 30000,
-  });
-  return true;
-}
-
-/**
- * @param {import('@playwright/test').Page} page
- * @param {string} title
- */
-async function previewReport(page, title) {
-  await page.getByRole('button', { name: 'Preview' }).click();
-  const modal = page.locator('div.fixed').filter({
-    has: page.getByRole('heading', { name: title }),
-  });
-  await expect(modal).toBeVisible({ timeout: 15000 });
-  await expect(modal.getByText('Total Records').first()).toBeVisible();
-  await modal.getByRole('button', { name: 'Applied Filters' }).click();
-  await modal.getByRole('button', { name: 'Detailed Data' }).click();
-  await modal.locator('button').filter({ hasText: '×' }).click();
-  await expect(modal).toBeHidden({ timeout: 10000 });
-}
