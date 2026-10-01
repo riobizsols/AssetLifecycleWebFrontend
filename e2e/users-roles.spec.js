@@ -131,8 +131,8 @@ test.describe('RIO EAM users and job roles', () => {
       return;
     }
 
-    await expect(page.getByRole('button', { name: 'Save Configurations' })).toBeVisible();
-    await page.getByRole('button', { name: 'Save Configurations' }).click();
-    await expect(page.getByText(/select a job role and table/i)).toBeVisible({ timeout: 10000 });
+    const save = page.getByRole('button', { name: 'Save Configurations' });
+    await expect(save).toBeVisible();
+    await expect(save).toBeDisabled();
   });
 });

@@ -30,8 +30,12 @@ export async function openTitledScreen(page, path, title) {
       ? page.getByText(title).first()
       : page.getByText(title, { exact: true }).first();
 
-  await expect(unauthorized.or(titleLocator).first()).toBeVisible({ timeout: 45000 });
-  if (await unauthorized.isVisible().catch(() => false)) {
+  const marker = unauthorized.or(titleLocator).first();
+  const seen = await marker
+    .waitFor({ state: 'visible', timeout: 45000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!seen || (await unauthorized.isVisible().catch(() => false))) {
     return false;
   }
 

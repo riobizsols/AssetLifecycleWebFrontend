@@ -55,7 +55,11 @@ test.describe('RIO EAM reports screenwise', () => {
     }
     await expect(page.getByText('In-Use Assets Value').first()).toBeVisible({ timeout: 20000 });
     await expect(page.getByText('Total Portfolio Value').first()).toBeVisible();
-    await generateReportFile(page);
+    await page.getByRole('button', { name: 'Generate Report' }).click();
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+    await page.getByRole('button', { name: 'PDF Report' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
   });
 
   test('TC_RPT_004 asset workflow history lists work orders', async ({ page }) => {

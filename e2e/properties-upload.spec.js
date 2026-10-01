@@ -27,7 +27,9 @@ test.describe('RIO EAM properties, products, and upload', () => {
     await page.getByPlaceholder('e.g., Material, Color, Brand').fill(name);
     await page.getByPlaceholder(/Value 1/i).fill(value);
     await page.getByRole('button', { name: 'Save Property' }).click();
-    await expect(page.getByText(name).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('heading', { name: 'Create New Property' })).toBeHidden({ timeout: 20000 });
+    await page.getByPlaceholder('Search by property name...').fill(name);
+    await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 20000 });
   });
 
   test('TC_PROP_002 a new value can be added to a unique property', async ({ page }) => {
@@ -50,7 +52,9 @@ test.describe('RIO EAM properties, products, and upload', () => {
     await page.getByPlaceholder('e.g., Material, Color, Brand').fill(name);
     await page.getByPlaceholder(/Value 1/i).fill(`PW-E2E-A-${stamp}`);
     await page.getByRole('button', { name: 'Save Property' }).click();
-    await expect(page.getByText(name).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('heading', { name: 'Create New Property' })).toBeHidden({ timeout: 20000 });
+    await page.getByPlaceholder('Search by property name...').fill(name);
+    await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 20000 });
 
     await page.getByPlaceholder('Search by property name...').fill(name);
     await page.getByText(name, { exact: true }).first().click();
@@ -80,7 +84,11 @@ test.describe('RIO EAM properties, products, and upload', () => {
       return;
     }
     await assetType.click();
-    const option = page.locator('div.cursor-pointer').filter({ hasNotText: /^\s*$/ }).first();
+    const option = page
+      .locator('div.absolute.z-10')
+      .filter({ has: page.getByPlaceholder(/search asset type/i) })
+      .locator('div.cursor-pointer')
+      .first();
     const hasOption = await option
       .waitFor({ state: 'visible', timeout: 15000 })
       .then(() => true)
@@ -92,9 +100,16 @@ test.describe('RIO EAM properties, products, and upload', () => {
     await option.click();
 
     const description = `PW-E2E-SVC-${Date.now()}`;
-    await page.getByPlaceholder(/Enter description/i).fill(description);
-    await page.getByRole('button', { name: 'Add' }).click();
-    await expect(page.getByText(description).first()).toBeVisible({ timeout: 20000 });
+    const descriptionField = page.getByPlaceholder(/Enter description/i);
+    await descriptionField.fill(description);
+    await page
+      .locator('div.flex.flex-wrap')
+      .filter({ has: descriptionField })
+      .getByRole('button', { name: 'Add' })
+      .click();
+    const created = page.getByText(description, { exact: true }).first();
+    await created.scrollIntoViewIfNeeded();
+    await expect(created).toBeVisible({ timeout: 20000 });
   });
 
   test('TC_UPL_001 upload screen explains the sample and trial steps', async ({ page }) => {

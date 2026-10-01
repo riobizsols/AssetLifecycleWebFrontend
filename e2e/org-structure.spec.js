@@ -9,7 +9,7 @@ test.describe('RIO EAM organization structure', () => {
 
   test('TC_ORG_001 organization form rejects a blank name', async ({ page }) => {
     test.setTimeout(120000);
-    const opened = await openTitledScreen(page, '/master-data/organizations', 'Organizations');
+    const opened = await openTitledScreen(page, '/master-data/organizations', 'Organization List');
     if (!opened) {
       noteInaccessible('Organizations');
       return;

@@ -17,8 +17,9 @@ test.describe('RIO EAM notifications', () => {
     await expect(
       page
         .getByText('No Notifications')
-        .or(page.getByText('Due On').first())
-        .or(page.getByText('Warranty').first())
+        .or(page.getByText('Due On'))
+        .or(page.getByText('Warranty'))
+        .first()
     ).toBeVisible({ timeout: 30000 });
   });
 

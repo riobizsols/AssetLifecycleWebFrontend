@@ -7,7 +7,7 @@ test.describe('RIO EAM supervisor approval', () => {
 
   test('TC_SUP_001 supervisor list loads maintenance jobs', async ({ page }) => {
     test.setTimeout(120000);
-    const opened = await openTitledScreen(page, '/maintenance-list', 'Maintenance Supervisor');
+    const opened = await openTitledScreen(page, '/maintenance-list', 'Maintenance List');
     if (!opened) {
       noteInaccessible('Supervisor Approval');
       return;
@@ -21,7 +21,7 @@ test.describe('RIO EAM supervisor approval', () => {
 
   test('TC_SUP_002 supervisor detail shows the technician field', async ({ page }) => {
     test.setTimeout(150000);
-    const opened = await openTitledScreen(page, '/maintenance-list', 'Maintenance Supervisor');
+    const opened = await openTitledScreen(page, '/maintenance-list', 'Maintenance List');
     if (!opened) {
       noteInaccessible('Supervisor Approval');
       return;
@@ -39,7 +39,7 @@ test.describe('RIO EAM supervisor approval', () => {
 
   test('TC_SUP_003 supervisor detail shows the checklist without completing it', async ({ page }) => {
     test.setTimeout(150000);
-    const opened = await openTitledScreen(page, '/maintenance-list', 'Maintenance Supervisor');
+    const opened = await openTitledScreen(page, '/maintenance-list', 'Maintenance List');
     if (!opened) {
       noteInaccessible('Supervisor Approval');
       return;
