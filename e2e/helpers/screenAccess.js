@@ -50,3 +50,17 @@ export async function openTitledScreen(page, path, title) {
 export function headerAddButton(page) {
   return page.locator('div.flex.gap-2.justify-end > button').first();
 }
+
+/**
+ * Wait until a list shows a row opener or an empty-state message.
+ * ContentBox hides *_id columns and only marks rows clickable when onRowClick is set.
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} row
+ * @param {string | RegExp} emptyText
+ * @returns {Promise<boolean>} true when the row opener is visible
+ */
+export async function waitForRowOrEmpty(page, row, emptyText) {
+  const empty = page.getByText(emptyText).first();
+  await expect(row.or(empty).first()).toBeVisible({ timeout: 30000 });
+  return row.isVisible().catch(() => false);
+}

@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { noteInaccessible, openTitledScreen } from './helpers/screenAccess.js';
+import { noteInaccessible, openTitledScreen, waitForRowOrEmpty } from './helpers/screenAccess.js';
 
 test.describe('RIO EAM breakdown', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Run once against live data');
@@ -41,14 +41,13 @@ test.describe('RIO EAM breakdown', () => {
       return;
     }
 
-    const row = page.locator('tbody tr.cursor-pointer').first();
-    if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText(/No .*found|No data found/i).first()).toBeVisible();
-      return;
-    }
+    const opener = page.getByTitle('View/Edit Details').first();
+    const hasRow = await waitForRowOrEmpty(page, opener, /No data found/i);
+    if (!hasRow) return;
 
-    await row.click();
-    await expect(page.getByText(/Breakdown|Description|Reported By/i).first()).toBeVisible({
+    await opener.click();
+    await expect(page).toHaveURL(/\/edit-breakdown/, { timeout: 20000 });
+    await expect(page.getByText(/Description|Reported By|Status/i).first()).toBeVisible({
       timeout: 20000,
     });
   });
@@ -61,13 +60,12 @@ test.describe('RIO EAM breakdown', () => {
       return;
     }
 
-    const row = page.locator('tbody tr.cursor-pointer').first();
-    if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText(/No .*found|No data found/i).first()).toBeVisible();
-      return;
-    }
+    const opener = page.getByTitle('View/Edit Details').first();
+    const hasRow = await waitForRowOrEmpty(page, opener, /No data found/i);
+    if (!hasRow) return;
 
-    await row.click();
+    await opener.click();
+    await expect(page).toHaveURL(/\/edit-breakdown/, { timeout: 20000 });
     await expect(page.getByText(/Status|Description/i).first()).toBeVisible({ timeout: 20000 });
     const close = page.getByRole('button', { name: /^Close$|Reopen/i });
     if (await close.first().isVisible().catch(() => false)) {

@@ -24,7 +24,7 @@ test.describe('RIO EAM spare parts master', () => {
     }
 
     await add.click();
-    await expect(page.getByText('Add Spare Part Category')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Add Spare Part Category').first()).toBeVisible({ timeout: 20000 });
     await expect(page.getByText('UOM').first()).toBeVisible();
     await expect(page.getByText('Brand').first()).toBeVisible();
     await expect(page.getByText('Model').first()).toBeVisible();

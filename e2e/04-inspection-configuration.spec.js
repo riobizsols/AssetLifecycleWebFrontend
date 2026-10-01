@@ -25,7 +25,7 @@ test.describe('RIO EAM inspection configuration', () => {
     }
 
     await create.click();
-    await expect(page.getByText('Response Type').last()).toBeVisible();
+    await expect(page.locator('label', { hasText: 'Response Type' })).toBeVisible();
     const type = page.locator('select[name="irtd_id"]');
     const qualitative = type.locator('option', { hasText: /^Qualitative$/ });
     if ((await qualitative.count()) === 0) {
@@ -102,10 +102,9 @@ test.describe('RIO EAM inspection configuration', () => {
       timeout: 20000,
     });
     await expect(page.getByText('Asset Type').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Save Mapping' }).click();
-    await expect(page.getByText(/Asset Type is mandatory|required/i).first()).toBeVisible({
-      timeout: 10000,
-    });
+    const saveMapping = page.getByRole('button', { name: 'Save Mapping' });
+    await expect(saveMapping).toBeVisible();
+    await expect(saveMapping).toBeDisabled();
   });
 
   test('TC_ICFG_004 mapping create can scan or type an asset without saving', async ({ page }) => {
@@ -156,6 +155,8 @@ test.describe('RIO EAM inspection configuration', () => {
     await expect(page.getByRole('heading', { name: 'Create Inspection Frequency' })).toBeVisible({
       timeout: 15000,
     });
+    const selected = await selectFrequencyMapping(page);
+    if (!selected) return;
     await expect(page.getByText('Recurring').first()).toBeVisible();
     await expect(page.getByText('In-House').first()).toBeVisible();
     await expect(page.getByText('Unit of Measure (UOM)').first()).toBeVisible();
@@ -183,7 +184,27 @@ test.describe('RIO EAM inspection configuration', () => {
     await expect(page.getByRole('heading', { name: 'Create Inspection Frequency' })).toBeVisible({
       timeout: 15000,
     });
+    const selected = await selectFrequencyMapping(page);
+    if (!selected) return;
     await expect(page.getByText('On Demand').first()).toBeVisible();
     await expect(page.getByText('Vendor').first()).toBeVisible();
   });
 });
+
+/**
+ * Recurring and On Demand render only after an asset-type mapping is chosen.
+ * @param {import('@playwright/test').Page} page
+ */
+async function selectFrequencyMapping(page) {
+  const mapping = page.locator('select').first();
+  await expect(mapping).toBeVisible();
+  const option = mapping.locator('option:not([value=""])');
+  await option.first().waitFor({ state: 'attached', timeout: 20000 }).catch(() => {});
+  if ((await option.count()) === 0) {
+    await expect(page.getByRole('button', { name: 'Select Asset Type' })).toBeVisible();
+    noteInaccessible('Inspection frequency mappings');
+    return false;
+  }
+  await mapping.selectOption({ index: 1 });
+  return true;
+}
