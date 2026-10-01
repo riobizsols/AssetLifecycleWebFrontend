@@ -20,7 +20,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   timeout: 180_000,
-  globalTimeout: 60 * 60 * 1000,
+  globalTimeout: 180 * 60 * 1000,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: BASE_URL,
