@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { noteInaccessible, openTitledScreen } from './helpers/screenAccess.js';
+import { noteInaccessible, openTitledScreen, waitForRowOrEmpty } from './helpers/screenAccess.js';
 
 test.describe('RIO EAM inspection execution and approval', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Run once against live data');
@@ -29,15 +29,9 @@ test.describe('RIO EAM inspection execution and approval', () => {
       return;
     }
 
-    const row = page.locator('tbody tr.cursor-pointer').first();
-    if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText(/No .*found|No data found/i).first()).toBeVisible();
-      return;
-    }
-
-    await row.click();
-    await expect(page).toHaveURL(/\/inspection-view\//, { timeout: 20000 });
-    await expect(page.getByText(/Question|Status|Asset/i).first()).toBeVisible({ timeout: 20000 });
+    const openedDetail = await openInspectionDetail(page);
+    if (!openedDetail) return;
+    await expect(page.getByText('Asset Information').first()).toBeVisible();
   });
 
   test('TC_INSP_003 inspection detail does not start a maintenance job', async ({ page }) => {
@@ -48,14 +42,10 @@ test.describe('RIO EAM inspection execution and approval', () => {
       return;
     }
 
-    const row = page.locator('tbody tr.cursor-pointer').first();
-    if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText(/No .*found|No data found/i).first()).toBeVisible();
-      return;
-    }
-
-    await row.click();
-    await expect(page.getByText(/Status|Asset Type|Question/i).first()).toBeVisible({ timeout: 20000 });
+    const openedDetail = await openInspectionDetail(page);
+    if (!openedDetail) return;
+    await expect(page.getByText('Current Status').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save Changes' })).toBeVisible();
   });
 
   test('TC_INSP_004 inspection detail keeps answer controls from being submitted', async ({ page }) => {
@@ -66,14 +56,10 @@ test.describe('RIO EAM inspection execution and approval', () => {
       return;
     }
 
-    const row = page.locator('tbody tr.cursor-pointer').first();
-    if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText(/No .*found|No data found/i).first()).toBeVisible();
-      return;
-    }
-
-    await row.click();
-    await expect(page.getByText(/Outcome|Status|Question/i).first()).toBeVisible({ timeout: 20000 });
+    const openedDetail = await openInspectionDetail(page);
+    if (!openedDetail) return;
+    await expect(page.getByText('Inspection Checklist').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save Changes' })).toBeVisible();
   });
 
   test('TC_INSP_005 inspection approval list loads without approving', async ({ page }) => {
@@ -88,3 +74,16 @@ test.describe('RIO EAM inspection execution and approval', () => {
     await expect(page.getByText('Status').first()).toBeVisible();
   });
 });
+
+/**
+ * @param {import('@playwright/test').Page} page
+ */
+async function openInspectionDetail(page) {
+  const row = page.locator('tbody tr.cursor-pointer').first();
+  const hasRow = await waitForRowOrEmpty(page, row, /No data found/i);
+  if (!hasRow) return false;
+  await row.click();
+  await expect(page).toHaveURL(/\/inspection-view\//, { timeout: 20000 });
+  await expect(page.getByText('Asset Information').first()).toBeVisible({ timeout: 30000 });
+  return true;
+}

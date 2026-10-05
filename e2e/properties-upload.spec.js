@@ -19,15 +19,17 @@ test.describe('RIO EAM properties, products, and upload', () => {
       return;
     }
 
-    const stamp = Date.now();
+    const stamp = String(Date.now()).slice(-8);
     const name = `PW-E2E-PROP-${stamp}`;
-    const value = `PW-E2E-VAL-${stamp}`;
+    const value = `V${stamp}`;
     await create.click();
     await expect(page.getByRole('heading', { name: 'Create New Property' })).toBeVisible();
-    await page.getByPlaceholder('e.g., Material, Color, Brand').fill(name);
+    const nameInput = page.getByPlaceholder('e.g., Material, Color, Brand');
+    await nameInput.fill(name);
+    await expect(nameInput).toHaveValue(name);
     await page.getByPlaceholder(/Value 1/i).fill(value);
-    await page.getByRole('button', { name: 'Save Property' }).click();
-    await expect(page.getByRole('heading', { name: 'Create New Property' })).toBeHidden({ timeout: 20000 });
+    await saveProperty(page);
+    await page.getByTitle('Filter Properties').click();
     await page.getByPlaceholder('Search by property name...').fill(name);
     await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 20000 });
   });
@@ -46,24 +48,27 @@ test.describe('RIO EAM properties, products, and upload', () => {
       return;
     }
 
-    const stamp = Date.now();
-    const name = `PW-E2E-PROP2-${stamp}`;
+    const stamp = String(Date.now()).slice(-8);
+    const name = `PW-E2E-P2-${stamp}`;
     await create.click();
-    await page.getByPlaceholder('e.g., Material, Color, Brand').fill(name);
-    await page.getByPlaceholder(/Value 1/i).fill(`PW-E2E-A-${stamp}`);
-    await page.getByRole('button', { name: 'Save Property' }).click();
-    await expect(page.getByRole('heading', { name: 'Create New Property' })).toBeHidden({ timeout: 20000 });
+    const nameInput = page.getByPlaceholder('e.g., Material, Color, Brand');
+    await nameInput.fill(name);
+    await expect(nameInput).toHaveValue(name);
+    await page.getByPlaceholder(/Value 1/i).fill(`A${stamp}`);
+    await saveProperty(page);
+    await page.getByTitle('Filter Properties').click();
     await page.getByPlaceholder('Search by property name...').fill(name);
-    await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 20000 });
+    const propertyRow = page.locator('div.grid.grid-cols-12').filter({
+      has: page.getByText(name, { exact: true }),
+    }).first();
+    await expect(propertyRow).toBeVisible({ timeout: 20000 });
+    await page.getByTitle('Filter Properties').click();
+    await expect(page.getByPlaceholder('Search by property name...')).toBeHidden();
 
-    await page.getByPlaceholder('Search by property name...').fill(name);
-    await page.getByText(name, { exact: true }).first().click();
+    await propertyRow.locator('button').first().click();
     const valueInput = page.getByPlaceholder('Enter new value...');
-    if (!(await valueInput.isVisible().catch(() => false))) {
-      await page.getByText(name, { exact: true }).first().click();
-    }
     await expect(valueInput).toBeVisible({ timeout: 10000 });
-    const extra = `PW-E2E-B-${stamp}`;
+    const extra = `B${stamp}`;
     await valueInput.fill(extra);
     await page.locator('form').filter({ has: valueInput }).getByRole('button', { name: 'Add' }).click();
     await expect(page.getByText(extra).first()).toBeVisible({ timeout: 15000 });
@@ -78,15 +83,17 @@ test.describe('RIO EAM properties, products, and upload', () => {
     }
 
     await page.getByText('Service Details').click();
-    const assetType = page.getByRole('button', { name: /Select Asset Type/i }).first();
+    const serviceForm = page.locator('div.flex.flex-wrap').filter({
+      has: page.getByPlaceholder('Enter Description'),
+    });
+    const assetType = serviceForm.locator('div.relative.w-64 button').first();
     if (!(await assetType.isVisible().catch(() => false))) {
       noteInaccessible('Service create');
       return;
     }
     await assetType.click();
-    const option = page
+    const option = serviceForm
       .locator('div.absolute.z-10')
-      .filter({ has: page.getByPlaceholder(/search asset type/i) })
       .locator('div.cursor-pointer')
       .first();
     const hasOption = await option
@@ -98,8 +105,9 @@ test.describe('RIO EAM properties, products, and upload', () => {
       return;
     }
     await option.click();
+    await expect(assetType).not.toHaveText(/Select Asset Type/i);
 
-    const description = `PW-E2E-SVC-${Date.now()}`;
+    const description = `E2E-S-${String(Date.now()).slice(-8)}`;
     const descriptionField = page.getByPlaceholder(/Enter description/i);
     await descriptionField.fill(description);
     await page
@@ -107,9 +115,7 @@ test.describe('RIO EAM properties, products, and upload', () => {
       .filter({ has: descriptionField })
       .getByRole('button', { name: 'Add' })
       .click();
-    const created = page.getByText(description, { exact: true }).first();
-    await created.scrollIntoViewIfNeeded();
-    await expect(created).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Service added successfully').first()).toBeVisible({ timeout: 30000 });
   });
 
   test('TC_UPL_001 upload screen explains the sample and trial steps', async ({ page }) => {
@@ -150,3 +156,27 @@ test.describe('RIO EAM properties, products, and upload', () => {
     await expect(page.getByRole('button', { name: 'Commit Changes' })).toBeVisible();
   });
 });
+
+/**
+ * The create form stays open when the name never reaches React state or the API rejects it.
+ * @param {import('@playwright/test').Page} page
+ */
+async function saveProperty(page) {
+  const heading = page.getByRole('heading', { name: 'Create New Property' });
+  const errorToast = page.getByText(/Failed to create property|already exists|Property name is required/i).first();
+  const saved = heading
+    .waitFor({ state: 'hidden', timeout: 45000 })
+    .then(() => 'saved')
+    .catch(() => 'timeout');
+  const failed = errorToast
+    .waitFor({ state: 'visible', timeout: 45000 })
+    .then(() => errorToast.innerText())
+    .catch(() => 'timeout');
+  await page
+    .locator('form')
+    .filter({ has: page.getByPlaceholder('e.g., Material, Color, Brand') })
+    .getByRole('button', { name: 'Save Property' })
+    .click();
+  const result = await Promise.race([saved, failed]);
+  expect(result, String(result)).toBe('saved');
+}

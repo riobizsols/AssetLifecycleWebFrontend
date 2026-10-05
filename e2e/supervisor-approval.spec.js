@@ -34,7 +34,7 @@ test.describe('RIO EAM supervisor approval', () => {
     }
     await row.click();
     await expect(page).toHaveURL(/\/maintenance-list-detail\//, { timeout: 20000 });
-    await expect(page.getByText('Technician Name').first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByPlaceholder('Enter technician name')).toBeVisible({ timeout: 30000 });
   });
 
   test('TC_SUP_003 supervisor detail shows the checklist without completing it', async ({ page }) => {
@@ -52,6 +52,6 @@ test.describe('RIO EAM supervisor approval', () => {
     }
     await row.click();
     await expect(page.getByText('Maintenance Checklist').first()).toBeVisible({ timeout: 30000 });
-    await expect(page.getByRole('button', { name: /View Checklist|Loading/ })).toBeVisible();
+    await expect(page.getByTitle('View and complete the asset maintenance checklist')).toBeVisible();
   });
 });

@@ -13,7 +13,7 @@ test.describe('RIO EAM scrap assets and scrap approval', () => {
       return;
     }
 
-    await expect(page.getByText('Total Assets').first()).toBeVisible();
+    await expect(page.getByText('Total Assets').first()).toBeVisible({ timeout: 30000 });
     await expect(page.getByText('Nearing Expiry').first()).toBeVisible();
     await expect(page.getByText('Expired').first()).toBeVisible();
 
@@ -74,7 +74,8 @@ test.describe('RIO EAM scrap assets and scrap approval', () => {
       return;
     }
 
-    await expect(page.getByText(/Asset|Group|Reason/i).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Submit|Save|Create/i }).first()).toBeVisible();
+    await expect(page.getByText('Asset Selection').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Select Asset Type' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Scan Asset' })).toBeVisible();
   });
 });

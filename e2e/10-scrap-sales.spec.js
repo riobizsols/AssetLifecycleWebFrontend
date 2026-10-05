@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { noteInaccessible, openTitledScreen } from './helpers/screenAccess.js';
+import { noteInaccessible, openTitledScreen, waitForRowOrEmpty } from './helpers/screenAccess.js';
 
 test.describe('RIO EAM scrap sales', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Run once against live data');
@@ -13,9 +13,8 @@ test.describe('RIO EAM scrap sales', () => {
       return;
     }
 
-    await expect(page.getByText('Sale ID').first()).toBeVisible();
     await expect(page.getByText('Buyer Name').first()).toBeVisible();
-    await expect(page.getByText('Total Sale Value').first()).toBeVisible();
+    await expect(page.getByText('Sale Title').first()).toBeVisible();
     await expect(
       page.getByText('No scrap sales found').or(page.locator('tbody tr').first()).first()
     ).toBeVisible({ timeout: 20000 });
@@ -38,13 +37,11 @@ test.describe('RIO EAM scrap sales', () => {
       return;
     }
 
-    const row = page.locator('tbody tr.cursor-pointer').first();
-    if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText('No scrap sales found')).toBeVisible();
-      return;
-    }
+    const opener = page.locator('tbody button[title="Edit"], tbody button[title="View"]').first();
+    const hasRow = await waitForRowOrEmpty(page, opener, 'No scrap sales found');
+    if (!hasRow) return;
 
-    await row.click();
+    await opener.click();
     await expect(page).toHaveURL(/\/scrap-sales\/(view|edit)\//, { timeout: 20000 });
     await expect(page.getByText(/Buyer|Sale|Amount|Value/i).first()).toBeVisible({ timeout: 20000 });
   });

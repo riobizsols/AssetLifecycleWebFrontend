@@ -25,11 +25,14 @@ test.describe('RIO EAM breakdown reason codes', () => {
     }
 
     await add.click();
-    await expect(page.getByRole('heading', { name: 'Create New Breakdown Reason Code' })).toBeVisible();
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByText(/select an asset type|required/i).first()).toBeVisible({ timeout: 10000 });
+    const modal = page.locator('div.fixed.inset-0').filter({
+      has: page.getByRole('heading', { name: 'Create New Breakdown Reason Code' }),
+    });
+    await expect(modal.getByRole('heading', { name: 'Create New Breakdown Reason Code' })).toBeVisible();
+    const assetType = modal.locator('select');
+    await modal.getByRole('button', { name: 'Save' }).click();
+    await expect.poll(() => assetType.evaluate((el) => el.validity.valueMissing)).toBe(true);
 
-    const assetType = page.locator('select').first();
     const option = assetType.locator('option:not([value=""])').first();
     if ((await option.count()) === 0) {
       noteInaccessible('Breakdown reason asset types');
@@ -38,8 +41,8 @@ test.describe('RIO EAM breakdown reason codes', () => {
 
     await assetType.selectOption({ index: 1 });
     const reason = `PW-E2E-REASON-${Date.now()}`;
-    await page.getByPlaceholder('Enter breakdown reason code').fill(reason);
-    await page.getByRole('button', { name: 'Save' }).click();
+    await modal.getByPlaceholder('Enter breakdown reason code').fill(reason);
+    await modal.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('heading', { name: 'Create New Breakdown Reason Code' })).toBeHidden({
       timeout: 20000,
     });

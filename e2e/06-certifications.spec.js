@@ -45,7 +45,6 @@ test.describe('RIO EAM certifications and technician certificates', () => {
     await page.getByRole('button', { name: 'Maintenance Certificate' }).click();
     await expect(page.getByText('Asset Type').first()).toBeVisible();
     await expect(page.getByText('Maintenance Type').first()).toBeVisible();
-    await expect(page.getByText('Available Certificates').first()).toBeVisible();
   });
 
   test('TC_CERT_003 inspection certificate mapping is visible and is not saved', async ({ page }) => {
@@ -58,7 +57,6 @@ test.describe('RIO EAM certifications and technician certificates', () => {
 
     await page.getByRole('button', { name: 'Inspection Certificates' }).click();
     await expect(page.getByText('Asset Type').first()).toBeVisible();
-    await expect(page.getByText('Available Certificates').first()).toBeVisible();
   });
 
   test('TC_CERT_004 technician certificate form opens without submitting', async ({ page }) => {

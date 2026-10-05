@@ -12,7 +12,8 @@ const UNAUTHORIZED = /not authorized|Access Denied|You are not authorized/i;
  * @returns {Promise<boolean>}
  */
 export async function openReport(page, path, title) {
-  await gotoProtected(page, `${BASE}${path}`);
+  const ready = await gotoProtected(page, `${BASE}${path}`);
+  if (!ready) return false;
 
   const unauthorized = page.getByText(UNAUTHORIZED);
   const titleLocator =
