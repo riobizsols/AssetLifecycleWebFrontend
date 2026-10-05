@@ -62,6 +62,8 @@ test.describe('RIO EAM properties, products, and upload', () => {
       has: page.getByText(name, { exact: true }),
     }).first();
     await expect(propertyRow).toBeVisible({ timeout: 20000 });
+    await page.getByTitle('Filter Properties').click();
+    await expect(page.getByPlaceholder('Search by property name...')).toBeHidden();
 
     await propertyRow.locator('button').first().click();
     const valueInput = page.getByPlaceholder('Enter new value...');
