@@ -22,7 +22,8 @@ export function noteInaccessible(screen) {
  * @param {string | RegExp} title
  */
 export async function openTitledScreen(page, path, title) {
-  await gotoProtected(page, `${BASE}${path}`);
+  const ready = await gotoProtected(page, `${BASE}${path}`);
+  if (!ready) return false;
 
   const unauthorized = page.getByText(UNAUTHORIZED);
   const titleLocator =

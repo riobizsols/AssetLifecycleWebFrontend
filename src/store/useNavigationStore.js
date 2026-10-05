@@ -5,6 +5,8 @@ import { ensureDefaultDashboardNav, ensureUsersInMasterData, hideSidebarNavItems
 
 const NAV_CACHE_PREFIX = 'app:navigation:v18';
 const NAV_TTL_MS = 10 * 60 * 1000;
+const NAV_FAILURE_COOLDOWN_MS = 20000;
+const navRetryAfter = new Map();
 
 const navCacheKey = (userId) => buildCacheKey([NAV_CACHE_PREFIX, userId]);
 
@@ -52,14 +54,21 @@ export const useNavigationStore = create((set, get) => ({
         set({ navigation, loading: false, error: null, fetchedForUserId: userId });
         return navigation;
       }
+      const retryAt = navRetryAfter.get(userId);
+      if (retryAt && Date.now() < retryAt) {
+        set({ loading: false, fetchedForUserId: userId });
+        return get().navigation;
+      }
     }
 
+    const alreadyReady =
+      get().fetchedForUserId === userId && Array.isArray(get().navigation);
     if (!isBackgroundRefresh) {
       set({
-        loading: true,
+        loading: !alreadyReady,
         error: null,
-        navigation: get().fetchedForUserId === userId ? get().navigation : [],
-        fetchedForUserId: null,
+        navigation: alreadyReady ? get().navigation : [],
+        fetchedForUserId: alreadyReady ? userId : null,
       });
     }
 
@@ -70,10 +79,12 @@ export const useNavigationStore = create((set, get) => ({
         response.data.success ? response.data.data : [],
       );
       setCache(cacheKey, data);
+      navRetryAfter.delete(userId);
       set({ navigation: data, loading: false, error: null, fetchedForUserId: userId });
       return data;
     } catch (err) {
       console.error('Error fetching navigation:', err);
+      navRetryAfter.set(userId, Date.now() + NAV_FAILURE_COOLDOWN_MS);
       // Mark fetched so ProtectedRoute can leave the boot loader (access checks
       // then run against whatever nav we have, instead of spinning forever).
       set({
@@ -87,6 +98,7 @@ export const useNavigationStore = create((set, get) => ({
 
   resetNavigation: () => {
     invalidateCache(NAV_CACHE_PREFIX);
+    navRetryAfter.clear();
     set({ navigation: [], loading: false, error: null, fetchedForUserId: null });
   },
 }));

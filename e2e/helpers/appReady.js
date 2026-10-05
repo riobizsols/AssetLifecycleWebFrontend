@@ -26,27 +26,20 @@ async function isLoginPage(page) {
  * @param {{ timeoutMs?: number }} [opts]
  */
 export async function waitForAppShell(page, opts = {}) {
-  const timeoutMs = opts.timeoutMs ?? 90000;
-  if (page.isClosed()) return;
+  const timeoutMs = opts.timeoutMs ?? 20000;
+  if (page.isClosed()) return false;
 
   const loader = bootLoadingLocator(page);
-
   const cleared = await loader
     .first()
     .waitFor({ state: 'hidden', timeout: timeoutMs })
     .then(() => true)
     .catch(() => false);
 
-  if (page.isClosed()) return;
-
+  if (page.isClosed()) return false;
+  if (cleared) return true;
   const remaining = await loader.count().catch(() => 0);
-  if (cleared || remaining === 0) {
-    return;
-  }
-
-  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-  if (page.isClosed()) return;
-  await expect(loader).toHaveCount(0, { timeout: timeoutMs });
+  return remaining === 0;
 }
 
 /**
@@ -60,7 +53,7 @@ export async function gotoProtected(page, url) {
       (response) =>
         response.url().includes('/navigation/user/navigation') &&
         response.request().method() === 'GET',
-      { timeout: 90000 }
+      { timeout: 45000 }
     )
     .catch(() => null);
 
@@ -74,7 +67,7 @@ export async function gotoProtected(page, url) {
         (response) =>
           response.url().includes('/navigation/user/navigation') &&
           response.request().method() === 'GET',
-        { timeout: 90000 }
+        { timeout: 45000 }
       )
       .catch(() => null);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -83,9 +76,11 @@ export async function gotoProtected(page, url) {
     await navPromise;
   }
 
-  await waitForAppShell(page);
+  const ready = await waitForAppShell(page);
+  if (!ready) return false;
 
   if (await isLoginPage(page)) {
     throw new Error(`Still on login after navigating to ${url}`);
   }
+  return true;
 }

@@ -29,6 +29,7 @@ test.describe('RIO EAM properties, products, and upload', () => {
     await expect(nameInput).toHaveValue(name);
     await page.getByPlaceholder(/Value 1/i).fill(value);
     await saveProperty(page);
+    await page.getByTitle('Filter Properties').click();
     await page.getByPlaceholder('Search by property name...').fill(name);
     await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 20000 });
   });
@@ -55,6 +56,7 @@ test.describe('RIO EAM properties, products, and upload', () => {
     await expect(nameInput).toHaveValue(name);
     await page.getByPlaceholder(/Value 1/i).fill(`A${stamp}`);
     await saveProperty(page);
+    await page.getByTitle('Filter Properties').click();
     await page.getByPlaceholder('Search by property name...').fill(name);
     await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 20000 });
 
