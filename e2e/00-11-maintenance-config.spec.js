@@ -42,7 +42,7 @@ test.describe('RIO EAM maintenance configuration', () => {
       return;
     }
     await page.getByRole('button', { name: 'Asset Type Sequences' }).click();
-    await expect(page.getByText('Select Asset Type', { exact: true })).toBeVisible();
+    await expect(page.locator('label').filter({ hasText: 'Select Asset Type' }).first()).toBeVisible();
     await expect(page.getByRole('combobox').first()).toBeVisible();
     await expect(page.getByTitle('Add Sequence')).toHaveCount(0);
   });
@@ -55,12 +55,12 @@ test.describe('RIO EAM maintenance configuration', () => {
       return;
     }
     await page.getByRole('button', { name: 'Select Job Role' }).click();
-    await expect(page.getByText('Select Workflow Step', { exact: true })).toBeVisible();
-    await expect(page.getByText('-- Select Workflow Step --')).toBeVisible();
+    await expect(page.locator('label').filter({ hasText: 'Select Workflow Step' }).first()).toBeVisible();
     const step = page.locator('select').first();
+    await expect(step).toContainText('-- Select Workflow Step --');
     if ((await step.locator('option').count()) > 1) {
       await step.selectOption({ index: 1 });
-      await expect(page.getByText('-- Select Job Role --')).toBeVisible();
+      await expect(page.locator('select').nth(1)).toContainText('-- Select Job Role --');
     }
   });
 
@@ -97,7 +97,7 @@ test.describe('RIO EAM maintenance configuration', () => {
     }
     await page.getByRole('button', { name: 'Maintenance Frequency' }).click();
     await page.getByRole('button', { name: 'Checklist' }).click();
-    await expect(page.getByText('Select Frequency', { exact: true })).toBeVisible();
+    await expect(page.locator('label').filter({ hasText: 'Select Frequency' }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
   });
 });

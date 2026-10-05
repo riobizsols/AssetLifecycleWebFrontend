@@ -28,9 +28,7 @@ test.describe('RIO EAM audit logs', () => {
     await dates.nth(1).fill(today);
 
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
-    await expect(
-      page.getByText('No audit logs found').or(page.getByText('User Name').first())
-    ).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('User Name').first()).toBeVisible({ timeout: 20000 });
 
     const after = (await page.getByText(/Total Records:/).innerText()).trim();
     expect(after.length).toBeGreaterThan(0);

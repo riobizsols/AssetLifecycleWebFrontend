@@ -9,9 +9,9 @@ async function openRenewalQueue(page) {
   const opened = await openTitledScreen(page, '/vendor-renewal-approval', 'Vendor Renewal Approval');
   if (!opened) return false;
   await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
-  await expect(
-    page.getByText('No data found').or(page.locator('tbody tr').first())
-  ).toBeVisible({ timeout: 20000 });
+  const empty = page.getByText('No data found').first();
+  const row = page.locator('tbody tr.cursor-pointer').first();
+  await expect(empty.or(row)).toBeVisible({ timeout: 20000 });
   return true;
 }
 
@@ -27,7 +27,7 @@ test.describe('RIO EAM vendor renewal approval', () => {
     }
     const row = page.locator('tbody tr.cursor-pointer').first();
     if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText('No data found')).toBeVisible();
+      await expect(page.getByText('No data found').first()).toBeVisible();
       return;
     }
     await row.click();
@@ -47,7 +47,7 @@ test.describe('RIO EAM vendor renewal approval', () => {
     }
     const row = page.locator('tbody tr.cursor-pointer').first();
     if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText('No data found')).toBeVisible();
+      await expect(page.getByText('No data found').first()).toBeVisible();
       return;
     }
     await row.click();

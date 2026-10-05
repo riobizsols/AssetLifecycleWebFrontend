@@ -46,11 +46,11 @@ async function tryCreateAsset(page, opts) {
   const opened = await openTitledScreen(page, '/assets/add', 'Add Asset');
   if (!opened) return '';
 
-  await expect(page.getByText('Asset Type', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Purchase Date', { exact: true })).toBeVisible();
+  await expect(page.locator('label').filter({ hasText: 'Asset Type' }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Purchase Details' }).click();
   await page.getByRole('button', { name: 'Vendor Details' }).click();
-  await expect(page.getByText('Product Vendor', { exact: true })).toBeVisible();
+  await expect(page.locator('label').filter({ hasText: 'Purchase Date' }).first()).toBeVisible();
+  await expect(page.locator('label').filter({ hasText: 'Product Vendor' }).first()).toBeVisible();
 
   const typeButton = page.locator('label', { hasText: 'Asset Type' }).locator('xpath=..').getByRole('button').first();
   await typeButton.click();

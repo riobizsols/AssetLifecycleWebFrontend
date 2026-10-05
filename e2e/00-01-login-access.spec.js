@@ -78,8 +78,8 @@ test.describe('RIO EAM password screens', () => {
     await expect(page.getByRole('heading', { name: 'Reset Password' })).toBeVisible({
       timeout: 20000,
     });
-    await page.getByPlaceholder('Enter New Password').fill('Pw-e2e-new-1');
-    await page.getByPlaceholder('Re-enter New Password').fill('Pw-e2e-new-2');
+    await page.getByPlaceholder('Enter New Password', { exact: true }).fill('Pw-e2e-new-1');
+    await page.getByPlaceholder('Re-enter New Password', { exact: true }).fill('Pw-e2e-new-2');
     await page.getByRole('button', { name: 'Reset Password' }).click();
     await expect(page.getByText('Passwords do not match')).toBeVisible();
     await expect(page.getByText(/Password reset successfully/i)).toHaveCount(0);
@@ -93,9 +93,9 @@ test.describe('RIO EAM password screens', () => {
       return;
     }
 
-    await page.getByPlaceholder('Enter Current Password').fill('not-the-current-password');
-    await page.getByPlaceholder('Enter New Password').fill('Pw-e2e-new-1');
-    await page.getByPlaceholder('Re-enter New Password').fill('Pw-e2e-new-2');
+    await page.getByPlaceholder('Enter Current Password', { exact: true }).fill('not-the-current-password');
+    await page.getByPlaceholder('Enter New Password', { exact: true }).fill('Pw-e2e-new-1');
+    await page.getByPlaceholder('Re-enter New Password', { exact: true }).fill('Pw-e2e-new-2');
     await page.getByRole('button', { name: 'Change Password' }).click();
     await expect(page.getByText('New password and confirm password do not match')).toBeVisible();
     await expect(page.getByText(/Password changed successfully/i)).toHaveCount(0);

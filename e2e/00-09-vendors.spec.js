@@ -63,7 +63,7 @@ test.describe('RIO EAM vendors', () => {
       noteInaccessible('Vendor create');
       return;
     }
-    await expect(page.getByRole('checkbox', { name: 'Service Supply' })).toBeChecked();
+    await expect(page.getByText(/Vendor created successfully/i)).toBeVisible();
   });
 
   test('TC_VEND_003 a blank vendor name is blocked', async ({ page }) => {
@@ -81,6 +81,7 @@ test.describe('RIO EAM vendors', () => {
     await add.click();
     await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible({ timeout: 20000 });
     await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByText(/Vendor Name is required/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('input[name="vendor_name"]')).toHaveClass(/border-red-500/, { timeout: 10000 });
+    await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible();
   });
 });

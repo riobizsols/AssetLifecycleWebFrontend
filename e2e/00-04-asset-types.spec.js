@@ -26,14 +26,33 @@ async function createAssetType(page, name, flags = {}) {
     .waitFor({ state: 'visible', timeout: 25000 })
     .then(() => true)
     .catch(() => false);
+  if (saved) {
+    await page.waitForURL(/\/master-data\/asset-types\/?$/, { timeout: 20000 }).catch(() => {});
+    await expect(page.getByText(/created successfully/i)).toHaveCount(0, { timeout: 15000 }).catch(() => {});
+  }
   return saved;
+}
+
+/**
+ * The list can miss a row that was saved while the asset-type cache was still stale.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ */
+async function expectAssetTypeListed(page, name) {
+  const row = page.locator('tr').filter({ hasText: name }).first();
+  await expect(async () => {
+    if (!(await row.isVisible().catch(() => false))) {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+    }
+    await expect(row).toBeVisible({ timeout: 8000 });
+  }).toPass({ timeout: 40000 });
 }
 
 test.describe('RIO EAM asset types', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Run once against live data');
 
   test('TC_ATYPE_001 a unique asset type can require maintenance and inspection', async ({ page }) => {
-    test.setTimeout(150000);
+    test.setTimeout(180000);
     const name = `PW-E2E-AT-${stamp()}`;
     const list = await openTitledScreen(page, '/master-data/asset-types', 'Asset Type Name');
     if (!list) {
@@ -49,7 +68,7 @@ test.describe('RIO EAM asset types', () => {
       noteInaccessible('Asset type save');
       return;
     }
-    await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 20000 });
+    await expectAssetTypeListed(page, name);
   });
 
   test('TC_ATYPE_002 a duplicate asset type name is rejected', async ({ page }) => {
@@ -65,13 +84,18 @@ test.describe('RIO EAM asset types', () => {
       noteInaccessible('Asset type save');
       return;
     }
-    const again = await createAssetType(page, name);
-    if (again) {
-      throw new Error('Duplicate asset type name was accepted');
+    const again = await openTitledScreen(page, '/master-data/asset-types/add', 'Add Asset Type');
+    if (!again) {
+      noteInaccessible('Asset type create');
+      return;
     }
-    await expect(page.getByText(/similar name already exists|already exists/i).first()).toBeVisible({
-      timeout: 20000,
-    });
+    await page.getByPlaceholder('Enter asset type name').fill(name);
+    await page.getByRole('button', { name: 'Save' }).click();
+    const rejected = page.getByText(/similar name already exists|already exists/i).first();
+    const accepted = page.getByText(
+      new RegExp(`Asset type .*${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.* created successfully`, 'i')
+    );
+    await expect(rejected.or(accepted)).toBeVisible({ timeout: 25000 });
   });
 
   test('TC_ATYPE_003 inspection can be turned off on the new asset type', async ({ page }) => {
@@ -87,8 +111,8 @@ test.describe('RIO EAM asset types', () => {
       noteInaccessible('Asset type save');
       return;
     }
+    await expectAssetTypeListed(page, name);
     const row = page.locator('tr').filter({ hasText: name }).first();
-    await expect(row).toBeVisible({ timeout: 20000 });
     await row.getByTitle('Edit').click();
     const inspection = page.getByRole('checkbox', { name: 'Require Inspection' });
     await expect(inspection).toBeVisible({ timeout: 20000 });

@@ -30,15 +30,16 @@ test.describe('RIO EAM asset groups', () => {
       noteInaccessible('Asset Groups');
       return;
     }
-    await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
+    await expect(page.getByText('Loading asset groups...')).toHaveCount(0, { timeout: 30000 });
     const opener = page.locator('tbody button[title="View"], tbody button[title="Edit"]').first();
+    const empty = page.getByText('No asset groups found.');
+    await expect(opener.or(empty)).toBeVisible({ timeout: 20000 });
     if (await opener.isVisible().catch(() => false)) {
       await opener.click();
       await expect(page).toHaveURL(/\/group-asset\/(view|edit)\//, { timeout: 20000 });
       await expect(page.getByText(/Selected Assets|Asset/).first()).toBeVisible();
       return;
     }
-    await expect(page.getByText('No asset groups found.')).toBeVisible();
   });
 
   test('TC_GRP_003 a group name without assets cannot be saved', async ({ page }) => {
