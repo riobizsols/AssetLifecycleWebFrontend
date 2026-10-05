@@ -294,29 +294,14 @@ export default function ProdServ() {
     if (!canEdit) return;
     setServiceSubmitAttempted(true);
     if (!serviceForm.assetType || !serviceForm.description) return;
+    const description = serviceForm.description;
+    const assetTypeId = serviceForm.assetType;
     try {
       const response = await API.post('/prodserv', {
-        assetType: serviceForm.assetType,
-        description: serviceForm.description,
+        assetType: assetTypeId,
+        description,
         ps_type: 'service'
       });
-      
-      // Log create action for service
-      await recordActionByNameWithFetch('Create', {
-        prodServId: response.data?.prod_serv_id,
-        assetTypeId: serviceForm.assetType,
-        assetTypeName: assetTypes.find(at => at.asset_type_id === serviceForm.assetType)?.text,
-        description: serviceForm.description,
-        psType: 'service',
-        action: 'Service Created'
-      });
-      
-      setServiceForm({ assetType: '', description: '' });
-      setServiceSubmitAttempted(false);
-      // Refresh services
-      const res = await API.get('/prodserv');
-      const all = Array.isArray(res.data) ? res.data : [];
-      setServices(all.filter(p => p.ps_type === 'service'));
 
       showBackendTextToast({
         toast,
@@ -325,14 +310,33 @@ export default function ProdServ() {
         type: 'success',
       });
 
+      setServiceForm({ assetType: '', description: '' });
+      setServiceSubmitAttempted(false);
+
+      try {
+        await recordActionByNameWithFetch('Create', {
+          prodServId: response.data?.prod_serv_id,
+          assetTypeId,
+          assetTypeName: assetTypes.find(at => at.asset_type_id === assetTypeId)?.text,
+          description,
+          psType: 'service',
+          action: 'Service Created'
+        });
+        const res = await API.get('/prodserv');
+        const all = Array.isArray(res.data) ? res.data : [];
+        setServices(all.filter(p => p.ps_type === 'service'));
+      } catch (auditError) {
+        console.error('Service create follow-up failed', auditError);
+      }
+
       const returnTo = searchParams.get('returnTo');
       if (returnTo === 'vendor-add') {
         sessionStorage.setItem('vendorServiceReturnTab', 'Service Details');
         sessionStorage.setItem(
           'vendorServiceDraft',
           JSON.stringify({
-            assetType: searchParams.get('assetType') || serviceForm.assetType,
-            description: serviceForm.description,
+            assetType: searchParams.get('assetType') || assetTypeId,
+            description,
             returnTab: 'Service Details',
           })
         );
