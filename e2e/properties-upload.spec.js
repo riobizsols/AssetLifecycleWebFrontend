@@ -58,14 +58,13 @@ test.describe('RIO EAM properties, products, and upload', () => {
     await saveProperty(page);
     await page.getByTitle('Filter Properties').click();
     await page.getByPlaceholder('Search by property name...').fill(name);
-    await expect(page.getByText(name, { exact: true }).first()).toBeVisible({ timeout: 20000 });
+    const propertyRow = page.locator('div.grid.grid-cols-12').filter({
+      has: page.getByText(name, { exact: true }),
+    }).first();
+    await expect(propertyRow).toBeVisible({ timeout: 20000 });
 
-    await page.getByPlaceholder('Search by property name...').fill(name);
-    await page.getByText(name, { exact: true }).first().click();
+    await propertyRow.locator('button').first().click();
     const valueInput = page.getByPlaceholder('Enter new value...');
-    if (!(await valueInput.isVisible().catch(() => false))) {
-      await page.getByText(name, { exact: true }).first().click();
-    }
     await expect(valueInput).toBeVisible({ timeout: 10000 });
     const extra = `B${stamp}`;
     await valueInput.fill(extra);
