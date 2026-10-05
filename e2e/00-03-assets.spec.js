@@ -65,7 +65,7 @@ async function tryCreateAsset(page, opts) {
   if (opts.serialMode === 'existing') {
     await page.getByPlaceholder('Scan or type serial number').fill(opts.serial || `PW${stamp()}`);
   }
-  await page.locator('input[name="description"]').fill(opts.name);
+  await page.locator('textarea[name="description"]').fill(opts.name);
 
   const today = new Date();
   const purchase = today.toISOString().slice(0, 10);
