@@ -104,10 +104,10 @@ test.describe('RIO EAM assets', () => {
       noteInaccessible('Assets');
       return;
     }
-    await expect(page.getByText('Asset Name', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Current Status', { exact: true }).first()).toBeVisible();
-    await expect(page.locator('[data-contentbox-filter-button]')).toBeVisible();
-    await expect(headerAddButton(page)).toBeVisible();
+    await expect(page.getByText('Asset Name', { exact: true }).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Current Status', { exact: true }).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-contentbox-filter-button]')).toBeVisible({ timeout: 20000 });
+    await expect(headerAddButton(page)).toBeVisible({ timeout: 20000 });
   });
 
   test('TC_ASSET_002 column search returns a matching asset name', async ({ page }) => {

@@ -25,7 +25,8 @@ test.describe('RIO EAM employee assignment', () => {
       noteInaccessible('Employee Assignment');
       return;
     }
-    await expect(page.getByText('Select Employee').first()).toBeVisible();
+    await expect(page.getByText('Select Department and Employee')).toBeVisible();
+    await expect(page.getByText(/select employee/i).first()).toBeVisible({ timeout: 20000 });
     await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0);
   });
 });

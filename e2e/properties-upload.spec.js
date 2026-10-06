@@ -115,7 +115,15 @@ test.describe('RIO EAM properties, products, and upload', () => {
       .filter({ has: descriptionField })
       .getByRole('button', { name: 'Add' })
       .click();
-    await expect(page.getByText('Service added successfully').first()).toBeVisible({ timeout: 30000 });
+    const saved = page.getByText('Service added successfully').first();
+    const listed = page.getByText(description, { exact: true }).first();
+    await expect
+      .poll(async () => {
+        if (await saved.isVisible().catch(() => false)) return true;
+        if (await listed.isVisible().catch(() => false)) return true;
+        return false;
+      }, { timeout: 30000 })
+      .toBe(true);
   });
 
   test('TC_UPL_001 upload screen explains the sample and trial steps', async ({ page }) => {

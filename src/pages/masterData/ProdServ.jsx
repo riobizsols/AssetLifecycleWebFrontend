@@ -300,7 +300,9 @@ export default function ProdServ() {
       const response = await API.post('/prodserv', {
         assetType: assetTypeId,
         description,
-        ps_type: 'service'
+        ps_type: 'service',
+        brand: `S${String(Date.now()).slice(-8)}`,
+        model: 'S',
       });
 
       showBackendTextToast({
@@ -343,8 +345,15 @@ export default function ProdServ() {
         navigate('/master-data/add-vendor');
         return;
       }
-    } catch {
-      // Optionally handle error
+    } catch (error) {
+      showBackendTextToast({
+        toast,
+        fallbackText:
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          'Failed to add service',
+        type: 'error',
+      });
     }
   };
 
