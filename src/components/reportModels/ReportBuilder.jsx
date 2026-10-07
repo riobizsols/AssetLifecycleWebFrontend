@@ -775,12 +775,7 @@ export default function ReportBuilder() {
   return (
     <div className="min-h-screen bg-slate-50 p-5">
       <div className="max-w-[1200px] mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
-            <p className="text-slate-500 text-sm">Build, filter, preview, export & schedule your ALM reports.</p>
-          </div>
+        <div className="flex items-center justify-end mb-4">
           <div className="flex items-center gap-2">
             {isSaving ? (
               <form
@@ -839,9 +834,6 @@ export default function ReportBuilder() {
                     }`}
                   >
                     <div className="font-medium">{r.name}</div>
-                    <div className={`text-xs ${selectedReportId === r.id ? "text-slate-200" : "text-slate-500"}`}>
-                      {r.description}
-                    </div>
                   </button>
                 ))}
               </div>
@@ -872,7 +864,6 @@ export default function ReportBuilder() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-lg font-semibold">{report.name}</div>
-                  <div className="text-sm text-slate-500">{report.description}</div>
                 </div>
                 <div>
                   {/* Schedule button hidden temporarily */}

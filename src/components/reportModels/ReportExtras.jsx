@@ -471,6 +471,13 @@ export function applyAdvancedFilters(rows, advanced, fieldAccessors = {}) {
 
   return (rows || []).filter((row) =>
     advanced.every((cond) => {
+      if (cond.field === 'properties') {
+        if (!cond.assetTypeId || !cond.val || !cond.listValue || !Array.isArray(cond.assetIds)) return true;
+        const assetId = row.asset_id || row.assetId || row['Asset ID'] || row.Asset;
+        const hasAsset = cond.assetIds.map(String).includes(String(assetId));
+        if (cond.op === '!=') return !hasAsset;
+        return hasAsset;
+      }
       const accessor = fieldAccessors[cond.field];
       if (!accessor) return true;
       const cell = accessor(row);

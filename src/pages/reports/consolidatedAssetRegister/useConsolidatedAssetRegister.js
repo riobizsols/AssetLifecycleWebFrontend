@@ -34,7 +34,7 @@ function buildScopedDefaults(options, acm) {
   const level = acm?.appliedScopeLevel || 'org';
 
   let orgIds = [];
-  if (appliedOrg && institutions.some((i) => String(i.id) === appliedOrg)) {
+  if (appliedOrg) {
     orgIds = [appliedOrg];
   } else if (institutions.length === 1) {
     orgIds = [String(institutions[0].id)];
@@ -141,6 +141,14 @@ export function useConsolidatedAssetRegister() {
     }),
     [queryFilters, registerApplied],
   );
+
+  const setDraftLocked = useCallback((updater) => {
+    setDraft((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (!appliedOrgId) return next;
+      return { ...next, orgIds: [String(appliedOrgId)] };
+    });
+  }, [appliedOrgId]);
 
   const seedFromContext = useCallback((options) => {
     const next = buildScopedDefaults(options, useAcmContextStore.getState());
@@ -316,7 +324,7 @@ export function useConsolidatedAssetRegister() {
     campusOptions,
     departmentOptions,
     draft,
-    setDraft,
+    setDraft: setDraftLocked,
     applied,
     registerDraft,
     setRegisterDraft,
@@ -338,5 +346,6 @@ export function useConsolidatedAssetRegister() {
     refresh,
     queryFilters,
     registerQueryFilters,
+    institutionLocked: Boolean(appliedOrgId),
   };
 }

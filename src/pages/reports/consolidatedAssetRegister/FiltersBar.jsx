@@ -42,6 +42,7 @@ export default function FiltersBar({
   setAdvanced,
   onPreview,
   previewDisabled,
+  institutionLocked = false,
 }) {
   const institutionOpts = useMemo(() => toDropdownOptions(institutions), [institutions]);
   const campusOpts = useMemo(() => toDropdownOptions(campuses), [campuses]);
@@ -148,7 +149,9 @@ export default function FiltersBar({
               values={draft.orgIds || []}
               options={institutionOpts}
               placeholder={loading ? 'Loading…' : 'Select institution'}
+              disabled={institutionLocked}
               onChange={(orgIds) => {
+                if (institutionLocked) return;
                 setDraft((d) => ({
                   ...d,
                   orgIds,

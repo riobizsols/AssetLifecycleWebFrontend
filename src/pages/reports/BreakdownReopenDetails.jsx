@@ -4,7 +4,6 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { breakdownHistoryService } from "../../services/breakdownHistoryService";
 import {
   ArrowLeftIcon,
-  ExclamationTriangleIcon,
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
@@ -63,7 +62,7 @@ export default function BreakdownReopenDetails() {
 
   return (
     <div className="min-h-screen bg-white p-6 max-w-7xl mx-auto">
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6">
         <button
           onClick={() => navigate("/reports/breakdown-history")}
           className="flex items-center gap-2 text-slate-600 hover:text-[#143d65] font-medium"
@@ -71,15 +70,7 @@ export default function BreakdownReopenDetails() {
           <ArrowLeftIcon className="w-5 h-5" />
           {t("reports.breakdownReopenDetails.backToHistory")}
         </button>
-        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <ExclamationTriangleIcon className="w-7 h-7 text-amber-500" />
-          {t("reports.breakdownReopenDetails.title")}
-        </h1>
       </div>
-
-      <p className="text-slate-600 mb-6">
-        {t("reports.breakdownReopenDetails.subtitle")}
-      </p>
 
       {loading ? (
         <div className="flex justify-center py-16">

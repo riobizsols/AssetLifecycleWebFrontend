@@ -35,6 +35,7 @@ export const CONSOLIDATED_ADVANCED_FIELDS = [
   { key: 'status', label: 'Status', type: 'multiselect', domain: [] },
   { key: 'campus', label: 'Campus', type: 'text' },
   { key: 'department', label: 'Department', type: 'text' },
+  { key: 'properties', label: 'Properties', type: 'assetTypeProperty' },
   { key: 'acquisitionMin', label: 'Acquisition ≥ (₹)', type: 'number' },
   { key: 'bookMin', label: 'Book value ≥ (₹)', type: 'number' },
 ];
@@ -115,6 +116,7 @@ export const MAINTENANCE_STATUS_ADVANCED_FIELDS = [
   { key: 'status', label: 'Status', type: 'multiselect', domain: ['DUE', 'OVERDUE', 'COMPLETED', 'CANCELLED', 'WARRANTY_EXPIRY', 'ASSET_EXPIRY'] },
   { key: 'vendor', label: 'Vendor', type: 'text' },
   { key: 'assetType', label: 'Asset type', type: 'text' },
+  { key: 'properties', label: 'Properties', type: 'assetTypeProperty' },
 ];
 
 export const MAINTENANCE_STATUS_FIELD_ACCESSORS = {
@@ -385,6 +387,7 @@ export const SLA_ADVANCED_FIELDS = [
   { key: 'vendor', label: 'Vendor', type: 'text' },
   { key: 'assetType', label: 'Asset type', type: 'text' },
   { key: 'slaStatus', label: 'SLA status', type: 'multiselect', domain: ['within_sla', 'breached', 'open', 'no_sla'] },
+  { key: 'properties', label: 'Properties', type: 'assetTypeProperty' },
 ];
 
 export const SLA_FIELD_ACCESSORS = {
@@ -536,6 +539,7 @@ export const AUDIT_REPORT_ADVANCED_FIELDS = [
   { key: 'branch', label: 'Branch', type: 'text' },
   { key: 'department', label: 'Department', type: 'text' },
   { key: 'status', label: 'Status', type: 'multiselect', domain: [] },
+  { key: 'properties', label: 'Properties', type: 'assetTypeProperty' },
 ];
 
 export const AUDIT_REPORT_FIELD_ACCESSORS = {

@@ -505,7 +505,10 @@ export default function ReportLayout({
        if (!r.field) return;
        const field = translatedReport.fields.find(f => f.key === r.field);
        const label = field ? field.label : r.field;
-       const displayVal = formatFilterDisplay(r.val);
+       const displayVal =
+         r.field === 'properties' && (r.val || r.listValue)
+           ? [r.assetTypeLabel, r.val, r.listValue].filter(Boolean).join(' / ')
+           : formatFilterDisplay(r.val);
        if (!displayVal) return;
 
        const isProperty = r.field === "property" || field?.type === "propertyValue";
@@ -893,12 +896,8 @@ export default function ReportLayout({
   return (
     <div className="min-h-screen bg-slate-50 p-5">
       <div className="max-w-[1200px] mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{t('reports.title')}</h1>
-            <p className="text-slate-500 text-sm">{t('reports.subtitle')}</p>
-          </div>
+        {/* Actions sit under the page title in the app header */}
+        <div className="flex items-center justify-end mb-4">
           <div className="flex items-center gap-2"> 
             {filteredViews.length > 0 && (
               <div className="relative" ref={savedRef}>
@@ -1059,27 +1058,17 @@ export default function ReportLayout({
           <main className={`col-span-12 flex flex-col`}>
             {/* Quick Filters */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-lg font-semibold">{translatedReport.name}</div>
-                  <div className="text-sm text-slate-500">{translatedReport.description}</div>
-                  {selectedReportId === "breakdown-history" && (
-                    <Link
-                      to="/reports/breakdown-reopen-details"
-                      className="inline-block mt-2 text-sm text-[#143d65] hover:underline font-medium"
-                    >
-                      {t("reports.breakdownReopenDetails.title")} →
-                    </Link>
-                  )}
+              {selectedReportId === "breakdown-history" && (
+                <div className="mb-4">
+                  <Link
+                    to="/reports/breakdown-reopen-details"
+                    className="inline-block text-sm text-[#143d65] hover:underline font-medium"
+                  >
+                    {t("reports.breakdownReopenDetails.title")} →
+                  </Link>
                 </div>
-                <div>
-                  {/* Schedule button hidden temporarily */}
-                  {/* <button onClick={() => showToast(t('reports.scheduleWithCurrentFilters'))} className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm whitespace-nowrap">
-                    {t('reports.schedule')}
-                  </button> */}
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-12 gap-4">
+              )}
+              <div className="grid grid-cols-12 gap-4">
                 {translatedReport.quickFields.map((f) => (
                   <div key={f.key} className="col-span-12 md:col-span-6 xl:col-span-3">
                     <div className="text-xs font-medium text-slate-600 mb-1">{f.label}</div>
