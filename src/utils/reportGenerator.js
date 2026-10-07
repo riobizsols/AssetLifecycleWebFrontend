@@ -1,4 +1,5 @@
 import { useAuthStore } from '../store/useAuthStore';
+import { formatFilterDisplay } from '../components/reportModels/ReportComponents';
 
 /**
  * Generate a comprehensive report with header, filters, and results
@@ -125,15 +126,11 @@ const generateFiltersSummary = (quick, advanced, report) => {
     
     const field = report.fields.find(f => f.key === condition.field);
     if (field) {
-      let displayValue = condition.val;
-      
-      // Handle different value types for display
-      if (Array.isArray(condition.val)) {
-        if (condition.op === 'in range' && condition.val.length === 2) {
-          displayValue = `${condition.val[0]} to ${condition.val[1]}`;
-        } else {
-          displayValue = condition.val.join(', ');
-        }
+      let displayValue = formatFilterDisplay(condition.val);
+      if (!displayValue) return;
+
+      if (Array.isArray(condition.val) && condition.op === 'in range' && condition.val.length === 2) {
+        displayValue = `${condition.val[0]} to ${condition.val[1]}`;
       }
       
       advancedConditions.push({

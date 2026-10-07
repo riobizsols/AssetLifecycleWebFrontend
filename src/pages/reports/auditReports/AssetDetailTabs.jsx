@@ -28,7 +28,7 @@ function isCalibrationMaintenance(row) {
   return /calibrat/i.test(String(row.maintenance_type_name || ''));
 }
 
-function DocumentLink({ docId, path, label }) {
+export function DocumentLink({ docId, path, label }) {
   const [loading, setLoading] = useState(false);
 
   if (!docId) {
@@ -75,6 +75,72 @@ function DocumentLink({ docId, path, label }) {
       <span className="truncate max-w-[220px]">{label || fileLabelFromPath(path)}</span>
     </button>
   );
+}
+
+function EmployeeCertificateLink({ etcId }) {
+  const [loading, setLoading] = useState(false);
+
+  if (!etcId) {
+    return <span className="text-slate-400">Not uploaded</span>;
+  }
+
+  const openCert = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (loading) return;
+    try {
+      setLoading(true);
+      const res = await API.get(`/employee-tech-certificates/${etcId}/download`, {
+        params: { mode: 'view' },
+        responseType: 'blob',
+        timeout: 120000,
+      });
+      const contentType = String(res.headers?.['content-type'] || '');
+      if (contentType.includes('application/json')) {
+        const text = await (res.data instanceof Blob ? res.data.text() : Promise.resolve(String(res.data)));
+        let payload = {};
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          payload = { message: text };
+        }
+        throw new Error(payload.message || payload.error || 'No certificate file available');
+      }
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: contentType || 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err.message ||
+          'Failed to open certificate',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={openCert}
+      disabled={loading}
+      className="inline-flex items-center gap-1.5 text-[#143d65] hover:underline font-medium disabled:opacity-60"
+    >
+      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
+      <span>View</span>
+    </button>
+  );
+}
+
+function flattenCertificationRows(certifications = []) {
+  return certifications.flatMap((c) => {
+    if (c.a_d_id) return [{ ...c, required_for: 'Asset document' }];
+    if (!c.holders?.length) return [{ ...c, technician_name: 'No certified technician' }];
+    return c.holders.map((h) => ({ ...c, ...h }));
+  });
 }
 
 function repeatLabel(r) {
@@ -338,20 +404,29 @@ export default function AssetDetailTabs({ asset, report, activeTab, setActiveTab
           <MiniTable
             emptyLabel="certifications"
             columns={[
-              { key: 'document_type', label: 'Certification', wrap: true },
+              { key: 'document_type', label: 'Certificate', wrap: true },
+              { key: 'certificate_no', label: 'Certificate no.' },
+              { key: 'required_for', label: 'Required for' },
+              { key: 'technician_name', label: 'Technician', wrap: true },
+              { key: 'certificate_date', label: 'Issued', render: (r) => formatDate(r.certificate_date) },
+              { key: 'certificate_expiry', label: 'Expiry', render: (r) => formatDate(r.certificate_expiry) },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (r) => (r.status ? <StatusPill value={r.status} /> : '—'),
+              },
               {
                 key: 'doc_path',
                 label: 'Document',
-                render: (r) => (
-                  <DocumentLink
-                    docId={r.a_d_id}
-                    path={r.doc_path}
-                    label={r.document_type ? `View ${r.document_type}` : 'View document'}
-                  />
-                ),
+                render: (r) =>
+                  r.a_d_id ? (
+                    <DocumentLink docId={r.a_d_id} path={r.doc_path} label="View" />
+                  ) : (
+                    <EmployeeCertificateLink etcId={r.has_file ? r.etc_id : null} />
+                  ),
               },
             ]}
-            rows={asset.history.certifications}
+            rows={flattenCertificationRows(asset.history.certifications)}
           />
         )}
 

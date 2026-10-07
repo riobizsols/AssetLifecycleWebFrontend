@@ -58,8 +58,8 @@ export default function RegisterTab({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+      <div className="relative z-20 rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl bg-slate-50/80 px-4 py-3">
           <FilterField label="Asset type">
             <DropdownMultiSelect
               values={registerDraft.assetTypeIds || []}

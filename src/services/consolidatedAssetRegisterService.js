@@ -25,6 +25,7 @@ export const consolidatedAssetRegisterService = {
         departments: [],
         statuses: [],
         assetTypes: [],
+        properties: [],
       }
     );
   },

@@ -38,6 +38,18 @@ export function Input({ value, onChange, placeholder, type = "text", min, classN
   );
 }
 
+function selectLabel(opt) {
+  if (opt == null || opt === "") return "";
+  if (typeof opt === "string" || typeof opt === "number" || typeof opt === "boolean") return String(opt);
+  if (typeof opt === "object") {
+    if (opt.label != null && typeof opt.label !== "object") return String(opt.label);
+    if (opt.value != null && typeof opt.value !== "object") return String(opt.value);
+    if (opt.name != null && typeof opt.name !== "object") return String(opt.name);
+    if (opt.text != null && typeof opt.text !== "object") return String(opt.text);
+  }
+  return "";
+}
+
 export function Select({ value, onChange, options, placeholder }) {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -62,24 +74,28 @@ export function Select({ value, onChange, options, placeholder }) {
         onClick={() => setIsOpen(!isOpen)}
         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-left bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center justify-between"
       >
-        <span className="truncate pr-2">{value || defaultPlaceholder}</span>
+        <span className="truncate pr-2">{selectLabel(value) || defaultPlaceholder}</span>
         <span className="text-slate-500">▼</span>
       </button>
       {isOpen && (
         <div className="absolute z-50 w-full top-full left-0 mt-0 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden">
           <div className="max-h-48 overflow-y-auto p-2 space-y-1">
-            {options.map((opt) => (
+            {(options || []).map((opt, index) => {
+              const label = selectLabel(opt);
+              const stored = typeof opt === "object" && opt !== null ? (opt.value ?? opt.label ?? opt.name ?? label) : opt;
+              return (
               <div
-                key={opt}
+                key={`${label}-${index}`}
                 onClick={() => {
-                  onChange(opt);
+                  onChange(stored);
                   setIsOpen(false);
                 }}
                 className="text-sm p-1 rounded-md hover:bg-slate-100 cursor-pointer"
               >
-                {opt}
+                {label}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -719,6 +735,45 @@ export function SearchableSelect({ onChange, options, placeholder, value }) {
   );
 }
 
+function plainFilterLabel(value) {
+  if (value == null || value === "") return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(plainFilterLabel).filter(Boolean).join(", ");
+  }
+  if (typeof value === "object") {
+    if (value.label != null && typeof value.label !== "object") return String(value.label);
+    if (value.value != null && typeof value.value !== "object") return String(value.value);
+    if (value.name != null && typeof value.name !== "object") return String(value.name);
+    if (value.text != null && typeof value.text !== "object") return String(value.text);
+    if (value.property != null && typeof value.property !== "object") return String(value.property);
+  }
+  return "";
+}
+
+/** Readable text for a filter value, including property/value objects. */
+export function formatFilterDisplay(value) {
+  if (value == null || value === "") return "";
+  if (Array.isArray(value)) {
+    return value.map((item) => formatFilterDisplay(item)).filter(Boolean).join(", ");
+  }
+  if (typeof value === "object") {
+    const hasPropertyShape =
+      Object.prototype.hasOwnProperty.call(value, "property") ||
+      Object.prototype.hasOwnProperty.call(value, "value");
+    if (hasPropertyShape) {
+      const name = plainFilterLabel(value.property);
+      const chosen = plainFilterLabel(value.value);
+      if (name && chosen) return `${name} = ${chosen}`;
+      return name || chosen || "";
+    }
+    return plainFilterLabel(value);
+  }
+  return String(value);
+}
+
 export const OP_MAP = {
   text: ["contains", "starts with", "ends with", "=", "!="],
   number: [">=", "<=", "=", "!="],
@@ -874,7 +929,9 @@ export function PropertyValueFilter({ value, onChange, assetId = null }) {
         const response = await API.get(url);
         console.log('📦 Property values response:', response.data);
         if (response.data && response.data.success) {
-          const values = response.data.data || [];
+          const values = (response.data.data || [])
+            .map((item) => plainFilterLabel(item))
+            .filter(Boolean);
           console.log('✅ Property values:', values);
           setPropertyValues(values);
         } else {

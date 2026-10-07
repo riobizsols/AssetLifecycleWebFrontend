@@ -82,14 +82,23 @@ export default function ConsolidatedAssetRegister() {
     registerQueryFilters,
   } = useConsolidatedAssetRegister();
 
+  const advancedAccessors = useMemo(() => {
+    const accessors = { ...CONSOLIDATED_FIELD_ACCESSORS };
+    (filterOptions.properties || []).forEach((prop) => {
+      if (!prop?.prop_id) return;
+      accessors[`prop:${prop.prop_id}`] = (row) => row?.properties?.[prop.prop_id] ?? '';
+    });
+    return accessors;
+  }, [filterOptions.properties]);
+
   const filteredRegisterRows = useMemo(
     () =>
       applyAdvancedFilters(
         register?.rows || [],
         advanced,
-        CONSOLIDATED_FIELD_ACCESSORS,
+        advancedAccessors,
       ),
-    [register?.rows, advanced],
+    [register?.rows, advanced, advancedAccessors],
   );
 
   const filteredRegister = useMemo(
@@ -255,6 +264,7 @@ export default function ConsolidatedAssetRegister() {
           departments={departmentOptions}
           assetTypes={filterOptions.assetTypes}
           statuses={filterOptions.statuses}
+          properties={filterOptions.properties}
           loading={loadingOptions}
           onApply={applyFilters}
           onReset={handleReset}

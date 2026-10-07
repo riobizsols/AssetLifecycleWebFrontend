@@ -2,7 +2,33 @@ import React from 'react';
 import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { PAGE_SIZE } from './constants';
 import { formatDate, StatusPill } from './utils';
-import AssetDetailTabs from './AssetDetailTabs';
+import AssetDetailTabs, { DocumentLink } from './AssetDetailTabs';
+
+function CertificationCell({ certifications = [], onOpen }) {
+  const documents = certifications.filter((c) => c.a_d_id);
+  const mapped = certifications.filter((c) => !c.a_d_id);
+  if (!documents.length && !mapped.length) return '—';
+  return (
+    <div className="flex flex-col items-start gap-1 min-w-0">
+      {documents.map((c) => (
+        <DocumentLink key={c.a_d_id} docId={c.a_d_id} path={c.doc_path} label={c.document_type} />
+      ))}
+      {mapped.length > 0 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
+          title={mapped.map((c) => c.document_type).join('\n')}
+          className="text-[#143d65] font-medium hover:underline"
+        >
+          {mapped.length}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function AssetResultsTable({
   report,
@@ -115,7 +141,13 @@ export default function AssetResultsTable({
                         {asset.invoice_no || '—'}
                       </td>
                       <td className="px-3 py-3 text-slate-700 align-top break-words">
-                        {asset.certification_summary}
+                        <CertificationCell
+                          certifications={asset.history?.certifications}
+                          onOpen={() => {
+                            if (!open) toggleExpand(asset.asset_id);
+                            setActiveTab('certifications');
+                          }}
+                        />
                       </td>
                       <td className="px-3 py-3 text-slate-700 align-top break-words">
                         {formatDate(asset.last_maintenance)}

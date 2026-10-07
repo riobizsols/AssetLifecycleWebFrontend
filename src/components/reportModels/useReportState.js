@@ -498,10 +498,11 @@ export function useReportState(reportId, report) {
               // Transform asset options to the format expected by the frontend
               console.log('🔍 [useReportState] Transforming asset options:', filterData.asset_options.length, 'assets');
               console.log('🔍 [useReportState] First few asset options:', filterData.asset_options.slice(0, 3));
-              field.domain = filterData.asset_options.map(asset => ({
-                value: asset.asset_id,
-                label: `${asset.asset_id} - ${asset.asset_description && asset.asset_description !== 'NULL' ? asset.asset_description : asset.serial_number}`
-              }));
+              field.domain = filterData.asset_options.map(asset => {
+                const desc = asset.asset_description || asset.description;
+                const name = desc && desc !== 'NULL' ? desc : asset.serial_number;
+                return { value: asset.asset_id, label: name ? `${asset.asset_id} - ${name}` : asset.asset_id };
+              });
               console.log('✅ [useReportState] Updated asset options:', field.domain.length, 'assets');
               console.log('🔍 [useReportState] First few transformed options:', field.domain.slice(0, 3));
             } else if (field.key === "workOrderId" && filterData.work_order_options) {

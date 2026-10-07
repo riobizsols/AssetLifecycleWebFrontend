@@ -696,7 +696,9 @@ const MaintenanceApprovalDetail = () => {
       if (!assetTypeId) return;
       setLoadingTechnicians(true);
       try {
-        const resp = await API.get(`/inspection-approval/technicians/${assetTypeId}`);
+        const resp = await API.get(`/inspection-approval/technicians/${assetTypeId}`, {
+          params: { scope: 'maintenance' },
+        });
         if (resp.data?.success) {
           setTechnicians(resp.data.data || []);
         } else {

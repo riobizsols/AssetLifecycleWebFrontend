@@ -34,6 +34,7 @@ export default function FiltersBar({
   departments,
   assetTypes = [],
   statuses = [],
+  properties = [],
   loading,
   onApply,
   onReset,
@@ -49,15 +50,49 @@ export default function FiltersBar({
   const hasInstitution = (draft.orgIds || []).length > 0;
   const hasCampus = (draft.branchIds || []).length > 0;
 
+  const scopedProperties = useMemo(() => {
+    const selectedOrgs = draft.orgIds || [];
+    return (properties || []).filter((prop) => {
+      if (!prop?.prop_id || !prop?.property) return false;
+      if (!selectedOrgs.length) return true;
+      return selectedOrgs.includes(String(prop.org_id));
+    });
+  }, [properties, draft.orgIds]);
+
   const advancedFields = useMemo(() => {
     const typeDomain = (assetTypes || []).map((c) => c.label || c.name || c.id).filter(Boolean);
     const statusDomain = (statuses || []).map((s) => s.label || s.name || s.id).filter(Boolean);
-    return CONSOLIDATED_ADVANCED_FIELDS.map((f) => {
+    const base = CONSOLIDATED_ADVANCED_FIELDS.map((f) => {
       if (f.key === 'assetType') return { ...f, domain: typeDomain, type: 'multiselect' };
       if (f.key === 'status') return { ...f, domain: statusDomain };
       return f;
     });
-  }, [assetTypes, statuses]);
+
+    const usedLabels = new Set(base.map((f) => f.label));
+    const nameCount = scopedProperties.reduce((acc, prop) => {
+      const name = String(prop.property);
+      acc[name] = (acc[name] || 0) + 1;
+      return acc;
+    }, {});
+
+    const propertyFields = scopedProperties.map((prop) => {
+      const values = (Array.isArray(prop.list_values) ? prop.list_values : [])
+        .map((value) => String(value).trim())
+        .filter(Boolean);
+      let label = String(prop.property);
+      if (nameCount[label] > 1) label = `${label} (${prop.org_id})`;
+      if (usedLabels.has(label)) label = `${label} (${prop.prop_id})`;
+      usedLabels.add(label);
+      return {
+        key: `prop:${prop.prop_id}`,
+        label,
+        type: 'select',
+        domain: values,
+      };
+    });
+
+    return [...base, ...propertyFields];
+  }, [assetTypes, statuses, scopedProperties]);
 
   const getFilterOptions = (fieldKey) => {
     if (fieldKey === 'assetType') {
@@ -71,6 +106,10 @@ export default function FiltersBar({
         value: String(s.id ?? s.label),
         label: String(s.label ?? s.name ?? s.id),
       }));
+    }
+    if (String(fieldKey).startsWith('prop:')) {
+      const field = advancedFields.find((f) => f.key === fieldKey);
+      return (field?.domain || []).map((value) => ({ value, label: value }));
     }
     return null;
   };

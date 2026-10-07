@@ -27,6 +27,7 @@ import {
   AdvancedBuilder,
   DropdownMenu,
   GroupedField,
+  formatFilterDisplay,
   formatISO,
   getCurrentFYBounds,
   showToast
@@ -504,21 +505,14 @@ export default function ReportLayout({
        if (!r.field) return;
        const field = translatedReport.fields.find(f => f.key === r.field);
        const label = field ? field.label : r.field;
-      
-      // Handle property-value filter (object with property and value)
-      let displayVal = "–";
-      if (r.field === 'property' && r.val && typeof r.val === 'object' && r.val.property && r.val.value) {
-        displayVal = `${r.val.property} = ${r.val.value}`;
-      } else if (Array.isArray(r.val)) {
-        displayVal = r.val.join(", ") || "–";
-      } else if (r.val !== null && r.val !== undefined) {
-        displayVal = String(r.val);
-      }
-      
+       const displayVal = formatFilterDisplay(r.val);
+       if (!displayVal) return;
+
+       const isProperty = r.field === "property" || field?.type === "propertyValue";
        chips.push({
          type: 'advanced',
          index: idx,
-        label: `${label} ${r.op} ${displayVal}`,
+         label: isProperty ? displayVal : `${label} ${r.op} ${displayVal}`,
          removeAction: () => {
            const newAdvanced = advanced.filter((_, i) => i !== idx);
            setAdvanced(newAdvanced);

@@ -122,6 +122,8 @@ function statusBadge(status) {
 export default function SlaVendorPerformance() {
   const {
     options,
+    locationOptions,
+    branchLocked,
     draft,
     setDraft,
     applied,
@@ -188,7 +190,9 @@ export default function SlaVendorPerformance() {
     const typeLabels = labelsForIds(applied.assetTypeIds, options.assetTypes);
     if (typeLabels.length) items.push({ label: 'Asset type', value: typeLabels.join(', ') });
 
-    const locLabels = labelsForIds(applied.branchIds, options.locations);
+    const locLabels = branchLocked
+      ? locationOptions.map((loc) => loc.label).filter(Boolean)
+      : labelsForIds(applied.branchIds, options.locations);
     if (locLabels.length) items.push({ label: 'Location', value: locLabels.join(', ') });
 
     if (slaStatusFilter && slaStatusFilter !== 'all') {
@@ -210,6 +214,8 @@ export default function SlaVendorPerformance() {
     slaStatusLabel,
     search,
     advanced,
+    branchLocked,
+    locationOptions,
   ]);
 
   const previewSummaryItems = useMemo(() => {
@@ -477,15 +483,17 @@ export default function SlaVendorPerformance() {
                 onChange={(assetTypeIds) => setDraft((d) => ({ ...d, assetTypeIds }))}
               />
             </div>
+            {!branchLocked && (
             <div className="min-w-[160px] flex-1">
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Location</label>
               <DropdownMultiSelect
                 values={draft.branchIds}
-                options={toOpts(options.locations)}
+                options={toOpts(locationOptions)}
                 placeholder="All locations"
                 onChange={(branchIds) => setDraft((d) => ({ ...d, branchIds }))}
               />
             </div>
+            )}
             <div className="min-w-[160px]">
               <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">SLA status</label>
               <select

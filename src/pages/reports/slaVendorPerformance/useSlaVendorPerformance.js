@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { slaVendorPerformanceService } from '../../../services/slaVendorPerformanceService';
+import { useAcmContextStore } from '../../../store/useAcmContextStore';
 
 const emptyDraft = {
   period: 'last_30_days',
@@ -15,6 +16,12 @@ const emptyDraft = {
 };
 
 export function useSlaVendorPerformance() {
+  const appliedBranchId = useAcmContextStore((s) => s.appliedBranchId);
+  const appliedScopeLevel = useAcmContextStore((s) => s.appliedScopeLevel);
+  const branchLocked = (appliedScopeLevel === 'branch' || appliedScopeLevel === 'dept')
+    && Boolean(appliedBranchId);
+  const lockedBranchId = branchLocked ? String(appliedBranchId) : '';
+
   const [options, setOptions] = useState({
     vendors: [],
     assetTypes: [],
@@ -43,26 +50,33 @@ export function useSlaVendorPerformance() {
   const [selectedVendorId, setSelectedVendorId] = useState(null);
   const [vendorDetail, setVendorDetail] = useState(null);
 
+  const locationOptions = useMemo(() => {
+    if (!lockedBranchId) return options.locations;
+    return options.locations.filter((loc) => String(loc.id) === lockedBranchId);
+  }, [options.locations, lockedBranchId]);
+
   const dashboardFilters = useMemo(
     () => ({
       ...applied,
+      ...(lockedBranchId ? { branchIds: [lockedBranchId] } : {}),
       // Keep overview KPIs/charts unfiltered by SLA status — status only scopes the details table
       slaStatus: 'all',
       dateFrom: applied.period === 'custom' ? applied.dateFrom : undefined,
       dateTo: applied.period === 'custom' ? applied.dateTo : undefined,
       grain,
     }),
-    [applied, grain],
+    [applied, grain, lockedBranchId],
   );
 
   const detailFilters = useMemo(
     () => ({
       ...applied,
+      ...(lockedBranchId ? { branchIds: [lockedBranchId] } : {}),
       dateFrom: applied.period === 'custom' ? applied.dateFrom : undefined,
       dateTo: applied.period === 'custom' ? applied.dateTo : undefined,
       grain,
     }),
-    [applied, grain],
+    [applied, grain, lockedBranchId],
   );
 
   const loadOptions = useCallback(async () => {
@@ -126,7 +140,7 @@ export function useSlaVendorPerformance() {
 
   useEffect(() => {
     loadOptions();
-  }, [loadOptions]);
+  }, [loadOptions, lockedBranchId]);
 
   useEffect(() => {
     loadDashboard(dashboardFilters);
@@ -165,12 +179,15 @@ export function useSlaVendorPerformance() {
   }, [draft]);
 
   const resetFilters = useCallback(() => {
-    setDraft(emptyDraft);
-    setApplied(emptyDraft);
+    const next = lockedBranchId
+      ? { ...emptyDraft, branchIds: [lockedBranchId] }
+      : emptyDraft;
+    setDraft(next);
+    setApplied(next);
     setPage(1);
     setSearch('');
     setSelectedVendorId(null);
-  }, []);
+  }, [lockedBranchId]);
 
   const clearSlaStatusFilter = useCallback(() => {
     setDraft((d) => ({ ...d, slaStatus: 'all' }));
@@ -193,6 +210,8 @@ export function useSlaVendorPerformance() {
 
   return {
     options,
+    locationOptions,
+    branchLocked,
     draft,
     setDraft,
     applied,

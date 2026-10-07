@@ -97,6 +97,7 @@ export function useConsolidatedAssetRegister() {
     departments: [],
     statuses: [],
     assetTypes: [],
+    properties: [],
   });
   const [draft, setDraft] = useState(emptyFilters);
   const [applied, setApplied] = useState(emptyFilters);
@@ -162,6 +163,7 @@ export function useConsolidatedAssetRegister() {
           departments: data.departments || [],
           statuses: data.statuses || [],
           assetTypes: data.assetTypes || [],
+          properties: data.properties || [],
         };
         optionsRef.current = normalized;
         setFilterOptions(normalized);
