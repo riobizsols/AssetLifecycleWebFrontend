@@ -614,6 +614,31 @@ export const REPORTS = [
   },
 ];
 
+const ASSET_PROPERTY_REPORT_IDS = new Set([
+  "asset-register",
+  "asset-lifecycle",
+  "asset-valuation",
+  "maintenance-history",
+  "breakdown-history",
+  "reopened-breakdowns",
+  "asset-workflow-history",
+  "usage-based-asset",
+  "warranty-amc-expiry",
+  "qa-audit-report",
+]);
+
+const ASSET_PROPERTY_FIELD = {
+  key: "properties",
+  label: "Properties",
+  type: "assetTypeProperty",
+};
+
+REPORTS.forEach((report) => {
+  if (!ASSET_PROPERTY_REPORT_IDS.has(report.id) || !Array.isArray(report.fields)) return;
+  if (report.fields.some((field) => field.key === "properties")) return;
+  report.fields.push(ASSET_PROPERTY_FIELD);
+});
+
 // Filtering logic
 export function filterRows(allRows, reportId, quickFilters, advancedFilters) {
   const reportDef = REPORTS.find(r => r.id === reportId);
@@ -655,6 +680,17 @@ export function filterRows(allRows, reportId, quickFilters, advancedFilters) {
       if (Array.isArray(filter.val) && filter.val.every(v => v === null || v === undefined || (typeof v === 'string' && v.trim() === ''))) continue;
       const field = reportDef.fields.find(f => f.key === filter.field);
       if (!field) continue;
+      if (field.type === "assetTypeProperty") {
+        if (!filter.assetTypeId || !filter.val || !filter.listValue || !Array.isArray(filter.assetIds)) continue;
+        const assetId = row["Asset ID"] || row.asset_id || row["Asset"];
+        const hasAsset = filter.assetIds.map(String).includes(String(assetId));
+        if (filter.op === "!=") {
+          if (hasAsset) return false;
+        } else if (!hasAsset) {
+          return false;
+        }
+        continue;
+      }
       const colName = FIELD_TO_COLUMN_MAP[reportId]?.[filter.field];
       if (!colName) continue;
 

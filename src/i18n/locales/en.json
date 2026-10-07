@@ -600,7 +600,7 @@
       "select": "Select",
       "selectAll": "Select All",
       "clearAll": "Clear All",
-      "noOptionsFound": "No breakdown records found",
+      "noOptionsFound": "No options found",
       "searchPlaceholder": "Search...",
       "breakdownHistoryAssetDropdownEmpty": "Assets will appear here when breakdown records exist."
     },

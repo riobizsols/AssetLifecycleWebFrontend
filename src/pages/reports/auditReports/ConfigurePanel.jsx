@@ -52,8 +52,7 @@ export default function ConfigurePanel({
 
   return (
     <section className="relative z-10 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
-        <p className="text-sm font-semibold text-slate-900">Configure report</p>
+      <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           {onPreview ? (
             <ReportPreviewButton onClick={onPreview} disabled={previewDisabled || loadingView} />

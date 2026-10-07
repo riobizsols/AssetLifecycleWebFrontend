@@ -71,10 +71,6 @@ export default function ReopenedBreakdownsHistory() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 max-w-6xl mx-auto">
-      <p className="text-xs text-slate-600 mb-6">
-        {t("reports.reopenedBreakdownsHistory.subtitle", { id: amsId || "—" })}
-      </p>
-
       {loading && rows.length === 0 ? (
         <RouteDataLoading
           variant="fullscreen"

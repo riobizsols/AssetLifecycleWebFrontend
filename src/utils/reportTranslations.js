@@ -14,6 +14,7 @@ export const getTranslatedFieldLabel = (key) => {
     'commissionedDateRange': t('reports.fieldLabels.commissionedDate'),
     'assetUsageHistory': t('reports.fieldLabels.assetUsageHistory'),
     'currentStatus': t('reports.fieldLabels.currentStatus'),
+    'properties': 'Properties',
     'assetId': t('reports.fieldLabels.assetId'),
     'assetName': t('reports.fieldLabels.assetName'),
     'category': t('reports.fieldLabels.category'),

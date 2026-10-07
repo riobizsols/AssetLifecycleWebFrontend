@@ -80,6 +80,7 @@ export default function ConsolidatedAssetRegister() {
     resetRegisterFilters,
     refresh,
     registerQueryFilters,
+    institutionLocked,
   } = useConsolidatedAssetRegister();
 
   const filteredRegisterRows = useMemo(
@@ -260,6 +261,7 @@ export default function ConsolidatedAssetRegister() {
           onReset={handleReset}
           advanced={advanced}
           setAdvanced={setAdvanced}
+          institutionLocked={institutionLocked}
           onPreview={() => {
             if (!hasInstitution) {
               toast.error('Select an institution and Apply first');

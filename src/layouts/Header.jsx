@@ -184,6 +184,38 @@ export default function Header() {
     "/adminsettings/configuration/breakdown-reason-codes": {
       title: t('masterDataTitles.breakdownReasonCodes'),
     },
+    "/reports/asset-lifecycle-report": {
+      title: t('navigation.assetLifecycleReport'),
+      subtitle: "",
+    },
+    "/reports/asset-report": {
+      title: "Asset Register",
+      subtitle: "",
+    },
+    "/reports/maintenance-history": {
+      title: t('navigation.maintenanceHistory'),
+      subtitle: "",
+    },
+    "/reports/asset-valuation": {
+      title: t('navigation.assetValuation'),
+      subtitle: "",
+    },
+    "/reports/asset-workflow-history": {
+      title: t('navigation.assetWorkflowHistory'),
+      subtitle: "",
+    },
+    "/reports/breakdown-history": {
+      title: t('navigation.breakdownHistory'),
+      subtitle: "",
+    },
+    "/reports/breakdown-reopen-details": {
+      title: t('reports.breakdownReopenDetails.title'),
+      subtitle: "",
+    },
+    "/reports/purchase-requirement": {
+      title: "Stock & Purchase",
+      subtitle: "",
+    },
     "/reports/usage-based-asset": {
       title: t('navigation.usageBasedAssetReport'),
       subtitle: "",
@@ -202,13 +234,11 @@ export default function Header() {
     },
     "/reports/consolidated-asset-register": {
       title: "Asset Register",
-      subtitle:
-        "Institution-wide asset count, values, distribution and category mix.",
+      subtitle: "",
     },
     "/reports/sla-vendor-performance": {
       title: "SLA & Vendor Performance",
-      subtitle:
-        "Vendor response, resolution SLA, breaches, repeat failures and service ratings.",
+      subtitle: "",
     },
     "/reports/spare-parts-report": {
       title: t("navigation.sparePartsReport") || "Spare Parts Report",
@@ -256,11 +286,16 @@ export default function Header() {
   const reopenedHistoryMatch = location.pathname.match(
     /^\/reports\/reopened-breakdowns\/([^/]+)\/history$/,
   );
+  const breakdownDetailMatch = location.pathname.match(
+    /^\/reports\/breakdown-history\/([^/]+)$/,
+  );
 
   const pageInfo =
     showAdminBreadcrumb || reopenedHistoryMatch
       ? { title: "", subtitle: "" }
-      : Object.entries(pathTitleMap)
+      : breakdownDetailMatch
+        ? { title: t("reports.breakdownDetail.title"), subtitle: "" }
+        : Object.entries(pathTitleMap)
           .sort((a, b) => b[0].length - a[0].length)
           .find(([path]) => location.pathname.startsWith(path))?.[1] || {
             title: "",

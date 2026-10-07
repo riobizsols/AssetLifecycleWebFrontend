@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Download, Loader2, Users } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { workforceReportService } from '../../services/workforceReportService';
 import { useAuditLog } from '../../hooks/useAuditLog';
 import { REPORTS_APP_IDS } from '../../constants/reportsAuditEvents';
@@ -266,15 +266,6 @@ export default function WorkforceReport() {
     <div className="min-h-full bg-slate-50/80">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-5">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 text-[#143d65]">
-              <Users className="w-5 h-5" />
-              <h2 className="text-lg font-semibold text-slate-900">
-                Engineering Team Productivity Report
-              </h2>
-            </div>
-          </div>
-
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-sm">
               <span className="block text-xs font-medium text-slate-500 mb-1">Period</span>

@@ -94,6 +94,7 @@ function SafeDropdownMultiSelect({
   options,
   placeholder = "Select...",
   hideSelectedText = false,
+  disabled = false,
 }) {
   try {
     return (
@@ -103,6 +104,7 @@ function SafeDropdownMultiSelect({
         options={options}
         placeholder={placeholder}
         hideSelectedText={hideSelectedText}
+        disabled={disabled}
       />
     );
   } catch (error) {
@@ -121,6 +123,7 @@ function DropdownMultiSelectInner({
   options,
   placeholder = "Select...",
   hideSelectedText = false,
+  disabled = false,
 }) {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -224,6 +227,7 @@ function DropdownMultiSelectInner({
 
   // Handle click on the container
   const handleContainerClick = () => {
+    if (disabled) return;
     if (!isOpen) {
       setIsOpen(true);
       // Focus input after a small delay to ensure it's rendered
@@ -267,9 +271,14 @@ function DropdownMultiSelectInner({
       {/* Hybrid input/button - always visible */}
       <div
         onClick={handleContainerClick}
-        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm bg-white focus-within:outline-none focus-within:ring-2 focus-within:ring-slate-400 flex items-center justify-between cursor-text"
+        aria-disabled={disabled || undefined}
+        className={`w-full rounded-xl border border-slate-300 px-3 py-2 text-sm flex items-center justify-between ${
+          disabled
+            ? 'bg-slate-100 text-slate-700 cursor-not-allowed'
+            : 'bg-white focus-within:outline-none focus-within:ring-2 focus-within:ring-slate-400 cursor-text'
+        }`}
       >
-        {isOpen ? (
+        {isOpen && !disabled ? (
           <input
             ref={inputRef}
             type="text"
@@ -727,7 +736,227 @@ export const OP_MAP = {
   boolean: ["is"],
   daterange: ["in range", "before", "after"],
   propertyValue: ["="],
+  assetTypeProperty: ["contains", "starts with", "ends with", "=", "!="],
 };
+
+function useAssetTypeOptions() {
+  const [types, setTypes] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await API.get('/asset-types');
+        const rows = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        if (cancelled) return;
+        setTypes(
+          rows
+            .filter((row) => row?.asset_type_id && (row.int_status === 1 || row.int_status === '1' || row.int_status == null))
+            .map((row) => ({
+              id: String(row.asset_type_id),
+              label: String(row.text || row.asset_type_id),
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label)),
+        );
+      } catch (error) {
+        console.error('Error fetching asset types for property filter:', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return types;
+}
+
+function useAssetTypeProperties(assetTypeId) {
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!assetTypeId) {
+      setProperties([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await API.get(`/properties/asset-types/${encodeURIComponent(assetTypeId)}/properties`);
+        const rows = res.data?.data || [];
+        if (cancelled) return;
+        setProperties(
+          rows
+            .map((row) => ({
+              id: String(row.prop_id || ''),
+              label: String(row.property || '').trim(),
+            }))
+            .filter((row) => row.label)
+            .sort((a, b) => a.label.localeCompare(b.label)),
+        );
+      } catch (error) {
+        console.error('Error fetching properties for asset type:', error);
+        if (!cancelled) setProperties([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [assetTypeId]);
+
+  return { properties, loading };
+}
+
+function usePropertyListValues(propId) {
+  const [values, setValues] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!propId) {
+      setValues([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await API.get(`/properties/${encodeURIComponent(propId)}/values`);
+        const rows = res.data?.data || [];
+        if (cancelled) return;
+        setValues(
+          rows
+            .map((row) => String(row.value || '').trim())
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b)),
+        );
+      } catch (error) {
+        console.error('Error fetching property list values:', error);
+        if (!cancelled) setValues([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [propId]);
+
+  return { values, loading };
+}
+
+function PropertyConditionFields({ row, onPatch }) {
+  const types = useAssetTypeOptions();
+  const onPatchRef = useRef(onPatch);
+  onPatchRef.current = onPatch;
+  const knownIds = (row.assetIds || []).join(',');
+
+  useEffect(() => {
+    if (!row.assetTypeId || !row.val || !row.listValue) {
+      if (knownIds !== '') onPatchRef.current({ assetIds: null });
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await API.get(
+          `/properties/asset-types/${encodeURIComponent(row.assetTypeId)}/assets`,
+          {
+            params: {
+              property: row.val,
+              value: row.listValue,
+              op: row.op === '!=' ? 'contains' : row.op,
+            },
+          },
+        );
+        if (cancelled) return;
+        const ids = Array.isArray(res.data?.data) ? res.data.data.map(String) : [];
+        if (ids.join(',') !== knownIds) onPatchRef.current({ assetIds: ids });
+      } catch (error) {
+        console.error('Error fetching assets for property filter:', error);
+        if (!cancelled && knownIds !== '') onPatchRef.current({ assetIds: [] });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [row.assetTypeId, row.val, row.listValue, row.op, knownIds]);
+
+  return (
+    <div className="relative col-span-2">
+      <Select
+        value={row.assetTypeLabel || ''}
+        placeholder="Select asset type"
+        options={types.map((type) => type.label)}
+        onChange={(label) => {
+          const type = types.find((item) => item.label === label);
+          onPatch({
+            assetTypeId: type?.id || '',
+            assetTypeLabel: label,
+            val: null,
+            propId: null,
+            listValue: null,
+            assetIds: null,
+          });
+        }}
+      />
+    </div>
+  );
+}
+
+function PropertyValueSelect({ row, onPatch }) {
+  const { properties, loading } = useAssetTypeProperties(row.assetTypeId);
+  return (
+    <div className="relative col-span-2">
+      <Select
+        value={row.val || ''}
+        placeholder={
+          !row.assetTypeId
+            ? 'Select asset type first'
+            : loading
+              ? 'Loading...'
+              : properties.length
+                ? 'Select property'
+                : 'No properties'
+        }
+        options={properties.map((property) => property.label)}
+        onChange={(propertyName) => {
+          const property = properties.find((item) => item.label === propertyName);
+          onPatch({
+            val: propertyName,
+            propId: property?.id || '',
+            listValue: null,
+            assetIds: null,
+          });
+        }}
+      />
+    </div>
+  );
+}
+
+function PropertyListValueSelect({ row, onPatch }) {
+  const { values, loading } = usePropertyListValues(row.propId);
+  return (
+    <div className="relative col-span-3">
+      <Select
+        value={row.listValue || ''}
+        placeholder={
+          !row.val
+            ? 'Select property first'
+            : loading
+              ? 'Loading...'
+              : values.length
+                ? 'Select value'
+                : 'No list values'
+        }
+        options={values}
+        onChange={(listValue) => onPatch({ listValue, assetIds: null })}
+      />
+    </div>
+  );
+}
 
 export function AdvancedBuilder({ fields, value, onChange, quickFilters = {}, getFilterOptions }) {
   const { t } = useLanguage();
@@ -761,6 +990,7 @@ export function AdvancedBuilder({ fields, value, onChange, quickFilters = {}, ge
           if (!field) return null;
           const ops = OP_MAP[field.type] || ["="];
           const isPropertyValue = field.type === "propertyValue";
+          const isAssetTypeProperty = field.type === "assetTypeProperty";
           
           // For propertyValue, always use "=" operator and ensure it's set
           if (isPropertyValue && r.op !== "=") {
@@ -773,26 +1003,46 @@ export function AdvancedBuilder({ fields, value, onChange, quickFilters = {}, ge
               className="relative grid grid-cols-12 items-center gap-2 overflow-visible"
               style={{ zIndex: (rows?.length || 0) - i + 10 }}
             >
-              <div className="relative col-span-3">
+              <div className={`relative ${isAssetTypeProperty ? "col-span-2" : "col-span-3"}`}>
                 <Select 
                   value={field.label} 
                   onChange={(v) => {
                     const newField = fields.find(f => f.label === v);
                     if (newField) {
-                      update(i, { field: newField.key, op: OP_MAP[newField.type]?.[0] || "=", val: null });
+                      update(i, {
+                        field: newField.key,
+                        op: OP_MAP[newField.type]?.[0] || "=",
+                        val: null,
+                        assetTypeId: null,
+                        assetTypeLabel: null,
+                        propId: null,
+                        listValue: null,
+                        assetIds: null,
+                      });
                     }
                   }} 
                   options={fields.map((f) => f.label)} 
                 />
               </div>
+              {isAssetTypeProperty && (
+                <PropertyConditionFields row={r} onPatch={(patch) => update(i, patch)} />
+              )}
               {!isPropertyValue && (
-                <div className="relative col-span-3">
+                <div className={`relative ${isAssetTypeProperty ? "col-span-2" : "col-span-3"}`}>
                   <Select value={r.op} onChange={(v) => update(i, { op: v })} options={ops} />
                 </div>
               )}
+              {isAssetTypeProperty && (
+                <PropertyValueSelect row={r} onPatch={(patch) => update(i, patch)} />
+              )}
+              {isAssetTypeProperty && (
+                <PropertyListValueSelect row={r} onPatch={(patch) => update(i, patch)} />
+              )}
+              {!isAssetTypeProperty && (
               <div className={`relative ${isPropertyValue ? "col-span-8" : "col-span-5"}`}>
                 <AdvValueInput field={field} cur={r.val} onChange={(v) => update(i, { val: v })} quickFilters={quickFilters} getFilterOptions={getFilterOptions} />
               </div>
+              )}
               <div className="col-span-1 text-right">
                 <button onClick={() => remove(i)} className="text-slate-500 hover:text-red-600">
                   ✕
