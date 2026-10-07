@@ -153,6 +153,33 @@ export default function UtilityConsumption() {
     setQuantity('');
   }, [utildId]);
 
+  const [metricAssets, setMetricAssets] = useState([]);
+  useEffect(() => {
+    if (!utildId) {
+      setMetricAssets([]);
+      return undefined;
+    }
+    let cancelled = false;
+    utilityService
+      .listDetailAssets(utildId)
+      .then((list) => {
+        if (cancelled) return;
+        const assets = Array.isArray(list) ? list : [];
+        setMetricAssets(assets);
+        setAssetId((current) => {
+          if (current && assets.some((a) => a.asset_id === current)) return current;
+          if (queryAssetId && current === queryAssetId) return current;
+          return assets.length === 1 ? assets[0].asset_id : '';
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setMetricAssets([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [utildId, queryAssetId]);
+
   const submit = async () => {
     if (!utilId) return toast.error('Utility is required');
     if (!utildId) return toast.error('Consumption metric is required');
@@ -222,6 +249,31 @@ export default function UtilityConsumption() {
                 {profilesForUtility.map((d) => (
                   <option key={d.utild_id} value={d.utild_id}>
                     {d.utility_sh}
+                  </option>
+                ))}
+              </select>
+            </UtilityField>
+            <UtilityField label="Asset">
+              <select
+                className={utilityInputClass}
+                value={assetId}
+                onChange={(e) => setAssetId(e.target.value)}
+                disabled={!utildId || (!metricAssets.length && !assetId)}
+              >
+                <option value="">
+                  {!utildId
+                    ? 'Choose consumption metric first'
+                    : metricAssets.length
+                      ? 'Select asset'
+                      : 'No assets of the mapped asset type'}
+                </option>
+                {assetId && !metricAssets.some((a) => a.asset_id === assetId) ? (
+                  <option value={assetId}>{assetId}</option>
+                ) : null}
+                {metricAssets.map((a) => (
+                  <option key={a.asset_id} value={a.asset_id}>
+                    {a.asset_id} - {a.asset_name}
+                    {a.asset_type_name ? ` (${a.asset_type_name})` : ''}
                   </option>
                 ))}
               </select>

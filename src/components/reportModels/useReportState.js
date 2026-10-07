@@ -1292,7 +1292,7 @@ export function useReportState(reportId, report) {
               Date: row.consumption_date ? String(row.consumption_date).slice(0, 10) : "",
               Utility: row.utility_name || "",
               "Consumption metric": row.utility_sh || "",
-              Asset: row.asset_name || "",
+              Asset: row.asset_name || "Not linked",
               "Asset type": row.asset_type_name || "",
               Reading: row.reading == null || row.reading === "" ? "" : Number(row.reading),
               "Quantity consumed": Number(row.quantity_consumed || 0),

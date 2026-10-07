@@ -14,6 +14,8 @@ export const utilityService = {
     data(await API.delete(`/utilities/headers/${encodeURIComponent(utilId)}`)),
 
   listDetails: async () => data(await API.get('/utilities/details')),
+  listDetailAssets: async (utildId) =>
+    data(await API.get(`/utilities/details/${encodeURIComponent(utildId)}/assets`)),
   createDetail: async (payload) => data(await API.post('/utilities/details', payload)),
   updateDetail: async (utildId, payload) =>
     data(await API.put(`/utilities/details/${encodeURIComponent(utildId)}`, payload)),
