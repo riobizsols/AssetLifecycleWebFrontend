@@ -613,13 +613,18 @@ export function useReportState(reportId, report) {
     } else if (reportId === "utility-consumption") {
       const fetchFilterOptions = async () => {
         try {
-          const [details, assetTypes] = await Promise.all([
+          const [details, mappings, mappedAssets] = await Promise.all([
             utilityService.listDetails(),
-            utilityService.listAssetTypes(),
+            utilityService.listMappings(),
+            utilityService.listMappedAssets(),
           ]);
           const utilities = [...new Set((details || []).map((d) => d.utility_name).filter(Boolean))].sort();
           const metrics = [...new Set((details || []).map((d) => d.utility_sh).filter(Boolean))].sort();
-          const types = [...new Set((assetTypes || []).map((t) => t.asset_type_name || t.text).filter(Boolean))].sort();
+          const types = [...new Set((mappings || []).map((m) => m.asset_type_name).filter(Boolean))].sort();
+          const assets = (mappedAssets || []).map((a) => ({
+            value: a.asset_id,
+            label: `${a.asset_id} - ${a.asset_name}${a.asset_type_name ? ` (${a.asset_type_name})` : ""}`,
+          }));
           const frequencies = [...new Set((details || []).map((d) => d.frequency_label).filter(Boolean))].sort();
           const units = [...new Set((details || []).map((d) => d.uom_name).filter(Boolean))].sort();
 
@@ -629,6 +634,7 @@ export function useReportState(reportId, report) {
             if (field.key === "utility") field.domain = utilities;
             else if (field.key === "consumptionMetric") field.domain = metrics;
             else if (field.key === "assetType") field.domain = types;
+            else if (field.key === "asset") field.domain = assets;
             else if (field.key === "frequency") field.domain = frequencies;
             else if (field.key === "unit") field.domain = units;
           };
@@ -1268,22 +1274,7 @@ export function useReportState(reportId, report) {
           setAllRows,
           setAllAvailableAssets,
           fallbackRows: [],
-          onRowsLoaded: (rows) => {
-            const assets = [...new Set(rows.map((row) => row.Asset).filter(Boolean))].sort();
-            const reportDef = REPORTS.find((r) => r.id === reportId);
-            const assetField = reportDef?.fields?.find((field) => field.key === "asset");
-            if (assetField && assets.length) {
-              assetField.domain = assets;
-              setUpdatedReport((prev) => {
-                const base = prev || reportDef;
-                return {
-                  ...base,
-                  fields: base.fields.map((field) =>
-                    field.key === "asset" ? { ...field, domain: assets } : { ...field },
-                  ),
-                };
-              });
-            }
+          onRowsLoaded: () => {
             setForceUpdate((prev) => prev + 1);
           },
           fetcher: async () => {
@@ -1292,7 +1283,9 @@ export function useReportState(reportId, report) {
               Date: row.consumption_date ? String(row.consumption_date).slice(0, 10) : "",
               Utility: row.utility_name || "",
               "Consumption metric": row.utility_sh || "",
-              Asset: row.asset_name || "Not linked",
+              Asset: row.asset_id
+                ? (row.asset_name && row.asset_name !== row.asset_id ? `${row.asset_id} - ${row.asset_name}` : row.asset_id)
+                : "Not linked",
               "Asset type": row.asset_type_name || "",
               Reading: row.reading == null || row.reading === "" ? "" : Number(row.reading),
               "Quantity consumed": Number(row.quantity_consumed || 0),
@@ -1435,6 +1428,20 @@ export function useReportState(reportId, report) {
           label: row["Work Order ID"] || row.wo_id
         }));
       }
+
+      const uniqueByValue = (options) => {
+        if (!Array.isArray(options)) return options;
+        const seen = new Set();
+        return options.filter((opt) => {
+          if (opt?.value == null || opt.value === "" || seen.has(opt.value)) return false;
+          seen.add(opt.value);
+          return true;
+        });
+      };
+      assetOptions = uniqueByValue(assetOptions);
+      workOrderOptions = uniqueByValue(workOrderOptions);
+      reportedByOptions = uniqueByValue(reportedByOptions);
+      vendorOptions = uniqueByValue(vendorOptions);
       
       // Update the report configuration with dynamic options
       const report = REPORTS.find(r => r.id === reportId);

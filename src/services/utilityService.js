@@ -24,6 +24,7 @@ export const utilityService = {
 
   listAssetTypes: async () => data(await API.get('/utilities/asset-types')),
   listMappings: async () => data(await API.get('/utilities/mappings')),
+  listMappedAssets: async () => data(await API.get('/utilities/mapped-assets')),
   createMapping: async (payload) => data(await API.post('/utilities/mappings', payload)),
   deleteMapping: async (atumId) =>
     data(await API.delete(`/utilities/mappings/${encodeURIComponent(atumId)}`)),

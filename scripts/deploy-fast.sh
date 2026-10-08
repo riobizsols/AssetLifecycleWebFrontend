@@ -17,6 +17,13 @@ set -euo pipefail
 
 DEPLOY_HOST="${DEPLOY_HOST:-root@103.192.199.178}"
 CONTAINER="${CONTAINER:-alm-tenant-web}"
+IMAGE="${IMAGE:-tenant-alm-alm-frontend}"
+HOST_PORT="${HOST_PORT:-3001}"
+
+if [[ "$(hostname)" == "rio-server" ]]; then
+  echo "Run this on your own computer (it builds locally and uploads). Not on the server." >&2
+  exit 1
+fi
 WEB_ROOT="/usr/share/nginx/html"
 
 export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://rioassetmanagement.net/api}"
@@ -49,8 +56,19 @@ trap cleanup EXIT
 remote() { ssh "${SSH_OPTS[@]}" "$DEPLOY_HOST" "$@"; }
 
 log "Connecting to $DEPLOY_HOST ..."
-remote "docker inspect -f '{{.State.Running}}' $CONTAINER" | grep -q true \
-  || die "Container $CONTAINER is not running on $DEPLOY_HOST"
+remote "set -e
+  if [ \"\$(docker inspect -f '{{.State.Running}}' $CONTAINER 2>/dev/null)\" = true ]; then exit 0; fi
+  if docker inspect $CONTAINER >/dev/null 2>&1; then
+    echo '[deploy] Starting stopped container $CONTAINER'
+    docker start $CONTAINER >/dev/null
+  else
+    echo '[deploy] Container $CONTAINER missing — recreating from image $IMAGE'
+    docker image inspect $IMAGE >/dev/null 2>&1 || { echo 'Image $IMAGE not found'; exit 1; }
+    docker run -d --name $CONTAINER --restart unless-stopped -p $HOST_PORT:80 $IMAGE >/dev/null
+  fi
+  sleep 1
+  [ \"\$(docker inspect -f '{{.State.Running}}' $CONTAINER)\" = true ]" \
+  || die "Could not get $CONTAINER running on $DEPLOY_HOST"
 
 if [[ "$ROLLBACK" == "1" ]]; then
   log "Rolling back $CONTAINER to the previous release ..."
@@ -107,6 +125,6 @@ remote "set -e
     mv ${WEB_ROOT}_next $WEB_ROOT
   '"
 
-code="$(remote "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3001/" || true)"
+code="$(remote "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:${HOST_PORT}/" || true)"
 [[ "$code" == "200" ]] || die "Health check returned HTTP $code — run with --rollback to restore."
 log "Done. Live at $VITE_FRONTEND_URL (HTTP $code). Rollback: ./scripts/deploy-fast.sh --rollback"
