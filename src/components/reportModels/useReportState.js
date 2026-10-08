@@ -1433,8 +1433,9 @@ export function useReportState(reportId, report) {
         if (!Array.isArray(options)) return options;
         const seen = new Set();
         return options.filter((opt) => {
-          if (opt?.value == null || opt.value === "" || seen.has(opt.value)) return false;
-          seen.add(opt.value);
+          const key = String(opt?.value ?? '');
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
           return true;
         });
       };
