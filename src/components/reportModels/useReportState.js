@@ -1435,6 +1435,21 @@ export function useReportState(reportId, report) {
           label: row["Work Order ID"] || row.wo_id
         }));
       }
+
+      const uniqueByValue = (options) => {
+        if (!Array.isArray(options)) return options;
+        const seen = new Set();
+        return options.filter((opt) => {
+          const key = String(opt?.value ?? '');
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      };
+      assetOptions = uniqueByValue(assetOptions);
+      workOrderOptions = uniqueByValue(workOrderOptions);
+      reportedByOptions = uniqueByValue(reportedByOptions);
+      vendorOptions = uniqueByValue(vendorOptions);
       
       // Update the report configuration with dynamic options
       const report = REPORTS.find(r => r.id === reportId);
