@@ -1,6 +1,20 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { getStockPurchaseCellValue } from './newReportExtrasConfig';
+
+/**
+ * Excel of exactly what the report shows: the filtered rows in the selected columns.
+ */
+export function exportStockPurchaseExcel({ rows = [], columns = [] } = {}) {
+  const sheet = XLSX.utils.aoa_to_sheet([
+    columns,
+    ...rows.map((row) => columns.map((col) => getStockPurchaseCellValue(row, col) ?? '')),
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheet, 'Stock & Purchase');
+  XLSX.writeFile(wb, `stock-purchase-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
 
 const PDF_COLUMNS = [
   'Part code',
