@@ -84,6 +84,7 @@ import {
   Activity,
   MessageSquareText,
   FileCheck,
+  Cpu,
 } from "lucide-react";
 
 const normalizeNavAppId = (id) =>
@@ -152,6 +153,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "BRANCHES",
     "BRANCHDEPTMAPPING",
     "AUDITATMAPPING",
+    "OPCCOMPONENTS",
     "DEPARTMENTS",
     "DEPARTMENTSADMIN",
     "DEPARTMENTSASSET",
@@ -1457,6 +1459,7 @@ const ADMIN_SETTINGS_GROUP_MODULES = [
     label: "Asset Type - Inspection Checklist Mapping",
     seq: 87,
   },
+  { app_id: "OPCCONFIG", label: "OPC Configuration", seq: 88 },
   { app_id: "JOBMONITOR", label: "Job Monitor", seq: 90 },
 ];
 
@@ -1478,9 +1481,9 @@ function canAccessAdminSidebarItem(appId, accessMap, getAccessLevelFn) {
       hasViewAccess(resolve("ADMINSETTINGS"))
     );
   }
-  if (key === "JOBMONITOR") {
+  if (key === "JOBMONITOR" || key === "OPCCONFIG") {
     return (
-      hasViewAccess(resolve("JOBMONITOR")) ||
+      hasViewAccess(resolve(key)) ||
       hasViewAccess(resolve("ADMINSETTINGS"))
     );
   }
@@ -1832,6 +1835,7 @@ const DatabaseSidebar = () => {
     BRANCHES: "/master-data/branches", //done
     BRANCHDEPTMAPPING: "/master-data/branch-dept-mapping",
     AUDITATMAPPING: "/master-data/audit-type-mapping",
+    OPCCOMPONENTS: "/master-data/components",
     UTILITYMASTER: "/utilities/master",
     UTILITYATMAPPING: "/utilities/asset-type-mapping",
     UTILITYCONSUMPTION: "/utilities/consumption",
@@ -1853,6 +1857,7 @@ const DatabaseSidebar = () => {
     ONETIMECRON: "/adminsettings/configuration/one-time-cron",
     TEXTMESSAGES: "/adminsettings/configuration/text-messages",
     JOBMONITOR: "/adminsettings/configuration/job-monitor",
+    OPCCONFIG: "/adminsettings/configuration/opc-configuration",
     GROUPASSET: "/group-asset", // Group Asset route
     CREATEGROUPASSET: "/group-asset/create", // Create Group Asset route
     SCRAPSALES: "/scrap-sales", // Scrap Sales route
@@ -2016,6 +2021,7 @@ const DatabaseSidebar = () => {
       BRANCHES: Home,
       BRANCHDEPTMAPPING: GitBranch,
       AUDITATMAPPING: Link2,
+      OPCCOMPONENTS: Cpu,
       UTILITYMASTER: Zap,
       UTILITYATMAPPING: Link2,
       UTILITYCONSUMPTION: Zap,
@@ -2039,6 +2045,7 @@ const DatabaseSidebar = () => {
       BREAKDOWNREASONCODES: AlertTriangle,
       ONETIMECRON: Clock,
       JOBMONITOR: Activity,
+      OPCCONFIG: Gauge,
       CERTIFICATIONS: FileCheck,
       USERROLES: Users,
       TECHCERTUPLOAD: FileText,
@@ -2076,9 +2083,9 @@ const DatabaseSidebar = () => {
         fallbackLevel
       );
     }
-    if (key === "JOBMONITOR") {
+    if (key === "JOBMONITOR" || key === "OPCCONFIG") {
       return (
-        getAccessLevel("JOBMONITOR") ||
+        getAccessLevel(key) ||
         getAccessLevel("ADMINSETTINGS") ||
         fallbackLevel
       );
@@ -2166,6 +2173,7 @@ const DatabaseSidebar = () => {
           "/adminsettings/configuration/asset-type-checklist-mapping",
         ONETIMECRON: "/adminsettings/configuration/one-time-cron",
         JOBMONITOR: "/adminsettings/configuration/job-monitor",
+        OPCCONFIG: "/adminsettings/configuration/opc-configuration",
       };
       
       if (adminSettingsPathMap[appId] || adminSettingsPathMap[navKey]) {
@@ -2312,6 +2320,7 @@ const DatabaseSidebar = () => {
     "BULKSERIALNUMBERPRINT",
     "ONETIMECRON",
     "JOBMONITOR",
+    "OPCCONFIG",
   ];
   const isAdminSettingsOnlyAppId = (appId, label) =>
     adminSettingsOnlyAppIds.some(

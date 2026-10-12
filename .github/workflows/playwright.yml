@@ -4,7 +4,8 @@ name: Playwright E2E
 #
 # Required GitHub Secrets (repo → Settings → Secrets and variables → Actions):
 #   GH_PAT              – PAT with read access to AssetLifecycleBackend
-#   E2E_DATABASE_URL    – Postgres URL reachable from GitHub-hosted runners
+#   E2E_SSH_KEY         – private key for the tunnel-only `dbtunnel` user on the VPS
+#   E2E_DATABASE_URL    – Postgres URL (host/port are rewritten to the SSH tunnel)
 #   E2E_JWT_SECRET      – JWT secret used by backend
 #   RIO_EMAIL           – test user email
 #   RIO_PASSWORD        – test user password
@@ -87,6 +88,37 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
+      - name: Open SSH tunnel to database
+        env:
+          E2E_SSH_KEY: ${{ secrets.E2E_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${E2E_SSH_KEY}" ]; then
+            echo "Missing E2E_SSH_KEY secret"
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${E2E_SSH_KEY}" | tr -d '\r' > ~/.ssh/db_tunnel
+          chmod 600 ~/.ssh/db_tunnel
+          echo "103.192.199.178 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMf65kLY3ECY86JjKWMowzQJkxoBLfXTcAyMG7eUcSQZ" > ~/.ssh/known_hosts
+          ssh -f -N -i ~/.ssh/db_tunnel \
+            -o StrictHostKeyChecking=yes \
+            -o ExitOnForwardFailure=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=3 \
+            -L 5432:localhost:5432 \
+            dbtunnel@103.192.199.178
+          for i in $(seq 1 15); do
+            if nc -z 127.0.0.1 5432; then
+              echo "Tunnel is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "SSH tunnel failed to open"
+          exit 1
+
       - name: Write backend .env
         working-directory: backend
         env:
@@ -100,8 +132,10 @@ jobs:
             echo "Missing E2E_DATABASE_URL or E2E_JWT_SECRET secrets"
             exit 1
           fi
-          TENANT_URL="${E2E_TENANT_DATABASE_URL:-$E2E_DATABASE_URL}"
-          GENERIC_URL="${E2E_GENERIC_URL:-$E2E_DATABASE_URL}"
+          to_tunnel() { printf '%s' "$1" | sed -E 's#@[^@/]+/#@localhost:5432/#'; }
+          DB_URL="$(to_tunnel "${E2E_DATABASE_URL}")"
+          TENANT_URL="$(to_tunnel "${E2E_TENANT_DATABASE_URL:-$E2E_DATABASE_URL}")"
+          GENERIC_URL="$(to_tunnel "${E2E_GENERIC_URL:-$E2E_DATABASE_URL}")"
           {
             echo "NODE_ENV=development"
             echo "PORT=5001"
@@ -109,9 +143,10 @@ jobs:
             echo "BACKEND_URL=http://localhost:5001"
             echo "API_BASE_URL=http://localhost:5001/api"
             echo "MAIN_DOMAIN=localhost"
-            echo "DATABASE_URL=${E2E_DATABASE_URL}"
+            echo "DATABASE_URL=${DB_URL}"
             echo "TENANT_DATABASE_URL=${TENANT_URL}"
             echo "GENERIC_URL=${GENERIC_URL}"
+            echo "TENANT_DB_HOST_OVERRIDE=localhost"
             echo "JWT_SECRET=${E2E_JWT_SECRET}"
             echo "CACHE_ENABLED=false"
             echo "DB_SSL=false"

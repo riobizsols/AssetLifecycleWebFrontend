@@ -30,6 +30,7 @@ import {
   ClipboardList,
   CalendarClock,
   ListChecks,
+  Gauge,
 } from "lucide-react";
 
 const AdminSettingsView = () => {
@@ -204,6 +205,18 @@ const AdminSettingsView = () => {
       borderColor: "border-fuchsia-200",
     },
     {
+      app_id: "OPCCONFIG",
+      label: "OPC Configuration",
+      description:
+        "Set conditions on OPC tags to trigger CBM maintenance or inspections",
+      icon: Gauge,
+      route: "/adminsettings/configuration/opc-configuration",
+      color: "from-amber-500 to-amber-600",
+      bgColor: "bg-amber-50",
+      iconColor: "text-amber-700",
+      borderColor: "border-amber-200",
+    },
+    {
       app_id: "JOBMONITOR",
       label: "Job Monitor",
       description:
@@ -240,7 +253,8 @@ const AdminSettingsView = () => {
         ? hasAccess("JOBMONITOR") || hasAccess("ADMINSETTINGS")
         : appId === "INSPECTIONFREQUENCY" ||
             appId === "INSPECTIONCHECKLISTS" ||
-            appId === "ASSETTYPECHECKLISTMAPPING"
+            appId === "ASSETTYPECHECKLISTMAPPING" ||
+            appId === "OPCCONFIG"
           ? hasAccess(appId) || hasAccess("ADMINSETTINGS")
           : hasAccess(appId);
 
@@ -279,6 +293,7 @@ const AdminSettingsView = () => {
     "INSPECTIONFREQUENCY",
     "INSPECTIONCHECKLISTS",
     "ASSETTYPECHECKLISTMAPPING",
+    "OPCCONFIG",
   ];
   for (const appId of ensureAdminInspectionCards) {
     if (
@@ -309,6 +324,7 @@ const AdminSettingsView = () => {
         "/adminsettings/configuration/asset-type-checklist-mapping",
       ONETIMECRON: "/adminsettings/configuration/one-time-cron",
       JOBMONITOR: "/adminsettings/configuration/job-monitor",
+      OPCCONFIG: "/adminsettings/configuration/opc-configuration",
     };
     return routeMap[appId] || "#";
   };
@@ -328,6 +344,7 @@ const AdminSettingsView = () => {
       ASSETTYPECHECKLISTMAPPING: ListChecks,
       ONETIMECRON: Clock,
       JOBMONITOR: Activity,
+      OPCCONFIG: Gauge,
     };
     return iconMap[appId] || Settings;
   };
@@ -424,6 +441,13 @@ const AdminSettingsView = () => {
         icon: "text-cyan-700",
         border: "border-cyan-200",
         hover: "hover:from-cyan-600 hover:to-cyan-700",
+      },
+      OPCCONFIG: {
+        gradient: "from-amber-500 to-amber-600",
+        bg: "bg-amber-50",
+        icon: "text-amber-700",
+        border: "border-amber-200",
+        hover: "hover:from-amber-600 hover:to-amber-700",
       },
     };
     return (
