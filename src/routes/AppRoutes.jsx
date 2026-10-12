@@ -23,7 +23,6 @@ import Departments from "../pages/masterData/Departments";
 import Branches from "../pages/masterData/Branches";
 import BranchDeptMapping from "../pages/masterData/BranchDeptMapping";
 import AuditTypeAssetTypeMapping from "../pages/masterData/AuditTypeAssetTypeMapping";
-import Components from "../pages/masterData/Components";
 import UtilityMaster from "../pages/utility/UtilityMaster";
 import UtilityAssetTypeMapping from "../pages/utility/UtilityAssetTypeMapping";
 import UtilityConsumption from "../pages/utility/UtilityConsumption";
@@ -1233,13 +1232,7 @@ export default function AppRoutes() {
 
         <Route
           path="/master-data/components"
-          element={
-            <ProtectedRoute requiredAppId="OPCCOMPONENTS">
-              <MainLayout>
-                <Components />
-              </MainLayout>
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/adminsettings/configuration/opc-configuration?tab=components" replace />}
         />
 
         <Route

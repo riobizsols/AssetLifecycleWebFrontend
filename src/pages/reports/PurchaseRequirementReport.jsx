@@ -21,7 +21,7 @@ import {
   STOCK_PURCHASE_COLUMNS,
   STOCK_PURCHASE_FIELD_ACCESSORS,
 } from './newReportExtrasConfig';
-import { exportStockPurchasePdf } from './exportStockPurchaseReport';
+import { exportStockPurchaseExcel, exportStockPurchasePdf } from './exportStockPurchaseReport';
 
 function KpiCard({ label, value, danger }) {
   return (
@@ -122,32 +122,6 @@ export default function PurchaseRequirementReport() {
     }
   }, [payload, focus, horizonDays, recordActionByNameWithFetch]);
 
-  const handleExport = useCallback(async () => {
-    if (!report) return;
-    try {
-      setExporting(true);
-      const blob = await purchaseRequirementReportService.exportReport(payload);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `stock-purchase-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      await recordActionByNameWithFetch('Export Report', {
-        reportType: 'Stock & Purchase',
-        exportFormat: 'xlsx',
-        action: 'Report exported',
-      }).catch(() => {});
-      toast.success('Excel downloaded');
-    } catch (err) {
-      toast.error(err?.response?.data?.error || 'Failed to export report');
-    } finally {
-      setExporting(false);
-    }
-  }, [payload, recordActionByNameWithFetch, report]);
-
   useEffect(() => {
     if (!loadingOptions) handleView();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,6 +148,28 @@ export default function PurchaseRequirementReport() {
       with_upcoming_pm: rows.filter((r) => Number(r.upcoming_pm_demand) > 0).length,
     };
   }, [rows]);
+
+  const handleExport = useCallback(async () => {
+    if (!report) return;
+    if (!rows.length) {
+      toast.error('No matching parts to export');
+      return;
+    }
+    try {
+      setExporting(true);
+      exportStockPurchaseExcel({ rows, columns });
+      await recordActionByNameWithFetch('Export Report', {
+        reportType: 'Stock & Purchase',
+        exportFormat: 'xlsx',
+        action: 'Report exported',
+      }).catch(() => {});
+      toast.success('Excel downloaded');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to export report');
+    } finally {
+      setExporting(false);
+    }
+  }, [rows, columns, report, recordActionByNameWithFetch]);
 
   const handleExportPdf = useCallback(async () => {
     if (!report) {

@@ -60,7 +60,7 @@ export const APP_ID_TO_PATH = {
   BRANCHES: '/master-data/branches',
   BRANCHDEPTMAPPING: '/master-data/branch-dept-mapping',
   AUDITATMAPPING: '/master-data/audit-type-mapping',
-  OPCCOMPONENTS: '/master-data/components',
+  OPCCOMPONENTS: '/adminsettings/configuration/opc-configuration',
   UTILITYMASTER: '/utilities/master',
   UTILITYATMAPPING: '/utilities/asset-type-mapping',
   UTILITYCONSUMPTION: '/utilities/consumption',

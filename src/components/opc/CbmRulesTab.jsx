@@ -15,6 +15,7 @@ const columns = [
   { label: "Tag", name: "tag_full_path", visible: true },
   { label: "Data Type", name: "data_type", visible: true },
   { label: "Condition", name: "condition", visible: true },
+  { label: "Check Every", name: "check_frequency_display", visible: true },
   { label: "Action", name: "action_display", visible: true },
   { label: "Last Value", name: "last_value_display", visible: true },
   { label: "Last Triggered", name: "last_triggered_display", visible: true },
@@ -56,7 +57,34 @@ const operatorFamily = (dataType) => {
   return "STRING";
 };
 
-const emptyForm = { ct_id: "", operator: "", value1: "", value2: "", action_type: "MAINT" };
+const FREQUENCY_UNITS = [
+  { value: "MIN", label: "Minutes", minutes: 1, singular: "minute" },
+  { value: "HOUR", label: "Hours", minutes: 60, singular: "hour" },
+  { value: "DAY", label: "Days", minutes: 1440, singular: "day" },
+];
+const MAX_CHECK_MINUTES = 1440 * 365;
+
+const splitMinutes = (minutes) => {
+  const m = Number(minutes) || 1;
+  const unit = [...FREQUENCY_UNITS].reverse().find((u) => m % u.minutes === 0);
+  return { freq_value: String(m / unit.minutes), freq_unit: unit.value };
+};
+
+const formatMinutes = (minutes) => {
+  const { freq_value, freq_unit } = splitMinutes(minutes);
+  const unit = FREQUENCY_UNITS.find((u) => u.value === freq_unit);
+  return `${freq_value} ${unit.singular}${freq_value === "1" ? "" : "s"}`;
+};
+
+const emptyForm = {
+  ct_id: "",
+  operator: "",
+  value1: "",
+  value2: "",
+  action_type: "MAINT",
+  freq_value: "1",
+  freq_unit: "MIN",
+};
 
 const errorText = (err, fallback) => err.response?.data?.error || err.response?.data?.message || fallback;
 
@@ -95,6 +123,7 @@ const CbmRulesTab = ({ canEdit }) => {
           ...r,
           asset_display: `${r.asset_id} - ${r.asset_name || ""}`,
           action_display: actionLabel(r.action_type),
+          check_frequency_display: formatMinutes(r.check_frequency_minutes),
           last_value_display:
             r.last_value == null ? "" : `${r.last_value}${r.unit ? ` ${r.unit}` : ""}${r.is_met ? " (met)" : ""}`,
           last_triggered_display: r.last_triggered_on
@@ -123,6 +152,7 @@ const CbmRulesTab = ({ canEdit }) => {
             value1: row.value1 ?? "",
             value2: row.value2 ?? "",
             action_type: row.action_type || "MAINT",
+            ...splitMinutes(row.check_frequency_minutes),
           }
         : emptyForm,
     );
@@ -180,8 +210,14 @@ const CbmRulesTab = ({ canEdit }) => {
     if (valueCount >= 1 && String(form.value1).trim() === "") return toast.error("Value is required");
     if (valueCount === 2 && String(form.value2).trim() === "") return toast.error("Second value is required");
     if (!form.action_type) return toast.error("Action is required");
+    const freqUnit = FREQUENCY_UNITS.find((u) => u.value === form.freq_unit);
+    const freqValue = Number(form.freq_value);
+    if (!Number.isInteger(freqValue) || freqValue < 1) return toast.error("Check frequency must be a whole number of at least 1");
+    const checkMinutes = freqValue * freqUnit.minutes;
+    if (checkMinutes > MAX_CHECK_MINUTES) return toast.error("Check frequency cannot be more than 365 days");
 
     const payload = {
+      check_frequency_minutes: checkMinutes,
       ct_id: form.ct_id,
       operator: form.operator,
       value1: valueCount >= 1 ? form.value1 : null,
@@ -279,7 +315,7 @@ const CbmRulesTab = ({ canEdit }) => {
           <Field
             label="Mapped Tag"
             required
-            hint={!tagOptions.length ? "Map tags to components in Master Data > Components first" : null}
+            hint={!tagOptions.length ? "Map tags to components in the Component-Tag Mapping tab first" : null}
           >
             <SearchableDropdown
               options={tagOptions}
@@ -331,6 +367,37 @@ const CbmRulesTab = ({ canEdit }) => {
               </Field>
             )}
           </div>
+
+          <Field
+            label="Check Frequency"
+            required
+            hint="How often the condition is checked against the live tag value."
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700">Every</span>
+              <div className="w-28">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={form.freq_value}
+                  onChange={(e) => setField("freq_value", e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div className="w-36">
+                <select
+                  value={form.freq_unit}
+                  onChange={(e) => setField("freq_unit", e.target.value)}
+                  className={inputClass}
+                >
+                  {FREQUENCY_UNITS.map((u) => (
+                    <option key={u.value} value={u.value}>{u.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </Field>
 
           <Field
             label="When triggered"

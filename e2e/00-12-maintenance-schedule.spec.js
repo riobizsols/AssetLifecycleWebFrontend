@@ -26,7 +26,7 @@ test.describe('RIO EAM maintenance schedule and approval', () => {
     }
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(
-      page.getByText('No data found').or(page.locator('tbody tr').first())
+      page.getByText('No data found').or(page.locator('tbody tr')).first()
     ).toBeVisible({ timeout: 20000 });
   });
 
@@ -40,7 +40,7 @@ test.describe('RIO EAM maintenance schedule and approval', () => {
     await expect(page.getByText('Asset Type').first()).toBeVisible();
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(
-      page.getByText('No data found').or(page.locator('tbody tr').first())
+      page.getByText('No data found').or(page.locator('tbody tr')).first()
     ).toBeVisible({ timeout: 20000 });
   });
 
@@ -53,7 +53,7 @@ test.describe('RIO EAM maintenance schedule and approval', () => {
     }
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(
-      page.getByText('No data found').or(page.locator('tbody tr').first())
+      page.getByText('No data found').or(page.locator('tbody tr')).first()
     ).toBeVisible({ timeout: 20000 });
     await expect(page.getByRole('button', { name: /^Complete$/ })).toHaveCount(0);
   });
