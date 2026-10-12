@@ -28,6 +28,9 @@ import UtilityMaster from "../pages/utility/UtilityMaster";
 import UtilityAssetTypeMapping from "../pages/utility/UtilityAssetTypeMapping";
 import UtilityConsumption from "../pages/utility/UtilityConsumption";
 import UtilityConsumptionReport from "../pages/utility/UtilityConsumptionReport";
+import ConsumablesMaster from "../pages/consumables/ConsumablesMaster";
+import ConsumablesInventory from "../pages/consumables/ConsumablesInventory";
+import ConsumablesUsage from "../pages/consumables/ConsumablesUsage";
 import AddBranch from "../components/AddBranch";
 import DepartmentsAdmin from "../pages/masterData/DepartmentsAdmin";
 import DepartmentsAsset from "../pages/masterData/DepartmentsAsset";
@@ -126,6 +129,7 @@ import QAAuditReport from "../pages/reports/QAAuditReport";
 import AuditReports from "../pages/reports/AuditReports";
 import ConsolidatedAssetRegister from "../pages/reports/ConsolidatedAssetRegister";
 import SlaVendorPerformance from "../pages/reports/SlaVendorPerformance";
+import ConsumablesReport from "../pages/reports/ConsumablesReport";
 import MaintenanceStatusReport from "../pages/reports/MaintenanceStatusReport";
 import OutOfStockReport from "../pages/reports/OutOfStockReport";
 import PurchaseRequirementReport from "../pages/reports/PurchaseRequirementReport";
@@ -711,6 +715,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/reports/consumables"
+          element={
+            <ProtectedRoute requiredAppId="CONSUMABLESREPORT">
+              <MainLayout>
+                <ConsumablesReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/reports/maintenance-status"
           element={
             <ProtectedRoute requiredAppId="MAINTENANCESTATUSREPORT">
@@ -1262,6 +1277,37 @@ export default function AppRoutes() {
         <Route
           path="/utilities/report"
           element={<Navigate to="/reports/utility-consumption" replace />}
+        />
+
+        <Route
+          path="/consumables/master"
+          element={
+            <ProtectedRoute requiredAppId="CONSUMABLESMASTER">
+              <MainLayout>
+                <ConsumablesMaster />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/consumables/inventory"
+          element={
+            <ProtectedRoute requiredAppId="CONSUMABLESINVENTORY">
+              <MainLayout>
+                <ConsumablesInventory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/consumables/usage"
+          element={
+            <ProtectedRoute requiredAppId="CONSUMABLESUSAGE">
+              <MainLayout>
+                <ConsumablesUsage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/reports/utility-consumption"

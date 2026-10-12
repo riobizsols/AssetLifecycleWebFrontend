@@ -240,6 +240,10 @@ export default function Header() {
       title: "SLA & Vendor Performance",
       subtitle: "",
     },
+    "/reports/consumables": {
+      title: "Consumables Report",
+      subtitle: "",
+    },
     "/reports/spare-parts-report": {
       title: t("navigation.sparePartsReport") || "Spare Parts Report",
       subtitle: "",

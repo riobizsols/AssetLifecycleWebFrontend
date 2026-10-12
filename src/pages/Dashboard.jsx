@@ -16,6 +16,7 @@ import DepartmentChart from "../components/dashboardModules/DepartmentChart";
 import AssetTypeChart from "../components/dashboardModules/AssetTypeChart";
 import NotificationsPanel from "../components/dashboardModules/NotificationsPanel";
 import CronJobMonitor from "../components/dashboardModules/CronJobMonitor";
+import ConsumableStockAlertsPanel from "../components/dashboardModules/ConsumableStockAlertsPanel";
 import DashboardCronJobTrigger from "../components/DashboardCronJobTrigger";
 import DashboardInspectionTrigger from "../components/DashboardInspectionTrigger";
 import DashboardMaintenanceTrigger from "../components/DashboardMaintenanceTrigger";
@@ -204,6 +205,8 @@ const Dashboard = () => {
               <NotificationsPanel />
             </CardContent>
           </Card>
+
+          <ConsumableStockAlertsPanel />
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:gap-6">

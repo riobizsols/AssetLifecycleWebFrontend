@@ -141,6 +141,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
   "Spare Parts": ["SPAREPARTS", "SPAREPARTLIST", "SPAREPARTAPPROVAL", "SPAREPARTISSUE"],
   Scrap: ["SCRAPASSETS", "SCRAPMAINTENANCEAPPROVAL", "SCRAPSALES"],
   Utilities: ["UTILITYMASTER", "UTILITYATMAPPING", "UTILITYCONSUMPTION"],
+  Consumables: ["CONSUMABLESMASTER", "CONSUMABLESINVENTORY", "CONSUMABLESUSAGE"],
   Inspection: [
     "INSPECTIONAPPROVAL",
     "INSPECTIONVIEW",
@@ -180,6 +181,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "AUDITREPORT",
     "CONSOLIDATEDASSETREPORT",
     "SLAVENDORPERFORMANCE",
+    "CONSUMABLESREPORT",
     "MAINTENANCESTATUSREPORT",
     "OUTOFSTOCKREPORT",
     "PURCHASEREQUIREMENTREPORT",
@@ -1041,11 +1043,17 @@ const UTILITY_MENU_DEFS = [
   { app_id: "UTILITYCONSUMPTION", label: "Record Consumption", seq: 3 },
 ];
 
+const CONSUMABLES_MENU_DEFS = [
+  { app_id: "CONSUMABLESMASTER", label: "Consumables", seq: 1 },
+  { app_id: "CONSUMABLESINVENTORY", label: "Consumables Inventory", seq: 2 },
+  { app_id: "CONSUMABLESUSAGE", label: "Consumables Usage", seq: 3 },
+];
+
 /**
- * Ensure Utilities group + screens appear for admin/master-data users
+ * Ensure a menu group + its screens appear for admin/master-data users
  * even when tenant nav has not been backfilled yet.
  */
-function ensureUtilityMenus(items) {
+function ensureMenuGroup(items, { defs, groupLabel, groupSeq, idPrefix }) {
   if (!items?.length) return items;
 
   const flat = flattenNavItems(items);
@@ -1055,23 +1063,23 @@ function ensureUtilityMenus(items) {
       .map((item) => normalizeNavAppId(item.app_id)),
   );
 
-  const hasUtility = UTILITY_MENU_DEFS.some((def) =>
+  const hasAny = defs.some((def) =>
     existingKeys.has(normalizeNavAppId(def.app_id)),
   );
-  let group = findNavGroupByLabel(items, "Utilities");
+  let group = findNavGroupByLabel(items, groupLabel);
 
-  if (hasUtility && group) {
+  if (hasAny && group) {
     const childKeys = new Set(
       (group.children || []).map((child) => normalizeNavAppId(child.app_id)),
     );
-    const missing = UTILITY_MENU_DEFS.filter(
+    const missing = defs.filter(
       (def) => !childKeys.has(normalizeNavAppId(def.app_id)),
     );
     if (!missing.length) return items;
   }
 
   const canInject =
-    hasUtility ||
+    hasAny ||
     !!findNavGroupByLabel(items, "Master Data") ||
     !!findNavGroupByLabel(items, "Admin Settings") ||
     existingKeys.has("ASSETTYPES") ||
@@ -1087,7 +1095,7 @@ function ensureUtilityMenus(items) {
     "A";
 
   const children = [...(group?.children || [])];
-  for (const def of UTILITY_MENU_DEFS) {
+  for (const def of defs) {
     const key = normalizeNavAppId(def.app_id);
     if (children.some((child) => normalizeNavAppId(child.app_id) === key)) {
       continue;
@@ -1096,7 +1104,7 @@ function ensureUtilityMenus(items) {
       (item) => normalizeNavAppId(item.app_id) === key,
     );
     children.push({
-      id: fromFlat?.id || `ensure-utility-${key}`,
+      id: fromFlat?.id || `ensure-${idPrefix}-${key}`,
       app_id: def.app_id,
       label: fromFlat?.label || def.label,
       is_group: false,
@@ -1107,10 +1115,10 @@ function ensureUtilityMenus(items) {
   }
 
   children.sort((a, b) => {
-    const rankA = UTILITY_MENU_DEFS.findIndex(
+    const rankA = defs.findIndex(
       (d) => normalizeNavAppId(d.app_id) === normalizeNavAppId(a.app_id),
     );
-    const rankB = UTILITY_MENU_DEFS.findIndex(
+    const rankB = defs.findIndex(
       (d) => normalizeNavAppId(d.app_id) === normalizeNavAppId(b.app_id),
     );
     const safeA = rankA >= 0 ? rankA : 1000;
@@ -1119,11 +1127,11 @@ function ensureUtilityMenus(items) {
     return (a.seq ?? 9999) - (b.seq ?? 9999);
   });
 
-  const utilityGroup = {
-    id: group?.id || "ensure-utilities",
-    label: "Utilities",
+  const ensuredGroup = {
+    id: group?.id || `ensure-${idPrefix}`,
+    label: groupLabel,
     is_group: true,
-    seq: group?.seq ?? 12,
+    seq: group?.seq ?? groupSeq,
     access_level: accessLevel,
     children,
   };
@@ -1131,20 +1139,39 @@ function ensureUtilityMenus(items) {
   const withoutLoose = items.filter(
     (item) =>
       isNavGroup(item) ||
-      !UTILITY_MENU_DEFS.some(
+      !defs.some(
         (def) => normalizeNavAppId(def.app_id) === normalizeNavAppId(item.app_id),
       ),
   );
 
   if (group) {
+    const groupKey = canonicalGroupLabel(groupLabel);
     return withoutLoose.map((item) =>
-      isNavGroup(item) && canonicalGroupLabel(item.label) === "utilities"
-        ? utilityGroup
+      isNavGroup(item) && canonicalGroupLabel(item.label) === groupKey
+        ? ensuredGroup
         : item,
     );
   }
 
-  return [...withoutLoose, utilityGroup];
+  return [...withoutLoose, ensuredGroup];
+}
+
+function ensureUtilityMenus(items) {
+  return ensureMenuGroup(items, {
+    defs: UTILITY_MENU_DEFS,
+    groupLabel: "Utilities",
+    groupSeq: 12,
+    idPrefix: "utilities",
+  });
+}
+
+function ensureConsumablesMenus(items) {
+  return ensureMenuGroup(items, {
+    defs: CONSUMABLES_MENU_DEFS,
+    groupLabel: "Consumables",
+    groupSeq: 13,
+    idPrefix: "consumables",
+  });
 }
 
 function ensureDomainNavGroups(items) {
@@ -1233,6 +1260,7 @@ const SIDEBAR_LABEL_ORDER = [
   "spare parts",
   "inspection",
   "utilities",
+  "consumables",
   "reports",
   "scrap",
   "admin settings",
@@ -1274,6 +1302,7 @@ function finalizeSidebarNavigation(items) {
   tree = ensureSparePartMasterMenu(tree);
   tree = ensureUtilityMenus(tree);
   tree = ensureUtilityReportMenu(tree);
+  tree = ensureConsumablesMenus(tree);
   tree = ensureDomainNavGroups(tree);
   tree = sortMasterDataNavOrder(tree);
   tree = sortScrapNavOrder(tree);
@@ -1821,6 +1850,7 @@ const DatabaseSidebar = () => {
     AUDITREPORT: "/reports/audit-reports",
     CONSOLIDATEDASSETREPORT: "/reports/consolidated-asset-register",
     SLAVENDORPERFORMANCE: "/reports/sla-vendor-performance",
+    CONSUMABLESREPORT: "/reports/consumables",
     MAINTENANCESTATUSREPORT: "/reports/maintenance-status",
     OUTOFSTOCKREPORT: "/reports/purchase-requirement",
     PURCHASEREQUIREMENTREPORT: "/reports/purchase-requirement",
@@ -1840,6 +1870,9 @@ const DatabaseSidebar = () => {
     UTILITYATMAPPING: "/utilities/asset-type-mapping",
     UTILITYCONSUMPTION: "/utilities/consumption",
     UTILITYREPORT: "/reports/utility-consumption",
+    CONSUMABLESMASTER: "/consumables/master",
+    CONSUMABLESINVENTORY: "/consumables/inventory",
+    CONSUMABLESUSAGE: "/consumables/usage",
     PRODSERV: "/master-data/prod-serv",  //no required
     ROLES: "/master-data/uploads",
     USERS: "/master-data/user-roles",
@@ -2007,6 +2040,7 @@ const DatabaseSidebar = () => {
       AUDITREPORT: FileText,
       CONSOLIDATEDASSETREPORT: FileText,
       SLAVENDORPERFORMANCE: FileText,
+      CONSUMABLESREPORT: Package,
       MAINTENANCESTATUSREPORT: Wrench,
       OUTOFSTOCKREPORT: Package,
       PURCHASEREQUIREMENTREPORT: Package,
@@ -2026,6 +2060,9 @@ const DatabaseSidebar = () => {
       UTILITYATMAPPING: Link2,
       UTILITYCONSUMPTION: Zap,
       UTILITYREPORT: BarChart3,
+      CONSUMABLESMASTER: Package,
+      CONSUMABLESINVENTORY: Database,
+      CONSUMABLESUSAGE: ClipboardList,
       VENDORS: Truck,
       SPAREPARTS: Package,
       SPAREPARTSCONFIG: Package,

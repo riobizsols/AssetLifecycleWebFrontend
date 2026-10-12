@@ -61,6 +61,7 @@ const APPLICATION_TYPE_APP_IDS = {
     "AUDITREPORT",
     "CONSOLIDATEDASSETREPORT",
     "SLAVENDORPERFORMANCE",
+    "CONSUMABLESREPORT",
     "WORKFORCEREPORT",
     "USAGEBASEDASSET",
     "REOPENEDBREAKDOWNS",
@@ -107,6 +108,7 @@ const APPLICATION_TYPE_APP_IDS = {
     "DATABASESELECTION",
   ],
   UTILITIES: ["UTILITYMASTER", "UTILITYATMAPPING", "UTILITYCONSUMPTION"],
+  CONSUMABLES: ["CONSUMABLESMASTER", "CONSUMABLESINVENTORY", "CONSUMABLESUSAGE"],
   CERTIFICATIONS: [
     "CERTIFICATIONS",
     "EMPLOYEE TECH CERTIFICATION",
@@ -132,6 +134,7 @@ export const APPLICATION_TYPE_OPTIONS = [
   { id: "ADMIN_SETTINGS", label: "Admin Settings" },
   { id: "MASTER_DATA", label: "Master Data" },
   { id: "UTILITIES", label: "Utilities" },
+  { id: "CONSUMABLES", label: "Consumables" },
   { id: "CERTIFICATIONS", label: "Certifications" },
   { id: "BREAKDOWNS", label: "Breakdowns" },
   { id: "WORKORDER", label: "Work Order Management" },
