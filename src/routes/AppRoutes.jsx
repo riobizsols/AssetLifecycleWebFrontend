@@ -23,6 +23,7 @@ import Departments from "../pages/masterData/Departments";
 import Branches from "../pages/masterData/Branches";
 import BranchDeptMapping from "../pages/masterData/BranchDeptMapping";
 import AuditTypeAssetTypeMapping from "../pages/masterData/AuditTypeAssetTypeMapping";
+import Components from "../pages/masterData/Components";
 import UtilityMaster from "../pages/utility/UtilityMaster";
 import UtilityAssetTypeMapping from "../pages/utility/UtilityAssetTypeMapping";
 import UtilityConsumption from "../pages/utility/UtilityConsumption";
@@ -137,6 +138,7 @@ import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfigur
 import Certifications from "../pages/adminSettings/Certifications";
 import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
 import JobMonitor from "../pages/adminSettings/JobMonitor";
+import OpcConfiguration from "../pages/adminSettings/OpcConfiguration";
 import TextMessages from "../pages/adminSettings/TextMessages";
 import AssetTypeChecklistMapping from "../pages/masterData/AssetTypeChecklistMapping";
 import CreateAssetTypeChecklistMapping from "../pages/masterData/CreateAssetTypeChecklistMapping";
@@ -1215,6 +1217,17 @@ export default function AppRoutes() {
         />
 
         <Route
+          path="/master-data/components"
+          element={
+            <ProtectedRoute requiredAppId="OPCCOMPONENTS">
+              <MainLayout>
+                <Components />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/utilities/master"
           element={
             <ProtectedRoute requiredAppId="UTILITYMASTER">
@@ -1501,6 +1514,18 @@ export default function AppRoutes() {
             >
               <AdminSettingsLayout>
                 <OneTimeCron />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/opc-configuration"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={["OPCCONFIG", "ADMINSETTINGS"]}
+            >
+              <AdminSettingsLayout>
+                <OpcConfiguration />
               </AdminSettingsLayout>
             </ProtectedRoute>
           }
