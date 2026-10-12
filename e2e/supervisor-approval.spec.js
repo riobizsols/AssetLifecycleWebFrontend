@@ -15,7 +15,7 @@ test.describe('RIO EAM supervisor approval', () => {
     await expect(page.getByText('Asset Type').first()).toBeVisible();
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     await expect(
-      page.getByText('No data found').or(page.locator('tbody tr').first())
+      page.getByText('No data found').or(page.locator('tbody tr')).first()
     ).toBeVisible({ timeout: 20000 });
   });
 
@@ -29,7 +29,7 @@ test.describe('RIO EAM supervisor approval', () => {
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     const row = page.locator('tbody tr.cursor-pointer').first();
     if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText('No data found')).toBeVisible();
+      await expect(page.getByText('No data found').first()).toBeVisible();
       return;
     }
     await row.click();
@@ -47,7 +47,7 @@ test.describe('RIO EAM supervisor approval', () => {
     await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 30000 });
     const row = page.locator('tbody tr.cursor-pointer').first();
     if (!(await row.isVisible().catch(() => false))) {
-      await expect(page.getByText('No data found')).toBeVisible();
+      await expect(page.getByText('No data found').first()).toBeVisible();
       return;
     }
     await row.click();

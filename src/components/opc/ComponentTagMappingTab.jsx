@@ -6,7 +6,9 @@ import CustomTable from "../CustomTable";
 import SearchableDropdown from "../ui/SearchableDropdown";
 import { filterData } from "../../utils/filterData";
 import { applyListFilterChange } from "../../utils/listFilterState";
+import { FolderTree } from "lucide-react";
 import OpcModal, { Field, inputClass } from "./OpcModal";
+import OpcTagBrowser from "./OpcTagBrowser";
 
 const columns = [
   { label: "CT ID", name: "ct_id", visible: true },
@@ -45,13 +47,15 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
   const [filterValues, setFilterValues] = useState({ columnFilters: [], fromDate: "", toDate: "" });
 
   const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [assets, setAssets] = useState([]);
   const [components, setComponents] = useState([]);
   const [servers, setServers] = useState([]);
-  const [browsed, setBrowsed] = useState({ tags: [], uploaded_at: null });
-  const [browsedLoading, setBrowsedLoading] = useState(false);
+  const [browseMeta, setBrowseMeta] = useState({ total_tags: 0, uploaded_at: null });
+  const [browseMetaLoading, setBrowseMetaLoading] = useState(false);
+  const [showBrowser, setShowBrowser] = useState(false);
   const [existingTags, setExistingTags] = useState([]);
   const [lookups, setLookups] = useState({ data_types: DEFAULT_DATA_TYPES, tag_types: DEFAULT_TAG_TYPES });
 
@@ -86,24 +90,39 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
     fetchRows();
   }, [refreshKey]);
 
-  const loadBrowsedTags = async (serverId) => {
+  const loadBrowseMeta = async (serverId) => {
     if (!serverId) {
-      setBrowsed({ tags: [], uploaded_at: null });
+      setBrowseMeta({ total_tags: 0, uploaded_at: null });
       return;
     }
-    setBrowsedLoading(true);
+    setBrowseMetaLoading(true);
     try {
-      const res = await API.get(`/opc/servers/${serverId}/browsed-tags`);
-      setBrowsed(res.data?.data || { tags: [], uploaded_at: null });
+      const res = await API.get(`/opc/servers/${serverId}/browse`, { params: { limit: 0 } });
+      const data = res.data?.data || {};
+      setBrowseMeta({ total_tags: data.total_tags || 0, uploaded_at: data.uploaded_at || null });
     } catch (err) {
       toast.error(errorText(err, "Failed to load OPC tags"));
     } finally {
-      setBrowsedLoading(false);
+      setBrowseMetaLoading(false);
     }
   };
 
-  const openModal = async () => {
-    setForm(emptyForm);
+  const openModal = async (row = null) => {
+    setEditing(row);
+    setForm(
+      row
+        ? {
+            asset_id: row.asset_id || "",
+            comp_id: row.comp_id || "",
+            server_id: row.server_id || "",
+            tag_full_path: row.tag_full_path || "",
+            tag_name: row.tag_name || "",
+            data_type: row.data_type || "",
+            unit: row.unit || "",
+            tag_type: row.tag_type || "",
+          }
+        : emptyForm,
+    );
     setShowModal(true);
     try {
       const [assetRes, compRes, serverRes, tagRes, lookupRes] = await Promise.all([
@@ -125,12 +144,18 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
 
       const serverList = serverRes.data?.data || [];
       setServers(serverList.map((s) => ({ id: s.server_id, text: `${s.server_id} - ${s.server_name}` })));
-      const defaultServer = serverList[0]?.server_id || "";
-      setForm((prev) => ({ ...prev, server_id: defaultServer }));
-      loadBrowsedTags(defaultServer);
+      const serverId = row?.server_id || serverList[0]?.server_id || "";
+      setForm((prev) => ({ ...prev, server_id: serverId }));
+      loadBrowseMeta(serverId);
     } catch (err) {
       toast.error(errorText(err, "Failed to load form data"));
     }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setShowBrowser(false);
+    setEditing(null);
   };
 
   const componentOptions = useMemo(
@@ -141,17 +166,6 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
     [components, form.asset_id],
   );
 
-  const tagOptions = useMemo(
-    () =>
-      (browsed.tags || []).map((t) => ({
-        id: t.item_id,
-        text: t.mapped ? `${t.item_id} (mapped)` : t.item_id,
-        mapped: t.mapped,
-        data_type: t.data_type,
-      })),
-    [browsed.tags],
-  );
-
   const setField = (name, value) => setForm((prev) => ({ ...prev, [name]: value }));
 
   const handleAssetChange = (value) =>
@@ -159,25 +173,21 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
 
   const handleServerChange = (value) => {
     setForm((prev) => ({ ...prev, server_id: value || "", tag_full_path: "" }));
-    loadBrowsedTags(value);
+    loadBrowseMeta(value);
   };
 
-  const handleTagChange = (value) => {
-    const option = tagOptions.find((t) => t.id === value);
-    if (option?.mapped) {
-      toast.error(`${value} is already mapped on this server`);
-      return;
-    }
-    const tagName = lastSegment(value);
+  const handleTagSelect = (tag) => {
+    const tagName = lastSegment(tag.item_id);
     const known = existingTags.find((t) => t.tag_name.toLowerCase() === tagName.toLowerCase());
     setForm((prev) => ({
       ...prev,
-      tag_full_path: value || "",
+      tag_full_path: tag.item_id,
       tag_name: tagName,
-      data_type: option?.data_type || known?.data_type || prev.data_type,
+      data_type: tag.data_type || known?.data_type || prev.data_type,
       unit: known?.unit ?? prev.unit,
       tag_type: known?.tag_type || prev.tag_type,
     }));
+    setShowBrowser(false);
   };
 
   const handleSave = async () => {
@@ -194,9 +204,14 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
 
     setSaving(true);
     try {
-      await API.post("/opc/comp-tags", form);
-      toast.success("Tag mapped to component");
-      setShowModal(false);
+      if (editing) {
+        await API.put(`/opc/comp-tags/${editing.ct_id}`, form);
+        toast.success("Mapping updated");
+      } else {
+        await API.post("/opc/comp-tags", form);
+        toast.success("Tag mapped to component");
+      }
+      closeModal();
       fetchRows();
     } catch (err) {
       toast.error(errorText(err, "Failed to save mapping"));
@@ -226,7 +241,8 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
     return true;
   };
 
-  const noTagsHint = !browsedLoading && form.server_id && !tagOptions.length;
+  const noTagsHint = !browseMetaLoading && form.server_id && !browseMeta.total_tags;
+  const serverLabel = servers.find((s) => s.id === form.server_id)?.text || form.server_id;
 
   return (
     <>
@@ -238,13 +254,13 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
         selectedRows={selectedRows}
         setSelectedRows={setSelectedRows}
         showAddButton={canEdit}
-        onAdd={openModal}
+        onAdd={() => openModal()}
         addButtonTitle="Add Tag Mapping"
-        showActions={false}
+        showActions={canEdit}
       >
         {({ visibleColumns }) => {
           const filtered = filterData(rows, filterValues, visibleColumns);
-          const colSpan = visibleColumns.filter((c) => c.visible).length;
+          const colSpan = visibleColumns.filter((c) => c.visible).length + (canEdit ? 1 : 0);
           if (loading || !filtered.length) {
             return (
               <tr>
@@ -261,15 +277,21 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
               data={filtered}
               selectedRows={selectedRows}
               setSelectedRows={setSelectedRows}
+              onEdit={canEdit ? openModal : null}
               rowKey="ct_id"
-              showActions={false}
+              showActions={canEdit}
             />
           );
         }}
       </ContentBox>
 
       {showModal && (
-        <OpcModal title="Add Component Tag Mapping" onClose={() => setShowModal(false)} onSave={handleSave} saving={saving}>
+        <OpcModal
+          title={editing ? `Edit Component Tag Mapping ${editing.ct_id}` : "Add Component Tag Mapping"}
+          onClose={closeModal}
+          onSave={handleSave}
+          saving={saving}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Asset" required hint={!assets.length ? "Add components in the Components tab first" : null}>
               <SearchableDropdown
@@ -305,19 +327,23 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
               hint={
                 noTagsHint
                   ? "No tags uploaded yet - start the collector"
-                  : browsed.uploaded_at
-                    ? `Tag list uploaded ${new Date(browsed.uploaded_at).toLocaleString()}`
+                  : browseMeta.uploaded_at
+                    ? `${browseMeta.total_tags.toLocaleString()} tags, list uploaded ${new Date(browseMeta.uploaded_at).toLocaleString()}`
                     : null
               }
             >
-              <SearchableDropdown
-                options={tagOptions}
-                value={form.tag_full_path}
-                onChange={handleTagChange}
-                placeholder={browsedLoading ? "Loading tags..." : "Select OPC tag"}
-                searchPlaceholder="Search tag..."
-                disabled={!form.server_id || browsedLoading}
-              />
+              <button
+                type="button"
+                onClick={() => setShowBrowser(true)}
+                disabled={!form.server_id}
+                className={`${inputClass} flex items-center justify-between text-left bg-white disabled:cursor-not-allowed`}
+                title={form.tag_full_path || undefined}
+              >
+                <span className={`truncate ${form.tag_full_path ? "text-gray-900" : "text-gray-500"}`}>
+                  {form.tag_full_path || "Browse OPC tags..."}
+                </span>
+                <FolderTree size={16} className="text-gray-500 shrink-0 ml-2" />
+              </button>
             </Field>
             <Field label="Tag Name" required>
               <input
@@ -365,6 +391,16 @@ const ComponentTagMappingTab = ({ canEdit, refreshKey }) => {
             </Field>
           </div>
         </OpcModal>
+      )}
+
+      {showModal && showBrowser && form.server_id && (
+        <OpcTagBrowser
+          serverId={form.server_id}
+          serverName={serverLabel}
+          initialItemId={form.tag_full_path}
+          onSelect={handleTagSelect}
+          onClose={() => setShowBrowser(false)}
+        />
       )}
     </>
   );

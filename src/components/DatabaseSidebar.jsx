@@ -153,7 +153,6 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "BRANCHES",
     "BRANCHDEPTMAPPING",
     "AUDITATMAPPING",
-    "OPCCOMPONENTS",
     "DEPARTMENTS",
     "DEPARTMENTSADMIN",
     "DEPARTMENTSASSET",
@@ -1835,7 +1834,7 @@ const DatabaseSidebar = () => {
     BRANCHES: "/master-data/branches", //done
     BRANCHDEPTMAPPING: "/master-data/branch-dept-mapping",
     AUDITATMAPPING: "/master-data/audit-type-mapping",
-    OPCCOMPONENTS: "/master-data/components",
+    OPCCOMPONENTS: "/adminsettings/configuration/opc-configuration",
     UTILITYMASTER: "/utilities/master",
     UTILITYATMAPPING: "/utilities/asset-type-mapping",
     UTILITYCONSUMPTION: "/utilities/consumption",
