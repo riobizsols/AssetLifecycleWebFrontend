@@ -1572,7 +1572,7 @@ export default function ReportLayout({
                 </div>
               </div>
               <div className="overflow-x-auto overflow-y-auto h-[calc(100%-48px)]">
-                <table className="min-w-full text-sm" style={{ minWidth: '800px' }}>
+                <table className="w-full text-sm" style={{ minWidth: '800px' }}>
                   <thead className="bg-slate-50 sticky top-0">
                     <tr>
                       {cols.map((col) => {
@@ -1585,7 +1585,9 @@ export default function ReportLayout({
                           "Accumulated Depreciation",
                           "Net Book Value",
                           "Purchase Cost",
-                          "Sale Amount"
+                          "Sale Amount",
+                          "Quantity consumed",
+                          "Reading"
                         ].includes(col);
                         
                         const isDate = [

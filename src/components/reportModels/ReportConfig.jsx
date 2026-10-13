@@ -607,7 +607,7 @@ export const REPORTS = [
       { key: "quantity", label: "Quantity consumed", type: "number" },
     ],
     defaultColumns: [
-      "Date", "Utility", "Consumption metric", "Asset", "Asset type",
+      "Date", "Utility", "Consumption metric", "Asset type",
       "Quantity consumed", "Unit"
     ],
     allColumns: ALL_COLUMNS["utility-consumption"] || [],

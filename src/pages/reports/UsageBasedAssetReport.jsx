@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import ReportLayout from "../../components/reportModels/ReportLayout";
 import { useReportState } from "../../components/reportModels/useReportState";
@@ -161,6 +161,47 @@ export default function UsageBasedAssetReport() {
     loadFilterOptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [report, acmVersion]);
+
+  // Selecting an asset fills its type, department and branch; clearing it reverts
+  // only the values that were auto-filled and not changed by the user since.
+  const autoFilledRef = useRef(null);
+  useEffect(() => {
+    const assetId = typeof quick.assetId === 'object' ? quick.assetId?.value : quick.assetId;
+    const sameValue = (current, expected) =>
+      JSON.stringify(current || []) === JSON.stringify(expected || []);
+
+    if (!assetId) {
+      const prev = autoFilledRef.current;
+      if (prev) {
+        Object.entries(prev).forEach(([key, value]) => {
+          if (sameValue(quick[key], value)) setQuickField(key, []);
+        });
+        autoFilledRef.current = null;
+      }
+      return;
+    }
+
+    const asset = (apiData.filterOptions?.assets || []).find(
+      (a) => String(a.asset_id) === String(assetId),
+    );
+    if (!asset) return;
+
+    const opts = apiData.filterOptions || {};
+    const offered = (list, idKey, id) =>
+      id && (list || []).some((o) => String(o[idKey]) === String(id)) ? [id] : [];
+    const fill = {
+      assetType: offered(opts.assetTypes, 'asset_type_id', asset.asset_type_id),
+      department: offered(opts.departments, 'dept_id', asset.dept_id),
+      branch: offered(opts.branches, 'branch_id', asset.branch_id),
+    };
+    Object.entries(fill).forEach(([key, value]) => {
+      if (value.length && !sameValue(quick[key], value)) setQuickField(key, value);
+    });
+    autoFilledRef.current = Object.fromEntries(
+      Object.entries(fill).filter(([, value]) => value.length),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quick.assetId, apiData.filterOptions]);
 
   // Load summary data on component mount
   useEffect(() => {
