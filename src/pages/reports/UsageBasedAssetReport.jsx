@@ -42,7 +42,14 @@ export default function UsageBasedAssetReport() {
     setQuickField,
   } = useReportState(selectedReportId, report);
 
-  // Load filter options on component mount
+  const [acmVersion, setAcmVersion] = useState(0);
+  useEffect(() => {
+    const onAcmChange = () => setAcmVersion((v) => v + 1);
+    window.addEventListener('acm-context-changed', onAcmChange);
+    return () => window.removeEventListener('acm-context-changed', onAcmChange);
+  }, []);
+
+  // Load filter options on mount and whenever the header ACM branch changes
   useEffect(() => {
     const loadFilterOptions = async () => {
       try {
@@ -59,6 +66,9 @@ export default function UsageBasedAssetReport() {
           const departments = response.data.departments || [];
           const branches = response.data.branches || [];
           const users = response.data.users || [];
+
+          // Branches are limited to the header ACM scope; a single branch is pre-selected
+          setQuickField('branch', branches.length === 1 ? [branches[0].branch_id] : []);
 
           console.log('🔍 [UsageBasedAssetReport] Departments from API:', departments);
           console.log('🔍 [UsageBasedAssetReport] Assets from API:', assets.slice(0, 3));
@@ -149,7 +159,8 @@ export default function UsageBasedAssetReport() {
     };
 
     loadFilterOptions();
-  }, [report]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report, acmVersion]);
 
   // Load summary data on component mount
   useEffect(() => {

@@ -66,15 +66,28 @@ export default function PurchaseRequirementReport() {
     STOCK_PURCHASE_COLUMNS.default,
     STOCK_PURCHASE_COLUMNS.all,
   );
+  const [acmVersion, setAcmVersion] = useState(0);
+
+  useEffect(() => {
+    const onAcmChange = () => setAcmVersion((v) => v + 1);
+    window.addEventListener('acm-context-changed', onAcmChange);
+    return () => window.removeEventListener('acm-context-changed', onAcmChange);
+  }, []);
+
+  // Branch list is already limited to the header ACM scope; a single branch is fixed.
+  const lockedBranchId = branches.length === 1 ? String(branches[0].id) : '';
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setLoadingOptions(true);
+        setReport(null);
         const data = await purchaseRequirementReportService.getOptions();
         if (cancelled) return;
-        setBranches(data.branches || []);
+        const branchList = data.branches || [];
+        setBranches(branchList);
+        setSelectedBranches(branchList.length === 1 ? [String(branchList[0].id)] : []);
         setCategories(data.categories || []);
         setFocusOptions(
           data.focus_options || [
@@ -92,7 +105,7 @@ export default function PurchaseRequirementReport() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [acmVersion]);
 
   const payload = useMemo(
     () => ({
@@ -246,7 +259,7 @@ export default function PurchaseRequirementReport() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedBranches([]);
+                  setSelectedBranches(lockedBranchId ? [lockedBranchId] : []);
                   setSelectedCategories([]);
                   setFocus('all');
                   setHorizonDays(30);
@@ -273,15 +286,24 @@ export default function PurchaseRequirementReport() {
                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   Branch
                 </label>
-                <DropdownMultiSelect
-                  options={branchOptions}
-                  values={selectedBranches}
-                  onChange={(v) => {
-                    setSelectedBranches(v);
-                    setReport(null);
-                  }}
-                  placeholder="All branches"
-                />
+                {lockedBranchId ? (
+                  <div
+                    className="truncate rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                    title="Set by the branch selected in the header"
+                  >
+                    {branchOptions[0]?.label}
+                  </div>
+                ) : (
+                  <DropdownMultiSelect
+                    options={branchOptions}
+                    values={selectedBranches}
+                    onChange={(v) => {
+                      setSelectedBranches(v);
+                      setReport(null);
+                    }}
+                    placeholder="All branches"
+                  />
+                )}
               </div>
               <div className="min-w-[160px] flex-1">
                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
