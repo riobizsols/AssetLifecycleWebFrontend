@@ -474,7 +474,7 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
         value: sla.value
       }));
     
-    const formDataWithSLAs = { ...formData, vendor_slas };
+    const formDataWithSLAs = { ...formData, vendor_slas, ...supplyFlags };
 
     onConfirm(formDataWithSLAs);
   };
@@ -1023,6 +1023,36 @@ const EditVendorModal = ({ show, onClose, onConfirm, vendor, isReadOnly = false 
               </div>
             </div>
           )}
+
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <div className="text-sm font-medium text-gray-700 mb-2">
+              {t('vendors.supplyType', { defaultValue: 'Supply Type' })}
+            </div>
+            <div className="flex flex-wrap gap-6">
+              {[
+                { key: 'product_supply', label: t('vendors.productSupply') || 'Product Supply' },
+                { key: 'service_supply', label: t('vendors.serviceSupply') || 'Service Supply' },
+                { key: 'spare_supply', label: t('vendors.spareSupply', { defaultValue: 'Spare Supply' }) },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(supplyFlags[key])}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setSupplyFlags((prev) => ({ ...prev, [key]: checked }));
+                    }}
+                    disabled={isReadOnly}
+                    className="accent-[#0E2F4B] w-4 h-4"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              {t('vendors.supplyTypeHint', { defaultValue: 'Checked supplies appear as tabs above. Save to keep the change.' })}
+            </p>
+          </div>
 
         </form>
         )}
