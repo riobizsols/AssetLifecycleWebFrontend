@@ -134,7 +134,7 @@ function normalizeSelectedValues(value) {
   return [value];
 }
 
-function cellMatchesFilter(item, column, selectedValues) {
+function cellMatchesFilter(item, column, selectedValues, exactValues) {
   const colValue = item[column];
 
   if (colValue && typeof colValue === 'object' && colValue.days !== undefined) {
@@ -146,15 +146,33 @@ function cellMatchesFilter(item, column, selectedValues) {
     return selectedValues.some((sel) => sel === 'N/A' || sel === '' || sel === '-');
   }
 
-  const colStr = String(colValue).toLowerCase();
+  const rawStr = String(colValue);
+  const colStr = rawStr.toLowerCase();
   return selectedValues.some((sel) => {
-    const selStr = String(sel).toLowerCase().trim();
-    if (!selStr) return false;
+    const exactSel = String(sel).trim();
+    if (!exactSel) return false;
+    // A value that exists verbatim in the data ("Bus" vs "bus") must match exactly.
+    if (exactValues?.has(exactSel)) return rawStr.trim() === exactSel;
+    const selStr = exactSel.toLowerCase();
     return colStr === selStr || colStr.includes(selStr);
   });
 }
 
-function matchesColumnFilters(item, columnFilters) {
+function buildExactValueSets(data, columnFilters) {
+  const sets = {};
+  columnFilters.forEach((filter) => {
+    if (!filter?.column || sets[filter.column]) return;
+    const set = new Set();
+    data.forEach((item) => {
+      const v = item?.[filter.column];
+      if (v != null && v !== '' && typeof v !== 'object') set.add(String(v).trim());
+    });
+    sets[filter.column] = set;
+  });
+  return sets;
+}
+
+function matchesColumnFilters(item, columnFilters, exactValueSets = {}) {
   if (!Array.isArray(columnFilters) || columnFilters.length === 0) return true;
 
   return columnFilters.every((filter) => {
@@ -163,7 +181,7 @@ function matchesColumnFilters(item, columnFilters) {
     const selectedValues = normalizeSelectedValues(filter.value);
     if (selectedValues.length === 0) return true;
 
-    return cellMatchesFilter(item, filter.column, selectedValues);
+    return cellMatchesFilter(item, filter.column, selectedValues, exactValueSets[filter.column]);
   });
 }
 
@@ -208,12 +226,14 @@ export const filterData = (data, filterValues, visibleColumns) => {
     return data;
   }
 
+  const exactValueSets = hasColumnFilters ? buildExactValueSets(data, columnFilters) : {};
+
   return data.filter((item) => {
     if (hasSearch && !matchesGlobalSearch(item, search, visibleColumns)) {
       return false;
     }
 
-    if (hasColumnFilters && !matchesColumnFilters(item, columnFilters)) {
+    if (hasColumnFilters && !matchesColumnFilters(item, columnFilters, exactValueSets)) {
       return false;
     }
 

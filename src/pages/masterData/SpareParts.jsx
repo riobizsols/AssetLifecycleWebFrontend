@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import API from '../../lib/axios';
@@ -368,6 +368,55 @@ const SpareParts = () => {
       ];
     });
   }, [form.model_id, loadingModels]);
+
+  useEffect(() => {
+    if (loadingBrands || form.brand_id || !form.spc_id || brands.length !== 1) return;
+    setForm((prev) => (prev.brand_id ? prev : { ...prev, brand_id: brands[0].brand_id, model_id: '' }));
+  }, [brands, loadingBrands, form.brand_id, form.spc_id]);
+
+  useEffect(() => {
+    if (loadingModels || form.model_id || !form.brand_id || models.length !== 1) return;
+    setForm((prev) => (prev.model_id ? prev : { ...prev, model_id: models[0].model_id }));
+  }, [models, loadingModels, form.model_id, form.brand_id]);
+
+  // Last part number filled from the master, so a manually typed value is never overwritten.
+  const autoPartNumberRef = useRef('');
+  useEffect(() => {
+    const { vendor_id, spc_id, brand_id, model_id } = form;
+    const current = String(form.part_number || '').trim();
+    const canOverwrite = !current || current === autoPartNumberRef.current;
+    if (!canOverwrite) return undefined;
+
+    const clearAutoFilled = () => {
+      if (!autoPartNumberRef.current) return;
+      const previous = autoPartNumberRef.current;
+      autoPartNumberRef.current = '';
+      setForm((prev) => (String(prev.part_number || '').trim() === previous ? { ...prev, part_number: '' } : prev));
+    };
+
+    if (!vendor_id || !spc_id || !brand_id || !model_id) {
+      clearAutoFilled();
+      return undefined;
+    }
+
+    let cancelled = false;
+    API.get('/spare-parts/lot-options/part-number', { params: { vendor_id, spc_id, brand_id, model_id } })
+      .then((res) => {
+        const partNumber = String(res.data?.data?.part_number || '').trim();
+        if (cancelled || !partNumber) return;
+        setForm((prev) => {
+          const prevPart = String(prev.part_number || '').trim();
+          if (prevPart && prevPart !== autoPartNumberRef.current) return prev;
+          autoPartNumberRef.current = partNumber;
+          return { ...prev, part_number: partNumber };
+        });
+      })
+      .catch(() => {
+        if (!cancelled) clearAutoFilled();
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.vendor_id, form.spc_id, form.brand_id, form.model_id]);
 
   useEffect(() => {
     if (!form.has_serial_number) {

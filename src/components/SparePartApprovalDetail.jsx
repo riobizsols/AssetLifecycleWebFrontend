@@ -79,11 +79,11 @@ export default function SparePartApprovalDetail() {
       const qty = data?.quantity_issued;
       setRequiredQty(
         qty != null && qty !== '' && Number.isFinite(Number(qty))
-          ? String(qty)
+          ? String(Math.round(Number(qty)))
           : ''
       );
       const avail = Number(data?.available_qty);
-      setAvailableQty(Number.isFinite(avail) ? String(avail) : '');
+      setAvailableQty(Number.isFinite(avail) ? String(Math.round(avail)) : '');
     } catch (err) {
       toast.error(err.message || t('sparePartApproval.failedToFetchDetail'));
     } finally {
@@ -250,7 +250,7 @@ export default function SparePartApprovalDetail() {
         const res = await API.get(`/spare-parts/available-quantity/${spcId}`);
         if (cancelled) return;
         const qty = Number(res.data?.data?.available_qty);
-        setAvailableQty(Number.isFinite(qty) ? String(qty) : '');
+        setAvailableQty(Number.isFinite(qty) ? String(Math.round(qty)) : '');
       } catch (_) {
         if (!cancelled) setAvailableQty('');
       } finally {
@@ -295,7 +295,7 @@ export default function SparePartApprovalDetail() {
       return;
     }
     const qty = Number(requiredQty);
-    if (!requiredQty.trim() || !Number.isFinite(qty) || qty <= 0) {
+    if (!requiredQty.trim() || !Number.isInteger(qty) || qty <= 0) {
       toast.error(t('sparePartApproval.requiredQuantityRequired'));
       return;
     }
@@ -481,11 +481,11 @@ export default function SparePartApprovalDetail() {
           </label>
           <input
             type="text"
-            inputMode="decimal"
+            inputMode="numeric"
             value={requiredQty}
             onChange={(e) => {
               const value = e.target.value;
-              if (value === '' || /^\d*\.?\d*$/.test(value)) {
+              if (value === '' || /^\d*$/.test(value)) {
                 setRequiredQty(value);
               }
             }}

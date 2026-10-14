@@ -19,9 +19,17 @@ function resolveAssetTypeIds(values, assetTypes = []) {
   const byId = new Map(
     (assetTypes || []).map((at) => [String(at.asset_type_id), at]),
   );
-  const byName = new Map(
-    (assetTypes || []).map((at) => [String(at.text || '').toLowerCase(), at.asset_type_id]),
-  );
+  const byExactName = new Map();
+  const byLowerName = new Map();
+  (assetTypes || []).forEach((at) => {
+    const name = String(at.text || '').trim();
+    if (!name) return;
+    if (!byExactName.has(name)) byExactName.set(name, []);
+    byExactName.get(name).push(at.asset_type_id);
+    const lower = name.toLowerCase();
+    if (!byLowerName.has(lower)) byLowerName.set(lower, []);
+    byLowerName.get(lower).push(at.asset_type_id);
+  });
 
   const ids = [];
   values.forEach((raw) => {
@@ -31,10 +39,14 @@ function resolveAssetTypeIds(values, assetTypes = []) {
       ids.push(str);
       return;
     }
-    const fromName = byName.get(str.toLowerCase());
-    if (fromName) {
-      ids.push(fromName);
+    // Asset type names are case-sensitive ("Bus" and "bus" can be different types).
+    const exact = byExactName.get(str);
+    if (exact) {
+      ids.push(...exact);
+      return;
     }
+    const loose = byLowerName.get(str.toLowerCase());
+    if (loose?.length === 1) ids.push(loose[0]);
   });
 
   return [...new Set(ids)];

@@ -50,6 +50,8 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     if (isExpiryExtendMode) return fieldName === 'expiry_date';
     return true;
   };
+  const [isVendorMaintainedType, setIsVendorMaintainedType] = useState(null);
+  const isServiceVendorLocked = isVendorMaintainedType === false && !isWarrantyVendorMode;
   const isFieldDisabled = (fieldName) =>
     isReadOnly || isColumnReadOnly(fieldName) || !isFieldAllowedInWarrantyMode(fieldName);
   
@@ -222,6 +224,36 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
 
     loadAssetData();
   }, [assetData, isOpen]);
+
+  // Same rule as Add Asset: service vendor applies only when maintenance frequency is vendor-maintained.
+  useEffect(() => {
+    if (!isOpen || !form.assetType) {
+      setIsVendorMaintainedType(null);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await API.get(`/maintenance-frequencies/asset-type/${form.assetType}`);
+        const rows = res.data?.data || res.data || [];
+        const vendorMaintained = Array.isArray(rows) && rows.some((row) =>
+          String(row?.maintained_by || '')
+            .toLowerCase()
+            .replace(/\s|-/g, '')
+            .includes('vendor')
+        );
+        if (cancelled) return;
+        setIsVendorMaintainedType(vendorMaintained);
+        if (!vendorMaintained && !isWarrantyVendorMode) {
+          setForm(prev => (prev.serviceSupply ? { ...prev, serviceSupply: '' } : prev));
+        }
+      } catch (error) {
+        console.error('Failed to fetch maintenance ownership for asset type:', error);
+        if (!cancelled) setIsVendorMaintainedType(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, form.assetType, isWarrantyVendorMode]);
 
   // Populate dropdowns when context data is available
   useEffect(() => {
@@ -1023,7 +1055,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
             )}
 
             {/* Service Supply (service_vendor_id) */}
-            {isColumnVisible('service_vendor_id') && (
+            {isColumnVisible('service_vendor_id') && !isServiceVendorLocked && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.serviceSupply')}</label>
               <select

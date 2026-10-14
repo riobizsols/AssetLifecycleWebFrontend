@@ -30,6 +30,8 @@ const isValidPhoneNumber = (value) =>
 const isInhouseMaintenanceRecord = (detail) => {
   if (!detail) return false;
   if (detail.maint_type_id === "MT005") return false;
+  // Current asset type setting from the API overrides anything captured on the schedule.
+  if (detail.current_maintained_by) return detail.is_inhouse === true;
   if (detail.is_inhouse === true) return true;
   const maint = String(detail.maintained_by || "")
     .toLowerCase()
@@ -227,8 +229,10 @@ export default function MaintSupervisorApproval() {
   // Form state for updatable fields
   const [formData, setFormData] = useState(() => buildFormFromDetail(cachedDetail));
 
+  const isInhouseMaintenance = isInhouseMaintenanceRecord(maintenanceData);
+  const showVendorSections = !isInhouseMaintenance;
   const isInhouseTech =
-    isInhouseMaintenanceRecord(maintenanceData) &&
+    isInhouseMaintenance &&
     Boolean(maintenanceData?.emp_int_id || maintenanceData?.header_emp_int_id);
   const technicianFieldsLocked =
     isInhouseTech &&
@@ -332,11 +336,12 @@ export default function MaintSupervisorApproval() {
 
   // Fetch vendor SLAs when maintenance data is available and has vendor_id
   useEffect(() => {
-    if (maintenanceData?.vendor_id) {
+    if (maintenanceData?.vendor_id && showVendorSections) {
       fetchVendorSLAs();
       fetchSlaRecords();
     }
-  }, [maintenanceData?.vendor_id, id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maintenanceData?.vendor_id, id, showVendorSections]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -1300,13 +1305,13 @@ export default function MaintSupervisorApproval() {
       }
     }
     
-    // Common required fields for both types
-    if (!formData.po_number || formData.po_number.trim() === '') {
+    // PO and invoice belong to vendor work; in-house maintenance has neither
+    if (showVendorSections && (!formData.po_number || formData.po_number.trim() === '')) {
       errors.po_number = true;
       hasErrors = true;
     }
     
-    if (!formData.invoice || formData.invoice.trim() === '') {
+    if (showVendorSections && (!formData.invoice || formData.invoice.trim() === '')) {
       errors.invoice = true;
       hasErrors = true;
     }
@@ -2122,7 +2127,7 @@ export default function MaintSupervisorApproval() {
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Vendor SLA Section - At the Top */}
-            {!isSubscriptionRenewal && maintenanceData?.vendor_id && (
+            {!isSubscriptionRenewal && showVendorSections && maintenanceData?.vendor_id && (
               <div className="mb-6 pb-6 border-b border-gray-200">
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div className="flex-1">
@@ -2415,6 +2420,7 @@ export default function MaintSupervisorApproval() {
                     <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.costIsRequired')}</p>
                   )}
                 </div>
+                {showVendorSections && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.poNumber')} <span className="text-red-500">*</span></label>
                   <input
@@ -2430,6 +2436,7 @@ export default function MaintSupervisorApproval() {
                     <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.poNumberIsRequired')}</p>
                   )}
                 </div>
+                )}
                 {!isSubscriptionRenewal && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.email')} <span className="text-red-500">*</span></label>
@@ -2457,6 +2464,7 @@ export default function MaintSupervisorApproval() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {showVendorSections && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.invoice')} <span className="text-red-500">*</span></label>
                   <input
@@ -2472,6 +2480,7 @@ export default function MaintSupervisorApproval() {
                     <p className="mt-1 text-sm text-red-600">{t('maintenanceSupervisor.invoiceIsRequired')}</p>
                   )}
                 </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('maintenanceSupervisor.actualDowntime')}</label>
                   <input
