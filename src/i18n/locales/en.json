@@ -3649,7 +3649,9 @@
     "failedToLoadCategories": "Failed to load categories",
     "noCategoriesForAssetType": "No spare part categories mapped for this asset type",
     "failedToFetchList": "Failed to fetch spare part list",
-    "failedToFetchDetail": "Failed to fetch maintenance detail"
+    "failedToFetchDetail": "Failed to fetch maintenance detail",
+    "alreadyRequestedHint": "Already requested for this maintenance — cannot request again",
+    "alreadyRequestedAll": "All categories for this maintenance are already requested"
   },
   "sparePartIssue": {
     "title": "Spare Part Issue",

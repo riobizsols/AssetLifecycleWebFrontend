@@ -1,14 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import API from '../../lib/axios';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSparePartListStore } from '../../store/useSparePartListStore';
 import { useSparePartApprovalStore } from '../../store/useSparePartApprovalStore';
 
+const OPEN_STATUSES = new Set(['RQ', 'IS', 'IE']);
+
+function statusLabel(status, t) {
+  if (status === 'RQ') return t('sparePartList.pendingApproval') || 'Requested';
+  if (status === 'IS') return t('sparePartList.issued') || 'Reserved';
+  if (status === 'IE') return t('sparePartList.confirmedIssued') || 'Issued';
+  return t('sparePartList.requested') || 'Requested';
+}
+
 /**
  * Spare Part Request — categories from tblSPCatATMap by asset type;
  * checklist-required categories for amsId are auto-selected at qty 1.
- * Request persists selected rows to tblSpareIssue.
+ * Categories already requested (RQ/IS/IE) for this maintenance are locked.
  */
 export default function SparePartRequestScreen({
   amsId,
@@ -23,11 +32,14 @@ export default function SparePartRequestScreen({
   const [submitting, setSubmitting] = useState(false);
   const [selected, setSelected] = useState({});
   const [availableQty, setAvailableQty] = useState({});
+  /** spc_id -> { status, quantity, si_id } for open requests on this maintenance */
+  const [existingBySpc, setExistingBySpc] = useState({});
 
   useEffect(() => {
     if (!assetTypeId && !amsId) {
       setCategories([]);
       setSelected({});
+      setExistingBySpc({});
       return undefined;
     }
 
@@ -35,7 +47,7 @@ export default function SparePartRequestScreen({
     (async () => {
       setLoading(true);
       try {
-        const [catRes, requiredRes] = await Promise.all([
+        const [catRes, requiredRes, existingRes] = await Promise.all([
           assetTypeId
             ? API.get(`/spare-parts/category-mappings/by-asset-type/${assetTypeId}`)
             : Promise.resolve({ data: { data: [] } }),
@@ -44,18 +56,35 @@ export default function SparePartRequestScreen({
                 () => ({ data: { data: [] } })
               )
             : Promise.resolve({ data: { data: [] } }),
+          amsId
+            ? API.get(`/spare-parts/maintenance-list/${amsId}/request-details`).catch(
+                () => ({ data: { data: null } })
+              )
+            : Promise.resolve({ data: { data: null } }),
         ]);
         if (cancelled) return;
+
+        const existingMap = {};
+        const existingItems = existingRes.data?.data?.items || [];
+        existingItems.forEach((item) => {
+          if (!item?.spc_id || !OPEN_STATUSES.has(item.status)) return;
+          if (existingMap[item.spc_id]) return;
+          existingMap[item.spc_id] = {
+            status: item.status,
+            quantity: item.quantity,
+            si_id: item.si_id,
+          };
+        });
+        setExistingBySpc(existingMap);
 
         const cats = catRes.data?.data || [];
         const requiredRows = requiredRes.data?.data || [];
         const requiredIds = new Set(requiredRows.map((row) => row.spc_id).filter(Boolean));
 
-        if (cats.length) {
-          setCategories(cats);
+        const applyInitialSelection = (list) => {
           const initialSelected = {};
           requiredIds.forEach((spc_id) => {
-            if (cats.some((cat) => cat.spc_id === spc_id)) {
+            if (list.some((cat) => cat.spc_id === spc_id) && !existingMap[spc_id]) {
               initialSelected[spc_id] = '1';
             }
           });
@@ -71,8 +100,12 @@ export default function SparePartRequestScreen({
               })
               .catch(() => {});
           });
+        };
+
+        if (cats.length) {
+          setCategories(cats);
+          applyInitialSelection(cats);
         } else {
-          // No asset-type mappings: fall back to checklist-required rows
           const byId = new Map();
           requiredRows.forEach((row) => {
             if (row?.spc_id && !byId.has(row.spc_id)) byId.set(row.spc_id, row);
@@ -84,18 +117,7 @@ export default function SparePartRequestScreen({
             checklist_item: row.checklist_item,
           }));
           setCategories(unique);
-          setSelected(Object.fromEntries(unique.map((row) => [row.spc_id, '1'])));
-          unique.forEach((row) => {
-            API.get(`/spare-parts/available-quantity/${row.spc_id}`)
-              .then((res) => {
-                if (cancelled) return;
-                const available = Number(res.data?.data?.available_qty);
-                if (Number.isFinite(available) && available >= 0) {
-                  setAvailableQty((prev) => ({ ...prev, [row.spc_id]: available }));
-                }
-              })
-              .catch(() => {});
-          });
+          applyInitialSelection(unique);
         }
         setAvailableQty({});
       } catch (err) {
@@ -128,6 +150,7 @@ export default function SparePartRequestScreen({
   };
 
   const toggleCategory = (spc_id) => {
+    if (existingBySpc[spc_id]) return;
     setSelected((prev) => {
       const next = { ...prev };
       if (next[spc_id] !== undefined) {
@@ -141,22 +164,43 @@ export default function SparePartRequestScreen({
   };
 
   const setQuantity = (spc_id, value) => {
+    if (existingBySpc[spc_id]) return;
     setSelected((prev) => ({ ...prev, [spc_id]: value }));
   };
 
-  const handleRequest = async () => {
-    const items = Object.entries(selected)
-      .filter(([, qty]) => qty !== undefined && qty !== '' && Number(qty) > 0)
-      .map(([spc_id, quantity]) => ({ spc_id, quantity: Number(quantity) }));
+  const newRequestItems = useMemo(
+    () =>
+      Object.entries(selected)
+        .filter(
+          ([spc_id, qty]) =>
+            !existingBySpc[spc_id] &&
+            qty !== undefined &&
+            qty !== '' &&
+            Number(qty) > 0
+        )
+        .map(([spc_id, quantity]) => ({ spc_id, quantity: Number(quantity) })),
+    [selected, existingBySpc]
+  );
 
-    if (!items.length) {
+  const allCategoriesAlreadyRequested =
+    categories.length > 0 &&
+    categories.every((cat) => Boolean(existingBySpc[cat.spc_id]));
+
+  const handleRequest = async () => {
+    if (allCategoriesAlreadyRequested) {
+      toast.error(
+        t('sparePartList.alreadyRequestedAll') ||
+          'All categories for this maintenance are already requested'
+      );
+      return;
+    }
+
+    if (!newRequestItems.length) {
       toast.error(t('sparePartList.selectCategoryAndQuantity'));
       return;
     }
 
-    // Soft client-side stock hint only. Never treat qty-check network errors as
-    // "0 available" — that falsely fails requests; backend is the source of truth.
-    for (const item of items) {
+    for (const item of newRequestItems) {
       let available = availableQty[item.spc_id];
       if (available === undefined) {
         try {
@@ -183,7 +227,7 @@ export default function SparePartRequestScreen({
     try {
       await API.post('/spare-parts/issue-requests', {
         assetmaintsch_id: amsId,
-        items,
+        items: newRequestItems,
       });
       toast.success(t('sparePartList.requestSubmitted'));
       useSparePartListStore.getState().invalidateListCache();
@@ -199,6 +243,8 @@ export default function SparePartRequestScreen({
   const fieldLabelClass = 'block text-sm font-medium text-gray-700 mb-1';
   const editableInputClass =
     'w-full px-3 py-2 border border-gray-300 rounded bg-white text-gray-700';
+  const lockedInputClass =
+    'w-full px-3 py-2 border border-gray-200 rounded bg-gray-50 text-gray-600 cursor-not-allowed';
 
   return (
     <div className={embedded ? 'space-y-6' : 'p-6 rounded-lg border border-gray-200 space-y-6'}>
@@ -218,19 +264,38 @@ export default function SparePartRequestScreen({
             {t('sparePartList.category') || 'Category'}
           </div>
           {categories.map((cat) => {
-            const isChecked = selected[cat.spc_id] !== undefined;
+            const existing = existingBySpc[cat.spc_id];
+            const isLocked = Boolean(existing);
+            const isChecked = isLocked || selected[cat.spc_id] !== undefined;
+            const qtyValue = isLocked
+              ? String(existing.quantity ?? '')
+              : selected[cat.spc_id] || '';
+
             return (
-              <div key={cat.spc_id} className="border rounded-md p-3 space-y-4">
+              <div
+                key={cat.spc_id}
+                className={`border rounded-md p-3 space-y-4 ${
+                  isLocked ? 'bg-gray-50 border-gray-200' : ''
+                }`}
+              >
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={isChecked}
                     onChange={() => toggleCategory(cat.spc_id)}
-                    className="accent-[#0E2F4B]"
+                    disabled={isLocked}
+                    className="accent-[#0E2F4B] disabled:opacity-60"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-800">
-                      {cat.category_name}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="font-medium text-gray-800">
+                        {cat.category_name}
+                      </div>
+                      {isLocked && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 ring-1 ring-amber-600/20">
+                          {statusLabel(existing.status, t)}
+                        </span>
+                      )}
                     </div>
                     {cat.checklist_item && (
                       <div className="text-xs text-gray-500">
@@ -254,26 +319,34 @@ export default function SparePartRequestScreen({
                       <input
                         type="text"
                         inputMode="numeric"
-                        value={selected[cat.spc_id] || ''}
+                        value={qtyValue}
                         onChange={(e) =>
                           setQuantity(
                             cat.spc_id,
                             e.target.value.replace(/\D/g, '')
                           )
                         }
+                        disabled={isLocked}
                         placeholder={t('sparePartApproval.requiredQuantity')}
-                        className={editableInputClass}
+                        className={isLocked ? lockedInputClass : editableInputClass}
                       />
-                      {availableQty[cat.spc_id] !== undefined && (
-                        <p
-                          className={`mt-1 text-xs ${
-                            Number(availableQty[cat.spc_id]) > 0
-                              ? 'text-gray-500'
-                              : 'text-amber-600'
-                          }`}
-                        >
-                          Available: {availableQty[cat.spc_id]}
+                      {isLocked ? (
+                        <p className="mt-1 text-xs text-amber-700">
+                          {t('sparePartList.alreadyRequestedHint') ||
+                            'Already requested for this maintenance — cannot request again'}
                         </p>
+                      ) : (
+                        availableQty[cat.spc_id] !== undefined && (
+                          <p
+                            className={`mt-1 text-xs ${
+                              Number(availableQty[cat.spc_id]) > 0
+                                ? 'text-gray-500'
+                                : 'text-amber-600'
+                            }`}
+                          >
+                            Available: {availableQty[cat.spc_id]}
+                          </p>
+                        )
                       )}
                     </div>
                   </div>
@@ -295,10 +368,19 @@ export default function SparePartRequestScreen({
         <button
           type="button"
           onClick={handleRequest}
-          disabled={submitting || loading}
+          disabled={
+            submitting ||
+            loading ||
+            allCategoriesAlreadyRequested ||
+            newRequestItems.length === 0
+          }
           className="px-6 py-2 bg-[#0E2F4B] text-white rounded-md hover:bg-[#14395c] font-medium disabled:opacity-50"
         >
-          {submitting ? t('common.saving') : t('sparePartList.request')}
+          {submitting
+            ? t('common.saving')
+            : allCategoriesAlreadyRequested
+              ? t('sparePartList.pendingApproval') || 'Requested'
+              : t('sparePartList.request')}
         </button>
       </div>
     </div>

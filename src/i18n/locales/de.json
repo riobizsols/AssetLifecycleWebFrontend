@@ -3699,7 +3699,9 @@
     "failedToLoadCategories": "Kategorien konnten nicht geladen werden",
     "noCategoriesForAssetType": "Keine Ersatzteilkategorien für diesen Anlagentyp zugeordnet",
     "failedToFetchList": "Ersatzteilliste konnte nicht geladen werden",
-    "failedToFetchDetail": "Wartungsdetails konnten nicht geladen werden"
+    "failedToFetchDetail": "Wartungsdetails konnten nicht geladen werden",
+    "alreadyRequestedHint": "Für diese Wartung bereits angefordert — erneute Anfrage nicht möglich",
+    "alreadyRequestedAll": "Alle Kategorien für diese Wartung wurden bereits angefordert"
   },
   "sparePartIssue": {
     "title": "Ersatzteilausgabe",
