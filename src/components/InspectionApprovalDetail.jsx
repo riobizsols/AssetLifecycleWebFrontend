@@ -627,23 +627,15 @@ const InspectionApprovalDetail = () => {
     if (detail?.viewOnly) return;
     if (!approveNote.trim()) return;
     
-    // Check if technician selection/assignment is required
-    const maintainedBy = detail?.header?.maintained_by;
-    const isInternalMaintenance = maintainedBy && maintainedBy.toLowerCase() === 'inhouse';
-    const isVendorMaintenance = maintainedBy && maintainedBy.toLowerCase() === 'vendor';
+    // Technician is required only for in-house inspections. Vendor inspections
+    // (Hydraulic Press, Hydraulic Shear, Motor Test Bench, Overhead Crane, and any
+    // other frequency marked Vendor) can be approved without selecting one.
+    const maintainedBy = String(detail?.header?.maintained_by || '').toLowerCase().replace(/[\s_-]/g, '');
+    const isInternalMaintenance = maintainedBy === 'inhouse';
     
-    // Validation for internal maintenance - check if technician is assigned
-    if (isInternalMaintenance) {
-      if (!assignedTechnician && !selectedTechnician) {
-        showBackendTextToast({ toast, tmdId: 'TMD_TECHNICIAN_ASSIGNMENT_IS_REQUIRED_FOR_INTERNAL_MAINT_2698B69A', fallbackText: ia('technicianRequired'), type: 'error' });
-        return;
-      }
-    } else if (isVendorMaintenance) {
-      // Validation for vendor maintenance - check if technician is selected
-      if (technicians.length > 0 && !selectedTechnician) {
-        showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_TECHNICIAN_TO_PROCEED_WITH_THE_APPRO_5E6998D6', fallbackText: ia('selectTechnicianToProceed'), type: 'error' });
-        return;
-      }
+    if (isInternalMaintenance && !assignedTechnician && !selectedTechnician) {
+      showBackendTextToast({ toast, tmdId: 'TMD_TECHNICIAN_ASSIGNMENT_IS_REQUIRED_FOR_INTERNAL_MAINT_2698B69A', fallbackText: ia('technicianRequired'), type: 'error' });
+      return;
     }
     
     // Find current step
@@ -673,8 +665,8 @@ const InspectionApprovalDetail = () => {
         wfaiish_id: id
       };
       
-      // Add technician ID if selected
-      if (selectedTechnician) {
+      // In-house only. Vendor inspections must not store a technician.
+      if (isInternalMaintenance && selectedTechnician) {
         requestBody.technicianId = selectedTechnician;
       }
       

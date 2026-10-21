@@ -24,6 +24,7 @@ import {
 import { invalidateCache } from '../../utils/apiCache';
 import { getActiveOrgId, getActiveBranchId } from '../../utils/acmContext';
 import { useAcmContextStore } from '../../store/useAcmContextStore';
+import { formatWarrantyEnd, warrantyEndDate } from '../../utils/warrantyPeriod';
 
 const initialForm = {
   assetType: '',
@@ -32,7 +33,8 @@ const initialForm = {
   serialNumberNotRequired: false, // New field to mark serial number as optional
   description: '',
   expiryDate: '',
-  warrantyPeriod: '',
+  warrantyAmount: '',
+  warrantyUnit: 'months',
   purchaseDate: '',
   purchaseCost: '',
   properties: {},
@@ -1030,6 +1032,29 @@ const AddAssetForm = ({ userRole }) => {
       return;
     }
 
+    const warrantyAmountRaw = String(form.warrantyAmount || '').trim();
+    let warrantyPeriodDate = null;
+    if (warrantyAmountRaw) {
+      const warrantyCount = Number(warrantyAmountRaw);
+      if (!Number.isInteger(warrantyCount) || warrantyCount <= 0) {
+        showBackendTextToast({
+          toast,
+          fallbackText: t('assets.warrantyEnterWholeNumber'),
+          type: 'error',
+        });
+        return;
+      }
+      if (!form.purchaseDate) {
+        showBackendTextToast({
+          toast,
+          fallbackText: t('assets.warrantyNeedsPurchaseDate'),
+          type: 'error',
+        });
+        return;
+      }
+      warrantyPeriodDate = warrantyEndDate(form.purchaseDate, warrantyCount, form.warrantyUnit || 'months');
+    }
+
     if (isSubmitting) {
       console.log('⚠️ Already submitting, preventing duplicate request');
       return;
@@ -1067,7 +1092,7 @@ const AddAssetForm = ({ userRole }) => {
         purchased_by: form.purchaseBy || null,
         expiry_date: form.expiryDate || null,
         current_status: 'Active', // Default status
-        warranty_period: form.warrantyPeriod || null,
+        warranty_period: warrantyPeriodDate,
         parent_asset_id: form.parentAsset || null, // Add parentAsset field
         org_id: acmOrgId, // Active ACM organization
         properties: form.properties || {},
@@ -1672,13 +1697,34 @@ const AddAssetForm = ({ userRole }) => {
                 </div>
                 <div>
                   <label className="block text-sm mb-1 font-medium">{t('assets.warrantyPeriod')}</label>
-                  <input 
-                    name="warrantyPeriod" 
-                    type="date" 
-                    onChange={handleChange} 
-                    value={form.warrantyPeriod} 
-                    className="w-full px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9" 
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      name="warrantyAmount"
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder={t('assets.warrantyAmountPlaceholder')}
+                      onChange={handleChange}
+                      value={form.warrantyAmount}
+                      className="w-24 px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9"
+                    />
+                    <select
+                      name="warrantyUnit"
+                      onChange={handleChange}
+                      value={form.warrantyUnit || 'months'}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded bg-white text-sm h-9"
+                    >
+                      <option value="months">{t('assets.warrantyMonths')}</option>
+                      <option value="years">{t('assets.warrantyYears')}</option>
+                    </select>
+                  </div>
+                  {form.purchaseDate && String(form.warrantyAmount || '').trim() && warrantyEndDate(form.purchaseDate, form.warrantyAmount, form.warrantyUnit || 'months') && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {t('assets.warrantyEndsOn', {
+                        date: formatWarrantyEnd(warrantyEndDate(form.purchaseDate, form.warrantyAmount, form.warrantyUnit || 'months')),
+                      })}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm mb-1 font-medium">{t('assets.expiryDate')} <span className="text-red-500">*</span></label>

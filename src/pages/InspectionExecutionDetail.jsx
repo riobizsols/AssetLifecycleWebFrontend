@@ -6,14 +6,13 @@ import { toast } from "react-hot-toast";
 import { useAuthStore } from "../store/useAuthStore";
 import { useInspectionSyncStore } from "../store/useInspectionSyncStore";
 import { 
-  Save, 
+  Check,
   Edit3,
   X
 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import InspectionSyncBanner from "../components/InspectionSyncBanner";
 import { useLanguage } from "../contexts/LanguageContext";
-import { useAppData } from "../contexts/AppDataContext";
 import { translateMasterDataLabel } from "../utils/masterDataLabel";
 import {
   getChecklist,
@@ -45,7 +44,6 @@ const InspectionExecutionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { getStatusText } = useAppData();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checklist, setChecklist] = useState([]);
@@ -56,7 +54,6 @@ const InspectionExecutionDetail = () => {
   const [recordedValue, setRecordedValue] = useState('');
   const [triggerMaintenance, setTriggerMaintenance] = useState(false);
   const [checklistLoading, setChecklistLoading] = useState(false);
-  const [status, setStatus] = useState('IN');
   const [saving, setSaving] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -68,7 +65,6 @@ const InspectionExecutionDetail = () => {
   const applyDetail = (row, { fromCache = false } = {}) => {
     if (!row) return;
     setData(row);
-    setStatus(row.status || 'IN');
     setFormData({
       notes: row.notes || "",
       inspector_name: row.inspector_name || '',
@@ -394,11 +390,12 @@ const InspectionExecutionDetail = () => {
         }
       }
 
+      const completedAt = new Date().toISOString();
       const completePayload = {
-        status,
+        status: 'CO',
         notes: formData.notes,
         trigger_maintenance: triggerMaintenance,
-        act_insp_end_date: status === 'CO' ? new Date().toISOString() : null,
+        act_insp_end_date: completedAt,
       };
 
       if (data?.vendor_id) {
@@ -415,10 +412,10 @@ const InspectionExecutionDetail = () => {
       // patching CO first used to make drainOutbox skip the server update.
       if (isOffline) {
         await patchScheduleLocal(id, {
-          status,
+          status: 'CO',
           notes: formData.notes,
           trigger_maintenance: triggerMaintenance,
-          act_insp_end_date: completePayload.act_insp_end_date,
+          act_insp_end_date: completedAt,
         });
       }
 
@@ -432,10 +429,10 @@ const InspectionExecutionDetail = () => {
       if (result?.queued) {
         // Ensure local reflects completion if we queued without the offline branch above
         await patchScheduleLocal(id, {
-          status,
+          status: 'CO',
           notes: formData.notes,
           trigger_maintenance: triggerMaintenance,
-          act_insp_end_date: completePayload.act_insp_end_date,
+          act_insp_end_date: completedAt,
         });
         // Keep pendingRecords aligned with IndexedDB so leave/return still shows answers
         const stillPending = await getPendingRecords(id);
@@ -471,12 +468,12 @@ const InspectionExecutionDetail = () => {
 
       setPendingRecords([]);
       await patchScheduleLocal(id, {
-        status,
+        status: 'CO',
         notes: formData.notes,
         trigger_maintenance: triggerMaintenance,
-        act_insp_end_date: completePayload.act_insp_end_date,
+        act_insp_end_date: completedAt,
       });
-      showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.updatedSuccessfully'), type: 'success' });
+      showBackendTextToast({ toast, tmdId: 'TMD_INSPECTION_UPDATED_SUCCESSFULLY_0C9AFBF8', fallbackText: t('inspectionExecution.inspectionCompleted'), type: 'success' });
       navigate('/inspection-view');
     } catch (error) {
       console.error("Error updating inspection:", error);
@@ -701,19 +698,6 @@ const InspectionExecutionDetail = () => {
               />
               <span className="text-sm font-medium text-gray-700">{t('inspectionExecution.triggerMaintenance')}</span>
             </label>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">{t('inspectionExecution.status')}:</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              >
-                <option value="IN">{getStatusText('IN') || t('inspectionView.initiated')}</option>
-                <option value="IP">{getStatusText('IP') || t('inspectionView.inProgress')}</option>
-                <option value="CO">{getStatusText('CO') || t('inspectionView.completed')}</option>
-                <option value="CA">{getStatusText('CA') || t('inspectionView.cancelled')}</option>
-              </select>
-            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -737,8 +721,8 @@ const InspectionExecutionDetail = () => {
                 </span>
               ) : (
                 <>
-                  <Save size={18} className="mr-2" />
-                  {t('inspectionExecution.saveChanges')}
+                  <Check size={18} className="mr-2" />
+                  {t('inspectionExecution.completeInspection')}
                 </>
               )}
             </button>
