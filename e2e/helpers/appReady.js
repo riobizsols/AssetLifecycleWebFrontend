@@ -42,41 +42,56 @@ export async function waitForAppShell(page, opts = {}) {
   return remaining === 0;
 }
 
+function navWaitMs() {
+  return process.env.E2E_LOCAL_DB === 'true' ? 20000 : 45000;
+}
+
+/**
+ * The menu request and the boot spinner finish together. Waiting for both
+ * one after the other adds the second wait onto every screen.
+ * @param {import('@playwright/test').Page} page
+ */
+function watchNavigation(page) {
+  return page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/navigation/user/navigation') &&
+        response.request().method() === 'GET',
+      { timeout: navWaitMs() }
+    )
+    .catch(() => null);
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {Promise<unknown>} navPromise
+ */
+async function waitForNavAndShell(page, navPromise) {
+  const shellPromise = waitForAppShell(page, { timeoutMs: navWaitMs() });
+  await Promise.race([navPromise, shellPromise]);
+  return shellPromise;
+}
+
 /**
  * Navigate to a protected app path, re-login if session expired, wait for boot loader.
  * @param {import('@playwright/test').Page} page
  * @param {string} url
  */
 export async function gotoProtected(page, url) {
-  const navPromise = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/navigation/user/navigation') &&
-        response.request().method() === 'GET',
-      { timeout: 45000 }
-    )
-    .catch(() => null);
-
+  const navPromise = watchNavigation(page);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
+  let ready;
   if (await isLoginPage(page)) {
     // Don't wait for nav API on the login screen — it never fires.
     await loginToRioEam(page);
-    const navPromise2 = page
-      .waitForResponse(
-        (response) =>
-          response.url().includes('/navigation/user/navigation') &&
-          response.request().method() === 'GET',
-        { timeout: 45000 }
-      )
-      .catch(() => null);
+    const navPromise2 = watchNavigation(page);
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await navPromise2;
+    ready = await waitForNavAndShell(page, navPromise2);
   } else {
-    await navPromise;
+    ready = await waitForNavAndShell(page, navPromise);
   }
 
-  const ready = await waitForAppShell(page);
   if (!ready) return false;
 
   if (await isLoginPage(page)) {

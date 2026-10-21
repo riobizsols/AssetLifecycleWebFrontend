@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import API from '../lib/axios';
+import { useAcmContextStore } from './useAcmContextStore';
 import {
   buildCacheKey,
   fetchWithCache,
@@ -56,7 +57,14 @@ export function mapPrinterAssets(assets) {
 }
 
 function queueKey(status) {
-  return buildCacheKey(['serial-print', 'queue', status || 'New']);
+  const acm = useAcmContextStore.getState();
+  return buildCacheKey([
+    'serial-print',
+    'queue',
+    acm.appliedOrgId || '',
+    acm.appliedBranchId || '',
+    status || 'New',
+  ]);
 }
 
 const cachedPrinters = peekCache(PRINTERS_KEY, SERIAL_PRINT_TTL_MS);

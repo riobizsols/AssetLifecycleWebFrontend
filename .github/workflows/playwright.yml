@@ -12,6 +12,11 @@ name: Playwright E2E
 # Optional secrets:
 #   E2E_TENANT_DATABASE_URL  (defaults to E2E_DATABASE_URL)
 #   E2E_GENERIC_URL          (defaults to E2E_DATABASE_URL)
+#
+# Optional repository variables (Settings → Secrets and variables → Actions → Variables):
+#   E2E_RUNNER    – leave empty to use GitHub's ubuntu-latest (SSH tunnel to the DB).
+#                   Set to alm-e2e after a self-hosted runner is installed on the DB server.
+#   E2E_WORKERS   – 1 by default. Set to 2, then 4, only after E2E_RUNNER is alm-e2e.
 
 on:
   workflow_dispatch:
@@ -39,7 +44,8 @@ concurrency:
 jobs:
   e2e:
     timeout-minutes: 180
-    runs-on: ubuntu-latest
+    # Empty E2E_RUNNER keeps the current GitHub-hosted machine. alm-e2e is the DB server.
+    runs-on: ${{ vars.E2E_RUNNER || 'ubuntu-latest' }}
 
     steps:
       - name: Checkout frontend
@@ -77,18 +83,32 @@ jobs:
             package-lock.json
             backend/package-lock.json
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Install backend dependencies
-        working-directory: backend
+      - name: Install backend dependencies and Playwright
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
+          set -euo pipefail
+          (
+            cd backend
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          ) &
+          backend_pid=$!
+          npx playwright install chromium --with-deps &
+          playwright_pid=$!
+          fail=0
+          wait "$backend_pid" || fail=1
+          wait "$playwright_pid" || fail=1
+          exit "$fail"
 
       - name: Open SSH tunnel to database
+        if: ${{ vars.E2E_RUNNER == '' }}
         env:
           E2E_SSH_KEY: ${{ secrets.E2E_SSH_KEY }}
         run: |
@@ -158,6 +178,17 @@ jobs:
         run: |
           nohup npm start > ../backend.log 2>&1 &
           echo $! > ../backend.pid
+
+      - name: Build frontend
+        env:
+          VITE_API_BASE_URL: http://localhost:5001/api
+          VITE_FRONTEND_URL: http://localhost:5173
+          VITE_API_PORT: '5001'
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build -- --mode development
+
+      - name: Wait for backend
+        run: |
           for i in $(seq 1 60); do
             if curl -sf http://127.0.0.1:5001/ >/dev/null; then
               echo "Backend is up"
@@ -166,18 +197,14 @@ jobs:
             sleep 2
           done
           echo "Backend failed to start"
-          cat ../backend.log || true
+          cat backend.log || true
           exit 1
 
       - name: Start frontend
-        env:
-          VITE_API_BASE_URL: http://localhost:5001/api
-          VITE_FRONTEND_URL: http://localhost:5173
-          VITE_API_PORT: '5001'
         run: |
-          nohup npm run dev -- --host 127.0.0.1 --port 5173 > frontend.log 2>&1 &
+          nohup npx vite preview --host 127.0.0.1 --port 5173 --strictPort > frontend.log 2>&1 &
           echo $! > frontend.pid
-          for i in $(seq 1 60); do
+          for i in $(seq 1 90); do
             if curl -sf http://127.0.0.1:5173/ >/dev/null; then
               echo "Frontend is up"
               exit 0
@@ -194,6 +221,8 @@ jobs:
           BASE_URL: http://localhost:5173
           RIO_EMAIL: ${{ secrets.RIO_EMAIL }}
           RIO_PASSWORD: ${{ secrets.RIO_PASSWORD }}
+          E2E_WORKERS: ${{ vars.E2E_WORKERS || '1' }}
+          E2E_LOCAL_DB: ${{ vars.E2E_RUNNER != '' && 'true' || 'false' }}
         run: npx playwright test
 
       - name: Upload Playwright report
