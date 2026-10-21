@@ -20,7 +20,8 @@ test.describe('RIO EAM notifications', () => {
       return;
     }
 
-    await expect(page.getByRole('button', { name: 'Filters' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Categories' })).toBeVisible();
     await expect(notificationList(page)).toBeVisible({ timeout: 60000 });
   });
 
@@ -40,7 +41,6 @@ test.describe('RIO EAM notifications', () => {
     }
 
     await expect(page.getByText('Due On').first()).toBeVisible();
-    await page.getByRole('button', { name: 'Filters' }).click();
-    await expect(page.getByText('Warranty').first()).toBeVisible();
+    await expect(page.getByText('Warranty & Expiry').first()).toBeVisible();
   });
 });
