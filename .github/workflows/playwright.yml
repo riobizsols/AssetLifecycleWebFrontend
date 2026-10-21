@@ -1,0 +1,250 @@
+name: Playwright E2E
+
+# Starts ALM backend + frontend on the runner, then runs e2e/ against localhost.
+#
+# Required GitHub Secrets (repo → Settings → Secrets and variables → Actions):
+#   GH_PAT              – PAT with read access to AssetLifecycleBackend
+#   E2E_SSH_KEY         – private key for the tunnel-only `dbtunnel` user on the VPS
+#   E2E_DATABASE_URL    – Postgres URL (host/port are rewritten to the SSH tunnel)
+#   E2E_JWT_SECRET      – JWT secret used by backend
+#   RIO_EMAIL           – test user email
+#   RIO_PASSWORD        – test user password
+# Optional secrets:
+#   E2E_TENANT_DATABASE_URL  (defaults to E2E_DATABASE_URL)
+#   E2E_GENERIC_URL          (defaults to E2E_DATABASE_URL)
+#
+# Optional repository variables (Settings → Secrets and variables → Actions → Variables):
+#   E2E_RUNNER    – leave empty to use GitHub's ubuntu-latest (SSH tunnel to the DB).
+#                   Set to alm-e2e after a self-hosted runner is installed on the DB server.
+#   E2E_WORKERS   – 1 by default. Set to 2, then 4, only after E2E_RUNNER is alm-e2e.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [production, Niranjan-Prod, sanjana-prod]
+    paths:
+      - 'e2e/**'
+      - 'playwright.config.js'
+      - '.github/workflows/playwright.yml'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [production, Niranjan-Prod, sanjana-prod]
+    paths:
+      - 'e2e/**'
+      - 'playwright.config.js'
+      - '.github/workflows/playwright.yml'
+      - 'src/**'
+
+concurrency:
+  group: playwright-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    # Manual runs still list every branch. Skip any branch outside this set.
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      github.ref_name == 'production' ||
+      github.ref_name == 'Niranjan-Prod' ||
+      github.ref_name == 'sanjana-prod'
+    timeout-minutes: 180
+    # Empty E2E_RUNNER keeps the current GitHub-hosted machine. alm-e2e is the DB server.
+    runs-on: ${{ vars.E2E_RUNNER || 'ubuntu-latest' }}
+
+    steps:
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+
+      - name: Resolve backend branch
+        id: backend_ref
+        run: |
+          REF="${{ github.head_ref || github.ref_name }}"
+          case "$REF" in
+            Niranjan-Prod|sanjana-prod|production)
+              BACKEND_REF="$REF"
+              ;;
+            *)
+              BACKEND_REF="production"
+              ;;
+          esac
+          echo "ref=$BACKEND_REF" >> "$GITHUB_OUTPUT"
+          echo "Using backend branch: $BACKEND_REF"
+
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          repository: riobizsols/AssetLifecycleBackend
+          ref: ${{ steps.backend_ref.outputs.ref }}
+          token: ${{ secrets.GH_PAT }}
+          path: backend
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend dependencies and Playwright
+        run: |
+          set -euo pipefail
+          (
+            cd backend
+            if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          ) &
+          backend_pid=$!
+          npx playwright install chromium --with-deps &
+          playwright_pid=$!
+          fail=0
+          wait "$backend_pid" || fail=1
+          wait "$playwright_pid" || fail=1
+          exit "$fail"
+
+      - name: Open SSH tunnel to database
+        if: ${{ vars.E2E_RUNNER == '' }}
+        env:
+          E2E_SSH_KEY: ${{ secrets.E2E_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${E2E_SSH_KEY}" ]; then
+            echo "Missing E2E_SSH_KEY secret"
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${E2E_SSH_KEY}" | tr -d '\r' > ~/.ssh/db_tunnel
+          chmod 600 ~/.ssh/db_tunnel
+          echo "103.192.199.178 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMf65kLY3ECY86JjKWMowzQJkxoBLfXTcAyMG7eUcSQZ" > ~/.ssh/known_hosts
+          ssh -f -N -i ~/.ssh/db_tunnel \
+            -o StrictHostKeyChecking=yes \
+            -o ExitOnForwardFailure=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=3 \
+            -L 5432:localhost:5432 \
+            dbtunnel@103.192.199.178
+          for i in $(seq 1 15); do
+            if nc -z 127.0.0.1 5432; then
+              echo "Tunnel is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "SSH tunnel failed to open"
+          exit 1
+
+      - name: Write backend .env
+        working-directory: backend
+        env:
+          E2E_DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
+          E2E_TENANT_DATABASE_URL: ${{ secrets.E2E_TENANT_DATABASE_URL }}
+          E2E_GENERIC_URL: ${{ secrets.E2E_GENERIC_URL }}
+          E2E_JWT_SECRET: ${{ secrets.E2E_JWT_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${E2E_DATABASE_URL}" ] || [ -z "${E2E_JWT_SECRET}" ]; then
+            echo "Missing E2E_DATABASE_URL or E2E_JWT_SECRET secrets"
+            exit 1
+          fi
+          to_tunnel() { printf '%s' "$1" | sed -E 's#@[^@/]+/#@localhost:5432/#'; }
+          DB_URL="$(to_tunnel "${E2E_DATABASE_URL}")"
+          TENANT_URL="$(to_tunnel "${E2E_TENANT_DATABASE_URL:-$E2E_DATABASE_URL}")"
+          GENERIC_URL="$(to_tunnel "${E2E_GENERIC_URL:-$E2E_DATABASE_URL}")"
+          {
+            echo "NODE_ENV=development"
+            echo "PORT=5001"
+            echo "FRONTEND_URL=http://localhost:5173"
+            echo "BACKEND_URL=http://localhost:5001"
+            echo "API_BASE_URL=http://localhost:5001/api"
+            echo "MAIN_DOMAIN=localhost"
+            echo "DATABASE_URL=${DB_URL}"
+            echo "TENANT_DATABASE_URL=${TENANT_URL}"
+            echo "GENERIC_URL=${GENERIC_URL}"
+            echo "TENANT_DB_HOST_OVERRIDE=localhost"
+            echo "JWT_SECRET=${E2E_JWT_SECRET}"
+            echo "CACHE_ENABLED=false"
+            echo "DB_SSL=false"
+            echo "SKIP_LOGIN_NAV_SYNC=true"
+          } > .env
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          nohup npm start > ../backend.log 2>&1 &
+          echo $! > ../backend.pid
+
+      - name: Build frontend
+        env:
+          VITE_API_BASE_URL: http://localhost:5001/api
+          VITE_FRONTEND_URL: http://localhost:5173
+          VITE_API_PORT: '5001'
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build -- --mode development
+
+      - name: Wait for backend
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:5001/ >/dev/null; then
+              echo "Backend is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend failed to start"
+          cat backend.log || true
+          exit 1
+
+      - name: Start frontend
+        run: |
+          nohup npx vite preview --host 127.0.0.1 --port 5173 --strictPort > frontend.log 2>&1 &
+          echo $! > frontend.pid
+          for i in $(seq 1 90); do
+            if curl -sf http://127.0.0.1:5173/ >/dev/null; then
+              echo "Frontend is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Frontend failed to start"
+          cat frontend.log || true
+          exit 1
+
+      - name: Run Playwright tests
+        env:
+          CI: true
+          BASE_URL: http://localhost:5173
+          RIO_EMAIL: ${{ secrets.RIO_EMAIL }}
+          RIO_PASSWORD: ${{ secrets.RIO_PASSWORD }}
+          E2E_WORKERS: ${{ vars.E2E_WORKERS || '1' }}
+          E2E_LOCAL_DB: ${{ vars.E2E_RUNNER != '' && 'true' || 'false' }}
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-server-logs
+          path: |
+            backend.log
+            frontend.log
+          retention-days: 7
