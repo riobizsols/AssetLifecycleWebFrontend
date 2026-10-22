@@ -10,7 +10,6 @@
     "preview": "vite preview",
     "start": "vite preview --port 3000",
     "test:e2e": "playwright test",
-    "test:e2e:login": "playwright test e2e/login.spec.js",
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
