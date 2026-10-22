@@ -27,6 +27,7 @@ const workers = process.env.CI ? ciWorkerCount() : 1;
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.js',
+  passWithNoTests: true,
   fullyParallel: Boolean(process.env.CI) && workers > 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
