@@ -1,13 +1,14 @@
 name: Playwright E2E
 
-# Starts ALM backend + frontend on the runner, then runs e2e/ against localhost.
+# Starts ALM backend + frontend on the runner, then runs e2e/ as the playwright tenant.
 #
 # Required GitHub Secrets (repo → Settings → Secrets and variables → Actions):
 #   GH_PAT              – PAT with read access to AssetLifecycleBackend
 #   E2E_DATABASE_URL    – Postgres URL reachable from GitHub-hosted runners
 #   E2E_JWT_SECRET      – JWT secret used by backend
-#   RIO_EMAIL           – test user email
-#   RIO_PASSWORD        – test user password
+# Playwright tenant: http://playwright.localhost:5173
+# Database: playwright_db (TENANT_DB_NAME_OVERRIDE)
+# Login: tony@riobizsols.com / Initial2
 # Optional secrets:
 #   E2E_TENANT_DATABASE_URL  (defaults to E2E_DATABASE_URL)
 #   E2E_GENERIC_URL          (defaults to E2E_DATABASE_URL)
@@ -105,7 +106,8 @@ jobs:
           {
             echo "NODE_ENV=development"
             echo "PORT=5001"
-            echo "FRONTEND_URL=http://localhost:5173"
+            echo "FRONTEND_URL=http://playwright.localhost:5173"
+            echo "TENANT_DB_NAME_OVERRIDE=playwright_db"
             echo "BACKEND_URL=http://localhost:5001"
             echo "API_BASE_URL=http://localhost:5001/api"
             echo "MAIN_DOMAIN=localhost"
@@ -156,9 +158,9 @@ jobs:
       - name: Run Playwright tests
         env:
           CI: true
-          BASE_URL: http://localhost:5173
-          RIO_EMAIL: ${{ secrets.RIO_EMAIL }}
-          RIO_PASSWORD: ${{ secrets.RIO_PASSWORD }}
+          BASE_URL: http://playwright.localhost:5173
+          RIO_EMAIL: tony@riobizsols.com
+          RIO_PASSWORD: Initial2
         run: npx playwright test
 
       - name: Upload Playwright report

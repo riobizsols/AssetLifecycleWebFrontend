@@ -5,15 +5,14 @@ import { BASE } from './baseUrl.js';
 /** Login against remote DB often takes 30s+ (tenant resolve + nav sync). */
 const LOGIN_RESPONSE_TIMEOUT_MS = 120_000;
 
+const PLAYWRIGHT_EMAIL = 'tony@riobizsols.com';
+const PLAYWRIGHT_PASSWORD = 'Initial2';
+
 export function getRioCredentials() {
-  const email = process.env.RIO_EMAIL;
-  const password = process.env.RIO_PASSWORD;
-
-  if (!email || !password) {
-    throw new Error('RIO_EMAIL and RIO_PASSWORD must be set');
-  }
-
-  return { email, password };
+  return {
+    email: process.env.RIO_EMAIL || PLAYWRIGHT_EMAIL,
+    password: process.env.RIO_PASSWORD || PLAYWRIGHT_PASSWORD,
+  };
 }
 
 /**

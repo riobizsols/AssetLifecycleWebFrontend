@@ -70,10 +70,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true
+    host: true,
+    allowedHosts: ['.localhost', 'localhost']
   },
   preview: {
     port: 3000,
-    host: true
+    host: true,
+    allowedHosts: ['.localhost', 'localhost']
   }
 })
