@@ -2,6 +2,9 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loadLocalCredentials } from './e2e/helpers/loadCredentials.js';
+
+loadLocalCredentials();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BASE_URL = (process.env.BASE_URL || 'http://playwright.localhost:5173').replace(/\/$/, '');
@@ -20,7 +23,7 @@ const workers = process.env.CI ? ciWorkerCount() : 1;
 
 /**
  * E2E against the playwright tenant (playwright.localhost) on playwright_db.
- * Login: tony@riobizsols.com / Initial2, unless RIO_EMAIL and RIO_PASSWORD are set.
+ * Login comes from RIO_EMAIL and RIO_PASSWORD.
  * Override target: BASE_URL
  * E2E_WORKERS (1–4) and E2E_LOCAL_DB come from the GitHub workflow.
  */

@@ -7,9 +7,10 @@ name: Playwright E2E
 #   E2E_SSH_KEY         – private key for the tunnel-only `dbtunnel` user on the VPS
 #   E2E_DATABASE_URL    – Postgres URL (host/port are rewritten to the SSH tunnel)
 #   E2E_JWT_SECRET      – JWT secret used by backend
+#   RIO_EMAIL           – playwright tenant login email
+#   RIO_PASSWORD        – playwright tenant login password
 # Playwright tenant: http://playwright.localhost:5173
 # Database: playwright_db (TENANT_DB_NAME_OVERRIDE)
-# Login: tony@riobizsols.com / Initial2
 # Optional secrets:
 #   E2E_TENANT_DATABASE_URL  (defaults to E2E_DATABASE_URL)
 #   E2E_GENERIC_URL          (defaults to E2E_DATABASE_URL)
@@ -227,8 +228,8 @@ jobs:
         env:
           CI: true
           BASE_URL: http://playwright.localhost:5173
-          RIO_EMAIL: tony@riobizsols.com
-          RIO_PASSWORD: Initial2
+          RIO_EMAIL: ${{ secrets.RIO_EMAIL }}
+          RIO_PASSWORD: ${{ secrets.RIO_PASSWORD }}
           E2E_WORKERS: ${{ vars.E2E_WORKERS || '1' }}
           E2E_LOCAL_DB: ${{ vars.E2E_RUNNER != '' && 'true' || 'false' }}
         run: npx playwright test
