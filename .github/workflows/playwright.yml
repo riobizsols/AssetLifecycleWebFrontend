@@ -14,24 +14,27 @@ name: Playwright E2E
 #   E2E_TENANT_DATABASE_URL  (defaults to E2E_DATABASE_URL)
 #   E2E_GENERIC_URL          (defaults to E2E_DATABASE_URL)
 
+# Automatic runs are paused until the master-data Playwright specs are ready.
+# Restore the push and pull_request blocks below to turn CI back on.
+# workflow_dispatch stays so a run can still be started by hand from the Actions tab.
 on:
   workflow_dispatch:
-  push:
-    branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
-    paths:
-      - 'e2e/**'
-      - 'playwright.config.js'
-      - '.github/workflows/playwright.yml'
-      - 'src/**'
-      - 'package.json'
-      - 'package-lock.json'
-  pull_request:
-    branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
-    paths:
-      - 'e2e/**'
-      - 'playwright.config.js'
-      - '.github/workflows/playwright.yml'
-      - 'src/**'
+  # push:
+  #   branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
+  #   paths:
+  #     - 'e2e/**'
+  #     - 'playwright.config.js'
+  #     - '.github/workflows/playwright.yml'
+  #     - 'src/**'
+  #     - 'package.json'
+  #     - 'package-lock.json'
+  # pull_request:
+  #   branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
+  #   paths:
+  #     - 'e2e/**'
+  #     - 'playwright.config.js'
+  #     - '.github/workflows/playwright.yml'
+  #     - 'src/**'
 
 concurrency:
   group: playwright-e2e-${{ github.ref }}
