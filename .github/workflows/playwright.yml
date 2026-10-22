@@ -18,29 +18,29 @@ name: Playwright E2E
 # Optional repository variables (Settings → Secrets and variables → Actions → Variables):
 #   E2E_RUNNER    – leave empty to use GitHub's ubuntu-latest (SSH tunnel to the DB).
 #                   Set to alm-e2e after a self-hosted runner is installed on the DB server.
-#   E2E_WORKERS   – 1 by default. Set to 2, then 4, only after E2E_RUNNER is alm-e2e.
+#   E2E_WORKERS   – unused. The suite stays on one worker so each spec can leave
+#                   records for the next spec.
 
-# Automatic runs are paused until the master-data Playwright specs are ready.
-# Restore the push and pull_request blocks below to turn CI back on.
-# workflow_dispatch stays so a run can still be started by hand from the Actions tab.
+# Automatic runs are on for the branches listed below. workflow_dispatch stays so a run
+# can still be started by hand from the Actions tab.
 on:
   workflow_dispatch:
-  # push:
-  #   branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
-  #   paths:
-  #     - 'e2e/**'
-  #     - 'playwright.config.js'
-  #     - '.github/workflows/playwright.yml'
-  #     - 'src/**'
-  #     - 'package.json'
-  #     - 'package-lock.json'
-  # pull_request:
-  #   branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
-  #   paths:
-  #     - 'e2e/**'
-  #     - 'playwright.config.js'
-  #     - '.github/workflows/playwright.yml'
-  #     - 'src/**'
+  push:
+    branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
+    paths:
+      - 'e2e/**'
+      - 'playwright.config.js'
+      - '.github/workflows/playwright.yml'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
+    paths:
+      - 'e2e/**'
+      - 'playwright.config.js'
+      - '.github/workflows/playwright.yml'
+      - 'src/**'
 
 concurrency:
   group: playwright-e2e-${{ github.ref }}
