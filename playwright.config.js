@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const BASE_URL = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+const BASE_URL = (process.env.BASE_URL || 'http://playwright.localhost:5173').replace(/\/$/, '');
 const authFile = path.join(__dirname, 'e2e', '.auth', 'user.json');
 
 /** True once CI runs on the DB server (GitHub variable E2E_RUNNER). */
@@ -19,8 +19,8 @@ function ciWorkerCount() {
 const workers = process.env.CI ? ciWorkerCount() : 1;
 
 /**
- * E2E against the CI frontend + Node backend.
- * Credentials: RIO_EMAIL / RIO_PASSWORD
+ * E2E against the playwright tenant (playwright.localhost) on playwright_db.
+ * Login: tony@riobizsols.com / Initial2, unless RIO_EMAIL and RIO_PASSWORD are set.
  * Override target: BASE_URL
  * E2E_WORKERS (1–4) and E2E_LOCAL_DB come from the GitHub workflow.
  */
