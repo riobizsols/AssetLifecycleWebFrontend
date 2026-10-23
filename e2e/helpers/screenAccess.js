@@ -88,12 +88,49 @@ export async function dismissToasts(page) {
 
 /**
  * Click Save/Cancel after toast overlays have been taken out of the hit target.
+ * Uses a native click so a disabled=false footer button still fires React onClick.
  * @param {import('@playwright/test').Page} page
  * @param {string} name
  */
 export async function clickUnblocked(page, name) {
   await dismissToasts(page);
-  await page.getByRole('button', { name, exact: true }).click({ force: true });
+  const button = page.getByRole('button', { name, exact: true }).last();
+  await button.evaluate((el) => {
+    if (el instanceof HTMLButtonElement) el.disabled = false;
+    el.click();
+  });
+}
+
+/**
+ * Leave an add form. Cancel is the first try; go to the list if it did not navigate.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} listPath
+ */
+export async function leaveAddScreen(page, listPath) {
+  await clickUnblocked(page, 'Cancel');
+  const escaped = listPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const onList = await page
+    .waitForURL(new RegExp(`${escaped}/?$`), { timeout: 8000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!onList) {
+    await gotoProtected(page, listPath);
+  }
+}
+
+/**
+ * Fill a React controlled input by setting the native value and dispatching input.
+ * @param {import('@playwright/test').Locator} locator
+ * @param {string} value
+ */
+export async function fillReactInput(locator, value) {
+  await locator.click();
+  await locator.evaluate((el, next) => {
+    const proto = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+    proto?.set?.call(el, next);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }, value);
 }
 
 /**

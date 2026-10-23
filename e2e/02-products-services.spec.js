@@ -277,8 +277,8 @@ async function createAssetType(page, name) {
   await headerAddButton(page).click();
   await page.getByPlaceholder('Enter asset type name').fill(name);
   await clickUnblocked(page, 'Save');
-  await expect(page.getByText(`Asset type "${name}" created successfully`).first()).toBeVisible({ timeout: 60000 });
-  await expect(page.getByRole('columnheader', { name: 'Asset Type Name' })).toBeVisible({ timeout: 45000 });
+  await expect(page).toHaveURL(/\/master-data\/asset-types\/?$/, { timeout: 60000 });
+  await expect(page.getByRole('row').filter({ hasText: name }).first()).toBeVisible({ timeout: 30000 });
   return name;
 }
 

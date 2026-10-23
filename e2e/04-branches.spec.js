@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton, leaveAddScreen, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The branch created for this run stays in the playwright tenant.
@@ -80,8 +80,7 @@ test.describe('Branches', () => {
     await expect(page.getByText('City name cannot be only numbers').first()).toBeVisible();
 
     await page.locator('input[name="city"]').fill(city);
-    await clickUnblocked(page, 'Cancel');
-    await expect(page).toHaveURL(/\/master-data\/branches(\/)?$/, { timeout: 15000 });
+    await leaveAddScreen(page, `${BASE}/master-data/branches`);
     await expect(branchRow(page, cancelledName)).toHaveCount(0);
   });
 

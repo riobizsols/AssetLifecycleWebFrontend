@@ -169,27 +169,30 @@ async function createType(page, typedName, options = {}) {
  */
 async function chooseAsset(page, assetLabel) {
   const closed = page.getByText('Select asset types to include', { exact: true });
-  const search = page.getByPlaceholder('Select asset types to include');
   if (await closed.isVisible().catch(() => false)) {
     await closed.click();
-  } else if (await search.isVisible().catch(() => false)) {
-    await search.click();
   } else {
     await page.locator('div.relative').filter({ hasText: '▼' }).first().click();
   }
   const menu = page.locator('div.absolute.z-50').filter({ has: page.locator('input[type="checkbox"]') }).last();
   await expect(menu).toBeVisible({ timeout: 15000 });
-  if (assetLabel && (await search.isVisible().catch(() => false))) {
-    await search.fill(assetLabel);
-  }
+  const unchecked = menu.locator('label').filter({ has: page.locator('input[type="checkbox"]:not(:checked)') });
   const row = assetLabel
     ? menu.locator('label').filter({ hasText: new RegExp(escapeRegex(assetLabel)) }).first()
-    : menu.locator('label').first();
-  await expect(row).toBeVisible();
-  const label = assetLabel || (await row.locator('span').innerText()).trim();
+    : unchecked.first().or(menu.locator('label').first());
+  await expect(row).toBeVisible({ timeout: 15000 });
+  const label = assetLabel || (await row.innerText()).replace(/\s+/g, ' ').trim();
   const box = row.locator('input[type="checkbox"]');
-  if (!(await box.isChecked())) {
-    await box.check();
+  const already = await box.isChecked();
+  await row.click();
+  if ((await box.isChecked()) === already) {
+    await box.evaluate((el) => el instanceof HTMLInputElement && el.click());
+  }
+  if (already && (await box.isChecked())) {
+    const other = unchecked.first();
+    if (await other.count()) {
+      await other.click();
+    }
   }
   await page.getByRole('heading', { name: 'Mapped asset types' }).click();
   await expect(page.getByRole('button', { name: 'Save mappings' })).toBeEnabled({ timeout: 10000 });

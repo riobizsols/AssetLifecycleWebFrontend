@@ -43,7 +43,7 @@ function nameInput(page) {
  * @param {import('@playwright/test').Page} page
  */
 function idInput(page) {
-  return page.getByPlaceholder('Department Id');
+  return page.getByPlaceholder(/Department Id/i);
 }
 
 /**
@@ -103,7 +103,7 @@ function deptNumber(id) {
  */
 async function ensureBranchOption(page) {
   const select = branchSelect(page);
-  await expect(select).toBeVisible();
+  await expect(select).toBeVisible({ timeout: 30000 });
   const existing = await select.locator('option').evaluateAll((opts) =>
     opts
       .filter((opt) => opt.value)
@@ -172,7 +172,7 @@ test.describe('Departments', () => {
   test('TC-DEPT-001 the screen shows the add form and the list', async ({ page }) => {
     await openDepartments(page);
 
-    await expect(page.getByText('Department Id', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/Department Id/i).first()).toBeVisible({ timeout: 30000 });
     await expect(branchSelect(page)).toBeVisible();
     await expect(page.getByPlaceholder('Department Name')).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();

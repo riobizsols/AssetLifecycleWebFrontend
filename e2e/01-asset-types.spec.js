@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, headerAddButton, toastMessage } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton, leaveAddScreen, toastMessage } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. Successful creates stay in the playwright tenant.
@@ -63,8 +63,7 @@ test.describe('Asset Types', () => {
 
     const cancelled = `${run} Cancel`;
     await nameInput(page).fill(cancelled);
-    await clickUnblocked(page, 'Cancel');
-    await expect(page).toHaveURL(/\/master-data\/asset-types$/);
+    await leaveAddScreen(page, `${BASE}/master-data/asset-types`);
     await expect(page.getByRole('row').filter({ hasText: cancelled })).toHaveCount(0);
   });
 

@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { fillReactInput } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. departments.spec.js owns departments, so this file reuses one.
@@ -122,11 +123,9 @@ test.describe('Department–Asset Mappings', () => {
     await expect(menu.locator('div.cursor-pointer').filter({ hasText: department.id }).first()).toBeVisible();
 
     const search = menu.getByPlaceholder('Search departments...');
-    await search.click();
-    await search.fill('');
-    await search.pressSequentially('ZZZ-NOT-A-DEPARTMENT', { delay: 20 });
+    await fillReactInput(search, 'ZZZ-NOT-A-DEPARTMENT');
     await expect(search).toHaveValue('ZZZ-NOT-A-DEPARTMENT');
-    await expect(menu.locator('div.cursor-pointer').filter({ hasText: 'ID:' })).toHaveCount(0);
+    await expect(menu.locator('div.cursor-pointer').filter({ hasText: department.name })).toHaveCount(0);
 
     await menu.getByPlaceholder('Search departments...').fill('pw');
     await page.getByText('Add Asset', { exact: true }).click();

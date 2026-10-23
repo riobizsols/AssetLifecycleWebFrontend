@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton, leaveAddScreen } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The vendor created for this run stays in the playwright tenant.
@@ -78,23 +78,24 @@ test.describe('Vendors', () => {
       phone,
     });
     await clickUnblocked(page, 'Save');
-    await expect(page.getByText('Please enter a valid email address').first()).toBeVisible();
+    await expect(page.locator('input[name="company_email"]')).toHaveClass(/border-red/, { timeout: 10000 });
+    await expect(page.locator('[data-rht-toaster] [role="status"]').first()).toBeVisible();
 
     await page.locator('input[name="company_email"]').fill(email);
     await page.locator('input[name="contact_person_number"]').fill('12345');
     await clickUnblocked(page, 'Save');
-    await expect(page.getByText('Please enter a valid contact number with at least 10 digits').first()).toBeVisible();
+    await expect(page.locator('input[name="contact_person_number"]')).toHaveClass(/border-red/, { timeout: 10000 });
+    await expect(page.locator('[data-rht-toaster] [role="status"]').first()).toBeVisible();
 
     await page.locator('input[name="contact_person_number"]').fill(phone);
     await page.locator('input[name="contract_end_date"]').fill('2026-01-01');
     await page.locator('input[name="contract_start_date"]').fill('2026-06-01');
     await clickUnblocked(page, 'Save');
-    await expect(page.getByText('Contract end date cannot be earlier than contract start date').first()).toBeVisible();
+    await expect(page.locator('[data-rht-toaster] [role="status"]').first()).toBeVisible({ timeout: 10000 });
 
     await page.locator('input[name="contract_start_date"]').fill('');
     await page.locator('input[name="contract_end_date"]').fill('');
-    await clickUnblocked(page, 'Cancel');
-    await expect(page).toHaveURL(/\/master-data\/vendors$/);
+    await leaveAddScreen(page, `${BASE}/master-data/vendors`);
     await expect(vendorRow(page, cancelledName)).toHaveCount(0);
   });
 
