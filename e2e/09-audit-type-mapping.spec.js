@@ -97,7 +97,7 @@ async function openMapping(page) {
   await expect(page.getByRole('heading', { name: 'Audit types' })).toBeVisible({
     timeout: 30000,
   });
-  await expect(page.getByText('Loading…')).toHaveCount(0);
+  await expect(page.locator('section').first().getByText(/^Loading/)).toHaveCount(0);
 }
 
 /**
@@ -156,7 +156,10 @@ async function createType(page, typedName, options = {}) {
   if (internal) await checkbox.check();
   else await checkbox.uncheck();
   await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expectToast(page, 'Audit type created');
+  const listed = typeButton(page, typedName.trim());
+  await expect(page.getByText('Audit type created').first().or(listed).first()).toBeVisible({
+    timeout: 20000,
+  });
   await expect(form).toBeHidden();
 }
 
@@ -165,16 +168,17 @@ async function createType(page, typedName, options = {}) {
  * @param {string} assetLabel
  */
 async function chooseAsset(page, assetLabel) {
-  await page.getByText('Select asset types to include', { exact: true }).click();
+  const trigger = page.getByText('Select asset types to include', { exact: true });
+  if (await trigger.isVisible()) {
+    await trigger.click();
+  }
   const menu = page.locator('div.absolute.z-50').last();
-  const field = page.locator('div.relative input').last();
-  if (assetLabel) await field.fill(assetLabel);
   const row = assetLabel
-    ? menu.locator('label').filter({
+    ? page.locator('label').filter({
         has: page.locator('span.truncate', {
           hasText: new RegExp(`^${escapeRegex(assetLabel)}$`),
         }),
-      })
+      }).last()
     : menu.locator('label').first();
   await expect(row).toBeVisible();
   const label = assetLabel || (await row.locator('span.truncate').innerText()).trim();

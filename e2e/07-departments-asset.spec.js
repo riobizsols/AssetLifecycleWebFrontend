@@ -53,7 +53,7 @@ test.describe('Department–Asset Mappings', () => {
     await expect(addButton(page)).toBeDisabled();
     await expect(addCard(page).locator('span.text-red-500')).toBeVisible();
 
-    await expect(page.getByText('Department–Asset Mappings', { exact: true })).toBeVisible();
+    await expect(page.getByText('Department–Asset Mappings', { exact: true }).first()).toBeVisible();
     for (const heading of ['Department', 'Asset Type', 'Actions']) {
       await expect(listHeader(page).getByText(heading, { exact: true })).toBeVisible();
     }
@@ -302,7 +302,7 @@ test.describe('Department–Asset Mappings', () => {
     await expect(page.getByRole('columnheader', { name: 'Asset Type Name', exact: true })).toBeVisible({ timeout: 45000 });
 
     await page.goBack();
-    await expect(page.getByText('Department–Asset Mappings', { exact: true })).toBeVisible({ timeout: 45000 });
+    await expect(page.getByText('Department–Asset Mappings', { exact: true }).first()).toBeVisible({ timeout: 45000 });
     await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
     await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1);
     await expect(mappingRow(page, department.name, pairB.name)).toHaveCount(1);
@@ -317,7 +317,7 @@ test.describe('Department–Asset Mappings', () => {
 async function openScreen(page) {
   await gotoProtected(page, ROUTE);
   await expect(page.getByText('Department Selection', { exact: true })).toBeVisible({ timeout: 45000 });
-  await expect(page.getByText('Department–Asset Mappings', { exact: true })).toBeVisible();
+  await expect(page.getByText('Department–Asset Mappings', { exact: true }).first()).toBeVisible();
 }
 
 /**

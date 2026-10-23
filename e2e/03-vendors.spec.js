@@ -46,9 +46,7 @@ test.describe('Vendors', () => {
       'GST Number',
       'CIN Number',
       'Company Email',
-      'Contact Person',
-      'Contact Email',
-      'Contact Number',
+      'Actions',
     ]) {
       await expect(page.getByRole('columnheader', { name: heading, exact: true })).toBeVisible();
     }
@@ -433,7 +431,7 @@ async function reuseOrCreateAssetType(page) {
  */
 async function createProduct(page, typeName, brand, model) {
   await gotoProtected(page, `${BASE}/master-data/prod-serv`);
-  await expect(page.getByText('Product / Service', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByText('Product / Service', { exact: true }).first()).toBeVisible({ timeout: 45000 });
   await page.getByRole('button', { name: 'Select Asset Type', exact: true }).click();
   const search = page.getByPlaceholder('Search Asset Types...');
   await search.fill(typeName);

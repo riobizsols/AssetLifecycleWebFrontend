@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { selectLoadedOrganization } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -114,19 +115,8 @@ async function ensureBranchOption(page) {
   const branchName = `${run}-Branch`;
   const branchCode = `PD${Date.now().toString(36).slice(-6)}`;
   await gotoProtected(page, `${BASE}/master-data/branches/add`);
-  await expect(page.getByText('Branch Name', { exact: true })).toBeVisible({ timeout: 30000 });
-
-  const orgSelect = page.locator('select[name="org_id"]');
-  const orgValue = await orgSelect.locator('option').evaluateAll((opts) => {
-    const real = opts.find(
-      (opt) => opt.value && opt.value !== 'ORG004' && opt.value !== 'ORG005',
-    );
-    return real ? real.value : '';
-  });
-  if (!orgValue) {
-    throw new Error('No organisation is available to create the branch this screen needs');
-  }
-  await orgSelect.selectOption(orgValue);
+  await expect(page.getByPlaceholder('Enter Branch Name')).toBeVisible({ timeout: 30000 });
+  await selectLoadedOrganization(page);
   await page.getByPlaceholder('Enter Branch Name').fill(branchName);
   await page.getByPlaceholder('Enter Branch Code').fill(branchCode);
   await page.getByPlaceholder('Enter City').fill('Playwright');
@@ -184,8 +174,8 @@ test.describe('Departments', () => {
     await openDepartments(page);
 
     await expect(page.getByText('Department Id', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Branch', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Department Name', { exact: true }).first()).toBeVisible();
+    await expect(branchSelect(page)).toBeVisible();
+    await expect(page.getByPlaceholder('Department Name')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
 
     const id = idInput(page);

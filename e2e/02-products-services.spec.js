@@ -39,7 +39,7 @@ test.describe('Products / Services', () => {
   test('product and service screens show the add forms and list headers', async ({ page }) => {
     await openScreen(page);
 
-    await expect(page.getByText('Product / Service', { exact: true })).toBeVisible();
+    await expect(page.getByText('Product / Service', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Product Details', { exact: true })).toBeVisible();
     await expect(page.getByPlaceholder('Enter Brand')).toBeVisible();
     await expect(page.getByPlaceholder('Enter Model')).toBeVisible();
@@ -246,7 +246,7 @@ test.describe('Products / Services', () => {
 /** @param {import('@playwright/test').Page} page */
 async function openScreen(page) {
   await gotoProtected(page, `${BASE}/master-data/prod-serv`);
-  await expect(page.getByText('Product / Service', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByText('Product / Service', { exact: true }).first()).toBeVisible({ timeout: 45000 });
 }
 
 /**

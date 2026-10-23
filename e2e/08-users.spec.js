@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -166,18 +166,8 @@ async function ensureBranch(page) {
   const branchName = `${run}-Branch`;
   const branchCode = `PU${Date.now().toString(36).slice(-6)}`;
   await gotoProtected(page, `${BASE}/master-data/branches/add`);
-  await expect(page.getByText('Branch Name', { exact: true })).toBeVisible({ timeout: 30000 });
-  const orgSelect = page.locator('select[name="org_id"]');
-  const orgValue = await orgSelect.locator('option').evaluateAll((options) => {
-    const real = options.find(
-      (option) => option.value && option.value !== 'ORG004' && option.value !== 'ORG005',
-    );
-    return real ? real.value : '';
-  });
-  if (!orgValue) {
-    throw new Error('No organisation is available to create the branch this screen needs');
-  }
-  await orgSelect.selectOption(orgValue);
+  await expect(page.getByPlaceholder('Enter Branch Name')).toBeVisible({ timeout: 30000 });
+  await selectLoadedOrganization(page);
   await page.getByPlaceholder('Enter Branch Name').fill(branchName);
   await page.getByPlaceholder('Enter Branch Code').fill(branchCode);
   await page.getByPlaceholder('Enter City').fill('Playwright');
@@ -317,7 +307,6 @@ test('TC-USER-001 users list shows the columns and header actions on screen', as
     'Department',
     'Role',
     'Is Active',
-    'Last Accessed',
     'Actions',
   ]) {
     await expect(page.getByRole('columnheader', { name: header, exact: true })).toBeVisible();

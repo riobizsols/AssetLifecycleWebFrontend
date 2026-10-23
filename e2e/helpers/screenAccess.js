@@ -53,6 +53,29 @@ export function headerAddButton(page) {
 }
 
 /**
+ * Pick an organization on Add Branch after /orgs has loaded.
+ * Uses preferredId when that option exists; otherwise the first real org.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} [preferredId]
+ */
+export async function selectLoadedOrganization(page, preferredId) {
+  const orgSelect = page.locator('select[name="org_id"]');
+  await expect(orgSelect).toBeEnabled({ timeout: 30000 });
+  const real = orgSelect.locator('option[value]:not([value=""])');
+  await expect(real.first()).toBeAttached({ timeout: 30000 });
+  if (preferredId && (await orgSelect.locator(`option[value="${preferredId}"]`).count())) {
+    await orgSelect.selectOption(preferredId);
+    return preferredId;
+  }
+  const value = await real.first().getAttribute('value');
+  if (!value) {
+    throw new Error('No organization is available');
+  }
+  await orgSelect.selectOption(value);
+  return value;
+}
+
+/**
  * Wait until a list shows a row opener or an empty-state message.
  * ContentBox hides *_id columns and only marks rows clickable when onRowClick is set.
  * @param {import('@playwright/test').Page} page

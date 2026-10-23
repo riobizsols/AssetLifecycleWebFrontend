@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The branch created for this run stays in the playwright tenant.
@@ -47,10 +47,10 @@ test.describe('Branches', () => {
 
   test('add branch blocks empty fields, a number-only name, and a number-only city', async ({ page }) => {
     await openAdd(page);
-    await expect(page.getByText('Organization', { exact: true })).toBeVisible();
-    await expect(page.getByText('Branch Name', { exact: true })).toBeVisible();
-    await expect(page.getByText('Branch Code', { exact: true })).toBeVisible();
-    await expect(page.getByText('City', { exact: true })).toBeVisible();
+    await expect(page.locator('select[name="org_id"]')).toBeVisible();
+    await expect(page.getByPlaceholder('Enter Branch Name')).toBeVisible();
+    await expect(page.getByPlaceholder('Enter Branch Code')).toBeVisible();
+    await expect(page.getByPlaceholder('Enter City')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 
@@ -328,11 +328,7 @@ function headerDownload(page) {
 
 /** @param {import('@playwright/test').Page} page */
 async function selectOrganization(page) {
-  const orgSelect = page.locator('select[name="org_id"]');
-  const option = orgSelect.locator('option[value]:not([value=""])').first();
-  await expect(option).toBeAttached({ timeout: 30000 });
-  const value = await option.getAttribute('value');
-  await orgSelect.selectOption(value || '');
+  await selectLoadedOrganization(page);
 }
 
 /**

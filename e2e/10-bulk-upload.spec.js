@@ -105,7 +105,7 @@ test.describe('Bulk Upload', () => {
 
   test('shows the three tabs and keeps trial and commit disabled until a file is chosen', async ({ page }) => {
     await openBulk(page);
-    await expect(page.getByRole('heading', { name: 'Bulk Upload' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Bulk Upload', exact: true })).toBeVisible();
     await expect(page.getByText('Upload data in bulk using CSV files for Assets, Asset Types, and Employees')).toBeVisible();
     for (const tab of ['Assets', 'Asset Types', 'Employees']) {
       await page.getByRole('button', { name: tab, exact: true }).click();
@@ -380,7 +380,7 @@ test.describe('Bulk Upload', () => {
 /** @param {import('@playwright/test').Page} page */
 async function openBulk(page) {
   await gotoProtected(page, `${BASE}/master-data/uploads`);
-  await expect(page.getByRole('heading', { name: 'Bulk Upload' })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('heading', { name: 'Bulk Upload', exact: true })).toBeVisible({ timeout: 45000 });
 }
 
 /**

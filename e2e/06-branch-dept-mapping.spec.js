@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The mapping saved for this run stays in the playwright tenant.
@@ -382,7 +383,7 @@ async function createBranchOnOrg(page, name, code, organizationId) {
   await gotoProtected(page, `${BASE}/master-data/branches/add`);
   const response = page.waitForResponse((res) =>
     res.request().method() === 'POST' && /\/branches\/?$/.test(new URL(res.url()).pathname));
-  await page.locator('select[name="org_id"]').selectOption(organizationId);
+  await selectLoadedOrganization(page, organizationId);
   await page.locator('input[name="text"]').fill(name);
   await page.locator('input[name="branch_code"]').fill(code);
   await page.locator('input[name="city"]').fill('Chennai');

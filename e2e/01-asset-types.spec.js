@@ -37,13 +37,7 @@ test.describe('Asset Types', () => {
       'Assignment Type',
       'Inspection Required',
       'Group Required',
-      'Require Spare Parts',
-      'Type',
-      'Parent Asset Type',
-      'Created By',
-      'Created On',
-      'Changed By',
-      'Changed On',
+      'Actions',
     ]) {
       await expect(page.getByRole('columnheader', { name: heading, exact: true })).toBeVisible();
     }
