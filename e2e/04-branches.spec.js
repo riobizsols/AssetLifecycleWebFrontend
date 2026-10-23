@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
+import { dismissToasts, headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The branch created for this run stays in the playwright tenant.
@@ -80,7 +80,8 @@ test.describe('Branches', () => {
     await expect(page.getByText('City name cannot be only numbers')).toBeVisible();
 
     await page.locator('input[name="city"]').fill(city);
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await dismissToasts(page);
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true });
     await expect(page).toHaveURL(/\/master-data\/branches$/);
     await expect(branchRow(page, cancelledName)).toHaveCount(0);
   });
@@ -357,10 +358,10 @@ async function addColumnFilter(page, columnLabel, value) {
   await page.getByText('Search by Column', { exact: true }).click();
   await page.locator('select').last().selectOption({ label: columnLabel });
   await page.getByRole('button', { name: 'Select values' }).click();
-  const search = page.getByPlaceholder('Search...');
-  await search.fill(value);
-  const menu = search.locator('xpath=ancestor::div[contains(@class,"absolute")][1]');
-  await menu.getByText(value, { exact: true }).click();
+  const menu = page.locator('div.absolute.z-50').filter({ has: page.getByPlaceholder('Search...') }).last();
+  await expect(menu).toBeVisible();
+  await menu.getByPlaceholder('Search...').fill(value);
+  await menu.locator('div.cursor-pointer').filter({ hasText: value }).first().click();
 }
 
 /** @param {import('@playwright/test').Page} page */

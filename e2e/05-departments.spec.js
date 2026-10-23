@@ -191,7 +191,7 @@ test.describe('Departments', () => {
       await expect(select).not.toHaveValue('');
     }
 
-    await expect(page.getByText('Department Name', { exact: true }).nth(1)).toBeVisible();
+    await expect(page.locator('div.bg-\\[\\#0E2F4B\\]').getByText('Department Name', { exact: true })).toBeVisible();
     await expect(page.getByText('Actions', { exact: true })).toBeVisible();
 
     const rows = page.locator('div.grid').filter({ has: page.locator('button') });

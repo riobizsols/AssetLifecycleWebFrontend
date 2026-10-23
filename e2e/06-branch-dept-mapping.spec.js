@@ -325,7 +325,10 @@ async function openAdd(page) {
 async function choosePair(page, branch, dept) {
   const dialog = addDialog(page);
   await dialog.locator('select').nth(0).selectOption(branch);
-  await dialog.locator('select').nth(1).selectOption(dept);
+  const deptSelect = dialog.locator('select').nth(1);
+  await expect(deptSelect).toBeEnabled();
+  await expect(deptSelect.locator(`option[value="${dept}"]`)).toBeAttached({ timeout: 20000 });
+  await deptSelect.selectOption(dept);
 }
 
 /**

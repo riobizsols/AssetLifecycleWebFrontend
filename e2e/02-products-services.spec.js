@@ -301,10 +301,8 @@ async function toggleMaximize(page, listTitle) {
  * @param {string} typeName
  */
 async function searchAssetTypes(page, openerName, typeName) {
-  await page.getByRole('button', { name: openerName }).click();
-  const search = page.getByPlaceholder('Search Asset Types...');
+  const { search, menu } = await openAssetTypeMenu(page, openerName);
   await search.fill(typeName);
-  const menu = search.locator('xpath=ancestor::div[contains(@class,"absolute")][1]');
   await expect(menu.getByText(typeName, { exact: true })).toBeVisible();
   await search.fill('zzzz-no-such-type');
   await expect(menu.getByText(typeName, { exact: true })).toHaveCount(0);
@@ -314,13 +312,24 @@ async function searchAssetTypes(page, openerName, typeName) {
 /**
  * @param {import('@playwright/test').Page} page
  * @param {string} openerName
+ */
+async function openAssetTypeMenu(page, openerName) {
+  await page.getByRole('button', { name: openerName, exact: true }).click();
+  const search = page.getByPlaceholder('Search Asset Types...').last();
+  await expect(search).toBeVisible();
+  const menu = page.locator('div.absolute').filter({ has: search }).last();
+  await expect(menu).toBeVisible();
+  return { search, menu };
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} openerName
  * @param {string} optionText
  */
 async function selectFromAbsoluteDropdown(page, openerName, optionText) {
-  await page.getByRole('button', { name: openerName, exact: true }).click();
-  const search = page.getByPlaceholder('Search Asset Types...');
+  const { search, menu } = await openAssetTypeMenu(page, openerName);
   await search.fill(optionText === 'All Asset Types' ? '' : optionText);
-  const menu = search.locator('xpath=ancestor::div[contains(@class,"absolute")][1]');
   await menu.getByText(optionText, { exact: true }).click();
 }
 

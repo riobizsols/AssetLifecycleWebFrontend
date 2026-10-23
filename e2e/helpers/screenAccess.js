@@ -54,7 +54,7 @@ export function headerAddButton(page) {
 
 /**
  * Pick an organization on Add Branch after /orgs has loaded.
- * Uses preferredId when that option exists; otherwise the first real org.
+ * Uses preferredId when passed; otherwise the first real org.
  * @param {import('@playwright/test').Page} page
  * @param {string} [preferredId]
  */
@@ -63,7 +63,8 @@ export async function selectLoadedOrganization(page, preferredId) {
   await expect(orgSelect).toBeEnabled({ timeout: 30000 });
   const real = orgSelect.locator('option[value]:not([value=""])');
   await expect(real.first()).toBeAttached({ timeout: 30000 });
-  if (preferredId && (await orgSelect.locator(`option[value="${preferredId}"]`).count())) {
+  if (preferredId) {
+    await expect(orgSelect.locator(`option[value="${preferredId}"]`)).toBeAttached({ timeout: 30000 });
     await orgSelect.selectOption(preferredId);
     return preferredId;
   }
@@ -73,6 +74,20 @@ export async function selectLoadedOrganization(page, preferredId) {
   }
   await orgSelect.selectOption(value);
   return value;
+}
+
+/**
+ * Clear react-hot-toast overlays that intercept clicks on Save/Cancel.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function dismissToasts(page) {
+  const toaster = page.locator('[data-rht-toaster]');
+  if (!(await toaster.isVisible().catch(() => false))) return;
+  const close = toaster.locator('button');
+  if (await close.count()) {
+    await close.first().click({ force: true }).catch(() => {});
+  }
+  await page.keyboard.press('Escape').catch(() => {});
 }
 
 /**

@@ -317,7 +317,8 @@ test('TC-USER-001 users list shows the columns and header actions on screen', as
   await expect(page.locator('div.flex.gap-2.justify-end > button')).toHaveCount(2);
 
   const fullName = page.getByRole('columnheader', { name: /Full Name/ });
-  await fullName.locator('div.cursor-pointer').nth(1).click();
+  await fullName.hover();
+  await fullName.locator('div.cursor-pointer').last().click({ force: true });
   await expect(page.getByText('Columns', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
 });

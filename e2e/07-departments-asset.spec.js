@@ -103,11 +103,11 @@ test.describe('Department–Asset Mappings', () => {
 
   test('searches departments by name and id, then closes the list', async ({ page }) => {
     await openScreen(page);
-    await deptButton(page).click();
     const menu = deptMenu(page);
+    await openHiddenMenu(deptButton(page), menu);
     await expect(menu.getByPlaceholder('Search departments...')).toBeVisible();
 
-    const partialName = department.name.slice(1);
+    const partialName = department.name.length > 3 ? department.name.slice(0, -1) : department.name;
     await menu.getByPlaceholder('Search departments...').fill(partialName);
     const nameRow = menu.locator('div.cursor-pointer').filter({ hasText: department.name }).first();
     await expect(nameRow).toBeVisible();
@@ -150,8 +150,8 @@ test.describe('Department–Asset Mappings', () => {
 
     if (alreadyMapped.length > 0) {
       await selectDepartment(page, department.name);
-      await assetTypeButton(page).click();
       const menu = typeMenu(page);
+      await openHiddenMenu(assetTypeButton(page), menu);
       await expect(assetTypeButton(page)).toContainText('Select Asset Type');
       for (const row of alreadyMapped) {
         await expect(typeOption(menu, row.assetName)).toHaveCount(0);
@@ -160,12 +160,12 @@ test.describe('Department–Asset Mappings', () => {
     }
 
     await selectDepartment(page, department.name);
-    await assetTypeButton(page).click();
     const menu = typeMenu(page);
+    await openHiddenMenu(assetTypeButton(page), menu);
     await expect(menu.getByPlaceholder('Search Asset Types...')).toBeVisible();
     await expect(menu.getByText('+ Create New', { exact: true })).toBeVisible();
     await menu.getByPlaceholder('Search Asset Types...').fill(keepType.name);
-    await expect(typeOption(menu, keepType.name)).toBeVisible();
+    await expect(typeOption(menu, keepType.name)).toBeVisible({ timeout: 15000 });
 
     await menu.getByPlaceholder('Search Asset Types...').fill('ZZZ-NOT-AN-ASSET-TYPE');
     await expect(menu.getByText('No available asset types for this department')).toBeVisible();
@@ -629,7 +629,7 @@ function mappingRow(page, deptName, typeName) {
  * @param {string} name
  */
 function typeOption(menu, name) {
-  return menu.getByText(name, { exact: true });
+  return menu.locator('div.cursor-pointer').filter({ hasText: name }).first();
 }
 
 /**
@@ -651,9 +651,20 @@ function deleteDialog(page) {
  * @param {import('@playwright/test').Page} page
  * @param {string} name
  */
+/**
+ * @param {import('@playwright/test').Locator} button
+ * @param {import('@playwright/test').Locator} menu
+ */
+async function openHiddenMenu(button, menu) {
+  if (await menu.evaluate((el) => el.classList.contains('hidden'))) {
+    await button.click();
+  }
+  await expect.poll(() => menu.evaluate((el) => !el.classList.contains('hidden'))).toBeTruthy();
+}
+
 async function selectDepartment(page, name) {
-  await deptButton(page).click();
   const menu = deptMenu(page);
+  await openHiddenMenu(deptButton(page), menu);
   await menu.getByPlaceholder('Search departments...').fill(name);
   await menu.locator('div.cursor-pointer').filter({ hasText: name }).first().click();
   await expect(deptButton(page)).toContainText(name);
@@ -664,10 +675,8 @@ async function selectDepartment(page, name) {
  * @param {string} name
  */
 async function selectAssetType(page, name) {
-  if (!(await typeMenu(page).isVisible())) {
-    await assetTypeButton(page).click();
-  }
   const menu = typeMenu(page);
+  await openHiddenMenu(assetTypeButton(page), menu);
   await menu.getByPlaceholder('Search Asset Types...').fill(name);
   await typeOption(menu, name).click();
   await expect(chip(page, name)).toBeVisible();

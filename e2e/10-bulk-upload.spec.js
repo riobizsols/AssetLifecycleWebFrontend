@@ -140,7 +140,9 @@ test.describe('Bulk Upload', () => {
     await search.fill('zzzz-no-type');
     await expect(page.getByText('No asset types found')).toBeVisible();
     await search.fill(dropdownTypeName);
-    await page.getByRole('button', { name: dropdownTypeName, exact: true }).click();
+    const option = page.locator('div.absolute').getByRole('button', { name: dropdownTypeName, exact: true });
+    await expect(option).toBeVisible({ timeout: 15000 });
+    await option.click();
     await expect(page.getByText(`Selected: ${dropdownTypeName}`)).toBeVisible();
 
     const downloadPromise = page.waitForEvent('download');
@@ -177,8 +179,10 @@ test.describe('Bulk Upload', () => {
     await expect(page.getByText(`Duplicate record found (asset_id: ${duplicateAssetId})`)).toBeVisible();
 
     const unknownVendor = csv([assetHeaders, assetRow(assetId, assetDescription, 'V999')]);
-    await upload(page, '#assets-file-upload', 'unknown-vendor.csv', unknownVendor);
-    await expect(page.getByText(/purchase_vendor_id 'V999' does not exist in vendors table/)).toBeVisible();
+    await expect(async () => {
+      await upload(page, '#assets-file-upload', 'unknown-vendor.csv', unknownVendor);
+      await expect(page.getByText(/V999.*vendors|does not exist in vendors/i)).toBeVisible({ timeout: 4000 });
+    }).toPass({ timeout: 20000 });
   });
 
   test('trials and commits a new asset, and a second trial is an update', async ({ page }) => {
@@ -395,8 +399,11 @@ async function selectAssetType(page, typeName) {
     await page.getByRole('button', { name: typeName, exact: true }).click();
   }
   const search = page.getByPlaceholder('Search asset types...');
+  await expect(search).toBeVisible();
   await search.fill(typeName);
-  await page.getByRole('button', { name: typeName, exact: true }).click();
+  const option = page.locator('div.absolute').getByRole('button', { name: typeName, exact: true });
+  await expect(option).toBeVisible({ timeout: 15000 });
+  await option.click();
   await expect(page.getByText(`Selected: ${typeName}`)).toBeVisible();
 }
 

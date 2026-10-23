@@ -168,22 +168,32 @@ async function createType(page, typedName, options = {}) {
  * @param {string} assetLabel
  */
 async function chooseAsset(page, assetLabel) {
-  const trigger = page.getByText('Select asset types to include', { exact: true });
-  if (await trigger.isVisible()) {
-    await trigger.click();
+  const closed = page.getByText('Select asset types to include', { exact: true });
+  const search = page.getByPlaceholder('Select asset types to include');
+  if (await closed.isVisible().catch(() => false)) {
+    await closed.click();
+  } else if (await search.isVisible().catch(() => false)) {
+    await search.click();
+  } else {
+    await page.locator('div.relative').filter({ hasText: '▼' }).first().click();
   }
-  const menu = page.locator('div.absolute.z-50').last();
+  await expect(search.or(page.locator('div.absolute.z-50').last())).toBeVisible();
+  if (assetLabel && (await search.isVisible().catch(() => false))) {
+    await search.fill(assetLabel);
+  }
+  const menu = page.locator('div.absolute.z-50').filter({ has: page.locator('input[type="checkbox"]') }).last();
+  await expect(menu).toBeVisible({ timeout: 15000 });
   const row = assetLabel
-    ? page.locator('label').filter({
-        has: page.locator('span.truncate', {
-          hasText: new RegExp(`^${escapeRegex(assetLabel)}$`),
-        }),
-      }).last()
+    ? menu.locator('label').filter({ hasText: new RegExp(escapeRegex(assetLabel)) }).first()
     : menu.locator('label').first();
   await expect(row).toBeVisible();
-  const label = assetLabel || (await row.locator('span.truncate').innerText()).trim();
-  await row.locator('input[type="checkbox"]').check();
+  const label = assetLabel || (await row.locator('span').innerText()).trim();
+  const box = row.locator('input[type="checkbox"]');
+  if (!(await box.isChecked())) {
+    await box.check();
+  }
   await page.getByRole('heading', { name: 'Mapped asset types' }).click();
+  await expect(page.getByRole('button', { name: 'Save mappings' })).toBeEnabled({ timeout: 10000 });
   return label;
 }
 

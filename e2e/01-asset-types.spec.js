@@ -51,7 +51,7 @@ test.describe('Asset Types', () => {
     await openList(page);
     await headerAddButton(page).click();
     await expect(page).toHaveURL(/\/master-data\/asset-types\/add$/);
-    await expect(page.getByText('Asset Type', { exact: true }).first()).toBeVisible();
+    await expect(nameInput(page)).toBeVisible();
 
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByText('Asset type name is required')).toBeVisible();

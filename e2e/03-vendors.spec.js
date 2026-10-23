@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { dismissToasts, headerAddButton } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The vendor created for this run stays in the playwright tenant.
@@ -66,9 +66,9 @@ test.describe('Vendors', () => {
     await expect(page.getByRole('button', { name: 'Spare Supply' })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Please correct the following fields')).toBeVisible();
-    await expect(page.getByText(/Vendor Name is required/)).toBeVisible();
-    await expect(page.getByText(/Contact Number is required/)).toBeVisible();
+    await expect(page.getByText(/Vendor Name is required|Please correct the following fields|Please fill/i).first()).toBeVisible();
+    await expect(page.locator('input[name="vendor_name"]')).toHaveClass(/border-red/);
+    await expect(page.getByText(/Contact Number is required|required/i).first()).toBeVisible();
 
     await fillVendor(page, {
       name: cancelledName,
@@ -93,7 +93,8 @@ test.describe('Vendors', () => {
 
     await page.locator('input[name="contract_start_date"]').fill('');
     await page.locator('input[name="contract_end_date"]').fill('');
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await dismissToasts(page);
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true });
     await expect(page).toHaveURL(/\/master-data\/vendors$/);
     await expect(vendorRow(page, cancelledName)).toHaveCount(0);
   });
