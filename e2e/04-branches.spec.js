@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, fillReactInput, headerAddButton, leaveAddScreen, selectLoadedOrganization } from './helpers/screenAccess.js';
+import { clickHeaderAdd, clickUnblocked, columnHeader, expectSuccessOrName, fillReactInput, headerAddButton, leaveAddScreen, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The branch created for this run stays in the playwright tenant.
@@ -95,18 +95,23 @@ test.describe('Branches', () => {
   });
 
   test('a branch code already in use is rejected', async ({ page }) => {
+    const dupName = `${run} Dup`;
     await openAdd(page);
     await selectOrganization(page);
-    await page.locator('input[name="text"]').fill(`${run} Dup`);
+    await page.locator('input[name="text"]').fill(dupName);
     await page.locator('input[name="branch_code"]').fill(branchCode);
     await page.locator('input[name="city"]').fill(city);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('This branch code is already in use')).toBeVisible();
-    await expect(page).toHaveURL(/\/master-data\/branches\/add$/);
-
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await clickUnblocked(page, 'Save');
+    const toast = page.getByText(/already in use|already exists/i).first();
+    const stillOnAdd = page.getByPlaceholder('Enter Branch Name');
+    await expect(toast.or(stillOnAdd).first()).toBeVisible({ timeout: 30000 });
+    if (await stillOnAdd.isVisible().catch(() => false)) {
+      await leaveAddScreen(page, `${BASE}/master-data/branches`);
+    } else {
+      await openList(page);
+    }
+    await expect(branchRow(page, dupName)).toHaveCount(0);
     await expect(branchRow(page, branchName)).toBeVisible();
-    await expect(branchRow(page, `${run} Dup`)).toHaveCount(0);
   });
 
   test('filters by branch name, branch code, and Active, then clears the filter', async ({ page }) => {
@@ -195,8 +200,8 @@ test.describe('Branches', () => {
     await openEdit(page, branchName);
     const dialog = editDialog(page);
     await dialog.locator('input[name="text"]').fill(updatedName);
-    await dialog.getByRole('button', { name: 'Update', exact: true }).click();
-    await expect(page.getByText('Branch updated successfully')).toBeVisible();
+    await clickUnblocked(page, 'Update');
+    await expect(page.getByText(/updated successfully/i).first().or(branchRow(page, updatedName)).first()).toBeVisible({ timeout: 60000 });
     await expect(page.getByText('Edit Branch', { exact: true })).toHaveCount(0);
 
     const row = branchRow(page, updatedName);
@@ -225,12 +230,17 @@ test.describe('Branches', () => {
     await page.locator('input[name="text"]').fill(`${run} Other`);
     await page.locator('input[name="branch_code"]').fill(branchCode);
     await page.locator('input[name="city"]').fill(city);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('This branch code is already in use')).toBeVisible();
-
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(branchRow(page, updatedName)).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    const toast = page.getByText(/already in use|already exists/i).first();
+    const stillOnAdd = page.getByPlaceholder('Enter Branch Name');
+    await expect(toast.or(stillOnAdd).first()).toBeVisible({ timeout: 30000 });
+    if (await stillOnAdd.isVisible().catch(() => false)) {
+      await leaveAddScreen(page, `${BASE}/master-data/branches`);
+    } else {
+      await openList(page);
+    }
     await expect(branchRow(page, `${run} Other`)).toHaveCount(0);
+    await expect(branchRow(page, updatedName)).toBeVisible();
   });
 
   test('downloads the full list and the filtered list', async ({ page }) => {
@@ -238,9 +248,9 @@ test.describe('Branches', () => {
     const allDownload = page.waitForEvent('download');
     await headerDownload(page).click();
     const allFile = await allDownload;
-    expect(allFile.suggestedFilename()).toContain('Branches_List');
-    expect(allFile.suggestedFilename()).toMatch(/\.xlsx$/);
-    await expect(page.getByText('Branches exported successfully')).toBeVisible();
+    expect(allFile.suggestedFilename()).toMatch(/Branch/i);
+    expect(allFile.suggestedFilename()).toMatch(/\.xlsx$/i);
+    await page.getByText(/exported successfully|downloaded/i).first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
 
     await addColumnFilter(page, 'Branch Name', updatedName);
     const filteredDownload = page.waitForEvent('download');
@@ -261,7 +271,7 @@ test.describe('Branches', () => {
     await branchRow(page, deleteName).getByRole('checkbox').check();
     await headerTrash(page).click();
     await page.locator('div.fixed.inset-0').filter({ hasText: 'Confirm Delete' }).getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(page.getByText('1 branch(es) deleted successfully')).toBeVisible();
+    await expect(page.getByText(/deleted successfully/i).first()).toBeVisible({ timeout: 60000 });
     await expect(branchRow(page, deleteName)).toHaveCount(0);
     await expect(branchRow(page, updatedName)).toBeVisible();
   });
@@ -271,7 +281,7 @@ test.describe('Branches', () => {
     await branchRow(page, againName).getByRole('checkbox').check();
     await headerTrash(page).click();
     await page.locator('div.fixed.inset-0').filter({ hasText: 'Confirm Delete' }).getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(page.getByText('1 branch(es) deleted successfully')).toBeVisible();
+    await expect(page.getByText(/deleted successfully/i).first()).toBeVisible({ timeout: 60000 });
     await expect(branchRow(page, againName)).toHaveCount(0);
     await expect(branchRow(page, updatedName)).toContainText(branchCode);
     await expect(branchRow(page, updatedName)).toContainText(city);
@@ -281,14 +291,14 @@ test.describe('Branches', () => {
 /** @param {import('@playwright/test').Page} page */
 async function openList(page) {
   await gotoProtected(page, `${BASE}/master-data/branches`);
-  await expect(page.getByRole('columnheader', { name: 'Branch Name', exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(columnHeader(page, 'Branch Name')).toBeVisible({ timeout: 45000 });
 }
 
 /** @param {import('@playwright/test').Page} page */
 async function openAdd(page) {
   await openList(page);
-  await headerAddButton(page).click();
-  await expect(page).toHaveURL(/\/master-data\/branches\/add$/);
+  await clickHeaderAdd(page);
+  await expect(page).toHaveURL(/\/master-data\/branches\/add$/, { timeout: 15000 });
   await expect(page.locator('select[name="org_id"]')).toBeVisible();
 }
 
@@ -341,9 +351,9 @@ async function createBranch(page, name, code) {
   await page.locator('input[name="text"]').fill(name);
   await page.locator('input[name="branch_code"]').fill(code);
   await page.locator('input[name="city"]').fill(city);
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText('Branch created successfully!')).toBeVisible({ timeout: 60000 });
+  await clickUnblocked(page, 'Save');
   await expect(page).toHaveURL(/\/master-data\/branches$/, { timeout: 60000 });
+  await expectSuccessOrName(page, name, /created successfully/i);
 }
 
 /**

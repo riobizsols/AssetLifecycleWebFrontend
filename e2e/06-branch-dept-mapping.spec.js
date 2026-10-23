@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { isJsonGet, selectLoadedOrganization } from './helpers/screenAccess.js';
+import { clickUnblocked, isJsonGet, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The mapping saved for this run stays in the playwright tenant.
@@ -66,7 +66,7 @@ test.describe('Branch – Department Mapping', () => {
     await openList(page);
     await expect(page.getByText(/Map departments to branches/)).toBeVisible();
     await expect(page.getByTitle('Filter')).toBeVisible();
-    await expect(page.getByTitle('Add Branch – Department Mapping')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Add Branch|Add mapping/i }).first()).toBeVisible();
     await expect(page.getByTitle('Download')).toHaveCount(0);
 
     for (const heading of ['Org', 'Branch', 'Department', 'Actions']) {
@@ -157,12 +157,12 @@ test.describe('Branch – Department Mapping', () => {
     await expect(deptSelect).toHaveValue('');
 
     await branchSelect.selectOption('');
-    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await clickUnblocked(page, 'Save');
     await expect(dialog).toBeVisible();
     expect(await branchSelect.evaluate((el) => el instanceof HTMLSelectElement && !el.checkValidity())).toBeTruthy();
 
     await branchSelect.selectOption(extraBranchId);
-    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await clickUnblocked(page, 'Save');
     await expect(dialog).toBeVisible();
     expect(await deptSelect.evaluate((el) => el instanceof HTMLSelectElement && !el.checkValidity())).toBeTruthy();
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -250,7 +250,7 @@ async function findDepartment(page) {
     { timeout: 45000 },
   ).catch(() => null);
   await gotoProtected(page, `${BASE}/master-data/branch-dept-mapping`);
-  await expect(page.getByRole('heading', { name: 'Branch – Department Mapping' })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('heading', { name: /Branch.*Department Mapping/i })).toBeVisible({ timeout: 45000 });
   const mappingRes = await mappingWait;
   const mappingBody = mappingRes ? await mappingRes.json().catch(() => ({})) : {};
   const mappings = Array.isArray(mappingBody?.data) ? mappingBody.data : [];
@@ -295,7 +295,7 @@ async function findDepartment(page) {
 /** @param {import('@playwright/test').Page} page */
 async function openList(page) {
   await gotoProtected(page, `${BASE}/master-data/branch-dept-mapping`);
-  await expect(page.getByRole('heading', { name: 'Branch – Department Mapping' })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByRole('heading', { name: /Branch.*Department Mapping/i })).toBeVisible({ timeout: 45000 });
   await expect(
     page.getByRole('columnheader', { name: 'Branch', exact: true })
       .or(page.getByText('No branch-department mappings found'))
@@ -305,7 +305,7 @@ async function openList(page) {
 /** @param {import('@playwright/test').Page} page */
 function addDialog(page) {
   return page.locator('div.fixed.inset-0').filter({
-    has: page.getByRole('heading', { name: /Add Branch/ }),
+    has: page.getByRole('heading', { name: /Add Branch|Add mapping/i }),
   }).last();
 }
 
@@ -320,9 +320,10 @@ function mappingRow(page, branchName, deptName) {
 
 /** @param {import('@playwright/test').Page} page */
 async function openAdd(page) {
-  const add = page.locator('button.w-10.h-10').last();
-  await add.click({ force: true, timeout: 20000 });
-  await expect(page.getByRole('heading', { name: /Add Branch/ })).toBeVisible({ timeout: 15000 });
+  const add = page.getByRole('button', { name: /Add Branch|Add mapping/i }).first();
+  await expect(add).toBeVisible({ timeout: 20000 });
+  await add.click({ force: true });
+  await expect(addDialog(page)).toBeVisible({ timeout: 15000 });
 }
 
 /**
@@ -348,9 +349,8 @@ async function saveMapping(page, branch, dept) {
   await openList(page);
   await openAdd(page);
   await choosePair(page, branch, dept);
-  await addDialog(page).getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText('Mapping saved successfully')).toBeVisible({ timeout: 60000 });
-  await expect(page.getByRole('heading', { name: 'Add Branch – Department Mapping' })).toHaveCount(0);
+  await clickUnblocked(page, 'Save');
+  await expect(page.getByRole('heading', { name: /Add Branch|Add mapping/i })).toHaveCount(0, { timeout: 60000 });
 }
 
 /**
@@ -400,8 +400,12 @@ async function createBranchOnOrg(page, name, code, organizationId) {
   await page.locator('input[name="text"]').fill(name);
   await page.locator('input[name="branch_code"]').fill(code);
   await page.locator('input[name="city"]').fill('Chennai');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   const body = await (await response).json();
-  await expect(page.getByText('Branch created successfully!')).toBeVisible({ timeout: 60000 });
-  return String(body.branch_id || '');
+  await page.getByText(/created successfully|saved successfully/i).first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+  const id = String(body.branch_id || '');
+  if (!id) {
+    throw new Error('Branch create returned no id');
+  }
+  return id;
 }

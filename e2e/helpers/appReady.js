@@ -95,7 +95,22 @@ export async function gotoProtected(page, url) {
   if (!ready) return false;
 
   if (await isLoginPage(page)) {
+    await loginToRioEam(page);
+    const navPromise3 = watchNavigation(page);
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    ready = await waitForNavAndShell(page, navPromise3);
+  }
+
+  if (await isLoginPage(page)) {
     throw new Error(`Still on login after navigating to ${url}`);
   }
+
+  const navFailed = page.getByText(/Failed to fetch navigation/i).first();
+  if (await navFailed.isVisible().catch(() => false)) {
+    const retryNav = watchNavigation(page);
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+    await waitForNavAndShell(page, retryNav);
+  }
+
   return true;
 }

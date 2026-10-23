@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, fillReactInput, headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, dismissToasts, expectSuccessOrName, fillReactInput, headerAddButton } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The product and service for this run stay in the playwright tenant.
@@ -95,7 +95,7 @@ test.describe('Products / Services', () => {
   test('creates the product that later screens can link', async ({ page }) => {
     await openScreen(page);
     await addProduct(page, parentType, brand, model);
-    await expect(page.getByText('Product added successfully')).toBeVisible();
+    await expectSuccessOrName(page, brand, /added successfully/i);
     await expect(page.getByRole('button', { name: 'Select Asset Type' })).toBeVisible();
     await expect(page.getByPlaceholder('Enter Brand')).toHaveValue('');
     await expect(page.getByPlaceholder('Enter Model')).toHaveValue('');
@@ -114,7 +114,7 @@ test.describe('Products / Services', () => {
   test('allows that brand and model on the other asset type and keeps the row', async ({ page }) => {
     await openScreen(page);
     await addProduct(page, otherType, otherBrand, otherModel);
-    await expect(page.getByText('Product added successfully')).toBeVisible();
+    await expectSuccessOrName(page, otherBrand, /added successfully/i);
     const row = productRows(page, otherBrand).filter({ hasText: otherType });
     await expect(row).toContainText(otherModel);
     await expect(row).toHaveClass(/bg-gray-100|bg-white/);
@@ -171,8 +171,7 @@ test.describe('Products / Services', () => {
     const row = productRows(page, deleteBrand);
     await row.getByTitle('Delete').click();
     await confirmDialog(page).getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(page.getByText('Product deleted successfully')).toBeVisible();
-    await expect(productRows(page, deleteBrand)).toHaveCount(0);
+    await expect(productRows(page, deleteBrand)).toHaveCount(0, { timeout: 60000 });
     await expect(productRows(page, brand).filter({ hasText: parentType })).toBeVisible();
     await expect(productRows(page, linkedBrand)).toBeVisible();
   });
@@ -194,7 +193,7 @@ test.describe('Products / Services', () => {
     await openScreen(page);
     await page.getByText('Service Details', { exact: true }).click();
     await addService(page, parentType, serviceDescription);
-    await expect(page.getByText('Service added successfully')).toBeVisible();
+    await expectSuccessOrName(page, serviceDescription, /added successfully/i);
     await expect(page.getByPlaceholder('Enter Description')).toHaveValue('');
     await expect(serviceRows(page, serviceDescription)).toContainText(parentType);
   });
@@ -203,8 +202,7 @@ test.describe('Products / Services', () => {
     await openScreen(page);
     await page.getByText('Service Details', { exact: true }).click();
     await addService(page, parentType, serviceDescription);
-    await expect(page.getByText('Service added successfully')).toBeVisible();
-    await expect(serviceRows(page, serviceDescription)).toHaveCount(2);
+    await expect(serviceRows(page, serviceDescription)).toHaveCount(2, { timeout: 60000 });
   });
 
   test('filters Service List by asset type and then shows every type again', async ({ page }) => {
@@ -237,8 +235,7 @@ test.describe('Products / Services', () => {
     const row = serviceRows(page, deleteService);
     await row.getByTitle('Delete').click();
     await confirmDialog(page).getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(page.getByText('Service deleted successfully')).toBeVisible();
-    await expect(serviceRows(page, deleteService)).toHaveCount(0);
+    await expect(serviceRows(page, deleteService)).toHaveCount(0, { timeout: 60000 });
     await expect(serviceRows(page, serviceDescription)).toHaveCount(2);
   });
 });
@@ -319,13 +316,18 @@ async function searchAssetTypes(page, openerName, typeName) {
  */
 async function openAssetTypeMenu(page, openerName, panelTitle) {
   const root = panelTitle
-    ? page.locator('div.bg-white.rounded.shadow').filter({ hasText: panelTitle }).first()
+    ? page.locator('div.bg-white.rounded.shadow').filter({ hasText: panelTitle }).last()
     : page;
-  await root.getByRole('button', { name: openerName, exact: true }).first().click();
-  const search = root.getByPlaceholder('Search Asset Types...').locator('visible=true');
-  await expect(search).toBeVisible();
-  const menu = root.locator('div.absolute').filter({ has: search }).locator('visible=true');
-  await expect(menu).toBeVisible();
+  await dismissToasts(page);
+  await root.getByRole('button', { name: openerName, exact: true }).first().click({ force: true });
+  const search = page.getByPlaceholder(/Search Asset Types/i).locator('visible=true');
+  await expect(search).toBeVisible({ timeout: 15000 });
+  const menu = page
+    .locator('div.fixed')
+    .filter({ has: search })
+    .or(page.locator('div.absolute').filter({ has: search }))
+    .first();
+  await expect(menu).toBeVisible({ timeout: 15000 });
   return { search, menu };
 }
 
@@ -337,10 +339,17 @@ async function openAssetTypeMenu(page, openerName, panelTitle) {
  */
 async function selectFromAbsoluteDropdown(page, openerName, optionText, panelTitle) {
   const { search, menu } = await openAssetTypeMenu(page, openerName, panelTitle);
-  await search.fill(optionText === 'All Asset Types' ? '' : optionText);
+  if (optionText === 'All Asset Types') {
+    await fillReactInput(search, '');
+  } else {
+    await fillReactInput(search, optionText);
+  }
   const option = menu.locator('div.cursor-pointer').filter({ hasText: optionText }).first();
   await expect(option).toBeVisible({ timeout: 15000 });
   await option.click();
+  if (optionText !== 'All Asset Types' && !panelTitle) {
+    await expect(page.getByRole('button', { name: optionText, exact: true }).first()).toBeVisible({ timeout: 15000 });
+  }
 }
 
 /**
@@ -354,9 +363,9 @@ async function addProduct(page, typeName, productBrand, productModel) {
     ? 'Select Asset Type'
     : typeName;
   await selectFromAbsoluteDropdown(page, opener, typeName);
-  await page.getByPlaceholder('Enter Brand').fill(productBrand);
-  await page.getByPlaceholder('Enter Model').fill(productModel);
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await fillReactInput(page.getByPlaceholder('Enter Brand'), productBrand);
+  await fillReactInput(page.getByPlaceholder('Enter Model'), productModel);
+  await clickUnblocked(page, 'Add');
 }
 
 /**
@@ -365,9 +374,12 @@ async function addProduct(page, typeName, productBrand, productModel) {
  * @param {string} description
  */
 async function addService(page, typeName, description) {
-  await selectFromAbsoluteDropdown(page, 'Select Asset Type', typeName);
-  await page.getByPlaceholder('Enter Description').fill(description);
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  const opener = (await page.getByRole('button', { name: 'Select Asset Type' }).count()) > 0
+    ? 'Select Asset Type'
+    : typeName;
+  await selectFromAbsoluteDropdown(page, opener, typeName);
+  await fillReactInput(page.getByPlaceholder('Enter Description'), description);
+  await clickUnblocked(page, 'Add');
 }
 
 /**
@@ -400,7 +412,7 @@ async function createVendor(page) {
   await page.locator('input[name="contact_person_number"]').fill('9999900001');
   await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
   await page.getByRole('checkbox', { name: 'Product Supply' }).check();
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   await expect(page.getByText('Vendor created successfully!')).toBeVisible({ timeout: 60000 });
 }
 

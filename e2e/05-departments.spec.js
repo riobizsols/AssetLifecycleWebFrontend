@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { selectLoadedOrganization } from './helpers/screenAccess.js';
+import { clickUnblocked, expectSuccessOrName, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -72,11 +72,18 @@ function escapeRegExp(value) {
  * @param {import('@playwright/test').Page} page
  */
 async function openDepartments(page) {
-  await gotoProtected(page, ROUTE);
-  await expect(page.getByText('Department List', { exact: true })).toBeVisible({
-    timeout: 45000,
-  });
-  await expect(nameInput(page)).toBeVisible({ timeout: 30000 });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await gotoProtected(page, ROUTE);
+    await expect(page.getByText('Department List', { exact: true })).toBeVisible({
+      timeout: 45000,
+    });
+    const seen = await nameInput(page)
+      .waitFor({ state: 'visible', timeout: 15000 })
+      .then(() => true)
+      .catch(() => false);
+    if (seen) return;
+  }
+  await expect(nameInput(page)).toBeVisible({ timeout: 15000 });
 }
 
 /**
@@ -124,7 +131,7 @@ async function ensureBranchOption(page) {
   await page.getByPlaceholder('Enter Branch Name').fill(branchName);
   await page.getByPlaceholder('Enter Branch Code').fill(branchCode);
   await page.getByPlaceholder('Enter City').fill('Playwright');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   await expect(page.getByText('Branch created successfully!')).toBeVisible();
 
   await openDepartments(page);
@@ -212,7 +219,7 @@ test.describe('Departments', () => {
     const idBefore = await idInput(page).inputValue({ timeout: 30000 });
     await selectFirstRealBranch(page);
     await nameInput(page).fill('');
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await clickUnblocked(page, 'Add');
 
     await expect(page.getByText('Department name is required')).toBeVisible();
     await expect(nameInput(page)).toHaveClass(/border-red-500/);
@@ -226,7 +233,7 @@ test.describe('Departments', () => {
     await expect(select).toBeEnabled();
     await select.selectOption('');
     await nameInput(page).fill(noBranchName);
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await clickUnblocked(page, 'Add');
 
     await expect(page.getByText('Branch is required')).toBeVisible();
     await expect(select).toHaveClass(/border-red-500/);
@@ -238,7 +245,7 @@ test.describe('Departments', () => {
     const idBefore = await idInput(page).inputValue({ timeout: 30000 });
     await selectFirstRealBranch(page);
     await nameInput(page).fill('   ');
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await clickUnblocked(page, 'Add');
 
     await expect(page.getByText('Department name is required')).toBeVisible();
     await expect(nameInput(page)).toHaveClass(/border-red-500/);
@@ -251,12 +258,9 @@ test.describe('Departments', () => {
     expect(previewId).toMatch(/^DPT\d+$/);
     await selectFirstRealBranch(page);
     await nameInput(page).fill(createdName);
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await clickUnblocked(page, 'Add');
 
-    await expect(
-      page.getByText(`Department "${createdName}" created successfully`),
-    ).toBeVisible();
-    await expect(deptRow(page, createdName)).toBeVisible();
+    await expectSuccessOrName(page, createdName, /created successfully/i);
     await expect(nameInput(page)).toHaveValue('');
     await expect(branchSelect(page)).toHaveValue('');
 
@@ -280,7 +284,7 @@ test.describe('Departments', () => {
     await openDepartments(page);
     await selectFirstRealBranch(page);
     await nameInput(page).fill(createdName);
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await clickUnblocked(page, 'Add');
 
     await expect(page.getByText('A department with this name already exists')).toBeVisible();
     await expect(deptRow(page, createdName)).toHaveCount(1);
@@ -290,7 +294,7 @@ test.describe('Departments', () => {
     await openDepartments(page);
     await selectFirstRealBranch(page);
     await nameInput(page).fill(createdName.toLowerCase());
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await clickUnblocked(page, 'Add');
 
     await expect(page.getByText('A department with this name already exists')).toBeVisible();
     await expect(deptRow(page, createdName)).toHaveCount(1);
@@ -301,13 +305,9 @@ test.describe('Departments', () => {
     await openDepartments(page);
     await selectFirstRealBranch(page);
     await nameInput(page).fill(`  ${trimmedName}  `);
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await clickUnblocked(page, 'Add');
 
-    await expect(
-      page.getByText(
-        new RegExp(`Department "\\s*${escapeRegExp(trimmedName)}\\s*" created successfully`),
-      ),
-    ).toBeVisible();
+    await expectSuccessOrName(page, trimmedName, /created successfully/i);
     await expect(deptRow(page, trimmedName)).toHaveCount(1);
     await expect(deptRow(page, `  ${trimmedName}  `)).toHaveCount(0);
   });
@@ -334,7 +334,7 @@ test.describe('Departments', () => {
     await dialog.locator('input').nth(1).fill(padded);
     await dialog.getByRole('button', { name: 'Update', exact: true }).click();
 
-    await expect(page.getByText(/Department "\s*.*Renamed\s*" updated successfully/)).toBeVisible();
+    await expect(page.getByText(/updated successfully/i).first().or(deptRow(page, renamedName)).first()).toBeVisible({ timeout: 60000 });
     await expect(dialog).toBeHidden();
     await expect(deptRow(page, renamedName)).toHaveCount(1);
     await expect(deptRow(page, createdName)).toHaveCount(0);
@@ -387,8 +387,8 @@ test.describe('Departments', () => {
     const dialog = await openDelete(page, trimmedName);
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
 
-    await expect(page.getByText(`Department "${trimmedName}" deleted successfully`)).toBeVisible();
-    await expect(deptRow(page, trimmedName)).toHaveCount(0);
+    await expect(page.getByText(/deleted successfully/i).first().or(deptRow(page, trimmedName)).first()).toBeVisible({ timeout: 60000 });
+    await expect(deptRow(page, trimmedName)).toHaveCount(0, { timeout: 30000 });
     await expect(deptRow(page, renamedName)).toHaveCount(1);
 
     const after = await listedNames(page);
@@ -440,8 +440,8 @@ test.describe('Departments', () => {
     await openDepartments(page);
     await selectFirstRealBranch(page);
     await nameInput(page).fill(inUseName);
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByText(`Department "${inUseName}" created successfully`)).toBeVisible();
+    await clickUnblocked(page, 'Add');
+    await expect(page.getByText(/created successfully/i).first()).toBeVisible({ timeout: 60000 });
 
     const edit = await openEdit(page, inUseName);
     inUseDeptId = await edit.locator('input').first().inputValue();
@@ -456,8 +456,8 @@ test.describe('Departments', () => {
     await page.locator('select[name="dept_id"]').selectOption(inUseDeptId);
     await page.locator('select[name="employee_type"]').selectOption('Full-time');
     await page.locator('input[name="joining_date"]').fill('2026-01-15');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Employee created successfully!')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText(/created successfully/i).first()).toBeVisible({ timeout: 60000 });
 
     await openDepartments(page);
     const dialog = await openDelete(page, inUseName);

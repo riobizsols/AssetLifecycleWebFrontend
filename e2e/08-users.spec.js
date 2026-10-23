@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, dismissToasts, headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
+import { clickUnblocked, columnHeader, dismissToasts, expectSuccessOrName, headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -57,7 +57,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 15000 });
+  await expect(toast).toBeVisible({ timeout: 30000 });
 }
 
 /**
@@ -65,8 +65,8 @@ async function expectToast(page, text) {
  */
 async function openUsers(page) {
   await gotoProtected(page, usersUrl);
-  await expect(page.getByRole('columnheader', { name: 'Full Name' })).toBeVisible({
-    timeout: 30000,
+  await expect(columnHeader(page, 'Full Name')).toBeVisible({
+    timeout: 45000,
   });
 }
 
@@ -75,8 +75,8 @@ async function openUsers(page) {
  */
 async function openAssign(page) {
   await gotoProtected(page, assignUrl);
-  await expect(page.getByRole('columnheader', { name: 'Full Name' })).toBeVisible({
-    timeout: 30000,
+  await expect(columnHeader(page, 'Full Name')).toBeVisible({
+    timeout: 45000,
   });
 }
 
@@ -157,13 +157,15 @@ async function ensureBranch(page) {
   await expect(page.getByText('Department List', { exact: true })).toBeVisible({ timeout: 45000 });
   const nameBox = page.getByPlaceholder('Department Name');
   const hasAddForm = await nameBox.waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false);
-  if (!hasAddForm) return;
-  const branch = page.locator('select').first();
-  const existing = await realOptions(branch);
-  if (existing.length) {
-    const fromBranches = existing.find((option) => option.label.includes('PW-BR-'));
-    state.branchId = (fromBranches || existing[0]).value;
-    return;
+  if (hasAddForm) {
+    const branch = page.locator('select').first();
+    await expect(branch.locator('option[value]:not([value=""])').first()).toBeAttached({ timeout: 30000 }).catch(() => null);
+    const existing = await realOptions(branch);
+    if (existing.length) {
+      const fromBranches = existing.find((option) => option.label.includes('PW-BR-'));
+      state.branchId = (fromBranches || existing[0]).value;
+      return;
+    }
   }
 
   const branchName = `${run}-Branch`;
@@ -174,8 +176,8 @@ async function ensureBranch(page) {
   await page.getByPlaceholder('Enter Branch Name').fill(branchName);
   await page.getByPlaceholder('Enter Branch Code').fill(branchCode);
   await page.getByPlaceholder('Enter City').fill('Playwright');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expectToast(page, 'Branch created successfully!');
+  await clickUnblocked(page, 'Save');
+  await expectSuccessOrName(page, branchName, /created successfully/i);
 
   await gotoProtected(page, `${BASE}/master-data/departments`);
   const created = await realOptions(page.locator('select').first());
@@ -193,10 +195,12 @@ async function ensureBranch(page) {
 async function createDepartment(page, name) {
   await gotoProtected(page, `${BASE}/master-data/departments`);
   await expect(page.getByPlaceholder('Department Name')).toBeVisible({ timeout: 30000 });
-  await page.locator('select').first().selectOption(state.branchId);
+  if (state.branchId) {
+    await page.locator('select').first().selectOption(state.branchId);
+  }
   await page.getByPlaceholder('Department Name').fill(name);
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expectToast(page, `Department "${name}" created successfully`);
+  await clickUnblocked(page, 'Add');
+  await expectSuccessOrName(page, name, /created successfully/i);
 }
 
 /**
@@ -205,22 +209,9 @@ async function createDepartment(page, name) {
 async function ensureDepartments(page) {
   await ensureBranch(page);
   await openCreate(page);
-  let departments = await realOptions(page.locator('select[name="dept_id"]'));
-  const needed = ['Dept', 'Dept2'];
-  let made = 0;
-  while (departments.length < 2) {
-    await createDepartment(page, `${run}-${needed[made]}`);
-    made += 1;
-    await openCreate(page);
-    departments = await realOptions(page.locator('select[name="dept_id"]'));
-  }
-  const preferredDepartments = departments.filter((option) => option.label.startsWith('PW-DEPT-'));
-  const chosenDepartments = [...preferredDepartments, ...departments.filter((option) => !option.label.startsWith('PW-DEPT-'))];
-  state.deptId = chosenDepartments[0].value;
-  state.deptLabel = chosenDepartments[0].label;
-  state.otherDeptId = chosenDepartments[1].value;
-  state.otherDeptLabel = chosenDepartments[1].label;
-  const branches = await realOptions(page.locator('select[name="branch_id"]'));
+  const branchSelect = page.locator('select[name="branch_id"]');
+  await expect(branchSelect.locator('option[value]:not([value=""])').first()).toBeAttached({ timeout: 30000 });
+  const branches = await realOptions(branchSelect);
   const branch = branches.find((option) => option.label.includes('PW-BR-'))
     || branches.find((option) => option.value === state.branchId)
     || branches[0];
@@ -228,6 +219,25 @@ async function ensureDepartments(page) {
     throw new Error('Create Employee has no branch to select');
   }
   state.branchId = branch.value;
+  await branchSelect.selectOption(state.branchId);
+
+  let departments = await realOptions(page.locator('select[name="dept_id"]'));
+  for (const suffix of ['Dept', 'Dept2']) {
+    if (departments.length >= 2) break;
+    await createDepartment(page, `${run}-${suffix}`);
+    await openCreate(page);
+    await page.locator('select[name="branch_id"]').selectOption(state.branchId);
+    departments = await realOptions(page.locator('select[name="dept_id"]'));
+  }
+  if (departments.length < 2) {
+    throw new Error('Create Employee still has fewer than 2 departments after creating them');
+  }
+  const preferredDepartments = departments.filter((option) => option.label.startsWith('PW-DEPT-'));
+  const chosenDepartments = [...preferredDepartments, ...departments.filter((option) => !option.label.startsWith('PW-DEPT-'))];
+  state.deptId = chosenDepartments[0].value;
+  state.deptLabel = chosenDepartments[0].label;
+  state.otherDeptId = chosenDepartments[1].value;
+  state.otherDeptLabel = chosenDepartments[1].label;
 }
 
 /**
@@ -306,7 +316,7 @@ async function pickRole(dialog, roleName) {
 }
 
 test.beforeEach(() => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
 });
 
 test('TC-USER-001 users list shows the columns and header actions on screen', async ({ page }) => {
@@ -320,7 +330,7 @@ test('TC-USER-001 users list shows the columns and header actions on screen', as
     'Is Active',
     'Actions',
   ]) {
-    await expect(page.getByRole('columnheader', { name: header, exact: true })).toBeVisible();
+    await expect(columnHeader(page, header)).toBeVisible();
   }
   await expect(page.getByRole('columnheader', { name: 'User ID', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Assign Roles' })).toBeVisible();

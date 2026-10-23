@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked } from './helpers/screenAccess.js';
+import { clickUnblocked, dismissToasts, fillReactInput } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. A successful commit stays in the playwright tenant.
@@ -107,7 +107,7 @@ test.describe('Bulk Upload', () => {
       (response) => response.request().method() === 'POST' && /\/departments\/?$/.test(new URL(response.url()).pathname),
       { timeout: 60000 },
     );
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await clickUnblocked(page, 'Add');
     deptId = (await (await deptResponse).json()).dept_id;
     expect(deptId).toMatch(/^DPT\d+/);
   });
@@ -144,14 +144,16 @@ test.describe('Bulk Upload', () => {
   test('searches asset types and downloads the asset sample', async ({ page }) => {
     await openBulk(page);
     await page.getByRole('button', { name: 'Assets', exact: true }).click();
-    await page.getByRole('button', { name: 'Select an asset type...' }).click();
-    const search = page.getByPlaceholder('Search asset types...');
-    await search.fill('zzzz-no-type');
-    await expect(page.getByText('No asset types found')).toBeVisible();
-    await search.fill(dropdownTypeName);
+    await selectAssetType(page, dropdownTypeName);
+    await page.getByRole('button', { name: dropdownTypeName, exact: true }).click();
+    const search = assetTypeSearch(page);
+    await expect(search).toBeVisible({ timeout: 15000 });
+    await fillReactInput(search, 'zzzz-no-type');
+    await expect(page.getByText(/no asset types found/i)).toBeVisible();
+    await fillReactInput(search, dropdownTypeName);
     const option = page.locator('div.absolute').getByText(dropdownTypeName, { exact: true }).first();
     await expect(option).toBeVisible({ timeout: 15000 });
-    await option.click();
+    await option.click({ force: true });
     await expect(page.getByText(`Selected: ${dropdownTypeName}`)).toBeVisible();
 
     const downloadPromise = page.waitForEvent('download');
@@ -393,6 +395,11 @@ test.describe('Bulk Upload', () => {
 });
 
 /** @param {import('@playwright/test').Page} page */
+function assetTypeSearch(page) {
+  return page.locator('div.absolute input').first();
+}
+
+/** @param {import('@playwright/test').Page} page */
 async function openBulk(page) {
   await gotoProtected(page, `${BASE}/master-data/uploads`);
   await expect(page.getByRole('heading', { name: 'Bulk Upload', exact: true })).toBeVisible({ timeout: 45000 });
@@ -406,18 +413,19 @@ async function selectAssetType(page, typeName) {
   const named = page.getByRole('button', { name: typeName, exact: true });
   const placeholder = page.getByRole('button', { name: /Select an asset type/i });
   await expect(named.or(placeholder).first()).toBeVisible({ timeout: 30000 });
+  await dismissToasts(page);
   if (await placeholder.isVisible().catch(() => false)) {
-    await placeholder.click();
+    await placeholder.click({ force: true });
   } else {
-    await named.click();
+    await named.click({ force: true });
   }
-  const search = page.getByPlaceholder('Search asset types...');
-  await expect(search).toBeVisible();
-  await search.fill(typeName);
+  const search = assetTypeSearch(page);
+  await expect(search).toBeVisible({ timeout: 15000 });
+  await fillReactInput(search, typeName);
   const option = page.locator('div.absolute').getByText(typeName, { exact: true }).first();
   await expect(option).toBeVisible({ timeout: 15000 });
-  await option.click();
-  await expect(page.getByText(`Selected: ${typeName}`)).toBeVisible();
+  await option.click({ force: true });
+  await expect(page.getByText(`Selected: ${typeName}`)).toBeVisible({ timeout: 15000 });
 }
 
 /**

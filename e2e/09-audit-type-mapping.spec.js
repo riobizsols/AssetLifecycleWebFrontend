@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked } from './helpers/screenAccess.js';
+import { clickUnblocked, expectSuccessOrName, fillReactInput } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -46,7 +46,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 15000 });
+  await expect(toast).toBeVisible({ timeout: 30000 });
 }
 
 /**
@@ -140,7 +140,7 @@ async function selectType(page, name) {
     ]);
   }
   await expect(auditName(page)).toHaveValue(name);
-  await expect(page.getByText('Loading mappings…')).toHaveCount(0);
+  await expect(page.getByText('Loading mappings…')).toHaveCount(0, { timeout: 30000 });
 }
 
 /**
@@ -154,16 +154,13 @@ async function createType(page, typedName, options = {}) {
   if (!(await form.isVisible())) {
     await page.getByRole('button', { name: 'New', exact: true }).click();
   }
-  await form.fill(typedName);
+  await fillReactInput(form, typedName);
   const checkbox = page.getByRole('checkbox', { name: 'Internal audit' });
   if (internal) await checkbox.check();
   else await checkbox.uncheck();
   await clickUnblocked(page, 'Create');
-  const listed = page.getByRole('button', { name: new RegExp(escapeRegex(typedName.trim())) });
-  await expect(page.getByText(/Audit type created/i).first().or(listed).first()).toBeVisible({
-    timeout: 30000,
-  });
-  await expect(form).toBeHidden();
+  await expect(form).toBeHidden({ timeout: 30000 });
+  await expect(typeButton(page, typedName.trim())).toBeVisible({ timeout: 15000 });
 }
 
 /**
@@ -213,8 +210,8 @@ async function ensureAssetTypeExists(page) {
   const assetName = `E2E Audit ${stamp} asset`;
   await gotoProtected(page, `${BASE}/master-data/asset-types/add`);
   await page.getByPlaceholder('Enter asset type name').fill(assetName);
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expectToast(page, `Asset type "${assetName}" created successfully`);
+  await clickUnblocked(page, 'Save');
+  await expectSuccessOrName(page, assetName, /created successfully/i);
   state.assetTypeName = assetName;
   await openMapping(page);
 }

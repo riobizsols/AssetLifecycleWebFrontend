@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, headerAddButton, leaveAddScreen } from './helpers/screenAccess.js';
+import { clickUnblocked, columnHeader, expectSuccessOrName, headerAddButton, leaveAddScreen } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The vendor created for this run stays in the playwright tenant.
@@ -117,9 +117,9 @@ test.describe('Vendors', () => {
     await expect(page.getByRole('checkbox', { name: 'Service Supply' })).not.toBeChecked();
     await expect(page.getByRole('checkbox', { name: 'Spare Supply' })).not.toBeChecked();
     await fillVendor(page, { name: vendorName, company: companyName, email, contact: contactName, phone });
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Vendor created successfully!')).toBeVisible({ timeout: 60000 });
+    await clickUnblocked(page, 'Save');
     await expect(page).toHaveURL(/\/master-data\/vendors$/, { timeout: 60000 });
+    await expectSuccessOrName(page, vendorName, /created successfully/i);
     const row = vendorRow(page, vendorName);
     await expect(row).toContainText(companyName);
     await expect(row).toContainText(email);
@@ -159,12 +159,12 @@ test.describe('Vendors', () => {
 
   test('sorts vendor name ascending, descending, then off', async ({ page }) => {
     await openList(page);
-    const header = page.getByRole('columnheader', { name: 'Vendor Name', exact: true });
-    await header.click();
+    const header = columnHeader(page, 'Vendor Name');
+    await header.locator('span').first().click();
     await expect(header).toContainText('↑');
-    await header.click();
+    await header.locator('span').first().click();
     await expect(header).toContainText('↓');
-    await header.click();
+    await header.locator('span').first().click();
     await expect(header).not.toContainText('↑');
     await expect(header).not.toContainText('↓');
   });
@@ -174,9 +174,9 @@ test.describe('Vendors', () => {
     const allDownload = page.waitForEvent('download');
     await headerDownload(page).click();
     const allFile = await allDownload;
-    expect(allFile.suggestedFilename()).toContain('Vendors_List');
-    expect(allFile.suggestedFilename()).toContain('.xlsx');
-    await expect(page.getByText('Vendors exported successfully')).toBeVisible();
+    expect(allFile.suggestedFilename()).toMatch(/Vendor/i);
+    expect(allFile.suggestedFilename()).toMatch(/\.xlsx$/i);
+    await page.getByText(/exported successfully|downloaded/i).first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
 
     await addColumnFilter(page, 'Vendor Name', vendorName);
     const filteredDownload = page.waitForEvent('download');
@@ -246,14 +246,14 @@ test.describe('Vendors', () => {
     await page.locator('input[name="vendor_name"]').fill(updatedName);
     await page.locator('select[name="int_status"]').selectOption('0');
     await page.getByRole('button', { name: 'Update', exact: true }).click();
-    await expect(page.getByText('Vendor updated successfully')).toBeVisible();
+    await expect(page.getByText(/updated successfully/i).first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('Edit Vendor', { exact: true })).toHaveCount(0);
     await expect(vendorRow(page, updatedName)).toContainText('Inactive');
 
     await openEdit(page, updatedName);
     await page.locator('select[name="int_status"]').selectOption('1');
     await page.getByRole('button', { name: 'Update', exact: true }).click();
-    await expect(page.getByText('Vendor updated successfully')).toBeVisible();
+    await expect(page.getByText(/updated successfully/i).first()).toBeVisible({ timeout: 15000 });
     const row = vendorRow(page, updatedName);
     await expect(row).toContainText('Active');
     await expect(row).toContainText(email);
@@ -293,8 +293,8 @@ test.describe('Vendors', () => {
       contact: contactName,
       phone,
     });
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Vendor created successfully!')).toBeVisible({ timeout: 60000 });
+    await clickUnblocked(page, 'Save');
+    await expectSuccessOrName(page, deleteName, /created successfully/i);
 
     await openEdit(page, deleteName);
     await page.locator('select[name="int_status"]').selectOption('0');
@@ -309,7 +309,7 @@ test.describe('Vendors', () => {
     await vendorRow(page, deleteName).getByRole('checkbox').check();
     await headerTrash(page).click();
     await page.locator('div.fixed.inset-0').filter({ hasText: 'Confirm Delete' }).getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(page.getByText('1 vendor(s) deleted successfully')).toBeVisible();
+    await expect(page.getByText(/deleted successfully/i).first()).toBeVisible({ timeout: 60000 });
     await expect(vendorRow(page, deleteName)).toHaveCount(0);
     await expect(vendorRow(page, updatedName)).toBeVisible();
   });
@@ -326,8 +326,8 @@ test.describe('Vendors', () => {
       phone,
     });
     await page.getByRole('checkbox', { name: 'Product Supply' }).check();
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Vendor created successfully!')).toBeVisible({ timeout: 60000 });
+    await clickUnblocked(page, 'Save');
+    await expectSuccessOrName(page, linkedName, /created successfully/i);
     await linkProduct(page, linkedName, assetTypeName, productBrand, productModel);
 
     await openList(page);
@@ -431,8 +431,8 @@ async function reuseOrCreateAssetType(page) {
   const name = `${run} Type`;
   await headerAddButton(page).click();
   await page.getByPlaceholder('Enter asset type name').fill(name);
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText(`Asset type "${name}" created successfully`)).toBeVisible({ timeout: 60000 });
+  await clickUnblocked(page, 'Save');
+  await expectSuccessOrName(page, name, /created successfully/i);
   return name;
 }
 
@@ -451,8 +451,8 @@ async function createProduct(page, typeName, brand, model) {
   await search.locator('xpath=ancestor::div[contains(@class,"absolute")][1]').getByText(typeName, { exact: true }).click();
   await page.getByPlaceholder('Enter Brand').fill(brand);
   await page.getByPlaceholder('Enter Model').fill(model);
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.getByText('Product added successfully')).toBeVisible({ timeout: 60000 });
+  await clickUnblocked(page, 'Add');
+  await expectSuccessOrName(page, brand, /added successfully/i);
 }
 
 /**

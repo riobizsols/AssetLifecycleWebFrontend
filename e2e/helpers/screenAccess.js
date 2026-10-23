@@ -53,6 +53,19 @@ export function headerAddButton(page) {
 }
 
 /**
+ * ContentBox plus button. Toast overlays otherwise eat the Playwright click.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function clickHeaderAdd(page) {
+  await dismissToasts(page);
+  const add = headerAddButton(page);
+  await expect(add).toBeAttached({ timeout: 15000 });
+  await add.evaluate((el) => {
+    if (el instanceof HTMLElement) el.click();
+  });
+}
+
+/**
  * Pick an organization on Add Branch after /orgs has loaded.
  * Uses preferredId when passed; otherwise the first real org.
  * @param {import('@playwright/test').Page} page
@@ -97,10 +110,30 @@ export async function clickUnblocked(page, name, which = 'last') {
   await dismissToasts(page);
   const buttons = page.getByRole('button', { name, exact: true });
   const button = which === 'first' ? buttons.first() : buttons.last();
+  await expect(button).toBeAttached({ timeout: 15000 });
   await button.evaluate((el) => {
     if (el instanceof HTMLButtonElement) el.disabled = false;
     el.click();
   });
+}
+
+/**
+ * Check or uncheck a labelled box by clicking the label, not the native input.
+ * Toast overlays otherwise intercept Playwright's actionability checks.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ * @param {boolean} checked
+ */
+export async function setLabeledCheckbox(page, name, checked) {
+  await dismissToasts(page);
+  const box = page.getByRole('checkbox', { name, exact: true });
+  if ((await box.isChecked().catch(() => !checked)) === checked) return;
+  await page
+    .locator('label')
+    .filter({ hasText: name })
+    .filter({ has: page.getByRole('checkbox') })
+    .first()
+    .click();
 }
 
 /**
@@ -160,6 +193,29 @@ export function toastMessage(page, text) {
   return typeof text === 'string'
     ? page.getByText(text, { exact: true }).first()
     : page.getByText(text).first();
+}
+
+/**
+ * Column headers gain "1 ↑" after sort, so exact name locators miss them.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ */
+export function columnHeader(page, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return page.getByRole('columnheader', { name: new RegExp(`^${escaped}`) });
+}
+
+/**
+ * TMD replaces fallback toast copy, and the toast can vanish after navigate.
+ * Wait for a success toast or the saved name, then require the name.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ * @param {RegExp} [toast]
+ */
+export async function expectSuccessOrName(page, name, toast = /successfully/i) {
+  const listed = page.getByText(name, { exact: true }).first();
+  await expect(page.getByText(toast).first().or(listed).first()).toBeVisible({ timeout: 60000 });
+  await expect(listed).toBeVisible({ timeout: 30000 });
 }
 
 /**

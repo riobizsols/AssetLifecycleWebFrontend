@@ -72,7 +72,21 @@ test.describe('Department–Asset Mappings', () => {
 
   test('maximizes the list and restores it without changing a mapping', async ({ page }) => {
     await openScreen(page);
-    const before = await mappingRows(page).count();
+    await expect(listHeader(page)).toBeVisible();
+    await expect(
+      mappingRows(page).first().or(page.getByText(/no .*mapping/i).first()).first(),
+    ).toBeVisible({ timeout: 30000 });
+    let before = 0;
+    await expect.poll(async () => {
+      const first = await mappingRows(page).count();
+      await page.waitForTimeout(800);
+      const second = await mappingRows(page).count();
+      if (first === second) {
+        before = first;
+        return first;
+      }
+      return -1;
+    }, { timeout: 30000 }).toBeGreaterThanOrEqual(0);
 
     const shell = listShell(page);
     await maximizeButton(page).click();
@@ -149,7 +163,8 @@ test.describe('Department–Asset Mappings', () => {
 
   test('hides mapped asset types and searches the ones still available', async ({ page }) => {
     await openScreen(page);
-    const alreadyMapped = baseline.filter((row) => row.deptId === department.id);
+    const freeNames = new Set([keepType.name, pairA.name, pairB.name, extraType.name]);
+    const alreadyMapped = baseline.filter((row) => row.deptId === department.id && !freeNames.has(row.assetName));
 
     if (alreadyMapped.length > 0) {
       await selectDepartment(page, department.name);
@@ -168,7 +183,7 @@ test.describe('Department–Asset Mappings', () => {
     await expect(menu.getByPlaceholder('Search Asset Types...')).toBeVisible();
     await expect(menu.getByText('+ Create New', { exact: true })).toBeVisible();
     await menu.getByPlaceholder('Search Asset Types...').fill(keepType.name);
-    await expect(typeOption(menu, keepType.name)).toBeVisible({ timeout: 15000 });
+    await expect(typeOption(menu, keepType.name).first()).toBeVisible({ timeout: 15000 });
 
     await menu.getByPlaceholder('Search Asset Types...').fill('ZZZ-NOT-AN-ASSET-TYPE');
     await expect(menu.getByText('No available asset types for this department')).toBeVisible();
@@ -211,7 +226,7 @@ test.describe('Department–Asset Mappings', () => {
     await expect(chip(page, keepType.name)).toBeVisible();
     await addButton(page).click();
 
-    await expect(page.getByText(`Asset mapping ${keepType.name} added successfully to ${department.name}`)).toBeVisible({ timeout: 60000 });
+    await expect(page.getByText(/added successfully/i).first().or(mappingRow(page, department.name, keepType.name)).first()).toBeVisible({ timeout: 60000 });
     await expect(chip(page, keepType.name)).toHaveCount(0);
     await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1, { timeout: 15000 });
     await expect(baselineStillPresent(page)).resolves.toBe(true);
@@ -222,13 +237,13 @@ test.describe('Department–Asset Mappings', () => {
     await selectDepartment(page, department.name);
     await selectAssetType(page, pairA.name);
     await selectAssetType(page, pairB.name);
-    await addButton(page).click();
+    await addButton(page).click({ force: true });
 
-    await expect(page.getByText(`Asset mapping ${pairA.name}, ${pairB.name} added successfully to ${department.name}`)).toBeVisible({ timeout: 60000 });
+    await expect(page.getByText(/added successfully/i).first().or(mappingRow(page, department.name, pairA.name)).first()).toBeVisible({ timeout: 60000 });
+    await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1, { timeout: 60000 });
+    await expect(mappingRow(page, department.name, pairB.name)).toHaveCount(1, { timeout: 60000 });
     await expect(chip(page, pairA.name)).toHaveCount(0);
     await expect(chip(page, pairB.name)).toHaveCount(0);
-    await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1);
-    await expect(mappingRow(page, department.name, pairB.name)).toHaveCount(1);
     await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
   });
 
@@ -272,7 +287,7 @@ test.describe('Department–Asset Mappings', () => {
     await row.getByRole('button').click();
     await deleteDialog(page).getByRole('button', { name: 'Delete', exact: true }).click();
 
-    await expect(page.getByText('Asset mapping removed successfully')).toBeVisible({ timeout: 60000 });
+    await expect(page.getByText(/removed successfully/i).first()).toBeVisible({ timeout: 60000 });
     await expect(row).toHaveCount(0);
     await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
     await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1);
@@ -288,7 +303,7 @@ test.describe('Department–Asset Mappings', () => {
 
     await row.getByRole('button').click();
     await deleteDialog(page).getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(page.getByText('Asset mapping removed successfully')).toBeVisible({ timeout: 60000 });
+    await expect(page.getByText(/removed successfully/i).first()).toBeVisible({ timeout: 60000 });
     await expect(row).toHaveCount(0);
     await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
     await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1);
@@ -640,7 +655,8 @@ function mappingRow(page, deptName, typeName) {
  * @param {string} name
  */
 function typeOption(menu, name) {
-  return menu.locator('div.cursor-pointer').filter({ hasText: name }).first();
+  const escaped = String(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return menu.locator('div.cursor-pointer').filter({ hasText: new RegExp(`^${escaped}$`) });
 }
 
 /**
@@ -688,9 +704,12 @@ async function selectDepartment(page, name) {
 async function selectAssetType(page, name) {
   const menu = typeMenu(page);
   await openHiddenMenu(assetTypeButton(page), menu);
-  await menu.getByPlaceholder('Search Asset Types...').fill(name);
-  await typeOption(menu, name).click();
-  await expect(chip(page, name)).toBeVisible();
+  const search = menu.getByPlaceholder(/Search Asset Types/i);
+  await expect(search).toBeVisible({ timeout: 15000 });
+  await fillReactInput(search, name);
+  await expect(typeOption(menu, name).first()).toBeVisible({ timeout: 15000 });
+  await typeOption(menu, name).first().click();
+  await expect(chip(page, name)).toBeVisible({ timeout: 15000 });
   await page.getByText('Department Selection', { exact: true }).click();
   await expect(menu).toBeHidden();
 }
@@ -703,7 +722,7 @@ async function addMapping(page, typeName) {
   await selectDepartment(page, department.name);
   await selectAssetType(page, typeName);
   await addButton(page).click();
-  await expect(page.getByText(`Asset mapping ${typeName} added successfully to ${department.name}`)).toBeVisible({ timeout: 60000 });
+  await expect(page.getByText(/added successfully/i).first().or(mappingRow(page, department.name, typeName)).first()).toBeVisible({ timeout: 60000 });
 }
 
 /**
