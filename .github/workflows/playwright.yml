@@ -165,13 +165,13 @@ jobs:
             DB_URL="$(to_tunnel "${E2E_DATABASE_URL}")"
             TENANT_URL="$(to_tunnel "${E2E_TENANT_DATABASE_URL:-$E2E_DATABASE_URL}")"
             GENERIC_URL="$(to_tunnel "${E2E_GENERIC_URL:-$E2E_DATABASE_URL}")"
-            HOST_OVERRIDE=localhost
           else
             DB_URL="${E2E_DATABASE_URL}"
             TENANT_URL="${E2E_TENANT_DATABASE_URL:-$E2E_DATABASE_URL}"
             GENERIC_URL="${E2E_GENERIC_URL:-$E2E_DATABASE_URL}"
-            HOST_OVERRIDE=
           fi
+          # Tenant rows store Docker host alm_db. The runner is on the host, so send
+          # tenant pools to localhost. playwright_db is still chosen by TENANT_DB_NAME_OVERRIDE.
           {
             echo "NODE_ENV=development"
             echo "PORT=5001"
@@ -183,9 +183,7 @@ jobs:
             echo "DATABASE_URL=${DB_URL}"
             echo "TENANT_DATABASE_URL=${TENANT_URL}"
             echo "GENERIC_URL=${GENERIC_URL}"
-            if [ -n "${HOST_OVERRIDE}" ]; then
-            echo "TENANT_DB_HOST_OVERRIDE=${HOST_OVERRIDE}"
-            fi
+            echo "TENANT_DB_HOST_OVERRIDE=localhost"
             echo "JWT_SECRET=${E2E_JWT_SECRET}"
             echo "CACHE_ENABLED=false"
             echo "DB_SSL=false"
