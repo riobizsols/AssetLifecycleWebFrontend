@@ -64,7 +64,7 @@ test.describe('Branch – Department Mapping', () => {
 
   test('the list shows the title, columns, and the kept mapping', async ({ page }) => {
     await openList(page);
-    await expect(page.getByText('Map departments to branches. A department can belong to multiple branches.')).toBeVisible();
+    await expect(page.getByText(/Map departments to branches/)).toBeVisible();
     await expect(page.getByTitle('Filter')).toBeVisible();
     await expect(page.getByTitle('Add Branch – Department Mapping')).toBeVisible();
     await expect(page.getByTitle('Download')).toHaveCount(0);
@@ -299,7 +299,9 @@ async function openList(page) {
 
 /** @param {import('@playwright/test').Page} page */
 function addDialog(page) {
-  return page.locator('div.fixed.inset-0').filter({ hasText: 'Add Branch – Department Mapping' });
+  return page.locator('div.fixed.inset-0').filter({
+    has: page.getByRole('heading', { name: 'Add Branch – Department Mapping' }),
+  }).last();
 }
 
 /**
@@ -327,8 +329,8 @@ async function choosePair(page, branch, dept) {
   await dialog.locator('select').nth(0).selectOption(branch);
   const deptSelect = dialog.locator('select').nth(1);
   await expect(deptSelect).toBeEnabled();
-  await expect(deptSelect.locator(`option[value="${dept}"]`)).toBeAttached({ timeout: 20000 });
-  await deptSelect.selectOption(dept);
+  await expect(deptSelect.locator(`option[value="${dept}"]`).first()).toBeAttached({ timeout: 20000 });
+  await deptSelect.selectOption({ value: dept });
 }
 
 /**

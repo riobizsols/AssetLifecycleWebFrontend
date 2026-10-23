@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton, toastMessage } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. Successful creates stay in the playwright tenant.
@@ -53,17 +53,17 @@ test.describe('Asset Types', () => {
     await expect(page).toHaveURL(/\/master-data\/asset-types\/add$/);
     await expect(nameInput(page)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Asset type name is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(toastMessage(page, 'Asset type name is required')).toBeVisible();
     await expect(page).toHaveURL(/\/asset-types\/add$/);
 
     await nameInput(page).fill('   ');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Asset type name is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(toastMessage(page, 'Asset type name is required')).toBeVisible();
 
     const cancelled = `${run} Cancel`;
     await nameInput(page).fill(cancelled);
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await clickUnblocked(page, 'Cancel');
     await expect(page).toHaveURL(/\/master-data\/asset-types$/);
     await expect(page.getByRole('row').filter({ hasText: cancelled })).toHaveCount(0);
   });
@@ -344,7 +344,7 @@ function headerDownload(page) {
 async function createAssetType(page, name) {
   await openAdd(page);
   await nameInput(page).fill(name);
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   await expect(page).toHaveURL(/\/master-data\/asset-types$/, { timeout: 60000 });
 }
 

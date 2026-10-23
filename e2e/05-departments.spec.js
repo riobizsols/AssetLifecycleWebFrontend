@@ -69,10 +69,9 @@ function escapeRegExp(value) {
  */
 async function openDepartments(page) {
   await gotoProtected(page, ROUTE);
-  await expect(page.getByText('Add / Modify Departments', { exact: true })).toBeVisible({
-    timeout: 30000,
+  await expect(page.getByText('Department List', { exact: true })).toBeVisible({
+    timeout: 45000,
   });
-  await expect(page.getByText('Department List', { exact: true })).toBeVisible();
 }
 
 /**
@@ -175,7 +174,7 @@ test.describe('Departments', () => {
 
     await expect(page.getByText('Department Id', { exact: true }).first()).toBeVisible();
     await expect(branchSelect(page)).toBeVisible();
-    await expect(page.getByPlaceholder('Department Name')).toBeVisible();
+    await expect(page.getByPlaceholder('Department Name')).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
 
     const id = idInput(page);

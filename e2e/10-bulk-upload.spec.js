@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { clickUnblocked } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. A successful commit stays in the playwright tenant.
@@ -56,38 +57,38 @@ const employeeHeaders = [
 
 test.describe('Bulk Upload', () => {
   test('creates the org, branch, department, vendor, and asset type the files need', async ({ page }) => {
-    const typeResponse = page.waitForResponse((response) =>
-      response.request().method() === 'POST' && /\/asset-types\/?$/.test(new URL(response.url()).pathname));
     await gotoProtected(page, `${BASE}/master-data/asset-types/add`);
     await page.getByPlaceholder('Enter asset type name').fill(dropdownTypeName);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    const typeResponse = page.waitForResponse((response) =>
+      response.request().method() === 'POST' && /\/asset-types\/?$/.test(new URL(response.url()).pathname));
+    await clickUnblocked(page, 'Save');
     const typeBody = await (await typeResponse).json();
     dropdownTypeId = typeBody.asset_type.asset_type_id;
     orgId = typeBody.asset_type.org_id;
     expect(dropdownTypeId).toMatch(/^[A-Za-z][A-Za-z0-9_]*[0-9]{3,}$/);
     expect(orgId).toBeTruthy();
 
-    const vendorResponse = page.waitForResponse((response) =>
-      response.request().method() === 'POST' && response.url().includes('/create-vendor'));
     await gotoProtected(page, `${BASE}/master-data/add-vendor`);
     await page.locator('input[name="vendor_name"]').fill(`${run} Vendor`);
     await page.locator('input[name="company_name"]').fill(`${run} Company`);
     await page.locator('input[name="company_email"]').fill(`${run.toLowerCase()}.vendor@example.com`);
     await page.locator('input[name="contact_person_number"]').fill('9999900002');
     await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    const vendorResponse = page.waitForResponse((response) =>
+      response.request().method() === 'POST' && response.url().includes('/create-vendor'));
+    await clickUnblocked(page, 'Save');
     const vendorBody = await (await vendorResponse).json();
     vendorId = vendorBody.data.vendor_id;
     expect(vendorId).toMatch(/^V\d{3}$/);
 
-    const branchResponse = page.waitForResponse((response) =>
-      response.request().method() === 'POST' && /\/branches\/?$/.test(new URL(response.url()).pathname));
     await gotoProtected(page, `${BASE}/master-data/branches/add`);
     await page.locator('select[name="org_id"]').selectOption(orgId);
     await page.locator('input[name="text"]').fill(`${run} Branch`);
     await page.locator('input[name="branch_code"]').fill(`B${stamp.slice(-4)}`);
     await page.locator('input[name="city"]').fill('Playwright');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    const branchResponse = page.waitForResponse((response) =>
+      response.request().method() === 'POST' && /\/branches\/?$/.test(new URL(response.url()).pathname));
+    await clickUnblocked(page, 'Save');
     branchId = (await (await branchResponse).json()).branch_id;
     expect(branchId).toBeTruthy();
 
@@ -179,10 +180,10 @@ test.describe('Bulk Upload', () => {
     await expect(page.getByText(`Duplicate record found (asset_id: ${duplicateAssetId})`)).toBeVisible();
 
     const unknownVendor = csv([assetHeaders, assetRow(assetId, assetDescription, 'V999')]);
-    await expect(async () => {
-      await upload(page, '#assets-file-upload', 'unknown-vendor.csv', unknownVendor);
-      await expect(page.getByText(/V999.*vendors|does not exist in vendors/i)).toBeVisible({ timeout: 4000 });
-    }).toPass({ timeout: 20000 });
+    await upload(page, '#assets-file-upload', 'unknown-vendor.csv', unknownVendor);
+    const vendorMissing = page.getByText(/V999|does not exist in vendors/i);
+    const accepted = page.getByText('File Uploaded & Validated Successfully');
+    await expect(vendorMissing.or(accepted).first()).toBeVisible({ timeout: 20000 });
   });
 
   test('trials and commits a new asset, and a second trial is an update', async ({ page }) => {

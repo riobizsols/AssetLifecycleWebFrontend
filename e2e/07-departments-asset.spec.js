@@ -70,8 +70,8 @@ test.describe('Department–Asset Mappings', () => {
   });
 
   test('maximizes the list and restores it without changing a mapping', async ({ page }) => {
-    const data = await openAndRead(page);
-    const before = asRows(data.mappings).length;
+    await openScreen(page);
+    const before = await mappingRows(page).count();
 
     const shell = listShell(page);
     await maximizeButton(page).click();
@@ -121,8 +121,12 @@ test.describe('Department–Asset Mappings', () => {
     await menu.getByPlaceholder('Search departments...').fill(partialId);
     await expect(menu.locator('div.cursor-pointer').filter({ hasText: department.id }).first()).toBeVisible();
 
-    await menu.getByPlaceholder('Search departments...').fill('ZZZ-NOT-A-DEPARTMENT');
-    await expect(menu.locator('div.cursor-pointer')).toHaveCount(0);
+    const search = menu.getByPlaceholder('Search departments...');
+    await search.click();
+    await search.fill('');
+    await search.pressSequentially('ZZZ-NOT-A-DEPARTMENT', { delay: 20 });
+    await expect(search).toHaveValue('ZZZ-NOT-A-DEPARTMENT');
+    await expect(menu.locator('div.cursor-pointer').filter({ hasText: 'ID:' })).toHaveCount(0);
 
     await menu.getByPlaceholder('Search departments...').fill('pw');
     await page.getByText('Add Asset', { exact: true }).click();

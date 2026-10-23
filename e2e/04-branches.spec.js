@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { dismissToasts, headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The branch created for this run stays in the playwright tenant.
@@ -54,35 +54,34 @@ test.describe('Branches', () => {
     await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Organization is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Organization is required').first()).toBeVisible();
 
     await selectOrganization(page);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Branch name is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch name is required').first()).toBeVisible();
 
     await page.locator('input[name="text"]').fill(cancelledName);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Branch code is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch code is required').first()).toBeVisible();
 
     await page.locator('input[name="branch_code"]').fill(cancelCode);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('City is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('City is required').first()).toBeVisible();
 
     await page.locator('input[name="text"]').fill('12345');
     await page.locator('input[name="city"]').fill(city);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Branch name cannot be only numbers')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch name cannot be only numbers').first()).toBeVisible();
 
     await page.locator('input[name="text"]').fill(cancelledName);
     await page.locator('input[name="city"]').fill('641001');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('City name cannot be only numbers')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('City name cannot be only numbers').first()).toBeVisible();
 
     await page.locator('input[name="city"]').fill(city);
-    await dismissToasts(page);
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true });
-    await expect(page).toHaveURL(/\/master-data\/branches$/);
+    await clickUnblocked(page, 'Cancel');
+    await expect(page).toHaveURL(/\/master-data\/branches(\/)?$/, { timeout: 15000 });
     await expect(branchRow(page, cancelledName)).toHaveCount(0);
   });
 

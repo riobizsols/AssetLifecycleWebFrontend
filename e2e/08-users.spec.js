@@ -154,6 +154,7 @@ async function realOptions(select) {
  */
 async function ensureBranch(page) {
   await gotoProtected(page, `${BASE}/master-data/departments`);
+  await expect(page.getByText('Department List', { exact: true })).toBeVisible({ timeout: 45000 });
   await expect(page.getByPlaceholder('Department Name')).toBeVisible({ timeout: 30000 });
   const branch = page.locator('select').first();
   const existing = await realOptions(branch);
@@ -332,9 +333,9 @@ test('TC-USER-002 header delete with nothing selected shows a toast', async ({ p
 
 test('TC-USER-003 a row has no delete control that removes the user', async ({ page }) => {
   await openUsers(page);
-  await expect(page.getByText('No data found')).toHaveCount(0);
   const row = page.locator('tbody tr').first();
-  await expect(row).toBeVisible();
+  await expect(row).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText('No data found')).toHaveCount(0);
   const before = (await row.innerText()).slice(0, 40);
   await expect(row.locator('button[title="Delete"]')).toHaveCount(0);
   await expect(page.getByText('Confirm Delete', { exact: true })).toHaveCount(0);

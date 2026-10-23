@@ -177,12 +177,11 @@ async function chooseAsset(page, assetLabel) {
   } else {
     await page.locator('div.relative').filter({ hasText: '▼' }).first().click();
   }
-  await expect(search.or(page.locator('div.absolute.z-50').last())).toBeVisible();
+  const menu = page.locator('div.absolute.z-50').filter({ has: page.locator('input[type="checkbox"]') }).last();
+  await expect(menu).toBeVisible({ timeout: 15000 });
   if (assetLabel && (await search.isVisible().catch(() => false))) {
     await search.fill(assetLabel);
   }
-  const menu = page.locator('div.absolute.z-50').filter({ has: page.locator('input[type="checkbox"]') }).last();
-  await expect(menu).toBeVisible({ timeout: 15000 });
   const row = assetLabel
     ? menu.locator('label').filter({ hasText: new RegExp(escapeRegex(assetLabel)) }).first()
     : menu.locator('label').first();

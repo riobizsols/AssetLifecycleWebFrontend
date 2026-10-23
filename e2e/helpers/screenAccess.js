@@ -81,13 +81,30 @@ export async function selectLoadedOrganization(page, preferredId) {
  * @param {import('@playwright/test').Page} page
  */
 export async function dismissToasts(page) {
-  const toaster = page.locator('[data-rht-toaster]');
-  if (!(await toaster.isVisible().catch(() => false))) return;
-  const close = toaster.locator('button');
-  if (await close.count()) {
-    await close.first().click({ force: true }).catch(() => {});
-  }
-  await page.keyboard.press('Escape').catch(() => {});
+  await page.locator('[data-rht-toaster]').evaluateAll((els) => {
+    for (const el of els) el.style.pointerEvents = 'none';
+  }).catch(() => {});
+}
+
+/**
+ * Click Save/Cancel after toast overlays have been taken out of the hit target.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ */
+export async function clickUnblocked(page, name) {
+  await dismissToasts(page);
+  await page.getByRole('button', { name, exact: true }).click({ force: true });
+}
+
+/**
+ * react-hot-toast can keep two identical status nodes in the DOM.
+ * @param {import('@playwright/test').Page} page
+ * @param {string | RegExp} text
+ */
+export function toastMessage(page, text) {
+  return typeof text === 'string'
+    ? page.getByText(text, { exact: true }).first()
+    : page.getByText(text).first();
 }
 
 /**
