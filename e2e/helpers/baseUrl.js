@@ -1,4 +1,7 @@
 // @ts-check
+import { loadLocalCredentials } from './loadCredentials.js';
 
-/** Frontend origin under test. Local CI default; override with BASE_URL. */
-export const BASE = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+loadLocalCredentials();
+
+/** Playwright tenant. Override with BASE_URL. */
+export const BASE = (process.env.BASE_URL || 'http://playwright.localhost:5173').replace(/\/$/, '');

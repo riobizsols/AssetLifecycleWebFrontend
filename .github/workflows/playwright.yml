@@ -1,14 +1,16 @@
 name: Playwright E2E
 
-# Starts ALM backend + frontend on the runner, then runs e2e/ against localhost.
+# Starts ALM backend + frontend on the runner, then runs e2e/ as the playwright tenant.
 #
 # Required GitHub Secrets (repo → Settings → Secrets and variables → Actions):
 #   GH_PAT              – PAT with read access to AssetLifecycleBackend
 #   E2E_SSH_KEY         – private key for the tunnel-only `dbtunnel` user on the VPS
 #   E2E_DATABASE_URL    – Postgres URL (host/port are rewritten to the SSH tunnel)
 #   E2E_JWT_SECRET      – JWT secret used by backend
-#   RIO_EMAIL           – test user email
-#   RIO_PASSWORD        – test user password
+#   RIO_EMAIL           – playwright tenant login email
+#   RIO_PASSWORD        – playwright tenant login password
+# Playwright tenant: http://playwright.localhost:5173
+# Database: playwright_db (TENANT_DB_NAME_OVERRIDE)
 # Optional secrets:
 #   E2E_TENANT_DATABASE_URL  (defaults to E2E_DATABASE_URL)
 #   E2E_GENERIC_URL          (defaults to E2E_DATABASE_URL)
@@ -16,8 +18,11 @@ name: Playwright E2E
 # Optional repository variables (Settings → Secrets and variables → Actions → Variables):
 #   E2E_RUNNER    – leave empty to use GitHub's ubuntu-latest (SSH tunnel to the DB).
 #                   Set to alm-e2e after a self-hosted runner is installed on the DB server.
-#   E2E_WORKERS   – 1 by default. Set to 2, then 4, only after E2E_RUNNER is alm-e2e.
+#   E2E_WORKERS   – unused. The suite stays on one worker so each spec can leave
+#                   records for the next spec.
 
+# Automatic runs are on for the branches listed below. workflow_dispatch stays so a run
+# can still be started by hand from the Actions tab.
 on:
   workflow_dispatch:
   push:
@@ -165,7 +170,8 @@ jobs:
           {
             echo "NODE_ENV=development"
             echo "PORT=5001"
-            echo "FRONTEND_URL=http://localhost:5173"
+            echo "FRONTEND_URL=http://playwright.localhost:5173"
+            echo "TENANT_DB_NAME_OVERRIDE=playwright_db"
             echo "BACKEND_URL=http://localhost:5001"
             echo "API_BASE_URL=http://localhost:5001/api"
             echo "MAIN_DOMAIN=localhost"
@@ -224,7 +230,7 @@ jobs:
       - name: Run Playwright tests
         env:
           CI: true
-          BASE_URL: http://localhost:5173
+          BASE_URL: http://playwright.localhost:5173
           RIO_EMAIL: ${{ secrets.RIO_EMAIL }}
           RIO_PASSWORD: ${{ secrets.RIO_PASSWORD }}
           E2E_WORKERS: ${{ vars.E2E_WORKERS || '1' }}

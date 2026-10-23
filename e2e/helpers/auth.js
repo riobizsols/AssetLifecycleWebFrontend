@@ -10,7 +10,9 @@ export function getRioCredentials() {
   const password = process.env.RIO_PASSWORD;
 
   if (!email || !password) {
-    throw new Error('RIO_EMAIL and RIO_PASSWORD must be set');
+    throw new Error(
+      'RIO_EMAIL and RIO_PASSWORD must be set. Use e2e/.credentials.env locally, or the GitHub Actions secrets in CI.'
+    );
   }
 
   return { email, password };

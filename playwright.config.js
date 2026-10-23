@@ -2,35 +2,33 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loadLocalCredentials } from './e2e/helpers/loadCredentials.js';
+
+loadLocalCredentials();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const BASE_URL = (process.env.BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
+const BASE_URL = (process.env.BASE_URL || 'http://playwright.localhost:5173').replace(/\/$/, '');
 const authFile = path.join(__dirname, 'e2e', '.auth', 'user.json');
 
 /** True once CI runs on the DB server (GitHub variable E2E_RUNNER). */
 const localDb = process.env.E2E_LOCAL_DB === 'true';
 
-function ciWorkerCount() {
-  const raw = Number(process.env.E2E_WORKERS || 1);
-  if (!Number.isFinite(raw) || raw < 1) return 1;
-  return Math.min(Math.floor(raw), 4);
-}
-
-const workers = process.env.CI ? ciWorkerCount() : 1;
-
 /**
- * E2E against the CI frontend + Node backend.
- * Credentials: RIO_EMAIL / RIO_PASSWORD
+ * E2E against the playwright tenant (playwright.localhost) on playwright_db.
+ * Login comes from RIO_EMAIL and RIO_PASSWORD.
  * Override target: BASE_URL
- * E2E_WORKERS (1–4) and E2E_LOCAL_DB come from the GitHub workflow.
+ * E2E_LOCAL_DB comes from the GitHub workflow.
+ * Specs run one file at a time, in filename order, because each file leaves
+ * records the next file uses.
  */
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.js',
-  fullyParallel: Boolean(process.env.CI) && workers > 1,
+  passWithNoTests: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers,
+  workers: 1,
   timeout: localDb ? 120_000 : 180_000,
   globalTimeout: 180 * 60 * 1000,
   reporter: [['list'], ['html', { open: 'never' }]],

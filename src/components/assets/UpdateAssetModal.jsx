@@ -15,6 +15,7 @@ import { useAssetsStore } from '../../store/useAssetsStore';
 import { useNavigation } from '../../hooks/useNavigation';
 import useColumnAccess from '../../hooks/useColumnAccess';
 import { getActiveOrgId, getActiveBranchId } from '../../utils/acmContext';
+import { formatWarrantyEnd, warrantyEndDate } from '../../utils/warrantyPeriod';
 
 const parseAssetDocsList = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -85,7 +86,9 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     serialNumber: '',
     description: '',
     expiryDate: '',
-    warrantyPeriod: '',
+    warrantyAmount: '',
+    warrantyUnit: 'months',
+    existingWarrantyDate: '',
     purchaseDate: '',
     purchaseCost: '',
     purchaseBy: '',
@@ -133,13 +136,19 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
   const [qsnPrintReason, setQsnPrintReason] = useState("");
   const [isQSNPrintLoading, setIsQSNPrintLoading] = useState(false);
 
+  const resolvedWarrantyDate = (() => {
+    const amount = String(form.warrantyAmount || '').trim();
+    if (!amount) return form.existingWarrantyDate || '';
+    return warrantyEndDate(form.purchaseDate, amount, form.warrantyUnit || 'months') || '';
+  })();
+
   const isWarrantyPeriodInPast = (() => {
-    if (!form.warrantyPeriod) return false;
-    const parsed = new Date(form.warrantyPeriod);
-    if (Number.isNaN(parsed.getTime())) return false;
+    if (!resolvedWarrantyDate) return false;
+    const match = String(resolvedWarrantyDate).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return false;
+    const parsed = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    parsed.setHours(0, 0, 0, 0);
     return parsed < today;
   })();
 
@@ -193,7 +202,9 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           serialNumber: dataToUse.serial_number || '',
           description: dataToUse.description || '',
           expiryDate: formatDate(dataToUse.expiry_date),
-          warrantyPeriod: formatDate(dataToUse.warranty_period),
+          warrantyAmount: '',
+          warrantyUnit: 'months',
+          existingWarrantyDate: formatDate(dataToUse.warranty_period),
           purchaseDate: formatDate(dataToUse.purchased_on),
           purchaseCost: cleanNumericValue(dataToUse.purchased_cost),
           purchaseBy: dataToUse.purchased_by || '',
@@ -595,7 +606,18 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
     if (!isWarrantyActionMode && isColumnVisible('purchased_cost') && !form.purchaseCost) {
       validationErrors.push('Purchase Cost');
     }
-    if (isWarrantyExtendMode && isColumnVisible('warranty_period') && !form.warrantyPeriod) {
+    const warrantyAmountRaw = String(form.warrantyAmount || '').trim();
+    let warrantyPeriodDate = form.existingWarrantyDate || null;
+    if (warrantyAmountRaw) {
+      const warrantyCount = Number(warrantyAmountRaw);
+      if (!Number.isInteger(warrantyCount) || warrantyCount <= 0) {
+        validationErrors.push(t('assets.warrantyEnterWholeNumber'));
+      } else if (!form.purchaseDate) {
+        validationErrors.push(t('assets.warrantyNeedsPurchaseDate'));
+      } else {
+        warrantyPeriodDate = warrantyEndDate(form.purchaseDate, warrantyCount, form.warrantyUnit || 'months');
+      }
+    } else if (isWarrantyExtendMode && isColumnVisible('warranty_period')) {
       validationErrors.push('Warranty Period');
     }
     if (isWarrantyVendorMode && isColumnVisible('service_vendor_id') && !form.serviceSupply) {
@@ -626,7 +648,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
       // In warranty-action flows, update only the target field.
       if (isWarrantyExtendMode) {
         if (isColumnVisible('warranty_period')) {
-          updateData.warranty_period = form.warrantyPeriod || null;
+          updateData.warranty_period = warrantyPeriodDate;
         }
       } else if (isWarrantyVendorMode) {
         if (isColumnVisible('service_vendor_id')) {
@@ -664,7 +686,7 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
           updateData.expiry_date = form.expiryDate || null;
         }
         if (isColumnVisible('warranty_period')) {
-          updateData.warranty_period = form.warrantyPeriod || null;
+          updateData.warranty_period = warrantyPeriodDate;
         }
         if (isColumnVisible('location')) {
           updateData.location = form.location || null;
@@ -985,17 +1007,50 @@ const UpdateAssetModal = ({ isOpen, onClose, assetData }) => {
             {isColumnVisible('warranty_period') && (
             <div>
               <label className="block text-sm font-medium mb-1">{t('assets.warrantyPeriod')}</label>
-              <input
-                type="date"
-                value={form.warrantyPeriod}
-                onChange={(e) => setForm(prev => ({ ...prev, warrantyPeriod: e.target.value }))}
-                disabled={isFieldDisabled('warranty_period')}
-                className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 ${isWarrantyPeriodInPast ? 'border-red-500 focus:ring-red-400 bg-red-50' : 'border-gray-300 focus:ring-blue-500'} ${isFieldDisabled('warranty_period') ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''}`}
-              />
-              {isWarrantyPeriodInPast && (
-                <p className="mt-1 text-xs text-red-600">
-                  Warranty period date is in the past.
-                </p>
+              {isFieldDisabled('warranty_period') ? (
+                <input
+                  type="text"
+                  value={form.existingWarrantyDate ? formatWarrantyEnd(form.existingWarrantyDate) : ''}
+                  disabled
+                  className="w-full px-3 py-2 border rounded bg-gray-50 text-gray-600 cursor-not-allowed border-gray-300"
+                />
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder={t('assets.warrantyAmountPlaceholder')}
+                      value={form.warrantyAmount}
+                      onChange={(e) => setForm(prev => ({ ...prev, warrantyAmount: e.target.value }))}
+                      className={`w-24 px-3 py-2 border rounded focus:outline-none focus:ring-2 ${isWarrantyPeriodInPast ? 'border-red-500 focus:ring-red-400 bg-red-50' : 'border-gray-300 focus:ring-blue-500'}`}
+                    />
+                    <select
+                      value={form.warrantyUnit || 'months'}
+                      onChange={(e) => setForm(prev => ({ ...prev, warrantyUnit: e.target.value }))}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="months">{t('assets.warrantyMonths')}</option>
+                      <option value="years">{t('assets.warrantyYears')}</option>
+                    </select>
+                  </div>
+                  {form.existingWarrantyDate && !String(form.warrantyAmount || '').trim() && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {t('assets.warrantyCurrentEndsOn', { date: formatWarrantyEnd(form.existingWarrantyDate) })}
+                    </p>
+                  )}
+                  {String(form.warrantyAmount || '').trim() && resolvedWarrantyDate && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {t('assets.warrantyEndsOn', { date: formatWarrantyEnd(resolvedWarrantyDate) })}
+                    </p>
+                  )}
+                  {isWarrantyPeriodInPast && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Warranty period date is in the past.
+                    </p>
+                  )}
+                </>
               )}
             </div>
             )}
