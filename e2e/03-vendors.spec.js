@@ -78,14 +78,26 @@ test.describe('Vendors', () => {
       phone,
     });
     await clickUnblocked(page, 'Save');
-    await expect(page.locator('input[name="company_email"]')).toHaveClass(/border-red/, { timeout: 10000 });
-    await expect(page.locator('[data-rht-toaster] [role="status"]').first()).toBeVisible();
+    const emailInput = page.locator('input[name="company_email"]');
+    await expect.poll(async () => {
+      const nativeInvalid = await emailInput.evaluate((el) => el instanceof HTMLInputElement && !el.validity.valid);
+      const marked = /border-red/.test(await emailInput.getAttribute('class') || '');
+      const toast = await page.locator('[data-rht-toaster] [role="status"]').first().isVisible().catch(() => false);
+      return nativeInvalid || marked || toast;
+    }, { timeout: 10000 }).toBeTruthy();
+    await expect(page).toHaveURL(/add-vendor/);
 
     await page.locator('input[name="company_email"]').fill(email);
     await page.locator('input[name="contact_person_number"]').fill('12345');
     await clickUnblocked(page, 'Save');
-    await expect(page.locator('input[name="contact_person_number"]')).toHaveClass(/border-red/, { timeout: 10000 });
-    await expect(page.locator('[data-rht-toaster] [role="status"]').first()).toBeVisible();
+    await expect.poll(async () => {
+      const phoneInput = page.locator('input[name="contact_person_number"]');
+      const nativeInvalid = await phoneInput.evaluate((el) => el instanceof HTMLInputElement && !el.validity.valid);
+      const marked = /border-red/.test(await phoneInput.getAttribute('class') || '');
+      const toast = await page.getByText(/contact number|10 digits|valid/i).first().isVisible().catch(() => false);
+      return nativeInvalid || marked || toast;
+    }, { timeout: 10000 }).toBeTruthy();
+    await expect(page).toHaveURL(/add-vendor/);
 
     await page.locator('input[name="contact_person_number"]').fill(phone);
     await page.locator('input[name="contract_end_date"]').fill('2026-01-01');

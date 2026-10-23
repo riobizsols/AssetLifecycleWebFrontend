@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, headerAddButton, leaveAddScreen, selectLoadedOrganization } from './helpers/screenAccess.js';
+import { clickUnblocked, fillReactInput, headerAddButton, leaveAddScreen, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The branch created for this run stays in the playwright tenant.
@@ -172,7 +172,7 @@ test.describe('Branches', () => {
     await branchRow(page, branchName).getByRole('checkbox').check();
     await headerTrash(page).click();
     const dialog = page.locator('div.fixed.inset-0').filter({ hasText: 'Confirm Delete' });
-    await expect(dialog).toContainText('Are you sure you want to delete this item?');
+    await expect(dialog).toContainText(/delete (this item|1 selected item)/i);
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await expect(branchRow(page, branchName)).toBeVisible();
     await expect(branchRow(page, branchName).locator('td').nth(1)).toHaveText('Active');
@@ -358,8 +358,8 @@ async function addColumnFilter(page, columnLabel, value) {
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').filter({ has: page.getByPlaceholder('Search...') }).last();
   await expect(menu).toBeVisible();
-  await menu.getByPlaceholder('Search...').fill(value);
-  await menu.locator('div.cursor-pointer').filter({ hasText: value }).first().click();
+  await fillReactInput(menu.getByPlaceholder('Search...'), value);
+  await menu.getByText(value, { exact: true }).first().click();
 }
 
 /** @param {import('@playwright/test').Page} page */

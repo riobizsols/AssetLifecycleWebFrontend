@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, fillReactInput, headerAddButton } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The product and service for this run stay in the playwright tenant.
@@ -277,8 +277,11 @@ async function createAssetType(page, name) {
   await headerAddButton(page).click();
   await page.getByPlaceholder('Enter asset type name').fill(name);
   await clickUnblocked(page, 'Save');
-  await expect(page).toHaveURL(/\/master-data\/asset-types\/?$/, { timeout: 60000 });
-  await expect(page.getByRole('row').filter({ hasText: name }).first()).toBeVisible({ timeout: 30000 });
+  const created = page.getByText(`Asset type "${name}" created successfully`).first();
+  const listed = page.getByRole('row').filter({ hasText: name }).first();
+  await expect(created.or(listed).first()).toBeVisible({ timeout: 60000 });
+  await expect(page).toHaveURL(/\/master-data\/asset-types\/?$/, { timeout: 15000 });
+  await expect(listed).toBeVisible({ timeout: 30000 });
   return name;
 }
 
@@ -302,11 +305,11 @@ async function toggleMaximize(page, listTitle) {
  */
 async function searchAssetTypes(page, openerName, typeName) {
   const { search, menu } = await openAssetTypeMenu(page, openerName);
-  await search.fill(typeName);
+  await fillReactInput(search, typeName);
   await expect(menu.getByText(typeName, { exact: true })).toBeVisible();
-  await search.fill('zzzz-no-such-type');
+  await fillReactInput(search, 'zzzz-no-such-type');
   await expect(menu.getByText(typeName, { exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: openerName }).click();
+  await page.getByRole('button', { name: openerName }).first().click();
 }
 
 /**
@@ -318,10 +321,10 @@ async function openAssetTypeMenu(page, openerName, panelTitle) {
   const root = panelTitle
     ? page.locator('div.bg-white.rounded.shadow').filter({ hasText: panelTitle }).first()
     : page;
-  await root.getByRole('button', { name: openerName, exact: true }).click();
-  const search = root.getByPlaceholder('Search Asset Types...');
+  await root.getByRole('button', { name: openerName, exact: true }).first().click();
+  const search = root.getByPlaceholder('Search Asset Types...').locator('visible=true');
   await expect(search).toBeVisible();
-  const menu = root.locator('div.absolute').filter({ has: search }).first();
+  const menu = root.locator('div.absolute').filter({ has: search }).locator('visible=true');
   await expect(menu).toBeVisible();
   return { search, menu };
 }

@@ -94,14 +94,14 @@ test.describe('Asset Types', () => {
     await openAdd(page);
     await nameInput(page).fill(flagsName);
     await page.getByRole('radio', { name: 'Department-wise' }).check();
-    await page.locator('button.rounded-full').first().click();
+    await page.locator('span').filter({ hasText: /^Inactive$/ }).locator('xpath=following-sibling::button[1]').click();
     await page.locator('select').first().selectOption('SL');
     await page.getByRole('checkbox', { name: 'Group Required' }).check();
     await page.getByRole('checkbox', { name: 'Require Inspection' }).check();
     await page.getByRole('checkbox', { name: 'Require Maintenance' }).check();
     await expect(page.getByRole('checkbox', { name: 'Require Spare Parts' })).toBeVisible();
     await page.getByRole('checkbox', { name: 'Require Spare Parts' }).check();
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await clickUnblocked(page, 'Save');
 
     await expect(page.getByText(`Asset type "${flagsName}" created successfully`)).toBeVisible();
     const row = await rowByName(page, flagsName);

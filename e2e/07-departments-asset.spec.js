@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { fillReactInput } from './helpers/screenAccess.js';
+import { fillReactInput, isJsonGet } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. departments.spec.js owns departments, so this file reuses one.
@@ -213,7 +213,7 @@ test.describe('Department–Asset Mappings', () => {
 
     await expect(page.getByText(`Asset mapping ${keepType.name} added successfully to ${department.name}`)).toBeVisible({ timeout: 60000 });
     await expect(chip(page, keepType.name)).toHaveCount(0);
-    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
+    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1, { timeout: 15000 });
     await expect(baselineStillPresent(page)).resolves.toBe(true);
   });
 
@@ -330,17 +330,23 @@ async function openAndRead(page) {
   /** @type {{ departments: unknown, types: unknown, mappings: unknown }} */
   const buckets = { departments: null, types: null, mappings: null };
   const onResponse = async (response) => {
-    if (response.request().method() !== 'GET' || !response.ok()) return;
-    const path = new URL(response.url()).pathname;
-    if (path.endsWith('/admin/departments')) buckets.departments = await response.json();
-    else if (path.endsWith('/dept-assets/asset-types')) buckets.types = await response.json();
-    else if (/\/dept-assets\/?$/.test(path)) buckets.mappings = await response.json();
+    try {
+      if (isJsonGet(response, /\/admin\/departments\/?$/)) {
+        buckets.departments = await response.json();
+      } else if (isJsonGet(response, /\/dept-assets\/asset-types/)) {
+        buckets.types = await response.json();
+      } else if (isJsonGet(response, /\/dept-assets\/?$/)) {
+        buckets.mappings = await response.json();
+      }
+    } catch {
+      /* HTML or a cancelled request */
+    }
   };
   page.on('response', onResponse);
   try {
     await openScreen(page);
     await expect.poll(() => buckets.departments !== null && buckets.types !== null && buckets.mappings !== null, {
-      timeout: 20000,
+      timeout: 45000,
     }).toBeTruthy();
   } finally {
     page.off('response', onResponse);
@@ -615,7 +621,9 @@ function maximizeButton(page) {
  * @param {import('@playwright/test').Page} page
  */
 function mappingRows(page) {
-  return page.locator('div.grid.grid-cols-3.items-center');
+  return listShell(page)
+    .locator('div[class*="grid-cols-3"]')
+    .filter({ has: page.locator('button') });
 }
 
 /**

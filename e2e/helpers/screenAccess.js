@@ -91,14 +91,32 @@ export async function dismissToasts(page) {
  * Uses a native click so a disabled=false footer button still fires React onClick.
  * @param {import('@playwright/test').Page} page
  * @param {string} name
+ * @param {'first' | 'last'} [which]
  */
-export async function clickUnblocked(page, name) {
+export async function clickUnblocked(page, name, which = 'last') {
   await dismissToasts(page);
-  const button = page.getByRole('button', { name, exact: true }).last();
+  const buttons = page.getByRole('button', { name, exact: true });
+  const button = which === 'first' ? buttons.first() : buttons.last();
   await button.evaluate((el) => {
     if (el instanceof HTMLButtonElement) el.disabled = false;
     el.click();
   });
+}
+
+/**
+ * True when a GET returned JSON for a matching API path, not the SPA HTML shell.
+ * @param {import('@playwright/test').Response} response
+ * @param {RegExp} pathPattern
+ */
+export function isJsonGet(response, pathPattern) {
+  if (response.request().method() !== 'GET' || !response.ok()) return false;
+  const type = String(response.headers()['content-type'] || '');
+  if (!type.includes('json')) return false;
+  try {
+    return pathPattern.test(new URL(response.url()).pathname);
+  } catch {
+    return false;
+  }
 }
 
 /**

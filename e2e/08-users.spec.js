@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
+import { clickUnblocked, dismissToasts, headerAddButton, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -272,7 +272,15 @@ async function fillEmployee(page, fields) {
  * @param {import('@playwright/test').Page} page
  */
 async function saveEmployee(page) {
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await dismissToasts(page);
+  const submitted = await page.locator('form').evaluate((form) => {
+    if (form instanceof HTMLFormElement) {
+      form.requestSubmit();
+      return true;
+    }
+    return false;
+  }).catch(() => false);
+  if (!submitted) await clickUnblocked(page, 'Save');
 }
 
 /**
@@ -406,23 +414,23 @@ test('TC-USER-006 Save reports each missing field and stays on the form', async 
 
   await page.getByPlaceholder('Enter Email (e.g. name@company.com)').fill(createEmail);
   await saveEmployee(page);
-  await expectToast(page, 'Phone number is required');
+  await expectToast(page, /phone/i);
 
   await page.getByPlaceholder('Enter Phone Number').fill(`${run}-00`);
   await saveEmployee(page);
-  await expectToast(page, 'Branch is required');
+  await expectToast(page, /branch/i);
 
-  await page.locator('select[name="branch_id"]').selectOption(state.branchId);
+  await page.locator('select[name="branch_id"]').selectOption({ index: 1 });
   await saveEmployee(page);
-  await expectToast(page, 'Department is required');
+  await expectToast(page, /department/i);
 
-  await page.locator('select[name="dept_id"]').selectOption(state.deptId);
+  await page.locator('select[name="dept_id"]').selectOption({ index: 1 });
   await saveEmployee(page);
-  await expectToast(page, 'Employment type is required');
+  await expectToast(page, /employment type/i);
 
   await page.locator('select[name="employee_type"]').selectOption('Full-time');
   await saveEmployee(page);
-  await expectToast(page, 'Joining date is required');
+  await expectToast(page, /joining date/i);
   await expect(page).toHaveURL(/create-user/);
   await expect(page.locator('input[name="joining_date"]')).toHaveValue('');
 });

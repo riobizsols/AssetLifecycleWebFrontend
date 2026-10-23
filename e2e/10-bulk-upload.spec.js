@@ -59,8 +59,10 @@ test.describe('Bulk Upload', () => {
   test('creates the org, branch, department, vendor, and asset type the files need', async ({ page }) => {
     await gotoProtected(page, `${BASE}/master-data/asset-types/add`);
     await page.getByPlaceholder('Enter asset type name').fill(dropdownTypeName);
-    const typeResponse = page.waitForResponse((response) =>
-      response.request().method() === 'POST' && /\/asset-types\/?$/.test(new URL(response.url()).pathname));
+    const typeResponse = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && /\/asset-types\/?$/.test(new URL(response.url()).pathname),
+      { timeout: 60000 },
+    );
     await clickUnblocked(page, 'Save');
     const typeBody = await (await typeResponse).json();
     dropdownTypeId = typeBody.asset_type.asset_type_id;
@@ -74,8 +76,10 @@ test.describe('Bulk Upload', () => {
     await page.locator('input[name="company_email"]').fill(`${run.toLowerCase()}.vendor@example.com`);
     await page.locator('input[name="contact_person_number"]').fill('9999900002');
     await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
-    const vendorResponse = page.waitForResponse((response) =>
-      response.request().method() === 'POST' && response.url().includes('/create-vendor'));
+    const vendorResponse = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && response.url().includes('/create-vendor'),
+      { timeout: 60000 },
+    );
     await clickUnblocked(page, 'Save');
     const vendorBody = await (await vendorResponse).json();
     vendorId = vendorBody.data.vendor_id;
@@ -86,19 +90,23 @@ test.describe('Bulk Upload', () => {
     await page.locator('input[name="text"]').fill(`${run} Branch`);
     await page.locator('input[name="branch_code"]').fill(`B${stamp.slice(-4)}`);
     await page.locator('input[name="city"]').fill('Playwright');
-    const branchResponse = page.waitForResponse((response) =>
-      response.request().method() === 'POST' && /\/branches\/?$/.test(new URL(response.url()).pathname));
+    const branchResponse = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && /\/branches\/?$/.test(new URL(response.url()).pathname),
+      { timeout: 60000 },
+    );
     await clickUnblocked(page, 'Save');
     branchId = (await (await branchResponse).json()).branch_id;
     expect(branchId).toBeTruthy();
 
     await gotoProtected(page, `${BASE}/master-data/departments`);
-    const deptIdBox = page.getByPlaceholder('Department Id');
+    const deptIdBox = page.getByPlaceholder(/Department Id/i);
     await expect(deptIdBox).toHaveValue(/DPT\d+/, { timeout: 30000 });
     await page.locator('select').first().selectOption(branchId);
     await page.getByPlaceholder('Department Name').fill(`${run} Department`);
-    const deptResponse = page.waitForResponse((response) =>
-      response.request().method() === 'POST' && /\/departments\/?$/.test(new URL(response.url()).pathname));
+    const deptResponse = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && /\/departments\/?$/.test(new URL(response.url()).pathname),
+      { timeout: 60000 },
+    );
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     deptId = (await (await deptResponse).json()).dept_id;
     expect(deptId).toMatch(/^DPT\d+/);
@@ -162,7 +170,7 @@ test.describe('Bulk Upload', () => {
 
     await upload(page, '#assets-file-upload', 'notes.txt', 'hello');
     await expect(page.getByText('Please select a CSV file')).toBeVisible();
-    await page.getByRole('button', { name: 'Clear', exact: true }).click();
+    await page.getByRole('button', { name: 'Clear', exact: true }).first().click();
     await expect(page.getByText('Please select a CSV file')).toHaveCount(0);
 
     await upload(page, '#assets-file-upload', 'header-only.csv', assetHeaders.join(','));
@@ -179,7 +187,7 @@ test.describe('Bulk Upload', () => {
     await upload(page, '#assets-file-upload', 'duplicate.csv', duplicate);
     await expect(page.getByText(`Duplicate record found (asset_id: ${duplicateAssetId})`)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Clear', exact: true }).click();
+    await page.getByRole('button', { name: 'Clear', exact: true }).first().click();
     const unknownVendor = csv([assetHeaders, assetRow(assetId, assetDescription, 'V999')]);
     await upload(page, '#assets-file-upload', 'unknown-vendor.csv', unknownVendor);
     const vendorMissing = page.getByText(/V999|does not exist in vendors/i);
@@ -395,11 +403,13 @@ async function openBulk(page) {
  * @param {string} typeName
  */
 async function selectAssetType(page, typeName) {
-  const opener = page.getByRole('button', { name: 'Select an asset type...' });
-  if (await opener.count()) {
-    await opener.click();
+  const named = page.getByRole('button', { name: typeName, exact: true });
+  const placeholder = page.getByRole('button', { name: /Select an asset type/i });
+  await expect(named.or(placeholder).first()).toBeVisible({ timeout: 30000 });
+  if (await placeholder.isVisible().catch(() => false)) {
+    await placeholder.click();
   } else {
-    await page.getByRole('button', { name: typeName, exact: true }).click();
+    await named.click();
   }
   const search = page.getByPlaceholder('Search asset types...');
   await expect(search).toBeVisible();

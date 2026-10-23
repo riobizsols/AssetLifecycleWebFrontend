@@ -29,7 +29,11 @@ const ROUTE = `${BASE}/master-data/departments`;
  * @param {import('@playwright/test').Page} page
  */
 function branchSelect(page) {
-  return page.locator('select').first();
+  return page
+    .locator('div.bg-white.rounded.shadow')
+    .filter({ has: page.getByPlaceholder(/Department Name/i) })
+    .locator('select')
+    .first();
 }
 
 /**
@@ -72,6 +76,7 @@ async function openDepartments(page) {
   await expect(page.getByText('Department List', { exact: true })).toBeVisible({
     timeout: 45000,
   });
+  await expect(nameInput(page)).toBeVisible({ timeout: 30000 });
 }
 
 /**
@@ -204,7 +209,7 @@ test.describe('Departments', () => {
 
   test('TC-DEPT-002 add is rejected when the name is empty', async ({ page }) => {
     await openDepartments(page);
-    const idBefore = await idInput(page).inputValue();
+    const idBefore = await idInput(page).inputValue({ timeout: 30000 });
     await selectFirstRealBranch(page);
     await nameInput(page).fill('');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -230,7 +235,7 @@ test.describe('Departments', () => {
 
   test('TC-DEPT-004 a name made only of spaces is rejected', async ({ page }) => {
     await openDepartments(page);
-    const idBefore = await idInput(page).inputValue();
+    const idBefore = await idInput(page).inputValue({ timeout: 30000 });
     await selectFirstRealBranch(page);
     await nameInput(page).fill('   ');
     await page.getByRole('button', { name: 'Add', exact: true }).click();

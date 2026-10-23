@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { selectLoadedOrganization } from './helpers/screenAccess.js';
+import { isJsonGet, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The mapping saved for this run stays in the playwright tenant.
@@ -246,7 +246,7 @@ test.describe('Branch – Department Mapping', () => {
  */
 async function findDepartment(page) {
   const mappingWait = page.waitForResponse(
-    (res) => res.request().method() === 'GET' && /\/branch-dept-mappings\/?$/.test(new URL(res.url()).pathname),
+    (res) => isJsonGet(res, /\/branch-dept-mappings\/?$/),
     { timeout: 45000 },
   ).catch(() => null);
   await gotoProtected(page, `${BASE}/master-data/branch-dept-mapping`);
@@ -269,7 +269,7 @@ async function findDepartment(page) {
   }
 
   const deptWait = page.waitForResponse(
-    (res) => res.request().method() === 'GET' && /\/departments\/?$/.test(new URL(res.url()).pathname),
+    (res) => isJsonGet(res, /\/departments\/?$/),
     { timeout: 45000 },
   );
   await gotoProtected(page, `${BASE}/master-data/departments`);
@@ -320,11 +320,8 @@ function mappingRow(page, branchName, deptName) {
 
 /** @param {import('@playwright/test').Page} page */
 async function openAdd(page) {
-  const add = page
-    .getByTitle(/Add Branch/)
-    .or(page.getByTitle('Add mapping'))
-    .or(page.locator('button[title*="Add"]').last());
-  await add.first().click({ timeout: 20000 });
+  const add = page.locator('button.w-10.h-10').last();
+  await add.click({ force: true, timeout: 20000 });
   await expect(page.getByRole('heading', { name: /Add Branch/ })).toBeVisible({ timeout: 15000 });
 }
 
@@ -395,8 +392,10 @@ async function closeSearchPanel(page) {
  */
 async function createBranchOnOrg(page, name, code, organizationId) {
   await gotoProtected(page, `${BASE}/master-data/branches/add`);
-  const response = page.waitForResponse((res) =>
-    res.request().method() === 'POST' && /\/branches\/?$/.test(new URL(res.url()).pathname));
+  const response = page.waitForResponse(
+    (res) => res.request().method() === 'POST' && /\/branches\/?$/.test(new URL(res.url()).pathname),
+    { timeout: 60000 },
+  );
   await selectLoadedOrganization(page, organizationId);
   await page.locator('input[name="text"]').fill(name);
   await page.locator('input[name="branch_code"]').fill(code);
