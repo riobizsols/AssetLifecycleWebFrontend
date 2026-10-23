@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { isJsonGet, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The mapping saved for this run stays in the playwright tenant.
@@ -63,7 +64,7 @@ test.describe('Branch – Department Mapping', () => {
 
   test('the list shows the title, columns, and the kept mapping', async ({ page }) => {
     await openList(page);
-    await expect(page.getByText('Map departments to branches. A department can belong to multiple branches.')).toBeVisible();
+    await expect(page.getByText(/Map departments to branches/)).toBeVisible();
     await expect(page.getByTitle('Filter')).toBeVisible();
     await expect(page.getByTitle('Add Branch – Department Mapping')).toBeVisible();
     await expect(page.getByTitle('Download')).toHaveCount(0);
@@ -244,11 +245,14 @@ test.describe('Branch – Department Mapping', () => {
  * @param {import('@playwright/test').Page} page
  */
 async function findDepartment(page) {
-  const mappingWait = page.waitForResponse((res) =>
-    res.request().method() === 'GET' && /\/branch-dept-mappings\/?$/.test(new URL(res.url()).pathname));
+  const mappingWait = page.waitForResponse(
+    (res) => isJsonGet(res, /\/branch-dept-mappings\/?$/),
+    { timeout: 45000 },
+  ).catch(() => null);
   await gotoProtected(page, `${BASE}/master-data/branch-dept-mapping`);
   await expect(page.getByRole('heading', { name: 'Branch – Department Mapping' })).toBeVisible({ timeout: 45000 });
-  const mappingBody = await (await mappingWait).json();
+  const mappingRes = await mappingWait;
+  const mappingBody = mappingRes ? await mappingRes.json().catch(() => ({})) : {};
   const mappings = Array.isArray(mappingBody?.data) ? mappingBody.data : [];
   const preferred = mappings.find((row) => String(row.dept_name || '').startsWith('PW-DEPT-')) || mappings[0];
   if (preferred?.dept_id && preferred?.org_id) {
@@ -264,8 +268,10 @@ async function findDepartment(page) {
     };
   }
 
-  const deptWait = page.waitForResponse((res) =>
-    res.request().method() === 'GET' && /\/departments\/?$/.test(new URL(res.url()).pathname));
+  const deptWait = page.waitForResponse(
+    (res) => isJsonGet(res, /\/departments\/?$/),
+    { timeout: 45000 },
+  );
   await gotoProtected(page, `${BASE}/master-data/departments`);
   await expect(page.getByText('Department List', { exact: true })).toBeVisible({ timeout: 45000 });
   const deptBody = await (await deptWait).json();
@@ -298,7 +304,9 @@ async function openList(page) {
 
 /** @param {import('@playwright/test').Page} page */
 function addDialog(page) {
-  return page.locator('div.fixed.inset-0').filter({ hasText: 'Add Branch – Department Mapping' });
+  return page.locator('div.fixed.inset-0').filter({
+    has: page.getByRole('heading', { name: /Add Branch/ }),
+  }).last();
 }
 
 /**
@@ -312,8 +320,9 @@ function mappingRow(page, branchName, deptName) {
 
 /** @param {import('@playwright/test').Page} page */
 async function openAdd(page) {
-  await page.getByTitle('Add Branch – Department Mapping').click();
-  await expect(page.getByRole('heading', { name: 'Add Branch – Department Mapping' })).toBeVisible();
+  const add = page.locator('button.w-10.h-10').last();
+  await add.click({ force: true, timeout: 20000 });
+  await expect(page.getByRole('heading', { name: /Add Branch/ })).toBeVisible({ timeout: 15000 });
 }
 
 /**
@@ -324,7 +333,10 @@ async function openAdd(page) {
 async function choosePair(page, branch, dept) {
   const dialog = addDialog(page);
   await dialog.locator('select').nth(0).selectOption(branch);
-  await dialog.locator('select').nth(1).selectOption(dept);
+  const deptSelect = dialog.locator('select').nth(1);
+  await expect(deptSelect).toBeEnabled();
+  await expect(deptSelect.locator(`option[value="${dept}"]`).first()).toBeAttached({ timeout: 20000 });
+  await deptSelect.selectOption({ value: dept });
 }
 
 /**
@@ -380,9 +392,11 @@ async function closeSearchPanel(page) {
  */
 async function createBranchOnOrg(page, name, code, organizationId) {
   await gotoProtected(page, `${BASE}/master-data/branches/add`);
-  const response = page.waitForResponse((res) =>
-    res.request().method() === 'POST' && /\/branches\/?$/.test(new URL(res.url()).pathname));
-  await page.locator('select[name="org_id"]').selectOption(organizationId);
+  const response = page.waitForResponse(
+    (res) => res.request().method() === 'POST' && /\/branches\/?$/.test(new URL(res.url()).pathname),
+    { timeout: 60000 },
+  );
+  await selectLoadedOrganization(page, organizationId);
   await page.locator('input[name="text"]').fill(name);
   await page.locator('input[name="branch_code"]').fill(code);
   await page.locator('input[name="city"]').fill('Chennai');

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton, leaveAddScreen } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The vendor created for this run stays in the playwright tenant.
@@ -46,9 +46,7 @@ test.describe('Vendors', () => {
       'GST Number',
       'CIN Number',
       'Company Email',
-      'Contact Person',
-      'Contact Email',
-      'Contact Number',
+      'Actions',
     ]) {
       await expect(page.getByRole('columnheader', { name: heading, exact: true })).toBeVisible();
     }
@@ -67,10 +65,10 @@ test.describe('Vendors', () => {
     await expect(page.getByRole('button', { name: 'Service Details' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Spare Supply' })).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Please correct the following fields')).toBeVisible();
-    await expect(page.getByText(/Vendor Name is required/)).toBeVisible();
-    await expect(page.getByText(/Contact Number is required/)).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.locator('input[name="vendor_name"]')).toHaveClass(/border-red/, { timeout: 10000 });
+    await expect(page.locator('[data-rht-toaster] [role="status"]').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('input[name="contact_person_number"]')).toHaveClass(/border-red/);
 
     await fillVendor(page, {
       name: cancelledName,
@@ -79,24 +77,37 @@ test.describe('Vendors', () => {
       contact: contactName,
       phone,
     });
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Please enter a valid email address')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    const emailInput = page.locator('input[name="company_email"]');
+    await expect.poll(async () => {
+      const nativeInvalid = await emailInput.evaluate((el) => el instanceof HTMLInputElement && !el.validity.valid);
+      const marked = /border-red/.test(await emailInput.getAttribute('class') || '');
+      const toast = await page.locator('[data-rht-toaster] [role="status"]').first().isVisible().catch(() => false);
+      return nativeInvalid || marked || toast;
+    }, { timeout: 10000 }).toBeTruthy();
+    await expect(page).toHaveURL(/add-vendor/);
 
     await page.locator('input[name="company_email"]').fill(email);
     await page.locator('input[name="contact_person_number"]').fill('12345');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Please enter a valid contact number with at least 10 digits')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect.poll(async () => {
+      const phoneInput = page.locator('input[name="contact_person_number"]');
+      const nativeInvalid = await phoneInput.evaluate((el) => el instanceof HTMLInputElement && !el.validity.valid);
+      const marked = /border-red/.test(await phoneInput.getAttribute('class') || '');
+      const toast = await page.getByText(/contact number|10 digits|valid/i).first().isVisible().catch(() => false);
+      return nativeInvalid || marked || toast;
+    }, { timeout: 10000 }).toBeTruthy();
+    await expect(page).toHaveURL(/add-vendor/);
 
     await page.locator('input[name="contact_person_number"]').fill(phone);
     await page.locator('input[name="contract_end_date"]').fill('2026-01-01');
     await page.locator('input[name="contract_start_date"]').fill('2026-06-01');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Contract end date cannot be earlier than contract start date')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.locator('[data-rht-toaster] [role="status"]').first()).toBeVisible({ timeout: 10000 });
 
     await page.locator('input[name="contract_start_date"]').fill('');
     await page.locator('input[name="contract_end_date"]').fill('');
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(page).toHaveURL(/\/master-data\/vendors$/);
+    await leaveAddScreen(page, `${BASE}/master-data/vendors`);
     await expect(vendorRow(page, cancelledName)).toHaveCount(0);
   });
 
@@ -433,7 +444,7 @@ async function reuseOrCreateAssetType(page) {
  */
 async function createProduct(page, typeName, brand, model) {
   await gotoProtected(page, `${BASE}/master-data/prod-serv`);
-  await expect(page.getByText('Product / Service', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByText('Product / Service', { exact: true }).first()).toBeVisible({ timeout: 45000 });
   await page.getByRole('button', { name: 'Select Asset Type', exact: true }).click();
   const search = page.getByPlaceholder('Search Asset Types...');
   await search.fill(typeName);

@@ -157,16 +157,27 @@ jobs:
           E2E_TENANT_DATABASE_URL: ${{ secrets.E2E_TENANT_DATABASE_URL }}
           E2E_GENERIC_URL: ${{ secrets.E2E_GENERIC_URL }}
           E2E_JWT_SECRET: ${{ secrets.E2E_JWT_SECRET }}
+          E2E_RUNNER: ${{ vars.E2E_RUNNER }}
         run: |
           set -euo pipefail
           if [ -z "${E2E_DATABASE_URL}" ] || [ -z "${E2E_JWT_SECRET}" ]; then
             echo "Missing E2E_DATABASE_URL or E2E_JWT_SECRET secrets"
             exit 1
           fi
+          # GitHub-hosted runners reach Postgres through the SSH tunnel on localhost:5432.
+          # alm-e2e already sits on the DB server, so keep the secret host/port as written.
           to_tunnel() { printf '%s' "$1" | sed -E 's#@[^@/]+/#@localhost:5432/#'; }
-          DB_URL="$(to_tunnel "${E2E_DATABASE_URL}")"
-          TENANT_URL="$(to_tunnel "${E2E_TENANT_DATABASE_URL:-$E2E_DATABASE_URL}")"
-          GENERIC_URL="$(to_tunnel "${E2E_GENERIC_URL:-$E2E_DATABASE_URL}")"
+          if [ -z "${E2E_RUNNER}" ]; then
+            DB_URL="$(to_tunnel "${E2E_DATABASE_URL}")"
+            TENANT_URL="$(to_tunnel "${E2E_TENANT_DATABASE_URL:-$E2E_DATABASE_URL}")"
+            GENERIC_URL="$(to_tunnel "${E2E_GENERIC_URL:-$E2E_DATABASE_URL}")"
+          else
+            DB_URL="${E2E_DATABASE_URL}"
+            TENANT_URL="${E2E_TENANT_DATABASE_URL:-$E2E_DATABASE_URL}"
+            GENERIC_URL="${E2E_GENERIC_URL:-$E2E_DATABASE_URL}"
+          fi
+          # Tenant rows store Docker host alm_db. The runner is on the host, so send
+          # tenant pools to localhost. playwright_db is still chosen by TENANT_DB_NAME_OVERRIDE.
           {
             echo "NODE_ENV=development"
             echo "PORT=5001"
@@ -188,7 +199,7 @@ jobs:
       - name: Start backend
         working-directory: backend
         run: |
-          nohup npm start > ../backend.log 2>&1 &
+          nohup stdbuf -oL -eL npm start > ../backend.log 2>&1 &
           echo $! > ../backend.pid
 
       - name: Build frontend
@@ -214,7 +225,8 @@ jobs:
 
       - name: Start frontend
         run: |
-          nohup npx vite preview --host 127.0.0.1 --port 5173 --strictPort > frontend.log 2>&1 &
+          grep -q 'playwright.localhost' /etc/hosts || echo '127.0.0.1 playwright.localhost' | sudo tee -a /etc/hosts >/dev/null
+          nohup npx vite preview --host 0.0.0.0 --port 5173 --strictPort > frontend.log 2>&1 &
           echo $! > frontend.pid
           for i in $(seq 1 90); do
             if curl -sf http://127.0.0.1:5173/ >/dev/null; then
@@ -235,7 +247,47 @@ jobs:
           RIO_PASSWORD: ${{ secrets.RIO_PASSWORD }}
           E2E_WORKERS: ${{ vars.E2E_WORKERS || '1' }}
           E2E_LOCAL_DB: ${{ vars.E2E_RUNNER != '' && 'true' || 'false' }}
-        run: npx playwright test
+        run: |
+          node <<'EOF'
+          const http = require('http');
+          const payload = JSON.stringify({
+            email: String(process.env.RIO_EMAIL || '').trim(),
+            password: String(process.env.RIO_PASSWORD || '').trim(),
+          });
+          const req = http.request({
+            hostname: '127.0.0.1',
+            port: 5001,
+            path: '/api/auth/login',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(payload),
+              Host: 'playwright.localhost',
+            },
+          }, (res) => {
+            let raw = '';
+            res.on('data', (chunk) => { raw += chunk; });
+            res.on('end', () => {
+              let message = '';
+              try {
+                const body = JSON.parse(raw);
+                message = body.message || body.error || '';
+              } catch { /* ignore */ }
+              console.log(`Login probe status: ${res.statusCode}`);
+              if (res.statusCode < 200 || res.statusCode >= 300) {
+                console.log(`Login probe message: ${message || 'no message'}`);
+                process.exit(1);
+              }
+            });
+          });
+          req.on('error', (err) => {
+            console.log(`Login probe could not reach the backend: ${err.message}`);
+            process.exit(1);
+          });
+          req.write(payload);
+          req.end();
+          EOF
+          npx playwright test
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, fillReactInput, headerAddButton, leaveAddScreen, selectLoadedOrganization } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The branch created for this run stays in the playwright tenant.
@@ -47,41 +47,40 @@ test.describe('Branches', () => {
 
   test('add branch blocks empty fields, a number-only name, and a number-only city', async ({ page }) => {
     await openAdd(page);
-    await expect(page.getByText('Organization', { exact: true })).toBeVisible();
-    await expect(page.getByText('Branch Name', { exact: true })).toBeVisible();
-    await expect(page.getByText('Branch Code', { exact: true })).toBeVisible();
-    await expect(page.getByText('City', { exact: true })).toBeVisible();
+    await expect(page.locator('select[name="org_id"]')).toBeVisible();
+    await expect(page.getByPlaceholder('Enter Branch Name')).toBeVisible();
+    await expect(page.getByPlaceholder('Enter Branch Code')).toBeVisible();
+    await expect(page.getByPlaceholder('Enter City')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Organization is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Organization is required').first()).toBeVisible();
 
     await selectOrganization(page);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Branch name is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch name is required').first()).toBeVisible();
 
     await page.locator('input[name="text"]').fill(cancelledName);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Branch code is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch code is required').first()).toBeVisible();
 
     await page.locator('input[name="branch_code"]').fill(cancelCode);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('City is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('City is required').first()).toBeVisible();
 
     await page.locator('input[name="text"]').fill('12345');
     await page.locator('input[name="city"]').fill(city);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Branch name cannot be only numbers')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch name cannot be only numbers').first()).toBeVisible();
 
     await page.locator('input[name="text"]').fill(cancelledName);
     await page.locator('input[name="city"]').fill('641001');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('City name cannot be only numbers')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('City name cannot be only numbers').first()).toBeVisible();
 
     await page.locator('input[name="city"]').fill(city);
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(page).toHaveURL(/\/master-data\/branches$/);
+    await leaveAddScreen(page, `${BASE}/master-data/branches`);
     await expect(branchRow(page, cancelledName)).toHaveCount(0);
   });
 
@@ -173,7 +172,7 @@ test.describe('Branches', () => {
     await branchRow(page, branchName).getByRole('checkbox').check();
     await headerTrash(page).click();
     const dialog = page.locator('div.fixed.inset-0').filter({ hasText: 'Confirm Delete' });
-    await expect(dialog).toContainText('Are you sure you want to delete this item?');
+    await expect(dialog).toContainText(/delete (this item|1 selected item)/i);
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await expect(branchRow(page, branchName)).toBeVisible();
     await expect(branchRow(page, branchName).locator('td').nth(1)).toHaveText('Active');
@@ -328,11 +327,7 @@ function headerDownload(page) {
 
 /** @param {import('@playwright/test').Page} page */
 async function selectOrganization(page) {
-  const orgSelect = page.locator('select[name="org_id"]');
-  const option = orgSelect.locator('option[value]:not([value=""])').first();
-  await expect(option).toBeAttached({ timeout: 30000 });
-  const value = await option.getAttribute('value');
-  await orgSelect.selectOption(value || '');
+  await selectLoadedOrganization(page);
 }
 
 /**
@@ -361,10 +356,10 @@ async function addColumnFilter(page, columnLabel, value) {
   await page.getByText('Search by Column', { exact: true }).click();
   await page.locator('select').last().selectOption({ label: columnLabel });
   await page.getByRole('button', { name: 'Select values' }).click();
-  const search = page.getByPlaceholder('Search...');
-  await search.fill(value);
-  const menu = search.locator('xpath=ancestor::div[contains(@class,"absolute")][1]');
-  await menu.getByText(value, { exact: true }).click();
+  const menu = page.locator('div.absolute.z-50').filter({ has: page.getByPlaceholder('Search...') }).last();
+  await expect(menu).toBeVisible();
+  await fillReactInput(menu.getByPlaceholder('Search...'), value);
+  await menu.getByText(value, { exact: true }).first().click();
 }
 
 /** @param {import('@playwright/test').Page} page */

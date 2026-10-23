@@ -6,8 +6,8 @@ import { BASE } from './baseUrl.js';
 const LOGIN_RESPONSE_TIMEOUT_MS = 120_000;
 
 export function getRioCredentials() {
-  const email = process.env.RIO_EMAIL;
-  const password = process.env.RIO_PASSWORD;
+  const email = String(process.env.RIO_EMAIL || '').trim();
+  const password = String(process.env.RIO_PASSWORD || '').trim();
 
   if (!email || !password) {
     throw new Error(
@@ -174,7 +174,17 @@ export async function loginToRioEam(page) {
     await page.locator('#password').fill(password);
   }
 
-  expect(loginResponse?.ok()).toBeTruthy();
+  if (!loginResponse?.ok()) {
+    let detail = '';
+    try {
+      const body = await loginResponse?.json();
+      detail = body?.message || body?.error || '';
+    } catch {
+      detail = '';
+    }
+    const status = loginResponse ? loginResponse.status() : 'no response';
+    throw new Error(`Login failed (${status})${detail ? `: ${detail}` : ''}`);
+  }
 
   // `/` is the login page — do not treat it as a post-login success URL.
   await page.waitForURL((url) => isAppPath(url) && !isLoginPath(url), {

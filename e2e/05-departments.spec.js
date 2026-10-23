@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { selectLoadedOrganization } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -28,7 +29,11 @@ const ROUTE = `${BASE}/master-data/departments`;
  * @param {import('@playwright/test').Page} page
  */
 function branchSelect(page) {
-  return page.locator('select').first();
+  return page
+    .locator('div.bg-white.rounded.shadow')
+    .filter({ has: page.getByPlaceholder(/Department Name/i) })
+    .locator('select')
+    .first();
 }
 
 /**
@@ -42,7 +47,7 @@ function nameInput(page) {
  * @param {import('@playwright/test').Page} page
  */
 function idInput(page) {
-  return page.getByPlaceholder('Department Id');
+  return page.getByPlaceholder(/Department Id/i);
 }
 
 /**
@@ -68,10 +73,10 @@ function escapeRegExp(value) {
  */
 async function openDepartments(page) {
   await gotoProtected(page, ROUTE);
-  await expect(page.getByText('Add / Modify Departments', { exact: true })).toBeVisible({
-    timeout: 30000,
+  await expect(page.getByText('Department List', { exact: true })).toBeVisible({
+    timeout: 45000,
   });
-  await expect(page.getByText('Department List', { exact: true })).toBeVisible();
+  await expect(nameInput(page)).toBeVisible({ timeout: 30000 });
 }
 
 /**
@@ -103,7 +108,7 @@ function deptNumber(id) {
  */
 async function ensureBranchOption(page) {
   const select = branchSelect(page);
-  await expect(select).toBeVisible();
+  await expect(select).toBeVisible({ timeout: 30000 });
   const existing = await select.locator('option').evaluateAll((opts) =>
     opts
       .filter((opt) => opt.value)
@@ -114,19 +119,8 @@ async function ensureBranchOption(page) {
   const branchName = `${run}-Branch`;
   const branchCode = `PD${Date.now().toString(36).slice(-6)}`;
   await gotoProtected(page, `${BASE}/master-data/branches/add`);
-  await expect(page.getByText('Branch Name', { exact: true })).toBeVisible({ timeout: 30000 });
-
-  const orgSelect = page.locator('select[name="org_id"]');
-  const orgValue = await orgSelect.locator('option').evaluateAll((opts) => {
-    const real = opts.find(
-      (opt) => opt.value && opt.value !== 'ORG004' && opt.value !== 'ORG005',
-    );
-    return real ? real.value : '';
-  });
-  if (!orgValue) {
-    throw new Error('No organisation is available to create the branch this screen needs');
-  }
-  await orgSelect.selectOption(orgValue);
+  await expect(page.getByPlaceholder('Enter Branch Name')).toBeVisible({ timeout: 30000 });
+  await selectLoadedOrganization(page);
   await page.getByPlaceholder('Enter Branch Name').fill(branchName);
   await page.getByPlaceholder('Enter Branch Code').fill(branchCode);
   await page.getByPlaceholder('Enter City').fill('Playwright');
@@ -183,9 +177,9 @@ test.describe('Departments', () => {
   test('TC-DEPT-001 the screen shows the add form and the list', async ({ page }) => {
     await openDepartments(page);
 
-    await expect(page.getByText('Department Id', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Branch', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Department Name', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/Department Id/i).first()).toBeVisible({ timeout: 30000 });
+    await expect(branchSelect(page)).toBeVisible();
+    await expect(page.getByPlaceholder('Department Name')).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
 
     const id = idInput(page);
@@ -201,7 +195,7 @@ test.describe('Departments', () => {
       await expect(select).not.toHaveValue('');
     }
 
-    await expect(page.getByText('Department Name', { exact: true }).nth(1)).toBeVisible();
+    await expect(page.locator('div.bg-\\[\\#0E2F4B\\]').getByText('Department Name', { exact: true })).toBeVisible();
     await expect(page.getByText('Actions', { exact: true })).toBeVisible();
 
     const rows = page.locator('div.grid').filter({ has: page.locator('button') });
@@ -215,7 +209,7 @@ test.describe('Departments', () => {
 
   test('TC-DEPT-002 add is rejected when the name is empty', async ({ page }) => {
     await openDepartments(page);
-    const idBefore = await idInput(page).inputValue();
+    const idBefore = await idInput(page).inputValue({ timeout: 30000 });
     await selectFirstRealBranch(page);
     await nameInput(page).fill('');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -241,7 +235,7 @@ test.describe('Departments', () => {
 
   test('TC-DEPT-004 a name made only of spaces is rejected', async ({ page }) => {
     await openDepartments(page);
-    const idBefore = await idInput(page).inputValue();
+    const idBefore = await idInput(page).inputValue({ timeout: 30000 });
     await selectFirstRealBranch(page);
     await nameInput(page).fill('   ');
     await page.getByRole('button', { name: 'Add', exact: true }).click();

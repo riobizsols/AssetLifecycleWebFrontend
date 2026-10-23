@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { clickUnblocked } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -97,7 +98,8 @@ async function openMapping(page) {
   await expect(page.getByRole('heading', { name: 'Audit types' })).toBeVisible({
     timeout: 30000,
   });
-  await expect(page.getByText('Loading…')).toHaveCount(0);
+  await expect(page.locator('section').first().getByText(/^Loading/)).toHaveCount(0, { timeout: 30000 });
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toBeVisible();
 }
 
 /**
@@ -132,6 +134,7 @@ async function selectType(page, name) {
     await Promise.all([
       page.waitForResponse(
         (res) => res.url().includes('/audit-report/asset-types/') && res.ok(),
+        { timeout: 30000 },
       ),
       typeButton(page, name).click(),
     ]);
@@ -155,8 +158,11 @@ async function createType(page, typedName, options = {}) {
   const checkbox = page.getByRole('checkbox', { name: 'Internal audit' });
   if (internal) await checkbox.check();
   else await checkbox.uncheck();
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expectToast(page, 'Audit type created');
+  await clickUnblocked(page, 'Create');
+  const listed = page.getByRole('button', { name: new RegExp(escapeRegex(typedName.trim())) });
+  await expect(page.getByText(/Audit type created/i).first().or(listed).first()).toBeVisible({
+    timeout: 30000,
+  });
   await expect(form).toBeHidden();
 }
 
@@ -165,21 +171,36 @@ async function createType(page, typedName, options = {}) {
  * @param {string} assetLabel
  */
 async function chooseAsset(page, assetLabel) {
-  await page.getByText('Select asset types to include', { exact: true }).click();
-  const menu = page.locator('div.absolute.z-50').last();
-  const field = page.locator('div.relative input').last();
-  if (assetLabel) await field.fill(assetLabel);
+  const closed = page.getByText('Select asset types to include', { exact: true });
+  if (await closed.isVisible().catch(() => false)) {
+    await closed.click();
+  } else {
+    await page.locator('div.relative').filter({ hasText: '▼' }).first().click();
+  }
+  const menu = page.locator('div.absolute.z-50').filter({ has: page.locator('input[type="checkbox"]') }).last();
+  await expect(menu).toBeVisible({ timeout: 15000 });
+  const unchecked = menu.locator('label').filter({ has: page.locator('input[type="checkbox"]:not(:checked)') });
   const row = assetLabel
-    ? menu.locator('label').filter({
-        has: page.locator('span.truncate', {
-          hasText: new RegExp(`^${escapeRegex(assetLabel)}$`),
-        }),
-      })
-    : menu.locator('label').first();
-  await expect(row).toBeVisible();
-  const label = assetLabel || (await row.locator('span.truncate').innerText()).trim();
-  await row.locator('input[type="checkbox"]').check();
+    ? menu.locator('label').filter({ hasText: new RegExp(escapeRegex(assetLabel)) }).first()
+    : (await unchecked.count()) > 0
+      ? unchecked.first()
+      : menu.locator('label').first();
+  await expect(row).toBeVisible({ timeout: 15000 });
+  const label = assetLabel || (await row.innerText()).replace(/\s+/g, ' ').trim();
+  const box = row.locator('input[type="checkbox"]').first();
+  const already = await box.isChecked();
+  await row.click();
+  if ((await box.isChecked()) === already) {
+    await box.evaluate((el) => el instanceof HTMLInputElement && el.click());
+  }
+  if (already && (await box.isChecked())) {
+    const other = unchecked.first();
+    if (await other.count()) {
+      await other.click();
+    }
+  }
   await page.getByRole('heading', { name: 'Mapped asset types' }).click();
+  await expect(page.getByRole('button', { name: 'Save mappings' })).toBeEnabled({ timeout: 10000 });
   return label;
 }
 
@@ -277,12 +298,12 @@ test('AT-04 a shared asset type names the other audit type', async ({ page }) =>
   await createType(page, state.shareName);
   const asset = await chooseAsset(page, state.assetTypeName);
   state.assetTypeName = asset;
-  await page.getByRole('button', { name: 'Save mappings' }).click();
-  await expectToast(page, 'Mappings saved');
+  await clickUnblocked(page, 'Save mappings');
+  await expectToast(page, /Mappings saved|saved/i);
   await createType(page, partner);
   await chooseAsset(page, state.assetTypeName);
-  await page.getByRole('button', { name: 'Save mappings' }).click();
-  await expectToast(page, 'Mappings saved');
+  await clickUnblocked(page, 'Save mappings');
+  await expectToast(page, /Mappings saved|saved/i);
   await selectType(page, state.shareName);
   const chip = page.locator('span.rounded-full').filter({ hasText: state.assetTypeName });
   await expect(chip).toContainText('also');

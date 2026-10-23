@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, fillReactInput, headerAddButton } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The product and service for this run stay in the playwright tenant.
@@ -39,7 +39,7 @@ test.describe('Products / Services', () => {
   test('product and service screens show the add forms and list headers', async ({ page }) => {
     await openScreen(page);
 
-    await expect(page.getByText('Product / Service', { exact: true })).toBeVisible();
+    await expect(page.getByText('Product / Service', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Product Details', { exact: true })).toBeVisible();
     await expect(page.getByPlaceholder('Enter Brand')).toBeVisible();
     await expect(page.getByPlaceholder('Enter Model')).toBeVisible();
@@ -122,11 +122,11 @@ test.describe('Products / Services', () => {
 
   test('filters Product List by asset type and then shows every type again', async ({ page }) => {
     await openScreen(page);
-    await selectFromAbsoluteDropdown(page, 'All Asset Types', parentType);
+    await selectFromAbsoluteDropdown(page, 'All Asset Types', parentType, 'Product List');
     await expect(productRows(page, brand).filter({ hasText: parentType })).toBeVisible();
     await expect(productRows(page, otherBrand).filter({ hasText: otherType })).toHaveCount(0);
 
-    await selectFromAbsoluteDropdown(page, parentType, 'All Asset Types');
+    await selectFromAbsoluteDropdown(page, parentType, 'All Asset Types', 'Product List');
     await expect(productRows(page, brand).filter({ hasText: parentType })).toBeVisible();
     await expect(productRows(page, otherBrand).filter({ hasText: otherType })).toBeVisible();
   });
@@ -210,10 +210,10 @@ test.describe('Products / Services', () => {
   test('filters Service List by asset type and then shows every type again', async ({ page }) => {
     await openScreen(page);
     await page.getByText('Service Details', { exact: true }).click();
-    await selectFromAbsoluteDropdown(page, 'All Asset Types', parentType);
+    await selectFromAbsoluteDropdown(page, 'All Asset Types', parentType, 'Service List');
     await expect(serviceRows(page, serviceDescription).first()).toBeVisible();
 
-    await selectFromAbsoluteDropdown(page, parentType, 'All Asset Types');
+    await selectFromAbsoluteDropdown(page, parentType, 'All Asset Types', 'Service List');
     await expect(serviceRows(page, serviceDescription)).toHaveCount(2);
   });
 
@@ -246,7 +246,7 @@ test.describe('Products / Services', () => {
 /** @param {import('@playwright/test').Page} page */
 async function openScreen(page) {
   await gotoProtected(page, `${BASE}/master-data/prod-serv`);
-  await expect(page.getByText('Product / Service', { exact: true })).toBeVisible({ timeout: 45000 });
+  await expect(page.getByText('Product / Service', { exact: true }).first()).toBeVisible({ timeout: 45000 });
 }
 
 /**
@@ -276,9 +276,12 @@ async function createAssetType(page, name) {
   await expect(page.getByRole('columnheader', { name: 'Asset Type Name' })).toBeVisible({ timeout: 45000 });
   await headerAddButton(page).click();
   await page.getByPlaceholder('Enter asset type name').fill(name);
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText(`Asset type "${name}" created successfully`)).toBeVisible({ timeout: 60000 });
-  await expect(page.getByRole('columnheader', { name: 'Asset Type Name' })).toBeVisible({ timeout: 45000 });
+  await clickUnblocked(page, 'Save');
+  const created = page.getByText(`Asset type "${name}" created successfully`).first();
+  const listed = page.getByRole('row').filter({ hasText: name }).first();
+  await expect(created.or(listed).first()).toBeVisible({ timeout: 60000 });
+  await expect(page).toHaveURL(/\/master-data\/asset-types\/?$/, { timeout: 15000 });
+  await expect(listed).toBeVisible({ timeout: 30000 });
   return name;
 }
 
@@ -301,27 +304,43 @@ async function toggleMaximize(page, listTitle) {
  * @param {string} typeName
  */
 async function searchAssetTypes(page, openerName, typeName) {
-  await page.getByRole('button', { name: openerName }).click();
-  const search = page.getByPlaceholder('Search Asset Types...');
-  await search.fill(typeName);
-  const menu = search.locator('xpath=ancestor::div[contains(@class,"absolute")][1]');
+  const { search, menu } = await openAssetTypeMenu(page, openerName);
+  await fillReactInput(search, typeName);
   await expect(menu.getByText(typeName, { exact: true })).toBeVisible();
-  await search.fill('zzzz-no-such-type');
+  await fillReactInput(search, 'zzzz-no-such-type');
   await expect(menu.getByText(typeName, { exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: openerName }).click();
+  await page.getByRole('button', { name: openerName }).first().click();
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} openerName
+ * @param {string} [panelTitle]
+ */
+async function openAssetTypeMenu(page, openerName, panelTitle) {
+  const root = panelTitle
+    ? page.locator('div.bg-white.rounded.shadow').filter({ hasText: panelTitle }).first()
+    : page;
+  await root.getByRole('button', { name: openerName, exact: true }).first().click();
+  const search = root.getByPlaceholder('Search Asset Types...').locator('visible=true');
+  await expect(search).toBeVisible();
+  const menu = root.locator('div.absolute').filter({ has: search }).locator('visible=true');
+  await expect(menu).toBeVisible();
+  return { search, menu };
 }
 
 /**
  * @param {import('@playwright/test').Page} page
  * @param {string} openerName
  * @param {string} optionText
+ * @param {string} [panelTitle]
  */
-async function selectFromAbsoluteDropdown(page, openerName, optionText) {
-  await page.getByRole('button', { name: openerName, exact: true }).click();
-  const search = page.getByPlaceholder('Search Asset Types...');
+async function selectFromAbsoluteDropdown(page, openerName, optionText, panelTitle) {
+  const { search, menu } = await openAssetTypeMenu(page, openerName, panelTitle);
   await search.fill(optionText === 'All Asset Types' ? '' : optionText);
-  const menu = search.locator('xpath=ancestor::div[contains(@class,"absolute")][1]');
-  await menu.getByText(optionText, { exact: true }).click();
+  const option = menu.locator('div.cursor-pointer').filter({ hasText: optionText }).first();
+  await expect(option).toBeVisible({ timeout: 15000 });
+  await option.click();
 }
 
 /**

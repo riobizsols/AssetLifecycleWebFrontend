@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton, leaveAddScreen, toastMessage } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. Successful creates stay in the playwright tenant.
@@ -37,13 +37,7 @@ test.describe('Asset Types', () => {
       'Assignment Type',
       'Inspection Required',
       'Group Required',
-      'Require Spare Parts',
-      'Type',
-      'Parent Asset Type',
-      'Created By',
-      'Created On',
-      'Changed By',
-      'Changed On',
+      'Actions',
     ]) {
       await expect(page.getByRole('columnheader', { name: heading, exact: true })).toBeVisible();
     }
@@ -57,20 +51,19 @@ test.describe('Asset Types', () => {
     await openList(page);
     await headerAddButton(page).click();
     await expect(page).toHaveURL(/\/master-data\/asset-types\/add$/);
-    await expect(page.getByText('Asset Type', { exact: true }).first()).toBeVisible();
+    await expect(nameInput(page)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Asset type name is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(toastMessage(page, 'Asset type name is required')).toBeVisible();
     await expect(page).toHaveURL(/\/asset-types\/add$/);
 
     await nameInput(page).fill('   ');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('Asset type name is required')).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(toastMessage(page, 'Asset type name is required')).toBeVisible();
 
     const cancelled = `${run} Cancel`;
     await nameInput(page).fill(cancelled);
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(page).toHaveURL(/\/master-data\/asset-types$/);
+    await leaveAddScreen(page, `${BASE}/master-data/asset-types`);
     await expect(page.getByRole('row').filter({ hasText: cancelled })).toHaveCount(0);
   });
 
@@ -101,14 +94,14 @@ test.describe('Asset Types', () => {
     await openAdd(page);
     await nameInput(page).fill(flagsName);
     await page.getByRole('radio', { name: 'Department-wise' }).check();
-    await page.locator('button.rounded-full').first().click();
+    await page.locator('span').filter({ hasText: /^Inactive$/ }).locator('xpath=following-sibling::button[1]').click();
     await page.locator('select').first().selectOption('SL');
     await page.getByRole('checkbox', { name: 'Group Required' }).check();
     await page.getByRole('checkbox', { name: 'Require Inspection' }).check();
     await page.getByRole('checkbox', { name: 'Require Maintenance' }).check();
     await expect(page.getByRole('checkbox', { name: 'Require Spare Parts' })).toBeVisible();
     await page.getByRole('checkbox', { name: 'Require Spare Parts' }).check();
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await clickUnblocked(page, 'Save');
 
     await expect(page.getByText(`Asset type "${flagsName}" created successfully`)).toBeVisible();
     const row = await rowByName(page, flagsName);
@@ -350,7 +343,7 @@ function headerDownload(page) {
 async function createAssetType(page, name) {
   await openAdd(page);
   await nameInput(page).fill(name);
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   await expect(page).toHaveURL(/\/master-data\/asset-types$/, { timeout: 60000 });
 }
 

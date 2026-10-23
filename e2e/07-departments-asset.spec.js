@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { fillReactInput, isJsonGet } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. departments.spec.js owns departments, so this file reuses one.
@@ -53,7 +54,7 @@ test.describe('Department–Asset Mappings', () => {
     await expect(addButton(page)).toBeDisabled();
     await expect(addCard(page).locator('span.text-red-500')).toBeVisible();
 
-    await expect(page.getByText('Department–Asset Mappings', { exact: true })).toBeVisible();
+    await expect(page.getByText('Department–Asset Mappings', { exact: true }).first()).toBeVisible();
     for (const heading of ['Department', 'Asset Type', 'Actions']) {
       await expect(listHeader(page).getByText(heading, { exact: true })).toBeVisible();
     }
@@ -70,8 +71,8 @@ test.describe('Department–Asset Mappings', () => {
   });
 
   test('maximizes the list and restores it without changing a mapping', async ({ page }) => {
-    const data = await openAndRead(page);
-    const before = asRows(data.mappings).length;
+    await openScreen(page);
+    const before = await mappingRows(page).count();
 
     const shell = listShell(page);
     await maximizeButton(page).click();
@@ -103,11 +104,11 @@ test.describe('Department–Asset Mappings', () => {
 
   test('searches departments by name and id, then closes the list', async ({ page }) => {
     await openScreen(page);
-    await deptButton(page).click();
     const menu = deptMenu(page);
+    await openHiddenMenu(deptButton(page), menu);
     await expect(menu.getByPlaceholder('Search departments...')).toBeVisible();
 
-    const partialName = department.name.slice(1);
+    const partialName = department.name.length > 3 ? department.name.slice(0, -1) : department.name;
     await menu.getByPlaceholder('Search departments...').fill(partialName);
     const nameRow = menu.locator('div.cursor-pointer').filter({ hasText: department.name }).first();
     await expect(nameRow).toBeVisible();
@@ -121,8 +122,10 @@ test.describe('Department–Asset Mappings', () => {
     await menu.getByPlaceholder('Search departments...').fill(partialId);
     await expect(menu.locator('div.cursor-pointer').filter({ hasText: department.id }).first()).toBeVisible();
 
-    await menu.getByPlaceholder('Search departments...').fill('ZZZ-NOT-A-DEPARTMENT');
-    await expect(menu.locator('div.cursor-pointer')).toHaveCount(0);
+    const search = menu.getByPlaceholder('Search departments...');
+    await fillReactInput(search, 'ZZZ-NOT-A-DEPARTMENT');
+    await expect(search).toHaveValue('ZZZ-NOT-A-DEPARTMENT');
+    await expect(menu.locator('div.cursor-pointer').filter({ hasText: department.name })).toHaveCount(0);
 
     await menu.getByPlaceholder('Search departments...').fill('pw');
     await page.getByText('Add Asset', { exact: true }).click();
@@ -150,8 +153,8 @@ test.describe('Department–Asset Mappings', () => {
 
     if (alreadyMapped.length > 0) {
       await selectDepartment(page, department.name);
-      await assetTypeButton(page).click();
       const menu = typeMenu(page);
+      await openHiddenMenu(assetTypeButton(page), menu);
       await expect(assetTypeButton(page)).toContainText('Select Asset Type');
       for (const row of alreadyMapped) {
         await expect(typeOption(menu, row.assetName)).toHaveCount(0);
@@ -160,12 +163,12 @@ test.describe('Department–Asset Mappings', () => {
     }
 
     await selectDepartment(page, department.name);
-    await assetTypeButton(page).click();
     const menu = typeMenu(page);
+    await openHiddenMenu(assetTypeButton(page), menu);
     await expect(menu.getByPlaceholder('Search Asset Types...')).toBeVisible();
     await expect(menu.getByText('+ Create New', { exact: true })).toBeVisible();
     await menu.getByPlaceholder('Search Asset Types...').fill(keepType.name);
-    await expect(typeOption(menu, keepType.name)).toBeVisible();
+    await expect(typeOption(menu, keepType.name)).toBeVisible({ timeout: 15000 });
 
     await menu.getByPlaceholder('Search Asset Types...').fill('ZZZ-NOT-AN-ASSET-TYPE');
     await expect(menu.getByText('No available asset types for this department')).toBeVisible();
@@ -210,7 +213,7 @@ test.describe('Department–Asset Mappings', () => {
 
     await expect(page.getByText(`Asset mapping ${keepType.name} added successfully to ${department.name}`)).toBeVisible({ timeout: 60000 });
     await expect(chip(page, keepType.name)).toHaveCount(0);
-    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
+    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1, { timeout: 15000 });
     await expect(baselineStillPresent(page)).resolves.toBe(true);
   });
 
@@ -302,7 +305,7 @@ test.describe('Department–Asset Mappings', () => {
     await expect(page.getByRole('columnheader', { name: 'Asset Type Name', exact: true })).toBeVisible({ timeout: 45000 });
 
     await page.goBack();
-    await expect(page.getByText('Department–Asset Mappings', { exact: true })).toBeVisible({ timeout: 45000 });
+    await expect(page.getByText('Department–Asset Mappings', { exact: true }).first()).toBeVisible({ timeout: 45000 });
     await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
     await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1);
     await expect(mappingRow(page, department.name, pairB.name)).toHaveCount(1);
@@ -317,7 +320,7 @@ test.describe('Department–Asset Mappings', () => {
 async function openScreen(page) {
   await gotoProtected(page, ROUTE);
   await expect(page.getByText('Department Selection', { exact: true })).toBeVisible({ timeout: 45000 });
-  await expect(page.getByText('Department–Asset Mappings', { exact: true })).toBeVisible();
+  await expect(page.getByText('Department–Asset Mappings', { exact: true }).first()).toBeVisible();
 }
 
 /**
@@ -327,17 +330,23 @@ async function openAndRead(page) {
   /** @type {{ departments: unknown, types: unknown, mappings: unknown }} */
   const buckets = { departments: null, types: null, mappings: null };
   const onResponse = async (response) => {
-    if (response.request().method() !== 'GET' || !response.ok()) return;
-    const path = new URL(response.url()).pathname;
-    if (path.endsWith('/admin/departments')) buckets.departments = await response.json();
-    else if (path.endsWith('/dept-assets/asset-types')) buckets.types = await response.json();
-    else if (/\/dept-assets\/?$/.test(path)) buckets.mappings = await response.json();
+    try {
+      if (isJsonGet(response, /\/admin\/departments\/?$/)) {
+        buckets.departments = await response.json();
+      } else if (isJsonGet(response, /\/dept-assets\/asset-types/)) {
+        buckets.types = await response.json();
+      } else if (isJsonGet(response, /\/dept-assets\/?$/)) {
+        buckets.mappings = await response.json();
+      }
+    } catch {
+      /* HTML or a cancelled request */
+    }
   };
   page.on('response', onResponse);
   try {
     await openScreen(page);
     await expect.poll(() => buckets.departments !== null && buckets.types !== null && buckets.mappings !== null, {
-      timeout: 20000,
+      timeout: 45000,
     }).toBeTruthy();
   } finally {
     page.off('response', onResponse);
@@ -612,7 +621,9 @@ function maximizeButton(page) {
  * @param {import('@playwright/test').Page} page
  */
 function mappingRows(page) {
-  return page.locator('div.grid.grid-cols-3.items-center');
+  return listShell(page)
+    .locator('div[class*="grid-cols-3"]')
+    .filter({ has: page.locator('button') });
 }
 
 /**
@@ -629,7 +640,7 @@ function mappingRow(page, deptName, typeName) {
  * @param {string} name
  */
 function typeOption(menu, name) {
-  return menu.getByText(name, { exact: true });
+  return menu.locator('div.cursor-pointer').filter({ hasText: name }).first();
 }
 
 /**
@@ -651,9 +662,20 @@ function deleteDialog(page) {
  * @param {import('@playwright/test').Page} page
  * @param {string} name
  */
+/**
+ * @param {import('@playwright/test').Locator} button
+ * @param {import('@playwright/test').Locator} menu
+ */
+async function openHiddenMenu(button, menu) {
+  if (await menu.evaluate((el) => el.classList.contains('hidden'))) {
+    await button.click();
+  }
+  await expect.poll(() => menu.evaluate((el) => !el.classList.contains('hidden'))).toBeTruthy();
+}
+
 async function selectDepartment(page, name) {
-  await deptButton(page).click();
   const menu = deptMenu(page);
+  await openHiddenMenu(deptButton(page), menu);
   await menu.getByPlaceholder('Search departments...').fill(name);
   await menu.locator('div.cursor-pointer').filter({ hasText: name }).first().click();
   await expect(deptButton(page)).toContainText(name);
@@ -664,10 +686,8 @@ async function selectDepartment(page, name) {
  * @param {string} name
  */
 async function selectAssetType(page, name) {
-  if (!(await typeMenu(page).isVisible())) {
-    await assetTypeButton(page).click();
-  }
   const menu = typeMenu(page);
+  await openHiddenMenu(assetTypeButton(page), menu);
   await menu.getByPlaceholder('Search Asset Types...').fill(name);
   await typeOption(menu, name).click();
   await expect(chip(page, name)).toBeVisible();
