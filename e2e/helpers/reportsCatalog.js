@@ -1,0 +1,198 @@
+// @ts-check
+
+/**
+ * Every screen under the sidebar Reports group, plus child report routes.
+ * kind:
+ *   layout     — shared ReportLayout (Active Filters + Preview + Generate)
+ *   extras     — custom report with ReportPreviewButton / tabs
+ *   configure  — must configure (period / type) before data appears
+ *   consume    — spare part consumption (SPAREPARTMGMT in Reports)
+ *   redirect   — Out of Stock now lands on Stock & Purchase
+ */
+export const REPORTS_SIDEBAR = [
+  {
+    id: 'ASSETLIFECYCLEREPORT',
+    name: 'Asset Lifecycle Report',
+    path: '/reports/asset-lifecycle-report',
+    title: 'Asset Lifecycle Report',
+    kind: 'layout',
+    generate: true,
+  },
+  {
+    id: 'ASSETREPORT',
+    name: 'Asset Report',
+    path: '/reports/asset-report',
+    title: 'Asset Register',
+    kind: 'layout',
+    generate: true,
+  },
+  {
+    id: 'QAAUDITREPORT',
+    name: 'QA Audit Report',
+    path: '/reports/qa-audit-report',
+    title: 'QA Audit Report',
+    kind: 'layout',
+    generate: false,
+    hideTable: true,
+  },
+  {
+    id: 'ASSETVALUATION',
+    name: 'Asset Valuation',
+    path: '/reports/asset-valuation',
+    title: 'Asset Valuation',
+    kind: 'layout',
+    generate: true,
+    extraText: /Asset Valuation Summary|Current Market|Active Filters/,
+  },
+  {
+    id: 'ASSETWORKFLOWHISTORY',
+    name: 'Asset Workflow History',
+    path: '/reports/asset-workflow-history',
+    title: 'Asset Workflow History',
+    kind: 'layout',
+    generate: true,
+  },
+  {
+    id: 'BREAKDOWNHISTORY',
+    name: 'Breakdown History',
+    path: '/reports/breakdown-history',
+    title: 'Breakdown History',
+    kind: 'layout',
+    generate: true,
+    childLink: 'Breakdown Reopen Details',
+  },
+  {
+    id: 'SLAREPORT',
+    name: 'SLA Reports',
+    path: '/reports/sla-report',
+    title: 'SLA Reports',
+    kind: 'layout',
+    generate: true,
+  },
+  {
+    id: 'MAINTENANCEHISTORY',
+    name: 'Maintenance History of Asset',
+    path: '/reports/maintenance-history',
+    title: 'Maintenance History',
+    kind: 'layout',
+    generate: true,
+  },
+  {
+    id: 'USAGEBASEDASSETREPORT',
+    name: 'Usage Based Asset Report',
+    path: '/reports/usage-based-asset',
+    title: /Usage-?Based Asset Report/,
+    kind: 'layout',
+    generate: true,
+  },
+  {
+    id: 'AUDITREPORT',
+    name: 'Audit Reports',
+    path: '/reports/audit-reports',
+    title: 'Audit Reports',
+    kind: 'configure',
+    extraText: /No report yet|View|Period/,
+  },
+  {
+    id: 'CONSOLIDATEDASSETREPORT',
+    name: 'Consolidated Asset Register',
+    path: '/reports/consolidated-asset-register',
+    title: 'Asset Register',
+    kind: 'extras',
+    extraText: /Select an institution|Overview|As of/,
+    tabs: ['Overview', 'Asset types', 'Asset register'],
+  },
+  {
+    id: 'SLAVENDORPERFORMANCE',
+    name: 'SLA & Vendor Performance',
+    path: '/reports/sla-vendor-performance',
+    title: 'SLA & Vendor Performance',
+    kind: 'extras',
+    extraText: /Filters|SLA compliance/,
+  },
+  {
+    id: 'WORKFORCEREPORT',
+    name: 'Engineering Team Productivity Report',
+    path: '/reports/workforce',
+    title: 'Engineering Team Productivity Report',
+    kind: 'extras',
+    extraText: /Period|Assignments|Download report/,
+    tabs: ['Assignments', 'Closures', 'Backlog', 'SLA performance', 'Workload', 'Productivity'],
+  },
+  {
+    id: 'MAINTENANCESTATUSREPORT',
+    name: 'Maintenance Status Report',
+    path: '/reports/maintenance-status',
+    title: 'Facility Maintenance Report',
+    kind: 'configure',
+    extraText: /Configure report|Period/,
+  },
+  {
+    id: 'PURCHASEREQUIREMENTREPORT',
+    name: 'Stock & Purchase',
+    path: '/reports/purchase-requirement',
+    title: 'Stock & Purchase',
+    kind: 'extras',
+    extraText: /Filters|Out of stock|Refresh/,
+  },
+  {
+    id: 'OUTOFSTOCKREPORT',
+    name: 'Out of Stock (redirect)',
+    path: '/reports/out-of-stock',
+    title: 'Stock & Purchase',
+    kind: 'redirect',
+    redirectsTo: /\/reports\/purchase-requirement/,
+  },
+  {
+    id: 'SPAREPARTSREPORT',
+    name: 'Spare Parts Report',
+    path: '/reports/spare-parts-report',
+    title: 'Spare Parts Report',
+    kind: 'layout',
+    generate: true,
+  },
+  {
+    id: 'SPAREPARTMGMT',
+    name: 'Spare part consumption report',
+    path: '/spare-part-management',
+    title: 'Spare part consumption report',
+    kind: 'consume',
+    extraText: /Active Filters|No report yet|Report type/,
+  },
+  {
+    id: 'CONSUMABLESREPORT',
+    name: 'Consumables Report',
+    path: '/reports/consumables',
+    title: 'Consumables Report',
+    kind: 'extras',
+    extraText: /Overview|Preview|Export/,
+    tabs: ['Overview'],
+  },
+  {
+    id: 'REOPENEDBREAKDOWNS',
+    name: 'Reopened Breakdowns',
+    path: '/reports/reopened-breakdowns',
+    title: 'Reopened Breakdowns',
+    kind: 'layout',
+    generate: true,
+  },
+  {
+    id: 'UTILITYREPORT',
+    name: 'Utility Consumption Report',
+    path: '/reports/utility-consumption',
+    title: 'Utility Consumption Report',
+    kind: 'layout',
+    generate: true,
+  },
+];
+
+export const REPORTS_CHILD_SCREENS = [
+  {
+    id: 'BREAKDOWN_REOPEN_DETAILS',
+    name: 'Breakdown Reopen Details',
+    path: '/reports/breakdown-reopen-details',
+    title: /Reopen|Breakdown/,
+    kind: 'layout',
+    parent: 'BREAKDOWNHISTORY',
+  },
+];
