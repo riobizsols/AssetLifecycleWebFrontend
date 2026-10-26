@@ -1,6 +1,5 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { clickUnblocked, toastMessage } from './helpers/screenAccess.js';
 import {
   openAdminScreen,
   skipIfInaccessible,
@@ -10,8 +9,8 @@ import {
 const PATH = '/adminsettings/configuration/bulk-serial-number-print';
 
 /**
- * Bulk Serial Number Print. Proceed to Print posts to the print queue —
- * only clicked when nothing is selected (validation toast).
+ * Bulk Serial Number Print. Proceed to Print posts to the print queue.
+ * With nothing selected the button stays disabled, so it is not clicked.
  */
 
 async function openBulkPrint(page) {
@@ -72,14 +71,15 @@ test.describe('Bulk Serial Number Print', () => {
       });
     }
 
-    await clickUnblocked(page, 'Proceed to Print (0)');
-    await expect(toastMessage(page, 'Please select at least one asset')).toBeVisible({ timeout: 10000 });
+    const proceed = page.getByRole('button', { name: 'Proceed to Print (0)' });
+    await expect(proceed).toBeVisible();
+    await expect(proceed).toBeDisabled();
 
-    await page.getByTitle('Go Back').click();
+    await page.getByRole('button', { name: 'Go Back' }).click();
     await expect(page.getByRole('heading', { name: 'Step 1: Select Asset Type' })).toBeVisible();
     test.info().annotations.push({
       type: 'condition',
-      description: 'PRINT — empty selection toast; queue not written.',
+      description: 'PRINT — Proceed disabled at 0 selected; queue not written.',
     });
   });
 });
