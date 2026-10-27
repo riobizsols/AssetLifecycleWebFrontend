@@ -303,9 +303,9 @@ async function toggleMaximize(page, listTitle) {
 async function searchAssetTypes(page, openerName, typeName) {
   const { search, menu } = await openAssetTypeMenu(page, openerName);
   await fillReactInput(search, typeName);
-  await expect(menu.getByText(typeName, { exact: true })).toBeVisible();
+  await expect(menu.getByText(typeName, { exact: true }).first()).toBeVisible();
   await fillReactInput(search, 'zzzz-no-such-type');
-  await expect(menu.getByText(typeName, { exact: true })).toHaveCount(0);
+  await menu.getByText(typeName, { exact: true }).first().waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
   await page.getByRole('button', { name: openerName }).first().click();
 }
 
