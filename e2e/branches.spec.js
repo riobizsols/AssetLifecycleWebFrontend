@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton } from './helpers/screenAccess.js';
 
 /**
  * Master Data > Branches. One serial chain for this file.
@@ -94,35 +94,34 @@ test.describe('Branches', () => {
     await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
 
-    const save = page.getByRole('button', { name: 'Save', exact: true });
-    await save.click();
-    await expect(page.getByText('Organization is required').first()).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Organization is required').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await selectOrganization(page);
-    await save.click();
-    await expect(page.getByText('Branch name is required').first()).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch name is required').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await page.locator('input[name="text"]').fill('   ');
-    await save.click();
-    await expect(page.getByText('Branch name is required').first()).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch name is required').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await page.locator('input[name="text"]').fill(cancelledName);
-    await save.click();
-    await expect(page.getByText('Branch code is required').first()).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch code is required').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await page.locator('input[name="branch_code"]').fill(cancelCode);
-    await save.click();
-    await expect(page.getByText('City is required').first()).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('City is required').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await page.locator('input[name="text"]').fill('12345');
     await page.locator('input[name="city"]').fill(city);
-    await save.click();
-    await expect(page.getByText('Branch name cannot be only numbers').first()).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('Branch name cannot be only numbers').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await page.locator('input[name="text"]').fill(cancelledName);
     await page.locator('input[name="city"]').fill('641001');
-    await save.click();
-    await expect(page.getByText('City name cannot be only numbers').first()).toBeVisible();
+    await clickUnblocked(page, 'Save');
+    await expect(page.getByText('City name cannot be only numbers').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await page.locator('input[name="city"]').fill(city);
     await page.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true });

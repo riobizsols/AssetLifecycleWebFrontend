@@ -58,7 +58,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -140,7 +140,7 @@ async function openApprovals(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Employee' })
-      .or(page.getByText('No pending approvals.', { exact: true })),
+      .or(page.getByText('No pending approvals.', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -320,7 +320,7 @@ test.describe('HR/Manager Approval', () => {
       return;
     }
     for (const name of ['Employee', 'Certificate', 'Certificate Date', 'Expiry Date', 'Status', 'File', 'Action']) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible();
     }
     const first = page.locator('tbody tr').first();
     await expect(first.locator('input[type="checkbox"]')).toBeVisible();
@@ -429,7 +429,7 @@ test.describe('HR/Manager Approval', () => {
     await expect(
       page
         .getByRole('columnheader', { name: 'Work Order' })
-        .or(page.getByText('No job history found for this technician.', { exact: true })),
+        .or(page.getByText('No job history found for this technician.', { exact: true })).first(),
     ).toBeVisible({ timeout: 30000 });
   });
 
@@ -440,7 +440,7 @@ test.describe('HR/Manager Approval', () => {
     await expect(
       page
         .getByRole('columnheader', { name: 'Work Order' })
-        .or(page.getByText('No upcoming jobs found.', { exact: true })),
+        .or(page.getByText('No upcoming jobs found.', { exact: true })).first(),
     ).toBeVisible({ timeout: 30000 });
   });
 

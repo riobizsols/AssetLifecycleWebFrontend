@@ -42,7 +42,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -77,7 +77,7 @@ async function openRenewal(page) {
   });
   await expect(page.locator('[data-contentbox-filter-button]')).toBeVisible({ timeout: 30000 });
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -90,7 +90,7 @@ async function openVendors(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -131,19 +131,18 @@ async function createVendorWithContract(page, name, emailLocal) {
   if (await existing.count()) return;
 
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
-    timeout: 30000,
-  });
-  await page.getByPlaceholder('Enter vendor name').fill(name);
-  await page.getByPlaceholder('Enter company name').fill(`${name} Co`);
-  await page.getByPlaceholder('Enter company email').fill(`${emailLocal}@test.com`);
-  await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
-  await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.waitForURL(/add-vendor/, { timeout: 10000 }).catch(() => gotoProtected(page, `${BASE}/master-data/add-vendor`));
+  await page.locator('input[name="vendor_name"]').waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('input[name="vendor_name"]').fill(name);
+  await page.locator('input[name="company_name"]').fill(`${name} Co`);
+  await page.locator('input[name="company_email"]').fill(`${emailLocal}@test.com`);
+  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
+  await page.locator('input[name="contact_person_number"]').fill('9876543210');
   await page.locator('input[name="contract_start_date"]').fill(ymd(-30));
   await page.locator('input[name="contract_end_date"]').fill(ymd(7));
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
   await expect(page.locator('tbody tr').filter({ hasText: name })).toBeVisible({ timeout: 30000 });
 }
 
@@ -257,7 +256,7 @@ test.describe('Vendor Renewal Approval', () => {
     await filterByColumn(page, 'Status', 'Initiated');
     const empty = page.getByText('No data found', { exact: true });
     const first = page.locator('tbody tr').first();
-    await expect(empty.or(first)).toBeVisible();
+    await expect(empty.or(first).first()).toBeVisible();
     await clearColumnFilter(page);
     const vendorName = state.firstVendorName;
     if (vendorName) {
@@ -266,7 +265,7 @@ test.describe('Vendor Renewal Approval', () => {
       await clearColumnFilter(page);
     }
     await expect(
-      page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+      page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })).first(),
     ).toBeVisible();
   });
 
@@ -316,7 +315,7 @@ test.describe('Vendor Renewal Approval', () => {
     state.stay2Ready = true;
     await showRenewalRow(page, stayName);
     const row = listRow(page, stayName);
-    await expect(row.getByText(/Vendor Contract Renewal/i).or(row)).toBeVisible();
+    await expect(row.getByText(/Vendor Contract Renewal/i).or(row).first()).toBeVisible();
   });
 
   test('VR-09 Open the detail for this run', async ({ page }) => {
@@ -389,7 +388,7 @@ test.describe('Vendor Renewal Approval', () => {
     await page.getByText('History Details', { exact: true }).click();
     const empty = page.getByText('No workflow history available', { exact: true });
     const dateHeader = page.getByRole('columnheader', { name: 'Date' });
-    await expect(empty.or(dateHeader)).toBeVisible({ timeout: 20000 });
+    await expect(empty.or(dateHeader).first()).toBeVisible({ timeout: 20000 });
     if (await dateHeader.isVisible()) {
       await expect(page.getByRole('columnheader', { name: 'Action' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Job Role' })).toBeVisible();

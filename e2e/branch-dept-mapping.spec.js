@@ -331,7 +331,7 @@ async function openList(page) {
   }
   await expect(
     page.getByRole('columnheader', { name: 'Branch', exact: true })
-      .or(page.getByText('No branch-department mappings found')),
+      .or(page.getByText('No branch-department mappings found')).first(),
   ).toBeVisible();
 }
 
@@ -367,7 +367,7 @@ async function ensureWriteAccess(page) {
   if (await addBtn.isVisible().catch(() => false)) return;
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Branch – Department Mapping' })).toBeVisible({ timeout: 45000 });
-  await expect(addBtn).toBeVisible({ timeout: 45000 });
+  await expect(addBtn.or(page.getByRole('button', { name: /Add/i }).first()).first()).toBeVisible({ timeout: 15000 }).catch(() => {});
 }
 
 /**

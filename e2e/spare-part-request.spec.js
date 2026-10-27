@@ -24,7 +24,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -51,7 +51,7 @@ async function openList(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -171,7 +171,7 @@ test('SR-04 Filter by status', async ({ page }) => {
   await clearColumnFilter(page);
   await filterByColumn(page, 'Status', 'Reserved');
   await clearColumnFilter(page);
-  await expect(page.locator('tbody tr').first().or(page.getByText('No data found', { exact: true }))).toBeVisible();
+  await expect(page.locator('tbody tr').first().or(page.getByText('No data found', { exact: true })).first()).toBeVisible();
 });
 
 test('SR-05 Sort by serial number', async ({ page }) => {

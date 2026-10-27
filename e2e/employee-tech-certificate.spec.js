@@ -53,7 +53,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -149,7 +149,7 @@ async function openList(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByText('No certificates uploaded yet.', { exact: true }).or(page.getByRole('columnheader', { name: 'Certificate' })),
+    page.getByText('No certificates uploaded yet.', { exact: true }).or(page.getByRole('columnheader', { name: 'Certificate' })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 

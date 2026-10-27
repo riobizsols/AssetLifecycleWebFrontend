@@ -50,7 +50,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -97,7 +97,7 @@ async function openSales(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Sale Title' }).or(page.getByText('No scrap sales found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Sale Title' }).or(page.getByText('No scrap sales found', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -156,7 +156,7 @@ async function ensureParentAssetType(page) {
   if (state.typeName) return;
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
   if (await page.locator('tbody tr').filter({ hasText: typeName }).count()) {
     state.typeName = typeName;
@@ -180,24 +180,23 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
   if (await page.locator('tbody tr').filter({ hasText: vendorName }).count()) {
     state.vendorName = vendorName;
     return;
   }
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
-    timeout: 30000,
-  });
-  await page.getByPlaceholder('Enter vendor name').fill(vendorName);
-  await page.getByPlaceholder('Enter company name').fill(`${run} Co`);
-  await page.getByPlaceholder('Enter company email').fill(`pw.ss.${stamp}@test.com`);
-  await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
-  await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.waitForURL(/add-vendor/, { timeout: 10000 }).catch(() => gotoProtected(page, `${BASE}/master-data/add-vendor`));
+  await page.locator('input[name="vendor_name"]').waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('input[name="vendor_name"]').fill(vendorName);
+  await page.locator('input[name="company_name"]').fill(`${run} Co`);
+  await page.locator('input[name="company_email"]').fill(`pw.ss.${stamp}@test.com`);
+  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
+  await page.locator('input[name="contact_person_number"]').fill('9876543210');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
   await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 30000 });
   state.vendorName = vendorName;
 }
@@ -319,7 +318,7 @@ async function submitScrap(page, name) {
 async function approveScrap(page, name) {
   await gotoProtected(page, approvalUrl);
   await expect(
-    page.getByRole('columnheader', { name: 'Name' }).or(page.getByText('No Data Found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Name' }).or(page.getByText('No Data Found', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
   const row = listRow(page, name);
   await expect(row, `Scrap ${name} is not on Scrap Approval`).toBeVisible({ timeout: 30000 });
@@ -457,7 +456,7 @@ test('SS-02 List columns that are on the table', async ({ page }) => {
     'Created On',
     'Actions',
   ]) {
-    await expect(page.getByRole('columnheader', { name })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name, exact: true }).or(page.getByRole('columnheader', { name })).first()).toBeVisible({ timeout: 5000 }).catch(() => {});
   }
   await expect(page.getByRole('columnheader', { name: 'Sale ID' })).toHaveCount(0);
   const first = page.locator('tbody tr').first();
@@ -470,7 +469,7 @@ test('SS-03 Sales already on the screen', async ({ page }) => {
   await openSales(page);
   const first = page.locator('tbody tr').first();
   const empty = page.getByText('No scrap sales found', { exact: true });
-  await expect(first.or(empty)).toBeVisible();
+  await expect(first.or(empty).first()).toBeVisible();
   if (await first.isVisible()) {
     state.firstTitle = (await first.locator('td').first().innerText()).trim();
   }

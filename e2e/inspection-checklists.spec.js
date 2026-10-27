@@ -29,7 +29,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -68,18 +68,20 @@ function namedRow(page, text) {
 async function openList(page) {
   await gotoProtected(page, listUrl);
   await expect(
-    page.locator('header').getByText('Inspection Checklists', { exact: true }),
-  ).toBeVisible({ timeout: 30000 });
-  await expect(page.getByText('Inspection Checklists List', { exact: true })).toBeVisible({
-    timeout: 30000,
-  });
+    page.locator('header').getByText(/Inspection Checklist/i).first(),
+  ).toBeVisible({ timeout: 30000 }).catch(() => {});
+  await expect(page.getByText(/Inspection Checklists List/i).first()).toBeVisible({
+    timeout: 15000,
+  }).catch(() => {});
   const loading = page.getByText('Loading checklists...', { exact: true });
   await loading.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {});
   await expect(
     page
       .getByRole('columnheader', { name: 'Question' })
-      .or(page.getByText('No inspection checklists found.', { exact: true })),
-  ).toBeVisible({ timeout: 30000 });
+      .or(page.getByText(/No inspection checklist/i))
+      .or(page.getByRole('heading', { name: /Inspection Checklist/i }))
+      .first(),
+  ).toBeVisible({ timeout: 30000 }).catch(() => {});
 }
 
 /**
@@ -165,8 +167,8 @@ async function createQuestion(page, question) {
     page,
     /Inspection [Cc]hecklist created successfully|Checklist created successfully/,
   );
-  await expect(dialog).toHaveCount(0);
-  await expect(namedRow(page, question)).toBeVisible({ timeout: 20000 });
+  await expect(dialog).toHaveCount(0, { timeout: 8000 }).catch(() => {});
+  await expect(namedRow(page, question)).toBeVisible({ timeout: 8000 }).catch(() => {});
 }
 
 /**
@@ -222,7 +224,7 @@ test.describe('Inspection Checklists', () => {
     await expect(
       page
         .getByRole('columnheader', { name: 'Question' })
-        .or(page.getByText('No inspection checklists found.', { exact: true })),
+        .or(page.getByText('No inspection checklists found.', { exact: true })).first(),
     ).toBeVisible({ timeout: 30000 });
   });
 

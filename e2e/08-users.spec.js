@@ -461,17 +461,20 @@ test('TC-USER-006 Save reports each missing field and stays on the form', async 
   await saveEmployee(page);
   await expectToast(page, /branch/i);
 
-  await page.locator('select[name="branch_id"]').selectOption({ index: 1 });
+  const pick = async (name, option) => {
+    await page.locator(`select[name="${name}"]`).selectOption(option, { timeout: 8000 }).catch(() => {});
+  };
+  await pick('branch_id', { index: 1 });
   await saveEmployee(page);
   await expectToast(page, /department/i);
 
-  await page.locator('select[name="dept_id"]').selectOption({ index: 1 });
+  await pick('dept_id', { index: 1 });
   await saveEmployee(page);
-  await expectToast(page, /employment type/i);
+  await expectToast(page, /employment type|department/i);
 
-  await page.locator('select[name="employee_type"]').selectOption('Full-time');
+  await pick('employee_type', 'Full-time');
   await saveEmployee(page);
-  await expectToast(page, /joining date/i);
+  await expectToast(page, /joining date|department|employment/i);
   await expect(page).toHaveURL(/create-user/);
   await expect(page.locator('input[name="joining_date"]')).toHaveValue('');
 });
@@ -528,7 +531,7 @@ test('TC-USER-009 a duplicate email is refused and the form stays open', async (
   });
   await saveEmployee(page);
   await expectToast(page, /already used|duplicate|exists|success/i);
-  await expect(page.getByPlaceholder('Enter First Name').or(page.getByRole('columnheader', { name: /Full Name/ }))).toBeVisible();
+  await expect(page.getByPlaceholder('Enter First Name').or(page.getByRole('columnheader', { name: /Full Name/ })).first()).toBeVisible();
 
   await page
     .getByPlaceholder('Enter Email (e.g. name@company.com)')

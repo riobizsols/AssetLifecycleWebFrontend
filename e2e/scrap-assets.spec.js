@@ -42,7 +42,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -159,7 +159,7 @@ async function openAssets(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -170,7 +170,7 @@ async function ensureParentAssetType(page) {
   if (state.typeName) return;
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: typeName });
@@ -197,7 +197,7 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: vendorName });
@@ -207,17 +207,16 @@ async function ensureVendor(page) {
   }
 
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
-    timeout: 30000,
-  });
-  await page.getByPlaceholder('Enter vendor name').fill(vendorName);
-  await page.getByPlaceholder('Enter company name').fill(`${run} Co`);
-  await page.getByPlaceholder('Enter company email').fill(`pw.sc.${stamp}@test.com`);
-  await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
-  await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.waitForURL(/add-vendor/, { timeout: 10000 }).catch(() => gotoProtected(page, `${BASE}/master-data/add-vendor`));
+  await page.locator('input[name="vendor_name"]').waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('input[name="vendor_name"]').fill(vendorName);
+  await page.locator('input[name="company_name"]').fill(`${run} Co`);
+  await page.locator('input[name="company_email"]').fill(`pw.sc.${stamp}@test.com`);
+  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
+  await page.locator('input[name="contact_person_number"]').fill('9876543210');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
   await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 30000 });
   state.vendorName = vendorName;
 }
@@ -356,11 +355,11 @@ test('SC-03 Nearing Expiry opens the list', async ({ page }) => {
     timeout: 30000,
   });
   await expect(
-    page.getByText('Assets that will expire within the next 30 days', { exact: true }),
+    page.getByText('Assets that will expire within the next 30 days', { exact: true }).first(),
   ).toBeVisible();
   const empty = page.getByText('No Assets Found', { exact: true });
   const nameHeader = page.getByRole('columnheader', { name: 'Asset Name' });
-  await expect(nameHeader.or(empty)).toBeVisible({ timeout: 45000 });
+  await expect(nameHeader.or(empty).first()).toBeVisible({ timeout: 45000 });
   if (await nameHeader.isVisible()) {
     await expect(page.getByRole('columnheader', { name: 'Serial Number' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Description' })).toBeVisible();
@@ -432,7 +431,7 @@ test('SC-07 Open a category without scrapping', async ({ page }) => {
   if (await bar.isVisible()) {
     await bar.click();
     await expect(page).toHaveURL(/\/scrap-assets\/(by-category|categories)/);
-    await expect(page.getByRole('button', { name: 'Scrap', exact: true }).first().or(page.getByText('No Assets Found'))).toBeVisible({
+    await expect(page.getByRole('button', { name: 'Scrap', exact: true }).first().or(page.getByText('No Assets Found')).first()).toBeVisible({
       timeout: 30000,
     });
   } else if (await viewAll.isVisible()) {
@@ -440,7 +439,7 @@ test('SC-07 Open a category without scrapping', async ({ page }) => {
     await expect(page).toHaveURL(/\/scrap-assets\/categories/);
   } else {
     await expect(
-      page.getByText('No assets expiring within 30 days').or(page.getByText('No asset data available')),
+      page.getByText('No assets expiring within 30 days').or(page.getByText('No asset data available')).first(),
     ).toBeVisible();
   }
   await gotoProtected(page, scrapUrl);

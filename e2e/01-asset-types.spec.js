@@ -396,6 +396,6 @@ async function createAssetForType(page, typeName) {
   await clickUnblocked(page, 'Save');
   await expect(
     page.getByText(/created successfully|asset created|success/i).first()
-      .or(page.getByText(vendorName).first()),
+      .or(page.getByText(vendorName).first()).first(),
   ).toBeVisible({ timeout: 60000 }).catch(() => {});
 }

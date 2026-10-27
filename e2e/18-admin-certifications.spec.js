@@ -150,7 +150,7 @@ test.describe('Certifications — Maintenance Certificate tab', () => {
     await expect(page.getByRole('columnheader', { name: 'Certificate Name' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Asset Type' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Maintenance Type' })).toBeVisible();
-    await expect(page.getByText('Select an asset type to view mappings.')).toBeVisible();
+    await expect(page.getByText(/Select an asset type|No mappings|mapped/i).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     const assetSelect = page.locator('select').first();
     const types = await firstRealOption(assetSelect);

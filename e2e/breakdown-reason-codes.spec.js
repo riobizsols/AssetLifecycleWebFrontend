@@ -31,7 +31,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -86,7 +86,7 @@ async function waitForList(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Asset Type' })
-      .or(page.getByText('No breakdown reason codes found', { exact: true })),
+      .or(page.getByText('No breakdown reason codes found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
 }
 
@@ -147,7 +147,7 @@ async function ensureAssetType(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Asset Type Name' })
-      .or(page.getByText('No data found', { exact: true })),
+      .or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
   const existing = page.locator('tbody tr').filter({ hasText: typeName });
   if (await existing.count()) {

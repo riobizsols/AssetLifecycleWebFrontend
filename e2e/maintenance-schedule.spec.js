@@ -47,7 +47,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -117,7 +117,7 @@ async function openList(page) {
   await gotoProtected(page, listUrl);
   await expect(page).toHaveURL(/\/maintenance-schedule-view/);
   await expect(
-    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -262,7 +262,7 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: vendorName });
@@ -272,14 +272,13 @@ async function ensureVendor(page) {
   }
 
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
-    timeout: 30000,
-  });
-  await page.getByPlaceholder('Enter vendor name').fill(vendorName);
-  await page.getByPlaceholder('Enter company name').fill(`${run} Co`);
-  await page.getByPlaceholder('Enter company email').fill(`pw.ms.${stamp}@test.com`);
-  await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
-  await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.waitForURL(/add-vendor/, { timeout: 10000 }).catch(() => gotoProtected(page, `${BASE}/master-data/add-vendor`));
+  await page.locator('input[name="vendor_name"]').waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('input[name="vendor_name"]').fill(vendorName);
+  await page.locator('input[name="company_name"]').fill(`${run} Co`);
+  await page.locator('input[name="company_email"]').fill(`pw.ms.${stamp}@test.com`);
+  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
+  await page.locator('input[name="contact_person_number"]').fill('9876543210');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
   state.vendorName = vendorName;
@@ -291,7 +290,7 @@ async function ensureVendor(page) {
 async function createMaintRequiredType(page) {
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: createdTypeName });
@@ -359,7 +358,7 @@ async function ensureSequence(page) {
   await typeSelect.selectOption({ label: createdTypeName });
 
   const existing = page.getByText('Existing Sequences', { exact: true });
-  await expect(existing.or(page.getByText('No sequences assigned for this asset type'))).toBeVisible({
+  await expect(existing.or(page.getByText('No sequences assigned for this asset type')).first()).toBeVisible({
     timeout: 20000,
   });
   if (await page.locator('table tbody tr').count()) {

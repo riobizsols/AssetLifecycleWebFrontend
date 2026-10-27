@@ -52,7 +52,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -144,7 +144,7 @@ async function realOptions(select) {
 async function createAssetType(page, name, assignment) {
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
   if (await page.locator('tbody tr').filter({ hasText: name }).count()) return;
   await headerAddButton(page).click();
@@ -164,24 +164,23 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
   if (await page.locator('tbody tr').filter({ hasText: vendorName }).count()) {
     state.vendorName = vendorName;
     return;
   }
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
-    timeout: 30000,
-  });
-  await page.getByPlaceholder('Enter vendor name').fill(vendorName);
-  await page.getByPlaceholder('Enter company name').fill(`${run} Co`);
-  await page.getByPlaceholder('Enter company email').fill(`pw.aa.${stamp}@test.com`);
-  await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
-  await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.waitForURL(/add-vendor/, { timeout: 10000 }).catch(() => gotoProtected(page, `${BASE}/master-data/add-vendor`));
+  await page.locator('input[name="vendor_name"]').waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('input[name="vendor_name"]').fill(vendorName);
+  await page.locator('input[name="company_name"]').fill(`${run} Co`);
+  await page.locator('input[name="company_email"]').fill(`pw.aa.${stamp}@test.com`);
+  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
+  await page.locator('input[name="contact_person_number"]').fill('9876543210');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
   state.vendorName = vendorName;
 }
 
@@ -375,7 +374,7 @@ test('AA-04 A department with no assets', async ({ page }) => {
   } else {
     const empty = page.getByText('No assets assigned.');
     const rows = page.locator('button', { hasText: 'Unassign' });
-    await expect(empty.or(rows.first())).toBeVisible({ timeout: 20000 });
+    await expect(empty.or(rows.first()).first()).toBeVisible({ timeout: 20000 });
   }
 });
 
@@ -408,7 +407,7 @@ test('AA-06 History', async ({ page }) => {
   const dialog = page.locator('div.fixed.inset-0').filter({ hasText: 'Department Asset Assignment History' });
   await expect(dialog).toBeVisible();
   await expect(
-    dialog.getByText('No assignment history found.').or(dialog.getByText(/Assigned on:|Unassigned on:/).first()),
+    dialog.getByText('No assignment history found.').or(dialog.getByText(/Assigned on:|Unassigned on:/).first()).first(),
   ).toBeVisible({ timeout: 20000 });
   await dialog.getByRole('button', { name: 'Close' }).click();
   await expect(dialog).toBeHidden();

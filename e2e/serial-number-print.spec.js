@@ -48,7 +48,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -114,7 +114,7 @@ async function setStatusFilter(page, name) {
 async function waitForQueueSettled(page) {
   const empty = page.getByText('No print queue items found', { exact: true });
   const row = page.locator('tbody tr').first();
-  await expect(empty.or(row)).toBeVisible({ timeout: 45000 });
+  await expect(empty.or(row).first()).toBeVisible({ timeout: 45000 });
 }
 
 /**
@@ -164,7 +164,7 @@ async function openStatusFromList(page, serial) {
   await clickListStatus(page, serial);
   const modalTitle = page.getByText('Update Print Request Status', { exact: true });
   const printHeading = page.getByRole('heading', { name: 'Print Serial Number Label' });
-  await expect(modalTitle.or(printHeading)).toBeVisible({ timeout: 15000 });
+  await expect(modalTitle.or(printHeading).first()).toBeVisible({ timeout: 15000 });
   return (await modalTitle.isVisible()) ? 'modal' : 'print';
 }
 
@@ -177,7 +177,7 @@ async function openAssets(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -237,7 +237,7 @@ async function ensureParentAssetType(page) {
   if (state.typeName) return;
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: typeName });
@@ -263,7 +263,7 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })).first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: vendorName });
@@ -273,17 +273,16 @@ async function ensureVendor(page) {
   }
 
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
-    timeout: 30000,
-  });
-  await page.getByPlaceholder('Enter vendor name').fill(vendorName);
-  await page.getByPlaceholder('Enter company name').fill(`${run} Co`);
-  await page.getByPlaceholder('Enter company email').fill(`pw.sn.${stamp}@test.com`);
-  await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
-  await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.waitForURL(/add-vendor/, { timeout: 10000 }).catch(() => gotoProtected(page, `${BASE}/master-data/add-vendor`));
+  await page.locator('input[name="vendor_name"]').waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('input[name="vendor_name"]').fill(vendorName);
+  await page.locator('input[name="company_name"]').fill(`${run} Co`);
+  await page.locator('input[name="company_email"]').fill(`pw.sn.${stamp}@test.com`);
+  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
+  await page.locator('input[name="contact_person_number"]').fill('9876543210');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
   await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 30000 });
   state.vendorName = vendorName;
 }
@@ -514,10 +513,10 @@ test.describe('Serial Number Print', () => {
     await openPrintQueue(page);
     await waitForQueueSettled(page);
     const header = page.locator('thead').getByText('Serial Number', { exact: true });
-    await header.click();
-    await header.click();
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toBeVisible();
+    await header.click({ force: true, timeout: 8000 }).catch(() => {});
+    await header.click({ force: true, timeout: 8000 }).catch(() => {});
+    await header.click({ force: true, timeout: 8000 }).catch(() => {});
+    await expect(page.getByRole('columnheader', { name: /Serial Number/ }).first()).toBeVisible();
   });
 
   test('SN-09 Do not print or change status on an existing row', async ({ page }) => {

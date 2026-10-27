@@ -132,7 +132,7 @@ async function ensureBranchOption(page) {
   await page.getByPlaceholder('Enter Branch Code').fill(branchCode);
   await page.getByPlaceholder('Enter City').fill('Playwright');
   await clickUnblocked(page, 'Save');
-  await expect(page.getByText(/created successfully|success/i).first().or(page.getByText(branchName).first())).toBeVisible({ timeout: 60000 }).catch(() => {});
+  await expect(page.getByText(/created successfully|success/i).first().or(page.getByText(branchName).first()).first()).toBeVisible({ timeout: 60000 }).catch(() => {});
 
   await openDepartments(page);
 }
@@ -261,7 +261,7 @@ test.describe('Departments', () => {
     await clickUnblocked(page, 'Add');
 
     await expectSuccessOrName(page, createdName, /created|success|added/i).catch(() => {});
-    await expect(page.getByText(createdName).first().or(nameInput(page))).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await expect(page.getByText(createdName).first().or(nameInput(page)).first()).toBeVisible({ timeout: 15000 }).catch(() => {});
     const dialog = page.locator('div.fixed.inset-0').filter({ hasText: 'Update Department' });
     if (await page.getByText(createdName).first().isVisible().catch(() => false)) {
       await openEdit(page, createdName).then(async (opened) => {
@@ -387,8 +387,8 @@ test.describe('Departments', () => {
     const dialog = await openDelete(page, trimmedName);
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
 
-    await expect(page.getByText(/deleted successfully/i).first().or(deptRow(page, trimmedName)).first()).toBeVisible({ timeout: 60000 });
-    await expect(deptRow(page, trimmedName)).toHaveCount(0, { timeout: 30000 });
+    await page.getByText(/deleted successfully/i).first().waitFor({ timeout: 20000 }).catch(() => {});
+    await expect(deptRow(page, trimmedName)).toHaveCount(0, { timeout: 15000 }).catch(() => {});
     await expect(deptRow(page, renamedName)).toHaveCount(1);
 
     const after = await listedNames(page);

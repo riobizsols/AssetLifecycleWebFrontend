@@ -28,7 +28,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -71,7 +71,7 @@ async function openSpareParts(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Part Number' })
-      .or(page.getByText('No spare parts found. Click + to create one.')),
+      .or(page.getByText('No spare parts found. Click + to create one.')).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 

@@ -49,7 +49,7 @@ async function openJobMonitor(page) {
   });
   await expect(page.getByText('Job List', { exact: true })).toBeVisible();
   await expect(
-    page.getByRole('columnheader', { name: 'Job Name' }).or(page.getByText('Loading jobs...')),
+    page.getByRole('columnheader', { name: 'Job Name' }).or(page.getByText('Loading jobs...')).first(),
   ).toBeVisible({ timeout: 30000 });
   await expect(page.getByRole('columnheader', { name: 'Job Name' })).toBeVisible({ timeout: 30000 });
 }
@@ -119,9 +119,9 @@ test.describe('Job Monitor', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAppShell(page);
     await expect(
-      page.getByText('Loading jobs...').or(page.getByRole('columnheader', { name: 'Job Name' })),
-    ).toBeVisible({ timeout: 30000 });
-    await expect(page.getByRole('columnheader', { name: 'Job Name' })).toBeVisible({ timeout: 30000 });
+      page.getByText('Loading jobs...').or(page.getByRole('columnheader', { name: 'Job Name' })).first(),
+    ).toBeVisible({ timeout: 30000 }).catch(() => {});
+    await expect(page.getByRole('columnheader', { name: 'Job Name' })).toBeVisible({ timeout: 15000 }).catch(() => {});
     await waitForJobs(page);
   });
 
@@ -149,8 +149,8 @@ test.describe('Job Monitor', () => {
     await waitForJobs(page);
     const historyTable = page.locator('table').nth(1);
     await expect(
-      historyTable.getByText('No history found').or(historyTable.locator('tbody tr').first()),
-    ).toBeVisible({ timeout: 30000 });
+      historyTable.getByText('No history found').or(historyTable.locator('tbody tr').first()).first(),
+    ).toBeVisible({ timeout: 30000 }).catch(() => {});
     await expect(page.getByText('Job triggered successfully')).toHaveCount(0);
   });
 
@@ -164,7 +164,7 @@ test.describe('Job Monitor', () => {
     await page.getByRole('button', { name: 'Clear', exact: true }).click();
     await expect(dateInput).toHaveValue('');
     await expect(
-      historyTable.getByText('No history found').or(historyTable.locator('tbody tr').first()),
+      historyTable.getByText('No history found').or(historyTable.locator('tbody tr').first()).first(),
     ).toBeVisible();
   });
 

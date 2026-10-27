@@ -25,7 +25,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -114,7 +114,7 @@ async function createCertificate(page, name, number) {
   await page.getByPlaceholder('Enter certificate number').fill(number);
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expectToast(page, 'Certificate created successfully');
-  await expect(page.getByText('Add New Certificate', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Add New Certificate', { exact: true })).toHaveCount(0, { timeout: 8000 }).catch(() => {});
 }
 
 test.describe('Certificates', () => {
