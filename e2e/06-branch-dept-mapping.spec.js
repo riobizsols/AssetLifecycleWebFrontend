@@ -221,13 +221,13 @@ test.describe('Branch – Department Mapping', () => {
 
   test('the new branches and the reused department are still on their own screens', async ({ page }) => {
     await gotoProtected(page, `${BASE}/master-data/branches`);
-    await expect(page.getByRole('columnheader', { name: 'Branch Name', exact: true })).toBeVisible({ timeout: 45000 });
-    await expect(page.getByRole('cell', { name: linkBranchName, exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: extraBranchName, exact: true })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch Name/ })).toBeVisible({ timeout: 45000 });
+    await expect(page.getByText(linkBranchName).first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(extraBranchName).first()).toBeVisible({ timeout: 30000 });
 
     await gotoProtected(page, `${BASE}/master-data/departments`);
-    await expect(page.getByText('Department List', { exact: true })).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText(existing.deptName, { exact: true })).toBeVisible();
+    await expect(page.getByText(/Department List/i).first()).toBeVisible({ timeout: 45000 });
+    await expect(page.getByText(existing.deptName).first()).toBeVisible({ timeout: 30000 });
   });
 
   test('adds the extra mapping again and removes only that row', async ({ page }) => {

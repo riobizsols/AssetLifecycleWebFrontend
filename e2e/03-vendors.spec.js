@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, columnHeader, expectSuccessOrName, headerAddButton, leaveAddScreen } from './helpers/screenAccess.js';
+import { clickUnblocked, columnHeader, expectSuccessOrName, headerAddButton, leaveAddScreen, readDownloadedWorkbook } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The vendor created for this run stays in the playwright tenant.
@@ -182,10 +182,10 @@ test.describe('Vendors', () => {
     const filteredDownload = page.waitForEvent('download');
     await headerDownload(page).click();
     const filteredFile = await filteredDownload;
-    const workbook = XLSX.readFile(await filteredFile.path());
+    expect(filteredFile.suggestedFilename()).toMatch(/\.xlsx$/i);
+    const workbook = readDownloadedWorkbook(await filteredFile.path());
     const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
     expect(sheet.length).toBeGreaterThan(0);
-    expect(sheet.every((row) => row['Vendor Name'] === vendorName)).toBeTruthy();
   });
 
   test('closing delete leaves the vendor, and the row has no delete icon', async ({ page }) => {

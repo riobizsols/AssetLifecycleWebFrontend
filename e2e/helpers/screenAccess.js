@@ -1,5 +1,7 @@
 // @ts-check
+import { readFileSync } from 'fs';
 import { test, expect } from '@playwright/test';
+import * as XLSX from 'xlsx';
 import { gotoProtected } from './appReady.js';
 import { BASE } from './baseUrl.js';
 
@@ -230,4 +232,12 @@ export async function waitForRowOrEmpty(page, row, emptyText) {
   const empty = page.getByText(emptyText).first();
   await expect(row.or(empty).first()).toBeVisible({ timeout: 30000 });
   return row.isVisible().catch(() => false);
+}
+
+/**
+ * xlsx ESM does not export readFile. Read a Playwright download as a buffer.
+ * @param {string} filePath
+ */
+export function readDownloadedWorkbook(filePath) {
+  return XLSX.read(readFileSync(filePath), { type: 'buffer' });
 }
