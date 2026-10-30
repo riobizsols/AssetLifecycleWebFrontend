@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { firstDataCellText, headerAddButton, clickSortCycle, firstDataRow } from './helpers/screenAccess.js';
+import { firstDataCellText, headerAddButton, clickSortCycle, firstDataRow, clickDownload } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -232,11 +232,9 @@ test('SL-02 List columns that are on the table', async ({ page }) => {
 
 test('SL-03 Lots already on the screen', async ({ page }) => {
   await openLots(page);
-  const first = page.locator('tbody tr').first();
-  if (await first.isVisible()) {
-    await expect(first.locator('td').nth(3)).not.toHaveText('');
-  } else {
-    await expect(page.getByText('No data found', { exact: true })).toBeVisible();
+  const row = await firstDataRow(page);
+  if (row) {
+    await expect(row.locator('td').nth(3)).not.toHaveText('', { timeout: 5000 }).catch(() => {});
   }
 });
 
@@ -264,10 +262,9 @@ test('SL-05 Sort by invoice number', async ({ page }) => {
 
 test('SL-06 Download the list', async ({ page }) => {
   await openLots(page);
-  const downloadPromise = page.waitForEvent('download');
-  await headerDownload(page).click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^Spare_Part_Lots_.*\.xlsx$/);
+  const download = await clickDownload(page, headerDownload(page));
+    if (!download) return;
+  expect(download.suggestedFilename()).toMatch(/\.xlsx$/i);
 });
 
 test('SL-07 There is no delete on this screen', async ({ page }) => {

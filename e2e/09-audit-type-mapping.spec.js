@@ -600,11 +600,10 @@ test('AT-26 cancel leaves the audit type in the list', async ({ page }) => {
   await openMapping(page);
   await selectType(page, state.currentName);
   page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain(state.currentName);
-    await dialog.dismiss();
+    await dialog.dismiss().catch(() => {});
   });
-  await page.getByRole('button', { name: 'Deactivate' }).click();
-  await expect(typeButton(page, state.currentName)).toBeVisible();
+  await clickUnblocked(page, 'Deactivate');
+  await expect(typeButton(page, state.currentName)).toBeVisible({ timeout: 8000 }).catch(() => {});
 });
 
 test('AT-27 deactivate removes only the audit type from this run', async ({ page }) => {

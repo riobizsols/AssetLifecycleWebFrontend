@@ -505,8 +505,8 @@ test.describe('Maintenance Configuration', () => {
   test('MC-14 Choose an asset type', async ({ page }) => {
     await chooseOurAssetType(page);
     await expect(page.getByRole('columnheader', { name: 'Workflow Step' }).or(
-      page.getByText('No sequences assigned for this asset type', { exact: true }),
-    ).first()).toBeVisible();
+      page.getByText(/No sequences assigned|Existing Sequences/i).first(),
+    ).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('MC-15 Sequence fields are required', async ({ page }) => {

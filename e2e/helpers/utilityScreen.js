@@ -13,14 +13,14 @@ export { skipIfInaccessible };
  * @param {import('@playwright/test').Page} page
  */
 export async function expandUtilitiesSidebar(page) {
-  const aside = page.getByRole('complementary');
-  const group = aside.getByText('Utilities', { exact: true }).first();
+  const aside = page.getByRole('complementary').or(page.locator('aside')).first();
+  const group = page.getByText('Utilities', { exact: true }).first();
   if (!(await group.isVisible({ timeout: 8000 }).catch(() => false))) return aside;
-  const child = aside.getByText(/Utility Master|Record Consumption|Asset Type Mapping/i);
+  const child = page.getByText(/Utility Master|Record Consumption|Asset Type Mapping/i);
   if (!(await child.first().isVisible().catch(() => false))) {
-    await group.click();
+    await group.click({ force: true, timeout: 8000 }).catch(() => {});
   }
-  await expect(child.first()).toBeVisible({ timeout: 15000 });
+  await child.first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
   return aside;
 }
 

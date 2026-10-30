@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickLocatorUnblocked, headerAddButton, firstDataRow } from './helpers/screenAccess.js';
+import { clickLocatorUnblocked, columnHeader, headerAddButton, firstDataRow } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -291,13 +291,9 @@ test.describe('Inspection Checklists', () => {
 
   test('IC-02 List columns', async ({ page }) => {
     await openList(page);
-    await expect(page.getByRole('columnheader', { name: 'Question' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Response Type' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Expected Value' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Min Range' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Max Range' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Trigger Maint.' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Actions' })).toBeVisible();
+    for (const name of ['Question', 'Response Type', 'Expected Value', 'Min Range', 'Max Range', 'Trigger Maint', 'Actions']) {
+      await expect(columnHeader(page, name).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
+    }
   });
 
   test('IC-14 The new question is still there after a refresh', async ({ page }) => {

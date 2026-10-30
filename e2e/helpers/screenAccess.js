@@ -267,6 +267,32 @@ export async function openLabeledSearch(page, label, placeholders = ['Search by 
 }
 
 /**
+ * Open a labeled searchable dropdown and pick an option. Returns false when
+ * the menu or option is missing instead of waiting out actionTimeout.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} label
+ * @param {string} optionText
+ * @param {string | string[]} [placeholders]
+ */
+export async function chooseLabeledOption(page, label, optionText, placeholders = ['Search by name or ID', 'Search...']) {
+  const search = await openLabeledSearch(page, label, placeholders);
+  if (!search) return false;
+  return chooseSearchOption(page, optionText, search);
+}
+
+/**
+ * Click a list download control after toasts are out of the way.
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} button
+ */
+export async function clickDownload(page, button) {
+  await dismissToasts(page);
+  const pending = page.waitForEvent('download', { timeout: 12000 }).catch(() => null);
+  await button.click({ force: true, timeout: 8000 }).catch(() => {});
+  return pending;
+}
+
+/**
  * Choose an option from an open searchable menu. Returns false when the option is missing.
  * @param {import('@playwright/test').Page} page
  * @param {string} optionText

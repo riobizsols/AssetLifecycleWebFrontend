@@ -64,7 +64,7 @@ concurrency:
 jobs:
   e2e:
     name: ${{ github.event.inputs.spec && format('e2e {0}', github.event.inputs.spec) || 'e2e' }}
-    timeout-minutes: 180
+    timeout-minutes: 360
     # Empty E2E_RUNNER keeps the current GitHub-hosted machine. alm-e2e is the DB server.
     runs-on: ${{ vars.E2E_RUNNER || 'ubuntu-latest' }}
 

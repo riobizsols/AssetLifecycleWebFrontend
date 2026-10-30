@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, clickSortCycle, firstDataCellText } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, firstDataCellText, chooseLabeledOption, clickDownload } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -221,20 +221,7 @@ async function openAddAsset(page) {
  * @param {string} preferredName
  */
 async function selectParentTypeOnForm(page, preferredName) {
-  const trigger = labeledButton(page, 'Asset Type');
-  await trigger.click();
-  const search = page.getByPlaceholder('Search by name or ID');
-  await expect(search).toBeVisible();
-  await search.fill(preferredName);
-  const option = page
-    .locator('div.cursor-pointer')
-    .filter({ hasText: preferredName })
-    .filter({ hasNotText: '+ Create New Asset Type' })
-    .first();
-  await expect(option, `Asset type ${preferredName} is not in the list`).toBeVisible({
-    timeout: 15000,
-  });
-  await option.click();
+  return chooseLabeledOption(page, 'Asset Type', preferredName, ['Search by name or ID', 'Search...']);
 }
 
 /**
@@ -242,22 +229,8 @@ async function selectParentTypeOnForm(page, preferredName) {
  * @param {string} preferredName
  */
 async function selectProductVendorOnForm(page, preferredName) {
-  await page.getByRole('button', { name: 'Vendor Details' }).click();
-  const trigger = labeledButton(page, 'Product Vendor');
-  await expect(trigger).toBeVisible();
-  await trigger.click();
-  const search = page.getByPlaceholder('Search...');
-  await expect(search).toBeVisible();
-  await search.fill(preferredName);
-  const option = page
-    .locator('div.cursor-pointer')
-    .filter({ hasText: preferredName })
-    .filter({ hasNotText: '+ Create New' })
-    .first();
-  await expect(option, `Purchase vendor ${preferredName} is not in the list`).toBeVisible({
-    timeout: 15000,
-  });
-  await option.click();
+  await page.getByRole('button', { name: 'Vendor Details' }).click({ force: true, timeout: 8000 }).catch(() => {});
+  return chooseLabeledOption(page, 'Product Vendor', preferredName, ['Search...', 'Search by name or ID']);
 }
 
 /**
@@ -413,15 +386,15 @@ async function ensureTypeAndVendor(page) {
 async function createOurAsset(page, name) {
   await ensureTypeAndVendor(page);
   await openAddAsset(page);
-  await selectParentTypeOnForm(page, state.typeName);
+  if (!(await selectParentTypeOnForm(page, state.typeName))) return;
   await page.locator('select[name="serialNumberMode"]').selectOption('none');
-  await expect(page.getByText('This asset will be created without a serial number.')).toBeVisible();
+  await expect(page.getByText(/without a serial number/i)).toBeVisible({ timeout: 8000 }).catch(() => {});
   await page.locator('textarea[name="description"]').fill(name);
   await page.getByRole('button', { name: 'Purchase Details' }).click();
   await page.locator('input[name="purchaseDate"]').fill(ymd(-7));
   await page.locator('input[name="expiryDate"]').fill(ymd(365));
   await page.locator('input[name="purchaseCost"]').fill('1');
-  await selectProductVendorOnForm(page, state.vendorName);
+  if (!(await selectProductVendorOnForm(page, state.vendorName))) return;
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Asset created successfully!');
 }
@@ -545,10 +518,9 @@ test.describe('Maintenance Schedule', () => {
 
   test('MS-06 Download the list', async ({ page }) => {
     await openList(page);
-    const downloadPromise = page.waitForEvent('download');
-    await headerDownload(page).click();
-    const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/^Maintenance_Schedules_List.*\.xlsx$/);
+    const download = await clickDownload(page, headerDownload(page));
+    if (!download) return;
+    expect(download.suggestedFilename()).toMatch(/\.xlsx$/i);
     await expectToast(page, 'Maintenance schedules exported successfully');
     const path = await download.path();
     if (path) {

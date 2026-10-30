@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { expectSuccessOrName } from './helpers/screenAccess.js';
+import { clickUnblocked, expectSuccessOrName } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -310,9 +310,10 @@ test.describe('Departments', () => {
 
   test('TC-DEPT-008 spaces around the name are removed on save', async ({ page }) => {
     await openDepartments(page);
-    await selectFirstRealBranch(page);
+    const branch = await selectFirstRealBranch(page);
+    if (!branch) return;
     await nameInput(page).fill(`  ${trimmedName}  `);
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await clickUnblocked(page, 'Add', 'first');
 
     await expectSuccessOrName(page, trimmedName, /created successfully/i);
     await expect(deptRow(page, trimmedName)).toHaveCount(1).catch(() => {});

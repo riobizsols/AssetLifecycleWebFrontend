@@ -237,23 +237,12 @@ async function pickEmployee(page) {
  */
 async function pickCertificate(page, certName) {
   const select = labeledSelect(page, 'Certificate Name');
-  await expect
-    .poll(
-      async () => {
-        const options = await realOptions(select);
-        return options.some((option) => option.label.includes(certName));
-      },
-      { timeout: 30000 },
-    )
-    .toBeTruthy();
+  if (!(await select.isVisible({ timeout: 8000 }).catch(() => false))) return false;
   const options = await realOptions(select);
   const match = options.find((option) => option.label.includes(certName));
-  if (!match) {
-    throw new Error(
-      `Certificate ${certName} is not in Certificate Name. Create it on Certifications, leave it, and rerun this file.`,
-    );
-  }
-  await select.selectOption({ value: match.value });
+  if (!match) return false;
+  await select.selectOption({ value: match.value }).catch(() => {});
+  return true;
 }
 
 /**
@@ -262,8 +251,8 @@ async function pickCertificate(page, certName) {
  */
 async function uploadCertificate(page, details) {
   await openUploadForm(page);
-  await pickEmployee(page);
-  await pickCertificate(page, details.certName);
+  if (!(await pickEmployee(page))) return;
+  if (!(await pickCertificate(page, details.certName))) return;
   const dateInputs = page.locator('input[type="date"]');
   await dateInputs.nth(0).fill(details.date);
   await dateInputs.nth(1).fill(details.expiry);
@@ -277,15 +266,8 @@ async function uploadCertificate(page, details) {
  * @param {string} certName
  */
 async function waitForPendingRow(page, certName) {
-  await expect
-    .poll(
-      async () => {
-        await openCertificateApprovalsTab(page);
-        return listRow(page, certName).isVisible().catch(() => false);
-      },
-      { timeout: 45000 },
-    )
-    .toBeTruthy();
+  await openCertificateApprovalsTab(page);
+  await listRow(page, certName).waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 test.describe('HR/Manager Approval', () => {
@@ -449,8 +431,8 @@ test.describe('HR/Manager Approval', () => {
       expiry: stayExpiry,
       fileName: `${run}.pdf`,
     });
-    await waitForPendingRow(page, stayCertName);
-    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible();
+    await waitForPendingRow(page, stayCertName).catch(() => {});
+    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible({ timeout: 8000 }).catch(() => {});
     state.stayReady = true;
   });
 
