@@ -23,8 +23,23 @@ name: Playwright E2E
 
 # Automatic runs are on for the branches listed below. workflow_dispatch stays so a run
 # can still be started by hand from the Actions tab.
+#
+# Fast loop: Actions → Playwright E2E → Run workflow → set spec to one file
+# (example: e2e/02-products-services.spec.js). Setup is a few minutes; one
+# serial file is usually under 10 minutes instead of the ~2h full suite.
 on:
   workflow_dispatch:
+    inputs:
+      spec:
+        description: 'One Playwright file or glob, e.g. e2e/02-products-services.spec.js. Leave empty for the full suite.'
+        required: false
+        type: string
+        default: ''
+      grep:
+        description: 'Optional test title filter (Playwright --grep).'
+        required: false
+        type: string
+        default: ''
   push:
     branches: [Niranjan-Prod, sanjana-prod, Harshini-Prod, production, main, master]
     paths:
@@ -48,6 +63,7 @@ concurrency:
 
 jobs:
   e2e:
+    name: ${{ github.event.inputs.spec && format('e2e {0}', github.event.inputs.spec) || 'e2e' }}
     timeout-minutes: 180
     # Empty E2E_RUNNER keeps the current GitHub-hosted machine. alm-e2e is the DB server.
     runs-on: ${{ vars.E2E_RUNNER || 'ubuntu-latest' }}
@@ -241,6 +257,8 @@ jobs:
           RIO_PASSWORD: ${{ secrets.RIO_PASSWORD }}
           E2E_WORKERS: ${{ vars.E2E_WORKERS || '1' }}
           E2E_LOCAL_DB: ${{ vars.E2E_RUNNER != '' && 'true' || 'false' }}
+          E2E_SPEC: ${{ github.event.inputs.spec || '' }}
+          E2E_GREP: ${{ github.event.inputs.grep || '' }}
         run: |
           node <<'EOF'
           const http = require('http');
@@ -281,7 +299,25 @@ jobs:
           req.write(payload);
           req.end();
           EOF
-          npx playwright test
+          extra=()
+          if [ -n "${E2E_SPEC}" ]; then
+            case "${E2E_SPEC}" in
+              e2e/*) ;;
+              *)
+                echo "E2E_SPEC must start with e2e/"
+                exit 1
+                ;;
+            esac
+            echo "Running spec: ${E2E_SPEC}"
+            extra+=("${E2E_SPEC}")
+          else
+            echo "Running full Playwright suite"
+          fi
+          if [ -n "${E2E_GREP}" ]; then
+            echo "Grep: ${E2E_GREP}"
+            extra+=(--grep "${E2E_GREP}")
+          fi
+          npx playwright test "${extra[@]}"
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
