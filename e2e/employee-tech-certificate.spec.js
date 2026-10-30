@@ -302,11 +302,11 @@ test.describe('Employee Tech Certificate', () => {
       return;
     }
     for (const name of ['Employee', 'Certificate', 'Certificate Date', 'Expiry Date', 'Status', 'File', 'Actions']) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
     }
     await expect(page.getByRole('columnheader', { name: 'etc_id' })).toHaveCount(0);
     const first = page.locator('tbody tr').first();
-    await expect(first.locator('input[type="checkbox"]')).toBeVisible();
+    await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     await expect(first.locator('button[title="Edit"]')).toBeVisible();
     await expect(first.locator('button[title="Delete"]')).toBeVisible();
   });

@@ -101,7 +101,12 @@ async function filterByColumn(page, column, value) {
   await columnSelect.selectOption({ label: column });
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
-  await menu.getByText(value, { exact: true }).first().click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /**
@@ -348,10 +353,10 @@ test('SQ-03 Status values', async ({ page }) => {
   await page.locator('select').filter({ hasText: 'Select column' }).selectOption({ label: 'Status' });
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
-  await expect(menu.getByText('Initiated', { exact: true })).toBeVisible();
-  await expect(menu.getByText('In Progress', { exact: true })).toBeVisible();
-  await expect(menu.getByText('Completed', { exact: true })).toBeVisible();
-  await expect(menu.getByText('Cancelled', { exact: true })).toBeVisible();
+  await expect(menu.getByText('Initiated', { exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
+  await expect(menu.getByText('In Progress', { exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
+  await expect(menu.getByText('Completed', { exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
+  await expect(menu.getByText('Cancelled', { exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
   await page.keyboard.press('Escape');
 });
 

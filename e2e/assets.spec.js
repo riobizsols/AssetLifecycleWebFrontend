@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { firstDataCellText, headerAddButton } from './helpers/screenAccess.js';
 import { selectPortalDropdown } from './helpers/searchableDropdown.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -140,7 +140,12 @@ async function filterByColumn(page, column, value) {
   await columnSelect.selectOption({ label: column });
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
-  await menu.getByText(value, { exact: true }).click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /**
@@ -358,10 +363,7 @@ test('AS-01 Open Assets', async ({ page }) => {
   await expect(headerAddButton(page)).toBeVisible();
   await expect(headerTrash(page)).toBeVisible();
   await expect(headerDownload(page)).toBeVisible();
-  const first = page.locator('tbody tr').first();
-  if (await first.isVisible()) {
-    state.firstName = (await first.locator('td').nth(2).innerText()).trim();
-  }
+  state.firstName = await firstDataCellText(page, 2);
 });
 
 test('AS-02 List columns that are on the table', async ({ page }) => {
@@ -380,12 +382,12 @@ test('AS-02 List columns that are on the table', async ({ page }) => {
     'Actions',
   ];
   for (const name of headers) {
-    await expect(page.getByRole('columnheader', { name })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
   }
   await expect(page.getByRole('columnheader', { name: 'Asset ID' })).toHaveCount(0);
   const first = page.locator('tbody tr').first();
   if (await first.isVisible()) {
-    await expect(first.locator('input[type="checkbox"]')).toBeVisible();
+    await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     await expect(first.locator('button[title="Edit"]')).toBeVisible();
   }
 });

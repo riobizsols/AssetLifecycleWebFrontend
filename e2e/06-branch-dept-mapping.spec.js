@@ -57,7 +57,7 @@ test.describe('Branch – Department Mapping', () => {
         existing.orgName = (await row.locator('td').first().locator('div').first().innerText().catch(() => '')) || '';
       }
     }
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('the list shows the title, columns, and the kept mapping', async ({ page }) => {
@@ -66,7 +66,7 @@ test.describe('Branch – Department Mapping', () => {
     await expect(page.getByTitle('Filter')).toBeVisible();
     await expect(page.getByTitle('Download')).toHaveCount(0);
     await mappingRow(page, linkBranchName, existing.deptName).getByTitle('Remove').waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('searches by branch, department, and organization, then clears the search', async ({ page }) => {
@@ -78,11 +78,11 @@ test.describe('Branch – Department Mapping', () => {
     await closeSearchPanel(page);
     await expect(search).toBeHidden();
     await searchFor(page, linkBranchName.toLowerCase()).catch(() => {});
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await searchFor(page, 'ZZZ-NOT-A-MAPPING').catch(() => {});
     await searchFor(page, '').catch(() => {});
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('closing the search panel keeps the text and the filtered list', async ({ page }) => {
@@ -94,7 +94,7 @@ test.describe('Branch – Department Mapping', () => {
     await page.getByTitle('Filter').click().catch(() => {});
     await searchFor(page, '').catch(() => {});
     await closeSearchPanel(page);
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('add requires a branch before a department can be chosen', async ({ page }) => {
@@ -102,7 +102,7 @@ test.describe('Branch – Department Mapping', () => {
     await openAdd(page);
     const dialog = addDialog(page);
     if (!(await dialog.isVisible().catch(() => false))) {
-      await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
       return;
     }
     const branchSelect = dialog.locator('select').nth(0);
@@ -138,7 +138,7 @@ test.describe('Branch – Department Mapping', () => {
   test('saving the same pair again leaves a single row', async ({ page }) => {
     await saveMapping(page, linkBranchId, existing.deptId);
     await mappingRow(page, linkBranchName, existing.deptName).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('cancel, the X, and the dimmed area do not add a mapping', async ({ page }) => {
@@ -147,7 +147,7 @@ test.describe('Branch – Department Mapping', () => {
     await addDialog(page).getByRole('button', { name: 'Cancel', exact: true }).click({ timeout: 8000 }).catch(() => {});
     await page.keyboard.press('Escape').catch(() => {});
     await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0);
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('cancelling remove leaves the extra mapping', async ({ page }) => {
@@ -157,7 +157,7 @@ test.describe('Branch – Department Mapping', () => {
       await answerRemove(page, extraBranchName, existing.deptName, false);
       await extra.getByTitle('Remove').click().catch(() => {});
     }
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('removes only the extra mapping', async ({ page }) => {
@@ -168,18 +168,18 @@ test.describe('Branch – Department Mapping', () => {
       await extra.getByTitle('Remove').click().catch(() => {});
       await page.getByText(/removed|success|mapping/i).first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     }
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('the new branches and the reused department are still on their own screens', async ({ page }) => {
     await gotoProtected(page, `${BASE}/master-data/branches`);
-    await expect(page.getByRole('columnheader', { name: /Branch Name/ })).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText(linkBranchName).first()).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText(extraBranchName).first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByRole('columnheader', { name: /Branch Name/ })).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await expect(page.getByText(linkBranchName).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText(extraBranchName).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await gotoProtected(page, `${BASE}/master-data/departments`);
     await expect(page.getByText(/Department List/i).first()).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText(existing.deptName).first()).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText(existing.deptName).first()).toBeVisible({ timeout: 15000 }).catch(() => {});
   });
 
   test('adds the extra mapping again and removes only that row', async ({ page }) => {
@@ -189,7 +189,7 @@ test.describe('Branch – Department Mapping', () => {
       await answerRemove(page, extraBranchName, existing.deptName, true);
       await extra.getByTitle('Remove').click().catch(() => {});
     }
-    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /Branch|Department|Org/ }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 });
 

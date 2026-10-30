@@ -135,7 +135,12 @@ async function filterByColumn(page, column, value) {
   await columnSelect.selectOption({ label: column });
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
-  await menu.getByText(value, { exact: true }).click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /**
@@ -238,7 +243,7 @@ test.describe('Breakdown Reason Codes', () => {
       await expect(empty).toBeVisible();
       return;
     }
-    await expect(first.locator('input[type="checkbox"]')).toBeVisible();
+    await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     await expect(first.locator('button[title="Edit"]')).toBeVisible();
   });
 
@@ -292,7 +297,7 @@ test.describe('Breakdown Reason Codes', () => {
   test('BR-09 Open Create New Breakdown Reason Code', async ({ page }) => {
     await openCreate(page);
     const dialog = createDialog(page);
-    await expect(dialog.getByText('Asset Type', { exact: false })).toBeVisible();
+    await expect(dialog.getByText('Asset Type', { exact: true }).or(dialog.getByText('Asset Type *')).first()).toBeVisible();
     await expect(dialog.locator('select')).toHaveValue('');
     await expect(dialog.getByText('-- Select Asset Type --')).toBeVisible();
     await expect(dialog.getByPlaceholder('Enter breakdown reason code')).toBeVisible();

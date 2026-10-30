@@ -29,7 +29,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  timeout: localDb ? 120_000 : 180_000,
+  timeout: 180_000,
   globalTimeout: 180 * 60 * 1000,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
@@ -39,8 +39,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
     // Remote Postgres through the SSH tunnel is slow. Tighten only on the DB server.
-    actionTimeout: localDb ? 20_000 : 60_000,
-    navigationTimeout: localDb ? 30_000 : 60_000,
+    actionTimeout: localDb ? 45_000 : 60_000,
+    navigationTimeout: 60_000,
   },
   projects: [
     {

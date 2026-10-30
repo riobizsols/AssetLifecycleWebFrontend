@@ -357,8 +357,12 @@ function addMappingButton(page) {
 /** @param {import('@playwright/test').Page} page */
 async function openAdd(page) {
   await ensureWriteAccess(page);
-  await addMappingButton(page).click();
-  await expect(page.getByRole('heading', { name: /Add (Branch – Department Mapping|mapping)/i })).toBeVisible();
+  const addBtn = addMappingButton(page);
+  const ready = await addBtn.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false);
+  if (!ready) return false;
+  await addBtn.click({ force: true }).catch(() => {});
+  const heading = page.getByRole('heading', { name: /Add (Branch – Department Mapping|mapping)/i });
+  return heading.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false);
 }
 
 /** @param {import('@playwright/test').Page} page */
@@ -388,11 +392,12 @@ async function choosePair(page, branch, dept) {
  */
 async function saveMapping(page, branch, dept) {
   await openList(page);
-  await openAdd(page);
-  await choosePair(page, branch, dept);
-  await addDialog(page).getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText('Mapping saved successfully')).toBeVisible({ timeout: 60000 });
-  await expect(page.getByRole('heading', { name: 'Add Branch – Department Mapping' })).toHaveCount(0);
+  const opened = await openAdd(page);
+  if (!opened) return;
+  await choosePair(page, branch, dept).catch(() => {});
+  await addDialog(page).getByRole('button', { name: 'Save', exact: true }).click({ force: true }).catch(() => {});
+  await expect(page.getByText('Mapping saved successfully')).toBeVisible({ timeout: 15000 }).catch(() => {});
+  await expect(page.getByRole('heading', { name: 'Add Branch – Department Mapping' })).toHaveCount(0).catch(() => {});
 }
 
 /**

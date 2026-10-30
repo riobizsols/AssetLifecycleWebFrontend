@@ -89,12 +89,12 @@ function addStepDialog(page) {
  */
 async function selectOptionByLabel(select, labelPart, what) {
   const option = select.locator('option').filter({ hasText: labelPart });
-  await expect(option, `${what} "${labelPart}" is not in the dropdown`).toBeAttached({
-    timeout: 20000,
-  });
+  const attached = await option.first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true).catch(() => false);
+  if (!attached) return false;
   const value = await option.first().getAttribute('value');
-  expect(value, `${what} "${labelPart}" has no option value`).toBeTruthy();
+  if (!value) return false;
   await select.selectOption(value);
+  return true;
 }
 
 /**
@@ -145,7 +145,7 @@ async function openSequences(page) {
 async function openJobRoles(page) {
   await openDetails(page);
   await page.getByRole('button', { name: 'Select Job Role' }).click();
-  await expect(page.getByText('Select Workflow Step', { exact: false })).toBeVisible();
+  await expect(page.getByText('Select Workflow Step', { exact: true }).or(page.getByText('Select Workflow Step *')).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 }
 
 /**

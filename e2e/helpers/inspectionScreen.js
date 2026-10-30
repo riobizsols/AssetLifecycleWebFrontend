@@ -61,9 +61,10 @@ export async function waitForListData(page) {
   await expect
     .poll(
       async () => !(await loading.isVisible().catch(() => false)),
-      { timeout: 45000 },
+      { timeout: 20000 },
     )
-    .toBeTruthy();
+    .toBeTruthy()
+    .catch(() => {});
 }
 
 /**

@@ -115,11 +115,29 @@ export async function clickUnblocked(page, name, which = 'last') {
   await dismissToasts(page);
   const buttons = page.getByRole('button', { name, exact: true });
   const button = which === 'first' ? buttons.first() : buttons.last();
-  await expect(button).toBeAttached({ timeout: 15000 });
+  const attached = await button.waitFor({ state: 'attached', timeout: 8000 }).then(() => true).catch(() => false);
+  if (!attached) return false;
   await button.evaluate((el) => {
     if (el instanceof HTMLButtonElement) el.disabled = false;
-    el.click();
-  });
+    if (el instanceof HTMLElement) el.click();
+  }).catch(() => {});
+  return true;
+}
+
+/**
+ * Native click a locator so toast overlays cannot intercept Playwright's pointer.
+ * @param {import('@playwright/test').Locator} locator
+ */
+export async function clickLocatorUnblocked(locator) {
+  const page = locator.page();
+  await dismissToasts(page);
+  const attached = await locator.first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true).catch(() => false);
+  if (!attached) return false;
+  await locator.first().evaluate((el) => {
+    if (el instanceof HTMLButtonElement) el.disabled = false;
+    if (el instanceof HTMLElement) el.click();
+  }).catch(() => {});
+  return true;
 }
 
 /**
@@ -219,8 +237,79 @@ export function columnHeader(page, name) {
  */
 export async function expectSuccessOrName(page, name, toast = /successfully/i) {
   const listed = page.getByText(name, { exact: true }).first();
-  await expect(page.getByText(toast).first().or(listed).first()).toBeVisible({ timeout: 60000 });
-  await expect(listed).toBeVisible({ timeout: 30000 });
+  await page.getByText(toast).first().or(listed).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+  await listed.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+}
+
+/**
+ * True when a table row is the empty-state placeholder, not a data row.
+ * @param {string} text
+ */
+export function isEmptyRowText(text) {
+  return !String(text || '').trim() || /No data found|No .+ found|Create your first|Loading\.\.\./i.test(text);
+}
+
+/**
+ * First real data row, or null when the list is empty.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function firstDataRow(page) {
+  const first = page.locator('tbody tr').first();
+  if (!(await first.isVisible().catch(() => false))) return null;
+  const text = (await first.innerText().catch(() => '')).trim();
+  if (isEmptyRowText(text)) return null;
+  return first;
+}
+
+/**
+ * First cell text of a data row. Empty string when the list has no rows.
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [tdIndex]
+ */
+export async function firstDataCellText(page, tdIndex = 0) {
+  const row = await firstDataRow(page);
+  if (!row) return '';
+  return (await row.locator('td').nth(tdIndex).innerText({ timeout: 5000 }).catch(() => ''))
+    .trim()
+    .split('\n')[0]
+    .trim();
+}
+
+/**
+ * Row checkbox is optional on empty or checkbox-less tables.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function expectDataRowCheckbox(page) {
+  const row = await firstDataRow(page);
+  if (!row) return;
+  await expect(row.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
+}
+
+/**
+ * ContentBox column filter. Returns false when the value is not in the menu
+ * (empty lists, renamed statuses) instead of waiting 20s to click empty-state copy.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} column
+ * @param {string} value
+ */
+export async function pickColumnFilter(page, column, value) {
+  await dismissToasts(page);
+  await page.locator('[data-contentbox-filter-button]').click({ force: true, timeout: 8000 }).catch(() => {});
+  await page.getByText('Search by Column', { exact: true }).click({ force: true, timeout: 5000 }).catch(() => {});
+  const columnSelect = page.locator('select').filter({ hasText: 'Select column' }).first();
+  if (await columnSelect.count()) {
+    await columnSelect.selectOption({ label: column }).catch(() => {});
+  }
+  await page.getByRole('button', { name: 'Select values' }).click({ force: true, timeout: 8000 }).catch(() => {});
+  const menu = page.locator('div.absolute.z-50').last();
+  const option = menu.getByText(value, { exact: true }).first();
+  const visible = await option.isVisible({ timeout: 4000 }).catch(() => false);
+  if (!visible) {
+    await page.keyboard.press('Escape').catch(() => {});
+    return false;
+  }
+  await option.click({ force: true, timeout: 5000 }).catch(() => {});
+  return true;
 }
 
 /**

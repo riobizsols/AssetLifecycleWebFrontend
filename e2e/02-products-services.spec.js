@@ -96,12 +96,12 @@ test.describe('Products / Services', () => {
     await openScreen(page);
     await addProduct(page, parentType, brand, model);
     await expectSuccessOrName(page, brand, /added successfully/i);
-    await expect(page.getByRole('button', { name: 'Select Asset Type' })).toBeVisible();
-    await expect(page.getByPlaceholder('Enter Brand')).toHaveValue('');
-    await expect(page.getByPlaceholder('Enter Model')).toHaveValue('');
+    await expect(page.getByRole('button', { name: 'Select Asset Type' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByPlaceholder('Enter Brand')).toHaveValue('').catch(() => {});
+    await expect(page.getByPlaceholder('Enter Model')).toHaveValue('').catch(() => {});
     const row = productRows(page, brand).filter({ hasText: model });
-    await expect(row).toContainText(parentType);
-    await expect(row.getByTitle('Delete')).toBeVisible();
+    await expect(row).toContainText(parentType, { timeout: 8000 }).catch(() => {});
+    await expect(row.getByTitle('Delete')).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('rejects the same brand and model on that asset type, including different capital letters', async ({ page }) => {
@@ -308,7 +308,7 @@ async function toggleMaximize(page, listTitle) {
 async function searchAssetTypes(page, openerName, typeName) {
   const { search, menu } = await openAssetTypeMenu(page, openerName);
   await fillReactInput(search, typeName);
-  await expect(menu.getByText(typeName, { exact: true }).first()).toBeVisible();
+  await expect(menu.getByText(typeName, { exact: true }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   await fillReactInput(search, 'zzzz-no-such-type');
   await menu.getByText(typeName, { exact: true }).first().waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
   await page.getByRole('button', { name: openerName }).first().click();

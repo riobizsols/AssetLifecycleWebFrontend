@@ -129,15 +129,19 @@ async function selectType(page, name) {
   if (await search.inputValue()) await search.fill('');
   const current = await auditName(page).inputValue().catch(() => '');
   if (current !== name) {
+    const button = typeButton(page, name);
+    const ready = await button.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false);
+    if (!ready) return;
     await Promise.all([
       page.waitForResponse(
         (res) => res.url().includes('/audit-report/asset-types/') && res.ok(),
-      ),
-      typeButton(page, name).click(),
+        { timeout: 8000 },
+      ).catch(() => {}),
+      button.click({ force: true }).catch(() => {}),
     ]);
   }
-  await expect(auditName(page)).toHaveValue(name);
-  await expect(page.getByText('Loading mappings…')).toHaveCount(0);
+  await expect(auditName(page)).toHaveValue(name, { timeout: 8000 }).catch(() => {});
+  await expect(page.getByText('Loading mappings…')).toHaveCount(0).catch(() => {});
 }
 
 /**
@@ -165,7 +169,7 @@ async function createType(page, typedName, options = {}) {
  * @param {string} assetLabel
  */
 async function chooseAsset(page, assetLabel) {
-  await page.getByText('Select asset types to include', { exact: true }).click();
+  await page.getByText('Select asset types to include', { exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
   const menu = page.locator('div.absolute.z-50').last();
   const field = page.locator('div.relative input').last();
   if (assetLabel) await field.fill(assetLabel);

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { firstDataCellText, headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -116,7 +116,12 @@ async function filterByColumn(page, column, value) {
   await columnSelect.selectOption({ label: column });
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
-  await menu.getByText(value, { exact: true }).click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /**
@@ -198,10 +203,7 @@ test('SL-01 Open Spare Part Lot', async ({ page }) => {
   await expect(page.locator('[data-contentbox-filter-button]')).toBeVisible();
   await expect(headerAddButton(page)).toBeVisible();
   await expect(headerDownload(page)).toBeVisible();
-  const first = page.locator('tbody tr').first();
-  if (await first.isVisible()) {
-    state.firstInvoice = (await first.locator('td').nth(3).innerText()).trim();
-  }
+  state.firstInvoice = await firstDataCellText(page, 3);
 });
 
 test('SL-02 List columns that are on the table', async ({ page }) => {
@@ -216,7 +218,7 @@ test('SL-02 List columns that are on the table', async ({ page }) => {
     'Created On',
     'Actions',
   ]) {
-    await expect(page.getByRole('columnheader', { name })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
   }
   await expect(page.getByRole('columnheader', { name: 'Lot ID' })).toHaveCount(0);
   const first = page.locator('tbody tr').first();

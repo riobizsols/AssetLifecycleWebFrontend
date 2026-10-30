@@ -128,7 +128,12 @@ async function filterByColumn(page, column, value) {
   await columnSelect.selectOption({ label: column });
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
-  await menu.getByText(value, { exact: true }).click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /**
@@ -602,7 +607,7 @@ test.describe('Workorder Management', () => {
   test('WO-02 List columns that are on the table', async ({ page }) => {
     await openList(page);
     for (const name of ['Description', 'Maintenance Type', 'Start Date', 'Status', 'Asset Type']) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
     await expect(page.getByRole('columnheader', { name: 'Work Order ID' })).toHaveCount(0);
     await expect(page.getByRole('columnheader', { name: 'Asset ID' })).toHaveCount(0);

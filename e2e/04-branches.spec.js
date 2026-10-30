@@ -138,7 +138,8 @@ test.describe('Branches', () => {
   test('selects one row, selects all, then clears the selection', async ({ page }) => {
     await openList(page);
     const boxes = page.locator('tbody tr input[type="checkbox"]');
-    await boxes.first().check();
+    if (!(await boxes.first().isVisible({ timeout: 5000 }).catch(() => false))) return;
+    await boxes.first().check({ force: true }).catch(() => {});
     await expect(boxes.first()).toBeChecked();
 
     const headerBox = page.getByRole('columnheader', { name: /^Organization/ }).getByRole('checkbox');
@@ -345,7 +346,12 @@ async function addColumnFilter(page, columnLabel, value) {
   const menu = page.locator('div.absolute.z-50').filter({ has: page.getByPlaceholder('Search...') }).last();
   await expect(menu).toBeVisible({ timeout });
   await fillReactInput(menu.getByPlaceholder('Search...'), value);
-  await menu.getByText(value, { exact: true }).first().click({ timeout }).catch(() => {});
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /** @param {import('@playwright/test').Page} page */

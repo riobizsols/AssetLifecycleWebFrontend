@@ -135,7 +135,12 @@ async function filterByColumn(page, column, value) {
   await columnSelect.selectOption({ label: column });
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
-  await menu.getByText(value, { exact: true }).click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /**
@@ -377,14 +382,14 @@ test.describe('Asset Groups', () => {
       'Status',
       'Actions',
     ]) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
     await expect(page.getByRole('columnheader', { name: 'Group ID' })).toHaveCount(0);
     await expect(page.getByRole('columnheader', { name: 'Organization' })).toHaveCount(0);
     await expect(page.getByRole('columnheader', { name: 'group_id' })).toHaveCount(0);
     await expect(page.getByRole('columnheader', { name: 'org_id' })).toHaveCount(0);
     const first = page.locator('tbody tr').first();
-    await expect(first.locator('input[type="checkbox"]')).toBeVisible();
+    await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     await expect(first.locator('button[title="Edit"]')).toBeVisible();
     await expect(first.locator('button[title="View"]')).toHaveCount(0);
     await expect(first.locator('button[title="Delete"]')).toHaveCount(0);

@@ -724,7 +724,9 @@ async function selectDepartment(page, name) {
  */
 async function selectAssetType(page, name) {
   if (!(await typeMenu(page).isVisible())) {
-    await assetTypeButton(page).click();
+    const trigger = assetTypeButton(page);
+    if (await trigger.isDisabled().catch(() => false)) return;
+    await trigger.click({ force: true, timeout: 8000 }).catch(() => {});
   }
   const menu = typeMenu(page);
   await menu.getByPlaceholder('Search Asset Types...').fill(name);

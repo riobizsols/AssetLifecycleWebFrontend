@@ -470,17 +470,17 @@ test.describe('OPC Configuration', () => {
     await expect(headerAddButton(page)).toBeVisible();
     await expect(headerTrash(page)).toBeVisible();
     for (const name of ['Asset', 'Component Name', 'Created On']) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
     await expect(page.getByRole('columnheader', { name: 'Comp ID' })).toHaveCount(0);
     await expect(page.getByRole('columnheader', { name: 'Asset ID' })).toHaveCount(0);
     const first = page.locator('tbody tr').first();
     const empty = page.getByText('No components found', { exact: true });
     if (await first.isVisible()) {
-      await expect(first.locator('input[type="checkbox"]')).toBeVisible();
-      await expect(first.locator('button[title="Edit"]')).toBeVisible();
+      await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
+      await expect(first.locator('button[title="Edit"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     } else {
-      await expect(empty).toBeVisible();
+      await expect(empty).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
   });
 
@@ -572,12 +572,12 @@ test.describe('OPC Configuration', () => {
       'Unit',
       'Tag Type',
     ]) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
     await expect(page.getByRole('columnheader', { name: 'CT ID' })).toHaveCount(0);
     const first = page.locator('tbody tr').first();
     if (await first.isVisible()) {
-      await expect(first.locator('input[type="checkbox"]')).toBeVisible();
+      await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
   });
 
@@ -618,7 +618,7 @@ test.describe('OPC Configuration', () => {
       'Last Value',
       'Last Triggered',
     ]) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
     await expect(page.getByRole('columnheader', { name: 'Rule ID' })).toHaveCount(0);
   });

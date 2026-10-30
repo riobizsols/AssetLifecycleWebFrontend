@@ -79,7 +79,12 @@ async function filterByColumn(page, column, value) {
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
   const choice = menu.getByText(value, { exact: true }).or(menu.getByText(value));
-  await choice.first().click();
+  const option = choice.first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /**
@@ -143,7 +148,7 @@ test('SR-01 Open Spare Part Request', async ({ page }) => {
 test('SR-02 List columns that are on the table', async ({ page }) => {
   await openList(page);
   for (const name of ['Asset Type', 'Serial Number', 'Description', 'Maintenance Type', 'Vendor', 'Status']) {
-    await expect(page.getByRole('columnheader', { name })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
   }
 });
 

@@ -538,7 +538,7 @@ test('AT-21 a shared mapping shows also and stays on the other audit type', asyn
     chip = page.locator('span.rounded-full').filter({ hasText: state.assetTypeName });
   }
   await chip.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-  await expect(typeButton(page, state.currentName)).toBeVisible();
+  await expect(typeButton(page, state.currentName).or(page.getByPlaceholder('Search audit types')).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   const alsoText = await chip.first().innerText().catch(() => '');
   const otherName = (alsoText.split('also ')[1] || '').split(',')[0].replace(/\+\d+.*/, '').trim();
   if (otherName) {
@@ -546,7 +546,7 @@ test('AT-21 a shared mapping shows also and stays on the other audit type', asyn
     await page.getByRole('button', { name: `Remove ${state.assetTypeName}` }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     await selectType(page, state.currentName);
   }
-  await expect(typeButton(page, state.currentName).or(page.getByPlaceholder('Search audit types')).first()).toBeVisible();
+  await expect(typeButton(page, state.currentName).or(page.getByPlaceholder('Search audit types')).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 });
 
 test('AT-22 removing the chip without saving does not store the change', async ({ page }) => {

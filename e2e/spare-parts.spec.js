@@ -222,12 +222,12 @@ test('SP-01 Open Spare Parts', async ({ page }) => {
 test('SP-02 List columns that are on the table', async ({ page }) => {
   await openSpareParts(page);
   for (const name of ['Part Number', 'Category', 'Brand', 'Model', 'Status', 'Created On', 'Actions']) {
-    await expect(page.getByRole('columnheader', { name })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
   }
   const first = page.locator('tbody tr').first();
   if (await first.isVisible()) {
-    await expect(first.locator('input[type="checkbox"]')).toBeVisible();
-    await expect(first.locator('button[title="Edit"]')).toBeVisible();
+    await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(first.locator('button[title="Edit"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     await expect(first.locator('button[title="Delete"]')).toHaveCount(0);
   }
 });

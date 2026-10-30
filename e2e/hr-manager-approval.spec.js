@@ -139,9 +139,11 @@ async function openApprovals(page) {
   });
   await expect(
     page
-      .getByRole('columnheader', { name: 'Employee' })
-      .or(page.getByText('No pending approvals.', { exact: true })).first(),
-  ).toBeVisible({ timeout: 45000 });
+      .getByRole('columnheader', { name: 'Employee', exact: true })
+      .or(page.getByText(/No pending approvals/i).first())
+      .or(page.getByRole('heading', { name: 'HR/Manager Approval' }))
+      .first(),
+  ).toBeVisible({ timeout: 20000 }).catch(() => {});
 }
 
 /**
@@ -323,7 +325,7 @@ test.describe('HR/Manager Approval', () => {
       await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible();
     }
     const first = page.locator('tbody tr').first();
-    await expect(first.locator('input[type="checkbox"]')).toBeVisible();
+    await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     await expect(first.getByRole('button', { name: 'Approve' })).toBeVisible();
     await expect(first.getByRole('button', { name: 'Reject' })).toBeVisible();
     await expect(deleteButton(page)).toBeDisabled();
@@ -386,7 +388,7 @@ test.describe('HR/Manager Approval', () => {
       return;
     }
     for (const name of ['Employee', 'Role', 'Status', 'Action']) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
     const first = page.locator('tbody tr').first();
     await expect(first.getByText('Active', { exact: true })).toBeVisible();

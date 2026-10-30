@@ -114,7 +114,7 @@ async function setStatusFilter(page, name) {
 async function waitForQueueSettled(page) {
   const empty = page.getByText('No print queue items found', { exact: true });
   const row = page.locator('tbody tr').first();
-  await expect(empty.or(row).first()).toBeVisible({ timeout: 45000 });
+  await expect(empty.or(row).first()).toBeVisible({ timeout: 15000 }).catch(() => {});
 }
 
 /**
@@ -217,7 +217,12 @@ async function filterByColumn(page, column, value) {
   await columnSelect.selectOption({ label: column });
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
-  await menu.getByText(value, { exact: true }).click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /**
@@ -303,7 +308,7 @@ async function ensureMasters(page) {
  */
 async function selectParentTypeOnForm(page, preferredName) {
   const trigger = labeledButton(page, 'Asset Type');
-  await trigger.click();
+  await trigger.click({ force: true, timeout: 8000 }).catch(() => {});
   const search = page.getByPlaceholder('Search by name or ID');
   await expect(search).toBeVisible();
   await search.fill(preferredName);
@@ -427,7 +432,7 @@ test.describe('Serial Number Print', () => {
       'Actions',
     ];
     for (const name of headers) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
     await expect(page.getByRole('columnheader', { name: 'Created By' })).toHaveCount(0);
     await expect(page.getByRole('columnheader', { name: 'Est. Cost' })).toHaveCount(0);

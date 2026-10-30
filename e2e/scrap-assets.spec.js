@@ -392,7 +392,7 @@ test('SC-05 Expired opens the list', async ({ page }) => {
   await expect(page.locator('header').getByText('Expired', { exact: true })).toBeVisible({
     timeout: 30000,
   });
-  await expect(page.getByText('Assets that have passed their expiry date', { exact: true })).toBeVisible();
+  await expect(page.getByText('Assets that have passed their expiry date', { exact: true }).first()).toBeVisible();
   const scrap = page.getByRole('button', { name: 'Scrap', exact: true }).first();
   if (await scrap.isVisible()) {
     await expect(scrap).toBeVisible();

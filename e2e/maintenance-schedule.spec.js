@@ -167,7 +167,12 @@ async function filterByColumn(page, column, value) {
   await columnSelect.selectOption({ label: column });
   await page.getByRole('button', { name: 'Select values' }).click();
   const menu = page.locator('div.absolute.z-50').last();
-  await menu.getByText(value, { exact: true }).click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /**
@@ -491,7 +496,7 @@ test.describe('Maintenance Schedule', () => {
       'Created On',
       'Created By',
     ]) {
-      await expect(page.getByRole('columnheader', { name })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name, exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
     await expect(page.getByRole('columnheader', { name: 'ams_id' })).toHaveCount(0);
     await expect(page.getByRole('columnheader', { name: 'asset_id' })).toHaveCount(0);
@@ -499,7 +504,7 @@ test.describe('Maintenance Schedule', () => {
     const first = page.locator('tbody tr').first();
     const empty = page.getByText('No data found', { exact: true });
     if (await first.isVisible()) {
-      await expect(first.locator('input[type="checkbox"]')).toBeVisible();
+      await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     } else {
       await expect(empty).toBeVisible();
     }

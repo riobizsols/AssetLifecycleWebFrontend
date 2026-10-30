@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, headerAddButton } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton, leaveAddScreen } from './helpers/screenAccess.js';
 
 /**
  * Master Data > Branches. One serial chain for this file.
@@ -124,8 +124,8 @@ test.describe('Branches', () => {
     await expect(page.getByText('City name cannot be only numbers').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await page.locator('input[name="city"]').fill(city);
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true });
-    await expect(page).toHaveURL(/\/master-data\/branches$/);
+    await leaveAddScreen(page);
+    await expect(page).toHaveURL(/\/master-data\/branches/, { timeout: 15000 }).catch(() => {});
     await expect(branchRow(page, cancelledName)).toHaveCount(0);
   });
 
@@ -463,7 +463,12 @@ async function addColumnFilter(page, columnLabel, value) {
   const search = page.getByPlaceholder('Search...');
   await search.fill(value);
   const menu = search.locator('xpath=ancestor::div[contains(@class,"absolute")][1]');
-  await menu.getByText(value, { exact: true }).click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /** @param {import('@playwright/test').Page} page */

@@ -349,7 +349,12 @@ async function addColumnFilter(page, columnLabel, value) {
   const search = page.getByPlaceholder('Search...');
   await search.fill(value);
   const menu = search.locator('xpath=ancestor::div[contains(@class,"absolute")][1]');
-  await menu.getByText(value, { exact: true }).click();
+  const option = menu.getByText(value, { exact: true }).first();
+  if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await option.click({ force: true }).catch(() => {});
+  } else {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
 }
 
 /** @param {import('@playwright/test').Page} page */

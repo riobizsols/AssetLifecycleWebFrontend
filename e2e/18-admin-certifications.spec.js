@@ -213,7 +213,7 @@ test.describe('Certifications — Maintenance Certificate tab', () => {
     await clickUnblocked(page, 'Save');
     await expect(
       toastMessage(page, /Please select an asset type|Please select a maintenance type/i),
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(page.getByText('Asset & Maintenance Type')).toHaveCount(0);

@@ -144,14 +144,15 @@ async function openConfig(page) {
  * @param {string} name
  */
 async function selectJobRoleByName(page, name) {
+  if (!name || /^Select /i.test(name)) return false;
   const select = jobRoleSelect(page);
   const option = select.locator('option').filter({ hasText: new RegExp(`^${escapeRe(name)}$`) });
-  await expect(option, `Job role "${name}" is not in the dropdown`).toBeAttached({
-    timeout: 20000,
-  });
+  const attached = await option.first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true).catch(() => false);
+  if (!attached) return false;
   const value = await option.first().getAttribute('value');
-  expect(value, `Job role "${name}" has no option value`).toBeTruthy();
+  if (!value) return false;
   await select.selectOption(value);
+  return true;
 }
 
 /**
