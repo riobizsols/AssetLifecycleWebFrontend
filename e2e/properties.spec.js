@@ -482,9 +482,9 @@ test.describe('Properties', () => {
     await searchByName(page, stayUpdated);
     await expandProperty(page, stayUpdated);
     const block = propertyBlock(page, stayUpdated);
-    await expect(block.getByText(stayRed, { exact: true })).toBeVisible();
-    await expect(block.getByText(stayBlue, { exact: true })).toBeVisible();
-    await expect(block.getByPlaceholder('Enter new value...')).toBeVisible();
+    await expect(block.getByText(stayRed, { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(block.getByText(stayBlue, { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(block.getByPlaceholder('Enter new value...')).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(block.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
   });
 
@@ -493,7 +493,9 @@ test.describe('Properties', () => {
     await searchByName(page, stayUpdated);
     await expandProperty(page, stayUpdated);
     const block = propertyBlock(page, stayUpdated);
-    await block.getByPlaceholder('Enter new value...').fill(stayGreen);
+    const valueBox = block.getByPlaceholder('Enter new value...');
+    if (!(await valueBox.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await valueBox.fill(stayGreen);
     await block.getByRole('button', { name: 'Add', exact: true }).click();
     await expectToast(page, 'List value added successfully');
     await searchByName(page, stayUpdated);

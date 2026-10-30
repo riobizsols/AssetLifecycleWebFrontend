@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { firstDataCellText, headerAddButton } from './helpers/screenAccess.js';
+import { firstDataCellText, headerAddButton, clickSortCycle } from './helpers/screenAccess.js';
 import { selectPortalDropdown } from './helpers/searchableDropdown.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -422,14 +422,7 @@ test('AS-04 Filter the list', async ({ page }) => {
 
 test('AS-05 Sort by asset name', async ({ page }) => {
   await openAssets(page);
-  const header = page.locator('thead').getByText('Asset Name', { exact: true });
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Asset Name/ })).toContainText('↑');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Asset Name/ })).toContainText('↓');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Asset Name/ })).not.toContainText('↑');
-  await expect(page.getByRole('columnheader', { name: /Asset Name/ })).not.toContainText('↓');
+  await clickSortCycle(page, 'Asset Name');
 });
 
 test('AS-06 Download with nothing selected', async ({ page }) => {

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickLocatorUnblocked, clickUnblocked, dismissToasts, expectSuccessOrName, fillReactInput, headerAddButton } from './helpers/screenAccess.js';
+import { clickLocatorUnblocked, clickUnblocked, dismissToasts, expectSuccessOrName, fillReactInput, headerAddButton, chooseSearchOption } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The product and service for this run stay in the playwright tenant.
@@ -479,9 +479,7 @@ async function linkProductToVendor(page, typeName, productBrand, productModel) {
  * @param {string} optionText
  */
 async function chooseFixedOption(page, placeholder, optionText) {
-  await page.getByRole('button', { name: placeholder, exact: true }).click();
+  await page.getByRole('button', { name: placeholder, exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
   const search = page.getByPlaceholder('Search...').last();
-  await search.fill(optionText);
-  const menu = search.locator('xpath=ancestor::div[contains(@class,"fixed")][1]');
-  await menu.getByText(optionText, { exact: true }).click();
+  await chooseSearchOption(page, optionText, search);
 }

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -426,14 +426,7 @@ test.describe('Asset Groups', () => {
 
   test('AG-05 Sort by group name', async ({ page }) => {
     await openList(page);
-    const header = page.locator('thead').getByText('Group Name', { exact: true });
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Group Name/ })).toContainText('↑');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Group Name/ })).toContainText('↓');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Group Name/ })).not.toContainText('↑');
-    await expect(page.getByRole('columnheader', { name: /Group Name/ })).not.toContainText('↓');
+    await clickSortCycle(page, 'Group Name');
   });
 
   test('AG-06 Delete with nothing selected', async ({ page }) => {

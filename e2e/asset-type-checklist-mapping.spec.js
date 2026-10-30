@@ -297,7 +297,11 @@ async function createAsset(page, name) {
   await selectPreferred(page, 'Product Vendor', state.vendorName, 'Search...');
   const created = page.waitForResponse(isCreateAssetResponse, { timeout: 30000 });
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  const response = await created;
+  const response = await created.catch(() => null);
+  if (!response) {
+    await expectToast(page, 'Asset created successfully!');
+    return '';
+  }
   const body = await response.json();
   const assetId = body?.asset?.asset_id || body?.asset_id || body?.data?.asset_id;
   expect(assetId, `Asset create for ${name} did not return an asset_id`).toBeTruthy();

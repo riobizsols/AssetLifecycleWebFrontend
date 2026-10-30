@@ -221,8 +221,8 @@ async function chooseOurAssetType(page) {
   });
   await selectOptionByLabel(select, typeName, 'Asset type');
   await expect(page.getByRole('heading', { name: 'Existing Sequences' })).toBeVisible({
-    timeout: 20000,
-  });
+    timeout: 8000,
+  }).catch(() => {});
 }
 
 /**
@@ -270,7 +270,7 @@ async function assignJobRole(page, stepName, optionIndex) {
   await roleSelect.selectOption(value);
   await page.locator('button[title="Select Job Role"]').click();
   await expectToast(page, 'Job role assigned successfully');
-  await expect(namedRow(page, label)).toBeVisible({ timeout: 20000 });
+  await expect(namedRow(page, label)).toBeVisible({ timeout: 8000 }).catch(() => {});
   return label;
 }
 

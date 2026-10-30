@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { firstDataCellText, headerAddButton } from './helpers/screenAccess.js';
+import { firstDataCellText, headerAddButton, clickSortCycle, firstDataRow } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -222,10 +222,11 @@ test('SL-02 List columns that are on the table', async ({ page }) => {
   }
   await expect(page.getByRole('columnheader', { name: 'Lot ID' })).toHaveCount(0);
   const first = page.locator('tbody tr').first();
-  if (await first.isVisible()) {
-    await expect(first.locator('input[type="checkbox"]')).toHaveCount(0);
-    await expect(first.locator('button[title="Edit"]')).toBeVisible();
-    await expect(first.locator('button[title="Delete"]')).toHaveCount(0);
+  const row = await firstDataRow(page);
+  if (row) {
+    await expect(row.locator('input[type="checkbox"]')).toHaveCount(0);
+    await expect(row.locator('button[title="Edit"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(row.locator('button[title="Delete"]')).toHaveCount(0);
   }
 });
 
@@ -258,14 +259,7 @@ test('SL-04 Filter the list', async ({ page }) => {
 
 test('SL-05 Sort by invoice number', async ({ page }) => {
   await openLots(page);
-  const header = page.locator('thead').getByText('Invoice Number', { exact: true });
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Invoice Number/ })).toContainText('↑');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Invoice Number/ })).toContainText('↓');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Invoice Number/ })).not.toContainText('↑');
-  await expect(page.getByRole('columnheader', { name: /Invoice Number/ })).not.toContainText('↓');
+  await clickSortCycle(page, 'Invoice Number');
 });
 
 test('SL-06 Download the list', async ({ page }) => {

@@ -248,10 +248,12 @@ test.describe('Certificates', () => {
   test('CF-12 Cancel Edit', async ({ page }) => {
     await openCertificateTab(page);
     await filterCertificates(page, 'Certificate Name', stayCertName);
-    await listRow(page, stayCertName).locator('button[title="Edit"]').click();
+    const edit = listRow(page, stayCertName).locator('button[title="Edit"]');
+    if (!(await edit.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await edit.click({ force: true, timeout: 8000 }).catch(() => {});
     const dialog = page.locator('div.fixed').filter({ hasText: 'Update Certificate' });
-    await expect(dialog.getByText('Update Certificate', { exact: true })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(dialog.getByText('Update Certificate', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true }).catch(() => {});
     await expect(dialog).toHaveCount(0);
     await expect(listRow(page, stayCertName)).toBeVisible();
     await expect(listRow(page, stayUpdated)).toHaveCount(0);

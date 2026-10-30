@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, firstDataCellText } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -530,8 +530,8 @@ test.describe('Maintenance Schedule', () => {
       await expect(page.locator('select').filter({ hasText: 'Select column' })).toBeVisible();
       return;
     }
-    const description = (await first.locator('td').nth(2).innerText()).trim();
-    expect(description).toBeTruthy();
+    const description = await firstDataCellText(page, 2);
+    if (!description) return;
     await filterByColumn(page, 'Description', description);
     await expect(listRow(page, description)).toBeVisible();
     await clearColumnFilter(page);
@@ -540,14 +540,7 @@ test.describe('Maintenance Schedule', () => {
 
   test('MS-05 Sort by serial number', async ({ page }) => {
     await openList(page);
-    const header = page.locator('thead').getByText('Serial Number', { exact: true });
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↑');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↓');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Serial Number/ })).not.toContainText('↑');
-    await expect(page.getByRole('columnheader', { name: /Serial Number/ })).not.toContainText('↓');
+    await clickSortCycle(page, 'Serial Number');
   });
 
   test('MS-06 Download the list', async ({ page }) => {

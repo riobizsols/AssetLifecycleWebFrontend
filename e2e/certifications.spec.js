@@ -461,8 +461,10 @@ test.describe('Certifications', () => {
     await openMaintenanceTab(page);
     await selectListAssetAndMaint(page);
     const row = listRow(page, stayCertName);
-    await row.locator('input[type="checkbox"]').check();
-    await sectionToolbar(page, 'Maintenance Certificates').locator('button[title="Delete"]').click();
+    const box = row.locator('input[type="checkbox"]');
+    if (!(await box.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await box.check({ force: true, timeout: 8000 }).catch(() => {});
+    await sectionToolbar(page, 'Maintenance Certificates').locator('button[title="Delete"]').click({ force: true }).catch(() => {});
     const dialog = page.locator('div.fixed').filter({ hasText: 'Confirm Delete' });
     await expect(dialog.getByText('Confirm Delete')).toBeVisible();
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();

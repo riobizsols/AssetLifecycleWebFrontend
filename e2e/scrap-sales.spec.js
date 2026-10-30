@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -503,11 +503,7 @@ test('SS-05 Sort by sale title', async ({ page }) => {
     await expect(page.getByText('No scrap sales found', { exact: true })).toBeVisible();
     return;
   }
-  const header = page.locator('thead').getByText('Sale Title', { exact: true });
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Sale Title/ })).toContainText('↑');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Sale Title/ })).toContainText('↓');
+  await clickSortCycle(page, 'Sale Title');
 });
 
 test('SS-06 Delete with nothing selected', async ({ page }) => {

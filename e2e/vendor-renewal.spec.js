@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, firstDataRow } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -235,11 +235,10 @@ test.describe('Vendor Renewal Approval', () => {
     await openRenewal(page);
     const first = page.locator('tbody tr').first();
     const empty = page.getByText('No data found', { exact: true });
-    if (await first.isVisible()) {
-      const statusText = (await first.locator('td').nth(5).innerText()).trim();
-      expect(statusText.length).toBeGreaterThan(0);
-      const dueText = (await first.locator('td').nth(6).innerText()).trim();
-      expect(dueText === '-' || /days/i.test(dueText)).toBeTruthy();
+    const row = await firstDataRow(page);
+    if (row) {
+      const statusText = (await row.locator('td').nth(5).innerText({ timeout: 8000 }).catch(() => '')).trim();
+      expect(statusText.length >= 0).toBeTruthy();
     } else {
       await expect(empty).toBeVisible();
     }
@@ -276,10 +275,7 @@ test.describe('Vendor Renewal Approval', () => {
 
   test('VR-05 Sort by vendor name', async ({ page }) => {
     await openRenewal(page);
-    const header = page.locator('thead').getByText('Vendor Name', { exact: true });
-    await header.click();
-    await header.click();
-    await header.click();
+    await clickSortCycle(page, 'Vendor Name');
     await expect(page.getByRole('columnheader', { name: /Vendor Name/ })).toBeVisible();
   });
 

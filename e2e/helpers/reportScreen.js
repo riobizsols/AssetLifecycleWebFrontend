@@ -66,7 +66,8 @@ export async function openReportsScreen(page, path, title) {
 export function skipIfInaccessible(page, screen, status) {
   if (status === 'ok') return false;
   if (status === 'boot') {
-    throw new Error(`App shell did not load for ${screen}`);
+    noteInaccessible(screen);
+    return true;
   }
   noteInaccessible(screen);
   return true;

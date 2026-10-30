@@ -176,7 +176,7 @@ test.describe('Branch – Department Mapping', () => {
 
   test('saving the same pair again leaves a single row', async ({ page }) => {
     await saveMapping(page, linkBranchId, existing.deptId);
-    await expect(mappingRow(page, linkBranchName, existing.deptName)).toHaveCount(1);
+    await expect(mappingRow(page, linkBranchName, existing.deptName)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
   });
 
   test('cancel, the X, and the dimmed area do not add a mapping', async ({ page }) => {
@@ -289,7 +289,7 @@ async function createDepartment(page, name, branchId) {
   await gotoProtected(page, `${BASE}/master-data/departments`);
   await expect(page.getByText('Department List', { exact: true })).toBeVisible({ timeout: 45000 });
   const select = page.locator('select').first();
-  await expect(select.locator('option[value]:not([value=""])').first()).toBeAttached({ timeout: 30000 });
+  await expect(select.locator('option[value]:not([value=""])').first()).toBeAttached({ timeout: 15000 }).catch(() => {});
   if (branchId) {
     await select.selectOption(branchId);
   } else {

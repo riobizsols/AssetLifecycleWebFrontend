@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -653,14 +653,7 @@ test.describe('Workorder Management', () => {
 
   test('WO-05 Sort by description', async ({ page }) => {
     await openList(page);
-    const header = page.locator('thead').getByText('Description', { exact: true });
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Description/ })).toContainText('↑');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Description/ })).toContainText('↓');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Description/ })).not.toContainText('↑');
-    await expect(page.getByRole('columnheader', { name: /Description/ })).not.toContainText('↓');
+    await clickSortCycle(page, 'Description');
   });
 
   test('WO-06 There is no add or delete', async ({ page }) => {

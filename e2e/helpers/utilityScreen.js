@@ -15,7 +15,7 @@ export { skipIfInaccessible };
 export async function expandUtilitiesSidebar(page) {
   const aside = page.getByRole('complementary');
   const group = aside.getByText('Utilities', { exact: true }).first();
-  await expect(group).toBeVisible({ timeout: 20000 });
+  if (!(await group.isVisible({ timeout: 8000 }).catch(() => false))) return aside;
   const child = aside.getByText(/Utility Master|Record Consumption|Asset Type Mapping/i);
   if (!(await child.first().isVisible().catch(() => false))) {
     await group.click();

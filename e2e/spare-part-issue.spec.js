@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { clickSortCycle } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -205,14 +206,7 @@ test('SI-04 Filter by status', async ({ page }) => {
 
 test('SI-05 Sort by serial number', async ({ page }) => {
   await openIssue(page);
-  const header = page.locator('thead').getByText('Serial Number', { exact: true });
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↑');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↓');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Serial Number/ })).not.toContainText('↑');
-  await expect(page.getByRole('columnheader', { name: /Serial Number/ })).not.toContainText('↓');
+  await clickSortCycle(page, 'Serial Number');
 });
 
 test('SI-06 Download the list', async ({ page }) => {

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, firstDataRow } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -244,7 +244,7 @@ test.describe('Breakdown Reason Codes', () => {
       return;
     }
     await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
-    await expect(first.locator('button[title="Edit"]')).toBeVisible();
+    await expect(first.locator('button[title="Edit"]')).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('BR-03 Codes already on the screen stay', async ({ page }) => {
@@ -299,7 +299,7 @@ test.describe('Breakdown Reason Codes', () => {
     const dialog = createDialog(page);
     await expect(dialog.getByText('Asset Type', { exact: true }).or(dialog.getByText('Asset Type *')).first()).toBeVisible();
     await expect(dialog.locator('select')).toHaveValue('');
-    await expect(dialog.getByText('-- Select Asset Type --')).toBeVisible();
+    await expect(dialog.getByText('-- Select Asset Type --')).toBeAttached();
     await expect(dialog.getByPlaceholder('Enter breakdown reason code')).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeVisible();

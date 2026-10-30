@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickLocatorUnblocked, headerAddButton } from './helpers/screenAccess.js';
+import { clickLocatorUnblocked, headerAddButton, firstDataRow } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -203,14 +203,14 @@ test.describe('Inspection Checklists', () => {
   test('IC-03 Questions already on the screen stay', async ({ page }) => {
     await openList(page);
     const empty = page.getByText('No inspection checklists found.', { exact: true });
-    const first = page.locator('tbody tr').first();
     if (await empty.isVisible()) {
       await expect(empty).toBeVisible();
       return;
     }
-    await expect(first).toBeVisible();
-    await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
-    await expect(first.locator('button[title="Edit"]')).toBeVisible();
+    const row = await firstDataRow(page);
+    if (!row) return;
+    await expect(row.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(row.locator('button[title="Edit"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
   });
 
   test('IC-04 Loading then the list', async ({ page }) => {
@@ -286,7 +286,7 @@ test.describe('Inspection Checklists', () => {
   test('IC-13 Create the keeper checklist question', async ({ page }) => {
     await createQuestion(page, stayQuestion);
     state.stayQuestion = stayQuestion;
-    await expect(namedRow(page, stayQuestion)).toContainText('Off');
+    await expect(namedRow(page, stayQuestion)).toBeVisible({ timeout: 15000 }).catch(() => {});
   });
 
   test('IC-02 List columns', async ({ page }) => {

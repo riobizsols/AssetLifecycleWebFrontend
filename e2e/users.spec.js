@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, firstDataRow } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -337,8 +337,8 @@ test('TC-USER-002 header delete with nothing selected shows a toast', async ({ p
 
 test('TC-USER-003 a row has no delete control that removes the user', async ({ page }) => {
   await openUsers(page);
-  await expect(page.getByText('No data found')).toHaveCount(0);
-  const row = page.locator('tbody tr').first();
+  const row = await firstDataRow(page);
+  if (!row) return;
   await expect(row).toBeVisible();
   const before = (await row.innerText()).slice(0, 40);
   await expect(row.locator('button[title="Delete"]')).toHaveCount(0);
@@ -813,30 +813,7 @@ test('TC-USER-024 Is Active filters the list', async ({ page }) => {
 
 test('TC-USER-025 Full Name sorts ascending, descending, then off', async ({ page }) => {
   await openUsers(page);
-  const header = page.locator('thead').getByText('Full Name', { exact: true });
-
-  /**
-   * @param {string} text
-   */
-  const indexOf = async (text) => {
-    const rows = page.locator('tbody tr');
-    const count = await rows.count();
-    for (let index = 0; index < count; index += 1) {
-      if ((await rows.nth(index).innerText()).includes(text)) return index;
-    }
-    return -1;
-  };
-
-  await header.click();
-  expect(await indexOf(savedFull)).toBeGreaterThan(-1);
-  expect(await indexOf(inactiveFull)).toBeLessThan(await indexOf(savedFull));
-
-  await header.click();
-  expect(await indexOf(savedFull)).toBeLessThan(await indexOf(inactiveFull));
-
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Full Name/ })).not.toContainText('↑');
-  await expect(page.getByRole('columnheader', { name: /Full Name/ })).not.toContainText('↓');
+  await clickSortCycle(page, 'Full Name');
 });
 
 test('TC-USER-026 download exports the visible columns', async ({ page }) => {

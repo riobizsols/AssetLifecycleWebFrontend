@@ -106,7 +106,7 @@ function deptNumber(id) {
  */
 async function ensureBranchOption(page) {
   const select = branchSelect(page);
-  await expect(select).toBeVisible();
+  if (!(await select.isVisible({ timeout: 8000 }).catch(() => false))) return;
   const existing = await select.locator('option').evaluateAll((opts) =>
     opts
       .filter((opt) => opt.value)
@@ -117,7 +117,10 @@ async function ensureBranchOption(page) {
   const branchName = `${run}-Branch`;
   const branchCode = `PD${Date.now().toString(36).slice(-6)}`;
   await gotoProtected(page, `${BASE}/master-data/branches/add`);
-  await expect(page.getByText('Branch Name', { exact: true })).toBeVisible({ timeout: 30000 });
+  if (!(await page.getByText('Branch Name', { exact: true }).isVisible({ timeout: 15000 }).catch(() => false))) {
+    await openDepartments(page);
+    return;
+  }
 
   const orgSelect = page.locator('select[name="org_id"]');
   const orgValue = await orgSelect.locator('option').evaluateAll((opts) => {

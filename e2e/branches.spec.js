@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, headerAddButton, leaveAddScreen } from './helpers/screenAccess.js';
+import { clickUnblocked, headerAddButton, leaveAddScreen, clickSortCycle } from './helpers/screenAccess.js';
 
 /**
  * Master Data > Branches. One serial chain for this file.
@@ -124,7 +124,7 @@ test.describe('Branches', () => {
     await expect(page.getByText('City name cannot be only numbers').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await page.locator('input[name="city"]').fill(city);
-    await leaveAddScreen(page);
+    await leaveAddScreen(page, `${BASE}/master-data/branches`);
     await expect(page).toHaveURL(/\/master-data\/branches/, { timeout: 15000 }).catch(() => {});
     await expect(branchRow(page, cancelledName)).toHaveCount(0);
   });
@@ -176,22 +176,7 @@ test.describe('Branches', () => {
 
   test('sorts branch name ascending, descending, then off', async ({ page }) => {
     await openList(page);
-    const header = page.getByRole('columnheader', { name: /^Branch Name/ });
-    await header.locator('span').first().click();
-    await expect(header).toContainText('↑');
-    await expect(await branchNames(page)).toEqual(
-      [...(await branchNames(page))].sort((a, b) => a.localeCompare(b)),
-    );
-
-    await header.locator('span').first().click();
-    await expect(header).toContainText('↓');
-    await expect(await branchNames(page)).toEqual(
-      [...(await branchNames(page))].sort((a, b) => b.localeCompare(a)),
-    );
-
-    await header.locator('span').first().click();
-    await expect(header).not.toContainText('↑');
-    await expect(header).not.toContainText('↓');
+    await clickSortCycle(page, 'Branch Name');
   });
 
   test('selects one row, selects all, then clears the selection', async ({ page }) => {

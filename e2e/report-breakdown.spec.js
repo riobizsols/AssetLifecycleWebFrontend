@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, firstDataRow } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -487,9 +487,10 @@ test.describe('Report Breakdown', () => {
     await expect(page.getByRole('columnheader', { name: 'abr_id' })).toHaveCount(0);
     const first = page.locator('tbody tr').first();
     const empty = page.getByText('No data found', { exact: true });
-    if (await first.isVisible()) {
-      await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
-      await expect(first.locator('button[title="Edit"]')).toBeVisible();
+    const row = await firstDataRow(page);
+    if (row) {
+      await expect(row.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
+      await expect(row.locator('button[title="Edit"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
     } else {
       await expect(empty).toBeVisible();
     }
@@ -526,14 +527,7 @@ test.describe('Report Breakdown', () => {
 
   test('RB-05 Sort by description', async ({ page }) => {
     await openList(page);
-    const header = page.locator('thead').getByText('Description', { exact: true });
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Description/ })).toContainText('↑');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Description/ })).toContainText('↓');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Description/ })).not.toContainText('↑');
-    await expect(page.getByRole('columnheader', { name: /Description/ })).not.toContainText('↓');
+    await clickSortCycle(page, 'Description');
   });
 
   test('RB-06 Delete with nothing selected', async ({ page }) => {

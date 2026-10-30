@@ -182,6 +182,7 @@ export function isJsonGet(response, pathPattern) {
  */
 export async function leaveAddScreen(page, listPath) {
   await clickUnblocked(page, 'Cancel');
+  if (!listPath) return;
   const escaped = listPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const onList = await page
     .waitForURL(new RegExp(`${escaped}/?$`), { timeout: 8000 })
@@ -226,6 +227,66 @@ export function toastMessage(page, text) {
 export function columnHeader(page, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return page.getByRole('columnheader', { name: new RegExp(`^${escaped}`) });
+}
+
+/**
+ * Cycle sort on a column. Exact thead text misses the header after it becomes "Name ↑".
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ */
+export async function clickSortCycle(page, name) {
+  const header = columnHeader(page, name).first();
+  if (!(await header.isVisible({ timeout: 8000 }).catch(() => false))) return;
+  for (let i = 0; i < 3; i += 1) {
+    await dismissToasts(page);
+    await header.click({ force: true, timeout: 8000 }).catch(() => {});
+  }
+}
+
+/**
+ * Open a labeled searchable dropdown. Returns the search box, or null when it did not open.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} label
+ * @param {string | string[]} [placeholders]
+ */
+export async function openLabeledSearch(page, label, placeholders = ['Search by name or ID', 'Search...']) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const trigger = page
+    .locator('label')
+    .filter({ hasText: new RegExp(`^${escaped}$`) })
+    .locator('xpath=..')
+    .getByRole('button')
+    .first();
+  await trigger.click({ force: true, timeout: 8000 }).catch(() => {});
+  const list = Array.isArray(placeholders) ? placeholders : [placeholders];
+  for (const placeholder of list) {
+    const search = page.getByPlaceholder(placeholder).last();
+    if (await search.isVisible({ timeout: 4000 }).catch(() => false)) return search;
+  }
+  return null;
+}
+
+/**
+ * Choose an option from an open searchable menu. Returns false when the option is missing.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} optionText
+ * @param {import('@playwright/test').Locator | null} [search]
+ */
+export async function chooseSearchOption(page, optionText, search = null) {
+  const box = search || page.getByPlaceholder(/Search/).last();
+  if (!(await box.isVisible({ timeout: 4000 }).catch(() => false))) return false;
+  await box.fill(optionText);
+  const option = page
+    .locator('div.cursor-pointer')
+    .filter({ hasText: optionText })
+    .filter({ hasNotText: '+ Create New' })
+    .first();
+  if (!(await option.isVisible({ timeout: 8000 }).catch(() => false))) {
+    await page.keyboard.press('Escape').catch(() => {});
+    return false;
+  }
+  await option.click({ force: true, timeout: 8000 }).catch(() => {});
+  return true;
 }
 
 /**

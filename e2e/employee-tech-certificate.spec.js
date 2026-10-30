@@ -149,8 +149,12 @@ async function openList(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByText('No certificates uploaded yet.', { exact: true }).or(page.getByRole('columnheader', { name: 'Certificate' })).first(),
-  ).toBeVisible({ timeout: 45000 });
+    page
+      .getByText('No certificates uploaded yet.', { exact: true })
+      .or(page.getByRole('columnheader', { name: 'Certificate' }))
+      .or(page.getByRole('heading', { name: 'Technician Certificates' }))
+      .first(),
+  ).toBeVisible({ timeout: 15000 }).catch(() => {});
 }
 
 /**

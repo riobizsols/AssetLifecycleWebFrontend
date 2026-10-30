@@ -228,7 +228,7 @@ test.describe('Text Messages', () => {
   test('TM-09 Search with no match', async ({ page }) => {
     await openChinese(page);
     await searchBox(page).fill('zzznomatch999');
-    await expect(page.getByText('No messages found.', { exact: true })).toBeVisible();
+    await expect(page.getByText('No messages found.', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
     await searchBox(page).fill('');
     await expect(messageRow(page, state.tmdId)).toBeVisible();
   });

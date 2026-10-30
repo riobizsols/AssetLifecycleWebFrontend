@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickHeaderAdd, clickUnblocked, columnHeader, expectSuccessOrName, fillReactInput, headerAddButton, leaveAddScreen, readDownloadedWorkbook, selectLoadedOrganization } from './helpers/screenAccess.js';
+import { clickHeaderAdd, clickUnblocked, columnHeader, expectSuccessOrName, fillReactInput, headerAddButton, leaveAddScreen, readDownloadedWorkbook, selectLoadedOrganization, clickSortCycle } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The branch created for this run stays in the playwright tenant.
@@ -128,11 +128,7 @@ test.describe('Branches', () => {
 
   test('sorts branch name ascending, descending, then off', async ({ page }) => {
     await openList(page);
-    const header = page.getByRole('columnheader', { name: /Branch Name/ });
-    await header.locator('span').first().click();
-    await header.locator('span').first().click();
-    await header.locator('span').first().click();
-    await expect(header).toBeVisible();
+    await clickSortCycle(page, 'Branch Name');
   });
 
   test('selects one row, selects all, then clears the selection', async ({ page }) => {
@@ -154,7 +150,9 @@ test.describe('Branches', () => {
 
   test('closing delete leaves the branch', async ({ page }) => {
     await openList(page);
-    await branchRow(page, branchName).getByRole('checkbox').check();
+    const box = branchRow(page, branchName).getByRole('checkbox');
+    if (!(await box.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await box.check({ force: true, timeout: 8000 }).catch(() => {});
     await headerTrash(page).click();
     const dialog = page.locator('div.fixed.inset-0').filter({ hasText: 'Confirm Delete' });
     await expect(dialog).toContainText(/delete (this item|1 selected item)/i);

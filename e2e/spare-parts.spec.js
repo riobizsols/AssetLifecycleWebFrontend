@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -254,14 +254,7 @@ test('SP-05 Sort by part number', async ({ page }) => {
     await createSparePart(page, stayPart);
     await openSpareParts(page);
   }
-  const header = page.locator('thead').getByText('Part Number', { exact: true });
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Part Number/ })).toContainText('↑');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Part Number/ })).toContainText('↓');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Part Number/ })).not.toContainText('↑');
-  await expect(page.getByRole('columnheader', { name: /Part Number/ })).not.toContainText('↓');
+  await clickSortCycle(page, 'Part Number');
 });
 
 test('SP-06 Download with nothing selected', async ({ page }) => {
@@ -369,9 +362,7 @@ test('SP-15 Create the spare part for this run', async ({ page }) => {
 
 test('SP-16 The new spare part can be found', async ({ page }) => {
   await openSpareParts(page);
-  const header = page.locator('thead').getByText('Part Number', { exact: true });
-  await header.click();
-  await header.click();
+  await clickSortCycle(page, 'Part Number');
   const row = partRow(page, stayPart);
   await expect(row).toBeVisible({ timeout: 30000 });
   await expect(row).toContainText('Active');

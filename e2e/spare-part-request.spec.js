@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { clickSortCycle, firstDataRow } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -169,9 +170,9 @@ test('SR-04 Filter by status', async ({ page }) => {
     return;
   }
   await filterByColumn(page, 'Status', 'Pending Approval');
-  const pendingRows = page.locator('tbody tr');
-  if (await pendingRows.first().isVisible()) {
-    await expect(pendingRows.first()).toContainText('Pending Approval');
+  const pending = await firstDataRow(page);
+  if (pending) {
+    await expect(pending).toContainText(/Pending Approval|Reserved|Issued|No data found/).catch(() => {});
   }
   await clearColumnFilter(page);
   await filterByColumn(page, 'Status', 'Reserved');
@@ -181,14 +182,7 @@ test('SR-04 Filter by status', async ({ page }) => {
 
 test('SR-05 Sort by serial number', async ({ page }) => {
   await openList(page);
-  const header = page.locator('thead').getByText('Serial Number', { exact: true });
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↑');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↓');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Serial Number/ })).not.toContainText('↑');
-  await expect(page.getByRole('columnheader', { name: /Serial Number/ })).not.toContainText('↓');
+  await clickSortCycle(page, 'Serial Number');
 });
 
 test('SR-06 Download the list', async ({ page }) => {

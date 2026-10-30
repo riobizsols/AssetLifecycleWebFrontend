@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, columnHeader, expectSuccessOrName, headerAddButton, leaveAddScreen, readDownloadedWorkbook } from './helpers/screenAccess.js';
+import { clickUnblocked, expectSuccessOrName, headerAddButton, leaveAddScreen, readDownloadedWorkbook, clickSortCycle, chooseSearchOption } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. The vendor created for this run stays in the playwright tenant.
@@ -160,14 +160,7 @@ test.describe('Vendors', () => {
 
   test('sorts vendor name ascending, descending, then off', async ({ page }) => {
     await openList(page);
-    const header = columnHeader(page, 'Vendor Name');
-    await header.locator('span').first().click();
-    await expect(header).toContainText('↑');
-    await header.locator('span').first().click();
-    await expect(header).toContainText('↓');
-    await header.locator('span').first().click();
-    await expect(header).not.toContainText('↑');
-    await expect(header).not.toContainText('↓');
+    await clickSortCycle(page, 'Vendor Name');
   });
 
   test('downloads the full list and the filtered list', async ({ page }) => {
@@ -426,9 +419,7 @@ async function linkProduct(page, name, typeName, brand, model) {
  * @param {string} optionText
  */
 async function chooseFixedOption(page, placeholder, optionText) {
-  await page.getByRole('button', { name: placeholder, exact: true }).click();
+  await page.getByRole('button', { name: placeholder, exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
   const search = page.getByPlaceholder('Search...').last();
-  await search.fill(optionText);
-  const menu = search.locator('xpath=ancestor::div[contains(@class,"fixed")][1]');
-  await menu.getByText(optionText, { exact: true }).click();
+  await chooseSearchOption(page, optionText, search);
 }

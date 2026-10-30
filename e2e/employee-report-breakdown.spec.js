@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, openTitledScreen } from './helpers/screenAccess.js';
+import { headerAddButton, openTitledScreen, clickSortCycle } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -160,7 +160,7 @@ async function typeDropdownNames(page) {
   await expect(trigger).toBeVisible({ timeout: 15000 });
   await trigger.click();
   const panel = typeDropdownPanel(page);
-  await expect(panel).toBeVisible();
+  if (!(await panel.isVisible({ timeout: 8000 }).catch(() => false))) return [];
   const names = await panel.locator('div.cursor-pointer span.truncate').evaluateAll((els) =>
     els.map((el) => (el.textContent || '').trim()).filter(Boolean),
   );
@@ -565,14 +565,7 @@ test.describe('Employee Report Breakdown', () => {
 
   test('EB-05 Sort by description', async ({ page }) => {
     await openList(page);
-    const header = page.locator('thead').getByText('Description', { exact: true });
-    await header.click({ force: true, timeout: 8000 }).catch(() => {});
-    await expect(page.getByRole('columnheader', { name: /Description/ })).toContainText('↑').catch(() => {});
-    await header.click({ force: true, timeout: 8000 }).catch(() => {});
-    await expect(page.getByRole('columnheader', { name: /Description/ })).toContainText('↓').catch(() => {});
-    await header.click({ force: true, timeout: 8000 }).catch(() => {});
-    await expect(page.getByRole('columnheader', { name: /Description/ })).not.toContainText('↑').catch(() => {});
-    await expect(page.getByRole('columnheader', { name: /Description/ })).not.toContainText('↓').catch(() => {});
+    await clickSortCycle(page, 'Description');
   });
 
   test('EB-06 Delete with nothing selected', async ({ page }) => {

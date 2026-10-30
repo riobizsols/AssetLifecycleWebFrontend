@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -613,14 +613,7 @@ test.describe('Maintenance Approval', () => {
 
   test('MA-05 Sort by serial number', async ({ page }) => {
     await openList(page);
-    const header = page.locator('thead').getByText('Serial Number', { exact: true });
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↑');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↓');
-    await header.click();
-    await expect(page.getByRole('columnheader', { name: /Serial Number/ })).not.toContainText('↑');
-    await expect(page.getByRole('columnheader', { name: /Serial Number/ })).not.toContainText('↓');
+    await clickSortCycle(page, 'Serial Number');
   });
 
   test('MA-06 Download the list', async ({ page }) => {

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, chooseSearchOption, openLabeledSearch } from './helpers/screenAccess.js';
 import { listPortalOptions, selectPortalDropdown } from './helpers/searchableDropdown.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -307,20 +307,8 @@ async function ensureMasters(page) {
  * @param {string} preferredName
  */
 async function selectParentTypeOnForm(page, preferredName) {
-  const trigger = labeledButton(page, 'Asset Type');
-  await trigger.click({ force: true, timeout: 8000 }).catch(() => {});
-  const search = page.getByPlaceholder('Search by name or ID');
-  await expect(search).toBeVisible();
-  await search.fill(preferredName);
-  const option = page
-    .locator('div.cursor-pointer')
-    .filter({ hasText: preferredName })
-    .filter({ hasNotText: '+ Create New Asset Type' })
-    .first();
-  await expect(option, `Parent asset type ${preferredName} is not in the list`).toBeVisible({
-    timeout: 15000,
-  });
-  await option.click();
+  const search = await openLabeledSearch(page, 'Asset Type');
+  await chooseSearchOption(page, preferredName, search);
 }
 
 /**
@@ -517,10 +505,7 @@ test.describe('Serial Number Print', () => {
   test('SN-08 Sort by serial number', async ({ page }) => {
     await openPrintQueue(page);
     await waitForQueueSettled(page);
-    const header = page.locator('thead').getByText('Serial Number', { exact: true });
-    await header.click({ force: true, timeout: 8000 }).catch(() => {});
-    await header.click({ force: true, timeout: 8000 }).catch(() => {});
-    await header.click({ force: true, timeout: 8000 }).catch(() => {});
+    await clickSortCycle(page, 'Serial Number');
     await expect(page.getByRole('columnheader', { name: /Serial Number/ }).first()).toBeVisible();
   });
 
