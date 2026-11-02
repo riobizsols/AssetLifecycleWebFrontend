@@ -1,13 +1,16 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import * as XLSX from 'xlsx';
+import * as XLSXNS from 'xlsx';
+import fs from 'node:fs';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 import { headerAddButton } from './helpers/screenAccess.js';
 
+const XLSX = XLSXNS.default ?? XLSXNS;
+
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-USER-${Date.now().toString(36)}`;
+const run = `PW-USER-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const stamp = run.slice('PW-USER-'.length);
 const usersUrl = `${BASE}/master-data/user-roles`;
 const assignUrl = `${BASE}/master-data/assign-roles`;
@@ -105,7 +108,7 @@ function usersRow(page, text) {
 function labeledControl(root, label) {
   return root
     .locator('label')
-    .filter({ hasText: new RegExp(`^${label}$`) })
+    .filter({ hasText: new RegExp('^' + label + '(?:\\s*\\*)?$') })
     .locator('xpath=..')
     .locator('input, select')
     .first();
@@ -813,7 +816,7 @@ test('TC-USER-024 Is Active filters the list', async ({ page }) => {
 
 test('TC-USER-025 Full Name sorts ascending, descending, then off', async ({ page }) => {
   await openUsers(page);
-  const header = page.locator('thead').getByText('Full Name', { exact: true });
+  const header = page.getByRole('columnheader', { name: /Full Name/ }).locator('span.cursor-pointer.flex-grow');
 
   /**
    * @param {string} text
@@ -848,7 +851,7 @@ test('TC-USER-026 download exports the visible columns', async ({ page }) => {
   expect(download.suggestedFilename()).toContain('Users_List');
   const filePath = await download.path();
   expect(filePath).toBeTruthy();
-  const workbook = XLSX.readFile(/** @type {string} */ (filePath));
+  const workbook = typeof XLSX.readFile === 'function' ? XLSX.readFile(/** @type {string} */ (filePath)) : XLSX.read(fs.readFileSync(/** @type {string} */ (filePath)), { type: 'buffer' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
   const headers = (rows[0] || []).map((cell) => String(cell));

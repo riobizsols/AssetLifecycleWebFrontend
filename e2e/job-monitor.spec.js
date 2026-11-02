@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-JM-${Date.now().toString(36)}`;
+const run = `PW-JM-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const screenUrl = `${BASE}/adminsettings/configuration/job-monitor`;
 const hubUrl = `${BASE}/adminsettings/configuration`;
 
@@ -49,7 +49,8 @@ async function openJobMonitor(page) {
   });
   await expect(page.getByText('Job List', { exact: true })).toBeVisible();
   await expect(
-    page.getByRole('columnheader', { name: 'Job Name' }).or(page.getByText('Loading jobs...')),
+    page.getByRole('columnheader', { name: 'Job Name' }).or(page.getByText('Loading jobs...'))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   await expect(page.getByRole('columnheader', { name: 'Job Name' })).toBeVisible({ timeout: 30000 });
 }
@@ -119,7 +120,7 @@ test.describe('Job Monitor', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAppShell(page);
     await expect(
-      page.getByText('Loading jobs...').or(page.getByRole('columnheader', { name: 'Job Name' })),
+      page.getByText('Loading jobs...').or(page.getByRole('columnheader', { name: 'Job Name' })).first(),
     ).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole('columnheader', { name: 'Job Name' })).toBeVisible({ timeout: 30000 });
     await waitForJobs(page);
@@ -149,7 +150,7 @@ test.describe('Job Monitor', () => {
     await waitForJobs(page);
     const historyTable = page.locator('table').nth(1);
     await expect(
-      historyTable.getByText('No history found').or(historyTable.locator('tbody tr').first()),
+      historyTable.getByText('No history found').or(historyTable.locator('tbody tr').first()).first(),
     ).toBeVisible({ timeout: 30000 });
     await expect(page.getByText('Job triggered successfully')).toHaveCount(0);
   });
@@ -164,7 +165,7 @@ test.describe('Job Monitor', () => {
     await page.getByRole('button', { name: 'Clear', exact: true }).click();
     await expect(dateInput).toHaveValue('');
     await expect(
-      historyTable.getByText('No history found').or(historyTable.locator('tbody tr').first()),
+      historyTable.getByText('No history found').or(historyTable.locator('tbody tr').first()).first(),
     ).toBeVisible();
   });
 

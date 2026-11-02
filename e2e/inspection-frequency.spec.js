@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-IF-${Date.now().toString(36)}`;
+const run = `PW-IF-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const stamp = run.slice('PW-IF-'.length);
 const listUrl = `${BASE}/adminsettings/configuration/inspection-frequency`;
 const hubUrl = `${BASE}/adminsettings/configuration`;
@@ -19,7 +19,7 @@ const questionName = `${run} Q`;
 const stayDesc = `${run} Stay`;
 const stayUpdated = `${stayDesc} Updated`;
 const delDesc = `${run} Del`;
-const del2Desc = `${run} Del2`;
+const del2Desc = `${run} ExtraDel`;
 
 const state = {
   typeName: '',
@@ -193,7 +193,8 @@ async function ensureAssetType(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Asset Type Name' })
-      .or(page.getByText('No data found', { exact: true })),
+      .or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   const existing = page.locator('tbody tr').filter({ hasText: typeName });
   if (await existing.count()) {
@@ -219,7 +220,8 @@ async function ensureVendor(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Vendor Name' })
-      .or(page.getByText('No data found', { exact: true })),
+      .or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   const existing = page.locator('tbody tr').filter({ hasText: vendorName });
   if (await existing.count()) {
@@ -227,7 +229,7 @@ async function ensureVendor(page) {
     return;
   }
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
+  await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible({
     timeout: 30000,
   });
   await page.getByPlaceholder('Enter vendor name').fill(vendorName);
@@ -235,9 +237,10 @@ async function ensureVendor(page) {
   await page.getByPlaceholder('Enter company email').fill(`pw.if.${stamp}@test.com`);
   await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
   await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.locator('label').filter({ hasText: /^Product Supply/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({
     timeout: 30000,
   });
@@ -274,7 +277,8 @@ async function ensureAsset(page) {
     timeout: 30000,
   });
   await selectPreferred(page, 'Asset Type', state.typeName, 'Search by name or ID');
-  await page.locator('select[name="serialNumberMode"]').selectOption('none');
+  await page.locator('select[name="serialNumberMode"]').selectOption('existing');
+  await page.getByPlaceholder('Scan or type serial number').fill(`${run}-${Date.now().toString(36)}`);
   await page.locator('textarea[name="description"]').fill(assetDesc);
   await page.getByRole('button', { name: 'Purchase Details' }).click();
   await page.locator('input[name="purchaseDate"]').fill(ymd(-7));

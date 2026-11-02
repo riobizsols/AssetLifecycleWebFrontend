@@ -5,7 +5,7 @@ import { BASE } from './helpers/baseUrl.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-DEPT-${Date.now().toString(36)}`;
+const run = `PW-DEPT-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const createdName = `${run}-Create`;
 const trimmedName = `${run}-Trim`;
 const renamedName = `${run}-Renamed`;

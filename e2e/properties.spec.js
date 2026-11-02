@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-PR-${Date.now().toString(36)}`;
+const run = `PW-PR-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const listUrl = `${BASE}/adminsettings/configuration/properties`;
 const hubUrl = `${BASE}/adminsettings/configuration`;
 
@@ -97,7 +97,8 @@ async function waitForList(page) {
   await expect(
     page
       .getByText('Property Name', { exact: true })
-      .or(page.getByText('No properties created yet', { exact: true })),
+      .or(page.getByText('No properties created yet', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
 }
 

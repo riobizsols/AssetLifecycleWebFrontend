@@ -5,7 +5,7 @@ import { BASE } from './helpers/baseUrl.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-SI-${Date.now().toString(36)}`;
+const run = `PW-SI-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const issueUrl = `${BASE}/spare-part-issue`;
 const requestUrl = `${BASE}/spare-part-list`;
 const approvalUrl = `${BASE}/spare-part-approval`;
@@ -52,7 +52,8 @@ async function openIssue(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -201,7 +202,7 @@ test('SI-04 Filter by status', async ({ page }) => {
 
 test('SI-05 Sort by serial number', async ({ page }) => {
   await openIssue(page);
-  const header = page.locator('thead').getByText('Serial Number', { exact: true });
+  const header = page.getByRole('columnheader', { name: /Serial Number/ }).locator('span.cursor-pointer.flex-grow');
   await header.click();
   await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↑');
   await header.click();

@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-CA-${Date.now().toString(36)}`;
+const run = `PW-CA-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const listUrl = `${BASE}/adminsettings/configuration/data-config`;
 const hubUrl = `${BASE}/adminsettings/configuration`;
 const roleName = `${run} Role`;
@@ -122,7 +122,8 @@ async function waitForColumns(page) {
   await expect(
     page
       .getByPlaceholder('Search columns...')
-      .or(page.getByText('No columns found for this table.', { exact: true })),
+      .or(page.getByText('No columns found for this table.', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   await expect(loading).toHaveCount(0);
 }
@@ -184,7 +185,8 @@ async function ensurePwRole(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Role Name' })
-      .or(page.getByText('No job roles found', { exact: true })),
+      .or(page.getByText('No job roles found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   const existing = page.locator('tbody tr').filter({ hasText: roleName });
   if (await existing.count()) {

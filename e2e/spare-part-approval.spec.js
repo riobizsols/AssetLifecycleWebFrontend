@@ -5,7 +5,7 @@ import { BASE } from './helpers/baseUrl.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-SA-${Date.now().toString(36)}`;
+const run = `PW-SA-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const listUrl = `${BASE}/spare-part-approval`;
 const requestUrl = `${BASE}/spare-part-list`;
 const blocked = new Set(['Pending Approval', 'Reserved', 'Issued']);
@@ -51,7 +51,8 @@ async function openApproval(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -176,7 +177,7 @@ test('SA-04 Filter by Pending Approval', async ({ page }) => {
 
 test('SA-05 Sort by serial number', async ({ page }) => {
   await openApproval(page);
-  const header = page.locator('thead').getByText('Serial Number', { exact: true });
+  const header = page.getByRole('columnheader', { name: /Serial Number/ }).locator('span.cursor-pointer.flex-grow');
   await header.click();
   await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↑');
   await header.click();

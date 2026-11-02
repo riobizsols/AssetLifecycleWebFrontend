@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-OP-${Date.now().toString(36)}`;
+const run = `PW-OP-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const stamp = run.slice('PW-OP-'.length);
 const screenUrl = `${BASE}/adminsettings/configuration/opc-configuration`;
 
@@ -97,13 +97,15 @@ async function openOpc(page, tab = 'components') {
     await expect(
       page
         .getByRole('columnheader', { name: 'Component Name' })
-        .or(page.getByText('No components found', { exact: true })),
+        .or(page.getByText('No components found', { exact: true }))
+      .first(),
     ).toBeVisible({ timeout: 30000 });
   } else if (tab === 'mapping') {
     await expect(
       page
         .getByRole('columnheader', { name: 'OPC Tag Path' })
-        .or(page.getByText('No tag mappings found', { exact: true })),
+        .or(page.getByText('No tag mappings found', { exact: true }))
+      .first(),
     ).toBeVisible({ timeout: 30000 });
   } else {
     await expect(
@@ -115,7 +117,8 @@ async function openOpc(page, tab = 'components') {
     await expect(
       page
         .getByRole('columnheader', { name: 'Condition' })
-        .or(page.getByText('No condition rules found', { exact: true })),
+        .or(page.getByText('No condition rules found', { exact: true }))
+      .first(),
     ).toBeVisible({ timeout: 30000 });
   }
 }
@@ -196,7 +199,8 @@ async function ensureAssetType(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Asset Type Name' })
-      .or(page.getByText('No data found', { exact: true })),
+      .or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   const existing = page.locator('tbody tr').filter({ hasText: typeName });
   if (await existing.count()) {
@@ -222,7 +226,8 @@ async function ensureVendor(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Vendor Name' })
-      .or(page.getByText('No data found', { exact: true })),
+      .or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   const existing = page.locator('tbody tr').filter({ hasText: vendorName });
   if (await existing.count()) {
@@ -230,7 +235,7 @@ async function ensureVendor(page) {
     return;
   }
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
+  await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible({
     timeout: 30000,
   });
   await page.getByPlaceholder('Enter vendor name').fill(vendorName);
@@ -238,9 +243,10 @@ async function ensureVendor(page) {
   await page.getByPlaceholder('Enter company email').fill(`pw.op.${stamp}@test.com`);
   await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
   await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.locator('label').filter({ hasText: /^Product Supply/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully!');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({
     timeout: 30000,
   });
@@ -285,7 +291,8 @@ async function createAssetForOpc(page) {
     timeout: 30000,
   });
   await selectPreferred(page, 'Asset Type', state.typeName, 'Search by name or ID');
-  await page.locator('select[name="serialNumberMode"]').selectOption('none');
+  await page.locator('select[name="serialNumberMode"]').selectOption('existing');
+  await page.getByPlaceholder('Scan or type serial number').fill(`${run}-${Date.now().toString(36)}`);
   await page.locator('textarea[name="description"]').fill(assetDesc);
   await page.getByRole('button', { name: 'Purchase Details' }).click();
   await page.locator('input[name="purchaseDate"]').fill(ymd(-7));

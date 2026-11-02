@@ -1,13 +1,16 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import * as XLSX from 'xlsx';
+import * as XLSXNS from 'xlsx';
+import fs from 'node:fs';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 import { headerAddButton } from './helpers/screenAccess.js';
 
+const XLSX = XLSXNS.default ?? XLSXNS;
+
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-SP-${Date.now().toString(36)}`;
+const run = `PW-SP-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const listUrl = `${BASE}/master-data/spare-part`;
 const stayPart = `${run}-A`;
 const secondPart = `${run}-B`;
@@ -71,7 +74,8 @@ async function openSpareParts(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Part Number' })
-      .or(page.getByText('No spare parts found. Click + to create one.')),
+      .or(page.getByText('No spare parts found. Click + to create one.'))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -254,7 +258,7 @@ test('SP-05 Sort by part number', async ({ page }) => {
     await createSparePart(page, stayPart);
     await openSpareParts(page);
   }
-  const header = page.locator('thead').getByText('Part Number', { exact: true });
+  const header = page.getByRole('columnheader', { name: /Part Number/ }).locator('span.cursor-pointer.flex-grow');
   await header.click();
   await expect(page.getByRole('columnheader', { name: /Part Number/ })).toContainText('↑');
   await header.click();
@@ -284,7 +288,7 @@ test('SP-07 Download one selected row', async ({ page }) => {
   expect(download.suggestedFilename()).toMatch(/^SpareParts_.*\.xlsx$/);
   const filePath = await download.path();
   expect(filePath).toBeTruthy();
-  const workbook = XLSX.readFile(/** @type {string} */ (filePath));
+  const workbook = typeof XLSX.readFile === 'function' ? XLSX.readFile(/** @type {string} */ (filePath)) : XLSX.read(fs.readFileSync(/** @type {string} */ (filePath)), { type: 'buffer' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
   const headers = (rows[0] || []).map((cell) => String(cell));
@@ -369,7 +373,7 @@ test('SP-15 Create the spare part for this run', async ({ page }) => {
 
 test('SP-16 The new spare part can be found', async ({ page }) => {
   await openSpareParts(page);
-  const header = page.locator('thead').getByText('Part Number', { exact: true });
+  const header = page.getByRole('columnheader', { name: /Part Number/ }).locator('span.cursor-pointer.flex-grow');
   await header.click();
   await header.click();
   const row = partRow(page, stayPart);

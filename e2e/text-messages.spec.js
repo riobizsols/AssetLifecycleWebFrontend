@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-TM-${Date.now().toString(36)}`;
+const run = `PW-TM-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const listUrl = `${BASE}/adminsettings/configuration/text-messages`;
 const hubUrl = `${BASE}/adminsettings/configuration`;
 const e2eText = `${run} E2E`;
@@ -95,7 +95,8 @@ async function waitForList(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'English', exact: true })
-      .or(page.getByText('No messages found.', { exact: true })),
+      .or(page.getByText('No messages found.', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   await expect(loading).toHaveCount(0);
 }

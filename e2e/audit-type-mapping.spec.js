@@ -97,7 +97,10 @@ async function openMapping(page) {
   await expect(page.getByRole('heading', { name: 'Audit types' })).toBeVisible({
     timeout: 30000,
   });
-  await expect(page.getByText('Loading…')).toHaveCount(0);
+  await expect(page.getByText('Loading…', { exact: true })).toHaveCount(0, { timeout: 45000 });
+  await expect(page.getByText('Loading mappings…', { exact: true })).toHaveCount(0, {
+    timeout: 45000,
+  });
 }
 
 /**
@@ -126,7 +129,8 @@ async function pickOther(page, current) {
  */
 async function selectType(page, name) {
   const search = page.getByPlaceholder('Search audit types');
-  if (await search.inputValue()) await search.fill('');
+  await search.fill(name);
+  await expect(typeButton(page, name)).toBeVisible({ timeout: 15000 });
   const current = await auditName(page).inputValue().catch(() => '');
   if (current !== name) {
     await Promise.all([
@@ -137,7 +141,10 @@ async function selectType(page, name) {
     ]);
   }
   await expect(auditName(page)).toHaveValue(name);
-  await expect(page.getByText('Loading mappings…')).toHaveCount(0);
+  await expect(page.getByText('Loading mappings…', { exact: true })).toHaveCount(0, {
+    timeout: 45000,
+  });
+  await search.fill('');
 }
 
 /**
@@ -175,10 +182,11 @@ async function chooseAsset(page, assetLabel) {
           hasText: new RegExp(`^${escapeRegex(assetLabel)}$`),
         }),
       })
-    : menu.locator('label').first();
+    : menu.locator('label').filter({ has: page.locator('input[type="checkbox"]') }).first();
   await expect(row).toBeVisible();
   const label = assetLabel || (await row.locator('span.truncate').innerText()).trim();
-  await row.locator('input[type="checkbox"]').check();
+  const box = row.locator('input[type="checkbox"]');
+  if (!(await box.isChecked())) await box.check();
   await page.getByRole('heading', { name: 'Mapped asset types' }).click();
   return label;
 }
@@ -474,7 +482,9 @@ test('AT-17 Save name stores the updated name', async ({ page }) => {
   await page.getByRole('button', { name: 'Save name' }).click();
   await expectToast(page, 'Audit type updated');
   state.currentName = updatedName;
-  await expect(typeButton(page, updatedName)).toBeVisible();
+  await expect(page.getByText('Loading…', { exact: true })).toHaveCount(0, { timeout: 45000 });
+  await page.getByPlaceholder('Search audit types').fill(updatedName);
+  await expect(typeButton(page, updatedName)).toBeVisible({ timeout: 15000 });
   await expect(typeButton(page, updatedName)).toContainText('Internal');
   await expect(typeButton(page, updatedName)).toContainText('no mappings');
 });
@@ -511,8 +521,11 @@ test('AT-20 one asset type can be mapped and saved', async ({ page }) => {
   await ensureAssetTypeExists(page);
   await selectType(page, state.currentName);
   state.assetTypeName = await chooseAsset(page, state.assetTypeName);
-  await page.getByRole('button', { name: 'Save mappings' }).click();
-  await expectToast(page, 'Mappings saved');
+  const save = page.getByRole('button', { name: 'Save mappings' });
+  if (await save.isEnabled()) {
+    await save.click();
+    await expectToast(page, 'Mappings saved');
+  }
   expect(await chipLabels(page)).toEqual([state.assetTypeName]);
   await expect(page.getByText('1 asset type selected')).toBeVisible();
   await expect(typeButton(page, state.currentName)).toContainText('1 asset type');

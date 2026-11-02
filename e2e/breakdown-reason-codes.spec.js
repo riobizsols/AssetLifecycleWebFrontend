@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-BR-${Date.now().toString(36)}`;
+const run = `PW-BR-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const listUrl = `${BASE}/adminsettings/configuration/breakdown-reason-codes`;
 const hubUrl = `${BASE}/adminsettings/configuration`;
 
@@ -83,11 +83,10 @@ function confirmDeleteDialog(page) {
 async function waitForList(page) {
   const loading = page.locator('tbody').getByText('Loading...', { exact: true });
   await loading.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {});
-  await expect(
-    page
-      .getByRole('columnheader', { name: 'Asset Type' })
-      .or(page.getByText('No breakdown reason codes found', { exact: true })),
-  ).toBeVisible({ timeout: 30000 });
+  await expect(page.getByRole('columnheader', { name: 'Asset Type' })).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(loading).toHaveCount(0);
 }
 
 /**
@@ -147,7 +146,8 @@ async function ensureAssetType(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Asset Type Name' })
-      .or(page.getByText('No data found', { exact: true })),
+      .or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   const existing = page.locator('tbody tr').filter({ hasText: typeName });
   if (await existing.count()) {
@@ -292,9 +292,11 @@ test.describe('Breakdown Reason Codes', () => {
   test('BR-09 Open Create New Breakdown Reason Code', async ({ page }) => {
     await openCreate(page);
     const dialog = createDialog(page);
-    await expect(dialog.getByText('Asset Type', { exact: false })).toBeVisible();
+    await expect(dialog.locator('label').filter({ hasText: 'Asset Type' })).toBeVisible();
     await expect(dialog.locator('select')).toHaveValue('');
-    await expect(dialog.getByText('-- Select Asset Type --')).toBeVisible();
+    await expect(
+      dialog.locator('select').getByRole('option', { name: '-- Select Asset Type --' }),
+    ).toBeAttached();
     await expect(dialog.getByPlaceholder('Enter breakdown reason code')).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeVisible();

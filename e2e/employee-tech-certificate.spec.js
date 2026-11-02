@@ -5,7 +5,7 @@ import { BASE } from './helpers/baseUrl.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-ET-${Date.now().toString(36)}`;
+const run = `PW-ET-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const listUrl = `${BASE}/technician-certificates`;
 const certificationsUrl = `${BASE}/certifications`;
 
@@ -77,7 +77,7 @@ async function realOptions(select) {
 function labeledSelect(page, label) {
   return page
     .locator('label')
-    .filter({ hasText: new RegExp(`^${label}$`) })
+    .filter({ hasText: new RegExp('^' + label + '(?:\\s*\\*)?$') })
     .locator('xpath=..')
     .locator('select')
     .first();
@@ -149,7 +149,7 @@ async function openList(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByText('No certificates uploaded yet.', { exact: true }).or(page.getByRole('columnheader', { name: 'Certificate' })),
+    page.getByText('No certificates uploaded yet.', { exact: true }).or(page.getByRole('columnheader', { name: 'Certificate' })).first(),
   ).toBeVisible({ timeout: 45000 });
 }
 

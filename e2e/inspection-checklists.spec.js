@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-IC-${Date.now().toString(36)}`;
+const run = `PW-IC-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const listUrl = `${BASE}/adminsettings/configuration/inspection-checklists`;
 const hubUrl = `${BASE}/adminsettings/configuration`;
 
@@ -78,7 +78,8 @@ async function openList(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Question' })
-      .or(page.getByText('No inspection checklists found.', { exact: true })),
+      .or(page.getByText('No inspection checklists found.', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
 }
 
@@ -222,7 +223,8 @@ test.describe('Inspection Checklists', () => {
     await expect(
       page
         .getByRole('columnheader', { name: 'Question' })
-        .or(page.getByText('No inspection checklists found.', { exact: true })),
+        .or(page.getByText('No inspection checklists found.', { exact: true }))
+      .first(),
     ).toBeVisible({ timeout: 30000 });
   });
 

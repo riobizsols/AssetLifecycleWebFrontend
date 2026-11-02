@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-SS-${Date.now().toString(36)}`;
+const run = `PW-SS-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const stamp = run.slice('PW-SS-'.length);
 const salesUrl = `${BASE}/scrap-sales`;
 const approvalUrl = `${BASE}/scrap-approval`;
@@ -17,7 +17,7 @@ const stayTitle = `${run}-A`;
 const stayUpdated = `${stayTitle} Updated`;
 const cancelTitle = `${run}-Cancel`;
 const disposableTitle = `${run}-Del`;
-const extraTitle = `${run}-Del2`;
+const extraTitle = `${run}-ExtraDel`;
 const typeName = `${run}-Type`;
 const vendorName = `${run}-Vendor`;
 const buyerName = `${run} Buyer`;
@@ -60,7 +60,7 @@ async function expectToast(page, text) {
 function labeledButton(root, label) {
   return root
     .locator('label')
-    .filter({ hasText: new RegExp(`^${label}$`) })
+    .filter({ hasText: new RegExp('^' + label + '(?:\\s*\\*)?$') })
     .locator('xpath=..')
     .getByRole('button')
     .first();
@@ -97,7 +97,8 @@ async function openSales(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Sale Title' }).or(page.getByText('No scrap sales found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Sale Title' }).or(page.getByText('No scrap sales found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -156,7 +157,8 @@ async function ensureParentAssetType(page) {
   if (state.typeName) return;
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   if (await page.locator('tbody tr').filter({ hasText: typeName }).count()) {
     state.typeName = typeName;
@@ -180,14 +182,15 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   if (await page.locator('tbody tr').filter({ hasText: vendorName }).count()) {
     state.vendorName = vendorName;
     return;
   }
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
+  await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible({
     timeout: 30000,
   });
   await page.getByPlaceholder('Enter vendor name').fill(vendorName);
@@ -195,9 +198,10 @@ async function ensureVendor(page) {
   await page.getByPlaceholder('Enter company email').fill(`pw.ss.${stamp}@test.com`);
   await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
   await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.locator('label').filter({ hasText: /^Product Supply/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 30000 });
   state.vendorName = vendorName;
 }
@@ -243,16 +247,18 @@ async function selectProductVendorOnForm(page, preferredName) {
   await trigger.click();
   const search = page.getByPlaceholder('Search...');
   await expect(search).toBeVisible();
+  const panel = search.locator('xpath=ancestor::div[contains(@class,"absolute") or contains(@class,"fixed")][1]');
+  const options = panel.locator('div.cursor-pointer').filter({ hasNotText: '+ Create New' });
   await search.fill(preferredName);
-  const option = page
-    .locator('div.cursor-pointer')
-    .filter({ hasText: preferredName })
-    .filter({ hasNotText: '+ Create New' })
-    .first();
-  await expect(option, `Purchase vendor ${preferredName} is not in the list`).toBeVisible({
-    timeout: 15000,
-  });
-  await option.click();
+  const preferred = options.filter({ hasText: preferredName }).first();
+  if (await preferred.count()) {
+    await preferred.click();
+  } else {
+    await search.fill('');
+    await expect(options.first(), 'No purchase vendor is available').toBeVisible({ timeout: 20000 });
+    await options.first().click();
+  }
+  await expect(trigger).not.toHaveText(/Select/i);
 }
 
 /**
@@ -266,7 +272,8 @@ async function createAsset(page, name) {
   await headerAddButton(page).click();
   await expect(page).toHaveURL(/\/assets\/add/);
   await selectParentTypeOnForm(page, state.typeName);
-  await page.locator('select[name="serialNumberMode"]').selectOption('none');
+  await page.locator('select[name="serialNumberMode"]').selectOption('existing');
+  await page.getByPlaceholder('Scan or type serial number').fill(`${run}-${Date.now().toString(36)}`);
   await page.locator('textarea[name="description"]').fill(name);
   await page.getByRole('button', { name: 'Purchase Details' }).click();
   await page.locator('input[name="purchaseDate"]').fill(ymd(-7));
@@ -319,7 +326,8 @@ async function submitScrap(page, name) {
 async function approveScrap(page, name) {
   await gotoProtected(page, approvalUrl);
   await expect(
-    page.getByRole('columnheader', { name: 'Name' }).or(page.getByText('No Data Found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Name' }).or(page.getByText('No Data Found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
   const row = listRow(page, name);
   await expect(row, `Scrap ${name} is not on Scrap Approval`).toBeVisible({ timeout: 30000 });
@@ -470,7 +478,7 @@ test('SS-03 Sales already on the screen', async ({ page }) => {
   await openSales(page);
   const first = page.locator('tbody tr').first();
   const empty = page.getByText('No scrap sales found', { exact: true });
-  await expect(first.or(empty)).toBeVisible();
+  await expect(first.or(empty).first()).toBeVisible();
   if (await first.isVisible()) {
     state.firstTitle = (await first.locator('td').first().innerText()).trim();
   }
@@ -499,7 +507,7 @@ test('SS-05 Sort by sale title', async ({ page }) => {
     await expect(page.getByText('No scrap sales found', { exact: true })).toBeVisible();
     return;
   }
-  const header = page.locator('thead').getByText('Sale Title', { exact: true });
+  const header = page.getByRole('columnheader', { name: /Sale Title/ }).locator('span.cursor-pointer.flex-grow');
   await header.click();
   await expect(page.getByRole('columnheader', { name: /Sale Title/ })).toContainText('↑');
   await header.click();

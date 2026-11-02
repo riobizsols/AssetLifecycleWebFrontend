@@ -5,7 +5,7 @@ import { BASE } from './helpers/baseUrl.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-DA-${Date.now().toString(36)}`;
+const run = `PW-DA-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const DASHBOARD = `${BASE}/dashboard`;
 
 const METRIC_TITLES = [

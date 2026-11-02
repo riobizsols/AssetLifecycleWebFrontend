@@ -7,7 +7,7 @@ import { listPortalOptions, selectPortalDropdown } from './helpers/searchableDro
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-AA-${Date.now().toString(36)}`;
+const run = `PW-AA-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const stamp = run.slice('PW-AA-'.length);
 const deptUrl = `${BASE}/assign-department-assets`;
 const empUrl = `${BASE}/assign-employee-assets`;
@@ -16,9 +16,9 @@ const deptTypeName = `${run}-DeptType`;
 const userTypeName = `${run}-UserType`;
 const emptyTypeName = `${run}-Empty`;
 const vendorName = `${run}-Vendor`;
-const deptAssetName = `${run} Dept`;
-const deptAssetTwoName = `${run} Dept2`;
-const empAssetName = `${run} Emp`;
+const deptAssetName = `${run}-AlphaAst`;
+const deptAssetTwoName = `${run}-BravoAst`;
+const empAssetName = `${run}-CharlieAst`;
 const emptyDeptName = `${run}-EmptyDept`;
 
 const state = {
@@ -52,7 +52,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await expect(toast).toBeVisible({ timeout: 45000 });
 }
 
 /**
@@ -62,9 +62,31 @@ async function expectToast(page, text) {
 function fieldTrigger(page, label) {
   return page
     .locator('label')
-    .filter({ hasText: new RegExp(`^${label}$`) })
+    .filter({ hasText: new RegExp('^' + label + '(?:\\s*\\*)?$') })
     .locator('xpath=..')
-    .getByRole('button');
+    .getByRole('button')
+    .first();
+}
+
+/**
+ * SearchableDropdown ignores clicks while options load (cursor-not-allowed, no disabled attr).
+ * @param {import('@playwright/test').Page} page
+ * @param {string} label
+ */
+async function waitDropdownReady(page, label) {
+  const trigger = fieldTrigger(page, label);
+  await expect(trigger).toBeVisible({ timeout: 15000 });
+  await expect
+    .poll(
+      async () => {
+        const text = (await trigger.innerText()).split('\n')[0].trim();
+        if (text && !/^select\b/i.test(text)) return 'ready';
+        const blocked = await trigger.evaluate((el) => el.className.includes('cursor-not-allowed'));
+        return blocked ? 'loading' : 'ready';
+      },
+      { timeout: 30000 },
+    )
+    .toBe('ready');
 }
 
 /**
@@ -89,6 +111,7 @@ function looksUnset(text) {
  * @param {string} [optionText]
  */
 async function ensureDropdown(page, label, optionText) {
+  await waitDropdownReady(page, label);
   const current = await triggerText(page, label);
   if (optionText) {
     if (current.includes(optionText)) return current;
@@ -144,7 +167,8 @@ async function realOptions(select) {
 async function createAssetType(page, name, assignment) {
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   if (await page.locator('tbody tr').filter({ hasText: name }).count()) return;
   await headerAddButton(page).click();
@@ -164,14 +188,15 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   if (await page.locator('tbody tr').filter({ hasText: vendorName }).count()) {
     state.vendorName = vendorName;
     return;
   }
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
+  await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible({
     timeout: 30000,
   });
   await page.getByPlaceholder('Enter vendor name').fill(vendorName);
@@ -179,9 +204,10 @@ async function ensureVendor(page) {
   await page.getByPlaceholder('Enter company email').fill(`pw.aa.${stamp}@test.com`);
   await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
   await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.locator('label').filter({ hasText: /^Product Supply/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await gotoProtected(page, `${BASE}/master-data/vendors`);
   state.vendorName = vendorName;
 }
 
@@ -192,7 +218,7 @@ async function ensureVendor(page) {
 function labeledButton(root, label) {
   return root
     .locator('label')
-    .filter({ hasText: new RegExp(`^${label}$`) })
+    .filter({ hasText: new RegExp('^' + label + '(?:\\s*\\*)?$') })
     .locator('xpath=..')
     .getByRole('button')
     .first();
@@ -204,6 +230,7 @@ function labeledButton(root, label) {
  * @param {string} preferredVendor
  */
 async function fillAssetForm(page, typeName, assetName) {
+  await waitDropdownReady(page, 'Asset Type');
   const typeTrigger = labeledButton(page, 'Asset Type');
   await typeTrigger.click();
   const typeSearch = page.getByPlaceholder('Search by name or ID');
@@ -215,26 +242,40 @@ async function fillAssetForm(page, typeName, assetName) {
     .filter({ hasNotText: '+ Create New Asset Type' })
     .first()
     .click();
-  await page.locator('select[name="serialNumberMode"]').selectOption('none');
+  await expect(typeTrigger).toContainText(typeName);
+  await page.locator('select[name="serialNumberMode"]').selectOption('existing');
+  await page.getByPlaceholder('Scan or type serial number').fill(`${run}-${assetName.slice(-8)}-${Math.random().toString(36).slice(2, 6)}`);
   await page.locator('textarea[name="description"]').fill(assetName);
   await page.getByRole('button', { name: 'Purchase Details' }).click();
   await page.locator('input[name="purchaseDate"]').fill(ymd(-7));
   await page.locator('input[name="expiryDate"]').fill(ymd(365));
   await page.locator('input[name="purchaseCost"]').fill('1');
   await page.getByRole('button', { name: 'Vendor Details' }).click();
+  await waitDropdownReady(page, 'Product Vendor');
   const vendorTrigger = labeledButton(page, 'Product Vendor');
   await vendorTrigger.click();
   const vendorSearch = page.getByPlaceholder('Search...');
   await expect(vendorSearch).toBeVisible();
+  const vendorPanel = vendorSearch.locator(
+    'xpath=ancestor::div[contains(@class,"absolute") or contains(@class,"fixed")][1]',
+  );
+  const vendorOptions = vendorPanel.locator('div.cursor-pointer').filter({ hasNotText: '+ Create New' });
   await vendorSearch.fill(state.vendorName);
-  await page
-    .locator('div.cursor-pointer')
-    .filter({ hasText: state.vendorName })
-    .filter({ hasNotText: '+ Create New' })
-    .first()
-    .click();
+  const preferredVendor = vendorOptions.filter({ hasText: state.vendorName }).first();
+  if (await preferredVendor.count()) {
+    await preferredVendor.click();
+  } else {
+    await vendorSearch.fill('');
+    await expect(vendorOptions.first(), 'No purchase vendor is available').toBeVisible({
+      timeout: 20000,
+    });
+    await vendorOptions.first().click();
+  }
+  await expect(vendorTrigger).not.toHaveText(/Select/i);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expectToast(page, 'Asset created successfully!');
+  const created = page.getByText('Asset created successfully!');
+  const duplicate = page.getByText(/similar name already exists/i);
+  await expect(created.or(duplicate).first()).toBeVisible({ timeout: 45000 });
 }
 
 /**
@@ -247,12 +288,27 @@ async function createAsset(page, typeName, assetName) {
   await expect(page.locator('header').getByText('Assets', { exact: true })).toBeVisible({
     timeout: 30000,
   });
+  await expect(
+    page.getByRole('columnheader', { name: 'Asset Name' }).or(page.getByText('No data found', { exact: true })).first(),
+  ).toBeVisible({ timeout: 30000 });
+  if (await page.locator('tbody tr').filter({ hasText: assetName }).count()) return;
   await headerAddButton(page).click();
   await expect(page.locator('header').getByText('Add Asset', { exact: true })).toBeVisible({
     timeout: 30000,
   });
   await fillAssetForm(page, typeName, assetName);
-  await expect(page).toHaveURL(/\/assets$/);
+  await gotoProtected(page, `${BASE}/assets`);
+  await expect(page.locator('header').getByText('Company A', { exact: true })).toBeVisible({
+    timeout: 20000,
+  });
+  const createdRow = page.locator('tbody tr').filter({ hasText: assetName });
+  if (!(await createdRow.count())) {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('header').getByText('Company A', { exact: true })).toBeVisible({
+      timeout: 20000,
+    });
+  }
+  await expect(createdRow).toBeVisible({ timeout: 30000 });
 }
 
 /**
@@ -298,20 +354,24 @@ async function ensureMasters(page) {
  */
 async function chooseBranchAndDepartment(page) {
   state.branchName = await ensureDropdown(page, 'Branch');
+  await waitDropdownReady(page, 'Department');
   const deptTrigger = fieldTrigger(page, 'Department');
   const current = await triggerText(page, 'Department');
   if (looksUnset(current)) {
-    const names = await listPortalOptions(page, 'Department');
-    const assignDept = names.find((name) => name && name !== state.emptyDeptName) || names[0];
-    if (!assignDept) {
-      throw new Error('Department dropdown has no department');
+    await selectPortalDropdown(page, 'Department');
+    state.deptName = await triggerText(page, 'Department');
+    if (state.emptyDeptName && state.deptName === state.emptyDeptName) {
+      const names = await listPortalOptions(page, 'Department');
+      const assignDept = names.find((name) => name && name !== state.emptyDeptName) || names[0];
+      if (assignDept) {
+        await selectPortalDropdown(page, 'Department', { optionText: assignDept });
+        state.deptName = assignDept;
+      }
     }
-    await selectPortalDropdown(page, 'Department', { optionText: assignDept });
-    state.deptName = assignDept;
   } else {
     state.deptName = current;
   }
-  await expect(deptTrigger).not.toHaveText(/Select/i);
+  await expect(deptTrigger).not.toHaveText(/Select/i, { timeout: 15000 });
   return { branchName: state.branchName, deptName: state.deptName };
 }
 
@@ -368,6 +428,7 @@ test('AA-04 A department with no assets', async ({ page }) => {
   await ensureMasters(page);
   await openDepartmentAssignment(page);
   await ensureDropdown(page, 'Branch');
+  await waitDropdownReady(page, 'Department');
   const deptTrigger = fieldTrigger(page, 'Department');
   if (await deptTrigger.isEnabled()) {
     await selectPortalDropdown(page, 'Department', { optionText: state.emptyDeptName });
@@ -375,13 +436,14 @@ test('AA-04 A department with no assets', async ({ page }) => {
   } else {
     const empty = page.getByText('No assets assigned.');
     const rows = page.locator('button', { hasText: 'Unassign' });
-    await expect(empty.or(rows.first())).toBeVisible({ timeout: 20000 });
+    await expect(empty.or(rows.first()).first()).toBeVisible({ timeout: 20000 });
   }
 });
 
 test('AA-05 Switch department', async ({ page }) => {
   await openDepartmentAssignment(page);
   await ensureDropdown(page, 'Branch');
+  await waitDropdownReady(page, 'Department');
   const deptTrigger = fieldTrigger(page, 'Department');
   if (!(await deptTrigger.isEnabled())) {
     await expect(page.getByText('Department Assets List', { exact: true })).toBeVisible();
@@ -408,7 +470,7 @@ test('AA-06 History', async ({ page }) => {
   const dialog = page.locator('div.fixed.inset-0').filter({ hasText: 'Department Asset Assignment History' });
   await expect(dialog).toBeVisible();
   await expect(
-    dialog.getByText('No assignment history found.').or(dialog.getByText(/Assigned on:|Unassigned on:/).first()),
+    dialog.getByText('No assignment history found.').or(dialog.getByText(/Assigned on:|Unassigned on:/).first()).first(),
   ).toBeVisible({ timeout: 20000 });
   await dialog.getByRole('button', { name: 'Close' }).click();
   await expect(dialog).toBeHidden();

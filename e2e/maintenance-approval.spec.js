@@ -1,20 +1,23 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import * as XLSX from 'xlsx';
+import * as XLSXNS from 'xlsx';
+import fs from 'node:fs';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 import { headerAddButton } from './helpers/screenAccess.js';
 
+const XLSX = XLSXNS.default ?? XLSXNS;
+
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-MA-${Date.now().toString(36)}`;
+const run = `PW-MA-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const stamp = run.slice('PW-MA-'.length);
 const listUrl = `${BASE}/maintenance-approval`;
 const createUrl = `${BASE}/maintenance-list/create`;
 
 const stayAsset = `${run} Stay`;
 const disposableAsset = `${run} Del`;
-const stay2Asset = `${run} Stay2`;
+const stay2Asset = `${run} ExtraStay`;
 const createdTypeName = `${run}-Type`;
 const vendorName = `${run}-Vendor`;
 const stepName = `${run} Step`;
@@ -79,7 +82,7 @@ async function headerTrashIfPresent(page) {
 function labeledButton(root, label) {
   return root
     .locator('label')
-    .filter({ hasText: new RegExp(`^${label}$`) })
+    .filter({ hasText: new RegExp('^' + label + '(?:\\s*\\*)?$') })
     .locator('xpath=..')
     .getByRole('button')
     .first();
@@ -117,7 +120,8 @@ async function openList(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Serial Number' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -249,16 +253,18 @@ async function selectProductVendorOnForm(page, preferredName) {
   await trigger.click();
   const search = page.getByPlaceholder('Search...');
   await expect(search).toBeVisible();
+  const panel = search.locator('xpath=ancestor::div[contains(@class,"absolute") or contains(@class,"fixed")][1]');
+  const options = panel.locator('div.cursor-pointer').filter({ hasNotText: '+ Create New' });
   await search.fill(preferredName);
-  const option = page
-    .locator('div.cursor-pointer')
-    .filter({ hasText: preferredName })
-    .filter({ hasNotText: '+ Create New' })
-    .first();
-  await expect(option, `Purchase vendor ${preferredName} is not in the list`).toBeVisible({
-    timeout: 15000,
-  });
-  await option.click();
+  const preferred = options.filter({ hasText: preferredName }).first();
+  if (await preferred.count()) {
+    await preferred.click();
+  } else {
+    await search.fill('');
+    await expect(options.first(), 'No purchase vendor is available').toBeVisible({ timeout: 20000 });
+    await options.first().click();
+  }
+  await expect(trigger).not.toHaveText(/Select/i);
 }
 
 /**
@@ -268,7 +274,8 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: vendorName });
@@ -278,7 +285,7 @@ async function ensureVendor(page) {
   }
 
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
+  await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible({
     timeout: 30000,
   });
   await page.getByPlaceholder('Enter vendor name').fill(vendorName);
@@ -286,6 +293,7 @@ async function ensureVendor(page) {
   await page.getByPlaceholder('Enter company email').fill(`pw.ma.${stamp}@test.com`);
   await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
   await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.locator('label').filter({ hasText: /^Product Supply/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
   state.vendorName = vendorName;
@@ -298,7 +306,8 @@ async function createMaintRequiredType(page) {
   if (state.typeName) return;
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: createdTypeName });
@@ -381,7 +390,8 @@ async function ensureWorkflow(page) {
     .toBeTruthy();
   await typeSelect.selectOption({ label: createdTypeName });
   await expect(
-    page.getByText('Existing Sequences', { exact: true }).or(page.getByText('No sequences assigned for this asset type')),
+    page.getByText('Existing Sequences', { exact: true }).or(page.getByText('No sequences assigned for this asset type'))
+    .first(),
   ).toBeVisible({ timeout: 20000 });
   if (!(await page.locator('table tbody tr').count())) {
     const stepSelect = page.locator('select').filter({ has: page.getByText('-- Select Step --') });
@@ -438,8 +448,8 @@ async function createOurAsset(page, name) {
   await ensureMasters(page);
   await openAddAsset(page);
   await selectParentTypeOnForm(page, state.typeName);
-  await page.locator('select[name="serialNumberMode"]').selectOption('none');
-  await expect(page.getByText('This asset will be created without a serial number.')).toBeVisible();
+  await page.locator('select[name="serialNumberMode"]').selectOption('existing');
+  await page.getByPlaceholder('Scan or type serial number').fill(`${run}-${Date.now().toString(36)}`);
   await page.locator('textarea[name="description"]').fill(name);
   await page.getByRole('button', { name: 'Purchase Details' }).click();
   await page.locator('input[name="purchaseDate"]').fill(ymd(-7));
@@ -546,7 +556,7 @@ async function openNewestOurDetail(page) {
   await filterOurType(page);
   await newestOurRow(page).click();
   await expect(page).toHaveURL(/\/approval-detail\/.+\?context=MAINTENANCEAPPROVAL/);
-  await expect(page.getByText('Approval Details', { exact: true }).or(page.getByRole('button', { name: 'Back' }))).toBeVisible({
+  await expect(page.getByText('Approval Details', { exact: true }).or(page.getByRole('button', { name: 'Back' })).first()).toBeVisible({
     timeout: 30000,
   });
 }
@@ -609,7 +619,7 @@ test.describe('Maintenance Approval', () => {
 
   test('MA-05 Sort by serial number', async ({ page }) => {
     await openList(page);
-    const header = page.locator('thead').getByText('Serial Number', { exact: true });
+    const header = page.getByRole('columnheader', { name: /Serial Number/ }).locator('span.cursor-pointer.flex-grow');
     await header.click();
     await expect(page.getByRole('columnheader', { name: /Serial Number/ })).toContainText('↑');
     await header.click();
@@ -628,7 +638,7 @@ test.describe('Maintenance Approval', () => {
     await expectToast(page, 'Maintenance approvals exported successfully');
     const path = await download.path();
     if (path) {
-      const workbook = XLSX.readFile(path);
+      const workbook = typeof XLSX.readFile === 'function' ? XLSX.readFile(path) : XLSX.read(fs.readFileSync(path), { type: 'buffer' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
       const headers = (rows[0] || []).map((cell) => String(cell));

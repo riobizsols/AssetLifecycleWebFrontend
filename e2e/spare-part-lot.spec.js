@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-SL-${Date.now().toString(36)}`;
+const run = `PW-SL-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const listUrl = `${BASE}/master-data/spare-parts`;
 const stayInvoice = `${run}-A`;
 const secondInvoice = `${run}-B`;
@@ -78,7 +78,8 @@ async function openLots(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Invoice Number' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Invoice Number' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -256,7 +257,7 @@ test('SL-04 Filter the list', async ({ page }) => {
 
 test('SL-05 Sort by invoice number', async ({ page }) => {
   await openLots(page);
-  const header = page.locator('thead').getByText('Invoice Number', { exact: true });
+  const header = page.getByRole('columnheader', { name: /Invoice Number/ }).locator('span.cursor-pointer.flex-grow');
   await header.click();
   await expect(page.getByRole('columnheader', { name: /Invoice Number/ })).toContainText('↑');
   await header.click();

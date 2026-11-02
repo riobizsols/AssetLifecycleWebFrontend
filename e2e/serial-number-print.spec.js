@@ -7,7 +7,7 @@ import { listPortalOptions, selectPortalDropdown } from './helpers/searchableDro
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-SN-${Date.now().toString(36)}`;
+const run = `PW-SN-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const stamp = run.slice('PW-SN-'.length);
 const printUrl = `${BASE}/serial-number-print`;
 const assetsUrl = `${BASE}/assets`;
@@ -15,7 +15,7 @@ const assetsUrl = `${BASE}/assets`;
 const stayName = `${run} Stay`;
 const staySerial = `${run}-A`;
 const stayReason = `${run} reason`;
-const stay2Name = `${run} Stay2`;
+const stay2Name = `${run} ExtraStay`;
 const stay2Serial = `${run}-B`;
 const stay2Reason = `${run} reason2`;
 const typeName = `${run}-Type`;
@@ -58,7 +58,7 @@ async function expectToast(page, text) {
 function labeledButton(root, label) {
   return root
     .locator('label')
-    .filter({ hasText: new RegExp(`^${label}$`) })
+    .filter({ hasText: new RegExp('^' + label + '(?:\\s*\\*)?$') })
     .locator('xpath=..')
     .getByRole('button')
     .first();
@@ -114,7 +114,7 @@ async function setStatusFilter(page, name) {
 async function waitForQueueSettled(page) {
   const empty = page.getByText('No print queue items found', { exact: true });
   const row = page.locator('tbody tr').first();
-  await expect(empty.or(row)).toBeVisible({ timeout: 45000 });
+  await expect(empty.or(row).first()).toBeVisible({ timeout: 45000 });
 }
 
 /**
@@ -164,7 +164,7 @@ async function openStatusFromList(page, serial) {
   await clickListStatus(page, serial);
   const modalTitle = page.getByText('Update Print Request Status', { exact: true });
   const printHeading = page.getByRole('heading', { name: 'Print Serial Number Label' });
-  await expect(modalTitle.or(printHeading)).toBeVisible({ timeout: 15000 });
+  await expect(modalTitle.or(printHeading).first()).toBeVisible({ timeout: 15000 });
   return (await modalTitle.isVisible()) ? 'modal' : 'print';
 }
 
@@ -177,7 +177,8 @@ async function openAssets(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -237,7 +238,8 @@ async function ensureParentAssetType(page) {
   if (state.typeName) return;
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: typeName });
@@ -263,7 +265,8 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: vendorName });
@@ -273,7 +276,7 @@ async function ensureVendor(page) {
   }
 
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
+  await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible({
     timeout: 30000,
   });
   await page.getByPlaceholder('Enter vendor name').fill(vendorName);
@@ -281,9 +284,10 @@ async function ensureVendor(page) {
   await page.getByPlaceholder('Enter company email').fill(`pw.sn.${stamp}@test.com`);
   await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
   await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.locator('label').filter({ hasText: /^Product Supply/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 30000 });
   state.vendorName = vendorName;
 }
@@ -331,16 +335,18 @@ async function selectProductVendorOnForm(page, preferredName) {
   await trigger.click();
   const search = page.getByPlaceholder('Search...');
   await expect(search).toBeVisible();
+  const panel = search.locator('xpath=ancestor::div[contains(@class,"absolute") or contains(@class,"fixed")][1]');
+  const options = panel.locator('div.cursor-pointer').filter({ hasNotText: '+ Create New' });
   await search.fill(preferredName);
-  const option = page
-    .locator('div.cursor-pointer')
-    .filter({ hasText: preferredName })
-    .filter({ hasNotText: '+ Create New' })
-    .first();
-  await expect(option, `Purchase vendor ${preferredName} is not in the list`).toBeVisible({
-    timeout: 15000,
-  });
-  await option.click();
+  const preferred = options.filter({ hasText: preferredName }).first();
+  if (await preferred.count()) {
+    await preferred.click();
+  } else {
+    await search.fill('');
+    await expect(options.first(), 'No purchase vendor is available').toBeVisible({ timeout: 20000 });
+    await options.first().click();
+  }
+  await expect(trigger).not.toHaveText(/Select/i);
 }
 
 /**
@@ -513,7 +519,7 @@ test.describe('Serial Number Print', () => {
   test('SN-08 Sort by serial number', async ({ page }) => {
     await openPrintQueue(page);
     await waitForQueueSettled(page);
-    const header = page.locator('thead').getByText('Serial Number', { exact: true });
+    const header = page.getByRole('columnheader', { name: /Serial Number/ }).locator('span.cursor-pointer.flex-grow');
     await header.click();
     await header.click();
     await header.click();

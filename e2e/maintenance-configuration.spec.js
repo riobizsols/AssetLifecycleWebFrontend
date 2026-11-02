@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-MC-${Date.now().toString(36)}`;
+const run = `PW-MC-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const configUrl = `${BASE}/adminsettings/configuration/maintenance-config`;
 const freqAddUrl = `${BASE}/admin-settings/maintenance-frequency/add`;
 const hubUrl = `${BASE}/adminsettings/configuration`;
@@ -179,7 +179,8 @@ async function ensureAssetType(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Asset Type Name' })
-      .or(page.getByText('No data found', { exact: true })),
+      .or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
   const existing = page.locator('tbody tr').filter({ hasText: typeName });
   if (await existing.count()) {

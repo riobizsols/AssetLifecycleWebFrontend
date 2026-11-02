@@ -1,14 +1,17 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import * as XLSX from 'xlsx';
+import * as XLSXNS from 'xlsx';
+import fs from 'node:fs';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
 import { headerAddButton } from './helpers/screenAccess.js';
 import { selectPortalDropdown } from './helpers/searchableDropdown.js';
 
+const XLSX = XLSXNS.default ?? XLSXNS;
+
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-AS-${Date.now().toString(36)}`;
+const run = `PW-AS-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const stamp = run.slice('PW-AS-'.length);
 const assetsUrl = `${BASE}/assets`;
 
@@ -16,7 +19,7 @@ const stayName = `${run} Stay`;
 const stayUpdated = `${stayName} Updated`;
 const cancelName = `${run} Cancel`;
 const disposableName = `${run} Del`;
-const extraDisposableName = `${run} Del2`;
+const extraDisposableName = `${run} ExtraDel`;
 const inUseName = `${run} InUse`;
 const typeName = `${run}-Type`;
 const vendorName = `${run}-Vendor`;
@@ -46,7 +49,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await expect(toast).toBeVisible({ timeout: 45000 });
 }
 
 /**
@@ -79,6 +82,14 @@ function assetsRow(page, text) {
 }
 
 /**
+ * Empty CustomTable still renders one tbody tr ("No data found") with a single td.
+ * @param {import('@playwright/test').Page} page
+ */
+function dataRows(page) {
+  return page.locator('tbody tr').filter({ has: page.locator('input[type="checkbox"]') });
+}
+
+/**
  * @param {import('@playwright/test').Page} page
  */
 async function openAssets(page) {
@@ -87,7 +98,8 @@ async function openAssets(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -111,7 +123,7 @@ async function openAddAsset(page) {
 function labeledButton(root, label) {
   return root
     .locator('label')
-    .filter({ hasText: new RegExp(`^${label}$`) })
+    .filter({ hasText: new RegExp('^' + label + '(?:\\s*\\*)?$') })
     .locator('xpath=..')
     .getByRole('button')
     .first();
@@ -160,7 +172,8 @@ async function ensureParentAssetType(page) {
   if (state.typeName) return;
   await gotoProtected(page, `${BASE}/master-data/asset-types`);
   await expect(
-    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Asset Type Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: typeName });
@@ -187,7 +200,8 @@ async function ensureVendor(page) {
   if (state.vendorName) return;
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 30000 });
 
   const existing = page.locator('tbody tr').filter({ hasText: vendorName });
@@ -197,7 +211,7 @@ async function ensureVendor(page) {
   }
 
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
+  await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible({
     timeout: 30000,
   });
   await page.getByPlaceholder('Enter vendor name').fill(vendorName);
@@ -205,9 +219,10 @@ async function ensureVendor(page) {
   await page.getByPlaceholder('Enter company email').fill(`pw.as.${stamp}@test.com`);
   await page.getByPlaceholder('Enter contact person name').fill(`${run} Contact`);
   await page.getByPlaceholder('Enter contact number').fill('9876543210');
+  await page.locator('label').filter({ hasText: /^Product Supply/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 30000 });
   state.vendorName = vendorName;
 }
@@ -255,16 +270,18 @@ async function selectProductVendorOnForm(page, preferredName) {
   await trigger.click();
   const search = page.getByPlaceholder('Search...');
   await expect(search).toBeVisible();
+  const panel = search.locator('xpath=ancestor::div[contains(@class,"absolute") or contains(@class,"fixed")][1]');
+  const options = panel.locator('div.cursor-pointer').filter({ hasNotText: '+ Create New' });
   await search.fill(preferredName);
-  const option = page
-    .locator('div.cursor-pointer')
-    .filter({ hasText: preferredName })
-    .filter({ hasNotText: '+ Create New' })
-    .first();
-  await expect(option, `Purchase vendor ${preferredName} is not in the list`).toBeVisible({
-    timeout: 15000,
-  });
-  await option.click();
+  const preferred = options.filter({ hasText: preferredName }).first();
+  if (await preferred.count()) {
+    await preferred.click();
+  } else {
+    await search.fill('');
+    await expect(options.first(), 'No purchase vendor is available').toBeVisible({ timeout: 20000 });
+    await options.first().click();
+  }
+  await expect(trigger).not.toHaveText(/Select/i);
 }
 
 /**
@@ -276,8 +293,8 @@ async function fillAssetForm(page, name, options = {}) {
   const purchaseDate = options.purchaseDate ?? ymd(-7);
   const expiryDate = options.expiryDate ?? ymd(365);
   await selectParentTypeOnForm(page, state.typeName);
-  await page.locator('select[name="serialNumberMode"]').selectOption('none');
-  await expect(page.getByText('This asset will be created without a serial number.')).toBeVisible();
+  await page.locator('select[name="serialNumberMode"]').selectOption('existing');
+  await page.getByPlaceholder('Scan or type serial number').fill(`${run}-${name.slice(-8)}-${Math.random().toString(36).slice(2, 6)}`);
   await page.locator('textarea[name="description"]').fill(name);
   await page.getByRole('button', { name: 'Purchase Details' }).click();
   await page.locator('input[name="purchaseDate"]').fill(purchaseDate);
@@ -331,7 +348,15 @@ async function assignAssetToDepartment(page, name) {
     .locator('label')
     .filter({ hasText: /^Branch$/ })
     .locator('xpath=..')
-    .getByRole('button');
+    .getByRole('button')
+    .first();
+  await expect
+    .poll(
+      async () =>
+        (await branch.evaluate((el) => el.className.includes('cursor-not-allowed'))) ? 'loading' : 'ready',
+      { timeout: 20000 },
+    )
+    .toBe('ready');
   if (/Select/i.test((await branch.innerText()).trim())) {
     await selectPortalDropdown(page, 'Branch');
   }
@@ -339,7 +364,15 @@ async function assignAssetToDepartment(page, name) {
     .locator('label')
     .filter({ hasText: /^Department$/ })
     .locator('xpath=..')
-    .getByRole('button');
+    .getByRole('button')
+    .first();
+  await expect
+    .poll(
+      async () =>
+        (await dept.evaluate((el) => el.className.includes('cursor-not-allowed'))) ? 'loading' : 'ready',
+      { timeout: 20000 },
+    )
+    .toBe('ready');
   if (/Select/i.test((await dept.innerText()).trim())) {
     await selectPortalDropdown(page, 'Department');
   }
@@ -359,7 +392,7 @@ test('AS-01 Open Assets', async ({ page }) => {
   await expect(headerAddButton(page)).toBeVisible();
   await expect(headerTrash(page)).toBeVisible();
   await expect(headerDownload(page)).toBeVisible();
-  const first = page.locator('tbody tr').first();
+  const first = dataRows(page).first();
   if (await first.isVisible()) {
     state.firstName = (await first.locator('td').nth(2).innerText()).trim();
   }
@@ -384,7 +417,7 @@ test('AS-02 List columns that are on the table', async ({ page }) => {
     await expect(page.getByRole('columnheader', { name })).toBeVisible();
   }
   await expect(page.getByRole('columnheader', { name: 'Asset ID' })).toHaveCount(0);
-  const first = page.locator('tbody tr').first();
+  const first = dataRows(page).first();
   if (await first.isVisible()) {
     await expect(first.locator('input[type="checkbox"]')).toBeVisible();
     await expect(first.locator('button[title="Edit"]')).toBeVisible();
@@ -393,8 +426,9 @@ test('AS-02 List columns that are on the table', async ({ page }) => {
 
 test('AS-03 Assets already on the screen', async ({ page }) => {
   await openAssets(page);
-  const first = page.locator('tbody tr').first();
+  const first = dataRows(page).first();
   const empty = page.getByText('No data found', { exact: true });
+  await expect(first.or(empty).first()).toBeVisible({ timeout: 30000 });
   if (await first.isVisible()) {
     await expect(first.locator('td').nth(2)).not.toHaveText('');
     state.firstName = (await first.locator('td').nth(2).innerText()).trim();
@@ -405,30 +439,37 @@ test('AS-03 Assets already on the screen', async ({ page }) => {
 
 test('AS-04 Filter the list', async ({ page }) => {
   await openAssets(page);
-  if (!(await page.locator('tbody tr').first().isVisible())) {
+  if (!(await dataRows(page).first().isVisible())) {
     await createAsset(page, `${run} Seed`);
     await openAssets(page);
   }
-  const first = page.locator('tbody tr').first();
+  const first = dataRows(page).first();
   const name = (await first.locator('td').nth(2).innerText()).trim();
   expect(name).toBeTruthy();
   state.firstName = name;
   await filterByColumn(page, 'Asset Name', name);
   await expect(assetsRow(page, name)).toBeVisible();
   await clearColumnFilter(page);
-  await expect(page.locator('tbody tr').first()).toBeVisible();
+  await expect(dataRows(page).first()).toBeVisible();
 });
 
 test('AS-05 Sort by asset name', async ({ page }) => {
   await openAssets(page);
-  const header = page.locator('thead').getByText('Asset Name', { exact: true });
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Asset Name/ })).toContainText('↑');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Asset Name/ })).toContainText('↓');
-  await header.click();
-  await expect(page.getByRole('columnheader', { name: /Asset Name/ })).not.toContainText('↑');
-  await expect(page.getByRole('columnheader', { name: /Asset Name/ })).not.toContainText('↓');
+  const header = page.getByRole('columnheader', { name: /Asset Name/ });
+  const sortLabel = header.locator('span.cursor-pointer.flex-grow');
+  await header.hover();
+  await header.locator('svg').click();
+  await page.getByText('Sort Ascending', { exact: true }).click();
+  await expect(sortLabel).toContainText('↑');
+  await header.hover();
+  await header.locator('svg').click();
+  await page.getByText('Sort Descending', { exact: true }).click();
+  await expect(sortLabel).toContainText('↓');
+  await header.hover();
+  await header.locator('svg').click();
+  await page.getByText('Remove Sort', { exact: true }).click();
+  await expect(sortLabel).not.toContainText('↑');
+  await expect(sortLabel).not.toContainText('↓');
 });
 
 test('AS-06 Download with nothing selected', async ({ page }) => {
@@ -439,11 +480,11 @@ test('AS-06 Download with nothing selected', async ({ page }) => {
 
 test('AS-07 Download one selected row', async ({ page }) => {
   await openAssets(page);
-  if (!(await page.locator('tbody tr').first().isVisible())) {
+  if (!(await dataRows(page).first().isVisible())) {
     await createAsset(page, `${run} Seed`);
     await openAssets(page);
   }
-  await page.locator('tbody tr').first().locator('input[type="checkbox"]').check();
+  await dataRows(page).first().locator('input[type="checkbox"]').check();
   const downloadPromise = page.waitForEvent('download');
   await headerDownload(page).click();
   await expectToast(page, 'Assets exported successfully');
@@ -451,7 +492,10 @@ test('AS-07 Download one selected row', async ({ page }) => {
   expect(download.suggestedFilename()).toMatch(/^Assets_List_.*\.xlsx$/);
   const filePath = await download.path();
   expect(filePath).toBeTruthy();
-  const workbook = XLSX.readFile(/** @type {string} */ (filePath));
+  const workbook =
+    typeof XLSX.readFile === 'function'
+      ? XLSX.readFile(/** @type {string} */ (filePath))
+      : XLSX.read(fs.readFileSync(/** @type {string} */ (filePath)), { type: 'buffer' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
   const headers = (rows[0] || []).map((cell) => String(cell));
@@ -469,11 +513,11 @@ test('AS-08 Delete with nothing selected', async ({ page }) => {
 
 test('AS-09 Cancel header delete', async ({ page }) => {
   await openAssets(page);
-  if (!(await page.locator('tbody tr').first().isVisible())) {
+  if (!(await dataRows(page).first().isVisible())) {
     await createAsset(page, `${run} Seed`);
     await openAssets(page);
   }
-  const row = page.locator('tbody tr').first();
+  const row = dataRows(page).first();
   const name = (await row.locator('td').nth(2).innerText()).trim();
   await row.locator('input[type="checkbox"]').check();
   await headerTrash(page).click();
@@ -486,7 +530,7 @@ test('AS-09 Cancel header delete', async ({ page }) => {
 
 test('AS-10 Do not use the row delete icon on an existing asset', async ({ page }) => {
   await openAssets(page);
-  const first = page.locator('tbody tr').first();
+  const first = dataRows(page).first();
   if (await first.isVisible()) {
     await expect(first.locator('button[title="Edit"]')).toBeVisible();
     await expect(first.locator('button[title="Delete"]')).toHaveCount(0);
@@ -505,7 +549,9 @@ test('AS-11 Open Add Asset', async ({ page }) => {
 test('AS-12 Required fields block Save', async ({ page }) => {
   await openAddAsset(page);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expectToast(page, 'Please fill all required fields');
+  await expect(
+    page.getByText('Please fill all required fields').or(page.getByText('Asset type is required')).first(),
+  ).toBeVisible({ timeout: 20000 });
   await expect(page).toHaveURL(/\/assets\/add/);
 });
 

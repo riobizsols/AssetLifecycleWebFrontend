@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-VR-${Date.now().toString(36)}`;
+const run = `PW-VR-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const stamp = run.slice('PW-VR-'.length);
 const renewalUrl = `${BASE}/vendor-renewal-approval`;
 const vendorsUrl = `${BASE}/master-data/vendors`;
@@ -77,7 +77,8 @@ async function openRenewal(page) {
   });
   await expect(page.locator('[data-contentbox-filter-button]')).toBeVisible({ timeout: 30000 });
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -90,7 +91,8 @@ async function openVendors(page) {
     timeout: 30000,
   });
   await expect(
-    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+    page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -131,7 +133,7 @@ async function createVendorWithContract(page, name, emailLocal) {
   if (await existing.count()) return;
 
   await headerAddButton(page).click();
-  await expect(page.locator('header').getByText('Add Vendor', { exact: true })).toBeVisible({
+  await expect(page.getByPlaceholder('Enter vendor name')).toBeVisible({
     timeout: 30000,
   });
   await page.getByPlaceholder('Enter vendor name').fill(name);
@@ -143,7 +145,7 @@ async function createVendorWithContract(page, name, emailLocal) {
   await page.locator('input[name="contract_end_date"]').fill(ymd(7));
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click();
+  await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(page.locator('tbody tr').filter({ hasText: name })).toBeVisible({ timeout: 30000 });
 }
 
@@ -257,7 +259,7 @@ test.describe('Vendor Renewal Approval', () => {
     await filterByColumn(page, 'Status', 'Initiated');
     const empty = page.getByText('No data found', { exact: true });
     const first = page.locator('tbody tr').first();
-    await expect(empty.or(first)).toBeVisible();
+    await expect(empty.or(first).first()).toBeVisible();
     await clearColumnFilter(page);
     const vendorName = state.firstVendorName;
     if (vendorName) {
@@ -266,13 +268,14 @@ test.describe('Vendor Renewal Approval', () => {
       await clearColumnFilter(page);
     }
     await expect(
-      page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })),
+      page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true }))
+      .first(),
     ).toBeVisible();
   });
 
   test('VR-05 Sort by vendor name', async ({ page }) => {
     await openRenewal(page);
-    const header = page.locator('thead').getByText('Vendor Name', { exact: true });
+    const header = page.getByRole('columnheader', { name: /Vendor Name/ }).locator('span.cursor-pointer.flex-grow');
     await header.click();
     await header.click();
     await header.click();
@@ -316,7 +319,7 @@ test.describe('Vendor Renewal Approval', () => {
     state.stay2Ready = true;
     await showRenewalRow(page, stayName);
     const row = listRow(page, stayName);
-    await expect(row.getByText(/Vendor Contract Renewal/i).or(row)).toBeVisible();
+    await expect(row.getByText(/Vendor Contract Renewal/i).or(row).first()).toBeVisible();
   });
 
   test('VR-09 Open the detail for this run', async ({ page }) => {
@@ -389,7 +392,7 @@ test.describe('Vendor Renewal Approval', () => {
     await page.getByText('History Details', { exact: true }).click();
     const empty = page.getByText('No workflow history available', { exact: true });
     const dateHeader = page.getByRole('columnheader', { name: 'Date' });
-    await expect(empty.or(dateHeader)).toBeVisible({ timeout: 20000 });
+    await expect(empty.or(dateHeader).first()).toBeVisible({ timeout: 20000 });
     if (await dateHeader.isVisible()) {
       await expect(page.getByRole('columnheader', { name: 'Action' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Job Role' })).toBeVisible();
