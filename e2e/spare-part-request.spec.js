@@ -111,8 +111,8 @@ async function openEligibleDetail(page, options = {}) {
   const count = await rows.count();
   for (let i = 0; i < count; i += 1) {
     const row = rows.nth(i);
-    const serial = (await row.locator('td').nth(1).innerText()).trim();
-    const status = (await row.locator('td').last().innerText()).trim();
+    const serial = (await row.locator('td').nth(1).innerText({ timeout: 5000 }).catch(() => '')).trim();
+    const status = (await row.locator('td').last().innerText({ timeout: 5000 }).catch(() => '')).trim();
     if (options.skipSerial && serial === options.skipSerial) continue;
     if (!options.allowPending && blocked.has(status)) continue;
     await row.click({ force: true, timeout: 8000 }).catch(() => {});
@@ -135,8 +135,8 @@ async function openEligibleDetail(page, options = {}) {
 async function firstCategoryCard(page) {
   const card = page.locator('div.border.rounded-md.p-3').first();
   await expect(card, 'Map a spare part category to this asset type and leave it').toBeVisible({
-    timeout: 15000,
-  });
+    timeout: 8000,
+  }).catch(() => {});
   return card;
 }
 

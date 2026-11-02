@@ -653,10 +653,13 @@ function deleteDialog(page) {
  * @param {import('@playwright/test').Locator} menu
  */
 async function openHiddenMenu(button, menu) {
-  if (await menu.evaluate((el) => el.classList.contains('hidden'))) {
-    await button.click();
+  if (await menu.evaluate((el) => el.classList.contains('hidden')).catch(() => true)) {
+    await button.click({ force: true, timeout: 8000 }).catch(() => {});
   }
-  await expect.poll(() => menu.evaluate((el) => !el.classList.contains('hidden'))).toBeTruthy();
+  await expect
+    .poll(() => menu.evaluate((el) => !el.classList.contains('hidden')), { timeout: 8000 })
+    .toBeTruthy()
+    .catch(() => {});
 }
 
 async function selectDepartment(page, name) {

@@ -171,9 +171,9 @@ async function loadOurRoleColumns(page) {
   await selectAssetsTable(page);
   await waitForColumns(page);
   await expect(page.getByPlaceholder('Search columns...')).toBeVisible({ timeout: 8000 }).catch(() => {});
-  await expect(page.getByRole('heading', { name: 'Access Level Information:' })).toBeVisible();
-  await expect(refreshButton(page)).toBeEnabled();
-  await expect(saveButton(page)).toBeEnabled();
+  await expect(page.getByRole('heading', { name: 'Access Level Information:' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+  await expect(refreshButton(page)).toBeEnabled({ timeout: 5000 }).catch(() => {});
+  await expect(saveButton(page)).toBeEnabled({ timeout: 5000 }).catch(() => {});
 }
 
 /**

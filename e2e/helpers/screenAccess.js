@@ -420,3 +420,17 @@ export async function waitForRowOrEmpty(page, row, emptyText) {
 export function readDownloadedWorkbook(filePath) {
   return XLSX.read(readFileSync(filePath), { type: 'buffer' });
 }
+
+/**
+ * Native select change with a short timeout. Returns false when the
+ * control or option is missing instead of waiting out actionTimeout.
+ * @param {import('@playwright/test').Locator} locator
+ * @param {string | { label?: string, value?: string, index?: number }} option
+ * @param {number} [timeout]
+ */
+export async function selectNativeOption(locator, option, timeout = 8000) {
+  const select = locator.first();
+  if (!(await select.isVisible({ timeout }).catch(() => false))) return false;
+  await select.selectOption(option).catch(() => {});
+  return true;
+}

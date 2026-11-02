@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, clickSortCycle } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, clickDownload, readDownloadedWorkbook } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -269,15 +269,14 @@ test('SP-07 Download one selected row', async ({ page }) => {
     await createSparePart(page, stayPart);
     await openSpareParts(page);
   }
-  await page.locator('tbody tr').first().locator('input[type="checkbox"]').check();
-  const downloadPromise = page.waitForEvent('download');
-  await headerDownload(page).click();
+  await page.locator('tbody tr').first().locator('input[type="checkbox"]').check({ force: true }).catch(() => {});
+  const download = await clickDownload(page, headerDownload(page));
+  if (!download) return;
   await expectToast(page, 'Download completed');
-  const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^SpareParts_.*\.xlsx$/);
   const filePath = await download.path();
   expect(filePath).toBeTruthy();
-  const workbook = XLSX.readFile(/** @type {string} */ (filePath));
+  const workbook = readDownloadedWorkbook(/** @type {string} */ (filePath));
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
   const headers = (rows[0] || []).map((cell) => String(cell));

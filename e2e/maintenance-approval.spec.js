@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, clickSortCycle, chooseLabeledOption, clickDownload } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, chooseLabeledOption, clickDownload, readDownloadedWorkbook } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -597,7 +597,7 @@ test.describe('Maintenance Approval', () => {
     await expectToast(page, 'Maintenance approvals exported successfully');
     const path = await download.path();
     if (path) {
-      const workbook = XLSX.readFile(path);
+      const workbook = readDownloadedWorkbook(path);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
       const headers = (rows[0] || []).map((cell) => String(cell));

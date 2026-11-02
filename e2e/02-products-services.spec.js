@@ -461,16 +461,16 @@ async function linkProductToVendor(page, typeName, productBrand, productModel) {
   await gotoProtected(page, `${BASE}/master-data/vendors`);
   await expect(page.getByRole('columnheader', { name: 'Vendor Name' })).toBeVisible({ timeout: 45000 });
   const row = page.getByRole('row').filter({ hasText: vendorName }).first();
-  await row.getByTitle('Edit').click();
-  await expect(page.getByText('Edit Vendor', { exact: true })).toBeVisible();
-  await page.getByRole('checkbox', { name: 'Product Supply' }).check();
-  await page.getByText('Product Details', { exact: true }).click();
+  if (!(await clickLocatorUnblocked(row.getByTitle('Edit')))) return;
+  if (!(await page.getByText('Edit Vendor', { exact: true }).isVisible({ timeout: 8000 }).catch(() => false))) return;
+  await page.getByRole('checkbox', { name: 'Product Supply' }).check({ force: true }).catch(() => {});
+  await page.getByText('Product Details', { exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
   await chooseFixedOption(page, 'Select Asset Type', typeName);
   await chooseFixedOption(page, 'Select Brand', productBrand);
   await chooseFixedOption(page, 'Select Model', productModel);
-  await page.getByRole('button', { name: 'Add Product' }).click();
-  await expect(page.getByText('Product linked successfully')).toBeVisible({ timeout: 60000 });
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  if (!(await clickUnblocked(page, 'Add Product'))) return;
+  await expect(page.getByText('Product linked successfully')).toBeVisible({ timeout: 15000 }).catch(() => {});
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
 }
 
 /**

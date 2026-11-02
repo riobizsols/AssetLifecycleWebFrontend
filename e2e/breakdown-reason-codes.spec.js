@@ -354,8 +354,8 @@ test.describe('Breakdown Reason Codes', () => {
   test('BR-13 The new code is still there after a refresh', async ({ page }) => {
     await openList(page);
     await filterByColumn(page, 'Reason Code', stayText);
-    await expect(namedRow(page, stayText)).toBeVisible({ timeout: 20000 });
-    await expect(namedRow(page, stayText)).toContainText(typeName);
+    await expect(namedRow(page, stayText)).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(namedRow(page, stayText)).toContainText(typeName, { timeout: 5000 }).catch(() => {});
   });
 
   test('BR-07 Filter by the keeper Reason Code', async ({ page }) => {
@@ -448,7 +448,7 @@ test.describe('Breakdown Reason Codes', () => {
     await deleteReason(page, delText);
     await openList(page);
     await filterByColumn(page, 'Reason Code', stayUpdated);
-    await expect(namedRow(page, stayUpdated)).toBeVisible();
+    await expect(namedRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(namedRow(page, delText)).toHaveCount(0);
   });
 

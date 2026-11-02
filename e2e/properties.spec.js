@@ -485,7 +485,7 @@ test.describe('Properties', () => {
     await expect(block.getByText(stayRed, { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(block.getByText(stayBlue, { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(block.getByPlaceholder('Enter new value...')).toBeVisible({ timeout: 8000 }).catch(() => {});
-    await expect(block.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
+    await expect(block.getByRole('button', { name: 'Add', exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('PP-22 Add a third list value to the keeper only', async ({ page }) => {

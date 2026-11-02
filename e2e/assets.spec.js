@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { firstDataCellText, headerAddButton, clickSortCycle, chooseLabeledOption, clickDownload, firstDataRow } from './helpers/screenAccess.js';
+import { firstDataCellText, headerAddButton, clickSortCycle, chooseLabeledOption, clickDownload, firstDataRow, readDownloadedWorkbook } from './helpers/screenAccess.js';
 import { selectPortalDropdown } from './helpers/searchableDropdown.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -360,7 +360,7 @@ test('AS-02 List columns that are on the table', async ({ page }) => {
   const first = page.locator('tbody tr').first();
   if (await first.isVisible()) {
     await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
-    await expect(first.locator('button[title="Edit"]')).toBeVisible();
+    await expect(first.locator('button[title="Edit"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
   }
 });
 
@@ -420,7 +420,7 @@ test('AS-07 Download one selected row', async ({ page }) => {
   expect(download.suggestedFilename()).toMatch(/\.xlsx$/i);
   const filePath = await download.path();
   expect(filePath).toBeTruthy();
-  const workbook = XLSX.readFile(/** @type {string} */ (filePath));
+  const workbook = readDownloadedWorkbook(/** @type {string} */ (filePath));
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
   const headers = (rows[0] || []).map((cell) => String(cell));

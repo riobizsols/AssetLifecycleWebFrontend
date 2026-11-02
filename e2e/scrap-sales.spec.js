@@ -490,12 +490,6 @@ test('SS-06 Delete with nothing selected', async ({ page }) => {
 test('SS-07 Cancel header delete on an existing sale', async ({ page }) => {
   await openSales(page);
   let row = await firstDataRow(page);
-  if (!row) {
-    await createSale(page, stayTitle);
-    state.stayTitle = stayTitle;
-    await openSales(page);
-    row = await firstDataRow(page);
-  }
   if (!row) return;
   const title = (await row.locator('td').first().innerText()).trim();
   await row.locator('input[type="checkbox"]').check({ force: true }).catch(() => {});

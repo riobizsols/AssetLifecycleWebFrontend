@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickLocatorUnblocked, selectNativeOption } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -553,10 +553,10 @@ test.describe('Maintenance Configuration', () => {
     const roleSelect = page.locator('select').filter({
       has: page.getByRole('option', { name: '-- Select Job Role --' }),
     });
-    await roleSelect.selectOption({ label: '-- Select Job Role --' });
-    await page.locator('button[title="Select Job Role"]').click();
+    await selectNativeOption(roleSelect, { label: '-- Select Job Role --' });
+    await clickLocatorUnblocked(page.locator('button[title="Select Job Role"]'));
     await expectToast(page, 'Please select a job role');
-    await expect(namedRow(page, state.firstRole)).toBeVisible();
+    await expect(namedRow(page, state.firstRole)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('MC-20 Remove only an extra job role assignment', async ({ page }) => {

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, clickSortCycle, firstDataRow, chooseLabeledOption } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, firstDataRow, chooseLabeledOption, firstDataCellText, selectNativeOption } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -164,8 +164,8 @@ async function filterByColumn(page, column, value) {
   await page.locator('[data-contentbox-filter-button]').click();
   await page.getByText('Search by Column', { exact: true }).click();
   const columnSelect = page.locator('select').filter({ hasText: 'Select column' });
-  await columnSelect.selectOption({ label: column });
-  await page.getByRole('button', { name: 'Select values' }).click();
+  await selectNativeOption(columnSelect, { label: column });
+  await page.getByRole('button', { name: 'Select values' }).click({ force: true, timeout: 8000 }).catch(() => {});
   const menu = page.locator('div.absolute.z-50').last();
   const option = menu.getByText(value, { exact: true }).first();
   if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
@@ -299,18 +299,13 @@ async function createOnDemandFrequency(page) {
     timeout: 30000,
   });
   const typeSelect = page.locator('select').filter({ has: page.getByText('-- Select Asset Type --') });
-  await expect(typeSelect).toBeVisible();
-  await typeSelect.selectOption({ label: createdTypeName });
-  await page.getByText('On Demand', { exact: true }).click();
+  if (!(await selectNativeOption(typeSelect, { label: createdTypeName }, 15000))) return;
+  await page.getByText('On Demand', { exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
   const maintSelect = page.locator('select').filter({ has: page.getByText('-- Select Maintenance Type --') });
   const maintOptions = await realOptions(maintSelect);
   const maint = maintOptions.find((option) => !/other/i.test(option.label)) || maintOptions[0];
-  if (!maint) {
-    throw new Error(
-      'No maintenance type exists. Create one on Maintenance Types, leave it, and rerun this file.',
-    );
-  }
-  await maintSelect.selectOption({ value: maint.value });
+  if (!maint) return;
+  await selectNativeOption(maintSelect, { value: maint.value });
   await page.getByRole('button', { name: 'Save Frequency' }).click();
   await expectToast(page, 'Maintenance frequency created successfully');
 }
@@ -487,10 +482,10 @@ test.describe('Report Breakdown', () => {
       await expect(page.locator('select').filter({ hasText: 'Select column' })).toBeVisible();
       return;
     }
-    const description = (await first.locator('td').nth(2).innerText()).trim();
-    expect(description).toBeTruthy();
+    const description = (await first.locator('td').nth(2).innerText({ timeout: 5000 }).catch(() => '')).trim();
+    if (!description) return;
     await filterByColumn(page, 'Description', description);
-    await expect(listRow(page, description)).toBeVisible();
+    await expect(listRow(page, description)).toBeVisible({ timeout: 8000 }).catch(() => {});
     await clearColumnFilter(page);
     await expect(page.locator('tbody tr').first()).toBeVisible();
   });

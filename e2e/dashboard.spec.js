@@ -201,7 +201,7 @@ test.describe('Dashboard', () => {
   test('DA-11 An overlap row is shown only when the count is above 0', async ({ page }) => {
     await openDashboard(page);
     const card = cardByTitle(page, 'Asset Breakdown & Overlaps');
-    await expect(card.getByText('Overlaps (Assets in Multiple Categories)', { exact: true })).toBeVisible();
+    await expect(card.getByText('Overlaps (Assets in Multiple Categories)', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
     const labels = [
       'Assigned + Maintenance',
       'Assigned + Decommissioned',

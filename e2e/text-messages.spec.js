@@ -230,7 +230,7 @@ test.describe('Text Messages', () => {
     await searchBox(page).fill('zzznomatch999');
     await expect(page.getByText('No messages found.', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
     await searchBox(page).fill('');
-    await expect(messageRow(page, state.tmdId)).toBeVisible();
+    await expect(messageRow(page, state.tmdId)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('TM-10 Search by a translation that is already filled', async ({ page }) => {

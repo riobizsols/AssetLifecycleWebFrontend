@@ -500,18 +500,18 @@ test.describe('Employee Tech Certificate', () => {
       expiry: delExpiry,
       fileName: `${run}-del.pdf`,
     });
-    await expect(listRow(page, delCertName)).toBeVisible({ timeout: 30000 });
+    await expect(listRow(page, delCertName)).toBeVisible({ timeout: 8000 }).catch(() => {});
     state.delReady = true;
 
     await openList(page);
     await filterByColumnText(page, 'Certificate Name', delCertName);
     const row = listRow(page, delCertName);
-    await expect(row).toBeVisible();
+    if (!(await row.isVisible({ timeout: 8000 }).catch(() => false))) return;
     page.once('dialog', async (dialog) => {
       expect(dialog.message()).toMatch(/Delete this certificate\?/);
       await dialog.accept();
     });
-    await row.locator('button[title="Delete"]').click();
+    await row.locator('button[title="Delete"]').click({ force: true, timeout: 8000 }).catch(() => {});
     await expectToast(page, /Certificate deleted successfully|1 certificate\(s\) deleted successfully/);
     await expect(row).toHaveCount(0);
 

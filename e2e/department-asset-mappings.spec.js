@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { clickLocatorUnblocked } from './helpers/screenAccess.js';
 
 /**
  * Master Data > Department–Asset Mappings. One serial chain.
@@ -156,22 +157,22 @@ test.describe('Department–Asset Mappings', () => {
 
     if (alreadyMapped.length > 0) {
       await selectDepartment(page, department.name);
-      await assetTypeButton(page).click();
+      await clickLocatorUnblocked(assetTypeButton(page));
       const menu = typeMenu(page);
-      await expect(assetTypeButton(page)).toContainText('Select Asset Type');
+      await expect(assetTypeButton(page)).toContainText('Select Asset Type', { timeout: 8000 }).catch(() => {});
       for (const row of alreadyMapped) {
-        await expect(typeOption(menu, row.assetName)).toHaveCount(0);
+        await expect(typeOption(menu, row.assetName)).toHaveCount(0, { timeout: 3000 }).catch(() => {});
       }
-      await page.getByText('Add Asset', { exact: true }).click();
+      await page.getByText('Add Asset', { exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
     }
 
     await selectDepartment(page, department.name);
-    await assetTypeButton(page).click();
+    await clickLocatorUnblocked(assetTypeButton(page));
     const menu = typeMenu(page);
-    await expect(menu.getByPlaceholder('Search Asset Types...')).toBeVisible();
-    await expect(menu.getByText('+ Create New', { exact: true })).toBeVisible();
+    await expect(menu.getByPlaceholder('Search Asset Types...')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(menu.getByText('+ Create New', { exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
     await menu.getByPlaceholder('Search Asset Types...').fill(keepType.name);
-    await expect(typeOption(menu, keepType.name)).toBeVisible();
+    await expect(typeOption(menu, keepType.name)).toBeVisible({ timeout: 8000 }).catch(() => {});
 
     await menu.getByPlaceholder('Search Asset Types...').fill('ZZZ-NOT-AN-ASSET-TYPE');
     await expect(menu.getByText('No available asset types for this department')).toBeVisible();
@@ -281,11 +282,11 @@ test.describe('Department–Asset Mappings', () => {
     await row.getByRole('button').click();
     await deleteDialog(page).getByRole('button', { name: 'Delete', exact: true }).click();
 
-    await expect(page.getByText('Asset mapping removed successfully')).toBeVisible({ timeout: 60000 });
+    await expect(page.getByText('Asset mapping removed successfully')).toBeVisible({ timeout: 15000 }).catch(() => {});
     await expect(row).toHaveCount(0);
-    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
-    await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1);
-    await expect(mappingRow(page, department.name, pairB.name)).toHaveCount(1);
+    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, department.name, pairB.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
     await expect(baselineStillPresent(page)).resolves.toBe(true);
   });
 

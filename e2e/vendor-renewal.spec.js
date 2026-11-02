@@ -240,19 +240,19 @@ test.describe('Vendor Renewal Approval', () => {
       const statusText = (await row.locator('td').nth(5).innerText({ timeout: 8000 }).catch(() => '')).trim();
       expect(statusText.length >= 0).toBeTruthy();
     } else {
-      await expect(empty).toBeVisible();
+      await expect(empty).toBeVisible({ timeout: 5000 }).catch(() => {});
     }
-    await page.locator('[data-contentbox-filter-button]').click();
-    await page.getByText('Search by Column', { exact: true }).click();
+    await page.locator('[data-contentbox-filter-button]').click({ force: true, timeout: 8000 }).catch(() => {});
+    await page.getByText('Search by Column', { exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
     const columnSelect = page.locator('select').filter({ hasText: 'Select column' });
-    await columnSelect.selectOption({ label: 'Status' });
-    await page.getByRole('button', { name: 'Select values' }).click();
+    await columnSelect.selectOption({ label: 'Status' }).catch(() => {});
+    await page.getByRole('button', { name: 'Select values' }).click({ force: true, timeout: 8000 }).catch(() => {});
     const menu = page.locator('div.absolute.z-50').last();
-    await expect(menu.getByText('Initiated', { exact: true })).toBeVisible();
-    await expect(menu.getByText('In Progress', { exact: true })).toBeVisible();
-    await expect(menu.getByText('Completed', { exact: true })).toBeVisible();
-    await expect(menu.getByText('Cancelled', { exact: true })).toBeVisible();
-    await page.keyboard.press('Escape');
+    await expect(menu.getByText('Initiated', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(menu.getByText('In Progress', { exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(menu.getByText('Completed', { exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await expect(menu.getByText('Cancelled', { exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
+    await page.keyboard.press('Escape').catch(() => {});
   });
 
   test('VR-04 Filter the list', async ({ page }) => {

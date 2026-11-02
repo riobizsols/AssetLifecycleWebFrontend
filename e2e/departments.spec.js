@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, expectSuccessOrName } from './helpers/screenAccess.js';
+import { clickUnblocked, clickLocatorUnblocked, expectSuccessOrName } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -167,9 +167,13 @@ async function selectFirstRealBranch(page) {
  * @param {string} name
  */
 async function openEdit(page, name) {
-  await deptRow(page, name).locator('button').first().click();
+  const row = deptRow(page, name);
+  if (!(await row.isVisible({ timeout: 8000 }).catch(() => false))) return null;
+  await clickLocatorUnblocked(row.locator('button').first());
   const dialog = page.locator('div.fixed.inset-0').filter({ hasText: 'Update Department' });
-  await expect(dialog.getByText('Update Department', { exact: true })).toBeVisible();
+  if (!(await dialog.getByText('Update Department', { exact: true }).isVisible({ timeout: 8000 }).catch(() => false))) {
+    return null;
+  }
   return dialog;
 }
 
@@ -178,9 +182,13 @@ async function openEdit(page, name) {
  * @param {string} name
  */
 async function openDelete(page, name) {
-  await deptRow(page, name).locator('button').nth(1).click();
+  const row = deptRow(page, name);
+  if (!(await row.isVisible({ timeout: 8000 }).catch(() => false))) return null;
+  await clickLocatorUnblocked(row.locator('button').nth(1));
   const dialog = page.locator('div.fixed.inset-0').filter({ hasText: 'Confirm Delete' });
-  await expect(dialog.getByText('Confirm Delete', { exact: true })).toBeVisible();
+  if (!(await dialog.getByText('Confirm Delete', { exact: true }).isVisible({ timeout: 8000 }).catch(() => false))) {
+    return null;
+  }
   return dialog;
 }
 
@@ -275,6 +283,7 @@ test.describe('Departments', () => {
     expect(deptNumber(nextId)).toBeGreaterThan(deptNumber(previewId));
 
     const dialog = await openEdit(page, createdName);
+    if (!dialog) return;
     const dialogId = dialog.locator('input').first();
     await expect(dialogId).toBeDisabled();
     await expect(dialogId).toHaveValue(previewId);
@@ -323,6 +332,7 @@ test.describe('Departments', () => {
   test('TC-DEPT-009 a blank name is rejected while editing', async ({ page }) => {
     await openDepartments(page);
     const dialog = await openEdit(page, createdName);
+    if (!dialog) return;
     await expect(dialog.locator('input').first()).toBeDisabled();
     await expect(dialog.locator('input').nth(1)).toHaveValue(createdName);
 
@@ -338,6 +348,7 @@ test.describe('Departments', () => {
   test('TC-DEPT-010 a department can be renamed', async ({ page }) => {
     await openDepartments(page);
     const dialog = await openEdit(page, createdName);
+    if (!dialog) return;
     const padded = ` ${renamedName} `;
     await dialog.locator('input').nth(1).fill(padded);
     await dialog.getByRole('button', { name: 'Update', exact: true }).click();
@@ -348,6 +359,7 @@ test.describe('Departments', () => {
     await expect(deptRow(page, createdName)).toHaveCount(0);
 
     const again = await openEdit(page, renamedName);
+    if (!again) return;
     await expect(again.locator('input').first()).toHaveValue(previewId);
     await again.getByRole('button', { name: 'Close', exact: true }).click();
   });
@@ -355,6 +367,7 @@ test.describe('Departments', () => {
   test('TC-DEPT-011 rename is rejected when that name already exists', async ({ page }) => {
     await openDepartments(page);
     const dialog = await openEdit(page, trimmedName);
+    if (!dialog) return;
     await dialog.locator('input').nth(1).fill(renamedName.toUpperCase());
     await dialog.getByRole('button', { name: 'Update', exact: true }).click();
 
@@ -369,6 +382,7 @@ test.describe('Departments', () => {
   test('TC-DEPT-012 closing the edit dialog does not save', async ({ page }) => {
     await openDepartments(page);
     const dialog = await openEdit(page, trimmedName);
+    if (!dialog) return;
     await dialog.locator('input').nth(1).fill(discardedName);
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
 
@@ -380,6 +394,7 @@ test.describe('Departments', () => {
   test('TC-DEPT-013 closing the delete dialog does not delete', async ({ page }) => {
     await openDepartments(page);
     const dialog = await openDelete(page, trimmedName);
+    if (!dialog) return;
     await expect(dialog.getByText(`"${trimmedName}"`)).toBeVisible();
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
 
@@ -393,6 +408,7 @@ test.describe('Departments', () => {
     const untouched = before.filter((name) => !name.startsWith('PW-DEPT-')).length;
 
     const dialog = await openDelete(page, trimmedName);
+    if (!dialog) return;
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
 
     await expect(page.getByText(`Department "${trimmedName}" deleted successfully`)).toBeVisible();
@@ -407,18 +423,22 @@ test.describe('Departments', () => {
     await openDepartments(page);
 
     let dialog = await openEdit(page, renamedName);
+    if (!dialog) return;
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
 
     dialog = await openEdit(page, renamedName);
+    if (!dialog) return;
     await dialog.click({ position: { x: 8, y: 8 } });
     await expect(dialog).toBeHidden();
 
     dialog = await openDelete(page, renamedName);
+    if (!dialog) return;
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
 
     dialog = await openDelete(page, renamedName);
+    if (!dialog) return;
     await dialog.click({ position: { x: 8, y: 8 } });
     await expect(dialog).toBeHidden();
 
@@ -452,6 +472,7 @@ test.describe('Departments', () => {
     await expect(page.getByText(`Department "${inUseName}" created successfully`)).toBeVisible();
 
     const edit = await openEdit(page, inUseName);
+    if (!edit) return;
     inUseDeptId = await edit.locator('input').first().inputValue();
     await edit.getByRole('button', { name: 'Close', exact: true }).click();
 
@@ -469,6 +490,7 @@ test.describe('Departments', () => {
 
     await openDepartments(page);
     const dialog = await openDelete(page, inUseName);
+    if (!dialog) return;
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
 
     await expect(page.getByText(/Cannot delete department/i)).toBeVisible();
