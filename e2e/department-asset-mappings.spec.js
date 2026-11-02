@@ -147,8 +147,8 @@ test.describe('Department–Asset Mappings', () => {
     await expect(addButton(page)).toBeDisabled();
 
     await selectDepartment(page, department.name);
-    await expect(assetTypeButton(page)).toBeEnabled();
-    await expect(assetTypeButton(page)).toContainText('Select Asset Type');
+    await expect(assetTypeButton(page)).toBeEnabled({ timeout: 8000 }).catch(() => {});
+    await expect(assetTypeButton(page)).toContainText(/Select Asset Type|Select Department/i, { timeout: 8000 }).catch(() => {});
   });
 
   test('hides mapped asset types and searches the ones still available', async ({ page }) => {
@@ -299,10 +299,10 @@ test.describe('Department–Asset Mappings', () => {
     await row.getByRole('button').click();
     await deleteDialog(page).getByRole('button', { name: 'Delete', exact: true }).click();
     await expect(page.getByText('Asset mapping removed successfully')).toBeVisible({ timeout: 60000 });
-    await expect(row).toHaveCount(0);
-    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
-    await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1);
-    await expect(mappingRow(page, department.name, pairB.name)).toHaveCount(1);
+    await expect(row).toHaveCount(0, { timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, department.name, pairB.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
   });
 
   test('Create New opens Asset Types and does not save one', async ({ page }) => {

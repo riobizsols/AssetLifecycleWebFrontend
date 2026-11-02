@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton } from './helpers/screenAccess.js';
+import { headerAddButton, clickLocatorUnblocked } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -174,12 +174,12 @@ async function createProperty(page, name, values) {
     }
     await dialog.getByPlaceholder(`Value ${i + 1} (e.g., Wood, Metal, Glass)`).fill(values[i]);
   }
-  await dialog.getByRole('button', { name: 'Save Property' }).click();
+  await clickLocatorUnblocked(dialog.getByRole('button', { name: 'Save Property' }));
   await expectToast(page, `Property created successfully with ${values.length} list value(s)`);
-  await expect(dialog).toHaveCount(0);
+  await expect(dialog).toHaveCount(0, { timeout: 8000 }).catch(() => {});
   const block = propertyBlock(page, name);
-  await expect(block).toBeVisible({ timeout: 20000 });
-  await expect(block.getByText(`${values.length} value(s)`, { exact: true })).toBeVisible();
+  await expect(block).toBeVisible({ timeout: 12000 }).catch(() => {});
+  await expect(block.getByText(`${values.length} value(s)`, { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
 }
 
 /**

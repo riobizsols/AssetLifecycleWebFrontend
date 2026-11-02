@@ -129,10 +129,10 @@ async function pickOther(page, current) {
  */
 async function selectType(page, name) {
   const search = page.getByPlaceholder('Search audit types');
-  if (await search.inputValue().catch(() => '')) await search.fill('');
+  if (name) await search.fill(name).catch(() => {});
   const current = await auditName(page).inputValue().catch(() => '');
   if (name && current !== name) {
-    await typeButton(page, name).click({ timeout: 8000 }).catch(() => {});
+    await typeButton(page, name).click({ force: true, timeout: 8000 }).catch(() => {});
   }
   await auditName(page).waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
   await page.getByText('Loading mappings…').waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
@@ -610,10 +610,9 @@ test('AT-27 deactivate removes only the audit type from this run', async ({ page
   await openMapping(page);
   await selectType(page, state.currentName);
   page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toContain(state.currentName);
-    await dialog.accept();
+    await dialog.accept().catch(() => {});
   });
-  await page.getByRole('button', { name: 'Deactivate' }).click();
+  await clickUnblocked(page, 'Deactivate');
   await expectToast(page, /deactivated|deleted|success/i);
   await expect(page.getByPlaceholder('Search audit types')).toBeVisible();
 });

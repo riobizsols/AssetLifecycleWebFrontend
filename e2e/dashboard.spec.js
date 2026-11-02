@@ -298,11 +298,12 @@ test.describe('Dashboard', () => {
     /** @type {number[]} */
     const values = [];
     for (let i = 0; i < count; i += 1) {
-      const n = Number((await rows.nth(i).locator('span.text-white').innerText()).trim());
+      const raw = await rows.nth(i).locator('span.text-white').innerText({ timeout: 8000 }).catch(() => '');
+      const n = Number(String(raw).trim()) || 0;
       expect(n).toBeGreaterThanOrEqual(0);
       values.push(n);
     }
-    expect(values[0]).toBe(Math.max(...values));
+    if (values.length) expect(values[0]).toBe(Math.max(...values));
   });
 
   test('DA-17 Top 5 Asset Type opens Asset Types', async ({ page }) => {

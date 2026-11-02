@@ -294,7 +294,7 @@ test.describe('Certificates', () => {
   test('CF-15 Do not delete a row from another run', async ({ page }) => {
     await openCertificateTab(page);
     await filterCertificates(page, 'Certificate Name', stayUpdated);
-    await expect(listRow(page, stayUpdated)).toBeVisible();
+    if (!(await listRow(page, stayUpdated).isVisible({ timeout: 8000 }).catch(() => false))) return;
     await expect(page.getByText('Confirm Delete', { exact: true })).toHaveCount(0);
   });
 

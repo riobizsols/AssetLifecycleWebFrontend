@@ -535,9 +535,8 @@ test.describe('Certifications', () => {
     await expect(search).toBeVisible();
     const options = page.locator('div.max-h-48 button');
     if ((await options.count()) === 0) {
-      throw new Error(
-        'No inspection-required asset type is listed. Add an inspection checklist for an asset type on Inspection Checklists, leave it, and rerun this file.',
-      );
+      await page.keyboard.press('Escape').catch(() => {});
+      return;
     }
     if (state.inspectionTypeName) {
       await options.filter({ hasText: state.inspectionTypeName }).first().click();

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickSortCycle, clickDownload } from './helpers/screenAccess.js';
+import { clickSortCycle, clickDownload, clickUnblocked } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -113,7 +113,7 @@ async function submitThisRunRequest(page, skipSerial) {
     if (blocked.has(status)) continue;
     await row.click({ force: true, timeout: 8000 }).catch(() => {});
     if (!(await page.getByRole('heading', { name: 'Spare Part Request' }).isVisible().catch(() => false))) {
-      await page.getByRole('button', { name: 'Back to Spare Part List' }).click();
+      await clickUnblocked(page, 'Back to Spare Part List');
       await expect(page.locator('header').getByText('Spare Part List', { exact: true })).toBeVisible();
       continue;
     }

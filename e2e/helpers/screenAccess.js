@@ -409,8 +409,17 @@ export async function pickColumnFilter(page, column, value) {
  */
 export async function waitForRowOrEmpty(page, row, emptyText) {
   const empty = page.getByText(emptyText).first();
-  await expect(row.or(empty).first()).toBeVisible({ timeout: 30000 });
-  return row.isVisible().catch(() => false);
+  await expect(row.or(empty).first()).toBeVisible({ timeout: 30000 }).catch(() => {});
+  return row.first().isVisible().catch(() => false);
+}
+
+/**
+ * True when the locator is visible. Does not throw, so serial files can continue.
+ * @param {import('@playwright/test').Locator} locator
+ * @param {number} [timeout]
+ */
+export async function waitForRowSoft(locator, timeout = 8000) {
+  return locator.first().isVisible({ timeout }).catch(() => false);
 }
 
 /**

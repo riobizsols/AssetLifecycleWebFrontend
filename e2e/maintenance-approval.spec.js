@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, clickSortCycle, chooseLabeledOption, clickDownload, readDownloadedWorkbook } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, chooseLabeledOption, clickDownload, readDownloadedWorkbook, clickUnblocked, selectNativeOption } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -263,7 +263,7 @@ async function ensureVendor(page) {
   await page.locator('input[name="company_email"]').fill(`pw.ma.${stamp}@test.com`);
   await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
   await page.locator('input[name="contact_person_number"]').fill('9876543210');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   await expectToast(page, 'Vendor created successfully');
   state.vendorName = vendorName;
 }
@@ -339,7 +339,7 @@ async function ensureWorkflow(page) {
     timeout: 30000,
   });
 
-  await page.getByRole('button', { name: 'Workflow Steps' }).click();
+  await clickUnblocked(page, 'Workflow Steps');
   const stepRow = page.locator('table tbody tr').filter({ hasText: stepName });
   if (!(await stepRow.count())) {
     await page.locator('button[title="Add Workflow Step"]').click();

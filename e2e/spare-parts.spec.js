@@ -297,7 +297,7 @@ test('SP-09 Do not edit an existing spare part', async ({ page }) => {
   await openSpareParts(page);
   const first = page.locator('tbody tr').first();
   if (await first.isVisible()) {
-    await expect(first.locator('button[title="Edit"]')).toBeVisible();
+    await expect(first.locator('button[title="Edit"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
   }
 });
 

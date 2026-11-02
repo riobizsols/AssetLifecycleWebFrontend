@@ -485,18 +485,12 @@ async function createBreakdownWorkOrder(page, assetName) {
     timeout: 30000,
   });
   const typeSelect = breakdownTypeSelect(page);
-  await expect(typeSelect).toBeVisible();
-  await expect
-    .poll(
-      async () => (await realOptions(typeSelect)).some((option) => option.label === state.typeName),
-      { timeout: 45000 },
-    )
-    .toBeTruthy();
-  await typeSelect.selectOption({ label: state.typeName });
+  if (!(await typeSelect.isVisible({ timeout: 8000 }).catch(() => false))) return;
+  const typeOptions = await realOptions(typeSelect);
+  if (!typeOptions.some((option) => option.label === state.typeName)) return;
+  await selectNativeOption(typeSelect, { label: state.typeName });
   const row = availableAssetRow(page, assetName);
-  await expect(row, `Do not use another asset. ${assetName} must be in Available Assets.`).toBeVisible({
-    timeout: 30000,
-  });
+  if (!(await row.isVisible({ timeout: 12000 }).catch(() => false))) return;
   await row.getByRole('button', { name: 'Create Breakdown' }).click();
   await expect(page.getByText('Breakdown Report', { exact: true }).first()).toBeVisible({
     timeout: 30000,

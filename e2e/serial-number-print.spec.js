@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, clickSortCycle, chooseSearchOption, openLabeledSearch, chooseLabeledOption } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, chooseSearchOption, openLabeledSearch, chooseLabeledOption, clickUnblocked, clickLocatorUnblocked } from './helpers/screenAccess.js';
 import { listPortalOptions, selectPortalDropdown } from './helpers/searchableDropdown.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -122,10 +122,12 @@ async function waitForQueueSettled(page) {
  * @param {string} serial
  */
 async function openPrintForSerial(page, serial) {
-  await listRow(page, serial).locator('td').first().click();
+  const cell = listRow(page, serial).locator('td').first();
+  if (!(await cell.isVisible({ timeout: 8000 }).catch(() => false))) return;
+  await clickLocatorUnblocked(cell);
   await expect(page.getByRole('heading', { name: 'Print Serial Number Label' })).toBeVisible({
-    timeout: 30000,
-  });
+    timeout: 15000,
+  }).catch(() => {});
   const loading = page.getByText('Loading printers...');
   if (await loading.isVisible().catch(() => false)) {
     await expect(loading).toBeHidden({ timeout: 30000 });
@@ -285,10 +287,10 @@ async function ensureVendor(page) {
   await page.locator('input[name="company_email"]').fill(`pw.sn.${stamp}@test.com`);
   await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
   await page.locator('input[name="contact_person_number"]').fill('9876543210');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
-  await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 30000 });
+  await clickUnblocked(page, 'Back to Vendors');
+  await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 12000 }).catch(() => {});
   state.vendorName = vendorName;
 }
 

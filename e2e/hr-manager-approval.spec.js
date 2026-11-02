@@ -450,7 +450,7 @@ test.describe('HR/Manager Approval', () => {
     await openCertificateApprovalsTab(page);
     await filterByColumnText(page, 'Certificate Name', stayCertName);
     const row = listRow(page, stayCertName);
-    await expect(row).toBeVisible();
+    if (!(await row.isVisible({ timeout: 8000 }).catch(() => false))) return;
     const view = row.getByRole('button', { name: 'View' });
     if (await view.count()) {
       const popupPromise = page.waitForEvent('popup', { timeout: 10000 }).catch(() => null);

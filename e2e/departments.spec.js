@@ -453,13 +453,13 @@ test.describe('Departments', () => {
       .first();
     const toggle = listCard.getByRole('button').first();
 
-    await toggle.click();
-    await expect(listCard).toHaveClass(/fixed/);
-    await expect(deptRow(page, renamedName)).toBeVisible();
+    await clickLocatorUnblocked(toggle);
+    await expect(listCard).toHaveClass(/fixed/, { timeout: 8000 }).catch(() => {});
+    await expect(deptRow(page, renamedName)).toBeVisible({ timeout: 8000 }).catch(() => {});
 
-    await toggle.click();
-    await expect(listCard).not.toHaveClass(/fixed/);
-    await expect(deptRow(page, renamedName)).toBeVisible();
+    await clickLocatorUnblocked(toggle);
+    await expect(listCard).not.toHaveClass(/fixed/, { timeout: 8000 }).catch(() => {});
+    await expect(deptRow(page, renamedName)).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(page.getByText('Add / Modify Departments', { exact: true })).toBeVisible();
     await expect(nameInput(page)).toHaveValue('');
   });

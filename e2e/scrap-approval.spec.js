@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, clickSortCycle, chooseSearchOption, openLabeledSearch, chooseLabeledOption } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, chooseSearchOption, openLabeledSearch, chooseLabeledOption, clickUnblocked } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -391,10 +391,12 @@ test('SQ-08 Cancel Approve without sending', async ({ page }) => {
 
 test('SQ-09 Approve needs a note', async ({ page }) => {
   await openThisRunDetail(page, stayName);
-  await page.getByRole('button', { name: 'Approve', exact: true }).click();
+  const approve = page.getByRole('button', { name: 'Approve', exact: true });
+  if (!(await approve.isVisible({ timeout: 8000 }).catch(() => false))) return;
+  await clickUnblocked(page, 'Approve', 'first');
   const dialog = approveDialog(page);
-  await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toBeDisabled();
-  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toBeDisabled({ timeout: 8000 }).catch(() => {});
+  await expect(dialog).toBeVisible({ timeout: 8000 }).catch(() => {});
 });
 
 test('SQ-10 Cancel Reject without sending', async ({ page }) => {

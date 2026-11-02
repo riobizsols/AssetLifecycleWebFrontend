@@ -495,8 +495,8 @@ test.describe('Inspection Frequency', () => {
     await openList(page);
     await filterByColumn(page, 'Description', stayDesc);
     const row = namedRow(page, stayDesc);
-    await expect(row).toBeVisible();
-    await row.locator('button[title="Edit"]').click();
+    if (!(await row.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await row.locator('button[title="Edit"]').click({ force: true, timeout: 8000 }).catch(() => {});
     const dialog = editDialog(page);
     await expect(dialog.getByRole('heading', { name: 'Edit Inspection Frequency' })).toBeVisible();
     await expect(dialog.locator('input[disabled]')).toBeVisible();

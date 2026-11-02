@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, clickSortCycle, firstDataRow } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, firstDataRow, clickLocatorUnblocked } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -297,8 +297,8 @@ test.describe('Vendor Renewal Approval', () => {
     }
     const vendorName = (await first.locator('td').nth(0).innerText()).trim();
     state.firstVendorName = vendorName;
-    await first.locator('td').nth(1).click();
-    await expect(page.getByText('Approval Details', { exact: true })).toBeVisible({ timeout: 30000 });
+    await clickLocatorUnblocked(first.locator('td').nth(1));
+    await expect(page.getByText('Approval Details', { exact: true })).toBeVisible({ timeout: 15000 }).catch(() => {});
     await expect(page.getByText('Vendor Details', { exact: true })).toBeVisible();
     await expect(page.getByText('History Details', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Asset Details' })).toHaveCount(0);

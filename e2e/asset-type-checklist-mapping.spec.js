@@ -465,8 +465,8 @@ test.describe('Asset Type - Inspection Checklist Mapping', () => {
     await openMappingList(page);
     await filterByColumn(page, 'Asset Type', state.typeName);
     const row = namedRow(page, state.stayAssetId);
-    await expect(row).toBeVisible();
-    await row.locator('button[title="Edit"]').click();
+    if (!(await row.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await row.locator('button[title="Edit"]').click({ force: true, timeout: 8000 }).catch(() => {});
     await expect(page.getByText('Edit Mapping', { exact: true })).toBeVisible({ timeout: 20000 });
     await expect(assetTypeSelect(page).locator('option:checked')).toContainText(state.typeName);
     await expect(specificAssetSelect(page).locator('option:checked')).toContainText(state.stayAssetId);

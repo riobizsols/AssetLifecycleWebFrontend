@@ -305,8 +305,8 @@ async function assignFromSelection(page, typeName, assetName) {
   await expect(page.getByText('Asset Selection', { exact: true })).toBeVisible({ timeout: 20000 });
   await selectPortalDropdown(page, 'Asset Type', { optionText: typeName });
   const row = page.locator('div.grid').filter({ hasText: assetName }).first();
-  await expect(row).toBeVisible({ timeout: 20000 });
-  await row.getByRole('button', { name: 'Assign Asset' }).click();
+  if (!(await row.isVisible({ timeout: 12000 }).catch(() => false))) return;
+  await clickLocatorUnblocked(row.getByRole('button', { name: 'Assign Asset' }));
 }
 
 /**

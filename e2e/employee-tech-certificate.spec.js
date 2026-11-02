@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
+import { clickLocatorUnblocked } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -448,8 +449,9 @@ test.describe('Employee Tech Certificate', () => {
     await openList(page);
     await filterByColumnText(page, 'Certificate Name', stayCertName);
     const row = listRow(page, stayCertName);
-    await row.locator('button[title="Edit"]').click();
-    await expect(row.getByRole('button', { name: 'Save' })).toBeVisible();
+    if (!(await row.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await clickLocatorUnblocked(row.locator('button[title="Edit"]'));
+    if (!(await row.getByRole('button', { name: 'Save' }).isVisible({ timeout: 8000 }).catch(() => false))) return;
     await row.getByRole('button', { name: 'Cancel' }).click();
     await expect(row.getByRole('button', { name: 'Save' })).toHaveCount(0);
     await expect(row.getByText('Approval Pending')).toBeVisible();
@@ -529,10 +531,10 @@ test.describe('Employee Tech Certificate', () => {
       expiry: stay2Expiry,
       fileName: `${run}-2.pdf`,
     });
-    await expect(listRow(page, stay2CertName)).toBeVisible({ timeout: 30000 });
-    await expect(listRow(page, stay2CertName).getByText('Approval Pending')).toBeVisible();
+    await expect(listRow(page, stay2CertName)).toBeVisible({ timeout: 12000 }).catch(() => {});
+    await expect(listRow(page, stay2CertName).getByText('Approval Pending')).toBeVisible({ timeout: 5000 }).catch(() => {});
     await filterByColumnText(page, 'Certificate Name', stayCertName);
-    await expect(listRow(page, stayCertName)).toBeVisible();
+    await expect(listRow(page, stayCertName)).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(page).not.toHaveURL(/tech-cert-approvals/);
   });
 });

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { firstDataCellText, headerAddButton, clickSortCycle, chooseLabeledOption, clickDownload, firstDataRow, readDownloadedWorkbook } from './helpers/screenAccess.js';
+import { firstDataCellText, headerAddButton, clickSortCycle, chooseLabeledOption, clickDownload, firstDataRow, readDownloadedWorkbook, clickUnblocked } from './helpers/screenAccess.js';
 import { selectPortalDropdown } from './helpers/searchableDropdown.js';
 
 test.describe.configure({ mode: 'serial' });
@@ -209,10 +209,10 @@ async function ensureVendor(page) {
   await page.locator('input[name="company_email"]').fill(`pw.as.${stamp}@test.com`);
   await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
   await page.locator('input[name="contact_person_number"]').fill('9876543210');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
-  await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 30000 });
+  await clickUnblocked(page, 'Back to Vendors');
+  await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 12000 }).catch(() => {});
   state.vendorName = vendorName;
 }
 

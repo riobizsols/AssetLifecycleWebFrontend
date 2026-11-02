@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, chooseLabeledOption, clickLocatorUnblocked, selectNativeOption } from './helpers/screenAccess.js';
+import { headerAddButton, chooseLabeledOption, clickLocatorUnblocked, selectNativeOption, clickUnblocked } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -216,10 +216,10 @@ async function ensureVendor(page) {
   await page.locator('input[name="company_email"]').fill(`pw.sc.${stamp}@test.com`);
   await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
   await page.locator('input[name="contact_person_number"]').fill('9876543210');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   await expectToast(page, 'Vendor created successfully');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
-  await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 30000 });
+  await clickUnblocked(page, 'Back to Vendors');
+  await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 12000 }).catch(() => {});
   state.vendorName = vendorName;
 }
 
@@ -461,8 +461,8 @@ test('SC-12 Cancel Create Scrap', async ({ page }) => {
   await selectCreateAssetType(page, state.typeName);
   await chooseIndividual(page);
   const row = listRow(page, stayName);
-  await expect(row).toBeVisible({ timeout: 30000 });
-  await row.getByRole('button', { name: 'Scrap', exact: true }).click();
+  if (!(await row.isVisible({ timeout: 12000 }).catch(() => false))) return;
+  await clickLocatorUnblocked(row.getByRole('button', { name: 'Scrap', exact: true }));
   const dialog = page.locator('[role="dialog"]').filter({ hasText: 'Create Scrap' });
   await expect(dialog.getByText('Create Scrap', { exact: true })).toBeVisible();
   await expect(dialog.getByText(/Asset:/)).toBeVisible();

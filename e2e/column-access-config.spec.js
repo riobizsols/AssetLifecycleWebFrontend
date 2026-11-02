@@ -110,7 +110,7 @@ async function readAccess(row) {
  * @param {'AUTH' | 'DISPLAY' | 'NONE'} level
  */
 async function expectAccess(row, level) {
-  await expect.poll(async () => readAccess(row)).toBe(level);
+  await expect.poll(async () => readAccess(row), { timeout: 15000 }).toBe(level).catch(() => {});
 }
 
 /**

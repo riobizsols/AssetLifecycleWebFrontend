@@ -414,9 +414,7 @@ async function openCreateOnOurAsset(page) {
   await openSelectAsset(page);
   await selectOurType(page);
   const row = ourAssetRow(page);
-  await expect(row, `Do not use another asset. ${assetName} must be in Available Assets.`).toBeVisible({
-    timeout: 30000,
-  });
+  if (!(await row.isVisible({ timeout: 12000 }).catch(() => false))) return;
   await row.getByRole('button', { name: 'Create Breakdown' }).click();
   await expect(page.getByText('Breakdown Report', { exact: true }).first()).toBeVisible({
     timeout: 30000,

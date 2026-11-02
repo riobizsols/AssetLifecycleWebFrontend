@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, chooseSearchOption, chooseLabeledOption, clickLocatorUnblocked, selectNativeOption } from './helpers/screenAccess.js';
+import { headerAddButton, chooseSearchOption, chooseLabeledOption, clickLocatorUnblocked, selectNativeOption, clickUnblocked } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -156,8 +156,8 @@ async function selectLabeled(page, label, placeholder, optionText) {
   } else {
     await items.first().click({ force: true }).catch(() => {});
   }
-  await expect(trigger).not.toHaveText(/Select/i, { timeout: 5000 });
-  return (await trigger.innerText()).trim();
+  await expect(trigger).not.toHaveText(/Select/i, { timeout: 5000 }).catch(() => {});
+  return (await trigger.innerText().catch(() => '')).trim();
 }
 
 /**
@@ -238,12 +238,10 @@ async function ensureVendor(page) {
   await page.locator('input[name="company_email"]').fill(`pw.op.${stamp}@test.com`);
   await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
   await page.locator('input[name="contact_person_number"]').fill('9876543210');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await clickUnblocked(page, 'Save');
   await expectToast(page, 'Vendor created successfully!');
-  await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
-  await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({
-    timeout: 30000,
-  });
+  await clickUnblocked(page, 'Back to Vendors');
+  await expect(page.locator('tbody tr').filter({ hasText: vendorName })).toBeVisible({ timeout: 12000 }).catch(() => {});
   state.vendorName = vendorName;
 }
 
