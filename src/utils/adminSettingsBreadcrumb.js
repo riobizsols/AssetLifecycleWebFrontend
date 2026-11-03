@@ -37,6 +37,10 @@ export function getAdminSettingsBreadcrumbLabel(pathname, t) {
       "/adminsettings/configuration/maintenance-config",
       () => t("columnAccessConfig.breadcrumbMaintenanceConfig"),
     ],
+    [
+      "/adminsettings/configuration/inspection-workflow",
+      () => t("columnAccessConfig.breadcrumbInspectionWorkflow"),
+    ],
     ["/adminsettings/configuration/job-roles", () => t("columnAccessConfig.breadcrumbJobRoles")],
     ["/adminsettings/configuration/properties", () => t("masterDataTitles.properties")],
     [

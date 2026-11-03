@@ -22,6 +22,7 @@ import {
   Clock,
   Activity,
   MessageSquareText,
+  ClipboardCheck,
 } from "lucide-react";
 
 const AdminSettingsView = () => {
@@ -116,6 +117,18 @@ const AdminSettingsView = () => {
       borderColor: "border-orange-200",
     },
     {
+      app_id: "INSPECTIONWORKFLOW",
+      label: t("navigation.inspectionWorkflow") || "Inspection Workflow",
+      description:
+        "Configure inspection approval steps, sequences, and job roles",
+      icon: ClipboardCheck,
+      route: "/adminsettings/configuration/inspection-workflow",
+      color: "from-sky-500 to-sky-600",
+      bgColor: "bg-sky-50",
+      iconColor: "text-sky-600",
+      borderColor: "border-sky-200",
+    },
+    {
       app_id: "PROPERTIES",
       label: "Properties",
       description: "Manage asset properties and list values",
@@ -184,6 +197,8 @@ const AdminSettingsView = () => {
       ? hasAccess("ONETIMECRON") || hasAccess("ADMINSETTINGS")
       : appId === "JOBMONITOR"
         ? hasAccess("JOBMONITOR") || hasAccess("ADMINSETTINGS")
+      : appId === "INSPECTIONWORKFLOW"
+        ? hasAccess("INSPECTIONWORKFLOW") || hasAccess("ADMINSETTINGS")
         : hasAccess(appId);
 
   // Use navigation items if available, otherwise use defaults (filtered by access)
@@ -216,6 +231,15 @@ const AdminSettingsView = () => {
     const monitorCard = defaultItems.find((d) => d.app_id === "JOBMONITOR");
     if (monitorCard) itemsToShow = [...itemsToShow, monitorCard];
   }
+  if (
+    (hasAccess("ADMINSETTINGS") || hasAccess("INSPECTIONWORKFLOW")) &&
+    !itemsToShow.some((i) => i.app_id === "INSPECTIONWORKFLOW")
+  ) {
+    const inspectionCard = defaultItems.find(
+      (d) => d.app_id === "INSPECTIONWORKFLOW",
+    );
+    if (inspectionCard) itemsToShow = [...itemsToShow, inspectionCard];
+  }
 
   // Map app IDs to routes and icons
   const getItemRoute = (appId) => {
@@ -226,6 +250,7 @@ const AdminSettingsView = () => {
       BULKSERIALNUMBERPRINT:
         "/adminsettings/configuration/bulk-serial-number-print",
       MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config",
+      INSPECTIONWORKFLOW: "/adminsettings/configuration/inspection-workflow",
       PROPERTIES: "/adminsettings/configuration/properties",
       BREAKDOWNREASONCODES:
         "/adminsettings/configuration/breakdown-reason-codes",
@@ -243,6 +268,7 @@ const AdminSettingsView = () => {
       COLUMNACCESSCONFIG: Shield,
       BULKSERIALNUMBERPRINT: Printer,
       MAINTENANCECONFIG: Wrench,
+      INSPECTIONWORKFLOW: ClipboardCheck,
       PROPERTIES: Tag,
       BREAKDOWNREASONCODES: AlertTriangle,
       CERTIFICATIONS: FileCheck,
@@ -288,6 +314,13 @@ const AdminSettingsView = () => {
         icon: "text-orange-600",
         border: "border-orange-200",
         hover: "hover:from-orange-600 hover:to-orange-700",
+      },
+      INSPECTIONWORKFLOW: {
+        gradient: "from-sky-500 to-sky-600",
+        bg: "bg-sky-50",
+        icon: "text-sky-600",
+        border: "border-sky-200",
+        hover: "hover:from-sky-600 hover:to-sky-700",
       },
       PROPERTIES: {
         gradient: "from-indigo-500 to-indigo-600",

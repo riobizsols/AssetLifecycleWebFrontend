@@ -1,0 +1,732 @@
+import { showBackendTextToast } from '../utils/errorTranslation';
+import React, { useState, useEffect } from 'react';
+import API from '../lib/axios';
+import { toast } from 'react-hot-toast';
+import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
+
+const InspectionDetails = () => {
+  const [activeTab, setActiveTab] = useState('steps');
+
+  const [workflowSteps, setWorkflowSteps] = useState([]);
+  const [editingStep, setEditingStep] = useState(null);
+  const [editingStepName, setEditingStepName] = useState('');
+  const [loadingSteps, setLoadingSteps] = useState(false);
+  const [showAddStepModal, setShowAddStepModal] = useState(false);
+  const [stepNameInput, setStepNameInput] = useState('');
+  const [isSavingStep, setIsSavingStep] = useState(false);
+  const [isSavingSequence, setIsSavingSequence] = useState(false);
+
+  const apiErrorText = (error, fallback) =>
+    error.response?.data?.error ||
+    error.response?.data?.message ||
+    error.response?.data?.details ||
+    fallback;
+
+  const [assetTypes, setAssetTypes] = useState([]);
+  const [selectedAssetType, setSelectedAssetType] = useState('');
+
+  const [sequences, setSequences] = useState([]);
+  const [loadingSequences, setLoadingSequences] = useState(false);
+  const [newSequence, setNewSequence] = useState({
+    wf_insp_steps_id: '',
+    seqs_no: ''
+  });
+
+  const [jobRoles, setJobRoles] = useState([]);
+  const [selectedStepForJobRole, setSelectedStepForJobRole] = useState('');
+  const [jobRolesForStep, setJobRolesForStep] = useState([]);
+  const [loadingJobRoles, setLoadingJobRoles] = useState(false);
+  const [newJobRole, setNewJobRole] = useState({
+    job_role_id: ''
+  });
+
+  const fetchWorkflowSteps = async () => {
+    setLoadingSteps(true);
+    try {
+      const res = await API.get('/inspection-details/workflow-steps');
+      setWorkflowSteps(res.data.data || []);
+    } catch (error) {
+      console.error('Error fetching inspection workflow steps:', error);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_WORKFLOW_STEPS_6E793492', fallbackText: 'Failed to fetch workflow steps', type: 'error' });
+    } finally {
+      setLoadingSteps(false);
+    }
+  };
+
+  const fetchAssetTypes = async () => {
+    try {
+      const res = await API.get('/asset-types');
+      const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      setAssetTypes(data);
+    } catch (error) {
+      console.error('Error fetching asset types:', error);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPES_02F89461', fallbackText: 'Failed to fetch asset types', type: 'error' });
+    }
+  };
+
+  const fetchJobRoles = async () => {
+    try {
+      const res = await API.get('/job-roles');
+      setJobRoles(res.data.roles || res.data.data || []);
+    } catch (error) {
+      console.error('Error fetching job roles:', error);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_ROLES_20AF53B2', fallbackText: 'Failed to fetch job roles', type: 'error' });
+    }
+  };
+
+  const fetchSequences = async () => {
+    if (!selectedAssetType) {
+      setSequences([]);
+      return;
+    }
+    setLoadingSequences(true);
+    try {
+      const res = await API.get(`/inspection-details/workflow-sequences/${selectedAssetType}`);
+      setSequences(res.data.data || []);
+    } catch (error) {
+      console.error('Error fetching sequences:', error);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_SEQUENCES_0DE2E816', fallbackText: 'Failed to fetch sequences', type: 'error' });
+    } finally {
+      setLoadingSequences(false);
+    }
+  };
+
+  const fetchJobRolesForStep = async (wf_insp_steps_id) => {
+    if (!wf_insp_steps_id) {
+      setJobRolesForStep([]);
+      return;
+    }
+    setLoadingJobRoles(true);
+    try {
+      const res = await API.get(`/inspection-details/workflow-job-roles/${wf_insp_steps_id}`);
+      setJobRolesForStep(res.data.data || []);
+    } catch (error) {
+      console.error('Error fetching job roles for step:', error);
+      showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_JOB_ROLES_20AF53B2', fallbackText: 'Failed to fetch job roles', type: 'error' });
+    } finally {
+      setLoadingJobRoles(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWorkflowSteps();
+    fetchAssetTypes();
+    fetchJobRoles();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'sequences') {
+      fetchSequences();
+    }
+  }, [selectedAssetType, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'jobRoles') {
+      fetchJobRolesForStep(selectedStepForJobRole);
+    }
+  }, [selectedStepForJobRole, activeTab]);
+
+  const handleCreateStepFromModal = async () => {
+    if (isSavingStep) return;
+    if (!stepNameInput.trim()) {
+      showBackendTextToast({ toast, tmdId: 'TMD_STEP_NAME_IS_REQUIRED_47BC298C', fallbackText: 'Step name is required', type: 'error' });
+      return;
+    }
+
+    setIsSavingStep(true);
+    try {
+      await API.post('/inspection-details/workflow-steps', {
+        text: stepNameInput.trim()
+      });
+      showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_CREATED_SUCCESSFULLY_2EB9244E', fallbackText: 'Workflow step created successfully', type: 'success' });
+      setStepNameInput('');
+      setShowAddStepModal(false);
+      fetchWorkflowSteps();
+    } catch (error) {
+      console.error('Error creating workflow step:', error);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_WORKFLOW_STEP',
+        fallbackText: apiErrorText(error, 'Failed to create workflow step'),
+        type: 'error',
+      });
+    } finally {
+      setIsSavingStep(false);
+    }
+  };
+
+  const handleStartEditStep = (step) => {
+    setEditingStep(step.wf_insp_steps_id);
+    setEditingStepName(step.text);
+  };
+
+  const handleCancelEditStep = () => {
+    setEditingStep(null);
+    setEditingStepName('');
+  };
+
+  const handleUpdateStep = async (id) => {
+    if (!editingStepName.trim()) {
+      showBackendTextToast({ toast, tmdId: 'TMD_STEP_NAME_IS_REQUIRED_47BC298C', fallbackText: 'Step name is required', type: 'error' });
+      return;
+    }
+
+    try {
+      await API.put(`/inspection-details/workflow-steps/${id}`, {
+        text: editingStepName.trim()
+      });
+      showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_UPDATED_SUCCESSFULLY_453EB741', fallbackText: 'Workflow step updated successfully', type: 'success' });
+      setEditingStep(null);
+      setEditingStepName('');
+      fetchWorkflowSteps();
+    } catch (error) {
+      console.error('Error updating workflow step:', error);
+      toast.error(error.response?.data?.error || 'Failed to update workflow step');
+    }
+  };
+
+  const handleDeleteStep = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this workflow step? This will also delete all related sequences and job role assignments.')) {
+      return;
+    }
+
+    try {
+      await API.delete(`/inspection-details/workflow-steps/${id}`);
+      showBackendTextToast({ toast, tmdId: 'TMD_WORKFLOW_STEP_DELETED_SUCCESSFULLY_16199DDF', fallbackText: 'Workflow step deleted successfully', type: 'success' });
+      fetchWorkflowSteps();
+      if (selectedStepForJobRole === id) {
+        setSelectedStepForJobRole('');
+      }
+    } catch (error) {
+      console.error('Error deleting workflow step:', error);
+      toast.error(error.response?.data?.error || 'Failed to delete workflow step');
+    }
+  };
+
+  const handleCreateSequence = async (e) => {
+    e.preventDefault();
+    if (!selectedAssetType) {
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_AN_ASSET_TYPE_35E7C26F', fallbackText: 'Please select an asset type', type: 'error' });
+      return;
+    }
+    if (!newSequence.wf_insp_steps_id) {
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_WORKFLOW_STEP_74FCCAC0', fallbackText: 'Please select a workflow step', type: 'error' });
+      return;
+    }
+    if (!newSequence.seqs_no || parseInt(newSequence.seqs_no, 10) < 1) {
+      showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_NUMBER_MUST_BE_A_POSITIVE_INTEGER_E_G_1_2_3_7ECDD8D7', fallbackText: 'Sequence number must be a positive integer (e.g., 1, 2, 3)', type: 'error' });
+      return;
+    }
+
+    if (isSavingSequence) return;
+
+    setIsSavingSequence(true);
+    try {
+      await API.post('/inspection-details/workflow-sequences', {
+        asset_type_id: selectedAssetType,
+        wf_insp_steps_id: newSequence.wf_insp_steps_id,
+        seqs_no: newSequence.seqs_no
+      });
+      showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_CREATED_SUCCESSFULLY_28D6FEBE', fallbackText: 'Sequence created successfully', type: 'success' });
+      setNewSequence({ wf_insp_steps_id: '', seqs_no: '' });
+      fetchSequences();
+    } catch (error) {
+      console.error('Error creating sequence:', error);
+      showBackendTextToast({
+        toast,
+        tmdId: 'TMD_FAILED_TO_CREATE_SEQUENCE',
+        fallbackText: apiErrorText(error, 'Failed to create sequence'),
+        type: 'error',
+      });
+    } finally {
+      setIsSavingSequence(false);
+    }
+  };
+
+  const handleDeleteSequence = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this sequence?')) {
+      return;
+    }
+
+    try {
+      await API.delete(`/inspection-details/workflow-sequences/${id}`);
+      showBackendTextToast({ toast, tmdId: 'TMD_SEQUENCE_DELETED_SUCCESSFULLY_4176852D', fallbackText: 'Sequence deleted successfully', type: 'success' });
+      fetchSequences();
+    } catch (error) {
+      console.error('Error deleting sequence:', error);
+      toast.error(error.response?.data?.error || 'Failed to delete sequence');
+    }
+  };
+
+  const assignJobRole = async () => {
+    if (!selectedStepForJobRole) {
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_WORKFLOW_STEP_74FCCAC0', fallbackText: 'Please select a workflow step', type: 'error' });
+      return;
+    }
+    if (!newJobRole.job_role_id) {
+      showBackendTextToast({ toast, tmdId: 'TMD_PLEASE_SELECT_A_JOB_ROLE_0B641D1A', fallbackText: 'Please select a job role', type: 'error' });
+      return;
+    }
+
+    try {
+      await API.post('/inspection-details/workflow-job-roles', {
+        wf_insp_steps_id: selectedStepForJobRole,
+        job_role_id: newJobRole.job_role_id,
+      });
+      showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_ASSIGNED_SUCCESSFULLY_6F7A530E', fallbackText: 'Job role assigned successfully', type: 'success' });
+      setNewJobRole({ job_role_id: '' });
+      fetchJobRolesForStep(selectedStepForJobRole);
+    } catch (error) {
+      console.error('Error assigning job role:', error);
+      toast.error(error.response?.data?.error || 'Failed to assign job role');
+    }
+  };
+
+  const handleDeleteJobRole = async (id) => {
+    if (!window.confirm('Are you sure you want to remove this job role assignment?')) {
+      return;
+    }
+
+    try {
+      await API.delete(`/inspection-details/workflow-job-roles/${id}`);
+      showBackendTextToast({ toast, tmdId: 'TMD_JOB_ROLE_REMOVED_SUCCESSFULLY_1BB0EFF2', fallbackText: 'Job role removed successfully', type: 'success' });
+      fetchJobRolesForStep(selectedStepForJobRole);
+    } catch (error) {
+      console.error('Error removing job role:', error);
+      toast.error(error.response?.data?.error || 'Failed to remove job role');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Inspection Workflow</h1>
+          <p className="mt-2 text-sm sm:text-base text-gray-600">
+            Configure approval steps, asset type sequences, and job roles for inspection workflows.
+            Asset types without a sequence use a direct inspection schedule (no approval).
+          </p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="flex flex-wrap -mb-px" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('steps')}
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'steps'
+                    ? 'border-[#0E2F4B] text-[#0E2F4B]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Workflow Steps
+              </button>
+              <button
+                onClick={() => setActiveTab('sequences')}
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'sequences'
+                    ? 'border-[#0E2F4B] text-[#0E2F4B]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Asset Type Sequences
+              </button>
+              <button
+                onClick={() => setActiveTab('jobRoles')}
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'jobRoles'
+                    ? 'border-[#0E2F4B] text-[#0E2F4B]'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Job Role Assignments
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {activeTab === 'steps' && (
+          <>
+            <div className="flex items-center justify-end mb-4">
+              <button
+                onClick={() => {
+                  setStepNameInput('');
+                  setShowAddStepModal(true);
+                }}
+                className="flex items-center justify-center text-white border border-gray-300 rounded px-3 py-2 hover:bg-[#143d65] bg-[#0E2F4B]"
+                title="Add Workflow Step"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+            <div>
+              {showAddStepModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowAddStepModal(false)}>
+                  <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-[#0E2F4B] text-white py-4 px-6 rounded-t-lg border-b-4 border-[#FFC107]">
+                      <h2 className="text-xl font-semibold">Add Inspection Workflow Step</h2>
+                    </div>
+                    <div className="p-6">
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Step Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={stepNameInput}
+                          onChange={(e) => setStepNameInput(e.target.value)}
+                          placeholder="Enter step name (e.g., Supervisor Approval, Manager Approval)"
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleCreateStepFromModal();
+                            } else if (e.key === 'Escape') {
+                              setShowAddStepModal(false);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddStepModal(false);
+                            setStepNameInput('');
+                          }}
+                          className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateStepFromModal}
+                          disabled={isSavingStep}
+                          className="px-6 py-2.5 bg-[#0E2F4B] text-white rounded-md hover:bg-[#143d65] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0E2F4B] transition-colors disabled:opacity-60"
+                        >
+                          {isSavingStep ? 'Saving...' : 'Add Step'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {loadingSteps ? (
+                <div className="text-center py-16">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E2F4B]"></div>
+                  <p className="mt-4 text-gray-600">Loading...</p>
+                </div>
+              ) : workflowSteps.length === 0 ? (
+                <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <p className="text-gray-500 text-lg">No inspection workflow steps created yet</p>
+                  <p className="text-sm text-gray-400 mt-2">Click the + icon to create your first workflow step</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border border-gray-200">
+                    <thead className="sticky top-0 z-10 bg-[#0E2F4B] border-b-4 border-[#FFC107]">
+                      <tr className="text-white text-sm font-medium">
+                        <th className="px-4 py-3 text-left">Step Name</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {workflowSteps.map((step) => (
+                        <tr key={step.wf_insp_steps_id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3">
+                            {editingStep === step.wf_insp_steps_id ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={editingStepName}
+                                  onChange={(e) => setEditingStepName(e.target.value)}
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => handleUpdateStep(step.wf_insp_steps_id)}
+                                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-1"
+                                  title="Save"
+                                >
+                                  <Save size={16} />
+                                </button>
+                                <button
+                                  onClick={handleCancelEditStep}
+                                  className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 flex items-center gap-1"
+                                  title="Cancel"
+                                >
+                                  <X size={16} />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="font-medium text-gray-900">{step.text}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-2">
+                              {editingStep !== step.wf_insp_steps_id && (
+                                <>
+                                  <button
+                                    onClick={() => handleStartEditStep(step)}
+                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit2 size={18} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteStep(step.wf_insp_steps_id)}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'sequences' && (
+          <div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Asset Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedAssetType}
+                  onChange={(e) => setSelectedAssetType(e.target.value)}
+                  className="w-full max-w-md px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                >
+                  <option value="">-- Select Asset Type --</option>
+                  {assetTypes.map((at) => (
+                    <option key={at.asset_type_id} value={at.asset_type_id}>
+                      {at.text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedAssetType && (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-gray-900 text-lg">Existing Sequences</h3>
+                    <button
+                      type="button"
+                      onClick={() => handleCreateSequence({ preventDefault: () => {} })}
+                      disabled={isSavingSequence}
+                      className="flex items-center justify-center text-white border border-gray-300 rounded px-3 py-2 hover:bg-[#143d65] bg-[#0E2F4B] disabled:opacity-60"
+                      title="Add Sequence"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Add New Sequence</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Workflow Step <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={newSequence.wf_insp_steps_id}
+                          onChange={(e) => setNewSequence({ ...newSequence, wf_insp_steps_id: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
+                        >
+                          <option value="">-- Select Step --</option>
+                          {workflowSteps.map((step) => (
+                            <option key={step.wf_insp_steps_id} value={step.wf_insp_steps_id}>
+                              {step.text}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Sequence Number <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={newSequence.seqs_no}
+                          onChange={(e) => setNewSequence({ ...newSequence, seqs_no: e.target.value })}
+                          placeholder="10, 20, 30, etc."
+                          min="1"
+                          step="1"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">Use order numbers (10, 20, 30…). Lowest number is the first approver.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingSequences ? (
+                    <div className="text-center py-16">
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E2F4B]"></div>
+                      <p className="mt-4 text-gray-600">Loading...</p>
+                    </div>
+                  ) : sequences.length === 0 ? (
+                    <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                      <p className="text-gray-500 text-lg">No sequences assigned for this asset type</p>
+                      <p className="text-sm text-gray-400 mt-2">Without a sequence, inspections are created as a direct schedule (no approval workflow)</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-200">
+                        <thead className="sticky top-0 z-10 bg-[#0E2F4B] border-b-4 border-[#FFC107]">
+                          <tr className="text-white text-sm font-medium">
+                            <th className="px-4 py-3 text-left">Workflow Step</th>
+                            <th className="px-4 py-3 text-left">Sequence Number</th>
+                            <th className="px-4 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {sequences.map((seq) => (
+                            <tr key={seq.wfatis_id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3">
+                                <span className="font-medium text-gray-900">{seq.step_text || 'N/A'}</span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="px-3 py-1 bg-[#0E2F4B] text-white text-sm font-semibold rounded-full">
+                                  {seq.seqs_no}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => handleDeleteSequence(seq.wfatis_id)}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+          </div>
+        )}
+
+        {activeTab === 'jobRoles' && (
+          <div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Workflow Step <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedStepForJobRole}
+                  onChange={(e) => setSelectedStepForJobRole(e.target.value)}
+                  className="w-full max-w-md px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] focus:border-transparent"
+                >
+                  <option value="">-- Select Workflow Step --</option>
+                  {workflowSteps.map((step) => (
+                    <option key={step.wf_insp_steps_id} value={step.wf_insp_steps_id}>
+                      {step.text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedStepForJobRole && (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-gray-900 text-lg">Assigned Job Roles</h3>
+                    <button
+                      onClick={assignJobRole}
+                      className="flex items-center justify-center text-white border border-gray-300 rounded px-3 py-2 hover:bg-[#143d65] bg-[#0E2F4B]"
+                      title="Assign Job Role"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Assign New Job Role</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Job Role <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={newJobRole.job_role_id}
+                          onChange={(e) => setNewJobRole({ ...newJobRole, job_role_id: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0E2F4B] text-sm"
+                        >
+                          <option value="">-- Select Job Role --</option>
+                          {jobRoles.map((jr) => (
+                            <option key={jr.job_role_id} value={jr.job_role_id}>
+                              {jr.text}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {loadingJobRoles ? (
+                    <div className="text-center py-16">
+                      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#0E2F4B]"></div>
+                      <p className="mt-4 text-gray-600">Loading...</p>
+                    </div>
+                  ) : jobRolesForStep.length === 0 ? (
+                    <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                      <p className="text-gray-500 text-lg">No job roles assigned to this step</p>
+                      <p className="text-sm text-gray-400 mt-2">Assign job roles using the form above. Approvals cannot start until a job role is assigned.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-200">
+                        <thead className="sticky top-0 z-10 bg-[#0E2F4B] border-b-4 border-[#FFC107]">
+                          <tr className="text-white text-sm font-medium">
+                            <th className="px-4 py-3 text-left">Job Role</th>
+                            <th className="px-4 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {jobRolesForStep.map((jr) => (
+                            <tr key={jr.wf_insp_job_role_id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3">
+                                <span className="font-medium text-gray-900">{jr.job_role_name || 'N/A'}</span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => handleDeleteJobRole(jr.wf_insp_job_role_id)}
+                                    className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                    title="Remove"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default InspectionDetails;

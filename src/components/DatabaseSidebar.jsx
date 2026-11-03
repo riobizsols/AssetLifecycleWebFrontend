@@ -27,6 +27,7 @@ import {
   BarChart3,
   UserCheck,
   ClipboardList,
+  ClipboardCheck,
   Truck,
   Briefcase,
   Home,
@@ -520,6 +521,7 @@ const DatabaseSidebar = () => {
     AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route  //done
     COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config", // Column Access Config route
     MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config", // Maintenance Configuration route
+    INSPECTIONWORKFLOW: "/adminsettings/configuration/inspection-workflow",
     CERTIFICATIONS: "/certifications", // Certifications route
     TECHCERTUPLOAD: "/technician-certificates",
     TECHNICIANCERTIFICATES: "/technician-certificates",
@@ -549,6 +551,7 @@ const DatabaseSidebar = () => {
       INSPECTION: CheckSquare,
       INSPECTIONVIEW: CheckSquare, // Execution
       INSPECTIONAPPROVAL: ClipboardList, // Approval
+      INSPECTIONWORKFLOW: ClipboardCheck,
       MAINTENANCEAPPROVAL: ClipboardList,
       VENDORRENEWALAPPROVAL: ClipboardList,
       SCRAPMAINTENANCEAPPROVAL: ClipboardList,
@@ -646,6 +649,7 @@ const DatabaseSidebar = () => {
         "BULKSERIALNUMBERPRINT": "/adminsettings/configuration/bulk-serial-number-print",
         "COLUMNACCESSCONFIG": "/adminsettings/configuration/data-config",
         "MAINTENANCECONFIG": "/adminsettings/configuration/maintenance-config",
+        "INSPECTIONWORKFLOW": "/adminsettings/configuration/inspection-workflow",
         "PROPERTIES": "/adminsettings/configuration/properties",
         "BREAKDOWNREASONCODES": "/adminsettings/configuration/breakdown-reason-codes",
         "ONETIMECRON": "/adminsettings/configuration/one-time-cron",
@@ -691,6 +695,7 @@ const DatabaseSidebar = () => {
     "BULKSERIALNUMBERPRINT", 
     "COLUMNACCESSCONFIG",
     "MAINTENANCECONFIG",
+    "INSPECTIONWORKFLOW",
     "PROPERTIES",
     "BREAKDOWNREASONCODES",
     "ONETIMECRON",
@@ -699,6 +704,7 @@ const DatabaseSidebar = () => {
   const adminSettingsRoutes = [
     "COLUMNACCESSCONFIG",
     "MAINTENANCECONFIG",
+    "INSPECTIONWORKFLOW",
     "PROPERTIES",
     "BREAKDOWNREASONCODES",
     "USERROLES",
