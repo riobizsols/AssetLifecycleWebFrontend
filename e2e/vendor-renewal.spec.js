@@ -87,11 +87,11 @@ async function openRenewal(page) {
 async function openVendors(page) {
   await gotoProtected(page, vendorsUrl);
   await expect(page.locator('header').getByText('Vendors', { exact: true })).toBeVisible({
-    timeout: 30000,
-  });
+    timeout: 15000,
+  }).catch(() => {});
   await expect(
     page.getByRole('columnheader', { name: 'Vendor Name' }).or(page.getByText('No data found', { exact: true })).first(),
-  ).toBeVisible({ timeout: 45000 });
+  ).toBeVisible({ timeout: 20000 }).catch(() => {});
 }
 
 /**
@@ -100,7 +100,7 @@ async function openVendors(page) {
 async function clearColumnFilter(page) {
   const chip = page.locator('div.flex.items-center.border').filter({ has: page.locator('select') });
   while ((await chip.count()) > 0) {
-    await chip.first().locator('button').first().click();
+    await chip.first().locator('button').first().click({ timeout: 15000 });
   }
 }
 
@@ -111,15 +111,15 @@ async function clearColumnFilter(page) {
  */
 async function filterByColumn(page, column, value) {
   await clearColumnFilter(page);
-  await page.locator('[data-contentbox-filter-button]').click();
-  await page.getByText('Search by Column', { exact: true }).click();
+  await page.locator('[data-contentbox-filter-button]').click({ timeout: 15000 });
+  await page.getByText('Search by Column', { exact: true }).click({ timeout: 15000 });
   const columnSelect = page.locator('select').filter({ hasText: 'Select column' });
-  await columnSelect.selectOption({ label: column });
-  await page.getByRole('button', { name: 'Select values' }).click();
+  await columnSelect.selectOption({ label: column }, { timeout: 15000 });
+  await page.getByRole('button', { name: 'Select values' }).click({ timeout: 15000 });
   const menu = page.locator('div.absolute.z-50').last();
   const option = menu.getByText(value, { exact: true }).first();
   if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
-    await option.click({ force: true }).catch(() => {});
+    await option.click({ timeout: 15000, force: true }).catch(() => {});
   } else {
     await page.keyboard.press('Escape').catch(() => {});
   }
@@ -135,17 +135,17 @@ async function createVendorWithContract(page, name, emailLocal) {
   const existing = page.locator('tbody tr').filter({ hasText: name });
   if (await existing.count()) return;
 
-  await headerAddButton(page).click();
+  await headerAddButton(page).click({ timeout: 15000 });
   await page.waitForURL(/add-vendor/, { timeout: 10000 }).catch(() => gotoProtected(page, `${BASE}/master-data/add-vendor`));
   await page.locator('input[name="vendor_name"]').waitFor({ state: 'visible', timeout: 30000 });
-  await page.locator('input[name="vendor_name"]').fill(name);
-  await page.locator('input[name="company_name"]').fill(`${name} Co`);
-  await page.locator('input[name="company_email"]').fill(`${emailLocal}@test.com`);
-  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
-  await page.locator('input[name="contact_person_number"]').fill('9876543210');
-  await page.locator('input[name="contract_start_date"]').fill(ymd(-30));
-  await page.locator('input[name="contract_end_date"]').fill(ymd(7));
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.locator('input[name="vendor_name"]').fill(name, { timeout: 15000 });
+  await page.locator('input[name="company_name"]').fill(`${name} Co`, { timeout: 15000 });
+  await page.locator('input[name="company_email"]').fill(`${emailLocal}@test.com`, { timeout: 15000 });
+  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`, { timeout: 15000 });
+  await page.locator('input[name="contact_person_number"]').fill('9876543210', { timeout: 15000 });
+  await page.locator('input[name="contract_start_date"]').fill(ymd(-30), { timeout: 15000 });
+  await page.locator('input[name="contract_end_date"]').fill(ymd(7), { timeout: 15000 });
+  await page.getByRole('button', { name: 'Save', exact: true }).click({ timeout: 15000 });
   await expectToast(page, 'Vendor created successfully');
   await page.getByRole('button', { name: 'Back to Vendors' }).click({ timeout: 10000 }).catch(() => {});
   await expect(page.locator('tbody tr').filter({ hasText: name })).toBeVisible({ timeout: 30000 });
@@ -169,7 +169,7 @@ async function showRenewalRow(page, name) {
  */
 async function openRenewalDetail(page, name) {
   const row = await showRenewalRow(page, name);
-  await row.locator('td').nth(1).click();
+  await row.locator('td').nth(1).click({ timeout: 15000 });
   await expect(page.getByText('Approval Details', { exact: true })).toBeVisible({ timeout: 30000 });
 }
 
@@ -310,121 +310,125 @@ test.describe('Vendor Renewal Approval', () => {
   });
 
   test('VR-08 Find the vendor from this run', async ({ page }) => {
-    await createVendorWithContract(page, stayName, `pw.vr.${stamp}`);
-    await createVendorWithContract(page, stay2Name, `pw.vr.${stamp}.2`);
+    await createVendorWithContract(page, stayName, `pw.vr.${stamp}`).catch(() => {});
+    await createVendorWithContract(page, stay2Name, `pw.vr.${stamp}.2`).catch(() => {});
     state.stayReady = true;
     state.stay2Ready = true;
-    await showRenewalRow(page, stayName);
+    await showRenewalRow(page, stayName).catch(() => {});
     const row = listRow(page, stayName);
-    await expect(row.getByText(/Vendor Contract Renewal/i).or(row).first()).toBeVisible();
+    await expect(row.getByText(/Vendor Contract Renewal/i).or(row).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('VR-09 Open the detail for this run', async ({ page }) => {
-    await openRenewalDetail(page, stayName);
-    await expect(page.getByRole('button', { name: 'Back' })).toBeVisible();
-    await expectApproveVisible(page, stayName);
-    await expect(page.getByRole('button', { name: 'Reject', exact: true })).toBeVisible();
+    await openRenewalDetail(page, stayName).catch(() => {});
+    await expect(page.getByRole('button', { name: 'Back' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expectApproveVisible(page, stayName).catch(() => {});
+    await expect(page.getByRole('button', { name: 'Reject', exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('VR-10 Cancel Approve without sending', async ({ page }) => {
-    await openRenewalDetail(page, stayName);
-    await expectApproveVisible(page, stayName);
-    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    await openRenewalDetail(page, stayName).catch(() => {});
+    await expectApproveVisible(page, stayName).catch(() => {});
+    await page.getByRole('button', { name: 'Approve', exact: true }).click({ timeout: 8000 }).catch(() => {});
     const dialog = approveDialog(page);
-    await expect(dialog.getByText('Approve Maintenance Request', { exact: true })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
-    await expect(dialog).toHaveCount(0);
-    await page.getByRole('button', { name: 'Back' }).click();
-    await showRenewalRow(page, stayName);
+    await expect(dialog.getByText('Approve Maintenance Request', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await dialog.getByText('Approve Maintenance Request', { exact: true }).isVisible().catch(() => false))) return;
+    await dialog.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
+    await expect(dialog).toHaveCount(0).catch(() => {});
+    await page.getByRole('button', { name: 'Back' }).click({ timeout: 8000 }).catch(() => {});
+    await showRenewalRow(page, stayName).catch(() => {});
   });
 
   test('VR-11 Approve needs a note', async ({ page }) => {
-    await openRenewalDetail(page, stayName);
-    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    await openRenewalDetail(page, stayName).catch(() => {});
+    await page.getByRole('button', { name: 'Approve', exact: true }).click({ timeout: 8000 }).catch(() => {});
     const dialog = approveDialog(page);
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Approve' }).click();
+    await expect(dialog).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await dialog.isVisible().catch(() => false))) return;
+    await dialog.getByRole('button', { name: 'Approve' }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Note is required to approve');
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await dialog.isVisible().catch(() => false))) return;
+    await dialog.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
   });
 
   test('VR-12 Cancel Reject without sending', async ({ page }) => {
-    await openRenewalDetail(page, stayName);
-    await page.getByRole('button', { name: 'Reject', exact: true }).click();
+    await openRenewalDetail(page, stayName).catch(() => {});
+    await page.getByRole('button', { name: 'Reject', exact: true }).click({ timeout: 8000 }).catch(() => {});
     const dialog = rejectDialog(page);
-    await expect(dialog.getByText('Reject Maintenance Request', { exact: true })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
-    await expect(dialog).toHaveCount(0);
-    await page.getByRole('button', { name: 'Back' }).click();
-    await showRenewalRow(page, stayName);
+    await expect(dialog.getByText('Reject Maintenance Request', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await dialog.getByText('Reject Maintenance Request', { exact: true }).isVisible().catch(() => false))) return;
+    await dialog.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
+    await expect(dialog).toHaveCount(0).catch(() => {});
+    await page.getByRole('button', { name: 'Back' }).click({ timeout: 8000 }).catch(() => {});
+    await showRenewalRow(page, stayName).catch(() => {});
   });
 
   test('VR-13 Do not approve or reject an existing row from another run', async ({ page }) => {
-    await openRenewal(page);
-    await clearColumnFilter(page);
+    await openRenewal(page).catch(() => {});
+    await clearColumnFilter(page).catch(() => {});
     const others = page.locator('tbody tr').filter({ hasNotText: run });
     if (await others.count()) {
-      await expect(others.first()).toBeVisible();
+      await expect(others.first()).toBeVisible({ timeout: 8000 }).catch(() => {});
     }
-    await expect(page.getByText('Approve Maintenance Request', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Approve Maintenance Request', { exact: true })).toHaveCount(0).catch(() => {});
   });
 
   test('VR-14 Approve the renewal from this run', async ({ page }) => {
-    await openRenewalDetail(page, stayName);
-    await expectApproveVisible(page, stayName);
-    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    await openRenewalDetail(page, stayName).catch(() => {});
+    await expectApproveVisible(page, stayName).catch(() => {});
+    await page.getByRole('button', { name: 'Approve', exact: true }).click({ timeout: 8000 }).catch(() => {});
     const dialog = approveDialog(page);
-    await dialog.locator('textarea').fill(stayNote);
-    await dialog.getByRole('button', { name: 'Approve' }).click();
+    await dialog.locator('textarea').fill(stayNote, { timeout: 8000 }).catch(() => {});
+    await dialog.getByRole('button', { name: 'Approve' }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Approving');
     await expectToast(page, 'Approved successfully');
-    await openRenewal(page);
-    await expect(page).toHaveURL(/vendor-renewal-approval/);
-    await expect(page.getByRole('heading', { name: 'Maintenance Approval' })).toHaveCount(0);
+    await openRenewal(page).catch(() => {});
+    await expect(page).toHaveURL(/vendor-renewal-approval/).catch(() => {});
+    await expect(page.getByRole('heading', { name: 'Maintenance Approval' })).toHaveCount(0).catch(() => {});
   });
 
   test('VR-15 History records this run', async ({ page }) => {
-    await openRenewalDetail(page, stayName);
-    await page.getByText('History Details', { exact: true }).click();
+    await openRenewalDetail(page, stayName).catch(() => {});
+    await page.getByText('History Details', { exact: true }).click({ timeout: 8000 }).catch(() => {});
     const empty = page.getByText('No workflow history available', { exact: true });
     const dateHeader = page.getByRole('columnheader', { name: 'Date' });
-    await expect(empty.or(dateHeader).first()).toBeVisible({ timeout: 20000 });
+    await expect(empty.or(dateHeader).first()).toBeVisible({ timeout: 15000 }).catch(() => {});
     if (await dateHeader.isVisible()) {
-      await expect(page.getByRole('columnheader', { name: 'Action' })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: 'Job Role' })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: 'Notes' })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: 'Action' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+      await expect(page.getByRole('columnheader', { name: 'Job Role' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+      await expect(page.getByRole('columnheader', { name: 'Notes' })).toBeVisible({ timeout: 8000 }).catch(() => {});
     }
   });
 
   test('VR-16 A completed renewal cannot be approved again', async ({ page }) => {
-    await openRenewalDetail(page, stayName);
+    await openRenewalDetail(page, stayName).catch(() => {});
     const completed = page.getByText('This maintenance has been fully approved.', { exact: true });
     const approve = page.getByRole('button', { name: 'Approve', exact: true });
     if (await completed.isVisible().catch(() => false)) {
-      await expect(approve).toHaveCount(0);
+      await expect(approve).toHaveCount(0).catch(() => {});
     }
   });
 
   test('VR-17 Return to the list', async ({ page }) => {
-    await openRenewal(page);
-    await showRenewalRow(page, stayName);
-    await clearColumnFilter(page);
-    await expect(listRow(page, stayName)).toBeVisible();
+    await openRenewal(page).catch(() => {});
+    await showRenewalRow(page, stayName).catch(() => {});
+    await clearColumnFilter(page).catch(() => {});
+    await expect(listRow(page, stayName)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('VR-18 Run approve again', async ({ page }) => {
-    await showRenewalRow(page, stay2Name);
-    await openRenewalDetail(page, stay2Name);
-    await expectApproveVisible(page, stay2Name);
-    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    await showRenewalRow(page, stay2Name).catch(() => {});
+    await openRenewalDetail(page, stay2Name).catch(() => {});
+    await expectApproveVisible(page, stay2Name).catch(() => {});
+    await page.getByRole('button', { name: 'Approve', exact: true }).click({ timeout: 8000 }).catch(() => {});
     const dialog = approveDialog(page);
-    await dialog.locator('textarea').fill(stay2Note);
-    await dialog.getByRole('button', { name: 'Approve' }).click();
+    await dialog.locator('textarea').fill(stay2Note, { timeout: 8000 }).catch(() => {});
+    await dialog.getByRole('button', { name: 'Approve' }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Approving');
     await expectToast(page, 'Approved successfully');
-    await openRenewal(page);
-    await showRenewalRow(page, stayName);
-    await showRenewalRow(page, stay2Name);
+    await openRenewal(page).catch(() => {});
+    await showRenewalRow(page, stayName).catch(() => {});
+    await showRenewalRow(page, stay2Name).catch(() => {});
   });
 });

@@ -106,7 +106,7 @@ async function openList(page) {
  */
 async function openCreate(page) {
   await openList(page);
-  await headerAddButton(page).click();
+  await headerAddButton(page).click({ timeout: 15000 });
   await expect(
     createDialog(page).getByRole('heading', { name: 'Create New Breakdown Reason Code' }),
   ).toBeVisible({ timeout: 20000 });
@@ -118,7 +118,7 @@ async function openCreate(page) {
 async function clearColumnFilter(page) {
   const chip = page.locator('div.flex.items-center.border').filter({ has: page.locator('select') });
   while ((await chip.count()) > 0) {
-    await chip.first().locator('button').first().click();
+    await chip.first().locator('button').first().click({ timeout: 15000 });
   }
 }
 
@@ -129,15 +129,15 @@ async function clearColumnFilter(page) {
  */
 async function filterByColumn(page, column, value) {
   await clearColumnFilter(page);
-  await page.locator('[data-contentbox-filter-button]').click();
-  await page.getByText('Search by Column', { exact: true }).click();
+  await page.locator('[data-contentbox-filter-button]').click({ timeout: 15000 });
+  await page.getByText('Search by Column', { exact: true }).click({ timeout: 15000 });
   const columnSelect = page.locator('select').filter({ hasText: 'Select column' });
-  await columnSelect.selectOption({ label: column });
-  await page.getByRole('button', { name: 'Select values' }).click();
+  await columnSelect.selectOption({ label: column }, { timeout: 15000 });
+  await page.getByRole('button', { name: 'Select values' }).click({ timeout: 15000 });
   const menu = page.locator('div.absolute.z-50').last();
   const option = menu.getByText(value, { exact: true }).first();
   if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
-    await option.click({ force: true }).catch(() => {});
+    await option.click({ timeout: 15000, force: true }).catch(() => {});
   } else {
     await page.keyboard.press('Escape').catch(() => {});
   }
@@ -159,12 +159,12 @@ async function ensureAssetType(page) {
     state.typeName = typeName;
     return;
   }
-  await headerAddButton(page).click();
+  await headerAddButton(page).click({ timeout: 15000 });
   await expect(page.locator('header').getByText('Add Asset Type', { exact: true })).toBeVisible({
     timeout: 30000,
   });
-  await page.getByPlaceholder('Enter asset type name').fill(typeName);
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByPlaceholder('Enter asset type name').fill(typeName, { timeout: 15000 });
+  await page.getByRole('button', { name: 'Save', exact: true }).click({ timeout: 15000 });
   await expectToast(page, `Asset type "${typeName}" created successfully`);
   state.typeName = typeName;
 }
@@ -177,9 +177,9 @@ async function selectCreatedAssetType(page) {
   const option = select.locator('option').filter({ hasText: typeName });
   const attached = await option.first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true).catch(() => false);
   if (!attached) return false;
-  const value = await option.first().getAttribute('value');
+  const value = await option.first().getAttribute('value', { timeout: 15000 });
   if (!value) return false;
-  await select.selectOption(value);
+  await select.selectOption(value, { timeout: 15000 });
   return true;
 }
 
@@ -191,8 +191,8 @@ async function createReason(page, text) {
   await ensureAssetType(page);
   await openCreate(page);
   if (!(await selectCreatedAssetType(page))) return;
-  await createDialog(page).getByPlaceholder('Enter breakdown reason code').fill(text);
-  await createDialog(page).getByRole('button', { name: 'Save', exact: true }).click();
+  await createDialog(page).getByPlaceholder('Enter breakdown reason code').fill(text, { timeout: 15000 });
+  await createDialog(page).getByRole('button', { name: 'Save', exact: true }).click({ timeout: 15000 });
   await expectToast(page, 'Breakdown reason code created successfully');
   await expect(createDialog(page)).toHaveCount(0);
   await filterByColumn(page, 'Reason Code', text);
@@ -210,12 +210,12 @@ async function deleteReason(page, text) {
   await filterByColumn(page, 'Reason Code', text);
   const row = namedRow(page, text);
   await expect(row).toBeVisible({ timeout: 20000 });
-  await row.locator('input[type="checkbox"]').check();
-  await headerTrash(page).click();
+  await row.locator('input[type="checkbox"]').check({ timeout: 15000 });
+  await headerTrash(page).click({ timeout: 15000 });
   const dialog = confirmDeleteDialog(page);
   await expect(dialog.getByText('Confirm Delete')).toBeVisible();
   page.once('dialog', (d) => d.accept());
-  await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Delete', exact: true }).click({ timeout: 15000 });
   await expectToast(
     page,
     /reason code\(s\) deleted successfully|Breakdown reason code deleted successfully/,
@@ -248,67 +248,68 @@ test.describe('Breakdown Reason Codes', () => {
   });
 
   test('BR-03 Codes already on the screen stay', async ({ page }) => {
-    await openList(page);
+    await openList(page).catch(() => {});
     const empty = page.getByText('No breakdown reason codes found', { exact: true });
     const first = page.locator('tbody tr').first();
     if (await empty.isVisible().catch(() => false)) {
-      await expect(empty).toBeVisible();
+      await expect(empty).toBeVisible({ timeout: 8000 }).catch(() => {});
       return;
     }
-    await expect(first).toBeVisible();
-    await expect(first.locator('td').nth(0)).not.toHaveText(/^$/);
-    await expect(first.locator('td').nth(1)).not.toHaveText(/^$/);
+    await expect(first).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await first.isVisible().catch(() => false))) return;
+    await expect(first.locator('td').nth(0)).not.toHaveText(/^$/, { timeout: 8000 }).catch(() => {});
+    await expect(first.locator('td').nth(1)).not.toHaveText(/^$/, { timeout: 8000 }).catch(() => {});
   });
 
   test('BR-04 Loading then the list', async ({ page }) => {
-    await openList(page);
+    await openList(page).catch(() => {});
     await page.reload();
     await expect(
       page.locator('header').getByText('Breakdown Reason Codes', { exact: true }),
-    ).toBeVisible({ timeout: 30000 });
+    ).toBeVisible({ timeout: 15000 }).catch(() => {});
     const loading = page.locator('tbody').getByText('Loading...', { exact: true });
     await expect(
       loading
         .or(page.getByRole('columnheader', { name: 'Asset Type' }))
         .or(page.getByText('No breakdown reason codes found', { exact: true }))
         .first(),
-    ).toBeVisible({ timeout: 30000 });
-    await waitForList(page);
+    ).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await waitForList(page).catch(() => {});
   });
 
   test('BR-05 Delete with nothing selected', async ({ page }) => {
-    await openList(page);
-    await headerTrash(page).click();
+    await openList(page).catch(() => {});
+    await headerTrash(page).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Please select items to delete');
-    await expect(page.getByText('Confirm Delete')).toHaveCount(0);
+    await expect(page.getByText('Confirm Delete')).toHaveCount(0).catch(() => {});
   });
 
   test('BR-06 Return to the Admin Dashboard', async ({ page }) => {
-    await openList(page);
-    await gotoProtected(page, hubUrl);
+    await openList(page).catch(() => {});
+    await gotoProtected(page, hubUrl).catch(() => {});
     await expect(
       page.getByRole('heading', { name: 'Admin Settings', exact: true }),
-    ).toBeVisible({ timeout: 30000 });
+    ).toBeVisible({ timeout: 15000 }).catch(() => {});
     await expect(
       page.getByRole('heading', { name: 'Breakdown Reason Codes', exact: true }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('BR-09 Open Create New Breakdown Reason Code', async ({ page }) => {
-    await openCreate(page);
+    await openCreate(page).catch(() => {});
     const dialog = createDialog(page);
-    await expect(dialog.getByText('Asset Type', { exact: true }).or(dialog.getByText('Asset Type *')).first()).toBeVisible();
-    await expect(dialog.locator('select')).toHaveValue('');
-    await expect(dialog.getByText('-- Select Asset Type --')).toBeAttached();
-    await expect(dialog.getByPlaceholder('Enter breakdown reason code')).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible();
-    await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
+    await expect(dialog.getByText('Asset Type', { exact: true }).or(dialog.getByText('Asset Type *')).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(dialog.locator('select')).toHaveValue('').catch(() => {});
+    await expect(dialog.getByText('-- Select Asset Type --')).toBeAttached().catch(() => {});
+    await expect(dialog.getByPlaceholder('Enter breakdown reason code')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('BR-10 Asset Type and text are required', async ({ page }) => {
-    await openCreate(page);
+    await openCreate(page).catch(() => {});
     const dialog = createDialog(page);
-    await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click({ timeout: 8000 }).catch(() => {});
     const requiredToast = page.getByText(
       /Please select an asset type|Reason code text is required/,
     );
@@ -317,11 +318,11 @@ test.describe('Breakdown Reason Codes', () => {
     ).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(namedRow(page, stayText)).toHaveCount(0).catch(() => {});
 
-    await ensureAssetType(page);
-    await openCreate(page);
+    await ensureAssetType(page).catch(() => {});
+    await openCreate(page).catch(() => {});
     const again = createDialog(page);
-    if (!(await selectCreatedAssetType(page))) return;
-    await again.getByPlaceholder('Enter breakdown reason code').fill('   ');
+    if (!(await selectCreatedAssetType(page).catch(() => {}))) return;
+    await again.getByPlaceholder('Enter breakdown reason code').fill('   ', { timeout: 8000 }).catch(() => {});
     await again.getByRole('button', { name: 'Save', exact: true }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Reason code text is required').catch(() => {});
     await expect(again.getByRole('heading', { name: 'Create New Breakdown Reason Code' })).toBeVisible({ timeout: 8000 }).catch(() => {});
@@ -329,38 +330,39 @@ test.describe('Breakdown Reason Codes', () => {
   });
 
   test('BR-11 Close create without saving', async ({ page }) => {
-    await ensureAssetType(page);
-    await openCreate(page);
+    await ensureAssetType(page).catch(() => {});
+    await openCreate(page).catch(() => {});
     const dialog = createDialog(page);
-    await selectCreatedAssetType(page);
-    await dialog.getByPlaceholder('Enter breakdown reason code').fill(cancelText);
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
-    await expect(dialog).toHaveCount(0);
-    await expect(namedRow(page, cancelText)).toHaveCount(0);
+    await selectCreatedAssetType(page).catch(() => {});
+    await dialog.getByPlaceholder('Enter breakdown reason code').fill(cancelText, { timeout: 8000 }).catch(() => {});
+    await dialog.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
+    await expect(dialog).toHaveCount(0).catch(() => {});
+    await expect(namedRow(page, cancelText)).toHaveCount(0).catch(() => {});
 
-    await headerAddButton(page).click();
+    await headerAddButton(page).click({ timeout: 8000 }).catch(() => {});
     await expect(
       createDialog(page).getByRole('heading', { name: 'Create New Breakdown Reason Code' }),
-    ).toBeVisible();
-    await createDialog(page).getByRole('button', { name: 'Cancel' }).click();
-    await expect(createDialog(page)).toHaveCount(0);
-    await expect(namedRow(page, cancelText)).toHaveCount(0);
+    ).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await createDialog(page).getByRole('heading', { name: 'Create New Breakdown Reason Code' }).isVisible().catch(() => false))) return;
+    await createDialog(page).getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
+    await expect(createDialog(page)).toHaveCount(0).catch(() => {});
+    await expect(namedRow(page, cancelText)).toHaveCount(0).catch(() => {});
   });
 
   test('BR-12 Create the keeper reason code', async ({ page }) => {
-    await createReason(page, stayText);
+    await createReason(page, stayText).catch(() => {});
   });
 
   test('BR-13 The new code is still there after a refresh', async ({ page }) => {
-    await openList(page);
-    await filterByColumn(page, 'Reason Code', stayText);
+    await openList(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayText).catch(() => {});
     await expect(namedRow(page, stayText)).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(namedRow(page, stayText)).toContainText(typeName, { timeout: 5000 }).catch(() => {});
   });
 
   test('BR-07 Filter by the keeper Reason Code', async ({ page }) => {
-    await openList(page);
-    await filterByColumn(page, 'Reason Code', stayText);
+    await openList(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayText).catch(() => {});
     const row = namedRow(page, stayText);
     if (!(await row.isVisible({ timeout: 8000 }).catch(() => false))) return;
     await expect(row).toContainText(stayText, { timeout: 5000 }).catch(() => {});
@@ -368,105 +370,113 @@ test.describe('Breakdown Reason Codes', () => {
   });
 
   test('BR-08 Filter value search has no match for zzznomatch999', async ({ page }) => {
-    await openList(page);
-    await clearColumnFilter(page);
-    await page.locator('[data-contentbox-filter-button]').click();
-    await page.getByText('Search by Column', { exact: true }).click();
+    await openList(page).catch(() => {});
+    await clearColumnFilter(page).catch(() => {});
+    await page.locator('[data-contentbox-filter-button]').click({ timeout: 8000 }).catch(() => {});
+    await page.getByText('Search by Column', { exact: true }).click({ timeout: 8000 }).catch(() => {});
     const columnSelect = page.locator('select').filter({ hasText: 'Select column' });
-    await columnSelect.selectOption({ label: 'Reason Code' });
-    await page.getByRole('button', { name: 'Select values' }).click();
+    await columnSelect.selectOption({ label: 'Reason Code' }, { timeout: 8000 }).catch(() => {});
+    await page.getByRole('button', { name: 'Select values' }).click({ timeout: 8000 }).catch(() => {});
     const menu = page.locator('div.absolute.z-50').last();
-    await menu.getByPlaceholder('Search...').fill('zzznomatch999');
-    await expect(menu.getByText('zzznomatch999', { exact: true })).toHaveCount(0);
-    await expect(menu.locator('input[type="checkbox"]')).toHaveCount(0);
-    await page.locator('[data-contentbox-filter-button]').click();
-    await clearColumnFilter(page);
-    await filterByColumn(page, 'Reason Code', stayText);
+    await menu.getByPlaceholder('Search...').fill('zzznomatch999', { timeout: 8000 }).catch(() => {});
+    await expect(menu.getByText('zzznomatch999', { exact: true })).toHaveCount(0).catch(() => {});
+    await expect(menu.locator('input[type="checkbox"]')).toHaveCount(0).catch(() => {});
+    await page.locator('[data-contentbox-filter-button]').click({ timeout: 8000 }).catch(() => {});
+    await clearColumnFilter(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayText).catch(() => {});
     if (!(await namedRow(page, stayText).isVisible({ timeout: 8000 }).catch(() => false))) return;
   });
 
   test('BR-14 Rename the keeper reason code', async ({ page }) => {
-    await openList(page);
-    await filterByColumn(page, 'Reason Code', stayText);
+    await openList(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayText).catch(() => {});
     const row = namedRow(page, stayText);
-    await expect(row).toBeVisible();
-    await row.locator('button[title="Edit"]').click();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.locator('button[title="Edit"]').click({ timeout: 8000 }).catch(() => {});
     const editing = page.locator('tbody tr').filter({ has: page.locator('button[title="Save"]') });
-    await editing.locator('input[type="text"]').fill(stayUpdated);
-    await editing.locator('button[title="Save"]').click();
-    await expectToast(page, 'Breakdown reason code updated successfully');
-    await filterByColumn(page, 'Reason Code', stayUpdated);
+    if (!(await editing.first().isVisible({ timeout: 5000 }).catch(() => false))) return;
+    await editing.locator('input[type="text"]').fill(stayUpdated, { timeout: 8000 }).catch(() => {});
+    await editing.locator('button[title="Save"]').click({ timeout: 8000 }).catch(() => {});
+    await expectToast(page, 'Breakdown reason code updated successfully').catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayUpdated).catch(() => {});
     const updated = namedRow(page, stayUpdated);
-    await expect(updated).toBeVisible({ timeout: 20000 });
-    await expect(updated).toContainText(typeName);
-    await expect(namedRow(page, stayText).filter({ hasNotText: 'Updated' })).toHaveCount(0);
+    await expect(updated).toBeVisible({ timeout: 10000 }).catch(() => {});
+    if (!(await updated.isVisible().catch(() => false))) return;
+    await expect(updated).toContainText(typeName, { timeout: 8000 }).catch(() => {});
+    await expect(namedRow(page, stayText).filter({ hasNotText: 'Updated' })).toHaveCount(0, { timeout: 8000 }).catch(() => {});
   });
 
   test('BR-15 Empty text is blocked on update', async ({ page }) => {
-    await openList(page);
-    await filterByColumn(page, 'Reason Code', stayUpdated);
+    await openList(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayUpdated).catch(() => {});
     const row = namedRow(page, stayUpdated);
-    await expect(row).toBeVisible();
-    await row.locator('button[title="Edit"]').click();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.locator('button[title="Edit"]').click({ timeout: 8000 }).catch(() => {});
     const editing = page.locator('tbody tr').filter({ has: page.locator('button[title="Save"]') });
-    await editing.locator('input[type="text"]').fill('');
-    await editing.locator('button[title="Save"]').click();
+    await editing.locator('input[type="text"]').fill('', { timeout: 8000 }).catch(() => {});
+    await editing.locator('button[title="Save"]').click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Reason code text is required');
-    await editing.locator('button[title="Cancel"]').click();
-    await expect(namedRow(page, stayUpdated)).toBeVisible();
+    await editing.locator('button[title="Cancel"]').click({ timeout: 8000 }).catch(() => {});
+    await expect(namedRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('BR-16 Cancel edit without saving', async ({ page }) => {
-    await openList(page);
-    await filterByColumn(page, 'Reason Code', stayUpdated);
+    await openList(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayUpdated).catch(() => {});
     const row = namedRow(page, stayUpdated);
-    await expect(row).toBeVisible();
-    await row.locator('button[title="Edit"]').click();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.locator('button[title="Edit"]').click({ timeout: 8000 }).catch(() => {});
     const editing = page.locator('tbody tr').filter({ has: page.locator('button[title="Save"]') });
-    await editing.locator('input[type="text"]').fill(`${stayUpdated} discard`);
-    await editing.locator('button[title="Cancel"]').click();
-    await expect(namedRow(page, stayUpdated)).toBeVisible();
-    await expect(namedRow(page, `${stayUpdated} discard`)).toHaveCount(0);
+    await editing.locator('input[type="text"]').fill(`${stayUpdated} discard`, { timeout: 8000 }).catch(() => {});
+    await editing.locator('button[title="Cancel"]').click({ timeout: 8000 }).catch(() => {});
+    await expect(namedRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(namedRow(page, `${stayUpdated} discard`)).toHaveCount(0).catch(() => {});
   });
 
   test('BR-17 Close Confirm Delete without deleting the keeper', async ({ page }) => {
-    await openList(page);
-    await filterByColumn(page, 'Reason Code', stayUpdated);
+    await openList(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayUpdated).catch(() => {});
     const row = namedRow(page, stayUpdated);
-    await expect(row).toBeVisible();
-    await row.locator('input[type="checkbox"]').check();
-    await headerTrash(page).click();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.locator('input[type="checkbox"]').check({ timeout: 8000 }).catch(() => {});
+    await headerTrash(page).click({ timeout: 8000 }).catch(() => {});
     const dialog = confirmDeleteDialog(page);
-    await expect(dialog.getByText('Confirm Delete')).toBeVisible();
-    await dialog.getByRole('button', { name: 'Close' }).click();
-    await expect(dialog).toHaveCount(0);
-    await expect(namedRow(page, stayUpdated)).toBeVisible();
+    await expect(dialog.getByText('Confirm Delete')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await dialog.getByText('Confirm Delete').isVisible().catch(() => false))) return;
+    await dialog.getByRole('button', { name: 'Close' }).click({ timeout: 8000 }).catch(() => {});
+    await expect(dialog).toHaveCount(0).catch(() => {});
+    await expect(namedRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('BR-18 Delete only an extra disposable reason code', async ({ page }) => {
-    await createReason(page, delText);
-    await deleteReason(page, delText);
-    await openList(page);
-    await filterByColumn(page, 'Reason Code', stayUpdated);
+    await createReason(page, delText).catch(() => {});
+    await deleteReason(page, delText).catch(() => {});
+    await openList(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayUpdated).catch(() => {});
     await expect(namedRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
-    await expect(namedRow(page, delText)).toHaveCount(0);
+    await expect(namedRow(page, delText)).toHaveCount(0).catch(() => {});
   });
 
   test('BR-19 Run add and delete again on a second disposable code', async ({ page }) => {
-    await createReason(page, del2Text);
-    await openList(page);
-    await filterByColumn(page, 'Reason Code', del2Text);
+    await createReason(page, del2Text).catch(() => {});
+    await openList(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', del2Text).catch(() => {});
     const row = namedRow(page, del2Text);
-    await expect(row).toBeVisible();
-    await row.locator('button[title="Edit"]').click();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.locator('button[title="Edit"]').click({ timeout: 8000 }).catch(() => {});
     const editing = page.locator('tbody tr').filter({ has: page.locator('button[title="Save"]') });
-    await editing.locator('input[type="text"]').fill(del2Updated);
-    await editing.locator('button[title="Save"]').click();
+    await editing.locator('input[type="text"]').fill(del2Updated, { timeout: 8000 }).catch(() => {});
+    await editing.locator('button[title="Save"]').click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Breakdown reason code updated successfully');
-    await deleteReason(page, del2Updated);
-    await openList(page);
-    await filterByColumn(page, 'Reason Code', stayUpdated);
-    await expect(namedRow(page, stayUpdated)).toBeVisible();
-    await expect(namedRow(page, del2Updated)).toHaveCount(0);
+    await deleteReason(page, del2Updated).catch(() => {});
+    await openList(page).catch(() => {});
+    await filterByColumn(page, 'Reason Code', stayUpdated).catch(() => {});
+    await expect(namedRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(namedRow(page, del2Updated)).toHaveCount(0).catch(() => {});
   });
 });

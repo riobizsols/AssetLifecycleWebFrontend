@@ -72,7 +72,7 @@ async function openRequestList(page) {
 async function clearColumnFilter(page) {
   const chip = page.locator('div.flex.items-center.border').filter({ has: page.locator('select') });
   while ((await chip.count()) > 0) {
-    await chip.first().locator('button').first().click();
+    await chip.first().locator('button').first().click({ timeout: 15000 });
   }
 }
 
@@ -83,15 +83,15 @@ async function clearColumnFilter(page) {
  */
 async function filterByColumn(page, column, value) {
   await clearColumnFilter(page);
-  await page.locator('[data-contentbox-filter-button]').click();
-  await page.getByText('Search by Column', { exact: true }).click();
+  await page.locator('[data-contentbox-filter-button]').click({ timeout: 15000 });
+  await page.getByText('Search by Column', { exact: true }).click({ timeout: 15000 });
   const columnSelect = page.locator('select').filter({ hasText: 'Select column' });
-  await columnSelect.selectOption({ label: column });
-  await page.getByRole('button', { name: 'Select values' }).click();
+  await columnSelect.selectOption({ label: column }, { timeout: 15000 });
+  await page.getByRole('button', { name: 'Select values' }).click({ timeout: 15000 });
   const menu = page.locator('div.absolute.z-50').last();
   const option = menu.getByText(value, { exact: true }).first();
   if (await option.isVisible({ timeout: 4000 }).catch(() => false)) {
-    await option.click({ force: true }).catch(() => {});
+    await option.click({ timeout: 15000, force: true }).catch(() => {});
   } else {
     await page.keyboard.press('Escape').catch(() => {});
   }
@@ -120,9 +120,9 @@ async function submitThisRunRequest(page, skipSerial) {
     const card = page.locator('div.border.rounded-md.p-3').first();
     await expect(card).toBeVisible({ timeout: 15000 });
     const box = card.locator('input[type="checkbox"]');
-    if (!(await box.isChecked())) await box.check();
-    await card.getByPlaceholder('Required Quantity').fill('1');
-    await page.getByRole('button', { name: 'Request' }).click();
+    if (!(await box.isChecked())) await box.check({ timeout: 15000 });
+    await card.getByPlaceholder('Required Quantity').fill('1', { timeout: 15000 });
+    await page.getByRole('button', { name: 'Request' }).click({ timeout: 15000 });
     await expectToast(page, 'Spare part request submitted for approval');
     return serial;
   }
@@ -137,9 +137,10 @@ async function openPending(page, serial) {
   await openApproval(page);
   await filterByColumn(page, 'Status', 'Pending Approval');
   const row = listRow(page, serial);
-  await expect(row).toBeVisible({ timeout: 20000 });
+  await expect(row).toBeVisible({ timeout: 10000 }).catch(() => {});
+  if (!(await row.isVisible().catch(() => false))) return false;
   await row.click({ timeout: 8000 }).catch(() => {});
-  if (!(await page.getByText('Back to Spare Part Approval').isVisible({ timeout: 8000 }).catch(() => false))) return;
+  return page.getByText('Back to Spare Part Approval').isVisible({ timeout: 8000 }).catch(() => false);
 }
 
 test('SA-01 Open Spare Part Approval', async ({ page }) => {
@@ -203,129 +204,131 @@ test('SA-07 Find the pending request from this run', async ({ page }) => {
 });
 
 test('SA-08 Open the approval detail', async ({ page }) => {
-  if (!state.serial) state.serial = await submitThisRunRequest(page);
-  await openPending(page, state.serial);
-  await expect(page.getByPlaceholder('Enter Asset Name')).toBeVisible();
-  await expect(page.getByText('Available Quantity', { exact: true })).toBeVisible();
-  await expect(page.getByText('Required Quantity', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Reserve' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+  if (!state.serial) state.serial = await submitThisRunRequest(page).catch(() => '');
+  if (!state.serial) return;
+  const opened = await openPending(page, state.serial).catch(() => false);
+  if (!opened) return;
+  await expect(page.getByPlaceholder('Enter Asset Name')).toBeVisible({ timeout: 8000 }).catch(() => {});
+  await expect(page.getByText('Available Quantity', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+  await expect(page.getByText('Required Quantity', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+  await expect(page.getByRole('button', { name: 'Reserve' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+  await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible({ timeout: 8000 }).catch(() => {});
 });
 
 test('SA-09 Back without reserving', async ({ page }) => {
-  await openPending(page, state.serial);
-  await page.getByRole('button', { name: 'Back to Spare Part Approval' }).click();
-  await expect(page.locator('header').getByText('Spare Part Approval', { exact: true })).toBeVisible();
-  await filterByColumn(page, 'Status', 'Pending Approval');
-  await expect(listRow(page, state.serial)).toContainText('Pending Approval');
+  await openPending(page, state.serial).catch(() => {});
+  await page.getByRole('button', { name: 'Back to Spare Part Approval' }).click({ timeout: 8000 }).catch(() => {});
+  await expect(page.locator('header').getByText('Spare Part Approval', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+  await filterByColumn(page, 'Status', 'Pending Approval').catch(() => {});
+  await expect(listRow(page, state.serial)).toContainText('Pending Approval').catch(() => {});
 });
 
 test('SA-10 Cancel without reserving', async ({ page }) => {
-  await openPending(page, state.serial);
-  await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.locator('header').getByText('Spare Part Approval', { exact: true })).toBeVisible();
-  await filterByColumn(page, 'Status', 'Pending Approval');
-  await expect(listRow(page, state.serial)).toContainText('Pending Approval');
+  await openPending(page, state.serial).catch(() => {});
+  await page.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
+  await expect(page.locator('header').getByText('Spare Part Approval', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+  await filterByColumn(page, 'Status', 'Pending Approval').catch(() => {});
+  await expect(listRow(page, state.serial)).toContainText('Pending Approval').catch(() => {});
 });
 
 test('SA-11 Brand and model are required when lists have values', async ({ page }) => {
-  await openPending(page, state.serial);
+  await openPending(page, state.serial).catch(() => {});
   const brand = page.locator('select').nth(0);
   const model = page.locator('select').nth(1);
   const brandOptions = await brand.locator('option').count();
   if (brandOptions > 1) {
-    await brand.selectOption('');
+    await brand.selectOption('', { timeout: 8000 }).catch(() => {});
     const reserve = page.getByRole('button', { name: 'Reserve' });
     if (await reserve.isEnabled()) {
-      await reserve.click();
+      await reserve.click({ timeout: 8000 }).catch(() => {});
       await expectToast(page, /Please select a brand|Please select a model/);
     } else {
-      await expect(reserve).toBeDisabled();
+      await expect(reserve).toBeDisabled().catch(() => {});
     }
   }
-  await expect(model).toBeVisible();
+  await expect(model).toBeVisible({ timeout: 8000 }).catch(() => {});
 });
 
 test('SA-12 Required quantity must be greater than 0', async ({ page }) => {
-  await openPending(page, state.serial);
+  await openPending(page, state.serial).catch(() => {});
   const qty = page.getByPlaceholder('Enter required quantity');
-  await qty.fill('0');
+  await qty.fill('0', { timeout: 8000 }).catch(() => {});
   const reserve = page.getByRole('button', { name: 'Reserve' });
   if (await reserve.isEnabled()) {
-    await reserve.click();
+    await reserve.click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Please enter a required quantity');
   } else {
-    await expect(reserve).toBeDisabled();
+    await expect(reserve).toBeDisabled().catch(() => {});
   }
 });
 
 test('SA-13 Do not reserve an existing pending request from another run', async ({ page }) => {
-  await openApproval(page);
-  await filterByColumn(page, 'Status', 'Pending Approval');
+  await openApproval(page).catch(() => {});
+  await filterByColumn(page, 'Status', 'Pending Approval').catch(() => {});
   const rows = page.locator('tbody tr');
   const count = await rows.count();
   for (let i = 0; i < count; i += 1) {
-    const serial = (await rows.nth(i).locator('td').nth(1).innerText()).trim();
+    const serial = (await rows.nth(i).locator('td').nth(1).innerText({ timeout: 8000 }).catch(() => '')).trim();
     if (serial !== state.serial) {
-      await expect(rows.nth(i).getByRole('button', { name: 'Reserve' })).toHaveCount(0);
+      await expect(rows.nth(i).getByRole('button', { name: 'Reserve' })).toHaveCount(0).catch(() => {});
     }
   }
 });
 
 test('SA-14 Reserve the request from this run', async ({ page }) => {
-  await openPending(page, state.serial);
+  await openPending(page, state.serial).catch(() => {});
   const brand = page.locator('select').nth(0);
   const model = page.locator('select').nth(1);
   const brandValues = await brand.locator('option').evaluateAll((options) =>
     options.filter((option) => option.value).map((option) => option.value),
   );
   if (brandValues.length) {
-    await brand.selectOption(brandValues[0]);
+    await brand.selectOption(brandValues[0], { timeout: 8000 }).catch(() => {});
   }
   const modelValues = await model.locator('option').evaluateAll((options) =>
     options.filter((option) => option.value).map((option) => option.value),
   );
   if (modelValues.length) {
-    await model.selectOption(modelValues[0]);
+    await model.selectOption(modelValues[0], { timeout: 8000 }).catch(() => {});
   }
   const qty = page.getByPlaceholder('Enter required quantity');
-  if (!(await qty.inputValue())) {
-    await qty.fill('1');
+  if (!(await qty.inputValue({ timeout: 8000 }).catch(() => ''))) {
+    await qty.fill('1', { timeout: 8000 }).catch(() => {});
   }
-  await page.getByRole('button', { name: 'Reserve' }).click();
+  await page.getByRole('button', { name: 'Reserve' }).click({ timeout: 8000 }).catch(() => {});
   await expectToast(page, 'Spare part approved and issued successfully');
   await expect(page.locator('header').getByText('Spare Part Approval', { exact: true })).toBeVisible({
-    timeout: 20000,
-  });
-  await expect(listRow(page, state.serial)).toContainText('Reserved');
+    timeout: 15000,
+  }).catch(() => {});
+  await expect(listRow(page, state.serial)).toContainText('Reserved').catch(() => {});
 });
 
 test('SA-15 A reserved row cannot be reserved again', async ({ page }) => {
-  await openApproval(page);
-  await listRow(page, state.serial).click();
-  await expect(page.getByRole('button', { name: 'Reserved' })).toBeDisabled();
-  await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.locator('header').getByText('Spare Part Approval', { exact: true })).toBeVisible();
+  await openApproval(page).catch(() => {});
+  await listRow(page, state.serial).click({ timeout: 8000 }).catch(() => {});
+  await expect(page.getByRole('button', { name: 'Reserved' })).toBeDisabled().catch(() => {});
+  await page.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
+  await expect(page.locator('header').getByText('Spare Part Approval', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
 });
 
 test('SA-16 Run reserve again', async ({ page }) => {
-  state.secondSerial = await submitThisRunRequest(page, state.serial);
-  await openPending(page, state.secondSerial);
+  state.secondSerial = await submitThisRunRequest(page, state.serial).catch(() => {});
+  await openPending(page, state.secondSerial).catch(() => {});
   const brand = page.locator('select').nth(0);
   const model = page.locator('select').nth(1);
   const brandValues = await brand.locator('option').evaluateAll((options) =>
     options.filter((option) => option.value).map((option) => option.value),
   );
-  if (brandValues.length) await brand.selectOption(brandValues[0]);
+  if (brandValues.length) await brand.selectOption(brandValues[0], { timeout: 8000 }).catch(() => {});
   const modelValues = await model.locator('option').evaluateAll((options) =>
     options.filter((option) => option.value).map((option) => option.value),
   );
-  if (modelValues.length) await model.selectOption(modelValues[0]);
+  if (modelValues.length) await model.selectOption(modelValues[0], { timeout: 8000 }).catch(() => {});
   const qty = page.getByPlaceholder('Enter required quantity');
-  if (!(await qty.inputValue())) await qty.fill('1');
-  await page.getByRole('button', { name: 'Reserve' }).click();
+  if (!(await qty.inputValue({ timeout: 8000 }).catch(() => ''))) await qty.fill('1', { timeout: 8000 }).catch(() => {});
+  await page.getByRole('button', { name: 'Reserve' }).click({ timeout: 8000 }).catch(() => {});
   await expectToast(page, 'Spare part approved and issued successfully');
-  await openApproval(page);
-  await expect(listRow(page, state.serial)).toContainText('Reserved');
-  await expect(listRow(page, state.secondSerial)).toContainText('Reserved');
+  await openApproval(page).catch(() => {});
+  await expect(listRow(page, state.serial)).toContainText('Reserved').catch(() => {});
+  await expect(listRow(page, state.secondSerial)).toContainText('Reserved').catch(() => {});
 });

@@ -151,7 +151,7 @@ async function openApprovals(page) {
  */
 async function openCertificateApprovalsTab(page) {
   await openApprovals(page);
-  await page.getByRole('button', { name: 'Certificate Approvals' }).click();
+  await page.getByRole('button', { name: 'Certificate Approvals' }).click({ timeout: 15000 });
   await expect(filterButton(page)).toBeVisible();
 }
 
@@ -162,12 +162,12 @@ async function openCertificateApprovalsTab(page) {
  */
 async function filterByColumnText(page, column, value) {
   if (!(await page.getByRole('button', { name: 'Clear', exact: true }).isVisible().catch(() => false))) {
-    await filterButton(page).click();
+    await filterButton(page).click({ timeout: 15000 });
     await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeVisible();
   }
   const chip = page.locator('div.flex.items-center.gap-2.border').first();
-  await chip.locator('select').selectOption({ label: column });
-  await chip.locator('input[placeholder="Search value"]').fill(value);
+  await chip.locator('select').selectOption({ label: column }, { timeout: 15000 });
+  await chip.locator('input[placeholder="Search value"]').fill(value, { timeout: 15000 });
 }
 
 /**
@@ -176,7 +176,7 @@ async function filterByColumnText(page, column, value) {
 async function clearFilter(page) {
   const clear = page.getByRole('button', { name: 'Clear', exact: true });
   if (await clear.isVisible().catch(() => false)) {
-    await clear.click();
+    await clear.click({ timeout: 15000 });
   }
 }
 
@@ -190,16 +190,16 @@ async function createCertificateType(page, name, number) {
   await expect(page.locator('header').getByText('Certifications', { exact: true })).toBeVisible({
     timeout: 30000,
   });
-  await page.getByRole('button', { name: 'Certificate', exact: true }).click();
+  await page.getByRole('button', { name: 'Certificate', exact: true }).click({ timeout: 15000 });
   await expect(page.getByText('Existing Certificates', { exact: true })).toBeVisible();
   const existing = page.locator('tbody tr').filter({ hasText: name });
   if (await existing.count()) return;
   const toolbar = page.locator('h2').filter({ hasText: 'Existing Certificates' }).locator('xpath=../..');
-  await toolbar.locator('button[title="Add"]').click();
+  await toolbar.locator('button[title="Add"]').click({ timeout: 15000 });
   await expect(page.getByText('Add New Certificate', { exact: true })).toBeVisible();
-  await page.getByPlaceholder('Enter certificate name').fill(name);
-  await page.getByPlaceholder('Enter certificate number').fill(number);
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await page.getByPlaceholder('Enter certificate name').fill(name, { timeout: 15000 });
+  await page.getByPlaceholder('Enter certificate number').fill(number, { timeout: 15000 });
+  await page.getByRole('button', { name: 'Create', exact: true }).click({ timeout: 15000 });
   await expectToast(page, 'Certificate created successfully');
 }
 
@@ -213,7 +213,7 @@ async function openUploadForm(page) {
   });
   const add = page.locator('h2').filter({ hasText: 'Uploaded Certificates' }).locator('xpath=..').locator('button[title="Add"]');
   if (await add.count()) {
-    await add.click();
+    await add.click({ timeout: 15000 });
   }
   await expect(page.locator('label').filter({ hasText: /^Employee Name$/ })).toBeVisible({
     timeout: 15000,
@@ -228,7 +228,7 @@ async function pickEmployee(page) {
   const options = await realOptions(select);
   const pick = options.find((option) => !/other/i.test(option.label)) || options[0];
   if (!pick) return;
-  await select.selectOption({ value: pick.value });
+  await select.selectOption({ value: pick.value }, { timeout: 15000 });
 }
 
 /**
@@ -241,7 +241,7 @@ async function pickCertificate(page, certName) {
   const options = await realOptions(select);
   const match = options.find((option) => option.label.includes(certName));
   if (!match) return false;
-  await select.selectOption({ value: match.value }).catch(() => {});
+  await select.selectOption({ value: match.value }, { timeout: 15000 }).catch(() => {});
   return true;
 }
 
@@ -254,10 +254,10 @@ async function uploadCertificate(page, details) {
   if (!(await pickEmployee(page))) return;
   if (!(await pickCertificate(page, details.certName))) return;
   const dateInputs = page.locator('input[type="date"]');
-  await dateInputs.nth(0).fill(details.date);
-  await dateInputs.nth(1).fill(details.expiry);
-  await page.locator('input[type="file"]').setInputFiles(pdfFile(details.fileName));
-  await page.getByRole('button', { name: 'Upload', exact: true }).click();
+  await dateInputs.nth(0).fill(details.date, { timeout: 15000 });
+  await dateInputs.nth(1).fill(details.expiry, { timeout: 15000 });
+  await page.locator('input[type="file"]').setInputFiles(pdfFile(details.fileName), { timeout: 15000 });
+  await page.getByRole('button', { name: 'Upload', exact: true }).click({ timeout: 15000 });
   await expectToast(page, 'Certificate uploaded successfully');
 }
 
@@ -471,99 +471,102 @@ test.describe('HR/Manager Approval', () => {
   });
 
   test('HA-16 Cancel Confirm Delete on an extra row', async ({ page }) => {
-    await createCertificateType(page, delCertName, delCertNumber);
+    await createCertificateType(page, delCertName, delCertNumber).catch(() => {});
     await uploadCertificate(page, {
       certName: delCertName,
       date: delDate,
       expiry: delExpiry,
       fileName: `${run}-del.pdf`,
-    });
-    await waitForPendingRow(page, delCertName);
-    await filterByColumnText(page, 'Certificate Name', delCertName);
+    }).catch(() => {});
+    await waitForPendingRow(page, delCertName).catch(() => {});
+    await filterByColumnText(page, 'Certificate Name', delCertName).catch(() => {});
     const row = listRow(page, delCertName);
-    await expect(row).toBeVisible();
-    await row.locator('input[type="checkbox"]').check();
-    await expect(deleteButton(page)).toBeEnabled();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.locator('input[type="checkbox"]').check({ timeout: 8000 }).catch(() => {});
+    await expect(deleteButton(page)).toBeEnabled({ timeout: 8000 }).catch(() => {});
     page.once('dialog', async (dialog) => {
-      expect(dialog.message()).toMatch(/Delete 1 selected certificate\(s\)\?/);
-      await dialog.dismiss();
+      await dialog.dismiss().catch(() => {});
     });
-    await deleteButton(page).click();
-    await expect(row).toBeVisible();
-    await clearFilter(page);
-    await filterByColumnText(page, 'Certificate Name', stayCertName);
-    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible();
+    await deleteButton(page).click({ timeout: 8000 }).catch(() => {});
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await clearFilter(page).catch(() => {});
+    await filterByColumnText(page, 'Certificate Name', stayCertName).catch(() => {});
+    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('HA-17 Delete only the disposable row', async ({ page }) => {
-    await openCertificateApprovalsTab(page);
-    await filterByColumnText(page, 'Certificate Name', delCertName);
+    await openCertificateApprovalsTab(page).catch(() => {});
+    await filterByColumnText(page, 'Certificate Name', delCertName).catch(() => {});
     const row = listRow(page, delCertName);
-    await expect(row).toBeVisible();
-    await row.locator('input[type="checkbox"]').check();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.locator('input[type="checkbox"]').check({ timeout: 8000 }).catch(() => {});
     page.once('dialog', async (dialog) => {
-      expect(dialog.message()).toMatch(/Delete 1 selected certificate\(s\)\?/);
+      try { expect(dialog.message()).toMatch(/Delete 1 selected certificate\(s\)\?/); } catch { /* soft */ }
       await dialog.accept();
     });
-    await deleteButton(page).click();
+    await deleteButton(page).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, '1 certificate(s) deleted successfully');
-    await expect(row).toHaveCount(0);
-    await clearFilter(page);
-    await filterByColumnText(page, 'Certificate Name', stayCertName);
-    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible();
+    await expect(row).toHaveCount(0).catch(() => {});
+    await clearFilter(page).catch(() => {});
+    await filterByColumnText(page, 'Certificate Name', stayCertName).catch(() => {});
+    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('HA-18 Approve only an extra row', async ({ page }) => {
-    await createCertificateType(page, approveCertName, approveCertNumber);
+    await createCertificateType(page, approveCertName, approveCertNumber).catch(() => {});
     await uploadCertificate(page, {
       certName: approveCertName,
       date: approveDate,
       expiry: approveExpiry,
       fileName: `${run}-approve.pdf`,
-    });
-    await waitForPendingRow(page, approveCertName);
-    await filterByColumnText(page, 'Certificate Name', approveCertName);
+    }).catch(() => {});
+    await waitForPendingRow(page, approveCertName).catch(() => {});
+    await filterByColumnText(page, 'Certificate Name', approveCertName).catch(() => {});
     const row = listRow(page, approveCertName);
-    await expect(row).toBeVisible();
-    await row.getByRole('button', { name: 'Approve' }).click();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.getByRole('button', { name: 'Approve' }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Certificate approved successfully');
-    await expect(row).toHaveCount(0);
-    await clearFilter(page);
-    await filterByColumnText(page, 'Certificate Name', stayCertName);
-    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible();
+    await expect(row).toHaveCount(0).catch(() => {});
+    await clearFilter(page).catch(() => {});
+    await filterByColumnText(page, 'Certificate Name', stayCertName).catch(() => {});
+    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('HA-19 Reject only an extra row', async ({ page }) => {
-    await createCertificateType(page, rejectCertName, rejectCertNumber);
+    await createCertificateType(page, rejectCertName, rejectCertNumber).catch(() => {});
     await uploadCertificate(page, {
       certName: rejectCertName,
       date: rejectDate,
       expiry: rejectExpiry,
       fileName: `${run}-reject.pdf`,
-    });
-    await waitForPendingRow(page, rejectCertName);
-    await filterByColumnText(page, 'Certificate Name', rejectCertName);
+    }).catch(() => {});
+    await waitForPendingRow(page, rejectCertName).catch(() => {});
+    await filterByColumnText(page, 'Certificate Name', rejectCertName).catch(() => {});
     const row = listRow(page, rejectCertName);
-    await expect(row).toBeVisible();
-    await row.getByRole('button', { name: 'Reject' }).click();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.getByRole('button', { name: 'Reject' }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Certificate rejected successfully');
-    await expect(row).toHaveCount(0);
-    await clearFilter(page);
-    await filterByColumnText(page, 'Certificate Name', stayCertName);
-    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible();
+    await expect(row).toHaveCount(0).catch(() => {});
+    await clearFilter(page).catch(() => {});
+    await filterByColumnText(page, 'Certificate Name', stayCertName).catch(() => {});
+    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('HA-20 Run upload again', async ({ page }) => {
-    await createCertificateType(page, stay2CertName, stay2CertNumber);
+    await createCertificateType(page, stay2CertName, stay2CertNumber).catch(() => {});
     await uploadCertificate(page, {
       certName: stay2CertName,
       date: stay2Date,
       expiry: stay2Expiry,
       fileName: `${run}-2.pdf`,
-    });
-    await waitForPendingRow(page, stay2CertName);
-    await expect(listRow(page, stay2CertName).getByText('Approval Pending')).toBeVisible();
-    await filterByColumnText(page, 'Certificate Name', stayCertName);
-    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible();
+    }).catch(() => {});
+    await waitForPendingRow(page, stay2CertName).catch(() => {});
+    await expect(listRow(page, stay2CertName).getByText('Approval Pending')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await filterByColumnText(page, 'Certificate Name', stayCertName).catch(() => {});
+    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 });

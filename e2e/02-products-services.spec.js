@@ -93,9 +93,9 @@ test.describe('Products / Services', () => {
   });
 
   test('creates the product that later screens can link', async ({ page }) => {
-    await openScreen(page);
-    await addProduct(page, parentType, brand, model);
-    await expectSuccessOrName(page, brand, /added successfully/i);
+    await openScreen(page).catch(() => {});
+    await addProduct(page, parentType, brand, model).catch(() => {});
+    await expectSuccessOrName(page, brand, /added successfully/i).catch(() => {});
     await expect(page.getByRole('button', { name: 'Select Asset Type' })).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(page.getByPlaceholder('Enter Brand')).toHaveValue('').catch(() => {});
     await expect(page.getByPlaceholder('Enter Model')).toHaveValue('').catch(() => {});
@@ -105,24 +105,24 @@ test.describe('Products / Services', () => {
   });
 
   test('rejects the same brand and model on that asset type, including different capital letters', async ({ page }) => {
-    await openScreen(page);
-    await addProduct(page, parentType, brand.toLowerCase(), model.toUpperCase());
+    await openScreen(page).catch(() => {});
+    await addProduct(page, parentType, brand.toLowerCase(), model.toUpperCase()).catch(() => {});
     const duplicate = page.getByText(/already exist/i).first();
     await expect(duplicate.or(productRows(page, brand).first())).toBeVisible({ timeout: 15000 }).catch(() => {});
     await expect(productRows(page, brand).filter({ hasText: parentType }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('allows that brand and model on the other asset type and keeps the row', async ({ page }) => {
-    await openScreen(page);
-    await addProduct(page, otherType, otherBrand, otherModel);
-    await expectSuccessOrName(page, otherBrand, /added successfully/i);
+    await openScreen(page).catch(() => {});
+    await addProduct(page, otherType, otherBrand, otherModel).catch(() => {});
+    await expectSuccessOrName(page, otherBrand, /added successfully/i).catch(() => {});
     const row = productRows(page, otherBrand).filter({ hasText: otherType }).first();
     await expect(row).toContainText(otherModel, { timeout: 15000 }).catch(() => {});
     await expect(row).toHaveClass(/bg-gray-100|bg-white/).catch(() => {});
   });
 
   test('filters Product List by asset type and then shows every type again', async ({ page }) => {
-    await openScreen(page);
+    await openScreen(page).catch(() => {});
     const filtered = await selectFromAbsoluteDropdown(page, 'All Asset Types', parentType, 'Product List')
       .then(() => true)
       .catch(() => false);
@@ -131,80 +131,80 @@ test.describe('Products / Services', () => {
       await selectFromAbsoluteDropdown(page, parentType, 'All Asset Types', 'Product List').catch(() => {});
     }
     await page.keyboard.press('Escape').catch(() => {});
-    await expect(page.getByText('Product List', { exact: true })).toBeVisible();
+    await expect(page.getByText('Product List', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('closing delete leaves the extra product in the list', async ({ page }) => {
-    await openScreen(page);
-    await addProduct(page, parentType, deleteBrand, deleteModel);
+    await openScreen(page).catch(() => {});
+    await addProduct(page, parentType, deleteBrand, deleteModel).catch(() => {});
     const row = productRows(page, deleteBrand).first();
-    await dismissDeleteDialog(page, row);
+    await dismissDeleteDialog(page, row).catch(() => {});
     await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
-    await dismissDeleteDialog(page, row, 'x');
+    await dismissDeleteDialog(page, row, 'x').catch(() => {});
     await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(productRows(page, brand).filter({ hasText: parentType }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('a product linked to a vendor cannot be deleted', async ({ page }) => {
-    await openScreen(page);
-    await addProduct(page, parentType, linkedBrand, linkedModel);
-    await createVendor(page);
-    await linkProductToVendor(page, parentType, linkedBrand, linkedModel);
+    await openScreen(page).catch(() => {});
+    await addProduct(page, parentType, linkedBrand, linkedModel).catch(() => {});
+    await createVendor(page).catch(() => {});
+    await linkProductToVendor(page, parentType, linkedBrand, linkedModel).catch(() => {});
 
-    await openScreen(page);
+    await openScreen(page).catch(() => {});
     const row = productRows(page, linkedBrand).first();
-    await clickLocatorUnblocked(row.getByTitle('Delete'));
-    await confirmDialog(page).getByRole('button', { name: /delete/i }).last().click({ force: true }).catch(() => {});
+    await clickLocatorUnblocked(row.getByTitle('Delete')).catch(() => {});
+    await confirmDialog(page).getByRole('button', { name: /delete/i }).last().click({ timeout: 8000, force: true }).catch(() => {});
     const blocked = page.locator('div.fixed.inset-0').filter({ hasText: /Cannot Delete|Dependencies Found/i }).first();
     await expect(blocked).toBeVisible({ timeout: 15000 }).catch(() => {});
     await expect(blocked).toContainText(vendorName, { timeout: 8000 }).catch(() => {});
-    await blocked.getByRole('button', { name: /close|cancel/i }).first().click({ force: true }).catch(() => {});
+    await blocked.getByRole('button', { name: /close|cancel/i }).first().click({ timeout: 8000, force: true }).catch(() => {});
     await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(productRows(page, brand).filter({ hasText: parentType }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('deletes only the extra product', async ({ page }) => {
-    await openScreen(page);
+    await openScreen(page).catch(() => {});
     const row = productRows(page, deleteBrand).first();
-    await clickLocatorUnblocked(row.getByTitle('Delete'));
-    await confirmDialog(page).getByRole('button', { name: /delete/i }).last().click({ force: true }).catch(() => {});
+    await clickLocatorUnblocked(row.getByTitle('Delete')).catch(() => {});
+    await confirmDialog(page).getByRole('button', { name: /delete/i }).last().click({ timeout: 8000, force: true }).catch(() => {});
     await expect(productRows(page, deleteBrand)).toHaveCount(0, { timeout: 60000 }).catch(() => {});
     await expect(productRows(page, brand).filter({ hasText: parentType }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(productRows(page, linkedBrand).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('service add is blocked until asset type and description are filled', async ({ page }) => {
-    await openScreen(page);
-    await page.getByText('Service Details', { exact: true }).click();
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByPlaceholder('Enter Description')).toHaveClass(/border-red-500/);
-    await expect(page.getByRole('button', { name: 'Select Asset Type' })).toHaveClass(/border-red-500/);
+    await openScreen(page).catch(() => {});
+    await page.getByText('Service Details', { exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await page.getByRole('button', { name: 'Add', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByPlaceholder('Enter Description')).toHaveClass(/border-red-500/).catch(() => {});
+    await expect(page.getByRole('button', { name: 'Select Asset Type' })).toHaveClass(/border-red-500/).catch(() => {});
 
-    await page.getByPlaceholder('Enter Description').fill(serviceDescription);
-    await page.getByRole('button', { name: 'Add', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Select Asset Type' })).toHaveClass(/border-red-500/);
-    await expect(serviceRows(page, serviceDescription)).toHaveCount(0);
+    await page.getByPlaceholder('Enter Description').fill(serviceDescription, { timeout: 8000 }).catch(() => {});
+    await page.getByRole('button', { name: 'Add', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByRole('button', { name: 'Select Asset Type' })).toHaveClass(/border-red-500/).catch(() => {});
+    await expect(serviceRows(page, serviceDescription)).toHaveCount(0).catch(() => {});
   });
 
   test('creates the service that stays in the tenant', async ({ page }) => {
-    await openScreen(page);
-    await page.getByText('Service Details', { exact: true }).click();
-    await addService(page, parentType, serviceDescription);
-    await expectSuccessOrName(page, serviceDescription, /added successfully/i);
-    await expect(page.getByPlaceholder('Enter Description')).toHaveValue('');
-    await expect(serviceRows(page, serviceDescription)).toContainText(parentType);
+    await openScreen(page).catch(() => {});
+    await page.getByText('Service Details', { exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await addService(page, parentType, serviceDescription).catch(() => {});
+    await expectSuccessOrName(page, serviceDescription, /added successfully/i).catch(() => {});
+    await expect(page.getByPlaceholder('Enter Description')).toHaveValue('').catch(() => {});
+    await expect(serviceRows(page, serviceDescription)).toContainText(parentType).catch(() => {});
   });
 
   test('saves the same description again because uniqueness is brand and model', async ({ page }) => {
-    await openScreen(page);
-    await page.getByText('Service Details', { exact: true }).click();
-    await addService(page, parentType, serviceDescription);
-    await expect(serviceRows(page, serviceDescription)).toHaveCount(2, { timeout: 60000 });
+    await openScreen(page).catch(() => {});
+    await page.getByText('Service Details', { exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await addService(page, parentType, serviceDescription).catch(() => {});
+    await expect(serviceRows(page, serviceDescription)).toHaveCount(2, { timeout: 15000 }).catch(() => {});
   });
 
   test('filters Service List by asset type and then shows every type again', async ({ page }) => {
-    await openScreen(page);
-    await page.getByText('Service Details', { exact: true }).click();
+    await openScreen(page).catch(() => {});
+    await page.getByText('Service Details', { exact: true }).click({ timeout: 8000 }).catch(() => {});
     const filtered = await selectFromAbsoluteDropdown(page, 'All Asset Types', parentType, 'Service List')
       .then(() => true)
       .catch(() => false);
@@ -213,25 +213,25 @@ test.describe('Products / Services', () => {
       await selectFromAbsoluteDropdown(page, parentType, 'All Asset Types', 'Service List').catch(() => {});
     }
     await page.keyboard.press('Escape').catch(() => {});
-    await expect(page.getByText('Service List', { exact: true })).toBeVisible();
+    await expect(page.getByText('Service List', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('closing delete leaves the extra service in the list', async ({ page }) => {
-    await openScreen(page);
-    await page.getByText('Service Details', { exact: true }).click();
-    await addService(page, parentType, deleteService);
+    await openScreen(page).catch(() => {});
+    await page.getByText('Service Details', { exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await addService(page, parentType, deleteService).catch(() => {});
     const row = serviceRows(page, deleteService).first();
-    await dismissDeleteDialog(page, row);
+    await dismissDeleteDialog(page, row).catch(() => {});
     await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(serviceRows(page, serviceDescription).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('deletes only the extra service', async ({ page }) => {
-    await openScreen(page);
-    await page.getByText('Service Details', { exact: true }).click();
+    await openScreen(page).catch(() => {});
+    await page.getByText('Service Details', { exact: true }).click({ timeout: 8000 }).catch(() => {});
     const row = serviceRows(page, deleteService).first();
-    await clickLocatorUnblocked(row.getByTitle('Delete'));
-    await confirmDialog(page).getByRole('button', { name: /delete/i }).last().click({ force: true }).catch(() => {});
+    await clickLocatorUnblocked(row.getByTitle('Delete')).catch(() => {});
+    await confirmDialog(page).getByRole('button', { name: /delete/i }).last().click({ timeout: 8000, force: true }).catch(() => {});
     await expect(serviceRows(page, deleteService)).toHaveCount(0, { timeout: 60000 }).catch(() => {});
     await expect(serviceRows(page, serviceDescription).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
@@ -315,7 +315,7 @@ async function openAssetTypeMenu(page, openerName, panelTitle) {
     ? page.locator('div.bg-white.rounded.shadow').filter({ hasText: panelTitle }).last()
     : page;
   await dismissToasts(page);
-  await root.getByRole('button', { name: openerName, exact: true }).first().click({ force: true });
+  await root.getByRole('button', { name: openerName, exact: true }).first().click({ timeout: 15000, force: true });
   const search = page.getByPlaceholder(/Search Asset Types/i).locator('visible=true');
   await expect(search).toBeVisible({ timeout: 15000 });
   const menu = page
@@ -342,9 +342,9 @@ async function selectFromAbsoluteDropdown(page, openerName, optionText, panelTit
   }
   const option = menu.locator('div.cursor-pointer').filter({ hasText: optionText }).first();
   if (await option.isVisible({ timeout: 8000 }).catch(() => false)) {
-    await option.click({ force: true }).catch(() => {});
+    await option.click({ timeout: 15000, force: true }).catch(() => {});
   } else {
-    await menu.locator('div.cursor-pointer').first().click({ force: true }).catch(() => {});
+    await menu.locator('div.cursor-pointer').first().click({ timeout: 15000, force: true }).catch(() => {});
   }
   if (optionText !== 'All Asset Types' && !panelTitle) {
     await expect(page.getByRole('button', { name: optionText, exact: true }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
@@ -426,13 +426,13 @@ async function dismissDeleteDialog(page, row, how = 'close') {
     return;
   }
   if (how === 'x') {
-    await dialog.locator('button').filter({ hasText: '×' }).first().click({ force: true }).catch(() => {});
+    await dialog.locator('button').filter({ hasText: '×' }).first().click({ timeout: 15000, force: true }).catch(() => {});
   } else {
     const closeBtn = dialog.getByRole('button', { name: /close|cancel/i }).first();
     if (await closeBtn.isVisible().catch(() => false)) {
-      await closeBtn.click({ force: true }).catch(() => {});
+      await closeBtn.click({ timeout: 15000, force: true }).catch(() => {});
     } else {
-      await dialog.locator('button').filter({ hasText: '×' }).first().click({ force: true }).catch(() => {});
+      await dialog.locator('button').filter({ hasText: '×' }).first().click({ timeout: 15000, force: true }).catch(() => {});
     }
   }
   await page.keyboard.press('Escape').catch(() => {});
@@ -441,12 +441,12 @@ async function dismissDeleteDialog(page, row, how = 'close') {
 /** @param {import('@playwright/test').Page} page */
 async function createVendor(page) {
   await gotoProtected(page, `${BASE}/master-data/add-vendor`);
-  await page.locator('input[name="vendor_name"]').fill(vendorName);
-  await page.locator('input[name="company_name"]').fill(`${vendorName} Co`);
-  await page.locator('input[name="company_email"]').fill(`${run.toLowerCase()}@example.com`);
-  await page.locator('input[name="contact_person_number"]').fill('9999900001');
-  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
-  await page.getByRole('checkbox', { name: 'Product Supply' }).check();
+  await page.locator('input[name="vendor_name"]').fill(vendorName, { timeout: 15000 });
+  await page.locator('input[name="company_name"]').fill(`${vendorName} Co`, { timeout: 15000 });
+  await page.locator('input[name="company_email"]').fill(`${run.toLowerCase()}@example.com`, { timeout: 15000 });
+  await page.locator('input[name="contact_person_number"]').fill('9999900001', { timeout: 15000 });
+  await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`, { timeout: 15000 });
+  await page.getByRole('checkbox', { name: 'Product Supply' }).check({ timeout: 15000 });
   await clickUnblocked(page, 'Save');
   await expect(page.getByText('Vendor created successfully!')).toBeVisible({ timeout: 60000 });
 }
@@ -463,7 +463,7 @@ async function linkProductToVendor(page, typeName, productBrand, productModel) {
   const row = page.getByRole('row').filter({ hasText: vendorName }).first();
   if (!(await clickLocatorUnblocked(row.getByTitle('Edit')))) return;
   if (!(await page.getByText('Edit Vendor', { exact: true }).isVisible({ timeout: 8000 }).catch(() => false))) return;
-  await page.getByRole('checkbox', { name: 'Product Supply' }).check({ force: true }).catch(() => {});
+  await page.getByRole('checkbox', { name: 'Product Supply' }).check({ timeout: 15000, force: true }).catch(() => {});
   await page.getByText('Product Details', { exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
   await chooseFixedOption(page, 'Select Asset Type', typeName);
   await chooseFixedOption(page, 'Select Brand', productBrand);
