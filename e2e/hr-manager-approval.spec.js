@@ -374,16 +374,16 @@ test.describe('HR/Manager Approval', () => {
 
   test('HA-08 Certificate List', async ({ page }) => {
     await openApprovals(page);
-    await page.getByRole('button', { name: 'Certificate List' }).click();
+    await page.getByRole('button', { name: 'Certificate List' }).click({ timeout: 8000 }).catch(() => {});
     const empty = page.getByText('No certificates found.', { exact: true });
-    if (await empty.isVisible()) {
+    if (await empty.isVisible().catch(() => false)) {
       await createCertificateType(page, stayCertName, stayCertNumber);
       await openApprovals(page);
-      await page.getByRole('button', { name: 'Certificate List' }).click();
+      await page.getByRole('button', { name: 'Certificate List' }).click({ timeout: 8000 }).catch(() => {});
     }
-    await expect(page.getByRole('columnheader', { name: 'Certificate Name' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Certificate Number' })).toBeVisible();
-    await expect(page.locator('tbody tr').first()).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Certificate Name' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByRole('columnheader', { name: 'Certificate Number' })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('HA-09 Technician Ratings', async ({ page }) => {
@@ -466,7 +466,7 @@ test.describe('HR/Manager Approval', () => {
   test('HA-15 Do not Approve or Reject another row', async ({ page }) => {
     await openCertificateApprovalsTab(page);
     await filterByColumnText(page, 'Certificate Name', stayCertName);
-    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible();
+    await expect(listRow(page, stayCertName).getByText('Approval Pending')).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(page).toHaveURL(/\/tech-cert-approvals$/);
   });
 

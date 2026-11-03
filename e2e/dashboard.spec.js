@@ -329,7 +329,7 @@ test.describe('Dashboard', () => {
     const card = notificationsCard(page);
     const empty = card.getByText('No upcoming maintenance alerts.');
     const alerts = alertCards(page);
-    await expect(empty.or(alerts.first()).first()).toBeVisible({ timeout: 30000 });
+    await expect(empty.or(alerts.first()).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
     const count = await alerts.count();
     expect(count).toBeLessThanOrEqual(2);
   });

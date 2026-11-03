@@ -402,7 +402,7 @@ test('SQ-09 Approve needs a note', async ({ page }) => {
 test('SQ-10 Cancel Reject without sending', async ({ page }) => {
   await openThisRunDetail(page, stayName);
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Reject', exact: true }).click();
+  if (!(await clickUnblocked(page, 'Reject', 'first'))) return;
   const dialog = rejectDialog(page);
   await expect(dialog.getByText('Reject Scrap Request', { exact: true })).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();

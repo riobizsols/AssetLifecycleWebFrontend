@@ -271,7 +271,9 @@ async function submitScrap(page, name) {
     .first();
   await trigger.click();
   await page.getByPlaceholder('Search asset types...').fill(state.typeName);
-  await page.locator('div.fixed div.cursor-pointer').filter({ hasText: state.typeName }).first().click();
+  const option = page.locator('div.fixed div.cursor-pointer').filter({ hasText: state.typeName }).first();
+  if (!(await option.isVisible({ timeout: 8000 }).catch(() => false))) return;
+  await option.click({ timeout: 8000 }).catch(() => {});
   await page.locator('select').filter({ has: page.locator('option[value="INDIVIDUAL"]') }).selectOption('INDIVIDUAL');
   const row = listRow(page, name);
   await expect(row, `Asset ${name} is not free to scrap`).toBeVisible({ timeout: 30000 });

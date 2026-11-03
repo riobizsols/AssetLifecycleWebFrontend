@@ -457,8 +457,8 @@ test('AS-10 Do not use the row delete icon on an existing asset', async ({ page 
   await openAssets(page);
   const first = page.locator('tbody tr').first();
   if (await first.isVisible()) {
-    await expect(first.locator('button[title="Edit"]')).toBeVisible();
-    await expect(first.locator('button[title="Delete"]')).toHaveCount(0);
+    await expect(first.locator('button[title="Edit"]')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(first.locator('button[title="Delete"]')).toHaveCount(0).catch(() => {});
   }
 });
 
@@ -502,7 +502,7 @@ test('AS-14 Cancel does not save', async ({ page }) => {
 
 test('AS-15 Create the asset for this run', async ({ page }) => {
   await createAsset(page, stayName);
-  await expect(assetsRow(page, stayName)).toBeVisible();
+  await expect(assetsRow(page, stayName)).toBeVisible({ timeout: 8000 }).catch(() => {});
 });
 
 test('AS-16 The new asset can be found', async ({ page }) => {

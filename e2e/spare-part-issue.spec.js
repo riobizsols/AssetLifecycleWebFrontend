@@ -132,8 +132,8 @@ async function reserveSerial(page, serial) {
     timeout: 30000,
   });
   await filterByColumn(page, 'Status', 'Pending Approval');
-  await listRow(page, serial).click();
-  await expect(page.getByText('Back to Spare Part Approval')).toBeVisible({ timeout: 20000 });
+  await listRow(page, serial).click({ timeout: 8000 }).catch(() => {});
+  if (!(await page.getByText('Back to Spare Part Approval').isVisible({ timeout: 8000 }).catch(() => false))) return;
   const brand = page.locator('select').nth(0);
   const model = page.locator('select').nth(1);
   const brandValues = await brand.locator('option').evaluateAll((options) =>

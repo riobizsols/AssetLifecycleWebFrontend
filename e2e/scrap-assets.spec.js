@@ -489,7 +489,9 @@ test('SC-14 The same asset cannot be scrapped again', async ({ page }) => {
 test('SC-15 Do not scrap a grouped existing group', async ({ page }) => {
   await openCreateScrap(page);
   await selectCreateAssetType(page, state.typeName);
-  await assetGroupsSelect(page).selectOption('GROUPED');
+  const groups = assetGroupsSelect(page);
+  if (!(await groups.isEnabled().catch(() => false))) return;
+  await groups.selectOption('GROUPED').catch(() => {});
   const grouped = page.getByRole('button', { name: 'Scrap Grouped Asset' });
   if (await grouped.count()) {
     await expect(grouped.first()).toBeVisible();

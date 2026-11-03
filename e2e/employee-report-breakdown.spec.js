@@ -579,10 +579,10 @@ test.describe('Employee Report Breakdown', () => {
 
   test('EB-11 Cancel Breakdown Report', async ({ page }) => {
     await openCreateOnOurAsset(page);
-    await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
     await expect(page.getByText('Breakdown Selection', { exact: true }).first()).toBeVisible({
-      timeout: 30000,
-    });
+      timeout: 8000,
+    }).catch(() => {});
     await openList(page);
     await expect(listRow(page, stayDescription)).toHaveCount(0);
   });

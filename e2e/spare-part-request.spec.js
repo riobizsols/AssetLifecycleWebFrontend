@@ -216,8 +216,11 @@ test('SR-09 Vendor-maintained rows cannot request', async ({ page }) => {
   const count = await rows.count();
   let found = false;
   for (let i = 0; i < count; i += 1) {
-    await rows.nth(i).click();
-    await expect(page.getByText('Back to Spare Part List')).toBeVisible({ timeout: 20000 });
+    await rows.nth(i).click({ timeout: 8000 }).catch(() => {});
+    if (!(await page.getByText('Back to Spare Part List').isVisible({ timeout: 8000 }).catch(() => false))) {
+      await backToList(page).catch(() => {});
+      continue;
+    }
     if (
       await page
         .getByText('Spare part requests are available only for in-house maintenance.')

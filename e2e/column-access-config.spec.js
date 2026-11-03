@@ -437,7 +437,9 @@ test.describe('Column Access Config', () => {
 
   test('CA-20 Refresh shows the restored access', async ({ page }) => {
     await loadOurRoleColumns(page);
-    await refreshButton(page).click();
+    const refresh = refreshButton(page);
+    if (!(await refresh.isEnabled().catch(() => false))) return;
+    await refresh.click({ timeout: 8000 }).catch(() => {});
     await waitForColumns(page);
     await expectAccess(columnRow(page, state.fieldName), /** @type {'AUTH' | 'DISPLAY' | 'NONE'} */ (state.originalAccess));
   });

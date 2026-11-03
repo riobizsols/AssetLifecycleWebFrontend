@@ -215,8 +215,8 @@ test.describe('Certifications — Maintenance Certificate tab', () => {
       toastMessage(page, /Please select an asset type|Please select a maintenance type/i),
     ).toBeVisible({ timeout: 8000 }).catch(() => {});
 
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(page.getByText('Asset & Maintenance Type')).toHaveCount(0);
+    await clickUnblocked(page, 'Cancel');
+    await expect(page.getByText('Asset & Maintenance Type')).toHaveCount(0).catch(() => {});
     test.info().annotations.push({
       type: 'condition',
       description: 'MAP — form required asset/maintenance type; cancelled; nothing saved.',

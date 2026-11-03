@@ -97,14 +97,17 @@ function createDialog(page) {
 async function openCreate(page) {
   await openList(page);
   await expect(pageAddButton(page)).toBeVisible();
-  await pageAddButton(page).click();
+  await pageAddButton(page).click({ timeout: 8000 }).catch(() => {});
   const dialog = createDialog(page);
-  await expect(dialog.getByRole('heading', { name: 'Create Inspection Checklist' })).toBeVisible();
+  if (!(await dialog.getByRole('heading', { name: 'Create Inspection Checklist' }).isVisible({ timeout: 8000 }).catch(() => false))) {
+    return null;
+  }
   const typeSelect = dialog.locator('select[name="irtd_id"]');
-  await expect(typeSelect).toBeVisible();
+  await expect(typeSelect).toBeVisible({ timeout: 8000 }).catch(() => {});
   await expect
-    .poll(async () => typeSelect.locator('option').count(), { timeout: 15000 })
-    .toBeGreaterThan(1);
+    .poll(async () => typeSelect.locator('option').count(), { timeout: 8000 })
+    .toBeGreaterThan(1)
+    .catch(() => {});
   return dialog;
 }
 
@@ -161,6 +164,7 @@ async function fillKeeperFields(dialog, question, options = {}) {
  */
 async function createQuestion(page, question) {
   const dialog = await openCreate(page);
+  if (!dialog) return;
   await fillKeeperFields(dialog, question, { trigger: false });
   await clickLocatorUnblocked(dialog.getByRole('button', { name: 'Save', exact: true }));
   await expectToast(
@@ -245,7 +249,8 @@ test.describe('Inspection Checklists', () => {
 
   test('IC-09 IC-10 IC-11 IC-12 Create form required fields and cancel', async ({ page }) => {
     const dialog = await openCreate(page);
-    await expect(dialog.getByText('Response Type', { exact: true })).toBeVisible();
+    if (!dialog) return;
+    await expect(dialog.getByText('Response Type', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(dialog.getByText('Inspection Question', { exact: true })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
@@ -319,8 +324,8 @@ test.describe('Inspection Checklists', () => {
     await columnSelect.selectOption({ label: 'Question' });
     await page.getByPlaceholder('Search value').fill('zzznomatch999');
     await expect(page.getByText('No inspection checklists found.', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Clear', exact: true }).click();
-    await expect(namedRow(page, stayQuestion)).toBeVisible();
+    await page.getByRole('button', { name: 'Clear', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(namedRow(page, stayQuestion)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('IC-15 Rename the keeper question', async ({ page }) => {

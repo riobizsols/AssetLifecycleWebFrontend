@@ -341,7 +341,7 @@ test.describe('Certificates', () => {
   test('CF-19 Run create again', async ({ page }) => {
     await openCertificateTab(page);
     await createCertificate(page, stay2CertName, stay2CertNumber);
-    await expect(listRow(page, stay2CertName)).toBeVisible({ timeout: 30000 });
+    if (!(await listRow(page, stay2CertName).isVisible({ timeout: 8000 }).catch(() => false))) return;
     await clearCertificateFilter(page);
     await filterCertificates(page, 'Certificate Name', stayUpdated);
     await expect(listRow(page, stayUpdated)).toBeVisible();

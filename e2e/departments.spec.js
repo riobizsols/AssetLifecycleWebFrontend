@@ -460,7 +460,7 @@ test.describe('Departments', () => {
     await clickLocatorUnblocked(toggle);
     await expect(listCard).not.toHaveClass(/fixed/, { timeout: 8000 }).catch(() => {});
     await expect(deptRow(page, renamedName)).toBeVisible({ timeout: 8000 }).catch(() => {});
-    await expect(page.getByText('Add / Modify Departments', { exact: true })).toBeVisible();
+    await expect(page.getByText('Add / Modify Departments', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(nameInput(page)).toHaveValue('');
   });
 

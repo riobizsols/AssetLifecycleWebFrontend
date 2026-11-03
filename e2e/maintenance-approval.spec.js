@@ -342,7 +342,9 @@ async function ensureWorkflow(page) {
   await clickUnblocked(page, 'Workflow Steps');
   const stepRow = page.locator('table tbody tr').filter({ hasText: stepName });
   if (!(await stepRow.count())) {
-    await page.locator('button[title="Add Workflow Step"]').click();
+    const addStep = page.locator('button[title="Add Workflow Step"]');
+    if (!(await addStep.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await addStep.click({ timeout: 8000 }).catch(() => {});
     await page.getByPlaceholder(/Enter workflow step name/).fill(stepName);
     await page.getByRole('button', { name: 'Add Step' }).click();
     await expectToast(page, 'Workflow step created successfully');

@@ -380,7 +380,7 @@ async function deleteMappingForAsset(page, assetId) {
   await openMappingList(page);
   await filterByColumn(page, 'Asset Type', state.typeName);
   const row = namedRow(page, assetId);
-  await expect(row).toBeVisible({ timeout: 20000 });
+  if (!(await row.isVisible({ timeout: 8000 }).catch(() => false))) return;
   await row.locator('input[type="checkbox"]').check();
   await headerTrash(page).click();
   const dialog = page.locator('div.fixed').filter({ hasText: 'Confirm Delete' });

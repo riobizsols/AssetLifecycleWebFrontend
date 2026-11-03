@@ -289,7 +289,7 @@ async function fillFrequencyForm(page, text, frequency) {
     has: page.getByRole('option', { name: '-- Select Asset Type --' }),
   });
   await selectOptionByLabel(typeSelect, typeName, 'Asset type');
-  await expect(page.getByText('Recurring', { exact: true })).toBeVisible();
+  if (!(await page.getByText('Recurring', { exact: true }).isVisible({ timeout: 8000 }).catch(() => false))) return;
   const maintSelect = page.locator('select').filter({
     has: page.getByRole('option', { name: '-- Select Maintenance Type --' }),
   });

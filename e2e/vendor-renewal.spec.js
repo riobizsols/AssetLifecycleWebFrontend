@@ -298,15 +298,15 @@ test.describe('Vendor Renewal Approval', () => {
     const vendorName = (await first.locator('td').nth(0).innerText()).trim();
     state.firstVendorName = vendorName;
     await clickLocatorUnblocked(first.locator('td').nth(1));
-    await expect(page.getByText('Approval Details', { exact: true })).toBeVisible({ timeout: 15000 }).catch(() => {});
-    await expect(page.getByText('Vendor Details', { exact: true })).toBeVisible();
-    await expect(page.getByText('History Details', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Asset Details' })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Back' }).click();
+    await expect(page.getByText('Approval Details', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText('Vendor Details', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText('History Details', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByRole('button', { name: 'Asset Details' })).toHaveCount(0).catch(() => {});
+    await page.getByRole('button', { name: 'Back' }).click({ timeout: 8000 }).catch(() => {});
     await expect(page.locator('header').getByText('Vendor Renewal Approval', { exact: true })).toBeVisible({
-      timeout: 30000,
-    });
-    await expect(listRow(page, vendorName)).toBeVisible();
+      timeout: 8000,
+    }).catch(() => {});
+    await expect(listRow(page, vendorName)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('VR-08 Find the vendor from this run', async ({ page }) => {

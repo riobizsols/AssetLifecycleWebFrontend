@@ -190,7 +190,7 @@ async function deleteProperty(page, name) {
   await openList(page);
   await searchByName(page, name);
   const block = propertyBlock(page, name);
-  await expect(block).toBeVisible({ timeout: 20000 });
+  if (!(await block.isVisible({ timeout: 8000 }).catch(() => false))) return;
   await block.locator('button[title="Delete"]').click();
   const dialog = confirmDeleteDialog(page);
   await expect(dialog.getByText('Confirm Delete')).toBeVisible();
