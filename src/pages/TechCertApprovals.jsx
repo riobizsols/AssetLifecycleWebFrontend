@@ -486,10 +486,10 @@ const TechCertApprovals = () => {
   const filteredUpcomingJobs = useMemo(() => {
     if (!selectedTechnician) return upcomingJobs;
     const name = selectedTechnician.name || selectedTechnician.full_name || "";
-    if (!name) return upcomingJobs;
+    const techId = String(selectedTechnician.emp_int_id || "");
     return upcomingJobs.filter((job) =>
-      String(job.technician_name || "").toLowerCase().includes(String(name).toLowerCase())
-      || String(job.emp_int_id || "") === String(selectedTechnician.emp_int_id || "")
+      (techId && String(job.emp_int_id || "") === techId)
+      || (name && String(job.technician_name || "").toLowerCase().includes(String(name).toLowerCase()))
     );
   }, [upcomingJobs, selectedTechnician]);
 
@@ -1028,6 +1028,7 @@ const TechCertApprovals = () => {
                     headers={[
                       t("techCertApprovals.workOrder"),
                       t("techCertApprovals.technician"),
+                      t("techCertApprovals.maintainedBy"),
                       t("techCertApprovals.maintenanceType"),
                       t("techCertApprovals.startDate"),
                       t("techCertApprovals.status"),
@@ -1037,6 +1038,13 @@ const TechCertApprovals = () => {
                       <tr key={job.ams_id || job.wo_id} className={index % 2 === 0 ? "bg-white" : "bg-slate-50/70"}>
                         <td className="px-4 py-3.5 font-medium text-slate-900">{job.wo_id || "-"}</td>
                         <td className="px-4 py-3.5 text-slate-700">{job.technician_name || "-"}</td>
+                        <td className="px-4 py-3.5 text-slate-700">
+                          <StatusPill>
+                            {job.is_inhouse
+                              ? t("techCertApprovals.inhouse")
+                              : (job.maintained_by || t("techCertApprovals.vendor"))}
+                          </StatusPill>
+                        </td>
                         <td className="px-4 py-3.5 text-slate-700">{job.maintenance_type_name || "-"}</td>
                         <td className="px-4 py-3.5 text-slate-700">{formatDate(job.act_maint_st_date)}</td>
                         <td className="px-4 py-3.5"><StatusPill>{job.status || "-"}</StatusPill></td>
