@@ -28,6 +28,7 @@ import {
   Activity,
   MessageSquareText,
   ClipboardList,
+  ClipboardCheck,
   CalendarClock,
   ListChecks,
   Gauge,
@@ -136,6 +137,18 @@ const AdminSettingsView = () => {
       bgColor: "bg-orange-50",
       iconColor: "text-orange-600",
       borderColor: "border-orange-200",
+    },
+    {
+      app_id: "INSPECTIONWORKFLOW",
+      label: t("navigation.inspectionWorkflow") || "Inspection Workflow",
+      description:
+        "Configure inspection approval steps, sequences, and job roles",
+      icon: ClipboardCheck,
+      route: "/adminsettings/configuration/inspection-workflow",
+      color: "from-sky-500 to-sky-600",
+      bgColor: "bg-sky-50",
+      iconColor: "text-sky-600",
+      borderColor: "border-sky-200",
     },
     {
       app_id: "PROPERTIES",
@@ -251,7 +264,8 @@ const AdminSettingsView = () => {
       ? hasAccess("ONETIMECRON") || hasAccess("ADMINSETTINGS")
       : appId === "JOBMONITOR"
         ? hasAccess("JOBMONITOR") || hasAccess("ADMINSETTINGS")
-        : appId === "INSPECTIONFREQUENCY" ||
+        : appId === "INSPECTIONWORKFLOW" ||
+            appId === "INSPECTIONFREQUENCY" ||
             appId === "INSPECTIONCHECKLISTS" ||
             appId === "ASSETTYPECHECKLISTMAPPING" ||
             appId === "OPCCONFIG"
@@ -288,6 +302,15 @@ const AdminSettingsView = () => {
     const monitorCard = defaultItems.find((d) => d.app_id === "JOBMONITOR");
     if (monitorCard) itemsToShow = [...itemsToShow, monitorCard];
   }
+  if (
+    (hasAccess("ADMINSETTINGS") || hasAccess("INSPECTIONWORKFLOW")) &&
+    !itemsToShow.some((i) => i.app_id === "INSPECTIONWORKFLOW")
+  ) {
+    const inspectionCard = defaultItems.find(
+      (d) => d.app_id === "INSPECTIONWORKFLOW",
+    );
+    if (inspectionCard) itemsToShow = [...itemsToShow, inspectionCard];
+  }
 
   const ensureAdminInspectionCards = [
     "INSPECTIONFREQUENCY",
@@ -314,6 +337,7 @@ const AdminSettingsView = () => {
       BULKSERIALNUMBERPRINT:
         "/adminsettings/configuration/bulk-serial-number-print",
       MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config",
+      INSPECTIONWORKFLOW: "/adminsettings/configuration/inspection-workflow",
       PROPERTIES: "/adminsettings/configuration/properties",
       BREAKDOWNREASONCODES:
         "/adminsettings/configuration/breakdown-reason-codes",
@@ -336,6 +360,7 @@ const AdminSettingsView = () => {
       COLUMNACCESSCONFIG: Shield,
       BULKSERIALNUMBERPRINT: Printer,
       MAINTENANCECONFIG: Wrench,
+      INSPECTIONWORKFLOW: ClipboardCheck,
       PROPERTIES: Tag,
       BREAKDOWNREASONCODES: AlertTriangle,
       CERTIFICATIONS: FileCheck,
@@ -385,6 +410,13 @@ const AdminSettingsView = () => {
         icon: "text-orange-600",
         border: "border-orange-200",
         hover: "hover:from-orange-600 hover:to-orange-700",
+      },
+      INSPECTIONWORKFLOW: {
+        gradient: "from-sky-500 to-sky-600",
+        bg: "bg-sky-50",
+        icon: "text-sky-600",
+        border: "border-sky-200",
+        hover: "hover:from-sky-600 hover:to-sky-700",
       },
       PROPERTIES: {
         gradient: "from-indigo-500 to-indigo-600",

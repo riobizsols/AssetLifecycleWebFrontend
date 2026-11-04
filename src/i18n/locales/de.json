@@ -53,6 +53,7 @@
     "costCenterTransfer": "Kostenstellentransfer",
     "scrapApproval": "Schrottgenehmigung",
     "inspection": "Inspektion",
+    "inspectionWorkflow": "Inspektions-Workflow",
     "inspectionApproval": "Inspektionsgenehmigung",
     "inspectionList": "Inspektionsliste",
     "departmentsAsset": "Abteilungs-Anlagen-Zuordnung",
@@ -3046,6 +3047,7 @@
     "breadcrumbBulkSerialPrint": "Massendruck Seriennummern",
     "breadcrumbConfigurationHub": "Konfiguration",
     "breadcrumbMaintenanceConfig": "Wartungskonfiguration",
+    "breadcrumbInspectionWorkflow": "Inspektions-Workflow",
     "breadcrumbJobRoles": "Jobrollen",
     "breadcrumbPreviousPage": "Zurück"
   },

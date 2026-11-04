@@ -57,6 +57,7 @@
     "costCenterTransfer": "Cost Center Transfer",
     "scrapApproval": "Scrap Approval",
     "inspection": "Inspection",
+    "inspectionWorkflow": "Inspection Workflow",
     "inspectionApproval": "Inspection Approval",
     "inspectionList": "Inspection List",
     "departmentsAsset": "Department–Asset Mapping",
@@ -3286,6 +3287,7 @@
     "breadcrumbBulkSerialPrint": "Bulk Serial Number Print",
     "breadcrumbConfigurationHub": "Configuration",
     "breadcrumbMaintenanceConfig": "Maintenance Configuration",
+    "breadcrumbInspectionWorkflow": "Inspection Workflow",
     "breadcrumbJobRoles": "Job Roles",
     "breadcrumbPreviousPage": "Previous"
   },

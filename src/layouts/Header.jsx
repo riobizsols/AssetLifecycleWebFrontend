@@ -268,6 +268,10 @@ export default function Header() {
       title: t("columnAccessConfig.breadcrumbMaintenanceConfig"),
       subtitle: "",
     },
+    "/adminsettings/configuration/inspection-workflow": {
+      title: t("columnAccessConfig.breadcrumbInspectionWorkflow"),
+      subtitle: "",
+    },
     "/adminsettings/configuration/bulk-serial-number-print": {
       title: t("columnAccessConfig.breadcrumbBulkSerialPrint"),
       subtitle: "",

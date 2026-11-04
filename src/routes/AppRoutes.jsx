@@ -138,6 +138,7 @@ import AdminSettingsLayout from "../layouts/AdminSettingsLayout";
 import ColumnAccessConfig from "../pages/adminSettings/ColumnAccessConfig";
 import OneTimeCron from "../pages/adminSettings/OneTimeCron";
 import MaintenanceConfiguration from "../pages/adminSettings/MaintenanceConfiguration";
+import InspectionWorkflow from "../pages/adminSettings/InspectionWorkflow";
 import Certifications from "../pages/adminSettings/Certifications";
 import InspectionChecklists from "../pages/adminSettings/InspectionChecklists";
 import JobMonitor from "../pages/adminSettings/JobMonitor";
@@ -1541,6 +1542,18 @@ export default function AppRoutes() {
             >
               <AdminSettingsLayout>
                 <MaintenanceConfiguration />
+              </AdminSettingsLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/adminsettings/configuration/inspection-workflow"
+          element={
+            <ProtectedRoute
+              requiredAnyOfAppIds={["INSPECTIONWORKFLOW", "ADMINSETTINGS"]}
+            >
+              <AdminSettingsLayout>
+                <InspectionWorkflow />
               </AdminSettingsLayout>
             </ProtectedRoute>
           }

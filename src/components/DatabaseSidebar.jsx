@@ -66,6 +66,7 @@ import {
   BarChart3,
   UserCheck,
   ClipboardList,
+  ClipboardCheck,
   Truck,
   Briefcase,
   Home,
@@ -1477,6 +1478,7 @@ const ADMIN_SETTINGS_GROUP_MODULES = [
   { app_id: "COLUMNACCESSCONFIG", label: "Column Access Config", seq: 30 },
   { app_id: "BULKSERIALNUMBERPRINT", label: "Bulk Serial Number Print", seq: 40 },
   { app_id: "MAINTENANCECONFIG", label: "Maintenance Configuration", seq: 50 },
+  { app_id: "INSPECTIONWORKFLOW", label: "Inspection Workflow", seq: 55 },
   { app_id: "PROPERTIES", label: "Properties", seq: 60 },
   { app_id: "BREAKDOWNREASONCODES", label: "Breakdown Reason Codes", seq: 70 },
   { app_id: "CERTIFICATIONS", label: "Certifications", seq: 80 },
@@ -1522,6 +1524,7 @@ function canAccessAdminSidebarItem(appId, accessMap, getAccessLevelFn) {
     );
   }
   if (
+    key === "INSPECTIONWORKFLOW" ||
     key === "INSPECTIONFREQUENCY" ||
     key === "INSPECTIONCHECKLISTS" ||
     key === "ASSETTYPECHECKLISTMAPPING"
@@ -1881,6 +1884,7 @@ const DatabaseSidebar = () => {
     AUDITLOGCONFIG: "/audit-log-config", // Audit Log Config route  //done
     COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config", // Column Access Config route
     MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config", // Maintenance Configuration route
+    INSPECTIONWORKFLOW: "/adminsettings/configuration/inspection-workflow",
     CERTIFICATIONS: "/certifications", // Certifications route
     TECHCERTUPLOAD: "/technician-certificates",
     TECHNICIANCERTIFICATES: "/technician-certificates",
@@ -2008,6 +2012,7 @@ const DatabaseSidebar = () => {
       INSPECTION: CheckSquare,
       INSPECTIONVIEW: CheckSquare, // Execution
       INSPECTIONAPPROVAL: ClipboardList, // Approval
+      INSPECTIONWORKFLOW: ClipboardCheck,
       MAINTENANCEAPPROVAL: ClipboardList,
       VENDORRENEWALAPPROVAL: ClipboardList,
       SCRAPMAINTENANCEAPPROVAL: ClipboardList,
@@ -2200,6 +2205,7 @@ const DatabaseSidebar = () => {
         BULKSERIALNUMBERPRINT: "/adminsettings/configuration/bulk-serial-number-print",
         COLUMNACCESSCONFIG: "/adminsettings/configuration/data-config",
         MAINTENANCECONFIG: "/adminsettings/configuration/maintenance-config",
+        INSPECTIONWORKFLOW: "/adminsettings/configuration/inspection-workflow",
         PROPERTIES: "/adminsettings/configuration/properties",
         BREAKDOWNREASONCODES: "/adminsettings/configuration/breakdown-reason-codes",
         CERTIFICATIONS: "/adminsettings/configuration/certifications",
@@ -2350,6 +2356,7 @@ const DatabaseSidebar = () => {
   const adminSettingsRoutes = [
     "COLUMNACCESSCONFIG",
     "MAINTENANCECONFIG",
+    "INSPECTIONWORKFLOW",
     "PROPERTIES",
     "BREAKDOWNREASONCODES",
     "USERROLES",
