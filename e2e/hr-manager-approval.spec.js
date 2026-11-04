@@ -6,7 +6,7 @@ import { headerAddButton } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
-const run = `PW-HA-${Date.now().toString(36)}`;
+const run = `PW-HA-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const approvalsUrl = `${BASE}/tech-cert-approvals`;
 const uploadUrl = `${BASE}/technician-certificates`;
 const certificationsUrl = `${BASE}/certifications`;
@@ -82,7 +82,7 @@ async function realOptions(select) {
 function labeledSelect(page, label) {
   return page
     .locator('label')
-    .filter({ hasText: new RegExp(`^${label}$`) })
+    .filter({ hasText: new RegExp('^' + label + '(?:\\s*\\*)?$') })
     .locator('xpath=..')
     .locator('select')
     .first();
@@ -140,7 +140,8 @@ async function openApprovals(page) {
   await expect(
     page
       .getByRole('columnheader', { name: 'Employee' })
-      .or(page.getByText('No pending approvals.', { exact: true })),
+      .or(page.getByText('No pending approvals.', { exact: true }))
+    .first(),
   ).toBeVisible({ timeout: 45000 });
 }
 
@@ -417,7 +418,8 @@ test.describe('HR/Manager Approval', () => {
     await expect(
       page
         .getByRole('columnheader', { name: 'Work Order' })
-        .or(page.getByText('No job history found for this technician.', { exact: true })),
+        .or(page.getByText('No job history found for this technician.', { exact: true }))
+      .first(),
     ).toBeVisible({ timeout: 30000 });
   });
 
@@ -428,7 +430,8 @@ test.describe('HR/Manager Approval', () => {
     await expect(
       page
         .getByRole('columnheader', { name: 'Work Order' })
-        .or(page.getByText('No upcoming jobs found.', { exact: true })),
+        .or(page.getByText('No upcoming jobs found.', { exact: true }))
+      .first(),
     ).toBeVisible({ timeout: 30000 });
   });
 
