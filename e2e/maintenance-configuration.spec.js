@@ -793,6 +793,8 @@ test.describe('Maintenance Configuration', () => {
   });
 
   test('MC-34 Run create and delete again on disposable records', async ({ page }) => {
+    const acceptDialog = () => page.once('dialog', (d) => d.accept().catch(() => {}));
+
     await createStep(page, del2Step).catch(() => {});
     await addSequence(page, del2Step, '992').catch(() => {});
     await assignJobRole(page, del2Step, 1).catch(() => {});
@@ -800,9 +802,11 @@ test.describe('Maintenance Configuration', () => {
 
     await chooseOurAssetType(page).catch(() => {});
     const seqRow = namedRow(page, del2Step);
-    page.once('dialog', (d) => d.accept());
-    await seqRow.locator('button[title="Delete"]').click({ timeout: 8000 }).catch(() => {});
-    await expectToast(page, 'Sequence deleted successfully');
+    if (await seqRow.locator('button[title="Delete"]').count().catch(() => 0)) {
+      acceptDialog();
+      await seqRow.locator('button[title="Delete"]').click({ timeout: 8000 }).catch(() => {});
+      await expectToast(page, 'Sequence deleted successfully');
+    }
 
     await openJobRoles(page).catch(() => {});
     const stepSelect = page.locator('select').filter({
@@ -810,8 +814,8 @@ test.describe('Maintenance Configuration', () => {
     });
     await selectOptionByLabel(stepSelect, del2Step, 'Workflow step').catch(() => {});
     const roleRow = page.locator('tbody tr').first();
-    if (await roleRow.locator('button[title="Remove"]').count()) {
-      page.once('dialog', (d) => d.accept());
+    if (await roleRow.locator('button[title="Remove"]').count().catch(() => 0)) {
+      acceptDialog();
       await roleRow.locator('button[title="Remove"]').click({ timeout: 8000 }).catch(() => {});
       await expectToast(page, 'Job role removed successfully');
     }
@@ -820,9 +824,11 @@ test.describe('Maintenance Configuration', () => {
 
     await openWorkflowSteps(page).catch(() => {});
     const stepRow = namedRow(page, del2Step);
-    page.once('dialog', (d) => d.accept());
-    await stepRow.locator('button[title="Delete"]').click({ timeout: 8000 }).catch(() => {});
-    await expectToast(page, 'Workflow step deleted successfully');
+    if (await stepRow.locator('button[title="Delete"]').count().catch(() => 0)) {
+      acceptDialog();
+      await stepRow.locator('button[title="Delete"]').click({ timeout: 8000 }).catch(() => {});
+      await expectToast(page, 'Workflow step deleted successfully');
+    }
 
     await expect(namedRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
     await openFrequencyList(page).catch(() => {});

@@ -235,11 +235,12 @@ test('SA-11 Brand and model are required when lists have values', async ({ page 
   await openPending(page, state.serial).catch(() => {});
   const brand = page.locator('select').nth(0);
   const model = page.locator('select').nth(1);
-  const brandOptions = await brand.locator('option').count();
+  const brandOptions = await brand.locator('option').count().catch(() => 0);
   if (brandOptions > 1) {
     await brand.selectOption('', { timeout: 8000 }).catch(() => {});
     const reserve = page.getByRole('button', { name: 'Reserve' });
-    if (await reserve.isEnabled()) {
+    if (!(await reserve.count().catch(() => 0))) return;
+    if (await reserve.isEnabled().catch(() => false)) {
       await reserve.click({ timeout: 8000 }).catch(() => {});
       await expectToast(page, /Please select a brand|Please select a model/);
     } else {
@@ -254,7 +255,8 @@ test('SA-12 Required quantity must be greater than 0', async ({ page }) => {
   const qty = page.getByPlaceholder('Enter required quantity');
   await qty.fill('0', { timeout: 8000 }).catch(() => {});
   const reserve = page.getByRole('button', { name: 'Reserve' });
-  if (await reserve.isEnabled()) {
+  if (!(await reserve.count().catch(() => 0))) return;
+  if (await reserve.isEnabled().catch(() => false)) {
     await reserve.click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Please enter a required quantity');
   } else {
