@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Save } from 'lucide-react';
+import { Save, Trash2 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { utilityService } from '../../services/utilityService';
 import {
@@ -11,7 +11,8 @@ import {
   utilityPrimaryBtn,
 } from './UtilityUi';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () =>
+  new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
 export default function UtilityConsumption() {
   const [searchParams] = useSearchParams();
@@ -27,13 +28,18 @@ export default function UtilityConsumption() {
   const [assetId, setAssetId] = useState(queryAssetId);
   const [reading, setReading] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [date, setDate] = useState(queryDate || today());
+  const [date, setDate] = useState(() => {
+    const t = today();
+    return queryDate && queryDate <= t ? queryDate : t;
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [recordUtility, setRecordUtility] = useState('');
   const [recordDateFrom, setRecordDateFrom] = useState('');
   const [recordDateTo, setRecordDateTo] = useState('');
   const [dateOrder, setDateOrder] = useState('desc');
+  const [deletingId, setDeletingId] = useState('');
+  const todayStr = today();
 
   const utilities = useMemo(() => {
     const map = new Map();
@@ -137,7 +143,9 @@ export default function UtilityConsumption() {
     if (next.utilId !== utilId) setUtilId(next.utilId);
     if (next.utildId !== utildId) setUtildId(next.utildId);
     if (queryAssetId && queryAssetId !== assetId) setAssetId(queryAssetId);
-    if (queryDate && queryDate !== date) setDate(queryDate);
+    if (queryDate && queryDate !== date) {
+      setDate(queryDate > today() ? today() : queryDate);
+    }
     // Only re-run when details or query params change — not on every utilId edit
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [details, queryUtilId, queryUtildId, queryAssetId, queryDate, resolveSelection]);
@@ -184,6 +192,7 @@ export default function UtilityConsumption() {
     if (!utilId) return toast.error('Utility is required');
     if (!utildId) return toast.error('Consumption metric is required');
     if (!date) return toast.error('Consumption date is required');
+    if (date > today()) return toast.error('Consumption date cannot be in the future');
     setSaving(true);
     try {
       const payload = {
@@ -199,7 +208,12 @@ export default function UtilityConsumption() {
         payload.quantity_consumed = Number(quantity);
       }
       const row = await utilityService.createConsumption(payload);
-      toast.success(`Saved · consumed ${row.quantity_consumed ?? '—'}`);
+      const recalc = Number(row?.later_readings_recalculated) || 0;
+      toast.success(
+        recalc
+          ? `Saved · consumed ${row.quantity_consumed ?? '—'} · ${recalc} later reading${recalc === 1 ? '' : 's'} recalculated`
+          : `Saved · consumed ${row.quantity_consumed ?? '—'}`,
+      );
       setReading('');
       setQuantity('');
       await load({ silent: true });
@@ -210,10 +224,39 @@ export default function UtilityConsumption() {
     }
   };
 
+  const removeReading = async (row) => {
+    const day = row.consumption_date ? String(row.consumption_date).slice(0, 10) : 'this date';
+    if (
+      !window.confirm(
+        `Delete the reading for ${day}? Later readings for this meter will be recalculated. To change this date you must delete it and enter it again.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(row.utcv_id);
+    try {
+      const result = await utilityService.deleteConsumption(row.utcv_id);
+      const recalc = Number(result?.later_readings_recalculated) || 0;
+      toast.success(
+        recalc
+          ? `Deleted · ${recalc} later reading${recalc === 1 ? '' : 's'} recalculated`
+          : 'Reading deleted',
+      );
+      await load({ silent: true });
+    } catch (err) {
+      toast.error(err?.response?.data?.error || err.message || 'Delete failed');
+    } finally {
+      setDeletingId('');
+    }
+  };
+
   return (
     <UtilityPageShell loading={loading}>
       <div className="space-y-5">
-        <UtilityPanel title="New consumption entry">
+        <UtilityPanel
+          title="New consumption entry"
+          description="Future dates are not allowed. To change a saved date, delete that reading and enter it again — later readings are recalculated automatically."
+        >
           {assetId ? (
             <p className="mb-3 text-xs text-[#5A6B7C]">
               Recording for asset <span className="font-semibold text-[#0E2F4B]">{assetId}</span>
@@ -283,7 +326,11 @@ export default function UtilityConsumption() {
                 type="date"
                 className={utilityInputClass}
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                max={todayStr}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setDate(next && next > today() ? today() : next);
+                }}
                 required
               />
             </UtilityField>
@@ -379,12 +426,13 @@ export default function UtilityConsumption() {
                   <th className="px-4 py-2.5 font-semibold">Utility</th>
                   <th className="px-4 py-2.5 font-semibold">Reading</th>
                   <th className="px-4 py-2.5 font-semibold">Qty consumed</th>
+                  <th className="px-4 py-2.5" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E8EEF4]">
                 {visibleRows.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-12 text-center text-sm text-[#5A6B7C]">
+                    <td colSpan={5} className="px-4 py-12 text-center text-sm text-[#5A6B7C]">
                       {rows.length === 0
                         ? 'No consumption recorded yet'
                         : 'No records match these filters'}
@@ -409,6 +457,18 @@ export default function UtilityConsumption() {
                     <td className="px-4 py-2.5 text-[#334155]">{r.reading ?? '—'}</td>
                     <td className="px-4 py-2.5 text-[#334155]">
                       {r.quantity_consumed ?? '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => removeReading(r)}
+                        disabled={deletingId === r.utcv_id}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#B42318] transition hover:bg-[#FEF3F2] disabled:opacity-50"
+                        title="Delete reading"
+                        aria-label="Delete reading"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

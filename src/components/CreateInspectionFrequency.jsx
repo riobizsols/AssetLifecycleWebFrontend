@@ -32,21 +32,14 @@ const CreateInspectionFrequency = () => {
   const [text, setText] = useState('');
   const [maintainedBy, setMaintainedBy] = useState('In-House');
 
-  // Fetch asset type checklist mappings
   const fetchChecklistMappings = async () => {
     try {
-      const res = await API.get('/asset-type-checklist-mapping/all');
-      if (res.data && res.data.data && Array.isArray(res.data.data)) {
-        // Transform data to include a display name
-        const mappingsWithDisplay = res.data.data.map(m => ({
-          ...m,
-          displayName: `${m.asset_type_name}${m.asset_name ? ` (${m.asset_name})` : ' (All Assets)'}`,
-          rowId: m.asset_id ? `${m.at_id}_${m.asset_id}` : m.at_id
-        }));
-        setAssetTypeChecklistMappings(mappingsWithDisplay);
-      }
+      const rows = await useInspectionFrequencyStore
+        .getState()
+        .fetchMappings({ revalidate: true, force: true });
+      setAssetTypeChecklistMappings(Array.isArray(rows) ? rows : []);
     } catch (error) {
-      console.error('Error fetching checklist mappings:', error);
+      console.error('Error fetching inspection asset types:', error);
       showBackendTextToast({ toast, tmdId: 'TMD_FAILED_TO_FETCH_ASSET_TYPE_MAPPINGS_4279A773', fallbackText: 'Failed to fetch asset type mappings', type: 'error' });
       setAssetTypeChecklistMappings([]);
     }
@@ -134,7 +127,7 @@ const CreateInspectionFrequency = () => {
       
       const detailedItems = mappingDetails.data?.data || [];
       if (detailedItems.length === 0) {
-        showBackendTextToast({ toast, tmdId: 'TMD_NO_CHECKLIST_ITEMS_FOUND_FOR_THIS_MAPPING_0CEAE826', fallbackText: 'No checklist items found for this mapping', type: 'error' });
+        showBackendTextToast({ toast, tmdId: 'TMD_NO_CHECKLIST_ITEMS_FOUND_FOR_THIS_MAPPING_0CEAE826', fallbackText: 'Map an inspection checklist for this asset type first', type: 'error' });
         setIsSubmitting(false);
         return;
       }

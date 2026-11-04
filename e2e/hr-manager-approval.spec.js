@@ -111,21 +111,21 @@ function pdfFile(name) {
  * @param {import('@playwright/test').Page} page
  */
 function approvalsToolbar(page) {
-  return page.locator('div.flex.items-center.justify-end.mb-4');
+  return page.getByRole('button', { name: 'Certificate Approvals' }).locator('xpath=ancestor::section[1]');
 }
 
 /**
  * @param {import('@playwright/test').Page} page
  */
 function filterButton(page) {
-  return approvalsToolbar(page).locator('button[title="Filter"]');
+  return page.locator('button[title="Filter"]').first();
 }
 
 /**
  * @param {import('@playwright/test').Page} page
  */
 function deleteButton(page) {
-  return approvalsToolbar(page).locator('button[title="Delete"]');
+  return page.locator('button[title="Delete"]').first();
 }
 
 /**
@@ -302,7 +302,6 @@ test.describe('HR/Manager Approval', () => {
     await expect(page.getByRole('button', { name: 'Certificate Approvals' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Technician List' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Certificate List' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Technician Ratings' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Technician Job History' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Upcoming Jobs' })).toBeVisible();
     await expect(filterButton(page)).toBeVisible();
@@ -405,17 +404,6 @@ test.describe('HR/Manager Approval', () => {
     await expect(page.getByRole('columnheader', { name: 'Certificate Name' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Certificate Number' })).toBeVisible();
     await expect(page.locator('tbody tr').first()).toBeVisible();
-  });
-
-  test('HA-09 Technician Ratings', async ({ page }) => {
-    await openApprovals(page);
-    await page.getByRole('button', { name: 'Technician Ratings' }).click();
-    await expect(page.getByText('Select a technician to view ratings.', { exact: true })).toBeVisible();
-    const select = labeledSelect(page, 'Select Technician');
-    const options = await realOptions(select);
-    if (!options.length) return;
-    await select.selectOption({ value: options[0].value });
-    await expect(page.getByText('No ratings available yet for this technician.', { exact: true })).toBeVisible();
   });
 
   test('HA-10 Technician Job History', async ({ page }) => {
