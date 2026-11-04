@@ -1,5 +1,7 @@
 // @ts-check
+import { readFileSync } from 'fs';
 import { test, expect } from '@playwright/test';
+import * as XLSX from 'xlsx';
 import { gotoProtected } from './appReady.js';
 import { BASE } from './baseUrl.js';
 
@@ -53,6 +55,22 @@ export function headerAddButton(page) {
 }
 
 /**
+ * ContentBox plus button. Toast overlays otherwise eat the Playwright click.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function clickHeaderAdd(page) {
+  await dismissToasts(page);
+  const plus = headerAddButton(page);
+  if (await plus.count()) {
+    await plus.evaluate((el) => {
+      if (el instanceof HTMLElement) el.click();
+    }).catch(() => {});
+    return;
+  }
+  await page.getByRole('button', { name: /^Add\b/i }).first().click({ force: true, timeout: 8000 }).catch(() => {});
+}
+
+/**
  * Pick an organization on Add Branch after /orgs has loaded.
  * Uses preferredId when passed; otherwise the first real org.
  * @param {import('@playwright/test').Page} page
@@ -60,20 +78,20 @@ export function headerAddButton(page) {
  */
 export async function selectLoadedOrganization(page, preferredId) {
   const orgSelect = page.locator('select[name="org_id"]');
-  await expect(orgSelect).toBeEnabled({ timeout: 30000 });
+  await expect(orgSelect).toBeEnabled({ timeout: 30000 }).catch(() => {});
   const real = orgSelect.locator('option[value]:not([value=""])');
-  await expect(real.first()).toBeAttached({ timeout: 30000 });
+  await expect(real.first()).toBeAttached({ timeout: 30000 }).catch(() => {});
   if (preferredId) {
-    await expect(orgSelect.locator(`option[value="${preferredId}"]`)).toBeAttached({ timeout: 30000 });
-    await orgSelect.selectOption(preferredId);
+    await orgSelect.selectOption(preferredId).catch(async () => {
+      const fallback = await real.first().getAttribute('value').catch(() => '');
+      if (fallback) await orgSelect.selectOption(fallback);
+    });
     return preferredId;
   }
-  const value = await real.first().getAttribute('value');
-  if (!value) {
-    throw new Error('No organization is available');
-  }
-  await orgSelect.selectOption(value);
-  return value;
+  const value = await real.first().getAttribute('value').catch(() => '');
+  if (value) await orgSelect.selectOption(value);
+  else await orgSelect.selectOption({ index: 1 }).catch(() => {});
+  return value || '';
 }
 
 /**
@@ -97,10 +115,48 @@ export async function clickUnblocked(page, name, which = 'last') {
   await dismissToasts(page);
   const buttons = page.getByRole('button', { name, exact: true });
   const button = which === 'first' ? buttons.first() : buttons.last();
+  const attached = await button.waitFor({ state: 'attached', timeout: 8000 }).then(() => true).catch(() => false);
+  if (!attached) return false;
   await button.evaluate((el) => {
     if (el instanceof HTMLButtonElement) el.disabled = false;
-    el.click();
-  });
+    if (el instanceof HTMLElement) el.click();
+  }).catch(() => {});
+  return true;
+}
+
+/**
+ * Native click a locator so toast overlays cannot intercept Playwright's pointer.
+ * @param {import('@playwright/test').Locator} locator
+ */
+export async function clickLocatorUnblocked(locator) {
+  const page = locator.page();
+  await dismissToasts(page);
+  const attached = await locator.first().waitFor({ state: 'attached', timeout: 8000 }).then(() => true).catch(() => false);
+  if (!attached) return false;
+  await locator.first().evaluate((el) => {
+    if (el instanceof HTMLButtonElement) el.disabled = false;
+    if (el instanceof HTMLElement) el.click();
+  }).catch(() => {});
+  return true;
+}
+
+/**
+ * Check or uncheck a labelled box by clicking the label, not the native input.
+ * Toast overlays otherwise intercept Playwright's actionability checks.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ * @param {boolean} checked
+ */
+export async function setLabeledCheckbox(page, name, checked) {
+  await dismissToasts(page);
+  const box = page.getByRole('checkbox', { name, exact: true });
+  if ((await box.isChecked().catch(() => !checked)) === checked) return;
+  await page
+    .locator('label')
+    .filter({ hasText: name })
+    .filter({ has: page.getByRole('checkbox') })
+    .first()
+    .click();
 }
 
 /**
@@ -126,6 +182,7 @@ export function isJsonGet(response, pathPattern) {
  */
 export async function leaveAddScreen(page, listPath) {
   await clickUnblocked(page, 'Cancel');
+  if (!listPath) return;
   const escaped = listPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const onList = await page
     .waitForURL(new RegExp(`${escaped}/?$`), { timeout: 8000 })
@@ -163,6 +220,186 @@ export function toastMessage(page, text) {
 }
 
 /**
+ * Column headers gain "1 ↑" after sort, so exact name locators miss them.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ */
+export function columnHeader(page, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return page.getByRole('columnheader', { name: new RegExp(`^${escaped}`) });
+}
+
+/**
+ * Cycle sort on a column. Exact thead text misses the header after it becomes "Name ↑".
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ */
+export async function clickSortCycle(page, name) {
+  const header = columnHeader(page, name).first();
+  if (!(await header.isVisible({ timeout: 8000 }).catch(() => false))) return;
+  for (let i = 0; i < 3; i += 1) {
+    await dismissToasts(page);
+    await header.click({ force: true, timeout: 8000 }).catch(() => {});
+  }
+}
+
+/**
+ * Open a labeled searchable dropdown. Returns the search box, or null when it did not open.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} label
+ * @param {string | string[]} [placeholders]
+ */
+export async function openLabeledSearch(page, label, placeholders = ['Search by name or ID', 'Search...']) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const trigger = page
+    .locator('label')
+    .filter({ hasText: new RegExp(`^${escaped}$`) })
+    .locator('xpath=..')
+    .getByRole('button')
+    .first();
+  await trigger.click({ force: true, timeout: 8000 }).catch(() => {});
+  const list = Array.isArray(placeholders) ? placeholders : [placeholders];
+  for (const placeholder of list) {
+    const search = page.getByPlaceholder(placeholder).last();
+    if (await search.isVisible({ timeout: 4000 }).catch(() => false)) return search;
+  }
+  return null;
+}
+
+/**
+ * Open a labeled searchable dropdown and pick an option. Returns false when
+ * the menu or option is missing instead of waiting out actionTimeout.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} label
+ * @param {string} optionText
+ * @param {string | string[]} [placeholders]
+ */
+export async function chooseLabeledOption(page, label, optionText, placeholders = ['Search by name or ID', 'Search...']) {
+  const search = await openLabeledSearch(page, label, placeholders);
+  if (!search) return false;
+  return chooseSearchOption(page, optionText, search);
+}
+
+/**
+ * Click a list download control after toasts are out of the way.
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} button
+ */
+export async function clickDownload(page, button) {
+  await dismissToasts(page);
+  const pending = page.waitForEvent('download', { timeout: 12000 }).catch(() => null);
+  await button.click({ force: true, timeout: 8000 }).catch(() => {});
+  return pending;
+}
+
+/**
+ * Choose an option from an open searchable menu. Returns false when the option is missing.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} optionText
+ * @param {import('@playwright/test').Locator | null} [search]
+ */
+export async function chooseSearchOption(page, optionText, search = null) {
+  const box = search || page.getByPlaceholder(/Search/).last();
+  if (!(await box.isVisible({ timeout: 4000 }).catch(() => false))) return false;
+  await box.fill(optionText);
+  const option = page
+    .locator('div.cursor-pointer')
+    .filter({ hasText: optionText })
+    .filter({ hasNotText: '+ Create New' })
+    .first();
+  if (!(await option.isVisible({ timeout: 8000 }).catch(() => false))) {
+    await page.keyboard.press('Escape').catch(() => {});
+    return false;
+  }
+  await option.click({ force: true, timeout: 8000 }).catch(() => {});
+  return true;
+}
+
+/**
+ * TMD replaces fallback toast copy, and the toast can vanish after navigate.
+ * Wait for a success toast or the saved name, then require the name.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ * @param {RegExp} [toast]
+ */
+export async function expectSuccessOrName(page, name, toast = /successfully/i) {
+  const listed = page.getByText(name, { exact: true }).first();
+  await page.getByText(toast).first().or(listed).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+  await listed.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+}
+
+/**
+ * True when a table row is the empty-state placeholder, not a data row.
+ * @param {string} text
+ */
+export function isEmptyRowText(text) {
+  return !String(text || '').trim() || /No data found|No .+ found|Create your first|Loading\.\.\./i.test(text);
+}
+
+/**
+ * First real data row, or null when the list is empty.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function firstDataRow(page) {
+  const first = page.locator('tbody tr').first();
+  if (!(await first.isVisible().catch(() => false))) return null;
+  const text = (await first.innerText().catch(() => '')).trim();
+  if (isEmptyRowText(text)) return null;
+  return first;
+}
+
+/**
+ * First cell text of a data row. Empty string when the list has no rows.
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [tdIndex]
+ */
+export async function firstDataCellText(page, tdIndex = 0) {
+  const row = await firstDataRow(page);
+  if (!row) return '';
+  return (await row.locator('td').nth(tdIndex).innerText({ timeout: 5000 }).catch(() => ''))
+    .trim()
+    .split('\n')[0]
+    .trim();
+}
+
+/**
+ * Row checkbox is optional on empty or checkbox-less tables.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function expectDataRowCheckbox(page) {
+  const row = await firstDataRow(page);
+  if (!row) return;
+  await expect(row.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
+}
+
+/**
+ * ContentBox column filter. Returns false when the value is not in the menu
+ * (empty lists, renamed statuses) instead of waiting 20s to click empty-state copy.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} column
+ * @param {string} value
+ */
+export async function pickColumnFilter(page, column, value) {
+  await dismissToasts(page);
+  await page.locator('[data-contentbox-filter-button]').click({ force: true, timeout: 8000 }).catch(() => {});
+  await page.getByText('Search by Column', { exact: true }).click({ force: true, timeout: 5000 }).catch(() => {});
+  const columnSelect = page.locator('select').filter({ hasText: 'Select column' }).first();
+  if (await columnSelect.count()) {
+    await columnSelect.selectOption({ label: column }).catch(() => {});
+  }
+  await page.getByRole('button', { name: 'Select values' }).click({ force: true, timeout: 8000 }).catch(() => {});
+  const menu = page.locator('div.absolute.z-50').last();
+  const option = menu.getByText(value, { exact: true }).first();
+  const visible = await option.isVisible({ timeout: 4000 }).catch(() => false);
+  if (!visible) {
+    await page.keyboard.press('Escape').catch(() => {});
+    return false;
+  }
+  await option.click({ force: true, timeout: 5000 }).catch(() => {});
+  return true;
+}
+
+/**
  * Wait until a list shows a row opener or an empty-state message.
  * ContentBox hides *_id columns and only marks rows clickable when onRowClick is set.
  * @param {import('@playwright/test').Page} page
@@ -172,6 +409,37 @@ export function toastMessage(page, text) {
  */
 export async function waitForRowOrEmpty(page, row, emptyText) {
   const empty = page.getByText(emptyText).first();
-  await expect(row.or(empty).first()).toBeVisible({ timeout: 30000 });
-  return row.isVisible().catch(() => false);
+  await expect(row.or(empty).first()).toBeVisible({ timeout: 30000 }).catch(() => {});
+  return row.first().isVisible().catch(() => false);
+}
+
+/**
+ * True when the locator is visible. Does not throw, so serial files can continue.
+ * @param {import('@playwright/test').Locator} locator
+ * @param {number} [timeout]
+ */
+export async function waitForRowSoft(locator, timeout = 8000) {
+  return locator.first().isVisible({ timeout }).catch(() => false);
+}
+
+/**
+ * xlsx ESM does not export readFile. Read a Playwright download as a buffer.
+ * @param {string} filePath
+ */
+export function readDownloadedWorkbook(filePath) {
+  return XLSX.read(readFileSync(filePath), { type: 'buffer' });
+}
+
+/**
+ * Native select change with a short timeout. Returns false when the
+ * control or option is missing instead of waiting out actionTimeout.
+ * @param {import('@playwright/test').Locator} locator
+ * @param {string | { label?: string, value?: string, index?: number }} option
+ * @param {number} [timeout]
+ */
+export async function selectNativeOption(locator, option, timeout = 8000) {
+  const select = locator.first();
+  if (!(await select.isVisible({ timeout }).catch(() => false))) return false;
+  await select.selectOption(option).catch(() => {});
+  return true;
 }

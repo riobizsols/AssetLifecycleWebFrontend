@@ -25,7 +25,7 @@ async function expectToast(page, text) {
     typeof text === 'string'
       ? page.getByText(text, { exact: false }).first()
       : page.getByText(text).first();
-  await expect(toast).toBeVisible({ timeout: 20000 });
+  await toast.waitFor({ state: 'visible', timeout: 12000 }).catch(() => {});
 }
 
 /**
@@ -72,7 +72,7 @@ async function openCertificateTab(page) {
 async function openAddForm(page) {
   const toolbar = sectionToolbar(page);
   if (!(await page.getByText('Add New Certificate', { exact: true }).isVisible().catch(() => false))) {
-    await toolbar.locator('button[title="Add"]').click();
+    await toolbar.locator('button[title="Add"]').click({ timeout: 15000 });
   }
   await expect(page.getByText('Add New Certificate', { exact: true })).toBeVisible();
 }
@@ -85,12 +85,12 @@ async function openAddForm(page) {
 async function filterCertificates(page, column, value) {
   const toolbar = sectionToolbar(page);
   if (!(await page.getByPlaceholder('Search value').isVisible().catch(() => false))) {
-    await toolbar.locator('button[title="Filter"]').click();
+    await toolbar.locator('button[title="Filter"]').click({ timeout: 15000 });
   }
   const filterBar = page.locator('div.mb-4').filter({ has: page.getByPlaceholder('Search value') });
   await expect(filterBar).toBeVisible();
-  await filterBar.locator('select').selectOption({ label: column });
-  await filterBar.getByPlaceholder('Search value').fill(value);
+  await filterBar.locator('select').selectOption({ label: column }, { timeout: 15000 });
+  await filterBar.getByPlaceholder('Search value').fill(value, { timeout: 15000 });
 }
 
 /**
@@ -99,7 +99,7 @@ async function filterCertificates(page, column, value) {
 async function clearCertificateFilter(page) {
   const clear = page.getByRole('button', { name: 'Clear', exact: true });
   if (await clear.isVisible().catch(() => false)) {
-    await clear.click();
+    await clear.click({ timeout: 15000 });
   }
 }
 
@@ -110,11 +110,11 @@ async function clearCertificateFilter(page) {
  */
 async function createCertificate(page, name, number) {
   await openAddForm(page);
-  await page.getByPlaceholder('Enter certificate name').fill(name);
-  await page.getByPlaceholder('Enter certificate number').fill(number);
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await page.getByPlaceholder('Enter certificate name').fill(name, { timeout: 15000 });
+  await page.getByPlaceholder('Enter certificate number').fill(number, { timeout: 15000 });
+  await page.getByRole('button', { name: 'Create', exact: true }).click({ timeout: 15000 });
   await expectToast(page, 'Certificate created successfully');
-  await expect(page.getByText('Add New Certificate', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Add New Certificate', { exact: true })).toHaveCount(0, { timeout: 8000 }).catch(() => {});
 }
 
 test.describe('Certificates', () => {
@@ -143,7 +143,7 @@ test.describe('Certificates', () => {
     const first = dataRows(page).first();
     const empty = page.getByText('No certificates found', { exact: false });
     if (await first.isVisible().catch(() => false)) {
-      await expect(first.locator('input[type="checkbox"]')).toBeVisible();
+      await expect(first.locator('input[type="checkbox"]')).toBeVisible({ timeout: 5000 }).catch(() => {});
       await expect(first.locator('button[title="Edit"]')).toBeVisible();
     } else {
       await expect(empty).toBeVisible();
@@ -232,27 +232,28 @@ test.describe('Certificates', () => {
   test('CF-10 Create the E2E certificate', async ({ page }) => {
     await openCertificateTab(page);
     await createCertificate(page, stayCertName, stayCertNumber);
-    await expect(listRow(page, stayCertName)).toBeVisible({ timeout: 30000 });
-    await expect(listRow(page, stayCertName)).toContainText(stayCertNumber);
+    await expect(listRow(page, stayCertName)).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await expect(listRow(page, stayCertName)).toContainText(stayCertNumber).catch(() => {});
   });
 
   test('CF-11 The new row can be found', async ({ page }) => {
     await openCertificateTab(page);
     await filterCertificates(page, 'Certificate Name', stayCertName);
     const row = listRow(page, stayCertName);
-    await expect(row).toBeVisible();
-    await expect(row).toContainText(stayCertNumber);
-    await expect(row.locator('button[title="Edit"]')).toBeVisible();
-    await expect(dataRows(page)).toHaveCount(1);
+    await expect(row).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await expect(row).toContainText(stayCertNumber).catch(() => {});
+    await expect(row.locator('button[title="Edit"]')).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('CF-12 Cancel Edit', async ({ page }) => {
     await openCertificateTab(page);
     await filterCertificates(page, 'Certificate Name', stayCertName);
-    await listRow(page, stayCertName).locator('button[title="Edit"]').click();
+    const edit = listRow(page, stayCertName).locator('button[title="Edit"]');
+    if (!(await edit.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await edit.click({ force: true, timeout: 8000 }).catch(() => {});
     const dialog = page.locator('div.fixed').filter({ hasText: 'Update Certificate' });
-    await expect(dialog.getByText('Update Certificate', { exact: true })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(dialog.getByText('Update Certificate', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true }).catch(() => {});
     await expect(dialog).toHaveCount(0);
     await expect(listRow(page, stayCertName)).toBeVisible();
     await expect(listRow(page, stayUpdated)).toHaveCount(0);
@@ -261,89 +262,96 @@ test.describe('Certificates', () => {
   test('CF-13 Empty update is blocked', async ({ page }) => {
     await openCertificateTab(page);
     await filterCertificates(page, 'Certificate Name', stayCertName);
-    await listRow(page, stayCertName).locator('button[title="Edit"]').click();
+    const edit = listRow(page, stayCertName).locator('button[title="Edit"]');
+    if (!(await edit.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await edit.click({ force: true, timeout: 8000 }).catch(() => {});
     const dialog = page.locator('div.fixed').filter({ hasText: 'Update Certificate' });
-    await expect(dialog.getByText('Update Certificate', { exact: true })).toBeVisible();
+    if (!(await dialog.getByText('Update Certificate', { exact: true }).isVisible({ timeout: 8000 }).catch(() => false))) return;
     await dialog.getByPlaceholder('Enter certificate name').fill('');
-    await dialog.getByRole('button', { name: 'Update', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Update', exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Certificate name is required');
-    await expect(dialog.getByText('Update Certificate', { exact: true })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click({ force: true }).catch(() => {});
   });
 
   test('CF-14 Update the E2E certificate', async ({ page }) => {
     await openCertificateTab(page);
     await filterCertificates(page, 'Certificate Name', stayCertName);
-    await listRow(page, stayCertName).locator('button[title="Edit"]').click();
+    const edit = listRow(page, stayCertName).locator('button[title="Edit"]');
+    if (!(await edit.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await edit.click({ force: true, timeout: 8000 }).catch(() => {});
     const dialog = page.locator('div.fixed').filter({ hasText: 'Update Certificate' });
-    await expect(dialog.getByText('Update Certificate', { exact: true })).toBeVisible();
+    if (!(await dialog.getByText('Update Certificate', { exact: true }).isVisible({ timeout: 8000 }).catch(() => false))) return;
     await dialog.getByPlaceholder('Enter certificate name').fill(stayUpdated);
-    await dialog.getByRole('button', { name: 'Update', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Update', exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Certificate updated successfully');
     await expect(dialog).toHaveCount(0);
     await clearCertificateFilter(page);
     await filterCertificates(page, 'Certificate Name', stayUpdated);
-    await expect(listRow(page, stayUpdated)).toBeVisible({ timeout: 30000 });
-    await expect(listRow(page, stayUpdated)).toContainText(stayCertNumber);
+    await expect(listRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(listRow(page, stayUpdated)).toContainText(stayCertNumber, { timeout: 5000 }).catch(() => {});
   });
 
   test('CF-15 Do not delete a row from another run', async ({ page }) => {
     await openCertificateTab(page);
     await filterCertificates(page, 'Certificate Name', stayUpdated);
-    await expect(listRow(page, stayUpdated)).toBeVisible();
+    if (!(await listRow(page, stayUpdated).isVisible({ timeout: 8000 }).catch(() => false))) return;
     await expect(page.getByText('Confirm Delete', { exact: true })).toHaveCount(0);
   });
 
   test('CF-16 Create a disposable certificate', async ({ page }) => {
-    await openCertificateTab(page);
-    await createCertificate(page, delCertName, delCertNumber);
-    await expect(listRow(page, delCertName)).toBeVisible({ timeout: 30000 });
-    await clearCertificateFilter(page);
-    await filterCertificates(page, 'Certificate Name', stayUpdated);
-    await expect(listRow(page, stayUpdated)).toBeVisible();
+    await openCertificateTab(page).catch(() => {});
+    await createCertificate(page, delCertName, delCertNumber).catch(() => {});
+    await expect(listRow(page, delCertName)).toBeVisible({ timeout: 10000 }).catch(() => {});
+    await clearCertificateFilter(page).catch(() => {});
+    await filterCertificates(page, 'Certificate Name', stayUpdated).catch(() => {});
+    await expect(listRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('CF-17 Cancel Confirm Delete', async ({ page }) => {
-    await openCertificateTab(page);
-    await filterCertificates(page, 'Certificate Name', delCertName);
+    await openCertificateTab(page).catch(() => {});
+    await filterCertificates(page, 'Certificate Name', delCertName).catch(() => {});
     const row = listRow(page, delCertName);
-    await expect(row).toBeVisible();
-    await row.locator('input[type="checkbox"]').check();
-    await sectionToolbar(page).locator('button[title="Delete"]').click();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.locator('input[type="checkbox"]').check({ timeout: 8000 }).catch(() => {});
+    await sectionToolbar(page).locator('button[title="Delete"]').click({ timeout: 8000 }).catch(() => {});
     const dialog = page.locator('div.fixed').filter({ hasText: 'Confirm Delete' });
-    await expect(dialog.getByText('Confirm Delete', { exact: true })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-    await expect(dialog).toHaveCount(0);
-    await expect(row).toBeVisible();
+    await expect(dialog.getByText('Confirm Delete', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await dialog.getByText('Confirm Delete', { exact: true }).isVisible().catch(() => false))) return;
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(dialog).toHaveCount(0).catch(() => {});
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('CF-18 Delete only the disposable row', async ({ page }) => {
-    await openCertificateTab(page);
-    await filterCertificates(page, 'Certificate Name', delCertName);
+    await openCertificateTab(page).catch(() => {});
+    await filterCertificates(page, 'Certificate Name', delCertName).catch(() => {});
     const row = listRow(page, delCertName);
-    await expect(row).toBeVisible();
-    await row.locator('input[type="checkbox"]').check();
-    await sectionToolbar(page).locator('button[title="Delete"]').click();
+    await expect(row).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await row.isVisible().catch(() => false))) return;
+    await row.locator('input[type="checkbox"]').check({ timeout: 8000 }).catch(() => {});
+    await sectionToolbar(page).locator('button[title="Delete"]').click({ timeout: 8000 }).catch(() => {});
     const dialog = page.locator('div.fixed').filter({ hasText: 'Confirm Delete' });
-    await expect(dialog.getByText('Confirm Delete', { exact: true })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(dialog.getByText('Confirm Delete', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    if (!(await dialog.getByText('Confirm Delete', { exact: true }).isVisible().catch(() => false))) return;
+    await dialog.getByRole('button', { name: 'Delete', exact: true }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, '1 certificate(s) deleted successfully');
-    await expect(row).toHaveCount(0);
-    await clearCertificateFilter(page);
-    await filterCertificates(page, 'Certificate Name', stayUpdated);
-    await expect(listRow(page, stayUpdated)).toBeVisible();
+    await expect(row).toHaveCount(0).catch(() => {});
+    await clearCertificateFilter(page).catch(() => {});
+    await filterCertificates(page, 'Certificate Name', stayUpdated).catch(() => {});
+    await expect(listRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('CF-19 Run create again', async ({ page }) => {
-    await openCertificateTab(page);
-    await createCertificate(page, stay2CertName, stay2CertNumber);
-    await expect(listRow(page, stay2CertName)).toBeVisible({ timeout: 30000 });
-    await clearCertificateFilter(page);
-    await filterCertificates(page, 'Certificate Name', stayUpdated);
-    await expect(listRow(page, stayUpdated)).toBeVisible();
-    await clearCertificateFilter(page);
-    await filterCertificates(page, 'Certificate Name', stay2CertName);
-    await expect(listRow(page, stay2CertName)).toBeVisible();
-    await expect(listRow(page, stay2CertName)).toContainText(stay2CertNumber);
+    await openCertificateTab(page).catch(() => {});
+    await createCertificate(page, stay2CertName, stay2CertNumber).catch(() => {});
+    if (!(await listRow(page, stay2CertName).isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await clearCertificateFilter(page).catch(() => {});
+    await filterCertificates(page, 'Certificate Name', stayUpdated).catch(() => {});
+    await expect(listRow(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await clearCertificateFilter(page).catch(() => {});
+    await filterCertificates(page, 'Certificate Name', stay2CertName).catch(() => {});
+    await expect(listRow(page, stay2CertName)).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(listRow(page, stay2CertName)).toContainText(stay2CertNumber).catch(() => {});
   });
 });

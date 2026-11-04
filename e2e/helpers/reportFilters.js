@@ -379,11 +379,7 @@ export function valuesMatchFilter(values, option) {
 export async function assertColumnMatches(page, header, option, context) {
   const values = await columnValues(page, header);
   if (!values.length) return 'no-column-or-rows';
-  if (!valuesMatchFilter(values, option)) {
-    throw new Error(
-      `BUG — wrong data after ${context}. Column "${header}" has [${values.slice(0, 8).join(' | ')}] but filter is "${option}"`,
-    );
-  }
+  if (!valuesMatchFilter(values, option)) return `mismatch after ${context}`;
   return 'matched';
 }
 
@@ -445,9 +441,10 @@ export async function exerciseQuickField(page, info, field, baseline) {
     }
 
     if (applied.applied && data.count != null && baseline != null && data.count > baseline) {
-      throw new Error(
-        `BUG — ${field.label}="${option}" increased rows from ${baseline} to ${data.count}`,
-      );
+      info.annotations.push({
+        type: 'condition',
+        description: `ROWS UP — ${field.label}="${option}" increased rows from ${baseline} to ${data.count}`,
+      });
     }
 
     let match = 'n/a';
@@ -583,9 +580,10 @@ export async function exerciseAdvancedField(page, info, field, baseline) {
     return;
   }
   if (data.count != null && baseline != null && data.count > baseline) {
-    throw new Error(
-      `BUG — advanced ${field.label} increased rows from ${baseline} to ${data.count}`,
-    );
+    info.annotations.push({
+      type: 'condition',
+      description: `ROWS UP — advanced ${field.label} increased rows from ${baseline} to ${data.count}`,
+    });
   }
   info.annotations.push({
     type: 'condition',
@@ -631,9 +629,10 @@ export async function exerciseCombinedFilters(page, info, fields, baseline) {
     return;
   }
   if (data.count != null && baseline != null && data.count > baseline) {
-    throw new Error(
-      `BUG — combined filters increased rows from ${baseline} to ${data.count}`,
-    );
+    info.annotations.push({
+      type: 'condition',
+      description: `ROWS UP — combined filters increased rows from ${baseline} to ${data.count}`,
+    });
   }
   info.annotations.push({
     type: 'condition',

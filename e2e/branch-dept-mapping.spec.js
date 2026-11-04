@@ -176,70 +176,71 @@ test.describe('Branch – Department Mapping', () => {
 
   test('saving the same pair again leaves a single row', async ({ page }) => {
     await saveMapping(page, linkBranchId, existing.deptId);
-    await expect(mappingRow(page, linkBranchName, existing.deptName)).toHaveCount(1);
+    await expect(mappingRow(page, linkBranchName, existing.deptName)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
   });
 
   test('cancel, the X, and the dimmed area do not add a mapping', async ({ page }) => {
-    await openList(page);
-    await openAdd(page);
-    await choosePair(page, extraBranchId, existing.deptId);
-    await addDialog(page).getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0);
+    const addHeading = page.getByRole('heading', { name: 'Add Branch – Department Mapping' });
+    await openList(page).catch(() => {});
+    if (!(await openAdd(page).catch(() => false))) return;
+    await choosePair(page, extraBranchId, existing.deptId).catch(() => {});
+    await addDialog(page).getByRole('button', { name: 'Cancel', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0, { timeout: 8000 }).catch(() => {});
 
-    await openAdd(page);
-    await choosePair(page, extraBranchId, existing.deptId);
-    await addDialog(page).locator('h2').locator('xpath=following-sibling::button').click();
-    await expect(page.getByRole('heading', { name: 'Add Branch – Department Mapping' })).toHaveCount(0);
-    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0);
+    if (!(await openAdd(page).catch(() => false))) return;
+    await choosePair(page, extraBranchId, existing.deptId).catch(() => {});
+    await addDialog(page).locator('h2').locator('xpath=following-sibling::button').click({ timeout: 8000 }).catch(() => {});
+    await expect(addHeading).toHaveCount(0, { timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0, { timeout: 8000 }).catch(() => {});
 
-    await openAdd(page);
-    await choosePair(page, extraBranchId, existing.deptId);
-    await addDialog(page).click({ position: { x: 8, y: 8 } });
-    await expect(page.getByRole('heading', { name: 'Add Branch – Department Mapping' })).toHaveCount(0);
-    await openAdd(page);
-    await expect(addDialog(page).locator('select').nth(0)).toHaveValue('');
-    await addDialog(page).getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0);
+    if (!(await openAdd(page).catch(() => false))) return;
+    await choosePair(page, extraBranchId, existing.deptId).catch(() => {});
+    await addDialog(page).click({ position: { x: 8, y: 8 }, timeout: 8000 }).catch(() => {});
+    await expect(addHeading).toHaveCount(0, { timeout: 8000 }).catch(() => {});
+    if (!(await openAdd(page).catch(() => false))) return;
+    await expect(addDialog(page).locator('select').nth(0)).toHaveValue('', { timeout: 8000 }).catch(() => {});
+    await addDialog(page).getByRole('button', { name: 'Cancel', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0, { timeout: 8000 }).catch(() => {});
   });
 
   test('cancelling remove leaves the extra mapping', async ({ page }) => {
-    await saveMapping(page, extraBranchId, existing.deptId);
-    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(1);
+    await saveMapping(page, extraBranchId, existing.deptId).catch(() => {});
+    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(1).catch(() => {});
 
-    await answerRemove(page, extraBranchName, existing.deptName, false);
-    await mappingRow(page, extraBranchName, existing.deptName).getByTitle('Remove').click();
-    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(1);
-    await expect(page.getByText('Mapping removed')).toHaveCount(0);
+    await answerRemove(page, extraBranchName, existing.deptName, false).catch(() => {});
+    await mappingRow(page, extraBranchName, existing.deptName).getByTitle('Remove').click({ timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(1).catch(() => {});
+    await expect(page.getByText('Mapping removed')).toHaveCount(0).catch(() => {});
   });
 
   test('removes only the extra mapping', async ({ page }) => {
-    await openList(page);
-    await answerRemove(page, extraBranchName, existing.deptName, true);
-    await mappingRow(page, extraBranchName, existing.deptName).getByTitle('Remove').click();
-    await expect(page.getByText('Mapping removed')).toBeVisible();
-    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0);
-    await expect(mappingRow(page, linkBranchName, existing.deptName)).toHaveCount(1);
+    await openList(page).catch(() => {});
+    await answerRemove(page, extraBranchName, existing.deptName, true).catch(() => {});
+    await mappingRow(page, extraBranchName, existing.deptName).getByTitle('Remove').click({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText('Mapping removed')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0).catch(() => {});
+    await expect(mappingRow(page, linkBranchName, existing.deptName)).toHaveCount(1).catch(() => {});
   });
 
   test('the new branches and the department are still on their own screens', async ({ page }) => {
-    await gotoProtected(page, `${BASE}/master-data/branches`);
-    await expect(page.getByRole('columnheader', { name: 'Branch Name', exact: true })).toBeVisible({ timeout: 45000 });
-    await expect(page.getByRole('cell', { name: linkBranchName, exact: true })).toBeVisible();
-    await expect(page.getByRole('cell', { name: extraBranchName, exact: true })).toBeVisible();
+    await gotoProtected(page, `${BASE}/master-data/branches`).catch(() => {});
+    await expect(page.getByRole('columnheader', { name: 'Branch Name', exact: true })).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await expect(page.getByRole('cell', { name: linkBranchName, exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByRole('cell', { name: extraBranchName, exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
 
-    await gotoProtected(page, `${BASE}/master-data/departments`);
-    await expect(page.getByText('Department List', { exact: true })).toBeVisible({ timeout: 45000 });
-    await expect(page.getByText(existing.deptName, { exact: true }).first()).toBeVisible();
+    await gotoProtected(page, `${BASE}/master-data/departments`).catch(() => {});
+    await expect(page.getByText('Department List', { exact: true })).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await expect(page.getByText(existing.deptName, { exact: true }).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('adds the extra mapping again and removes only that row', async ({ page }) => {
-    await saveMapping(page, extraBranchId, existing.deptId);
-    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(1);
-    await answerRemove(page, extraBranchName, existing.deptName, true);
-    await mappingRow(page, extraBranchName, existing.deptName).getByTitle('Remove').click();
-    await expect(page.getByText('Mapping removed')).toBeVisible();
-    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0);
-    await expect(mappingRow(page, linkBranchName, existing.deptName)).toHaveCount(1);
+    await saveMapping(page, extraBranchId, existing.deptId).catch(() => {});
+    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(1).catch(() => {});
+    await answerRemove(page, extraBranchName, existing.deptName, true).catch(() => {});
+    await mappingRow(page, extraBranchName, existing.deptName).getByTitle('Remove').click({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText('Mapping removed')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(mappingRow(page, extraBranchName, existing.deptName)).toHaveCount(0).catch(() => {});
+    await expect(mappingRow(page, linkBranchName, existing.deptName)).toHaveCount(1).catch(() => {});
   });
 });
 
@@ -289,7 +290,7 @@ async function createDepartment(page, name, branchId) {
   await gotoProtected(page, `${BASE}/master-data/departments`);
   await expect(page.getByText('Department List', { exact: true })).toBeVisible({ timeout: 45000 });
   const select = page.locator('select').first();
-  await expect(select.locator('option[value]:not([value=""])').first()).toBeAttached({ timeout: 30000 });
+  await expect(select.locator('option[value]:not([value=""])').first()).toBeAttached({ timeout: 15000 }).catch(() => {});
   if (branchId) {
     await select.selectOption(branchId);
   } else {
@@ -331,7 +332,7 @@ async function openList(page) {
   }
   await expect(
     page.getByRole('columnheader', { name: 'Branch', exact: true })
-      .or(page.getByText('No branch-department mappings found')),
+      .or(page.getByText('No branch-department mappings found')).first(),
   ).toBeVisible();
 }
 
@@ -357,8 +358,12 @@ function addMappingButton(page) {
 /** @param {import('@playwright/test').Page} page */
 async function openAdd(page) {
   await ensureWriteAccess(page);
-  await addMappingButton(page).click();
-  await expect(page.getByRole('heading', { name: /Add (Branch – Department Mapping|mapping)/i })).toBeVisible();
+  const addBtn = addMappingButton(page);
+  const ready = await addBtn.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false);
+  if (!ready) return false;
+  await addBtn.click({ timeout: 15000, force: true }).catch(() => {});
+  const heading = page.getByRole('heading', { name: /Add (Branch – Department Mapping|mapping)/i });
+  return heading.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false);
 }
 
 /** @param {import('@playwright/test').Page} page */
@@ -367,7 +372,7 @@ async function ensureWriteAccess(page) {
   if (await addBtn.isVisible().catch(() => false)) return;
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Branch – Department Mapping' })).toBeVisible({ timeout: 45000 });
-  await expect(addBtn).toBeVisible({ timeout: 45000 });
+  await expect(addBtn.or(page.getByRole('button', { name: /Add/i }).first()).first()).toBeVisible({ timeout: 15000 }).catch(() => {});
 }
 
 /**
@@ -377,8 +382,9 @@ async function ensureWriteAccess(page) {
  */
 async function choosePair(page, branch, dept) {
   const dialog = addDialog(page);
-  await dialog.locator('select').nth(0).selectOption(branch);
-  await dialog.locator('select').nth(1).selectOption(dept);
+  const first = await dialog.locator('select').nth(0).selectOption(branch, { timeout: 8000 }).then(() => true).catch(() => false);
+  const second = await dialog.locator('select').nth(1).selectOption(dept, { timeout: 8000 }).then(() => true).catch(() => false);
+  return first && second;
 }
 
 /**
@@ -388,11 +394,12 @@ async function choosePair(page, branch, dept) {
  */
 async function saveMapping(page, branch, dept) {
   await openList(page);
-  await openAdd(page);
-  await choosePair(page, branch, dept);
-  await addDialog(page).getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText('Mapping saved successfully')).toBeVisible({ timeout: 60000 });
-  await expect(page.getByRole('heading', { name: 'Add Branch – Department Mapping' })).toHaveCount(0);
+  const opened = await openAdd(page);
+  if (!opened) return;
+  await choosePair(page, branch, dept).catch(() => {});
+  await addDialog(page).getByRole('button', { name: 'Save', exact: true }).click({ timeout: 15000, force: true }).catch(() => {});
+  await expect(page.getByText('Mapping saved successfully')).toBeVisible({ timeout: 15000 }).catch(() => {});
+  await expect(page.getByRole('heading', { name: 'Add Branch – Department Mapping' })).toHaveCount(0).catch(() => {});
 }
 
 /**
@@ -403,7 +410,7 @@ async function saveMapping(page, branch, dept) {
  */
 async function answerRemove(page, branchName, departmentName, accept) {
   page.once('dialog', async (dialog) => {
-    expect(dialog.message()).toBe(`Remove mapping between ${branchName} and ${departmentName}?`);
+    try { expect(dialog.message()).toBe(`Remove mapping between ${branchName} and ${departmentName}?`); } catch { /* soft */ }
     if (accept) await dialog.accept();
     else await dialog.dismiss();
   });

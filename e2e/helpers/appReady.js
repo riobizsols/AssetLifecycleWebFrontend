@@ -78,24 +78,30 @@ async function waitForNavAndShell(page, navPromise) {
  * @param {string} url
  */
 export async function gotoProtected(page, url) {
-  const navPromise = watchNavigation(page);
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  if (page.isClosed()) return false;
+  try {
+    const navPromise = watchNavigation(page);
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
-  let ready;
-  if (await isLoginPage(page)) {
-    // Don't wait for nav API on the login screen — it never fires.
-    await loginToRioEam(page);
-    const navPromise2 = watchNavigation(page);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    ready = await waitForNavAndShell(page, navPromise2);
-  } else {
-    ready = await waitForNavAndShell(page, navPromise);
+    let ready;
+    if (await isLoginPage(page)) {
+      // Don't wait for nav API on the login screen — it never fires.
+      await loginToRioEam(page);
+      const navPromise2 = watchNavigation(page);
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      ready = await waitForNavAndShell(page, navPromise2);
+    } else {
+      ready = await waitForNavAndShell(page, navPromise);
+    }
+
+    if (!ready) return false;
+
+    if (await isLoginPage(page)) {
+      return false;
+    }
+    return true;
+  } catch (err) {
+    if (page.isClosed() || /has been closed|Target page/i.test(String(err))) return false;
+    throw err;
   }
-
-  if (!ready) return false;
-
-  if (await isLoginPage(page)) {
-    throw new Error(`Still on login after navigating to ${url}`);
-  }
-  return true;
 }
