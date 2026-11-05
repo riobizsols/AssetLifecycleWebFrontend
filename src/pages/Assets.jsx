@@ -128,9 +128,11 @@ const Assets = () => {
     
     return {
       ...col,
-      visible: col.visible && shouldBeVisible
+      visible: col.visible && shouldBeVisible,
+      // NONE access must lock — ContentBox treats visible:false as "hidden by default" (toggleable)
+      locked: !columnAccessLoading && !shouldBeVisible,
     };
-  }); // Keep all columns but set visible=false for NONE access - ContentBox will handle hiding them
+  }); // Keep all columns; locked hides NONE-access ones from the Columns menu
 
   const applyListResult = useCallback((result, fullList) => {
     setData(result.rows || []);

@@ -1040,7 +1040,9 @@ const TechCertApprovals = () => {
                         <td className="px-4 py-3.5 text-slate-700">{job.technician_name || "-"}</td>
                         <td className="px-4 py-3.5 text-slate-700">
                           <StatusPill>
-                            {job.is_inhouse
+                            {job.is_inhouse ||
+                            (job.maintained_by &&
+                              !String(job.maintained_by).toLowerCase().includes("vendor"))
                               ? t("techCertApprovals.inhouse")
                               : (job.maintained_by || t("techCertApprovals.vendor"))}
                           </StatusPill>

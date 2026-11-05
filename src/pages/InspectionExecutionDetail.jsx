@@ -687,19 +687,7 @@ const InspectionExecutionDetail = () => {
       </div>
       </div>
       <div className="shrink-0 border-t border-gray-200 bg-white">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={triggerMaintenance}
-                onChange={(e) => setTriggerMaintenance(e.target.checked)}
-                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
-              />
-              <span className="text-sm font-medium text-gray-700">{t('inspectionExecution.triggerMaintenance')}</span>
-            </label>
-          </div>
-
+        <div className="px-4 py-3 flex items-center justify-end">
           <div className="flex items-center gap-3">
             <button
               type="button"

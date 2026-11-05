@@ -100,7 +100,7 @@ const ColumnsSubmenu = ({ visibleColumns, toggleColumn, isIdColumnName, triggerB
       onWheel={(e) => e.stopPropagation()}
     >
       {visibleColumns
-        .filter((col) => !isIdColumnName(col.name))
+        .filter((col) => !isIdColumnName(col.name) && !col.locked)
         .map((col, i) => (
           <label
             key={i}
@@ -505,10 +505,9 @@ const ContentBox = ({
       .filter(f => !f.type || ![].includes(f.type)) // Exclude special filter types from columns
       .map((f, i) => ({
         ...f,
-        // Preserve existing visible property if set (e.g., from column access control)
-        // If visible is explicitly false (NONE access), always keep it false
-        // Otherwise, use default visibility logic
-        visible: isIdColumnName(f.name)
+        // visible:false = hidden by default (still toggleable unless locked).
+        // locked:true = column-access NONE — never show / never toggle.
+        visible: isIdColumnName(f.name) || f.locked
           ? false
           : (f.visible === false
             ? false
@@ -530,23 +529,28 @@ const ContentBox = ({
             return { ...f, visible: false };
           }
 
-          // If filter has visible=false (from column access NONE), always keep it false
-          if (f.visible === false) {
-            return { ...f, visible: false };
+          // Column-access NONE (or explicit lock) — always keep hidden
+          if (f.locked) {
+            return { ...f, visible: false, locked: true };
           }
           
-          // If filter has visible=true (from column access), use it
+          // If filter has visible=true, prefer that but keep user's manual hide
           if (f.visible === true) {
-            // Preserve user's manual toggle if they changed it (unless it was forced to false)
             const prevVisible = prevVisibilityMap.get(f.name);
-            return { ...f, visible: prevVisible === false ? false : true };
+            return { ...f, visible: prevVisible === false ? false : true, locked: false };
           }
-          
-          // Otherwise, preserve previous visibility or use default
+
+          // visible:false or unset — preserve user toggle; default hidden when false
           const prevVisible = prevVisibilityMap.get(f.name);
           return {
-          ...f,
-            visible: prevVisible !== undefined ? prevVisible : (i < 7 || f.name === "status" || f.name === "int_status"),
+            ...f,
+            locked: false,
+            visible:
+              prevVisible !== undefined
+                ? prevVisible
+                : f.visible === false
+                  ? false
+                  : (i < 7 || f.name === "status" || f.name === "int_status"),
           };
         });
     });
@@ -558,9 +562,9 @@ const ContentBox = ({
 
     // Find the original filter to check if it has forced visibility (from column access)
     const originalFilter = filters.find(f => f.name === name);
-    // If the original filter has visible=false (NONE access), don't allow toggling
-    if (originalFilter && originalFilter.visible === false) {
-      return; // Don't allow toggling columns with NONE access
+    // locked = column-access NONE — not the same as visible:false (hidden by default)
+    if (originalFilter?.locked) {
+      return;
     }
     
     const updated = visibleColumns.map((col) =>
