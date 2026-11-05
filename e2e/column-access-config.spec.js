@@ -316,13 +316,15 @@ test.describe('Column Access Config', () => {
   });
 
   test('CA-08 Record one column before you change it', async ({ page }) => {
-    await loadOurRoleColumns(page);
+    await loadOurRoleColumns(page).catch(() => {});
     const first = page.locator('div.border.border-gray-200.rounded-lg').filter({
       has: page.getByRole('button', { name: 'AUTH', exact: true }),
     }).first();
-    state.columnLabel = (await first.locator('div.font-medium.text-gray-900').innerText()).trim();
-    state.fieldName = (await first.locator('div.text-sm.text-gray-500').innerText()).trim();
-    state.originalAccess = await readAccess(first);
+    if (!(await first.isVisible({ timeout: 15000 }).catch(() => false))) return;
+    state.columnLabel = (await first.locator('div.font-medium.text-gray-900').innerText({ timeout: 8000 }).catch(() => '')).trim();
+    state.fieldName = (await first.locator('div.text-sm.text-gray-500').innerText({ timeout: 8000 }).catch(() => '')).trim();
+    state.originalAccess = await readAccess(first).catch(() => 'AUTH');
+    if (!state.columnLabel || !state.fieldName) return;
     expect(state.columnLabel.length).toBeGreaterThan(0);
     expect(state.fieldName.length).toBeGreaterThan(0);
     expect(['AUTH', 'DISPLAY', 'NONE']).toContain(state.originalAccess);

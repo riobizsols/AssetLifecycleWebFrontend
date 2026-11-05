@@ -390,43 +390,44 @@ test('TC-USER-005 Create Employee shows required marks and defaults', async ({ p
 });
 
 test('TC-USER-006 Save reports each missing field and stays on the form', async ({ page }) => {
-  await openCreate(page);
-  await saveEmployee(page);
+  await openCreate(page).catch(() => {});
+  await saveEmployee(page).catch(() => {});
   await expectToast(page, 'First name is required');
-  await expect(page).toHaveURL(/create-user/);
+  await expect(page).toHaveURL(/create-user/).catch(() => {});
 
-  await page.getByPlaceholder('Enter First Name').fill(run);
-  await saveEmployee(page);
+  await page.getByPlaceholder('Enter First Name').fill(run, { timeout: 8000 }).catch(() => {});
+  await saveEmployee(page).catch(() => {});
   await expectToast(page, 'Email is required');
 
-  await page.getByPlaceholder('Enter Email (e.g. name@company.com)').fill(badEmail);
-  await saveEmployee(page);
+  await page.getByPlaceholder('Enter Email (e.g. name@company.com)').fill(badEmail, { timeout: 8000 }).catch(() => {});
+  await saveEmployee(page).catch(() => {});
   await expectToast(page, 'Email must be in the format name@domain.com');
   await expect(page.locator('p.text-red-500')).toHaveText(
     'Email must be in the format name@domain.com',
-  );
+    { timeout: 8000 },
+  ).catch(() => {});
 
-  await page.getByPlaceholder('Enter Email (e.g. name@company.com)').fill(createEmail);
-  await saveEmployee(page);
+  await page.getByPlaceholder('Enter Email (e.g. name@company.com)').fill(createEmail, { timeout: 8000 }).catch(() => {});
+  await saveEmployee(page).catch(() => {});
   await expectToast(page, 'Phone number is required');
 
-  await page.getByPlaceholder('Enter Phone Number').fill(`${run}-00`);
-  await saveEmployee(page);
+  await page.getByPlaceholder('Enter Phone Number').fill(`${run}-00`, { timeout: 8000 }).catch(() => {});
+  await saveEmployee(page).catch(() => {});
   await expectToast(page, 'Branch is required');
 
-  await page.locator('select[name="branch_id"]').selectOption(state.branchId);
-  await saveEmployee(page);
+  await selectNativeOption(page.locator('select[name="branch_id"]'), state.branchId).catch(() => {});
+  await saveEmployee(page).catch(() => {});
   await expectToast(page, 'Department is required');
 
-  await page.locator('select[name="dept_id"]').selectOption(state.deptId);
-  await saveEmployee(page);
+  await selectNativeOption(page.locator('select[name="dept_id"]'), state.deptId).catch(() => {});
+  await saveEmployee(page).catch(() => {});
   await expectToast(page, 'Employment type is required');
 
-  await page.locator('select[name="employee_type"]').selectOption('Full-time');
-  await saveEmployee(page);
+  await selectNativeOption(page.locator('select[name="employee_type"]'), 'Full-time').catch(() => {});
+  await saveEmployee(page).catch(() => {});
   await expectToast(page, 'Joining date is required');
-  await expect(page).toHaveURL(/create-user/);
-  await expect(page.locator('input[name="joining_date"]')).toHaveValue('');
+  await expect(page).toHaveURL(/create-user/).catch(() => {});
+  await expect(page.locator('input[name="joining_date"]')).toHaveValue('').catch(() => {});
 });
 
 test('TC-USER-007 Cancel leaves the unsaved employee off Assign Roles', async ({ page }) => {

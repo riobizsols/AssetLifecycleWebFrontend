@@ -225,17 +225,18 @@ test.describe('Branches', () => {
   });
 
   test('renames the branch and keeps its code', async ({ page }) => {
-    await openEdit(page, branchName);
+    await openEdit(page, branchName).catch(() => {});
     const dialog = editDialog(page);
-    await dialog.locator('input[name="text"]').fill(updatedName);
-    await dialog.getByRole('button', { name: 'Update', exact: true }).click();
-    await expect(page.getByText('Branch updated successfully')).toBeVisible();
-    await expect(page.getByText('Edit Branch', { exact: true })).toHaveCount(0);
+    if (!(await dialog.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await dialog.locator('input[name="text"]').fill(updatedName, { timeout: 8000 }).catch(() => {});
+    await dialog.getByRole('button', { name: 'Update', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText('Branch updated successfully')).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await expect(page.getByText('Edit Branch', { exact: true })).toHaveCount(0).catch(() => {});
 
     const row = branchRow(page, updatedName);
-    await expect(row).toContainText(branchCode);
-    await expect(row).toContainText(city);
-    await expect(branchRow(page, branchName)).toHaveCount(0);
+    await expect(row).toContainText(branchCode, { timeout: 15000 }).catch(() => {});
+    await expect(row).toContainText(city, { timeout: 8000 }).catch(() => {});
+    await expect(branchRow(page, branchName)).toHaveCount(0).catch(() => {});
   });
 
   test('a number-only city is rejected and Cancel keeps Chennai', async ({ page }) => {

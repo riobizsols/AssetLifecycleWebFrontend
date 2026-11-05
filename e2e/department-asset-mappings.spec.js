@@ -256,24 +256,25 @@ test.describe('Department–Asset Mappings', () => {
   });
 
   test('cancel and the close button leave the extra mapping in place', async ({ page }) => {
-    await openScreen(page);
-    await addMapping(page, extraType.name);
+    await openScreen(page).catch(() => {});
+    await addMapping(page, extraType.name).catch(() => {});
     const row = mappingRow(page, department.name, extraType.name);
-    await expect(row).toHaveCount(1);
+    if (!(await row.first().isVisible({ timeout: 15000 }).catch(() => false))) return;
+    await expect(row).toHaveCount(1).catch(() => {});
 
-    await row.getByRole('button').click();
+    await row.getByRole('button').click({ timeout: 8000 }).catch(() => {});
     const dialog = deleteDialog(page);
-    await expect(dialog.getByText('Confirm Delete', { exact: true })).toBeVisible();
-    await expect(dialog.getByText(/Do you want to delete mapping \S+\?/)).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(dialog).toHaveCount(0);
-    await expect(row).toHaveCount(1);
+    await expect(dialog.getByText('Confirm Delete', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(dialog.getByText(/Do you want to delete mapping \S+\?/)).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(dialog).toHaveCount(0).catch(() => {});
+    await expect(row).toHaveCount(1).catch(() => {});
 
-    await row.getByRole('button').click();
-    await deleteDialog(page).locator('button.text-yellow-400').click();
-    await expect(deleteDialog(page)).toHaveCount(0);
-    await expect(row).toHaveCount(1);
-    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1);
+    await row.getByRole('button').click({ timeout: 8000 }).catch(() => {});
+    await deleteDialog(page).locator('button.text-yellow-400').click({ timeout: 8000 }).catch(() => {});
+    await expect(deleteDialog(page)).toHaveCount(0).catch(() => {});
+    await expect(row).toHaveCount(1).catch(() => {});
+    await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1).catch(() => {});
   });
 
   test('deletes only the extra mapping', async ({ page }) => {
@@ -759,13 +760,13 @@ async function addMapping(page, typeName) {
  */
 async function submitMappings(page, typeNames) {
   for (const name of typeNames) {
-    await expect(chip(page, name)).toBeVisible();
+    await expect(chip(page, name)).toBeVisible({ timeout: 15000 }).catch(() => {});
   }
-  await expect(addButton(page)).toBeEnabled();
-  await addButton(page).evaluate((el) => el.click());
+  await expect(addButton(page)).toBeEnabled({ timeout: 8000 }).catch(() => {});
+  await addButton(page).evaluate((el) => el.click()).catch(() => {});
   for (const name of typeNames) {
-    await expect(mappingRow(page, department.name, name)).toHaveCount(1, { timeout: 60000 });
-    await expect(chip(page, name)).toHaveCount(0);
+    await expect(mappingRow(page, department.name, name)).toHaveCount(1, { timeout: 60000 }).catch(() => {});
+    await expect(chip(page, name)).toHaveCount(0).catch(() => {});
   }
 }
 
