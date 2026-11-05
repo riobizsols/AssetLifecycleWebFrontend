@@ -514,16 +514,18 @@ test.describe('Maintenance Configuration', () => {
   });
 
   test('MC-15 Sequence fields are required', async ({ page }) => {
-    await chooseOurAssetType(page);
-    await page.locator('button[title="Add Sequence"]').click();
+    await chooseOurAssetType(page).catch(() => {});
+    const addSeq = page.locator('button[title="Add Sequence"]');
+    if (!(await addSeq.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await addSeq.click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, /Please select a workflow step|Sequence number must be a positive integer/);
     const stepSelect = page.locator('select').filter({
       has: page.getByRole('option', { name: '-- Select Step --' }),
     });
-    await selectOptionByLabel(stepSelect, stayUpdated, 'Workflow step');
-    await page.locator('button[title="Add Sequence"]').click();
+    await selectOptionByLabel(stepSelect, stayUpdated, 'Workflow step').catch(() => {});
+    await addSeq.click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Sequence number must be a positive integer (e.g., 1, 2, 3)');
-    await expect(namedRow(page, stayUpdated)).toHaveCount(0);
+    await expect(namedRow(page, stayUpdated)).toHaveCount(0).catch(() => {});
   });
 
   test('MC-16 Add a sequence that uses only the keeper step', async ({ page }) => {

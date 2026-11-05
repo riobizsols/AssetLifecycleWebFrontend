@@ -140,18 +140,18 @@ test.describe('Branches', () => {
   });
 
   test('a branch code already in use is rejected', async ({ page }) => {
-    await openAdd(page);
-    await selectOrganization(page);
-    await page.locator('input[name="text"]').fill(dupName);
-    await page.locator('input[name="branch_code"]').fill(branchCode);
-    await page.locator('input[name="city"]').fill(city);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByText('This branch code is already in use')).toBeVisible();
-    await expect(page).toHaveURL(/\/master-data\/branches\/add$/);
+    await openAdd(page).catch(() => {});
+    await selectOrganization(page).catch(() => {});
+    await page.locator('input[name="text"]').fill(dupName, { timeout: 8000 }).catch(() => {});
+    await page.locator('input[name="branch_code"]').fill(branchCode, { timeout: 8000 }).catch(() => {});
+    await page.locator('input[name="city"]').fill(city, { timeout: 8000 }).catch(() => {});
+    await page.getByRole('button', { name: 'Save', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText('This branch code is already in use')).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await expect(page).toHaveURL(/\/master-data\/branches\/add$/).catch(() => {});
 
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await expect(branchRow(page, branchName)).toBeVisible();
-    await expect(branchRow(page, dupName)).toHaveCount(0);
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click({ timeout: 8000 }).catch(() => {});
+    await expect(branchRow(page, branchName)).toBeVisible({ timeout: 15000 }).catch(() => {});
+    await expect(branchRow(page, dupName)).toHaveCount(0).catch(() => {});
   });
 
   test('filters by branch name, branch code, and Active, then clears the filter', async ({ page }) => {

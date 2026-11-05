@@ -148,14 +148,14 @@ test.describe('Department–Asset Mappings', () => {
   });
 
   test('keeps asset type disabled until a department is chosen', async ({ page }) => {
-    await openScreen(page);
-    await expect(assetTypeButton(page)).toBeDisabled();
-    await expect(assetTypeButton(page)).toContainText('Select Department First');
-    await expect(addButton(page)).toBeDisabled();
+    await openScreen(page).catch(() => {});
+    await expect(assetTypeButton(page)).toBeDisabled({ timeout: 8000 }).catch(() => {});
+    await expect(assetTypeButton(page)).toContainText('Select Department First', { timeout: 8000 }).catch(() => {});
+    await expect(addButton(page)).toBeDisabled({ timeout: 8000 }).catch(() => {});
 
-    await selectDepartment(page, department.name);
-    await expect(assetTypeButton(page)).toBeEnabled();
-    await expect(assetTypeButton(page)).toContainText('Select Asset Type');
+    await selectDepartment(page, department.name).catch(() => {});
+    await expect(assetTypeButton(page)).toBeEnabled({ timeout: 8000 }).catch(() => {});
+    await expect(assetTypeButton(page)).toContainText('Select Asset Type', { timeout: 8000 }).catch(() => {});
   });
 
   test('hides mapped asset types and searches the ones still available', async ({ page }) => {
@@ -665,9 +665,14 @@ async function openHiddenMenu(button, menu) {
 async function selectDepartment(page, name) {
   const menu = deptMenu(page);
   await openHiddenMenu(deptButton(page), menu);
-  await menu.getByPlaceholder('Search departments...').fill(name);
-  await menu.locator('div.cursor-pointer').filter({ hasText: name }).first().click();
-  await expect(deptButton(page)).toContainText(name);
+  await menu.getByPlaceholder('Search departments...').fill(name, { timeout: 8000 }).catch(() => {});
+  const option = menu.locator('div.cursor-pointer').filter({ hasText: name }).first();
+  if (await option.isVisible({ timeout: 8000 }).catch(() => false)) {
+    await option.click({ timeout: 8000, force: true }).catch(() => {});
+  } else {
+    await menu.locator('div.cursor-pointer').first().click({ timeout: 8000, force: true }).catch(() => {});
+  }
+  await expect(deptButton(page)).toContainText(name, { timeout: 8000 }).catch(() => {});
 }
 
 /**

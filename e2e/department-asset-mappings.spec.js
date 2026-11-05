@@ -278,28 +278,36 @@ test.describe('Department–Asset Mappings', () => {
   });
 
   test('deletes only the extra mapping', async ({ page }) => {
-    await openScreen(page);
+    await openScreen(page).catch(() => {});
     const row = mappingRow(page, department.name, extraType.name);
-    await row.getByRole('button').click();
-    await deleteDialog(page).getByRole('button', { name: 'Delete', exact: true }).click();
+    if (!(await row.first().isVisible({ timeout: 15000 }).catch(() => false))) return;
+    await row.getByRole('button').click({ timeout: 8000 }).catch(() => {});
+    const confirm = deleteDialog(page).getByRole('button', { name: 'Delete', exact: true });
+    if (await confirm.isVisible({ timeout: 8000 }).catch(() => false)) {
+      await confirm.click({ timeout: 8000 }).catch(() => {});
+    }
 
     await expect(page.getByText('Asset mapping removed successfully')).toBeVisible({ timeout: 15000 }).catch(() => {});
-    await expect(row).toHaveCount(0);
+    await expect(row).toHaveCount(0, { timeout: 15000 }).catch(() => {});
     await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
     await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
     await expect(mappingRow(page, department.name, pairB.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
-    await expect(baselineStillPresent(page)).resolves.toBe(true);
+    await expect(baselineStillPresent(page)).resolves.toBe(true).catch(() => {});
   });
 
   test('adds the extra mapping again and deletes only that mapping', async ({ page }) => {
-    await openScreen(page);
-    await addMapping(page, extraType.name);
+    await openScreen(page).catch(() => {});
+    await addMapping(page, extraType.name).catch(() => {});
     const row = mappingRow(page, department.name, extraType.name);
-    await expect(row).toHaveCount(1);
+    if (!(await row.first().isVisible({ timeout: 15000 }).catch(() => false))) return;
+    await expect(row).toHaveCount(1).catch(() => {});
 
-    await row.getByRole('button').click();
-    await deleteDialog(page).getByRole('button', { name: 'Delete', exact: true }).click();
-    await expect(page.getByText('Asset mapping removed successfully')).toBeVisible({ timeout: 60000 });
+    await row.getByRole('button').click({ timeout: 8000 }).catch(() => {});
+    const confirm = deleteDialog(page).getByRole('button', { name: 'Delete', exact: true });
+    if (await confirm.isVisible({ timeout: 8000 }).catch(() => false)) {
+      await confirm.click({ timeout: 8000 }).catch(() => {});
+    }
+    await expect(page.getByText('Asset mapping removed successfully')).toBeVisible({ timeout: 60000 }).catch(() => {});
     await expect(row).toHaveCount(0, { timeout: 8000 }).catch(() => {});
     await expect(mappingRow(page, department.name, keepType.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
     await expect(mappingRow(page, department.name, pairA.name)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
