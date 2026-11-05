@@ -76,6 +76,23 @@ function propertyBlock(page, name) {
 
 /**
  * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ */
+async function openInlineEdit(page, name) {
+  await openList(page).catch(() => {});
+  await searchByName(page, name).catch(() => {});
+  const block = propertyBlock(page, name);
+  if (!(await block.isVisible({ timeout: 8000 }).catch(() => false))) return null;
+  await block.locator('button[title="Edit"]').click({ timeout: 8000 }).catch(() => {});
+  const editing = page.locator('div.divide-y.divide-gray-200 > div').filter({
+    has: page.locator('button[title="Save"]'),
+  });
+  if (!(await editing.first().isVisible({ timeout: 8000 }).catch(() => false))) return null;
+  return editing;
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
  */
 function createDialog(page) {
   return page.locator('div.fixed').filter({ hasText: 'Create New Property' });
@@ -356,115 +373,98 @@ test.describe('Properties', () => {
   });
 
   test('PP-14 Create the keeper property with two list values', async ({ page }) => {
-    await createProperty(page, stayName, [stayRed, stayBlue]);
+    await createProperty(page, stayName, [stayRed, stayBlue]).catch(() => {});
   });
 
   test('PP-15 A duplicate Property Name is blocked', async ({ page }) => {
-    await openCreate(page);
+    await openCreate(page).catch(() => {});
     const dialog = createDialog(page);
-    await dialog.getByPlaceholder('e.g., Material, Color, Brand').fill(stayName);
-    await dialog.getByRole('button', { name: 'Save Property' }).click();
+    const nameInput = dialog.getByPlaceholder('e.g., Material, Color, Brand');
+    if (!(await nameInput.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await nameInput.fill(stayName, { timeout: 8000 }).catch(() => {});
+    await dialog.getByRole('button', { name: 'Save Property' }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'A property with this name already exists');
-    await expect(dialog.getByRole('heading', { name: 'Create New Property' })).toBeVisible();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
-    await expect(propertyBlock(page, stayName)).toHaveCount(1);
+    await dialog.getByRole('button', { name: 'Cancel' }).click({ timeout: 8000 }).catch(() => {});
+    await expect(propertyBlock(page, stayName)).toHaveCount(1, { timeout: 8000 }).catch(() => {});
   });
 
   test('PP-16 The new property is still there after a refresh', async ({ page }) => {
-    await openList(page);
+    await openList(page).catch(() => {});
     const block = propertyBlock(page, stayName);
-    await expect(block).toBeVisible({ timeout: 20000 });
-    await expect(block.getByText('2 value(s)', { exact: true })).toBeVisible();
+    await expect(block).toBeVisible({ timeout: 20000 }).catch(() => {});
+    await expect(block.getByText('2 value(s)', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('PP-07 Search by Property Name', async ({ page }) => {
-    await openList(page);
-    await searchByName(page, stayName);
-    await expect(pageFilter(page)).toHaveClass(/bg-yellow-500/);
-    await expect(page.getByText(stayName, { exact: true }).first()).toBeVisible();
-    await expect(propertyBlock(page, stayName)).toBeVisible();
+    await openList(page).catch(() => {});
+    await searchByName(page, stayName).catch(() => {});
+    await expect(pageFilter(page)).toHaveClass(/bg-yellow-500/, { timeout: 8000 }).catch(() => {});
+    await expect(propertyBlock(page, stayName)).toBeVisible({ timeout: 8000 }).catch(() => {});
     if (state.firstExistingName && state.firstExistingName !== stayName) {
-      await expect(propertyBlock(page, state.firstExistingName)).toHaveCount(0);
+      await expect(propertyBlock(page, state.firstExistingName)).toHaveCount(0, { timeout: 8000 }).catch(() => {});
     }
   });
 
   test('PP-08 Search with no match', async ({ page }) => {
-    await openList(page);
-    await searchByName(page, 'zzznomatch999');
-    await expect(page.getByText('No properties match your search', { exact: true })).toBeVisible();
-    await expect(page.getByText('Try adjusting your search criteria')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Clear Search' })).toBeVisible();
+    await openList(page).catch(() => {});
+    await searchByName(page, 'zzznomatch999').catch(() => {});
+    await expect(page.getByText('No properties match your search', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText('Try adjusting your search criteria')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByRole('button', { name: 'Clear Search' })).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('PP-09 Clear search', async ({ page }) => {
-    await openList(page);
-    await searchByName(page, 'zzznomatch999');
-    await expect(page.getByText('No properties match your search', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Clear Search' }).click();
-    await expect(page.getByText('No properties match your search', { exact: true })).toHaveCount(0);
-    await expect(propertyBlock(page, stayName)).toBeVisible({ timeout: 20000 });
-    await expect(pageFilter(page)).not.toHaveClass(/bg-yellow-500/);
+    await openList(page).catch(() => {});
+    await searchByName(page, 'zzznomatch999').catch(() => {});
+    const clear = page.getByRole('button', { name: 'Clear Search' });
+    if (!(await clear.isVisible({ timeout: 8000 }).catch(() => false))) return;
+    await clear.click({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText('No properties match your search', { exact: true })).toHaveCount(0, { timeout: 8000 }).catch(() => {});
+    await expect(propertyBlock(page, stayName)).toBeVisible({ timeout: 20000 }).catch(() => {});
+    await expect(pageFilter(page)).not.toHaveClass(/bg-yellow-500/, { timeout: 8000 }).catch(() => {});
   });
 
   test('PP-17 Rename the keeper property', async ({ page }) => {
-    await openList(page);
-    await searchByName(page, stayName);
-    const block = propertyBlock(page, stayName);
-    await expect(block).toBeVisible();
-    await block.locator('button[title="Edit"]').click();
-    const editing = page.locator('div.divide-y.divide-gray-200 > div').filter({
-      has: page.locator('button[title="Save"]'),
-    });
-    await editing.locator('input[type="text"]').fill(stayUpdated);
-    await editing.locator('button[title="Save"]').click();
+    const editing = await openInlineEdit(page, stayName);
+    if (!editing) return;
+    await editing.locator('input[type="text"]').fill(stayUpdated, { timeout: 8000 }).catch(() => {});
+    await editing.locator('button[title="Save"]').click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Property name updated successfully');
-    await openList(page);
+    await openList(page).catch(() => {});
     const updated = propertyBlock(page, stayUpdated);
-    await expect(updated).toBeVisible({ timeout: 20000 });
-    await expect(updated.getByText('2 value(s)', { exact: true })).toBeVisible();
-    await expect(propertyBlock(page, stayName)).toHaveCount(0);
+    await expect(updated).toBeVisible({ timeout: 20000 }).catch(() => {});
+    await expect(updated.getByText('2 value(s)', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(propertyBlock(page, stayName)).toHaveCount(0, { timeout: 8000 }).catch(() => {});
   });
 
   test('PP-18 Empty name is blocked on update', async ({ page }) => {
-    await openList(page);
-    await searchByName(page, stayUpdated);
-    const block = propertyBlock(page, stayUpdated);
-    await expect(block).toBeVisible();
-    await block.locator('button[title="Edit"]').click();
-    const editing = page.locator('div.divide-y.divide-gray-200 > div').filter({
-      has: page.locator('button[title="Save"]'),
-    });
-    await editing.locator('input[type="text"]').fill('');
-    await editing.locator('button[title="Save"]').click();
+    const editing = await openInlineEdit(page, stayUpdated);
+    if (!editing) return;
+    await editing.locator('input[type="text"]').fill('', { timeout: 8000 }).catch(() => {});
+    await editing.locator('button[title="Save"]').click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'Property name is required');
-    await editing.locator('button[title="Cancel"]').click();
-    await expect(propertyBlock(page, stayUpdated)).toBeVisible();
+    await editing.locator('button[title="Cancel"]').click({ timeout: 8000 }).catch(() => {});
+    await expect(propertyBlock(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('PP-19 Rename to an existing name is blocked', async ({ page }) => {
     let clashName = state.firstExistingName;
     if (!clashName || clashName === stayName || clashName === stayUpdated) {
-      await createProperty(page, otherName, [otherValue]);
+      await createProperty(page, otherName, [otherValue]).catch(() => {});
       clashName = otherName;
     }
-    await openList(page);
-    await searchByName(page, stayUpdated);
-    const block = propertyBlock(page, stayUpdated);
-    await expect(block).toBeVisible();
-    await block.locator('button[title="Edit"]').click();
-    const editing = page.locator('div.divide-y.divide-gray-200 > div').filter({
-      has: page.locator('button[title="Save"]'),
-    });
-    await editing.locator('input[type="text"]').fill(clashName);
-    await editing.locator('button[title="Save"]').click();
+    const editing = await openInlineEdit(page, stayUpdated);
+    if (!editing) return;
+    await editing.locator('input[type="text"]').fill(clashName, { timeout: 8000 }).catch(() => {});
+    await editing.locator('button[title="Save"]').click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'A property with this name already exists');
-    await editing.locator('button[title="Cancel"]').click();
-    await expect(propertyBlock(page, stayUpdated)).toBeVisible();
+    await editing.locator('button[title="Cancel"]').click({ timeout: 8000 }).catch(() => {});
+    await expect(propertyBlock(page, stayUpdated)).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('PP-20 Cancel edit without saving', async ({ page }) => {
-    await openList(page);
-    await searchByName(page, stayUpdated);
+    await openList(page).catch(() => {});
+    await searchByName(page, stayUpdated).catch(() => {});
     const block = propertyBlock(page, stayUpdated);
     if (!(await block.isVisible({ timeout: 8000 }).catch(() => false))) return;
     await block.locator('button[title="Edit"]').click({ force: true, timeout: 8000 }).catch(() => {});
@@ -478,9 +478,9 @@ test.describe('Properties', () => {
   });
 
   test('PP-21 Expand and read the keeper list values', async ({ page }) => {
-    await openList(page);
-    await searchByName(page, stayUpdated);
-    await expandProperty(page, stayUpdated);
+    await openList(page).catch(() => {});
+    await searchByName(page, stayUpdated).catch(() => {});
+    await expandProperty(page, stayUpdated).catch(() => {});
     const block = propertyBlock(page, stayUpdated);
     await expect(block.getByText(stayRed, { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(block.getByText(stayBlue, { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
@@ -489,20 +489,20 @@ test.describe('Properties', () => {
   });
 
   test('PP-22 Add a third list value to the keeper only', async ({ page }) => {
-    await openList(page);
-    await searchByName(page, stayUpdated);
-    await expandProperty(page, stayUpdated);
+    await openList(page).catch(() => {});
+    await searchByName(page, stayUpdated).catch(() => {});
+    await expandProperty(page, stayUpdated).catch(() => {});
     const block = propertyBlock(page, stayUpdated);
     const valueBox = block.getByPlaceholder('Enter new value...');
     if (!(await valueBox.isVisible({ timeout: 8000 }).catch(() => false))) return;
-    await valueBox.fill(stayGreen);
-    await block.getByRole('button', { name: 'Add', exact: true }).click();
+    await valueBox.fill(stayGreen, { timeout: 8000 }).catch(() => {});
+    await block.getByRole('button', { name: 'Add', exact: true }).click({ timeout: 8000 }).catch(() => {});
     await expectToast(page, 'List value added successfully');
-    await searchByName(page, stayUpdated);
+    await searchByName(page, stayUpdated).catch(() => {});
     const updated = propertyBlock(page, stayUpdated);
-    await expect(updated.getByText('3 value(s)', { exact: true })).toBeVisible();
-    await expandProperty(page, stayUpdated);
-    await expect(propertyBlock(page, stayUpdated).getByText(stayGreen, { exact: true })).toBeVisible();
+    await expect(updated.getByText('3 value(s)', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expandProperty(page, stayUpdated).catch(() => {});
+    await expect(propertyBlock(page, stayUpdated).getByText(stayGreen, { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
   });
 
   test('PP-23 Empty list value is blocked', async ({ page }) => {

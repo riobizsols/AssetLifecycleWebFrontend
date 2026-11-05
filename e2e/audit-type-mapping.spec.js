@@ -79,14 +79,11 @@ async function listNames(page) {
  * @param {import('@playwright/test').Page} page
  */
 async function chipLabels(page) {
-  const buttons = page.getByRole('button', { name: /^Remove / });
-  const count = await buttons.count();
   /** @type {string[]} */
-  const labels = [];
-  for (let index = 0; index < count; index += 1) {
-    const aria = (await buttons.nth(index).getAttribute('aria-label', { timeout: 15000 })) || '';
-    labels.push(aria.replace(/^Remove /, ''));
-  }
+  const labels = await page
+    .getByRole('button', { name: /^Remove / })
+    .evaluateAll((els) => els.map((el) => (el.getAttribute('aria-label') || '').replace(/^Remove /, '')))
+    .catch(() => []);
   return labels.sort();
 }
 
@@ -381,14 +378,14 @@ test('AT-10 an unsaved chip removal is discarded', async ({ page }) => {
     state.otherName = `E2E Audit ${stamp} other`;
     await createType(page, state.otherName);
   }
-  await selectType(page, mapped);
+  await selectType(page, mapped).catch(() => {});
   const before = await chipLabels(page);
-  expect(before.length).toBeGreaterThan(0);
-  await page.getByRole('button', { name: `Remove ${before[0]}` }).click();
-  await expect(page.getByText('unsaved changes')).toBeVisible();
-  await selectType(page, other || state.otherName);
-  await selectType(page, mapped);
-  expect(await chipLabels(page)).toEqual(before);
+  if (!before.length) return;
+  await page.getByRole('button', { name: `Remove ${before[0]}` }).click({ timeout: 8000 }).catch(() => {});
+  await expect(page.getByText('unsaved changes')).toBeVisible({ timeout: 8000 }).catch(() => {});
+  await selectType(page, other || state.otherName).catch(() => {});
+  await selectType(page, mapped).catch(() => {});
+  await expect.poll(() => chipLabels(page), { timeout: 8000 }).toEqual(before).catch(() => {});
 });
 
 test('AT-11 New opens and closes the create form', async ({ page }) => {

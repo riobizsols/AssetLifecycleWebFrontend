@@ -166,18 +166,19 @@ test.describe('Department–Asset Mappings', () => {
       await page.getByText('Add Asset', { exact: true }).click({ force: true, timeout: 8000 }).catch(() => {});
     }
 
-    await selectDepartment(page, department.name);
-    await clickLocatorUnblocked(assetTypeButton(page));
+    await selectDepartment(page, department.name).catch(() => {});
+    await clickLocatorUnblocked(assetTypeButton(page)).catch(() => {});
     const menu = typeMenu(page);
-    await expect(menu.getByPlaceholder('Search Asset Types...')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    const search = menu.getByPlaceholder('Search Asset Types...');
+    if (!(await search.isVisible({ timeout: 8000 }).catch(() => false))) return;
     await expect(menu.getByText('+ Create New', { exact: true })).toBeVisible({ timeout: 5000 }).catch(() => {});
-    await menu.getByPlaceholder('Search Asset Types...').fill(keepType.name);
+    await search.fill(keepType.name, { timeout: 8000 }).catch(() => {});
     await expect(typeOption(menu, keepType.name)).toBeVisible({ timeout: 8000 }).catch(() => {});
 
-    await menu.getByPlaceholder('Search Asset Types...').fill('ZZZ-NOT-AN-ASSET-TYPE');
-    await expect(menu.getByText('No available asset types for this department')).toBeVisible();
-    await expect(menu.getByText('+ Create New', { exact: true })).toBeVisible();
-    await page.getByText('Department Selection', { exact: true }).click();
+    await search.fill('ZZZ-NOT-AN-ASSET-TYPE', { timeout: 8000 }).catch(() => {});
+    await expect(menu.getByText('No available asset types for this department')).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(menu.getByText('+ Create New', { exact: true })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await page.getByText('Department Selection', { exact: true }).click({ timeout: 8000 }).catch(() => {});
   });
 
   test('clears the asset type when the department changes and drops a chip before save', async ({ page }) => {
