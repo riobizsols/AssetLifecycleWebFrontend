@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, headerAddButton, leaveAddScreen, clickSortCycle } from './helpers/screenAccess.js';
+import { clickUnblocked, dismissToasts, headerAddButton, leaveAddScreen, clickSortCycle } from './helpers/screenAccess.js';
 
 /**
  * Master Data > Branches. One serial chain for this file.
@@ -263,6 +263,7 @@ test.describe('Branches', () => {
     await page.locator('input[name="text"]').fill(otherName);
     await page.locator('input[name="branch_code"]').fill(branchCode);
     await page.locator('input[name="city"]').fill(city);
+    await dismissToasts(page);
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByText('This branch code is already in use')).toBeVisible();
 
@@ -434,6 +435,7 @@ async function createBranch(page, name, code) {
   await page.locator('input[name="text"]').fill(name);
   await page.locator('input[name="branch_code"]').fill(code);
   await page.locator('input[name="city"]').fill(city);
+  await dismissToasts(page);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByText('Branch created successfully!')).toBeVisible({ timeout: 60000 });
   await expect(page).toHaveURL(/\/master-data\/branches$/, { timeout: 60000 });

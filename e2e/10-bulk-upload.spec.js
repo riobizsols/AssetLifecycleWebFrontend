@@ -55,6 +55,23 @@ const employeeHeaders = [
   'joining_date', 'language_code',
 ];
 
+/**
+ * The dropdown fills from an API call, so a record created a moment ago can be missing on first load.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} url
+ * @param {import('@playwright/test').Locator} select
+ * @param {string} value
+ */
+async function openWithOption(page, url, select, value) {
+  const option = select.locator(`option[value="${value}"]`);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await gotoProtected(page, url);
+    const loaded = await option.waitFor({ state: 'attached', timeout: 20000 }).then(() => true, () => false);
+    if (loaded) return;
+  }
+  await expect(option).toBeAttached({ timeout: 1000 });
+}
+
 test.describe('Bulk Upload', () => {
   test('creates the org, branch, department, vendor, and asset type the files need', async ({ page }) => {
     await gotoProtected(page, `${BASE}/master-data/asset-types/add`);
@@ -85,7 +102,7 @@ test.describe('Bulk Upload', () => {
     vendorId = vendorBody.data.vendor_id;
     expect(vendorId).toMatch(/^V\d{3}$/);
 
-    await gotoProtected(page, `${BASE}/master-data/branches/add`);
+    await openWithOption(page, `${BASE}/master-data/branches/add`, page.locator('select[name="org_id"]'), orgId);
     await page.locator('select[name="org_id"]').selectOption(orgId);
     await page.locator('input[name="text"]').fill(`${run} Branch`);
     await page.locator('input[name="branch_code"]').fill(`B${stamp.slice(-4)}`);
@@ -98,7 +115,7 @@ test.describe('Bulk Upload', () => {
     branchId = (await (await branchResponse).json()).branch_id;
     expect(branchId).toBeTruthy();
 
-    await gotoProtected(page, `${BASE}/master-data/departments`);
+    await openWithOption(page, `${BASE}/master-data/departments`, page.locator('select').first(), branchId);
     const deptIdBox = page.getByPlaceholder(/Department Id/i);
     await expect(deptIdBox).toHaveValue(/DPT\d+/, { timeout: 30000 });
     await page.locator('select').first().selectOption(branchId);

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, chooseLabeledOption, clickLocatorUnblocked, selectNativeOption, clickUnblocked } from './helpers/screenAccess.js';
+import { headerAddButton, chooseLabeledOption, clickLocatorUnblocked, selectNativeOption, clickUnblocked, dismissToasts } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -187,6 +187,7 @@ async function ensureParentAssetType(page) {
   });
   await page.getByPlaceholder('Enter asset type name').fill(typeName);
   await page.getByText('Department-wise', { exact: true }).click();
+  await dismissToasts(page);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, `Asset type "${typeName}" created successfully`);
   state.typeName = typeName;

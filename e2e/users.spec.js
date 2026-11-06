@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { headerAddButton, clickSortCycle, firstDataRow, clickDownload, readDownloadedWorkbook, selectNativeOption } from './helpers/screenAccess.js';
+import { headerAddButton, clickSortCycle, firstDataRow, clickDownload, readDownloadedWorkbook, selectNativeOption, dismissToasts } from './helpers/screenAccess.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -180,6 +180,7 @@ async function ensureBranch(page) {
   await page.getByPlaceholder('Enter Branch Name').fill(branchName);
   await page.getByPlaceholder('Enter Branch Code').fill(branchCode);
   await page.getByPlaceholder('Enter City').fill('Playwright');
+  await dismissToasts(page);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectToast(page, 'Branch created successfully!');
 

@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickLocatorUnblocked } from './helpers/screenAccess.js';
+import { clickLocatorUnblocked, dismissToasts } from './helpers/screenAccess.js';
 
 /**
  * Master Data > Department–Asset Mappings. One serial chain.
@@ -474,6 +474,7 @@ async function createDepartmentAssetType(page, name) {
     (res) => res.request().method() === 'POST' && /\/asset-types\/?$/.test(new URL(res.url()).pathname),
     { timeout: 90000 },
   );
+  await dismissToasts(page);
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   const response = await posted;
   if (!response.ok()) {
