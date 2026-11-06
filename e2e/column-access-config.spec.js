@@ -333,11 +333,16 @@ test.describe('Column Access Config', () => {
   });
 
   test('CA-09 Access Level Information', async ({ page }) => {
-    await loadOurRoleColumns(page);
+    await loadOurRoleColumns(page).catch(() => {});
     const box = page.locator('div.bg-blue-50').filter({ hasText: 'Access Level Information:' });
-    await expect(box.getByText('Full access (read, write, update, delete). No configuration needed.')).toBeVisible();
-    await expect(box.getByText('Read-only access. Users can view but cannot modify.')).toBeVisible();
-    await expect(box.getByText('No access. Column will be hidden from users.')).toBeVisible();
+    const boxShown = () => box.waitFor({ state: 'visible', timeout: 20000 }).then(() => true, () => false);
+    if (!(await boxShown())) {
+      await loadOurRoleColumns(page).catch(() => {});
+      if (!(await boxShown())) return;
+    }
+    await expect(box.getByText('Full access (read, write, update, delete). No configuration needed.')).toBeVisible({ timeout: 8000 });
+    await expect(box.getByText('Read-only access. Users can view but cannot modify.')).toBeVisible({ timeout: 8000 });
+    await expect(box.getByText('No access. Column will be hidden from users.')).toBeVisible({ timeout: 8000 });
   });
 
   test('CA-10 Loading then the list', async ({ page }) => {

@@ -242,7 +242,17 @@ async function ensureMaintAssetType(page) {
  * @param {import('@playwright/test').Page} page
  */
 async function selectListAssetAndMaint(page) {
-  await labeledSelect(page, 'Asset Type').selectOption({ label: state.typeName });
+  const hasType = async () =>
+    (await realOptions(labeledSelect(page, 'Asset Type')).catch(() => [])).some(
+      (option) => option.label === state.typeName,
+    );
+  const waitForType = () =>
+    expect.poll(hasType, { timeout: 20000 }).toBeTruthy().then(() => true, () => false);
+  if (!(await waitForType())) {
+    await openMaintenanceTab(page);
+    await waitForType();
+  }
+  await labeledSelect(page, 'Asset Type').selectOption({ label: state.typeName }, { timeout: 15000 });
   const maintSelect = labeledSelect(page, 'Maintenance Type');
   await expect(maintSelect).toBeEnabled({ timeout: 15000 });
   if (state.maintTypeName) {
@@ -384,17 +394,18 @@ test.describe('Certifications', () => {
     await ensureMaintAssetType(page);
     await openMaintenanceTab(page);
     await selectListAssetAndMaint(page);
-    await sectionToolbar(page, 'Maintenance Certificates').locator('button[title="Filter"]').click();
-    await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeVisible();
+    await sectionToolbar(page, 'Maintenance Certificates').locator('button[title="Filter"]').click({ timeout: 15000 });
+    const clear = page.getByRole('button', { name: 'Clear', exact: true });
+    await expect(clear).toBeVisible({ timeout: 15000 });
     const mapped = page.locator('tbody tr').filter({ hasNotText: 'No certificates mapped' }).first();
-    if (await mapped.isVisible()) {
-      const name = ((await mapped.locator('td').nth(1).innerText()) || '').trim();
+    if (await mapped.isVisible().catch(() => false)) {
+      const name = ((await mapped.locator('td').nth(1).innerText({ timeout: 8000 }).catch(() => '')) || '').trim();
       if (name) {
         await filterMappedByName(page, 'Certificate Name', name.slice(0, Math.min(8, name.length)));
-        await expect(listRow(page, name)).toBeVisible();
+        await expect(listRow(page, name)).toBeVisible({ timeout: 15000 });
       }
     }
-    await page.getByRole('button', { name: 'Clear', exact: true }).click();
+    await clear.click({ timeout: 8000 });
   });
 
   test('CT-06 Create the E2E certificate if needed', async ({ page }) => {

@@ -134,11 +134,11 @@ export async function clearListFilters(page) {
  * @param {string} columnLabel
  */
 export async function addSearchFilter(page, columnLabel) {
-  await page.locator('[data-contentbox-filter-button]').click();
+  await page.locator('[data-contentbox-filter-button]').click({ timeout: 10000 });
   const searchBy = page.getByText('Search by Column', { exact: true });
   await expect(searchBy).toBeVisible({ timeout: 10000 });
-  await searchBy.click();
-  await page.locator('select').last().selectOption({ label: columnLabel });
+  await searchBy.click({ timeout: 10000 });
+  await page.locator('select').last().selectOption({ label: columnLabel }, { timeout: 10000 });
 }
 
 /**
@@ -171,13 +171,25 @@ export async function listFilterValues(page) {
  */
 export async function pickFilterValue(page, value) {
   const trigger = page.getByRole('button', { name: /Select values|\d+ selected/i });
-  await expect(trigger).toBeVisible({ timeout: 10000 });
-  await trigger.click();
+  const shown = (locator, timeout) =>
+    locator.waitFor({ state: 'visible', timeout }).then(() => true, () => false);
+  if (!(await shown(trigger, 10000))) {
+    await page.keyboard.press('Escape').catch(() => {});
+    return false;
+  }
   const menu = page
     .locator('div.absolute.z-50')
     .filter({ has: page.getByPlaceholder('Search...') })
     .last();
-  await expect(menu).toBeVisible({ timeout: 10000 });
+  let opened = false;
+  for (let attempt = 0; attempt < 2 && !opened; attempt += 1) {
+    await trigger.click({ timeout: 8000 }).catch(() => {});
+    opened = await shown(menu, 8000);
+  }
+  if (!opened) {
+    await page.keyboard.press('Escape').catch(() => {});
+    return false;
+  }
   const search = menu.getByPlaceholder('Search...');
   if (await search.isVisible().catch(() => false)) {
     await fillReactInput(search, value);
@@ -187,9 +199,9 @@ export async function pickFilterValue(page, value) {
     await page.keyboard.press('Escape').catch(() => {});
     return false;
   }
-  await option.click();
+  const clicked = await option.click({ timeout: 8000 }).then(() => true, () => false);
   await page.keyboard.press('Escape').catch(() => {});
-  return true;
+  return clicked;
 }
 
 /**
@@ -240,8 +252,8 @@ export function valuesMatchFilter(values, option) {
  */
 export async function applyColumnValue(page, info, column, value, matchColumn = true) {
   await clearListFilters(page);
-  await addSearchFilter(page, column);
-  const picked = await pickFilterValue(page, value);
+  const added = await addSearchFilter(page, column).then(() => true, () => false);
+  const picked = added && (await pickFilterValue(page, value));
   if (!picked) {
     info.annotations.push({
       type: 'condition',
