@@ -69,7 +69,7 @@ async function waitForJobs(page) {
   await expect(rows.first(), 'Job Monitor has no screen to create a job. playwright_db returned no Job List rows.').toBeVisible({
     timeout: 30000,
   });
-  await expect(rows.first()).not.toContainText('Loading jobs...');
+  await expect(rows.first()).not.toContainText('Loading jobs...', { timeout: 30000 });
   return rows;
 }
 

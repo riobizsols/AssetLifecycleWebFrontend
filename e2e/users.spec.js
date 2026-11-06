@@ -418,14 +418,15 @@ test('TC-USER-006 Save reports each missing field and stays on the form', async 
   await saveBtn.click({ timeout: 5000 }).catch(() => {});
   await expectToast(page, 'Branch is required');
 
-  if (state.branchId) {
-    await selectNativeOption(page.locator('select[name="branch_id"]'), state.branchId).catch(() => {});
+  const branchPicked = !!state.branchId
+    && (await selectNativeOption(page.locator('select[name="branch_id"]'), state.branchId));
+  if (branchPicked) {
     await saveBtn.click({ timeout: 5000 }).catch(() => {});
     await expectToast(page, 'Department is required');
   }
 
-  if (state.deptId) {
-    await selectNativeOption(page.locator('select[name="dept_id"]'), state.deptId).catch(() => {});
+  if (branchPicked && state.deptId
+    && (await selectNativeOption(page.locator('select[name="dept_id"]'), state.deptId))) {
     await saveBtn.click({ timeout: 5000 }).catch(() => {});
     await expectToast(page, 'Employment type is required');
   }

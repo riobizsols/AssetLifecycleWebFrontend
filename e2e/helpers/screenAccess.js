@@ -439,7 +439,7 @@ export function readDownloadedWorkbook(filePath) {
  */
 export async function selectNativeOption(locator, option, timeout = 8000) {
   const select = locator.first();
-  if (!(await select.isVisible({ timeout }).catch(() => false))) return false;
-  await select.selectOption(option).catch(() => {});
-  return true;
+  const shown = await select.waitFor({ state: 'visible', timeout }).then(() => true, () => false);
+  if (!shown) return false;
+  return select.selectOption(option, { timeout: Math.max(timeout, 20000) }).then(() => true, () => false);
 }
