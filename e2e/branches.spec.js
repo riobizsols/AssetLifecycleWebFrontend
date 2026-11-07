@@ -360,9 +360,21 @@ async function openList(page) {
 /** @param {import('@playwright/test').Page} page */
 async function openAdd(page) {
   await openList(page);
+  const orgsLoaded = page.waitForResponse(
+    (response) => {
+      if (response.request().method() !== 'GET' || !response.ok()) return false;
+      try {
+        return /\/orgs\/?$/.test(new URL(response.url()).pathname);
+      } catch {
+        return false;
+      }
+    },
+    { timeout: 45000 },
+  ).catch(() => null);
   await headerAddButton(page).click();
   await expect(page).toHaveURL(/\/master-data\/branches\/add$/, { timeout: 30000 });
   await expect(page.locator('select[name="org_id"]')).toBeVisible();
+  await orgsLoaded;
 }
 
 /**
@@ -402,13 +414,16 @@ function headerDownload(page) {
 async function selectOrganization(page) {
   const orgSelect = page.locator('select[name="org_id"]');
   const option = orgSelect.locator('option[value]:not([value=""])').first();
-  if ((await option.count()) === 0) {
-    await page.reload();
-    await expect(page.locator('label').filter({ hasText: 'Organization' })).toBeVisible({ timeout: 45000 });
+  // /orgs can fail or lag; one reload was not enough on CI.
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (attempt > 0) {
+      await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+      await expect(orgSelect).toBeVisible({ timeout: 30000 });
+    }
+    const loaded = await option.waitFor({ state: 'attached', timeout: 20000 }).then(() => true, () => false);
+    if (loaded) break;
   }
-  await expect(option).toBeAttached({
-    timeout: 45000,
-  });
+  await expect(option).toBeAttached({ timeout: 10000 });
   const value = await orgSelect.locator('option').evaluateAll((opts) => {
     const match = opts.find((opt) => {
       const id = opt.getAttribute('value') || '';

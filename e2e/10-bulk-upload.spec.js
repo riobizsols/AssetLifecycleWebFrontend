@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoProtected } from './helpers/appReady.js';
 import { BASE } from './helpers/baseUrl.js';
-import { clickUnblocked, dismissToasts, fillReactInput } from './helpers/screenAccess.js';
+import { clickUnblocked, clickUntilResponse, dismissToasts, fillReactInput } from './helpers/screenAccess.js';
 
 /**
  * One serial chain. A successful commit stays in the playwright tenant.
@@ -87,18 +87,35 @@ test.describe('Bulk Upload', () => {
     expect(dropdownTypeId).toMatch(/^[A-Za-z][A-Za-z0-9_]*[0-9]{3,}$/);
     expect(orgId).toBeTruthy();
 
+    // Stale vendorAddDraft (vendorSaved + id from an earlier spec) makes Save skip
+    // create-vendor entirely — clear it before opening the form.
+    await page.evaluate(() => {
+      sessionStorage.removeItem('vendorAddDraft');
+      sessionStorage.removeItem('vendorProductDraft');
+      sessionStorage.removeItem('vendorServiceDraft');
+      sessionStorage.removeItem('products');
+      sessionStorage.removeItem('services');
+      sessionStorage.removeItem('spareSupplies');
+    });
     await gotoProtected(page, `${BASE}/master-data/add-vendor`);
-    await page.locator('input[name="vendor_name"]').fill(`${run} Vendor`);
-    await page.locator('input[name="company_name"]').fill(`${run} Company`);
-    await page.locator('input[name="company_email"]').fill(`${run.toLowerCase()}.vendor@example.com`);
-    await page.locator('input[name="contact_person_number"]').fill('9999900002');
-    await page.locator('input[name="contact_person_name"]').fill(`${run} Contact`);
-    const vendorResponse = page.waitForResponse(
-      (response) => response.request().method() === 'POST' && response.url().includes('/create-vendor'),
-      { timeout: 60000 },
+    const vendorName = page.locator('input[name="vendor_name"]');
+    await expect(vendorName).toBeVisible({ timeout: 30000 });
+    await fillReactInput(vendorName, `${run} Vendor`);
+    await fillReactInput(page.locator('input[name="company_name"]'), `${run} Company`);
+    await fillReactInput(
+      page.locator('input[name="company_email"]'),
+      `${run.toLowerCase()}.vendor@example.com`,
     );
-    await clickUnblocked(page, 'Save');
-    const vendorBody = await (await vendorResponse).json();
+    await fillReactInput(page.locator('input[name="contact_person_number"]'), '9999900002');
+    await fillReactInput(page.locator('input[name="contact_person_name"]'), `${run} Contact`);
+    await page.locator('input[name="contact_person_name"]').blur().catch(() => {});
+    const vendorResponse = await clickUntilResponse(
+      page,
+      'Save',
+      (response) => response.request().method() === 'POST' && response.url().includes('/create-vendor'),
+      { attempts: 3, timeout: 25000 },
+    );
+    const vendorBody = await vendorResponse.json();
     vendorId = vendorBody.data.vendor_id;
     expect(vendorId).toMatch(/^V\d{3}$/);
 

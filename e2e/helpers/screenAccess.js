@@ -72,15 +72,26 @@ export async function clickHeaderAdd(page) {
 
 /**
  * Pick an organization on Add Branch after /orgs has loaded.
+ * Reloads a few times when the select stays empty (slow or failed /orgs).
  * Uses preferredId when passed; otherwise the first real org.
  * @param {import('@playwright/test').Page} page
  * @param {string} [preferredId]
  */
 export async function selectLoadedOrganization(page, preferredId) {
   const orgSelect = page.locator('select[name="org_id"]');
-  await expect(orgSelect).toBeEnabled({ timeout: 30000 }).catch(() => {});
   const real = orgSelect.locator('option[value]:not([value=""])');
-  await expect(real.first()).toBeAttached({ timeout: 30000 }).catch(() => {});
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (attempt > 0) {
+      await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+    }
+    await expect(orgSelect).toBeVisible({ timeout: 30000 });
+    const loaded = await real
+      .first()
+      .waitFor({ state: 'attached', timeout: 20000 })
+      .then(() => true, () => false);
+    if (loaded) break;
+  }
+  await expect(real.first()).toBeAttached({ timeout: 10000 });
   if (preferredId) {
     await orgSelect.selectOption(preferredId).catch(async () => {
       const fallback = await real.first().getAttribute('value').catch(() => '');
@@ -92,6 +103,33 @@ export async function selectLoadedOrganization(page, preferredId) {
   if (value) await orgSelect.selectOption(value);
   else await orgSelect.selectOption({ index: 1 }).catch(() => {});
   return value || '';
+}
+
+/**
+ * Click a footer action until a matching network response arrives.
+ * Covers cases where the first click is swallowed (toast overlay, stale draft,
+ * React state not yet synced from the last fill).
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ * @param {(response: import('@playwright/test').Response) => boolean} match
+ * @param {{ attempts?: number, timeout?: number, which?: 'first' | 'last' }} [opts]
+ */
+export async function clickUntilResponse(page, name, match, opts = {}) {
+  const attempts = opts.attempts ?? 3;
+  const timeout = opts.timeout ?? 20000;
+  const which = opts.which ?? 'last';
+  /** @type {Error | undefined} */
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const pending = page.waitForResponse(match, { timeout });
+    await clickUnblocked(page, name, which);
+    try {
+      return await pending;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+  throw lastError || new Error(`No matching response after ${attempts} ${name} clicks`);
 }
 
 /**
