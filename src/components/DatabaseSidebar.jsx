@@ -183,6 +183,7 @@ const DEFAULT_NAV_GROUP_MEMBERS = {
     "SLAVENDORPERFORMANCE",
     "CONSUMABLESREPORT",
     "MAINTENANCESTATUSREPORT",
+    "UPCOMINGMAINTENANCESCHEDULE",
     "OUTOFSTOCKREPORT",
     "PURCHASEREQUIREMENTREPORT",
     "WORKFORCEREPORT",
@@ -1681,6 +1682,9 @@ const DatabaseSidebar = () => {
     if (normalizeNavAppId(appId) === "MAINTENANCESTATUSREPORT") {
       return t("navigation.maintenanceStatusReport");
     }
+    if (normalizeNavAppId(appId) === "UPCOMINGMAINTENANCESCHEDULE") {
+      return t("navigation.upcomingMaintenanceScheduleReport");
+    }
     // Create a mapping from English labels to translation keys
     const labelMap = {
       'Dashboard': t('navigation.dashboard'),
@@ -1854,6 +1858,7 @@ const DatabaseSidebar = () => {
     SLAVENDORPERFORMANCE: "/reports/sla-vendor-performance",
     CONSUMABLESREPORT: "/reports/consumables",
     MAINTENANCESTATUSREPORT: "/reports/maintenance-status",
+    UPCOMINGMAINTENANCESCHEDULE: "/reports/upcoming-maintenance-schedule",
     OUTOFSTOCKREPORT: "/reports/purchase-requirement",
     PURCHASEREQUIREMENTREPORT: "/reports/purchase-requirement",
     WORKFORCEREPORT: "/reports/workforce",
@@ -2046,6 +2051,7 @@ const DatabaseSidebar = () => {
       SLAVENDORPERFORMANCE: FileText,
       CONSUMABLESREPORT: Package,
       MAINTENANCESTATUSREPORT: Wrench,
+      UPCOMINGMAINTENANCESCHEDULE: Calendar,
       OUTOFSTOCKREPORT: Package,
       PURCHASEREQUIREMENTREPORT: Package,
       WORKFORCEREPORT: Users,

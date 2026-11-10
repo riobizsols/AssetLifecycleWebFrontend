@@ -71,6 +71,7 @@
     "approvalsGroup": "Approvals",
     "certificatesGroup": "Certificates",
     "maintenanceStatusReport": "Facility Maintenance Report",
+    "upcomingMaintenanceScheduleReport": "Upcoming Maintenance Schedule",
     "sparePartsReport": "Spare Parts Report"
   },
   "dashboard": {
@@ -3161,6 +3162,7 @@
     "optional": "Optional",
     "selectOption": "Select an option",
     "noDataFound": "No data found",
+    "optionsWithNoData": "Below have no data",
     "notApplicable": "N/A",
     "actions": "Actions",
     "status": "Status",

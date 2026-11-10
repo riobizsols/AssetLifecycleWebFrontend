@@ -160,6 +160,116 @@ export function getMaintenanceStatusCellValue(row, column) {
   }
 }
 
+/** Upcoming Maintenance Schedule Report columns */
+export const UPCOMING_MAINTENANCE_SCHEDULE_COLUMNS = {
+  default: [
+    'S.No.',
+    'Asset ID / Asset Code',
+    'Asset Name',
+    'Asset Type',
+    'Maintenance Type',
+    'Maintenance Schedule Date',
+    'Last Maintenance Date',
+    'Maintenance Frequency',
+    'Assigned Technician',
+    'Service Provider / Vendor',
+    'Priority',
+    'Schedule Status',
+    'Warranty Status',
+    'AMC / CMC Status',
+    'Work Order Number',
+    'Remarks',
+  ],
+  all: [
+    'S.No.',
+    'Asset ID / Asset Code',
+    'Asset Name',
+    'Asset Type',
+    'Maintenance Type',
+    'Maintenance Schedule Date',
+    'Last Maintenance Date',
+    'Maintenance Frequency',
+    'Assigned Technician',
+    'Service Provider / Vendor',
+    'Priority',
+    'Schedule Status',
+    'Warranty Status',
+    'AMC / CMC Status',
+    'Work Order Number',
+    'Remarks',
+  ],
+};
+
+export const UPCOMING_MAINTENANCE_SCHEDULE_ADVANCED_FIELDS = [
+  { key: 'assetId', label: 'Asset ID', type: 'text' },
+  { key: 'assetName', label: 'Asset name', type: 'text' },
+  { key: 'assetType', label: 'Asset type', type: 'text' },
+  {
+    key: 'scheduleStatus',
+    label: 'Schedule status',
+    type: 'multiselect',
+    domain: ['Upcoming', 'Due Today', 'Overdue', 'Completed', 'Rescheduled'],
+  },
+  {
+    key: 'maintenanceType',
+    label: 'Maintenance type',
+    type: 'multiselect',
+    domain: ['Preventive', 'Breakdown', 'Calibration', 'Inspection'],
+  },
+  { key: 'technician', label: 'Technician', type: 'text' },
+  { key: 'vendor', label: 'Vendor', type: 'text' },
+];
+
+export const UPCOMING_MAINTENANCE_SCHEDULE_FIELD_ACCESSORS = {
+  assetId: (r) => r.asset_id,
+  assetName: (r) => r.asset_name,
+  assetType: (r) => r.asset_type_name,
+  scheduleStatus: (r) => r.schedule_status,
+  maintenanceType: (r) => r.maintenance_type,
+  technician: (r) => r.assigned_technician,
+  vendor: (r) => r.vendor_name,
+};
+
+export function getUpcomingMaintenanceScheduleCellValue(row, column) {
+  const dateVal = (v) => (v ? String(v).slice(0, 10) : '—');
+  switch (column) {
+    case 'S.No.':
+      return row.sno ?? '—';
+    case 'Asset ID / Asset Code':
+      return row.asset_id || row.asset_code || '—';
+    case 'Asset Name':
+      return row.asset_name || '—';
+    case 'Asset Type':
+      return row.asset_type_name || '—';
+    case 'Maintenance Type':
+      return row.maintenance_type || '—';
+    case 'Maintenance Schedule Date':
+      return dateVal(row.maintenance_schedule_date);
+    case 'Last Maintenance Date':
+      return dateVal(row.last_maintenance_date);
+    case 'Maintenance Frequency':
+      return row.maintenance_frequency || '—';
+    case 'Assigned Technician':
+      return row.assigned_technician || '—';
+    case 'Service Provider / Vendor':
+      return row.vendor_name || '—';
+    case 'Priority':
+      return row.priority || '—';
+    case 'Schedule Status':
+      return row.schedule_status || '—';
+    case 'Warranty Status':
+      return row.warranty_status || '—';
+    case 'AMC / CMC Status':
+      return row.amc_cmc_status || '—';
+    case 'Work Order Number':
+      return row.wo_id || '—';
+    case 'Remarks':
+      return row.remarks || '—';
+    default:
+      return '—';
+  }
+}
+
 /** Out of Stock report columns (legacy — prefer STOCK_PURCHASE_COLUMNS) */
 export const OUT_OF_STOCK_COLUMNS = {
   default: [

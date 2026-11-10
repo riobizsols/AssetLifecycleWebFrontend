@@ -130,6 +130,7 @@ import ConsolidatedAssetRegister from "../pages/reports/ConsolidatedAssetRegiste
 import SlaVendorPerformance from "../pages/reports/SlaVendorPerformance";
 import ConsumablesReport from "../pages/reports/ConsumablesReport";
 import MaintenanceStatusReport from "../pages/reports/MaintenanceStatusReport";
+import UpcomingMaintenanceScheduleReport from "../pages/reports/UpcomingMaintenanceScheduleReport";
 import OutOfStockReport from "../pages/reports/OutOfStockReport";
 import PurchaseRequirementReport from "../pages/reports/PurchaseRequirementReport";
 import WorkforceReport from "../pages/reports/WorkforceReport";

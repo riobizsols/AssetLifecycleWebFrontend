@@ -72,7 +72,12 @@ const WorkOrderDetail = () => {
       const aligned = {
         ...workOrderData,
         final_approver_name: workOrderData.final_approver_name,
-        approval_date: Array.isArray(workOrderData.approval_date) ? workOrderData.approval_date[0] : workOrderData.approval_date,
+        approval_date: (() => {
+          const raw = Array.isArray(workOrderData.approval_date)
+            ? workOrderData.approval_date[0]
+            : workOrderData.approval_date;
+          return raw || workOrderData.created_on || workOrderData.changed_on || null;
+        })(),
         recent_activities: Array.isArray(workOrderData.recent_activities) ? workOrderData.recent_activities : [],
         // Group maintenance information
         is_group_maintenance: workOrderData.is_group_maintenance || false,

@@ -49,6 +49,7 @@ export const APP_ID_TO_PATH = {
   SLAVENDORPERFORMANCE: '/reports/sla-vendor-performance',
   CONSUMABLESREPORT: '/reports/consumables',
   MAINTENANCESTATUSREPORT: '/reports/maintenance-status',
+  UPCOMINGMAINTENANCESCHEDULE: '/reports/upcoming-maintenance-schedule',
   OUTOFSTOCKREPORT: '/reports/purchase-requirement',
   PURCHASEREQUIREMENTREPORT: '/reports/purchase-requirement',
   WORKFORCEREPORT: '/reports/workforce',

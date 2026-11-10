@@ -53,23 +53,48 @@ function mapTop5Chart(rows) {
 }
 
 function selectDashboardAlerts(transformedAlerts) {
+  const isInspection = (alert) =>
+    alert.alertType === 'Inspection' || alert.workflowType === 'INSPECTION';
+  const isUtility = (alert) =>
+    alert.workflowType === 'CONSUMPTION_MISS' ||
+    alert.alertType === 'Consumption Miss Alert';
+  const isInventory = (alert) =>
+    alert.workflowType === 'STOCK_OUT_OF_STOCK' ||
+    alert.workflowType === 'STOCK_NEEDS_PURCHASE' ||
+    alert.alertType === 'Out of stock' ||
+    alert.alertType === 'Needs purchase';
+
+  const utilityAlerts = transformedAlerts.filter(isUtility);
+  const inventoryAlerts = transformedAlerts.filter(isInventory);
+  const inspectionAlerts = transformedAlerts.filter(isInspection);
   const maintenanceAlerts = transformedAlerts.filter(
-    (alert) => alert.alertType !== 'Inspection' && alert.workflowType !== 'INSPECTION',
-  );
-  const inspectionAlerts = transformedAlerts.filter(
-    (alert) => alert.alertType === 'Inspection' || alert.workflowType === 'INSPECTION',
+    (alert) => !isInspection(alert) && !isUtility(alert) && !isInventory(alert),
   );
 
-  if (maintenanceAlerts.length > 0 && inspectionAlerts.length > 0) {
-    return [maintenanceAlerts[0], inspectionAlerts[0]];
+  // Reserve slots so utility + inventory are not squeezed out by maintenance/inspection.
+  const picked = [];
+  const takeFirst = (pool) => {
+    if (pool.length && picked.length < 4) picked.push(pool[0]);
+  };
+  takeFirst(utilityAlerts);
+  takeFirst(inventoryAlerts);
+  takeFirst(maintenanceAlerts);
+  takeFirst(inspectionAlerts);
+
+  for (const pool of [
+    utilityAlerts.slice(1),
+    inventoryAlerts.slice(1),
+    maintenanceAlerts.slice(1),
+    inspectionAlerts.slice(1),
+  ]) {
+    for (const alert of pool) {
+      if (picked.length >= 4) break;
+      if (!picked.includes(alert)) picked.push(alert);
+    }
+    if (picked.length >= 4) break;
   }
-  if (maintenanceAlerts.length > 0) {
-    return maintenanceAlerts.slice(0, 2);
-  }
-  if (inspectionAlerts.length > 0) {
-    return inspectionAlerts.slice(0, 2);
-  }
-  return [];
+
+  return picked;
 }
 
 function formatNotificationDate(dateString) {

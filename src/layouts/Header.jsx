@@ -252,6 +252,10 @@ export default function Header() {
       title: t("navigation.maintenanceStatusReport"),
       subtitle: "",
     },
+    "/reports/upcoming-maintenance-schedule": {
+      title: t("navigation.upcomingMaintenanceScheduleReport"),
+      subtitle: "",
+    },
     "/reports/workforce": {
       title: "Engineering Team Productivity Report",
       subtitle: "",

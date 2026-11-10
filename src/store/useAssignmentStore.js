@@ -24,8 +24,8 @@ const KEYS = {
   deptHistory: (deptId) => buildCacheKey(['assignment', 'dept-history', deptId, acmKey()]),
   empHistory: (empIntId) => buildCacheKey(['assignment', 'emp-history', empIntId, acmKey()]),
   assetTypesDept: (deptId) => buildCacheKey(['assignment', 'asset-types', 'dept', deptId, acmKey()]),
-  assetTypesUser: (departmentId = '') =>
-    buildCacheKey(['assignment', 'asset-types', 'user', departmentId || 'all', acmKey()]),
+  assetTypesUser: () =>
+    buildCacheKey(['assignment', 'asset-types', 'user', 'org-catalog', acmKey()]),
   inactive: (context, typeId, branchId = '') =>
     buildCacheKey(['assignment', 'inactive', context, typeId, branchId || 'all', acmKey()]),
 };
@@ -124,9 +124,9 @@ export const useAssignmentStore = create((set, get) => ({
     return formatDepartments(data);
   },
 
-  fetchEmployeesByDept: async (deptId, { revalidate = false, onFresh } = {}) => {
+  fetchEmployeesByDept: async (deptId, { revalidate = false, onFresh, silent = false } = {}) => {
     if (!deptId) {
-      set({ employeesLoading: false });
+      if (!silent) set({ employeesLoading: false });
       return [];
     }
 
@@ -135,7 +135,7 @@ export const useAssignmentStore = create((set, get) => ({
       const employees = formatEmployees(rows);
       set((state) => ({
         employeesByDept: { ...state.employeesByDept, [deptId]: employees },
-        employeesLoading: false,
+        ...(silent ? {} : { employeesLoading: false }),
       }));
       onFresh?.(employees);
     };
@@ -145,7 +145,7 @@ export const useAssignmentStore = create((set, get) => ({
       return res.data;
     };
 
-    set({ employeesLoading: true });
+    if (!silent) set({ employeesLoading: true });
 
     if (revalidate) {
       const cached = peekCache(cacheKey, ASSIGNMENT_TTL_MS);
@@ -164,9 +164,9 @@ export const useAssignmentStore = create((set, get) => ({
     return formatEmployees(data);
   },
 
-  fetchDeptAssignments: async (deptId, { revalidate = false, onFresh } = {}) => {
+  fetchDeptAssignments: async (deptId, { revalidate = false, onFresh, silent = false } = {}) => {
     if (!deptId) {
-      set({ assignmentsLoading: false });
+      if (!silent) set({ assignmentsLoading: false });
       return [];
     }
 
@@ -174,7 +174,7 @@ export const useAssignmentStore = create((set, get) => ({
     const apply = (rows) => {
       set((state) => ({
         deptAssignments: { ...state.deptAssignments, [deptId]: rows },
-        assignmentsLoading: false,
+        ...(silent ? {} : { assignmentsLoading: false }),
       }));
       onFresh?.(rows);
     };
@@ -191,7 +191,7 @@ export const useAssignmentStore = create((set, get) => ({
       }
     };
 
-    set({ assignmentsLoading: true });
+    if (!silent) set({ assignmentsLoading: true });
 
     if (revalidate) {
       const cached = peekCache(cacheKey, ASSIGNMENT_TTL_MS);
@@ -210,9 +210,9 @@ export const useAssignmentStore = create((set, get) => ({
     return data;
   },
 
-  fetchEmpAssignments: async (employeeId, { revalidate = false, onFresh } = {}) => {
+  fetchEmpAssignments: async (employeeId, { revalidate = false, onFresh, silent = false } = {}) => {
     if (!employeeId) {
-      set({ assignmentsLoading: false });
+      if (!silent) set({ assignmentsLoading: false });
       return [];
     }
 
@@ -220,7 +220,7 @@ export const useAssignmentStore = create((set, get) => ({
     const apply = (rows) => {
       set((state) => ({
         empAssignments: { ...state.empAssignments, [employeeId]: rows },
-        assignmentsLoading: false,
+        ...(silent ? {} : { assignmentsLoading: false }),
       }));
       onFresh?.(rows);
     };
@@ -231,7 +231,7 @@ export const useAssignmentStore = create((set, get) => ({
       return enrichAssignmentsWithAssets(rows);
     };
 
-    set({ assignmentsLoading: true });
+    if (!silent) set({ assignmentsLoading: true });
 
     if (revalidate) {
       const cached = peekCache(cacheKey, ASSIGNMENT_TTL_MS);
@@ -318,7 +318,7 @@ export const useAssignmentStore = create((set, get) => ({
     const cacheKey =
       entityType === 'department' && entityId
         ? KEYS.assetTypesDept(entityId)
-        : KEYS.assetTypesUser(departmentId || '');
+        : KEYS.assetTypesUser();
 
     const fetcher = async () => {
       if (entityType === 'department' && entityId) {
@@ -332,18 +332,17 @@ export const useAssignmentStore = create((set, get) => ({
           }));
       }
       if (entityType === 'employee') {
-        // Always scope to the selected department — otherwise ACM branch returns
-        // every department's user types at that branch (all with misleading counts).
-        if (departmentId) {
-          const res = await API.get('/dept-assets/asset-types', {
-            params: { assignment_type: 'user', dept_id: departmentId },
-          });
-          return Array.isArray(res.data) ? res.data : [];
-        }
+        // Employee-assignable types are org catalog rows with assignment_type=user.
+        // Do NOT require tblDeptAssetTypes mapping — that map is for department
+        // assignment setup and leaves most depts with an empty employee dropdown.
         const res = await API.get('/dept-assets/asset-types', {
           params: { assignment_type: 'user' },
         });
-        return Array.isArray(res.data) ? res.data : [];
+        const rows = Array.isArray(res.data) ? res.data : [];
+        return rows.map((item) => ({
+          ...item,
+          text: item.asset_type_name || item.text,
+        }));
       }
       const res = await API.get('/dept-assets/asset-types');
       return Array.isArray(res.data) ? res.data : [];

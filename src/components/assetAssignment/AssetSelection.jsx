@@ -204,11 +204,18 @@ const AssetSelection = () => {
           force: true,
         });
 
-      // Only show types that have available (unassigned) assets for this branch
-      const withStock = (incoming || []).filter(
-        (type) => (counts[type.asset_type_id] || 0) > 0,
-      );
-      setAssetTypes(withStock);
+      // Keep all assignable types visible. Hiding zero-count types made the
+      // dropdown look broken (All Asset Types (0)) when the branch had no free
+      // stock or dept mapping was missing. Sort available types first.
+      const sorted = [...(incoming || [])].sort((a, b) => {
+        const ca = counts[a.asset_type_id] || 0;
+        const cb = counts[b.asset_type_id] || 0;
+        if (cb !== ca) return cb - ca;
+        return String(a.text || a.asset_type_name || '').localeCompare(
+          String(b.text || b.asset_type_name || ''),
+        );
+      });
+      setAssetTypes(sorted);
       setAssetTypeCounts(counts);
     } catch (err) {
       console.error("Failed to fetch asset types", err);
@@ -288,7 +295,7 @@ const AssetSelection = () => {
   
       if (entityType === "employee") {
         // Logic for Employee Assignment
-        if (assetType.assignment_type !== "user") {
+        if (String(assetType.assignment_type || '').toLowerCase() !== 'user') {
           showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETTYPECANONLYBEASSIGNEDTODEPARTMENTS_1397F954', fallbackText: t('assets.assetTypeCanOnlyBeAssignedToDepartments'), type: 'error' });
           return;
         }
@@ -323,7 +330,7 @@ const AssetSelection = () => {
       } else if (entityType === "department") {
         // Logic for Department Assignment
         // CORRECTED: Check for 'department' assignment type
-        if (assetType.assignment_type !== "department") {
+        if (String(assetType.assignment_type || '').toLowerCase() !== 'department') {
           showBackendTextToast({ toast, tmdId: 'TMD_I18N_ASSETS_ASSETTYPECANONLYBEASSIGNEDTOUSERS_4279923B', fallbackText: t('assets.assetTypeCanOnlyBeAssignedToUsers'), type: 'error' });
           return;
         }
@@ -570,6 +577,8 @@ const AssetSelection = () => {
                   valueKey="id"
                   secondaryDisplayKey="count"
                   secondaryLoading={countsLoading}
+                  partitionBySecondary
+                  emptySectionLabel={t('common.optionsWithNoData') || 'Below have no data'}
                 />
               </div>
 
@@ -718,9 +727,13 @@ const AssetSelection = () => {
                 ))}
                 {inactiveAssets.length === 0 && (
                   <div className="px-4 py-6 text-center text-gray-500 col-span-4 bg-white rounded-b">
-                    {selectedAssetType
-                      ? t('assets.noInactiveAssetsFound')
-                      : t('assets.pleaseSelectAssetTypeFirst')}
+                    {!selectedAssetType
+                      ? t('assets.pleaseSelectAssetTypeFirst')
+                      : assetTypes.length === 0
+                        ? (t('assets.noAssignableAssetTypes') ||
+                          'No employee-assignable asset types are configured for this organization.')
+                        : (t('assets.noInactiveAssetsFound') ||
+                          'No unassigned assets available for this type at the selected branch.')}
                   </div>
                 )}
               </div>

@@ -1,5 +1,5 @@
 import { showBackendTextToast } from '../../utils/errorTranslation';
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Maximize, Minimize, History, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -47,9 +47,133 @@ const AssetAssignmentList = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [deptFilterCountsLoading, setDeptFilterCountsLoading] = useState(false);
+  const [entityCountsLoading, setEntityCountsLoading] = useState(false);
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { getStatusText } = useAppData();
+
+  const storeDepartments = useAssignmentStore((s) => s.departments);
+  const employeesByDeptMap = useAssignmentStore((s) => s.employeesByDept);
+  const empAssignmentsMap = useAssignmentStore((s) => s.empAssignments);
+  const deptAssignmentsMap = useAssignmentStore((s) => s.deptAssignments);
+  const fetchEmployeesByDept = useAssignmentStore((s) => s.fetchEmployeesByDept);
+  const fetchEmpAssignments = useAssignmentStore((s) => s.fetchEmpAssignments);
+  const fetchDeptAssignments = useAssignmentStore((s) => s.fetchDeptAssignments);
+
+  const emptySectionLabel = t('common.optionsWithNoData') || 'Below have no data';
+
+  const branchOptions = useMemo(() => {
+    const deptList = storeDepartments || [];
+    return (branches || []).map((branch) => {
+      const branchId = branch.branch_id;
+      const count = deptList.filter(
+        (d) => d.branch_id != null && String(d.branch_id) === String(branchId)
+      ).length;
+      return {
+        id: branchId,
+        text: branch.text || branch.branch_name || branch.branch_id,
+        count,
+      };
+    });
+  }, [branches, storeDepartments]);
+
+  const departmentFilterOptions = useMemo(() => {
+    return (departments || []).map((dept) => {
+      const employees = employeesByDeptMap[dept.id];
+      return {
+        id: dept.id,
+        text: dept.name,
+        count: Array.isArray(employees) ? employees.length : 0,
+      };
+    });
+  }, [departments, employeesByDeptMap]);
+
+  const entityOptions = useMemo(() => {
+    return (entities || []).map((entity) => {
+      let count = 0;
+      if (entityType === 'employee') {
+        const rows = empAssignmentsMap[entity.id];
+        count = Array.isArray(rows) ? rows.length : 0;
+      } else {
+        const rows = deptAssignmentsMap[entity.id];
+        count = Array.isArray(rows) ? rows.length : 0;
+      }
+      return {
+        id: entity.id,
+        text: entity.name,
+        count,
+      };
+    });
+  }, [entities, entityType, empAssignmentsMap, deptAssignmentsMap]);
+
+  // Prefetch employee counts for department filter options
+  useEffect(() => {
+    if (!showDepartmentFilter || !departments?.length) {
+      setDeptFilterCountsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const missing = departments.filter((d) => !Array.isArray(employeesByDeptMap[d.id]));
+    if (missing.length === 0) {
+      setDeptFilterCountsLoading(false);
+      return;
+    }
+    setDeptFilterCountsLoading(true);
+    Promise.all(
+      missing.map((d) =>
+        fetchEmployeesByDept(d.id, { silent: true }).catch(() => [])
+      )
+    ).finally(() => {
+      if (!cancelled) setDeptFilterCountsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDepartmentFilter, departments, fetchEmployeesByDept]);
+
+  // Prefetch assignment counts for entity dropdown (employee or department)
+  useEffect(() => {
+    if (!entities?.length) {
+      setEntityCountsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    if (entityType === 'employee') {
+      const missing = entities.filter((e) => !Array.isArray(empAssignmentsMap[e.id]));
+      if (missing.length === 0) {
+        setEntityCountsLoading(false);
+        return;
+      }
+      setEntityCountsLoading(true);
+      Promise.all(
+        missing.map((e) =>
+          fetchEmpAssignments(e.id, { silent: true }).catch(() => [])
+        )
+      ).finally(() => {
+        if (!cancelled) setEntityCountsLoading(false);
+      });
+    } else {
+      const missing = entities.filter((e) => !Array.isArray(deptAssignmentsMap[e.id]));
+      if (missing.length === 0) {
+        setEntityCountsLoading(false);
+        return;
+      }
+      setEntityCountsLoading(true);
+      Promise.all(
+        missing.map((e) =>
+          fetchDeptAssignments(e.id, { silent: true }).catch(() => [])
+        )
+      ).finally(() => {
+        if (!cancelled) setEntityCountsLoading(false);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entities, entityType, fetchEmpAssignments, fetchDeptAssignments]);
 
   const getAssignmentActionLabel = (actionCode) => {
     if (!actionCode) return '-';
@@ -163,16 +287,16 @@ const AssetAssignmentList = ({
               {t('common.branch') || t('departments.branch') || 'Branch'}
             </label>
             <SearchableDropdown
-              options={branches.map((branch) => ({
-                id: branch.branch_id,
-                text: branch.text || branch.branch_name || branch.branch_id,
-              }))}
+              options={branchOptions}
               value={selectedBranch || ""}
               onChange={(value) => onBranchSelect(value)}
               placeholder={t('departments.selectBranch') || t('users.selectBranch') || 'Select Branch'}
               searchPlaceholder={t('common.search') || 'Search...'}
               displayKey="text"
               valueKey="id"
+              secondaryDisplayKey="count"
+              partitionBySecondary
+              emptySectionLabel={emptySectionLabel}
               disabled={branchesLoading || branchLocked}
             />
           </div>
@@ -182,10 +306,7 @@ const AssetAssignmentList = ({
             <div className="w-64">
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('common.department')}</label>
               <SearchableDropdown
-                options={departments.map(dept => ({
-                  id: dept.id,
-                  text: dept.name
-                }))}
+                options={departmentFilterOptions}
                 value={selectedDepartment || ""}
                 onChange={(value) => {
                   onDepartmentSelect(value);
@@ -195,6 +316,10 @@ const AssetAssignmentList = ({
                 searchPlaceholder={t('departments.searchDepartments') || 'Search department...'}
                 displayKey="text"
                 valueKey="id"
+                secondaryDisplayKey="count"
+                secondaryLoading={deptFilterCountsLoading}
+                partitionBySecondary
+                emptySectionLabel={emptySectionLabel}
                 disabled={departmentsLoading || departmentLocked || !selectedBranch}
               />
             </div>
@@ -208,10 +333,7 @@ const AssetAssignmentList = ({
                 {entityType === 'department' ? t('common.department') : t('employees.title')}
               </label>
               <SearchableDropdown
-                options={entities.map(entity => ({
-                  id: entity.id,
-                  text: entity.name
-                }))}
+                options={entityOptions}
                 value={selectedEntity || ""}
                 onChange={(value) => onEntitySelect(value)}
                 placeholder={entityType === 'department' ? t('departments.selectDepartment') : t('employees.selectEmployee')}
@@ -226,6 +348,10 @@ const AssetAssignmentList = ({
                 }
                 displayKey="text"
                 valueKey="id"
+                secondaryDisplayKey="count"
+                secondaryLoading={entityCountsLoading}
+                partitionBySecondary
+                emptySectionLabel={emptySectionLabel}
                 disabled={
                   entitiesLoading ||
                   entityLocked ||

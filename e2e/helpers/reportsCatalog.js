@@ -128,6 +128,14 @@ export const REPORTS_SIDEBAR = [
     extraText: /Configure report|Period/,
   },
   {
+    id: 'UPCOMINGMAINTENANCESCHEDULE',
+    name: 'Upcoming Maintenance Schedule',
+    path: '/reports/upcoming-maintenance-schedule',
+    title: 'Upcoming Maintenance Schedule',
+    kind: 'configure',
+    extraText: /Configure report|Period|Upcoming/,
+  },
+  {
     id: 'PURCHASEREQUIREMENTREPORT',
     name: 'Stock & Purchase',
     path: '/reports/purchase-requirement',
